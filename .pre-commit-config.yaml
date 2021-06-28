@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 20.8b1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.7.0
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/PyCQA/pylint
+    rev: "2.6"
+    hooks:
+      - id: pylint
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: debug-statements
+      - id: check-yaml
+      - id: check-toml
