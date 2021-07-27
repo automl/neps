@@ -1,0 +1,23 @@
+{
+      "dataset": "branin2",
+      "n_repeat": 5,
+      "n_init": 10,
+      "max_iters": 200,
+      "pool_size": 40,
+      "mutate_size": null,
+      "pool_strategy": "random",
+      "save_path": "results/",
+      "strategy": "gbo",
+      "acquisition": "UCB",
+      "hp_kernel": "m52",
+      "domain_se_kernel": "m52",
+      "batch_size": 1,
+      "verbose": false,
+      "seed": 56,
+      "optimize_arch": false,
+      "optimize_hps": true,
+      "cuda": true,
+      "no_isomorphism": false,
+      "maximum_noise": 0.01,
+      "log": false
+}

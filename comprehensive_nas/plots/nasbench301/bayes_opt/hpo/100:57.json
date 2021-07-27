@@ -1,0 +1,608 @@
+{
+      "incumbents": [
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.006628211246723924,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.008382306736200957
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.0013414745317680324,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00016391375591353163
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007067957700854003,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 4.648434128463311e-05
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.007007015005554513,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00014474030427984158
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            },
+            {
+                  "OptimizerSelector:sgd:hyperparam:learning_rate": 0.008008116357949647,
+                  "OptimizerSelector:sgd:hyperparam:weight_decay": 0.00021846799960150708
+            }
+      ],
+      "incumbent_fval": [
+            44.68606185913086,
+            6.178199768066406,
+            5.397773742675781,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.207176208496094,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156,
+            5.060462951660156
+      ],
+      "runtime": [
+            15184882.0,
+            15566976.0,
+            15950439.0,
+            16333193.0,
+            16716324.0,
+            17099232.0,
+            17481378.0,
+            17842428.0,
+            18225100.0,
+            18608230.0,
+            18992614.0,
+            19353910.0,
+            19737104.0,
+            20111124.0,
+            20492642.0,
+            20875408.0,
+            21258422.0,
+            21602406.0,
+            21986110.0,
+            22329912.0,
+            22691052.0,
+            23073780.0,
+            23417576.0,
+            23761464.0,
+            24145578.0,
+            24507110.0,
+            24887200.0,
+            25269480.0,
+            25613868.0,
+            25997566.0,
+            26380076.0,
+            26763348.0,
+            27123978.0,
+            27508288.0,
+            27869824.0,
+            28252950.0,
+            28597516.0,
+            28980382.0,
+            29364648.0,
+            29747714.0,
+            30127214.0,
+            30471502.0,
+            30855342.0,
+            31238608.0,
+            31620806.0,
+            32004526.0,
+            32384208.0,
+            32768320.0,
+            33148112.0,
+            33491928.0,
+            33853396.0,
+            34236512.0,
+            34616252.0,
+            34990060.0,
+            35372788.0,
+            35756624.0,
+            36130540.0,
+            36513128.0,
+            36897404.0,
+            37281156.0,
+            37654692.0,
+            38034228.0,
+            38415760.0,
+            38797928.0,
+            39177540.0,
+            39524392.0,
+            39907924.0,
+            40287724.0,
+            40670104.0,
+            41053680.0,
+            41436412.0,
+            41797888.0,
+            42180624.0,
+            42541848.0,
+            42925424.0,
+            43286664.0,
+            43668192.0,
+            44041476.0,
+            44423188.0,
+            44805784.0,
+            45179072.0,
+            45558840.0,
+            45940544.0,
+            46302056.0,
+            46683780.0,
+            47066776.0,
+            47451008.0,
+            47835280.0,
+            48179664.0,
+            48524000.0,
+            48907708.0,
+            49251568.0,
+            49634244.0,
+            50017848.0,
+            50364648.0,
+            50748248.0,
+            51092400.0,
+            51466284.0,
+            51849344.0,
+            52232944.0
+      ]
+}

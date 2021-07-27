@@ -21,3 +21,5 @@ __pycache__
 
 # Poetry
 poetry.lock
+
+comprehensive_nas/nasbowl/benchmarks/nas
