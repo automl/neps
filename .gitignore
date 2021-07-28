@@ -4,6 +4,20 @@ __pycache__
 # Jetbrains
 .idea/*
 
+# Log files
+*.out
+*.err
+*.log
+*.json
+
+# slurm scripts
+slurm_scripts/*
+
+
+# IDE related
+.vscode/
+.idea/
+
 # Latex
 *.aux
 *.fdb_latexmk
