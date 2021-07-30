@@ -1,9 +1,10 @@
-import ConfigSpace
-import numpy as np
 import copy
 
 import ConfigSpace as CS
-from nasbowl.benchmarks.abstract_benchmark import AbstractBenchmark
+import numpy as np
+
+from ..abstract_benchmark import AbstractBenchmark
+
 
 N_CATEGORICAL = 5
 N_CONTINUOUS = 5
@@ -26,7 +27,7 @@ class CountingOnes(AbstractBenchmark):
 
         if self.negative:
             y = -y
-        return y, {'train_time': self.eval_cost()}
+        return y, {"train_time": self.eval_cost()}
 
     @staticmethod
     def eval_cost():
@@ -42,16 +43,18 @@ class CountingOnes(AbstractBenchmark):
         for i in range(N_CATEGORICAL):
             cs.add_hyperparameter(CS.CategoricalHyperparameter("cat_%d" % i, [0, 1]))
         for i in range(N_CONTINUOUS):
-            cs.add_hyperparameter(CS.UniformFloatHyperparameter('float_%d' % i, lower=0, upper=1))
+            cs.add_hyperparameter(
+                CS.UniformFloatHyperparameter("float_%d" % i, lower=0, upper=1)
+            )
         return cs
 
     @staticmethod
     def get_meta_information():
-        return {'name': 'CountingOnes',
-                'capital': 50,
-                'optima': ([0]),
-                'bounds': [[0, 1] * N_CONTINUOUS, [0, 1] * N_CATEGORICAL],
-                'f_opt': -10.0,
-                'noise_variance': 0.05}
-
-
+        return {
+            "name": "CountingOnes",
+            "capital": 50,
+            "optima": ([0]),
+            "bounds": [[0, 1] * N_CONTINUOUS, [0, 1] * N_CATEGORICAL],
+            "f_opt": -10.0,
+            "noise_variance": 0.05,
+        }

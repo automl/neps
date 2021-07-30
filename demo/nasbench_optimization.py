@@ -1,23 +1,25 @@
 import argparse
-
-from nasbowl.kernel_operators import *
-import nasbowl.models
-from nasbowl.acqusition_functions import *
-
-from nasbowl.initial_design.generate_test_graphs import *
-from nasbowl.initial_design.init_random_uniform import *
-from nasbowl.benchmarks.nas.nasbench301 import NASBench301
-from nasbowl.benchmarks.nas.nasbench201 import NASBench201
-from nasbowl.benchmarks.hpo.branin2 import Branin2
-from nasbowl.benchmarks.hpo.hartmann3 import Hartmann3
-from nasbowl.benchmarks.hpo.hartmann6 import Hartmann6
-from nasbowl.benchmarks.hpo.counting_ones import CountingOnes
-
-from utils.util import StatisticsTracker
-from optimizer import RandomSearch, BayesianOptimization
-from sampler import Sampler
-
 import warnings
+
+from copy import deepcopy
+
+import torch
+
+from comprehensive_nas.nasbowl.acquisition_function_optimization.sampler import Sampler
+from comprehensive_nas.nasbowl.acqusition_functions import AcquisitionMapping
+from comprehensive_nas.nasbowl.benchmarks.hpo.branin2 import Branin2
+from comprehensive_nas.nasbowl.benchmarks.hpo.counting_ones import CountingOnes
+from comprehensive_nas.nasbowl.benchmarks.hpo.hartmann3 import Hartmann3
+from comprehensive_nas.nasbowl.benchmarks.hpo.hartmann6 import Hartmann6
+from comprehensive_nas.nasbowl.benchmarks.nas.nasbench201 import NASBench201
+from comprehensive_nas.nasbowl.benchmarks.nas.nasbench301 import NASBench301
+from comprehensive_nas.nasbowl.kernel_operators import GraphKernelMapping
+from comprehensive_nas.nasbowl.kernel_operators import StationaryKernelMapping
+from comprehensive_nas.nasbowl.models import ComprehensiveGP
+from comprehensive_nas.nasbowl.optimizer import BayesianOptimization
+from comprehensive_nas.rs.optimizer import RandomSearch
+from comprehensive_nas.utils.util import StatisticsTracker
+
 
 warnings.simplefilter("ignore", category=FutureWarning)
 
@@ -48,6 +50,7 @@ parser.add_argument('--batch_size', type=int, default=1, help='Number of samples
 parser.add_argument('-v', '--verbose', action='store_true')
 parser.add_argument('--seed', type=int, default=1)
 parser.add_argument('--optimize_arch', action='store_true', help='Whether to optimize arch')
+parser.add_argument('--n_graph_kernels', type=int, default=1, help='How many graph kernels to use')
 parser.add_argument('--optimize_hps', action='store_true', help='Whether to optimize hps')
 parser.add_argument('--cuda', action='store_true', help='Whether to use GPU acceleration')
 # parser.add_argument('--mutate_unpruned_archs', action='store_true',
@@ -89,11 +92,25 @@ assert args.strategy in ['random', 'gbo']
 if args.strategy == 'random':
     optimizer = RandomSearch(args, objective)
 elif args.strategy == 'gbo':
-    optimizer = BayesianOptimization(args, objective)
+    kern = []
+    if args.optimize_arch:
+        for _ in range(args.n_graph_kernels):
+            kern.append(GraphKernelMapping['wl'](se_kernel=StationaryKernelMapping[args.domain_se_kernel]))
+    surrogate_model = ComprehensiveGP(
+        graph_kernels=kern,
+        hp_kernel=StationaryKernelMapping[args.hp_kernel],
+        verbose=args.verbose
+    )
+    acquisition_function = AcquisitionMapping[args.acquisition](surrogate_model=surrogate_model, strategy=args.strategy)
+    acquisition_function_opt = Sampler(args, objective)
+    optimizer = BayesianOptimization(
+        surrogate_model=surrogate_model,
+        acquisition_function=acquisition_function,
+        acqusition_function_opt=acquisition_function_opt,
+    )
 else:
     optimizer = None
 assert args.pool_strategy in ['random', 'mutate', ]
-sampler = Sampler(args, objective)
 
 experiments = StatisticsTracker(args)
 
@@ -101,7 +118,8 @@ for seed in range(args.seed, args.seed + args.n_repeat):
     experiments.reset(seed)
 
     # Take n_init random samples
-    x_graphs, x_hps = sampler.sample(pool_size=args.n_init)
+    # TODO acquisiton function opt can be different to intial design!
+    x_graphs, x_hps = acquisition_function_opt.sample(pool_size=args.n_init)
 
     # & evaluate
     y_np_list = [objective.eval(graphs_, hps_) for graphs_, hps_ in list(zip(x_graphs, x_hps))]
@@ -109,17 +127,23 @@ for seed in range(args.seed, args.seed + args.n_repeat):
     train_details = [y[1] for y in y_np_list]
 
     # Initialise the GP surrogate
-    optimizer.initialize_model(x_graphs=deepcopy(x_graphs), x_hps=deepcopy(x_hps), y=deepcopy(y))
+    optimizer.initialize_model(x=(deepcopy(x_graphs), deepcopy(x_hps)), y=deepcopy(y))
 
     # Main optimization loop
 
     while experiments.has_budget():
 
-        pool_graphs, pool_hps = sampler.sample(args.pool_size)
+        #pool_graphs, pool_hps = acquisition_function_opt.sample(args.pool_size)
 
         # Propose new location to evaluate
-        query_dict = {'iters': experiments.iteration, 'pool': list(zip(pool_graphs, pool_hps))}
-        next_graphs, next_hps = optimizer.propose_new_location(**query_dict)
+        #query_dict = {'iters': experiments.iteration, 'pool': list(zip(pool_graphs, pool_hps))}
+        next_x, eis, pool = optimizer.propose_new_location(args.batch_size, args.pool_size)
+
+        next_graphs = tuple()
+        next_hps = tuple()
+        for graph, hp in next_x:
+            next_graphs += (graph,)
+            next_hps += (hp,)
 
         # Evaluate this location from the objective function
         detail = [objective.eval(graphs_, hps_) for graphs_, hps_ in list(zip(next_graphs, next_hps))]
@@ -127,6 +151,8 @@ for seed in range(args.seed, args.seed + args.n_repeat):
         train_details += [y[1] for y in detail]
 
         if optimizer.surrogate_model is not None:
+            pool = pool.transpose(1,0)
+            pool_graphs, pool_hps = list(pool[0]), list(pool[1])
             pool_graphs.extend(next_graphs)
             pool_hps.extend(next_hps)
 
@@ -135,8 +161,10 @@ for seed in range(args.seed, args.seed + args.n_repeat):
         y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
 
         # Update the GP Surrogate
-        optimizer.update_model(x_graphs=deepcopy(x_graphs), x_hps=deepcopy(x_hps), y=deepcopy(y))
+        optimizer.update_model(x=(deepcopy(x_graphs), deepcopy(x_hps)), y=deepcopy(y))
         experiments.print(list(zip(x_graphs, x_hps)), y, next_y, train_details)
+
+        experiments.next_iteration()
 
     incumbent_config = []
     for inc_graphs, inc_hps in experiments.incumbents:
@@ -151,6 +179,3 @@ for seed in range(args.seed, args.seed + args.n_repeat):
             incumbent_config.append(inc_hps)
 
     experiments.save_results(incumbents_config=incumbent_config)
-
-
-

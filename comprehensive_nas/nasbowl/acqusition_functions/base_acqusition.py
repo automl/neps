@@ -27,3 +27,6 @@ class BaseAcquisition(ABC):
 
     def __call__(self, *args, **kwargs):
         return self.eval(*args, **kwargs)
+
+    def reset_surrogate_model(self, surrogate_model):
+        self.surrogate_model = surrogate_model

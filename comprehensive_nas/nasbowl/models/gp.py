@@ -1,20 +1,33 @@
+import logging
+
 from copy import deepcopy
 
 import gpytorch
+import numpy as np
+import torch
 
-from nasbowl.kernel_operators import GraphKernels, Stationary, StationaryKernelMapping
+from ..kernel_operators.combine_kernels import ProductKernel
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
-from nasbowl.kernel_operators import ProductKernel
-from nasbowl.kernel_operators import WeisfilerLehman
-from nasbowl.misc.graph_features import FeatureExtractor
-from nasbowl.utils.nasbowl_utils import *
+from ..kernel_operators.graph_kernel import GraphKernels
+from ..kernel_operators.vectorial_kernels import Stationary
+from ..kernel_operators.weisfilerlehman import WeisfilerLehman
+from ..utils.nasbowl_utils import compute_log_marginal_likelihood
+from ..utils.nasbowl_utils import compute_pd_inverse
+from ..utils.nasbowl_utils import normalize_y
+from ..utils.nasbowl_utils import standardize_x
+from ..utils.nasbowl_utils import unnormalize_y
 
 
 # A vanilla GP with RBF kernel
 class GP(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, kernel: gpytorch.kernels, ):
+    def __init__(
+        self,
+        train_x,
+        train_y,
+        kernel: gpytorch.kernels,
+    ):
         likelihood = gpytorch.likelihoods.GaussianLikelihood()
-        super(GP, self).__init__(train_x, train_y, likelihood)
+        super().__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(kernel)
 
@@ -26,53 +39,56 @@ class GP(gpytorch.models.ExactGP):
 
 # handle normal and reduce graphs as a list
 class ComprehensiveGP:
-    def __init__(self, train_x_graphs, train_x_hps, train_y,
-                 graph_kernels: list,
-                 hp_cont_kernel,
-                 likelihood=1e-3,
-                 weights=None,
-                 vector_theta_bounds: tuple = (1e-5, 0.1),
-                 graph_theta_bounds: tuple = (1e-1, 1.e1),
-                 verbose=False,
-                 ):
-        self.x_graphs = deepcopy(train_x_graphs)
-        self.x_hps = deepcopy(train_x_hps)
-        assert len(self.x_graphs) == train_y.shape[0], 'mismatch of length between train and test GP'
-        assert len(self.x_hps) == train_y.shape[0], 'mismatch of length between train and test GP'
-
+    def __init__(
+        self,
+        graph_kernels: list,
+        hp_kernel,
+        likelihood=1e-3,
+        weights=None,
+        vector_theta_bounds: tuple = (1e-5, 0.1),
+        graph_theta_bounds: tuple = (1e-1, 1.0e1),
+        verbose=False,
+    ):
         self.likelihood = likelihood
 
         self.domain_kernels = []
-        if None not in self.x_graphs:
+        if bool(graph_kernels):
             self.domain_kernels += graph_kernels
-        if None not in self.x_hps:
-            if any(isinstance(x, float) for x in self.x_hps[0]):
-                self.domain_kernels.append(hp_cont_kernel)
-            if any(isinstance(x, str) for x in self.x_hps[0]):
-                hp_cat_kernel = StationaryKernelMapping['hm']
-                self.domain_kernels.append(hp_cat_kernel)
+        if bool(hp_kernel):
+            self.domain_kernels.append(hp_kernel)
+            # TODO move this decision outside of gp model/unecessary here
+            # if any(isinstance(x, float) for x in self.x_hps[0]):
+            #    self.domain_kernels.append(hp_cont_kernel)
+            # if any(isinstance(x, str) for x in self.x_hps[0]):
+            #    hp_cat_kernel = StationaryKernelMapping['hm']
 
         self.n_kernels = len(self.domain_kernels)
-        self.n_graph_kernels = len([i for i in self.domain_kernels if isinstance(i, GraphKernels)])
+        self.n_graph_kernels = len(
+            [i for i in self.domain_kernels if isinstance(i, GraphKernels)]
+        )
         self.n_vector_kernels = self.n_kernels - self.n_graph_kernels
 
         # TODO: sth better than hard code
         self.feature_d = None
-        self.n = len(self.x_graphs) if None not in self.x_graphs else len(self.x_hps)
-        self.y_ = deepcopy(train_y)
-        self.y, self.y_mean, self.y_std = normalize_y(train_y)
 
         if weights is not None:
             self.fixed_weights = True
             if weights is not None:
-                assert len(weights) == len(
-                    graph_kernels), "the weights vector, if supplied, needs to have the same length as " \
-                              "the number of kernel_operators!"
-            self.weights = weights if isinstance(weights, torch.Tensor) else torch.tensor(weights).flatten()
+                assert len(weights) == len(graph_kernels), (
+                    "the weights vector, if supplied, needs to have the same length as "
+                    "the number of kernel_operators!"
+                )
+            self.weights = (
+                weights
+                if isinstance(weights, torch.Tensor)
+                else torch.tensor(weights).flatten()
+            )
         else:
             self.fixed_weights = False
             # Initialise the domain kernel weights to uniform
-            self.weights = torch.tensor([1. / self.n_kernels] * self.n_kernels, )
+            self.weights = torch.tensor(
+                [1.0 / self.n_kernels] * self.n_kernels,
+            )
 
         self.combined_kernel = ProductKernel(*self.domain_kernels, weights=self.weights)
         self.vector_theta_bounds = vector_theta_bounds
@@ -80,24 +96,48 @@ class ComprehensiveGP:
         # Verbose mode
         self.verbose = verbose
         # Cache the Gram matrix inverse and its log-determinant
-        self.K, self.K_i, logDetK = [None] * 3
+        self.K, self.K_i, self.logDetK = [None] * 3
+        self.theta_vector = None
+        self.layer_weights = None
+        self.nlml = None
+
+        self.x_graphs = None
+        self.x_hps = None
+        self.y = None
+        self.y_ = None
+        self.y_mean = None
+        self.y_std = None
+        self.n = None
 
     def _optimize_graph_kernels(self, h_, lengthscale_):
         for i, k in enumerate(self.combined_kernel.kernels):
             if isinstance(k, WeisfilerLehman):
-                _grid_search_wl_kernel(k, h_, [x[i] for x in self.x_graphs] if isinstance(self.x_graphs[0], tuple)
-                                else self.x_graphs,
-                                self.y, self.likelihood,
-                                lengthscales=lengthscale_, )
+                _grid_search_wl_kernel(
+                    k,
+                    h_,
+                    [x[i] for x in self.x_graphs]
+                    if isinstance(self.x_graphs[0], tuple)
+                    else self.x_graphs,
+                    self.y,
+                    self.likelihood,
+                    lengthscales=lengthscale_,
+                )
             else:
-                logging.warning('Graph kernel optimisation for ' + str(k) + " not implemented yet.")
+                logging.warning(
+                    "Graph kernel optimisation for " + str(k) + " not implemented yet."
+                )
 
-    def fit(self, iters=20, optimizer='adam',
-            wl_subtree_candidates: tuple = tuple(range(5)),
-            wl_lengthscales=tuple([np.e ** i for i in range(-2, 3)]),
-            optimize_lik=True, max_lik=0.01,
-            optimize_wl_layer_weights=False,
-            optimizer_kwargs=None):
+    def fit(
+        self,
+        iters=20,
+        optimizer="adam",
+        wl_subtree_candidates: tuple = tuple(range(5)),
+        wl_lengthscales=tuple([np.e ** i for i in range(-2, 3)]),
+        optimize_lik=True,
+        max_lik=0.01,
+        optimize_wl_layer_weights=False,
+        optimizer_kwargs=None,
+    ):
         """
 
         Parameters
@@ -118,11 +158,12 @@ class ComprehensiveGP:
         # Get the node weights, if needed
 
         if optimizer_kwargs is None:
-            optimizer_kwargs = {
-                'lr': 0.1
-            }
+            optimizer_kwargs = {"lr": 0.1}
         if len(wl_subtree_candidates):
-            self._optimize_graph_kernels(wl_subtree_candidates, wl_lengthscales, )
+            self._optimize_graph_kernels(
+                wl_subtree_candidates,
+                wl_lengthscales,
+            )
 
         weights = self.weights.clone()
 
@@ -130,16 +171,20 @@ class ComprehensiveGP:
             weights.requires_grad_(True)
         # Initialise the lengthscale to be the geometric mean of the theta_vector bounds.
         theta_vector = torch.sqrt(
-            torch.tensor([self.vector_theta_bounds[0] * self.vector_theta_bounds[1]],
-                         )) \
-            # if self.feature_d else None
-        theta_graph = torch.sqrt(torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])).\
-            requires_grad_(True)
+            torch.tensor(
+                [self.vector_theta_bounds[0] * self.vector_theta_bounds[1]],
+            )
+        )  # if self.feature_d else None
+        theta_graph = torch.sqrt(
+            torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])
+        ).requires_grad_(True)
         # Only requires gradient of lengthscale if there is any vectorial input
         # if self.feature_d:
         theta_vector.requires_grad_(True)
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
-        likelihood = torch.tensor(self.likelihood, )
+        likelihood = torch.tensor(
+            self.likelihood,
+        )
         if optimize_lik:
             likelihood.requires_grad_(True)
 
@@ -161,15 +206,19 @@ class ComprehensiveGP:
         nlml = None
         if len(optim_vars) == 0:  # Skip optimisation
             # TODO: PASS both
-            K = self.combined_kernel.fit_transform(weights, self.x_graphs, self.x_hps,
-                                                   feature_lengthscale=theta_vector,
-                                                   layer_weights=layer_weights,
-                                                   rebuild_model=True)
+            K = self.combined_kernel.fit_transform(
+                weights,
+                self.x_graphs,
+                self.x_hps,
+                feature_lengthscale=theta_vector,
+                layer_weights=layer_weights,
+                rebuild_model=True,
+            )
             K_i, logDetK = compute_pd_inverse(K, likelihood)
         else:
             # Select the optimizer
-            assert optimizer.lower() in ['adam', 'sgd']
-            if optimizer.lower() == 'adam':
+            assert optimizer.lower() in ["adam", "sgd"]
+            if optimizer.lower() == "adam":
                 optim = torch.optim.Adam(optim_vars, **optimizer_kwargs)
             else:
                 optim = torch.optim.SGD(optim_vars, **optimizer_kwargs)
@@ -177,26 +226,54 @@ class ComprehensiveGP:
             K = None
             for i in range(iters):
                 optim.zero_grad()
-                K = self.combined_kernel.fit_transform(weights, self.x_graphs, self.x_hps,
-                                                       feature_lengthscale=theta_vector,
-                                                       layer_weights=layer_weights,
-                                                       rebuild_model=True,
-                                                       save_gram_matrix=True, )
+                K = self.combined_kernel.fit_transform(
+                    weights,
+                    self.x_graphs,
+                    self.x_hps,
+                    feature_lengthscale=theta_vector,
+                    layer_weights=layer_weights,
+                    rebuild_model=True,
+                    save_gram_matrix=True,
+                )
                 K_i, logDetK = compute_pd_inverse(K, likelihood)
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
                 nlml.backward(create_graph=True)
                 if self.verbose and i % 10 == 0:
-                    print('Iteration:', i, "/", iters, 'Negative log-marginal likelihood:', nlml.item(), theta_vector,
-                          weights,  # theta_graph,
-                          likelihood)
-                optim.step() # TODO
+                    print(
+                        "Iteration:",
+                        i,
+                        "/",
+                        iters,
+                        "Negative log-marginal likelihood:",
+                        nlml.item(),
+                        theta_vector,
+                        weights,  # theta_graph,
+                        likelihood,
+                    )
+                optim.step()  # TODO
                 with torch.no_grad():
-                    weights.clamp_(0., 1.) if weights is not None and weights.is_leaf else None
-                    theta_vector.clamp_(self.vector_theta_bounds[0],
-                                        self.vector_theta_bounds[
-                                            1]) if theta_vector is not None and theta_vector.is_leaf else None
-                    likelihood.clamp_(1e-5, max_lik) if likelihood is not None and likelihood.is_leaf else None
-                    layer_weights.clamp_(0., 1.) if layer_weights is not None and layer_weights.is_leaf else None
+                    weights = (
+                        weights.clamp_(0.0, 1.0)
+                        if weights is not None and weights.is_leaf
+                        else None
+                    )
+                    theta_vector = (
+                        theta_vector.clamp_(
+                            self.vector_theta_bounds[0], self.vector_theta_bounds[1]
+                        )
+                        if theta_vector is not None and theta_vector.is_leaf
+                        else None
+                    )
+                    likelihood = (
+                        likelihood.clamp_(1e-5, max_lik)
+                        if likelihood is not None and likelihood.is_leaf
+                        else None
+                    )
+                    layer_weights = (
+                        layer_weights.clamp_(0.0, 1.0)
+                        if layer_weights is not None and layer_weights.is_leaf
+                        else None
+                    )
                 # print('grad,', theta_graph)
             K_i, logDetK = compute_pd_inverse(K, likelihood)
         # Apply the optimal hyperparameters
@@ -213,33 +290,39 @@ class ComprehensiveGP:
 
         for k in self.combined_kernel.kernels:
             if isinstance(k, Stationary):
-                k.lengthscale = theta_vector.clamp(self.vector_theta_bounds[0], self.vector_theta_bounds[1]).item()
+                k.lengthscale = theta_vector.clamp(
+                    self.vector_theta_bounds[0], self.vector_theta_bounds[1]
+                ).item()
             # elif isinstance(k, GraphKernels) and k.lengthscale_ is not None:
             #     k.lengthscale_ = theta_graph.clamp(self.graph_theta_bounds[0], self.graph_theta_bounds[1])
         self.combined_kernel.weights = weights.clone()
         if self.verbose:
-            print('Optimisation summary: ')
-            print('Optimal NLML: ', nlml)
-            print('Lengthscales: ', theta_vector)
+            print("Optimisation summary: ")
+            print("Optimal NLML: ", nlml)
+            print("Lengthscales: ", theta_vector)
             try:
-                print('Optimal h: ', self.domain_kernels[0]._h)
+                print("Optimal h: ", self.domain_kernels[0]._h)
             except AttributeError:
                 pass
-            print('Weights: ', self.weights)
-            print('Lik:', self.likelihood)
-            print('Optimal layer weights', layer_weights)
+            print("Weights: ", self.weights)
+            print("Lik:", self.likelihood)
+            print("Optimal layer weights", layer_weights)
         # print('Graph Lengthscale', theta_graph)
 
-    def predict(self, x_graphs, x_hps, preserve_comp_graph=False):
+    def predict(self, x, preserve_comp_graph=False):
         """Kriging predictions"""
 
         # if not isinstance(X_s[0], list):
         #     # Convert a single input X_s to a singleton list
         #     X_s = [X_s]
 
+        x_graphs, x_hps = x
+
         if self.K_i is None or self.logDetK is None:
-            raise ValueError("Inverse of Gram matrix is not instantiated. Please call the optimize function to "
-                             "fit on the training data first!")
+            raise ValueError(
+                "Inverse of Gram matrix is not instantiated. Please call the optimize function to "
+                "fit on the training data first!"
+            )
 
         # Concatenate the full list
         X_graphs_all = deepcopy(self.x_graphs)
@@ -253,11 +336,16 @@ class ComprehensiveGP:
         else:
             combined_kernel_copy = self.combined_kernel
 
-        K_full = combined_kernel_copy.fit_transform(self.weights, X_graphs_all, X_hps_all,
-                                               layer_weights=self.layer_weights,
-                                               rebuild_model=True, save_gram_matrix=False)
+        K_full = combined_kernel_copy.fit_transform(
+            self.weights,
+            X_graphs_all,
+            X_hps_all,
+            layer_weights=self.layer_weights,
+            rebuild_model=True,
+            save_gram_matrix=False,
+        )
 
-        K_s = K_full[:self.n:, self.n:]
+        K_s = K_full[: self.n :, self.n :]
 
         tmp = 0
         if x_graphs is not None:
@@ -265,7 +353,9 @@ class ComprehensiveGP:
         elif x_hps is not None:
             tmp += len(x_hps)
 
-        K_ss = K_full[self.n:, self.n:] + self.likelihood * torch.eye(tmp, )
+        K_ss = K_full[self.n :, self.n :] + self.likelihood * torch.eye(
+            tmp,
+        )
 
         mu_s = K_s.t() @ self.K_i @ self.y
         cov_s = K_ss - K_s.t() @ self.K_i @ K_s
@@ -278,7 +368,8 @@ class ComprehensiveGP:
             del combined_kernel_copy
         return mu_s, cov_s
 
-    def reset_XY(self, x_graphs, x_hps, train_y):
+    def reset_XY(self, train_x, train_y):
+        x_graphs, x_hps = train_x
         self.x_graphs = deepcopy(x_graphs)
         self.x_hps = deepcopy(x_hps)
         self.n = len(self.x_graphs) if None not in self.x_graphs else len(x_hps)
@@ -291,11 +382,14 @@ class ComprehensiveGP:
         #     self.x_features, self.x_features_min, self.x_features_max = \
         #         standardize_x(self._get_vectorial_features(self.x, self.vectorial_feactures))
 
-    def dmu_dphi(self, X_s=None,
-                 # compute_grad_var=False,
-                 average_across_features=True,
-                 average_across_occurrences=False):
-        """
+    def dmu_dphi(
+        self,
+        X_s=None,
+        # compute_grad_var=False,
+        average_across_features=True,
+        average_across_occurrences=False,
+    ):
+        r"""
         Compute the derivative of the GP posterior mean at the specified input location with respect to the
         *vector embedding* of the graph (e.g., if using WL-subtree, this function computes the gradient wrt
         each subtree pattern)
@@ -335,8 +429,10 @@ class ComprehensiveGP:
         list of K torch.Tensor of shape D, if averaged_over_samples flag is enabled.
         """
         if self.K_i is None or self.logDetK is None:
-            raise ValueError("Inverse of Gram matrix is not instantiated. Please call the optimize function to "
-                             "fit on the training data first!")
+            raise ValueError(
+                "Inverse of Gram matrix is not instantiated. Please call the optimize function to "
+                "fit on the training data first!"
+            )
         if self.n_vector_kernels:
             if X_s is not None:
                 V_s = self._get_vectorial_features(X_s, self.vectorial_feactures)
@@ -357,7 +453,10 @@ class ComprehensiveGP:
         for j, x_s in enumerate(X_s):
             jacob_vecs = []
             if V_s is None:
-                handles = self.combined_kernel.forward_t(self.weights, [x_s], )
+                handles = self.combined_kernel.forward_t(
+                    self.weights,
+                    [x_s],
+                )
             else:
                 handles = self.combined_kernel.forward_t(self.weights, [x_s], V_s[j])
             Ks_handles.append(handles)
@@ -367,7 +466,11 @@ class ComprehensiveGP:
                 k_s, y, _ = handle
                 # k_s is output, leaf is input, alpha is the K_i @ y term which is constant.
                 # When compute_grad_var is not required, computational graphs do not need to be saved.
-                jacob_vecs.append(torch.autograd.grad(outputs=k_s, inputs=y, grad_outputs=alpha, retain_graph=False)[0])
+                jacob_vecs.append(
+                    torch.autograd.grad(
+                        outputs=k_s, inputs=y, grad_outputs=alpha, retain_graph=False
+                    )[0]
+                )
                 feature_vectors.append(y)
             feature_matrix.append(feature_vectors)
             jacob_vecs = torch.cat(jacob_vecs)
@@ -378,13 +481,19 @@ class ComprehensiveGP:
             dmu_dphi = torch.cat(dmu_dphi)
             # compute the weighted average of the gradient across N_t.
             # feature matrix is of shape N_t x K x D
-            avg_mu, avg_var, incidences = get_grad(dmu_dphi, feature_matrix, average_across_occurrences)
+            avg_mu, avg_var, incidences = get_grad(
+                dmu_dphi, feature_matrix, average_across_occurrences
+            )
             return avg_mu, avg_var, incidences
-        return dmu_dphi, None, feature_matrix.sum(dim=0) if average_across_occurrences else feature_matrix
+        return (
+            dmu_dphi,
+            None,
+            feature_matrix.sum(dim=0) if average_across_occurrences else feature_matrix,
+        )
 
 
 def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
-    """
+    r"""
     Average across the samples via a Monte Carlo sampling scheme. Also estimates the empirical variance.
     :param average_occurrences: if True, do a weighted summation based on the frequency distribution of the occurrence
         to compute a gradient *per each feature*. Otherwise, each different occurence (\phi_i = k) will get a different
@@ -399,13 +508,15 @@ def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
     feature_matrix = feature_matrix[:, valid_cols]
     grad_matrix = grad_matrix[:, valid_cols]
 
-    N, D = feature_matrix.shape
+    _, D = feature_matrix.shape
     if average_occurrences:
         avg_grad = torch.zeros(D)
         avg_grad_var = torch.zeros(D)
         for d in range(D):
             current_feature = feature_matrix[:, d].clone().detach()
-            instances, indices, counts = torch.unique(current_feature, return_inverse=True, return_counts=True)
+            instances, indices, counts = torch.unique(
+                current_feature, return_inverse=True, return_counts=True
+            )
             weight_vector = torch.tensor([counts[i] for i in indices]).type(torch.float)
             weight_vector /= weight_vector.sum()
             mean = torch.sum(weight_vector * grad_matrix[:, d])
@@ -423,8 +534,9 @@ def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
         incidences = torch.zeros(D, max_occur)
         for d in range(D):
             current_feature = feature_matrix[:, d].clone().detach()
-            instances, indices, counts = torch.unique(current_feature, return_inverse=True,
-                                                      return_counts=True)
+            instances, indices, counts = torch.unique(
+                current_feature, return_inverse=True, return_counts=True
+            )
             for i, val in enumerate(instances):
                 # Find index of all feature counts that are equal to the current val
                 feature_at_val = grad_matrix[current_feature == val]
@@ -440,22 +552,25 @@ def getBack(var_grad_fn):
     for n in var_grad_fn.next_functions:
         if n[0]:
             try:
-                tensor = getattr(n[0], 'variable')
+                tensor = getattr(n[0], "variable")
                 print(n[0])
-                print('Tensor with grad found:', tensor)
-                print(' - gradient:', tensor.grad)
+                print("Tensor with grad found:", tensor)
+                print(" - gradient:", tensor.grad)
                 print()
-            except AttributeError as e:
+            except AttributeError:
                 getBack(n[0])
 
 
-def _grid_search_wl_kernel(k: WeisfilerLehman,
-                           subtree_candidates,
-                           train_x, train_y,
-                           lik,
-                           subtree_prior=None,
-                           lengthscales=None,
-                           lengthscales_prior=None):
+def _grid_search_wl_kernel(
+    k: WeisfilerLehman,
+    subtree_candidates,
+    train_x,
+    train_y,
+    lik,
+    subtree_prior=None,  # pylint: unused-argument
+    lengthscales=None,
+    lengthscales_prior=None,  # pylint: disable=unused-argument
+):
     """Optimize the *discrete hyperparameters* of Weisfeiler Lehman kernel.
     k: a Weisfeiler-Lehman kernel instance
     hyperparameter_candidate: list of candidate hyperparameter to try
@@ -477,8 +592,8 @@ def _grid_search_wl_kernel(k: WeisfilerLehman,
 
     for i in candidates:
         if k.se is not None:
-            k.change_se_params({'lengthscale': i[1]})
-        k.change_kernel_params({'h': i[0]})
+            k.change_se_params({"lengthscale": i[1]})
+        k.change_kernel_params({"h": i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
         # print(K)
         K_i, logDetK = compute_pd_inverse(K, lik)
@@ -491,7 +606,7 @@ def _grid_search_wl_kernel(k: WeisfilerLehman,
             best_K = torch.clone(K)
     # print("h: ", best_subtree_depth, "theta: ", best_lengthscale)
     # print(best_subtree_depth)
-    k.change_kernel_params({'h': best_subtree_depth})
+    k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
-        k.change_se_params({'lengthscale': best_lengthscale})
+        k.change_se_params({"lengthscale": best_lengthscale})
     k._gram = best_K

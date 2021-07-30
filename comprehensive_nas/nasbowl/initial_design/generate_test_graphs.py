@@ -1,11 +1,17 @@
-import copy
+import collections
 import random
+
 from copy import deepcopy
+
+import ConfigSpace
 import networkx as nx
 import networkx.algorithms.isomorphism as iso
 import numpy as np
-from nasbowl.benchmarks.nas.nasbench301 import NASBench301, edge_to_coord_mapping, OPS_301
-import collections
+
+from ..benchmarks.nas.nasbench301 import OPS_301
+from ..benchmarks.nas.nasbench301 import NASBench301
+from ..benchmarks.nas.nasbench301 import edge_to_coord_mapping
+
 
 # === For NAS301 ===
 VERTICES_301 = 6
@@ -15,9 +21,11 @@ MAX_EDGES_301 = 13
 def get_nas201_configuration_space():
     # for unpruned graph
     cs = ConfigSpace.ConfigurationSpace()
-    ops_choices = ['nor_conv_3x3', 'nor_conv_1x1', 'avg_pool_3x3', 'skip_connect', 'none']
+    ops_choices = ["nor_conv_3x3", "nor_conv_1x1", "avg_pool_3x3", "skip_connect", "none"]
     for i in range(6):
-        cs.add_hyperparameter(ConfigSpace.CategoricalHyperparameter("edge_%d" % i, ops_choices))
+        cs.add_hyperparameter(
+            ConfigSpace.CategoricalHyperparameter("edge_%d" % i, ops_choices)
+        )
     return cs
 
 
@@ -25,26 +33,28 @@ def create_nas301_graph(adjacency_matrix, edge_attributes):
     rand_arch = nx.from_numpy_array(adjacency_matrix, create_using=nx.DiGraph)
     nx.set_edge_attributes(rand_arch, edge_attributes)
     for i in rand_arch.nodes:
-        rand_arch.nodes[i]['op_name'] = '1'
-    rand_arch.graph_type = 'edge_attr'
+        rand_arch.nodes[i]["op_name"] = "1"
+    rand_arch.graph_type = "edge_attr"
     return rand_arch
 
 
 # Regularised evolution to generate new graphs
 def mutate_arch(parent_arch, benchmark, return_unpruned_arch=True):
     # TODO: adjust mutation for 301
-    if benchmark == 'nasbench301':
+    if benchmark == "nasbench301":
         # get parent_arch node label and adjacency matrix
         for arch in parent_arch:
             child_arch = deepcopy(parent_arch)
-            node_labeling = list(nx.get_node_attributes(child_arch, 'op_name').values())
+            node_labeling = list(nx.get_node_attributes(child_arch, "op_name").values())
             adjacency_matrix = np.array(nx.adjacency_matrix(child_arch).todense())
 
             parent_node_labeling = deepcopy(node_labeling)
             parent_adjacency_matrix = deepcopy(adjacency_matrix)
 
-            dim_op_labeling = (len(node_labeling) - 2)
-            dim_adjacency_matrix = adjacency_matrix.shape[0] * (adjacency_matrix.shape[0] - 1) // 2
+            dim_op_labeling = len(node_labeling) - 2
+            dim_adjacency_matrix = (
+                adjacency_matrix.shape[0] * (adjacency_matrix.shape[0] - 1) // 2
+            )
 
             mutation_failed = True
 
@@ -81,19 +91,25 @@ def mutate_arch(parent_arch, benchmark, return_unpruned_arch=True):
                     adjacency_matrix[row, col] = choices[choice_idx]
 
                 try:
-                    pruned_adjacency_matrix, pruned_node_labeling = prune(adjacency_matrix, node_labeling)
+                    pruned_adjacency_matrix, pruned_node_labeling = prune(
+                        adjacency_matrix, node_labeling
+                    )
                     mutation_failed = False
                 except:
                     continue
 
-            child_arch = nx.from_numpy_array(pruned_adjacency_matrix, create_using=nx.DiGraph)
+            child_arch = nx.from_numpy_array(
+                pruned_adjacency_matrix, create_using=nx.DiGraph
+            )
 
             for i, n in enumerate(pruned_node_labeling):
-                child_arch.nodes[i]['op_name'] = n
+                child_arch.nodes[i]["op_name"] = n
             if return_unpruned_arch:
-                child_arch_unpruned = nx.from_numpy_array(adjacency_matrix, create_using=nx.DiGraph)
+                child_arch_unpruned = nx.from_numpy_array(
+                    adjacency_matrix, create_using=nx.DiGraph
+                )
                 for i, n in enumerate(node_labeling):
-                    child_arch_unpruned.nodes[i]['op_name'] = n
+                    child_arch_unpruned.nodes[i]["op_name"] = n
 
     if return_unpruned_arch:
         return child_arch, child_arch_unpruned
@@ -105,12 +121,17 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
-def regularized_evolution(acquisition_func,
-                          observed_archs,
-                          observed_archs_unpruned=None,
-                          benchmark='nasbench101',
-                          pool_size=200, cycles=40, n_mutation=10, batch_size=1,
-                          mutate_unpruned_arch=True):
+def regularized_evolution(
+    acquisition_func,
+    observed_archs,
+    observed_archs_unpruned=None,
+    benchmark="nasbench101",
+    pool_size=200,
+    cycles=40,
+    n_mutation=10,
+    batch_size=1,
+    mutate_unpruned_arch=True,
+):
     """Algorithm for regularized evolution (i.e. aging evolution).
 
     Follows "Algorithm 1" in Real et al. "Regularized Evolution for Image
@@ -119,19 +140,26 @@ def regularized_evolution(acquisition_func,
     """
     # Generate some random archs into the evaluation pool
     if mutate_unpruned_arch and observed_archs_unpruned is None:
-        raise ValueError("When mutate_unpruned_arch option is toggled on, you need to supplied the list of unpruned "
-                         "observed architectures.")
+        raise ValueError(
+            "When mutate_unpruned_arch option is toggled on, you need to supplied the list of unpruned "
+            "observed architectures."
+        )
     if observed_archs_unpruned is not None:
-        assert len(observed_archs_unpruned) == len(observed_archs), " unequal length between the pruned/unpruned " \
-                                                                    "architecture lists"
+        assert len(observed_archs_unpruned) == len(observed_archs), (
+            " unequal length between the pruned/unpruned " "architecture lists"
+        )
 
     n_random_archs = pool_size - len(observed_archs)
     if mutate_unpruned_arch:
-        (random_archs, _, random_archs_unpruned) = random_sampling(pool_size=n_random_archs, benchmark=benchmark,
-                                                                   return_unpruned_archs=True)
+        (random_archs, _, random_archs_unpruned) = random_sampling(
+            pool_size=n_random_archs, benchmark=benchmark, return_unpruned_archs=True
+        )
         population_unpruned = observed_archs_unpruned + random_archs_unpruned
     else:
-        (random_archs, _, _) = random_sampling(pool_size=n_random_archs, benchmark=benchmark, )
+        (random_archs, _, _) = random_sampling(
+            pool_size=n_random_archs,
+            benchmark=benchmark,
+        )
         population_unpruned = None
     population = observed_archs + random_archs
 
@@ -156,8 +184,14 @@ def regularized_evolution(acquisition_func,
         sample_performance = [population_performance[idx] for idx in sample_indices]
 
         # The parents is the best n_mutation model in the sample. skip 2-node archs
-        top_n_mutation_archs_indices = np.argsort(sample_performance)[-n_mutation:]  # argsort>ascending
-        parents_archs = [samples[idx] for idx in top_n_mutation_archs_indices if len(samples[idx].nodes) > 3]
+        top_n_mutation_archs_indices = np.argsort(sample_performance)[
+            -n_mutation:
+        ]  # argsort>ascending
+        parents_archs = [
+            samples[idx]
+            for idx in top_n_mutation_archs_indices
+            if len(samples[idx].nodes) > 3
+        ]
 
         # Create the child model and store it.
         for parent in parents_archs:
@@ -170,10 +204,14 @@ def regularized_evolution(acquisition_func,
 
             skip = False
             for prev_edit in population:
-                if iso.is_isomorphic(child, prev_edit, ):
+                if iso.is_isomorphic(
+                    child,
+                    prev_edit,
+                ):
                     skip = True
                     break
-            if skip: continue
+            if skip:
+                continue
             child_arch_acq = acquisition_func.eval(child)
             population.append(child)
             if mutate_unpruned_arch:
@@ -194,14 +232,19 @@ def regularized_evolution(acquisition_func,
     best_archs_indices = np.argsort(population_performance)[-batch_size:]
     recommended_pool = [population[best_idx] for best_idx in best_archs_indices]
     if mutate_unpruned_arch:
-        recommended_pool_unpruned = [population_unpruned[best_idx] for best_idx in best_archs_indices]
-        return (recommended_pool, recommended_pool_unpruned), (population, population_unpruned, population_performance)
+        recommended_pool_unpruned = [
+            population_unpruned[best_idx] for best_idx in best_archs_indices
+        ]
+        return (recommended_pool, recommended_pool_unpruned), (
+            population,
+            population_unpruned,
+            population_performance,
+        )
     return (recommended_pool, None), (population, None, population_performance)
 
 
 class Model(object):
-    """A class representing a model.
-    """
+    """A class representing a model."""
 
     def __init__(self):
         self.archs = None
@@ -210,15 +253,18 @@ class Model(object):
 
     def __str__(self):
         """Prints a readable version of this bitstring."""
-        return '{0:b}'.format(self.archs)
+        return "{0:b}".format(self.archs)
 
 
 # Random to generate new graphs
-def random_sampling(pool_size=100, benchmark='nasbench301',
-                    save_config=False,
-                    edge_attr=False,
-                    return_unpruned_archs=False,
-                    seed=None):
+def random_sampling(
+    pool_size=100,
+    benchmark="nasbench301",
+    save_config=False,
+    edge_attr=False,
+    return_unpruned_archs=False,
+    seed=None,
+):
     """
     Return_unpruned_archs: bool: If True, both the list of pruned architectures and unpruned architectures will be
         returned.
@@ -227,35 +273,43 @@ def random_sampling(pool_size=100, benchmark='nasbench301',
     evaluation_pool = []
     nasbench_config_list = []
     while len(evaluation_pool) < pool_size:
-        if benchmark == 'nasbench301':
+        if benchmark == "nasbench301":
             cs = NASBench301.get_config_space()
             config = cs.sample_configuration()
             nasbench_config_list.append(config)
             config = config.get_dictionary()
-            normal_adjacency_matrix = np.zeros((VERTICES_301, VERTICES_301), dtype=np.int8)
-            reduce_adjacency_matrix = np.zeros((VERTICES_301, VERTICES_301), dtype=np.int8)
+            normal_adjacency_matrix = np.zeros(
+                (VERTICES_301, VERTICES_301), dtype=np.int8
+            )
+            reduce_adjacency_matrix = np.zeros(
+                (VERTICES_301, VERTICES_301), dtype=np.int8
+            )
             hyperparameters = dict()
 
             normal_edge_attributes = {}
             reduce_edge_attributes = {}
             for key, item in config.items():
-                if 'edge' in key:
-                    x, y = edge_to_coord_mapping[int(key.split('_')[-1])]
-                    if 'normal' in key:
-                        normal_edge_attributes[(x, y)] = {'op_name': config[key]}
+                if "edge" in key:
+                    x, y = edge_to_coord_mapping[int(key.split("_")[-1])]
+                    if "normal" in key:
+                        normal_edge_attributes[(x, y)] = {"op_name": config[key]}
                         normal_adjacency_matrix[x][y] = OPS_301.index(item) + 1
                     else:
-                        reduce_edge_attributes[(x, y)] = {'op_name': config[key]}
+                        reduce_edge_attributes[(x, y)] = {"op_name": config[key]}
                         reduce_adjacency_matrix[x][y] = OPS_301.index(item) + 1
                 # if 'hyperparam' in key or 'OptimizerSelector' in key:
                 #     hyperparameters[key] = item
 
-            normal_rand_arch = create_nas301_graph(normal_adjacency_matrix, normal_edge_attributes)
-            reduce_rand_arch = create_nas301_graph(reduce_adjacency_matrix, reduce_edge_attributes)
+            normal_rand_arch = create_nas301_graph(
+                normal_adjacency_matrix, normal_edge_attributes
+            )
+            reduce_rand_arch = create_nas301_graph(
+                reduce_adjacency_matrix, reduce_edge_attributes
+            )
 
-            rand_arch = [normal_rand_arch, reduce_rand_arch] #, hyperparameters]
+            rand_arch = [normal_rand_arch, reduce_rand_arch]  # , hyperparameters]
 
-        elif benchmark == 'nasbench201':
+        elif benchmark == "nasbench201":
             # generate random architecture for nasbench201
 
             nas201_cs = get_nas201_configuration_space()
@@ -319,7 +373,8 @@ def validate(original_matrix):
     # Any vertex that isn't connected to both input and output is extraneous to
     # the computation graph.
     extraneous = set(range(num_vertices)).difference(
-        visited_from_input.intersection(visited_from_output))
+        visited_from_input.intersection(visited_from_output)
+    )
     # If the non-extraneous graph is less than 2 vertices, the input is not
     # connected to the output and the spec is invalid.
     if len(extraneous) > num_vertices - 3:
@@ -336,13 +391,17 @@ def validate(original_matrix):
         return all(len(inputs[i]) == 2 for i in [3, 4, 5])
 
 
-def mutation(observed_archs, observed_errors,
-             n_best=10,
-             n_mutate=None,
-             pool_size=250,
-             allow_isomorphism=False,
-             patience=50,
-             benchmark='nasbench101', observed_archs_unpruned=None):
+def mutation(
+    observed_archs,
+    observed_errors,
+    n_best=10,
+    n_mutate=None,
+    pool_size=250,
+    allow_isomorphism=False,
+    patience=50,
+    benchmark="nasbench101",
+    observed_archs_unpruned=None,
+):
     """
     BANANAS-style mutation.
     The main difference with the previously implemented evolutionary algorithms is that it allows unlimited number of
@@ -353,11 +412,11 @@ def mutation(observed_archs, observed_errors,
         n_mutate = int(0.5 * pool_size)
     assert pool_size >= n_mutate, " pool_size must be larger or equal to n_mutate"
 
-    def _banana_mutate(arch, mutation_rate=1.0, benchmark='nasbench301'):
+    def _banana_mutate(arch, mutation_rate=1.0, benchmark="nasbench301"):
         """Bananas Style mutation of the cell"""
-        if benchmark == 'nasbench301':
+        if benchmark == "nasbench301":
             while True:
-                new_ops = nx.get_edge_attributes(arch, 'op_name')
+                new_ops = nx.get_edge_attributes(arch, "op_name")
                 new_matrix = np.array(nx.adjacency_matrix(arch).todense())
                 vertice = min(VERTICES_301, new_matrix.shape[0])
 
@@ -383,7 +442,9 @@ def mutation(observed_archs, observed_errors,
                             if (src, dst) in new_ops.keys():
                                 if random.random() < op_mutation_prob:
 
-                                    available = [o for o in OPS_301 if o != new_ops[(src, dst)]]
+                                    available = [
+                                        o for o in OPS_301 if o != new_ops[(src, dst)]
+                                    ]
                                     choice = random.choice(available)
                                     new_matrix[src, dst] = OPS_301.index(choice) + 1
                                     new_ops[(src, dst)] = choice
@@ -392,20 +453,24 @@ def mutation(observed_archs, observed_errors,
                     edge_attributes = {}
                     for key, item in new_ops.items():
                         edge_attributes[key] = {}
-                        edge_attributes[key]['op_name'] = item
+                        edge_attributes[key]["op_name"] = item
                     child_arch = create_nas301_graph(new_matrix, edge_attributes)
                     return child_arch, child_arch
                 else:
                     continue
         else:
-            raise NotImplementedError("Search space " + str(benchmark) + " not implemented!")
+            raise NotImplementedError(
+                "Search space " + str(benchmark) + " not implemented!"
+            )
 
     population = collections.deque()
     # Fill the population with the observed archs (a list of labelled graphs) and validation error
     for i, archs in enumerate(observed_archs):
         model = Model()
         model.archs = archs
-        model.unpruned_archs = observed_archs_unpruned[i] if observed_archs_unpruned is not None else None
+        model.unpruned_archs = (
+            observed_archs_unpruned[i] if observed_archs_unpruned is not None else None
+        )
         model.error = observed_errors[i]
         population.append(model)
 
@@ -417,11 +482,18 @@ def mutation(observed_archs, observed_errors,
         patience_ = patience
         while n_child < per_arch and patience_ > 0:
             child = Model()
-            child_normal_arch, child_normal_unpruned_arch = _banana_mutate(arch.unpruned_archs[0] if observed_archs_unpruned is not None
-                                                             else arch.archs[0], benchmark=benchmark, )
+            child_normal_arch, child_normal_unpruned_arch = _banana_mutate(
+                arch.unpruned_archs[0]
+                if observed_archs_unpruned is not None
+                else arch.archs[0],
+                benchmark=benchmark,
+            )
             child_reduce_arch, child_reduce_unpruned_arch = _banana_mutate(
-                arch.unpruned_archs[1] if observed_archs_unpruned is not None
-                else arch.archs[1], benchmark=benchmark, )
+                arch.unpruned_archs[1]
+                if observed_archs_unpruned is not None
+                else arch.archs[1],
+                benchmark=benchmark,
+            )
             child.archs = [child_normal_arch, child_reduce_arch]
             child.unpruned_archs = [child_reduce_arch, child_reduce_unpruned_arch]
 
@@ -429,17 +501,19 @@ def mutation(observed_archs, observed_errors,
             if not allow_isomorphism:
                 # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs. For now we do not
                 # check the isomorphism in all of the previous graphs though
-                if benchmark == 'nasbench301':
-                    if iso.is_isomorphic(child.archs[0], arch.archs[0]) or \
-                            iso.is_isomorphic(child.archs[1], arch.archs[1]):
+                if benchmark == "nasbench301":
+                    if iso.is_isomorphic(
+                        child.archs[0], arch.archs[0]
+                    ) or iso.is_isomorphic(child.archs[1], arch.archs[1]):
                         #  and desirable to simply do Weisfiler-Lehman Isomorphism test, since we are based on
                         #  Weisfeiler-Lehman graph kernel already and the isomorphism test is essentially free.
                         patience_ -= 1
                         continue
 
                     for prev_edit in evaluation_pool:
-                        if iso.is_isomorphic(child.archs[0], prev_edit.archs[0]) or \
-                                iso.is_isomorphic(child.archs[1], prev_edit.archs[1]):
+                        if iso.is_isomorphic(
+                            child.archs[0], prev_edit.archs[0]
+                        ) or iso.is_isomorphic(child.archs[1], prev_edit.archs[1]):
                             skip = True
                             break
                     if skip:
@@ -454,9 +528,9 @@ def mutation(observed_archs, observed_errors,
     # Add some random archs into the evaluation pool, if either 1) patience is reached or 2)
     nrandom_archs = max(pool_size - len(evaluation_pool), 0)
     if nrandom_archs:
-        random_evaluation_pool, _, random_evaluation_pool_unpruned = random_sampling(pool_size=nrandom_archs,
-                                                                                     benchmark=benchmark,
-                                                                                     return_unpruned_archs=True)
+        random_evaluation_pool, _, random_evaluation_pool_unpruned = random_sampling(
+            pool_size=nrandom_archs, benchmark=benchmark, return_unpruned_archs=True
+        )
         evaluation_pool += random_evaluation_pool
         evaluation_pool_unpruned += random_evaluation_pool_unpruned
     if observed_archs_unpruned is None:
