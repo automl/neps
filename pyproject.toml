@@ -2,7 +2,7 @@
 name = "comprehensive_nas"
 version = "0.1.0"
 description = ""
-authors = ["Danny Stoll", "Maciej Janowski"]
+authors = ["Danny Stoll", "Maciej Janowski", "Simon Schrodi"]
 readme = "README.md"
 license = "MIT"
 
@@ -35,7 +35,6 @@ force_single_line = true
 atomic = true
 lines_after_imports = 2
 lines_between_types = 1
-not_skip = "__init__.py"
 filter_files = true
 
 [tool.pylint.messages_control]  # Can use lists now, maybe update in future
