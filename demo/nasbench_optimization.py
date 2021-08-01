@@ -5,18 +5,18 @@ from copy import deepcopy
 
 import torch
 
-from comprehensive_nas.nasbowl.acquisition_function_optimization.sampler import Sampler
-from comprehensive_nas.nasbowl.acqusition_functions import AcquisitionMapping
-from comprehensive_nas.nasbowl.benchmarks.hpo.branin2 import Branin2
-from comprehensive_nas.nasbowl.benchmarks.hpo.counting_ones import CountingOnes
-from comprehensive_nas.nasbowl.benchmarks.hpo.hartmann3 import Hartmann3
-from comprehensive_nas.nasbowl.benchmarks.hpo.hartmann6 import Hartmann6
-from comprehensive_nas.nasbowl.benchmarks.nas.nasbench201 import NASBench201
-from comprehensive_nas.nasbowl.benchmarks.nas.nasbench301 import NASBench301
-from comprehensive_nas.nasbowl.kernel_operators import GraphKernelMapping
-from comprehensive_nas.nasbowl.kernel_operators import StationaryKernelMapping
-from comprehensive_nas.nasbowl.models import ComprehensiveGP
-from comprehensive_nas.nasbowl.optimizer import BayesianOptimization
+from comprehensive_nas.bo.acquisition_function_optimization.sampler import Sampler
+from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
+from comprehensive_nas.bo.benchmarks.hpo.branin2 import Branin2
+from comprehensive_nas.bo.benchmarks.hpo.counting_ones import CountingOnes
+from comprehensive_nas.bo.benchmarks.hpo.hartmann3 import Hartmann3
+from comprehensive_nas.bo.benchmarks.hpo.hartmann6 import Hartmann6
+from comprehensive_nas.bo.benchmarks.nas.nasbench201 import NASBench201
+from comprehensive_nas.bo.benchmarks.nas.nasbench301 import NASBench301
+from comprehensive_nas.bo.kernel_operators import GraphKernelMapping
+from comprehensive_nas.bo.kernel_operators import StationaryKernelMapping
+from comprehensive_nas.bo.models.gp import ComprehensiveGP
+from comprehensive_nas.bo.optimizer import BayesianOptimization
 from comprehensive_nas.rs.optimizer import RandomSearch
 from comprehensive_nas.utils.util import StatisticsTracker
 
