@@ -3,12 +3,13 @@
 import os
 import random
 
-# from nasbowl.benchmarks.nas.nb_configfiles.api.nas_201_api import NASBench201API as API #TODO check what is imported here
 import ConfigSpace
 import networkx as nx
 import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
+from ..hyperconfiguration import HyperConfiguration
+from .nb_configfiles.api.nas_201_api import NASBench201API as API  # TODO check what is imported here
 
 
 MAX_EDGES_201 = None
@@ -100,7 +101,7 @@ class NASBench201(AbstractBenchmark):
         # self.optimal_val =   # lowest mean validation error
         # self.y_star_test =   # lowest mean test error
 
-    def _retrieve(self, G, hps, which="eval"):
+    def _retrieve(self, config, which="eval"):
         #  set random seed for evaluation
         if which == "test":
             seed = 3
@@ -113,12 +114,14 @@ class NASBench201(AbstractBenchmark):
             else:
                 seed = seed_list[self.seed]
 
-        if G is None:
+        if config.graph is None:
             op_labeling = dict()
             for i, hp in enumerate(self.get_config_space().get_hyperparameters()):
 
                 ranges = np.arange(start=0, stop=1, step=1 / len(hp.choices))
-                val = hp.choices[np.where((float(hps[i]) < ranges) == False)[0][-1]]
+                val = hp.choices[
+                    np.where((float(config.hps[i]) < ranges) == False)[0][-1]
+                ]
 
                 op_labeling[hp.name] = val
 
@@ -126,10 +129,10 @@ class NASBench201(AbstractBenchmark):
                 op_labeling["edge_%d" % i] for i in range(len(op_labeling.keys()))
             ]
             # skip only duplicating architecture
-            G = create_nasbench201_graph(op_node_labeling)
+            config.graph = create_nasbench201_graph(op_node_labeling)
 
         # find architecture index
-        arch_str = G.name
+        arch_str = config.graph.name
         # print(arch_str)
 
         try:
@@ -203,13 +206,48 @@ class NASBench201(AbstractBenchmark):
             y = -y
         return y, {"train_time": cost_results["flops"]}
 
-    def eval(self, G, hps=None, n_repeat=1):
-        # input is a list of graphs [G1,G2, ....]
+    def eval(self, config, n_repeat=1):
         if n_repeat == 1:
-            return self._retrieve(G, hps, "eval")
+            return self._retrieve(config, "eval")
         return np.mean(
-            np.array([self._retrieve(G, hps, "eval") for _ in range(n_repeat)])
+            np.array([self._retrieve(config, "eval") for _ in range(n_repeat)])
         )
+
+    @staticmethod
+    def sample(optimize_arch, optimize_hps):
+        nasbench201_op_label_list = []
+        nas201_cs = NASBench201.get_config_space()
+
+        while True:
+            # generate random architecture for nasbench201
+            config = nas201_cs.sample_configuration()
+
+            op_labeling = [config["edge_%d" % i] for i in range(len(config.keys()))]
+            # skip only duplicating architecture
+            if op_labeling in nasbench201_op_label_list:
+                continue
+
+            nasbench201_op_label_list.append(op_labeling)
+            rand_arch = create_nasbench201_graph(op_labeling)
+
+            # IN Nasbench201, it is possible that invalid graphs consisting entirely from None and skip-line are
+            # generated; remove these invalid architectures.
+
+            # Also remove if the number of edges is zero. This is is possible, one example in NAS-Bench-201:
+            # '|none~0|+|avg_pool_3x3~0|nor_conv_3x3~1|+|none~0|avg_pool_3x3~1|none~2|'
+            if len(rand_arch) == 0 or rand_arch.number_of_edges() == 0:
+                continue
+            break
+
+        rand_hps = []
+        config_dict = config.get_dictionary()
+        for key, item in config_dict.items():
+            hp = nas201_cs.get_hyperparameter(key)
+            nlevels = len(hp.choices)
+            rand_hps.append(str(hp.choices.index(config[key]) / nlevels))
+        rand_arch = rand_arch if optimize_arch else None
+        rand_hps = rand_hps if optimize_hps else None
+        return HyperConfiguration(graph=rand_arch, hps=rand_hps)
 
     def test(self, G, hps, n_repeat=1):
         return np.mean(

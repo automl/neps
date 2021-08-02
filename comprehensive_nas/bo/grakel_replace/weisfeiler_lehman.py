@@ -110,7 +110,8 @@ class WeisfeilerLehman(Kernel):
             base_graph_kernel = self.base_graph_kernel
             if base_graph_kernel is None:
                 base_graph_kernel, params = VertexHistogram, dict()
-            elif isinstance(type(base_graph_kernel), type) and issubclass(
+            # TODO: make sure we're always passing like this
+            elif type(base_graph_kernel) is type and issubclass(
                 base_graph_kernel, Kernel
             ):
                 params = dict()

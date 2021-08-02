@@ -1,9 +1,9 @@
+import ConfigSpace
 import ConfigSpace as CS
 import numpy as np
 
-from comprehensive_nas.bo.utils.nasbowl_utils import config_to_array
-
 from ..abstract_benchmark import AbstractBenchmark
+from ..hyperconfiguration import HyperConfiguration
 
 
 class Branin2_3(AbstractBenchmark):
@@ -14,10 +14,10 @@ class Branin2_3(AbstractBenchmark):
         self.negative = negative
         self.log_scale = log_scale
 
-    def eval(self, Gs, hps, **kwargs):
+    def eval(self, config, **kwargs):
 
-        x = hps
-        fidelity = config_to_array(kwargs["fidelity"])
+        x = config.hps
+        fidelity = [1.0, 1.0, 1.0]
 
         a = 1
         b = 5.1 / (4 * np.pi ** 2) - 0.01 * (1.0 - fidelity[0])
@@ -32,9 +32,8 @@ class Branin2_3(AbstractBenchmark):
             y = -y
         return y, {"train_time": self.eval_cost(fidelity=fidelity)}
 
-    @staticmethod
-    def eval_cost(fidelity):
-        fidelity = config_to_array(fidelity)
+    def eval_cost(self, fidelity):
+        fidelity = [1.0, 1.0, 1.0]
         return 0.05 + fidelity[0] ** 3 * fidelity[1] ** 2 * fidelity[2] ** 1.5
 
     def reinitialize(self, negative=False, seed=None):
@@ -48,7 +47,7 @@ class Branin2_3(AbstractBenchmark):
         return cs
 
     @staticmethod
-    def get_fidelity_space() -> CS.ConfigurationSpace:
+    def get_fidelity_space() -> ConfigSpace.ConfigurationSpace:
         cs = CS.ConfigurationSpace()
         cs.generate_all_continuous_from_bounds(
             Branin2_3.get_meta_information()["fidelity_bounds"]
@@ -72,11 +71,18 @@ class Branin2(Branin2_3):
     def __init__(self, multi_fidelity=False, log_scale=False, negative=False, seed=None):
         super().__init__(multi_fidelity, log_scale, negative, seed)
 
-    def eval(self, Gs, hps, **kwargs):
-        return super().eval(Gs, hps, fidelity=[1.0, 1.0, 1.0])
+    def eval(self, config, **kwargs):
+        return super(Branin2, self).eval(config, fidelity=[1.0, 1.0, 1.0])
 
     def eval_cost(self, **kwargs):
         return 1.0
+
+    @staticmethod
+    def sample(**kwargs):
+        cs = Branin2_3.get_config_space()
+        config = cs.sample_configuration()
+        rand_hps = list(config.get_dictionary().values())
+        return HyperConfiguration(graph=None, hps=rand_hps)
 
     @staticmethod
     def get_meta_information():

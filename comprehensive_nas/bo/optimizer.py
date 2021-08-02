@@ -11,18 +11,20 @@ class BayesianOptimization(Optimizer):
         self,
         surrogate_model,
         acquisition_function,
-        acqusition_function_opt=None,
+        acquisition_function_opt=None,
     ):
         super().__init__()
         self.surrogate_model = surrogate_model
         self.acquisition_function = acquisition_function
-        self.acqusition_function_opt = acqusition_function_opt
+        self.acqusition_function_opt = acquisition_function_opt
 
-    def initialize_model(self, x, y):
-        self.update_model(x, y)
+    def initialize_model(self, x_configs, y, optimize_arch, optimize_hps):
+        # self.optimize_arch = optimize_arch
+        # self.optimize_hps = optimize_hps
+        self.update_model(x_configs, y)
 
-    def update_model(self, x, y):
-        self.surrogate_model.reset_XY(x, y)
+    def update_model(self, x_configs, y):
+        self.surrogate_model.reset_XY(x_configs, y)
         self.surrogate_model.fit()
 
         self.acquisition_function.reset_surrogate_model(self.surrogate_model)
@@ -37,11 +39,11 @@ class BayesianOptimization(Optimizer):
             pool_size
         )  # TODO .create_pool(pool_size)
 
-        pool = np.array(pool).transpose(1, 0)
+        # pool = np.array(pool).transpose(1, 0)
 
         # Ask for a location proposal from the acquisition function..
         next_x, eis, _ = self.acquisition_function.propose_location(
             top_n=batch_size, candidates=pool.copy()
         )
 
-        return next_x, eis, pool
+        return next_x, pool

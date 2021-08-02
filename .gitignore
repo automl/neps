@@ -36,5 +36,8 @@ slurm_scripts/*
 # Poetry
 poetry.lock
 
-
+*.sh
 *.model
+*.pth
+demo/plots/
+demo/results

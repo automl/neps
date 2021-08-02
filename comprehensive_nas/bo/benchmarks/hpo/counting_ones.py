@@ -1,9 +1,11 @@
 import copy
 
+import ConfigSpace
 import ConfigSpace as CS
 import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
+from ..hyperconfiguration import HyperConfiguration
 
 
 N_CATEGORICAL = 5
@@ -18,9 +20,9 @@ class CountingOnes(AbstractBenchmark):
         self.negative = negative
         self.log_scale = log_scale
 
-    def eval(self, Gs, hps, **kwargs):
+    def eval(self, config, **kwargs):
 
-        x = copy.deepcopy(hps)
+        x = copy.deepcopy(config.hps)
         if isinstance(x[0], str):
             x[:N_CATEGORICAL] = list(map(int, x[:N_CATEGORICAL]))
         y = float(np.sum(x))
@@ -32,6 +34,14 @@ class CountingOnes(AbstractBenchmark):
     @staticmethod
     def eval_cost():
         return 1.0
+
+    @staticmethod
+    def sample(**kwargs):
+        cs = CountingOnes.get_config_space()
+        config = cs.sample_configuration()
+        rand_hps = list(map(str, config.get_dictionary().values()))[:N_CATEGORICAL]
+        rand_hps += list(config.get_dictionary().values())[N_CATEGORICAL:]
+        return HyperConfiguration(graph=None, hps=rand_hps)
 
     def reinitialize(self, negative=False, seed=None):
         self.negative = negative

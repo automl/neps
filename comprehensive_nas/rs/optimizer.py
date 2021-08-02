@@ -1,12 +1,17 @@
 import random
 
+from typing import List
+from typing import Tuple
+
 from ..core.optimizer import Optimizer
 
 
 class RandomSearch(Optimizer):
-    def __init__(self, args, objective):
-        super().__init__(args, objective)
+    def __init__(self, acquisition_function_opt=None):
+        super().__init__()
         self.sampled_idx = []
+        self.acquisition_function_opt = acquisition_function_opt
+        self.surrogate_model = None
 
     def initialize_model(self, **kwargs):
         pass
@@ -14,15 +19,13 @@ class RandomSearch(Optimizer):
     def update_model(self, **kwargs):
         pass
 
-    def propose_new_location(self, **kwargs):
-        pool = kwargs["pool"]
-        next_x = random.sample(pool, self.batch_size)
+    def propose_new_location(
+        self, batch_size: int = 5, pool_size: int = 10
+    ) -> Tuple[List, List[float]]:
+        # create candidate pool
+        pool = self.acquisition_function_opt.sample(pool_size)
+
+        next_x = random.sample(pool, batch_size)
         self.sampled_idx.append(next_x)
 
-        next_graphs = tuple()
-        next_hps = tuple()
-        for graph, hp in next_x:
-            next_graphs += (graph,)
-            next_hps += (hp,)
-
-        return next_graphs, next_hps
+        return next_x, pool

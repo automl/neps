@@ -10,9 +10,9 @@ import numpy as np
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 
 from ..abstract_benchmark import AbstractBenchmark
+from ..hyperconfiguration import HyperConfiguration
+from .surrogate_models import utils  # TODO check what is imported here later
 
-
-# from nasbowl.benchmarks.nas.surrogate_models import utils #TODO check what is imported here later
 
 MAX_EDGES_301 = 13
 VERTICES_301 = 6
@@ -59,6 +59,15 @@ OPS_301 = [
     "dil_conv_3x3",
     "dil_conv_5x5",
 ]
+
+
+def create_nas301_graph(adjacency_matrix, edge_attributes):
+    rand_arch = nx.from_numpy_array(adjacency_matrix, create_using=nx.DiGraph)
+    nx.set_edge_attributes(rand_arch, edge_attributes)
+    for i in rand_arch.nodes:
+        rand_arch.nodes[i]["op_name"] = "1"
+    rand_arch.graph_type = "edge_attr"
+    return rand_arch
 
 
 class NASBench301(AbstractBenchmark):
@@ -139,27 +148,27 @@ class NASBench301(AbstractBenchmark):
         self.negative = negative
         self.seed = seed
 
-    def eval(self, Gs, hps):
+    def eval(self, config):
         # input is a list of two graphs [G1,G2] representing normal and reduction cell
-        return self._retrieve(Gs, hps)
+        return self._retrieve(config)
 
     # Budget should be an array of three fidelities in range (0., 1.] for multi-multi
-    def _retrieve(self, Gs, hps, budget=np.array([1.0, 1.0, 1.0])):
+    def _retrieve(self, config, budget=np.array([1.0, 1.0, 1.0])):
 
         assert budget.all() == 1.0, "Do not support multi-multi fidelity"
 
         # Map two graphs and hps into a query configuration for NAS301 surrogate
-        config_dict = self.tuple_to_config_dict(Gs, hps)
+        config_dict = self.tuple_to_config_dict(config)
 
         # Override the hyperparameters
         for param, value in self.default_config.items():
 
             if "hyperparam" in param:
-                if hps is None:
+                if config.hps is None:
                     config_dict[param] = value
                 config_dict[param.replace("hyperparam:", "")] = config_dict.pop(param)
             elif "normal" in param or "reduce" in param:
-                if Gs is None:
+                if config.graph is None:
                     config_dict[param] = value
             else:
                 config_dict[param] = value
@@ -245,6 +254,67 @@ class NASBench301(AbstractBenchmark):
         return res
 
     @staticmethod
+    def sample(optimize_arch, optimize_hps):
+        # Sample configuration
+        nas301_cs = NASBench301.get_config_space()
+        config = nas301_cs.sample_configuration()
+
+        config_dict = config.get_dictionary()
+
+        # Store graphs
+        # matrix of vertices x vertices (6x6)
+        normal_adjacency_matrix = np.zeros((VERTICES_301, VERTICES_301), dtype=np.int8)
+        reduce_adjacency_matrix = np.zeros((VERTICES_301, VERTICES_301), dtype=np.int8)
+        # Store hps
+        hyperparameters = [np.nan for _ in range(HPS_301)]
+        i = 0
+
+        normal_edge_attributes = {}
+        reduce_edge_attributes = {}
+        for key, item in config_dict.items():
+            if "edge" in key:
+                x, y = edge_to_coord_mapping[int(key.split("_")[-1])]
+                if "normal" in key:
+                    normal_edge_attributes[(x, y)] = {"op_name": config_dict[key]}
+                    normal_adjacency_matrix[x][y] = OPS_301.index(item) + 1
+                else:
+                    reduce_edge_attributes[(x, y)] = {"op_name": config_dict[key]}
+                    reduce_adjacency_matrix[x][y] = OPS_301.index(item) + 1
+            # For now hps should be defined using prefix 'hyperparam' 'OptSel'
+            # Translate to vector while keeping categorical as str for the hamming kernel
+            if "hyperparam" in key:
+                hp = nas301_cs.get_hyperparameter(key)
+                if type(hp) == ConfigSpace.OrdinalHyperparameter:
+                    nlevels = len(hp.sequence)
+                    hyperparameters[i] = hp.sequence.index(config[key]) / nlevels
+                elif type(hp) == ConfigSpace.CategoricalHyperparameter:
+                    nlevels = len(hp.choices)
+                    hyperparameters[i] = str(hp.choices.index(config[key]) / nlevels)
+                else:
+                    val = config[key]
+                    bounds = (hp.lower, hp.upper)
+                    if hp.log:
+                        hyperparameters[i] = np.log(val / bounds[0]) / np.log(
+                            bounds[1] / bounds[0]
+                        )
+                    else:
+                        hyperparameters[i] = (config[key] - bounds[0]) / (
+                            bounds[1] - bounds[0]
+                        )
+                i += 1
+
+        normal_rand_arch = create_nas301_graph(
+            normal_adjacency_matrix, normal_edge_attributes
+        )
+        reduce_rand_arch = create_nas301_graph(
+            reduce_adjacency_matrix, reduce_edge_attributes
+        )
+
+        rand_arch = [normal_rand_arch, reduce_rand_arch] if optimize_arch else None
+        rand_hps = hyperparameters if optimize_hps else None
+        return HyperConfiguration(graph=rand_arch, hps=rand_hps)
+
+    @staticmethod
     def get_config_space(
         path=os.path.join(
             os.path.dirname(__file__),
@@ -256,9 +326,11 @@ class NASBench301(AbstractBenchmark):
             config_space = config_space_json_r_w.read(json_string)
         return config_space
 
-    def tuple_to_config_dict(self, Gs, hps):
+    def tuple_to_config_dict(self, configuration):
 
         config = dict()
+        Gs = configuration.graph
+        hps = configuration.hps
 
         if Gs is not None:
             prefix = "NetworkSelectorDatasetInfo:darts:"

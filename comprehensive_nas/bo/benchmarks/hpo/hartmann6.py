@@ -1,9 +1,10 @@
+from abc import ABCMeta
+
 import ConfigSpace as CS
 import numpy as np
 
-from comprehensive_nas.bo.utils.nasbowl_utils import config_to_array
-
 from ..abstract_benchmark import AbstractBenchmark
+from ..hyperconfiguration import HyperConfiguration
 
 
 class Hartmann6_4(AbstractBenchmark):
@@ -32,15 +33,15 @@ class Hartmann6_4(AbstractBenchmark):
         self.negative = negative
         self.log_scale = log_scale
 
-    def eval(self, Gs, hps, **kwargs):
+    def eval(self, config, **kwargs):
         """6d Hartmann test function
         input bounds:  0 <= xi <= 1, i = 1..6
         fidelity bounds: 0 <= zi <= 1, i = 1..4
         global optimum: (0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573),
         min function value = -3.32237
         """
-        x = hps
-        fidelity = config_to_array(kwargs["fidelity"])
+        x = config.hps
+        fidelity = [1.0, 1.0, 1.0, 1.0]
 
         y = 0
         for i in range(4):
@@ -58,10 +59,8 @@ class Hartmann6_4(AbstractBenchmark):
 
         return y, {"train_time": self.eval_cost(fidelity=fidelity)}
 
-    @staticmethod
-    def eval_cost(**kwargs):
-        # according to the paper BOCA, see pg 18
-        fidelity = config_to_array(kwargs["fidelity"])
+    def eval_cost(self, **kwargs):
+        fidelity = [1.0, 1.0, 1.0, 1.0]
         return (
             0.05
             + (1 - 0.05)
@@ -104,11 +103,18 @@ class Hartmann6(Hartmann6_4):
     def __init__(self, multi_fidelity=False, log_scale=False, negative=False, seed=None):
         super().__init__(multi_fidelity, log_scale, negative, seed)
 
-    def eval(self, Gs, hps, **kwargs):
-        return super().eval(Gs, hps, fidelity=[1.0, 1.0, 1.0, 1.0])
+    def eval(self, config, **kwargs):
+        return super(Hartmann6, self).eval(config, fidelity=[1.0, 1.0, 1.0, 1.0])
 
     def eval_cost(self, **kwargs):
         return 1.0
+
+    @staticmethod
+    def sample(**kwargs):
+        cs = Hartmann6_4.get_config_space()
+        config = cs.sample_configuration()
+        rand_hps = list(config.get_dictionary().values())
+        return HyperConfiguration(graph=None, hps=rand_hps)
 
     @staticmethod
     def get_meta_information():

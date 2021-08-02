@@ -25,29 +25,30 @@ class CombineKernel:
     def fit_transform(
         self,
         weights,
-        gr1: list,
-        x1: list,
+        configs,
         normalize=True,
         rebuild_model=True,
         save_gram_matrix=True,
         **kwargs,
     ):
 
-        N = len(gr1) if None not in gr1 else len(x1)
-
+        N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
+
+        gr1 = [c.graph for c in configs]
+        x1 = [c.hps for c in configs]
+
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr1:
                 update_val = weights[i] * k.fit_transform(
-                    [g[i] for g in gr1] if isinstance(gr1[0], tuple) else gr1,
+                    [g[i] for g in gr1] if isinstance(gr1[0], list) else gr1,
                     rebuild_model=rebuild_model,
                     save_gram_matrix=save_gram_matrix,
                     **kwargs,
                 )
 
             elif isinstance(k, Stationary) and None not in x1:
-                # if isinstance(k, HammingKernel):
-                #     continue
+
                 update_val = (
                     weights[i]
                     * k.fit_transform(
@@ -74,15 +75,17 @@ class CombineKernel:
         return K
 
     def transform(
-        self, weights, gr: list, x=None, feature_lengthscale=None
+        self, weights, configs: list, x=None, feature_lengthscale=None
     ):  # pylint: disable=unused-argument
         if self._gram is None:
             raise ValueError(
                 "The kernel has not been fitted. Call fit_transform first to generate the training Gram"
                 "matrix."
             )
+        gr = [c.graph for c in configs]
+        x = [c.hps for c in configs]
         # K is in shape of len(Y), len(X)
-        size = len(gr) if None not in gr else len(x)
+        size = len(configs)
         K = (
             torch.zeros(size, self._gram.shape[0])
             if self.combined_by == "sum"
@@ -92,11 +95,9 @@ class CombineKernel:
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr:
                 update_val = weights[i] * k.transform(
-                    [g[i] for g in gr] if isinstance(gr, tuple) else gr
+                    [g[i] for g in gr] if isinstance(gr, list) else gr
                 )
             elif isinstance(k, Stationary) and None not in x:
-                # if isinstance(k, HammingKernel):
-                #     continue
                 update_val = weights[i] * k.transform(x).double()
             else:
                 raise NotImplementedError(

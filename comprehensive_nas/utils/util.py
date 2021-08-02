@@ -116,23 +116,10 @@ class StatisticsTracker(object):
     def next_iteration(self):
         self.iteration += 1
 
-    def save_results(self, incumbents_config):
-        # incumbents = None
-        if self.dataset == "nasbench301":
-            incumbents = incumbents_config
-        elif self.dataset == "nasbench201":
-            try:
-                graphs, hps = incumbents_config
-                if None in hps:
-                    incumbents = [json_graph.adjacency_data(G) for G in graphs]
-                else:
-                    incumbents = hps
-            except:
-                incumbents = incumbents_config
-        else:
-            incumbents = incumbents_config
+    def save_results(self):
+
         results = {
-            "incumbents": incumbents,
+            "incumbents": [inc.parse() for inc in self.incumbents],
             "incumbent_fval": self.incumbent_values,
             "runtime": self.cum_train_times,
         }

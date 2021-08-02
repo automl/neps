@@ -1,8 +1,24 @@
+from functools import partial
+
 from .abstract_benchmark import *
+from .hpo.branin2 import Branin2
+from .hpo.counting_ones import CountingOnes
+from .hpo.hartmann3 import Hartmann3
+from .hpo.hartmann6 import Hartmann6
+from .nas.nasbench201 import NASBench201
+from .nas.nasbench301 import NASBench301
 
 
-# This check the amount of physical RAM installed, as somehow the process crashes if the system memory is small.
-# mem_gigabytes = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / (1024. ** 3)
-
-# from .nas201 import NAS201
-# from nasbowl.benchmarks.nas_1.nasbench101 import NASBench101
+BenchmarkMapping = {
+    "branin2": partial(Branin2, negative=True),
+    "hartmann3": partial(Hartmann3, negative=False),
+    "hartmann6": partial(Hartmann6, negative=False),
+    "counting_ones": partial(CountingOnes, negative=False),
+    # TODO: fix this path
+    "nasbench201": partial(
+        NASBench201,
+        data_dir="comprehensive_nas/bo/" "benchmarks/nas/nb_configfiles/data/",
+        negative=True,
+    ),
+    "nasbench301": partial(NASBench301, negative=True),
+}

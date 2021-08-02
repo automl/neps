@@ -13,10 +13,10 @@ class AbstractBenchmark:
         self.optimal_val = optimal_val
         self.bounds = bounds
 
-    def __call__(self, Gs, hps, *args):
+    def __call__(self, config, *args):
         return self.eval(Gs, hps, *args)
 
-    def eval(self, G, hps, *args):
+    def eval(self, config, *args):
         raise NotImplementedError()
 
     def reinitialize(self, *args, **kwargs):

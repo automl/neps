@@ -101,8 +101,7 @@ class ComprehensiveGP:
         self.layer_weights = None
         self.nlml = None
 
-        self.x_graphs = None
-        self.x_hps = None
+        self.x_configs = None
         self.y = None
         self.y_ = None
         self.y_mean = None
@@ -115,9 +114,9 @@ class ComprehensiveGP:
                 _grid_search_wl_kernel(
                     k,
                     h_,
-                    [x[i] for x in self.x_graphs]
-                    if isinstance(self.x_graphs[0], tuple)
-                    else self.x_graphs,
+                    [x.graph[i] for x in self.x_configs]
+                    if isinstance(self.x_configs[0].graph, list)
+                    else [c.graph for c in self.x_configs],
                     self.y,
                     self.likelihood,
                     lengthscales=lengthscale_,
@@ -205,11 +204,9 @@ class ComprehensiveGP:
                 optim_vars.append(a)
         nlml = None
         if len(optim_vars) == 0:  # Skip optimisation
-            # TODO: PASS both
             K = self.combined_kernel.fit_transform(
                 weights,
-                self.x_graphs,
-                self.x_hps,
+                self.x_configs,
                 feature_lengthscale=theta_vector,
                 layer_weights=layer_weights,
                 rebuild_model=True,
@@ -228,8 +225,7 @@ class ComprehensiveGP:
                 optim.zero_grad()
                 K = self.combined_kernel.fit_transform(
                     weights,
-                    self.x_graphs,
-                    self.x_hps,
+                    self.x_configs,
                     feature_lengthscale=theta_vector,
                     layer_weights=layer_weights,
                     rebuild_model=True,
@@ -254,7 +250,7 @@ class ComprehensiveGP:
                 with torch.no_grad():
                     weights = (
                         weights.clamp_(0.0, 1.0)
-                        if weights is not None and weights.is_leaf
+                        if weights is not None  # and weights.is_leaf
                         else None
                     )
                     theta_vector = (
@@ -309,14 +305,12 @@ class ComprehensiveGP:
             print("Optimal layer weights", layer_weights)
         # print('Graph Lengthscale', theta_graph)
 
-    def predict(self, x, preserve_comp_graph=False):
+    def predict(self, x_configs, preserve_comp_graph=False):
         """Kriging predictions"""
 
         # if not isinstance(X_s[0], list):
         #     # Convert a single input X_s to a singleton list
         #     X_s = [X_s]
-
-        x_graphs, x_hps = x
 
         if self.K_i is None or self.logDetK is None:
             raise ValueError(
@@ -325,10 +319,9 @@ class ComprehensiveGP:
             )
 
         # Concatenate the full list
-        X_graphs_all = deepcopy(self.x_graphs)
-        X_graphs_all.append(x_graphs)
-        X_hps_all = deepcopy(self.x_hps)
-        X_hps_all.append(x_hps)
+        X_configs_all = deepcopy(self.x_configs)
+        X_configs_all.append(x_configs)
+        dim = 6  # TODO
 
         # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
         if preserve_comp_graph:
@@ -338,8 +331,7 @@ class ComprehensiveGP:
 
         K_full = combined_kernel_copy.fit_transform(
             self.weights,
-            X_graphs_all,
-            X_hps_all,
+            X_configs_all,
             layer_weights=self.layer_weights,
             rebuild_model=True,
             save_gram_matrix=False,
@@ -347,14 +339,8 @@ class ComprehensiveGP:
 
         K_s = K_full[: self.n :, self.n :]
 
-        tmp = 0
-        if x_graphs is not None:
-            tmp += len(x_graphs)
-        elif x_hps is not None:
-            tmp += len(x_hps)
-
         K_ss = K_full[self.n :, self.n :] + self.likelihood * torch.eye(
-            tmp,
+            dim,
         )
 
         mu_s = K_s.t() @ self.K_i @ self.y
@@ -369,10 +355,9 @@ class ComprehensiveGP:
         return mu_s, cov_s
 
     def reset_XY(self, train_x, train_y):
-        x_graphs, x_hps = train_x
-        self.x_graphs = deepcopy(x_graphs)
-        self.x_hps = deepcopy(x_hps)
-        self.n = len(self.x_graphs) if None not in self.x_graphs else len(x_hps)
+
+        self.x_configs = deepcopy(train_x)
+        self.n = len(self.x_configs)
         self.y_ = train_y
         self.y, self.y_mean, self.y_std = normalize_y(train_y)
         # The Gram matrix of the training data
