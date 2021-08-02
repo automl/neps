@@ -7,10 +7,7 @@ import torch
 from comprehensive_nas.bo.acquisition_function_optimization.sampler import Sampler
 from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
 from comprehensive_nas.bo.benchmarks import BenchmarkMapping
-from comprehensive_nas.bo.kernel_operators import (
-    GraphKernelMapping,
-    StationaryKernelMapping,
-)
+from comprehensive_nas.bo.kernels import GraphKernelMapping, StationaryKernelMapping
 from comprehensive_nas.bo.models.gp import ComprehensiveGP
 from comprehensive_nas.bo.optimizer import BayesianOptimization
 from comprehensive_nas.rs.optimizer import RandomSearch

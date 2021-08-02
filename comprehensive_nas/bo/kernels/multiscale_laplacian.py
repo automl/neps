@@ -1,9 +1,8 @@
 import torch
-
 from grakel.utils import graph_from_networkx
 
-from ..grakel_replace.multiscale_laplacian import MultiscaleLaplacian as ML
-from ..grakel_replace.multiscale_laplacian import MultiscaleLaplacianFast as MLF
+from .grakel_replace.multiscale_laplacian import MultiscaleLaplacian as ML
+from .grakel_replace.multiscale_laplacian import MultiscaleLaplacianFast as MLF
 from .utils import transform_to_undirected
 from .weisfilerlehman import GraphKernels
 

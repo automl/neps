@@ -5,23 +5,18 @@ from __future__ import print_function
 import collections
 import time
 import warnings
-
 from math import exp
 from numbers import Real
 
 import numpy as np
-
 from grakel.graph import Graph
 from grakel.kernels import Kernel
-from numpy.linalg import eig
-from numpy.linalg import eigvals
-from numpy.linalg import inv
-from numpy.linalg import multi_dot
+from numpy.linalg import eig, eigvals, inv, multi_dot
 from scipy.sparse.csgraph import laplacian
+
 # Python 2/3 cross-compatibility import
 from six import iteritems
 from sklearn.utils import check_random_state
-
 
 positive_eigenvalue_limit = float("+1e-6")
 

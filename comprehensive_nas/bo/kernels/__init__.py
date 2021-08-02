@@ -1,12 +1,8 @@
 from functools import partial
 
 from .multiscale_laplacian import MultiscaleLaplacian
-from .vectorial_kernels import HammingKernel
-from .vectorial_kernels import Matern32Kernel
-from .vectorial_kernels import Matern52Kernel
-from .vectorial_kernels import RBFKernel
+from .vectorial_kernels import HammingKernel, Matern32Kernel, Matern52Kernel, RBFKernel
 from .weisfilerlehman import WeisfilerLehman
-
 
 StationaryKernelMapping = {
     "m52": Matern52Kernel(),

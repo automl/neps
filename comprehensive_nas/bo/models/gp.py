@@ -5,12 +5,12 @@ import gpytorch
 import numpy as np
 import torch
 
-from ..kernel_operators.combine_kernels import ProductKernel
+from ..kernels.combine_kernels import ProductKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
-from ..kernel_operators.graph_kernel import GraphKernels
-from ..kernel_operators.vectorial_kernels import Stationary
-from ..kernel_operators.weisfilerlehman import WeisfilerLehman
+from ..kernels.graph_kernel import GraphKernels
+from ..kernels.vectorial_kernels import Stationary
+from ..kernels.weisfilerlehman import WeisfilerLehman
 from ..utils.nasbowl_utils import (
     compute_log_marginal_likelihood,
     compute_pd_inverse,
@@ -58,11 +58,6 @@ class ComprehensiveGP:
             self.domain_kernels += graph_kernels
         if bool(hp_kernel):
             self.domain_kernels.append(hp_kernel)
-            # TODO move this decision outside of gp model/unecessary here
-            # if any(isinstance(x, float) for x in self.x_hps[0]):
-            #    self.domain_kernels.append(hp_cont_kernel)
-            # if any(isinstance(x, str) for x in self.x_hps[0]):
-            #    hp_cat_kernel = StationaryKernelMapping['hm']
 
         self.n_kernels = len(self.domain_kernels)
         self.n_graph_kernels = len(

@@ -1,13 +1,11 @@
 """The Edge Histogram kernel as defined in :cite:`sugiyama2015halting`."""
-from collections import Counter
-from collections import Iterable
+from collections import Counter, Iterable
 from warnings import warn
 
 from grakel.graph import Graph
 from numpy import zeros
 from scipy.sparse import csr_matrix
-from six import iteritems
-from six import itervalues
+from six import iteritems, itervalues
 
 from .vertex_histogram import VertexHistogram
 

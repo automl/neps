@@ -2,16 +2,15 @@ import logging
 
 import numpy as np
 import torch
-
 from grakel.kernels import ShortestPathAttr
 from grakel.utils import graph_from_networkx
 
-from ..grakel_replace.edge_histogram import EdgeHistogram
-from ..grakel_replace.vertex_histogram import VertexHistogram
-from ..grakel_replace.weisfeiler_lehman import WeisfeilerLehman as _WL
-from ..kernel_operators.vectorial_kernels import Stationary
+from .grakel_replace.edge_histogram import EdgeHistogram
+from .grakel_replace.vertex_histogram import VertexHistogram
+from .grakel_replace.weisfeiler_lehman import WeisfeilerLehman as _WL
 from .graph_kernel import GraphKernels
 from .utils import transform_to_undirected
+from .vectorial_kernels import Stationary
 
 
 class WeisfilerLehman(GraphKernels):
