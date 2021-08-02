@@ -11,7 +11,7 @@ from ..kernels.combine_kernels import ProductKernel
 from ..kernels.graph_kernel import GraphKernels
 from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
-from ..utils.nasbowl_utils import (
+from .utils import (
     compute_log_marginal_likelihood,
     compute_pd_inverse,
     normalize_y,

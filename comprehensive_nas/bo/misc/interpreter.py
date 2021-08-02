@@ -7,11 +7,9 @@ import torch
 from networkx.drawing.nx_pydot import graphviz_layout
 from tqdm import tqdm
 
-from ..kernel_operators import WeisfilerLehman
+from ..kernels import WeisfilerLehman
 from ..models.gp import ComprehensiveGP
-from ..utils.nasbowl_utils import _preprocess
-from ..utils.nasbowl_utils import add_color
-from ..utils.nasbowl_utils import encoding_to_nx
+from ..utils.nasbowl_utils import _preprocess, add_color, encoding_to_nx
 from .draw_nx import draw_graph
 from .find_stuctures import find_wl_feature
 

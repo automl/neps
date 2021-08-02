@@ -4,7 +4,9 @@ from copy import deepcopy
 
 import torch
 
-from comprehensive_nas.bo.acquisition_function_optimization.sampler import Sampler
+from comprehensive_nas.bo.acquisition_function_optimization.random_sampler import (
+    RandomSampler as Sampler,
+)
 from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
 from comprehensive_nas.bo.benchmarks import BenchmarkMapping
 from comprehensive_nas.bo.kernels import GraphKernelMapping, StationaryKernelMapping
@@ -162,9 +164,7 @@ for seed in range(args.seed, args.seed + args.n_repeat):
     # Initialise the GP surrogate
     optimizer.initialize_model(
         x_configs=deepcopy(x_configs),
-        y=deepcopy(y),
-        optimize_arch=args.optimize_arch,
-        optimize_hps=args.optimize_hps,
+        y=deepcopy(y)
     )
 
     # Main optimization loop

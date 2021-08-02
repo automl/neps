@@ -123,7 +123,8 @@ class WeisfeilerLehman(Kernel):
                     )
 
                 if not (
-                    isinstance(type(base_graph_kernel), type)
+                    type(base_graph_kernel)
+                    is type  # pylint: disable=unidiomatic-typecheck
                     and issubclass(base_graph_kernel, Kernel)
                 ):
                     raise TypeError(
