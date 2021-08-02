@@ -22,7 +22,7 @@ class AbstractBenchmark:
     def __call__(self, *args):
         return self.query(*args)
 
-    def query(self, *args):
+    def query(self, *args, **kwargs):
         raise NotImplementedError()
 
     def reinitialize(self, *args, **kwargs):

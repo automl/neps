@@ -25,7 +25,7 @@ class Hartmann3(AbstractBenchmark):
         self.has_continuous_hp = True
         self.has_categorical_hp = False
 
-    def query(self):
+    def query(self, **kwargs):  # pylint: disable=unused-argument
 
         x = self.hps
 

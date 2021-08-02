@@ -16,7 +16,6 @@ BenchmarkMapping = {
     # TODO: fix this path
     "nasbench201": partial(
         NASBench201,
-        data_dir="comprehensive_nas/bo/" "benchmarks/nas/nb_configfiles/data/",
         negative=True,
     ),
     "nasbench301": partial(NASBench301, negative=True),

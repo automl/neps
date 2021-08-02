@@ -35,7 +35,7 @@ class Hartmann6(AbstractBenchmark):
         self.has_continuous_hp = True
         self.has_categorical_hp = False
 
-    def query(self):
+    def query(self, **kwargs):  # pylint: disable=unused-argument
         """6d Hartmann test function
         input bounds:  0 <= xi <= 1, i = 1..6
         fidelity bounds: 0 <= zi <= 1, i = 1..4

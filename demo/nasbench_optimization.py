@@ -1,4 +1,5 @@
 import argparse
+import os
 import warnings
 from copy import deepcopy
 
@@ -9,6 +10,12 @@ from comprehensive_nas.bo.acquisition_function_optimization.random_sampler impor
 )
 from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
 from comprehensive_nas.bo.benchmarks import BenchmarkMapping
+from comprehensive_nas.bo.benchmarks.nas.nb_configfiles.api.nas_201_api import (
+    NASBench201API as API201,
+)
+from comprehensive_nas.bo.benchmarks.nas.nb_configfiles.api.nas_301_api import (
+    NASBench301API as API301,
+)
 from comprehensive_nas.bo.kernels import GraphKernelMapping, StationaryKernelMapping
 from comprehensive_nas.bo.models.gp import ComprehensiveGP
 from comprehensive_nas.bo.optimizer import BayesianOptimization
@@ -111,6 +118,12 @@ else:
 
 # Initialise the objective function and its optimizer.
 assert args.dataset in BenchmarkMapping.keys(), "Required dataset is not implemented!"
+api = None
+if args.dataset == "nasbench201":
+    data_dir = "comprehensive_nas/bo/benchmarks/nas/nb_configfiles/data/"
+    api = API201(os.path.join(data_dir, "NAS-Bench-201-v1_0-e61699.pth"), verbose=False)
+elif args.dataset == "nasbench301":
+    api = API301()
 objective = BenchmarkMapping[args.dataset](
     log_scale=args.log,
     seed=args.seed,
@@ -168,7 +181,7 @@ for seed in range(args.seed, args.seed + args.n_repeat):
     x_configs = acquisition_function_opt.sample(pool_size=args.n_init)
 
     # & evaluate
-    y_np_list = [config_.query() for config_ in x_configs]
+    y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
     y = torch.tensor([y[0] for y in y_np_list]).float()
     train_details = [y[1] for y in y_np_list]
 
@@ -182,7 +195,7 @@ for seed in range(args.seed, args.seed + args.n_repeat):
         next_x, pool = optimizer.propose_new_location(args.batch_size, args.pool_size)
 
         # Evaluate this location from the objective function
-        detail = [config_.query() for config_ in next_x]
+        detail = [config_.query(dataset_api=api) for config_ in next_x]
         next_y = [y[0] for y in detail]
         train_details += [y[1] for y in detail]
 

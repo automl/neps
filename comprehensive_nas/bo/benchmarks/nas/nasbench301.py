@@ -1,4 +1,3 @@
-import json
 import math
 import os
 import sys
@@ -9,8 +8,6 @@ import numpy as np
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 
 from ..abstract_benchmark import AbstractBenchmark
-from ..hyperconfiguration import HyperConfiguration
-from .surrogate_models import utils  # TODO check what is imported here later
 
 MAX_EDGES_301 = 13
 VERTICES_301 = 6
@@ -75,19 +72,17 @@ class NASBench301(AbstractBenchmark):
         log_scale=False,
         negative=False,
         seed=None,
-        surrogate_model_dir=os.path.join(
-            os.path.dirname(__file__), "nb_configfiles/gnn_gin"
-        ),
-        runtime_model_dir=os.path.join(
-            os.path.dirname(__file__), "nb_configfiles/xgb_time/"
-        ),
+        optimize_arch=False,
+        optimize_hps=True,
     ):
         optim = 0.04944576819737756
         if log_scale:
             optim = np.log(optim)
         if negative:
             optim = -optim
-        super().__init__(dim=None, optimum_location=None, optimal_val=optim, bounds=None)
+        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        self.has_continuous_hp = self.optimize_hps
+        self.has_categorical_hp = False
 
         self.seed = seed
         self.multi_fidelity = multi_fidelity
@@ -105,84 +100,44 @@ class NASBench301(AbstractBenchmark):
         self.negative = negative
         self.y_star_valid = 0.04944576819737756
 
-        def _load_model_from_dir(model_dir):
-            # Load config
-            data_config = json.load(
-                open(os.path.join(model_dir, "data_config.json"), "r")
-            )
-            model_config = json.load(
-                open(os.path.join(model_dir, "model_config.json"), "r")
-            )
-
-            # Instantiate model
-            model = utils.model_dict[model_config["model"]](
-                data_root="None",
-                log_dir=None,
-                seed=data_config["seed"],
-                data_config=data_config,
-                model_config=model_config,
-            )
-            # Load the model from checkpoint
-            model.load(os.path.join(model_dir, "surrogate_model.model"))
-            return model
-
-        self.surrogate_model_dir = surrogate_model_dir
-        self.runtime_model_dir = runtime_model_dir
-
-        # Instantiate surrogate model
-        self.surrogate_model = _load_model_from_dir(surrogate_model_dir)
-        self.runtime_estimator = _load_model_from_dir(runtime_model_dir)
-        self.default_config = (
-            self.surrogate_model.config_loader.config_space.get_default_configuration().get_dictionary()
-        )
-        self.default_config[
-            "OptimizerSelector:sgd:hyperparam:learning_rate"
-        ] = self.default_config.pop("OptimizerSelector:sgd:learning_rate")
-        self.default_config[
-            "OptimizerSelector:sgd:hyperparam:weight_decay"
-        ] = self.default_config.pop("OptimizerSelector:sgd:weight_decay")
-
     def reinitialize(self, negative=False, seed=None):
-        self.negative = negative
-        self.seed = seed
+        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+        self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
-    def eval(self, config):
+    def query(self, **kwargs):
         # input is a list of two graphs [G1,G2] representing normal and reduction cell
-        return self._retrieve(config)
+        return self._retrieve(**kwargs)
 
     # Budget should be an array of three fidelities in range (0., 1.] for multi-multi
-    def _retrieve(self, config, budget=np.array([1.0, 1.0, 1.0])):
+    def _retrieve(self, **kwargs):
 
-        assert budget.all() == 1.0, "Do not support multi-multi fidelity"
+        api = kwargs["dataset_api"]
+
+        default_config = api.get_default_config()
 
         # Map two graphs and hps into a query configuration for NAS301 surrogate
-        config_dict = self.tuple_to_config_dict(config)
+        config_dict = self.tuple_to_config_dict()
 
         # Override the hyperparameters
-        for param, value in self.default_config.items():
+        for param, value in default_config.items():
 
             if "hyperparam" in param:
-                if config.hps is None:
+                if self.hps is None:
                     config_dict[param] = value
                 config_dict[param.replace("hyperparam:", "")] = config_dict.pop(param)
             elif "normal" in param or "reduce" in param:
-                if config.graph is None:
+                if self.graph is None:
                     config_dict[param] = value
             else:
                 config_dict[param] = value
 
         # Set requested fidelity
         for i, key in enumerate(self.fidelity_keys):
-            config_dict[key] = math.ceil(budget[i] * self.fidelity_range_bounds[i])
+            config_dict[key] = math.ceil(self.fidelity_range_bounds[i])
 
         try:
             # Just remove additional ones so the query works
-            data = {
-                "validation_accuracy": self.surrogate_model.query(
-                    config_dict=config_dict
-                ),
-                "training_time": self.runtime_estimator.query(config_dict=config_dict),
-            }
+            data = api.query(config_dict)
 
         except ValueError:
             self.record_invalid(config=config_dict)
@@ -251,8 +206,7 @@ class NASBench301(AbstractBenchmark):
 
         return res
 
-    @staticmethod
-    def sample(optimize_arch, optimize_hps):
+    def sample_random_architecture(self):
         # Sample configuration
         nas301_cs = NASBench301.get_config_space()
         config = nas301_cs.sample_configuration()
@@ -282,10 +236,10 @@ class NASBench301(AbstractBenchmark):
             # Translate to vector while keeping categorical as str for the hamming kernel
             if "hyperparam" in key:
                 hp = nas301_cs.get_hyperparameter(key)
-                if type(hp) == ConfigSpace.OrdinalHyperparameter:
+                if isinstance(hp, ConfigSpace.OrdinalHyperparameter):
                     nlevels = len(hp.sequence)
                     hyperparameters[i] = hp.sequence.index(config[key]) / nlevels
-                elif type(hp) == ConfigSpace.CategoricalHyperparameter:
+                elif isinstance(hp, ConfigSpace.CategoricalHyperparameter):
                     nlevels = len(hp.choices)
                     hyperparameters[i] = str(hp.choices.index(config[key]) / nlevels)
                 else:
@@ -307,10 +261,21 @@ class NASBench301(AbstractBenchmark):
         reduce_rand_arch = create_nas301_graph(
             reduce_adjacency_matrix, reduce_edge_attributes
         )
+        # pylint: disable=attribute-defined-outside-init
+        self.graph = [normal_rand_arch, reduce_rand_arch] if self.optimize_arch else None
+        self.hps = hyperparameters if self.optimize_hps else None
+        # pylint: enable=attribute-defined-outside-init
 
-        rand_arch = [normal_rand_arch, reduce_rand_arch] if optimize_arch else None
-        rand_hps = hyperparameters if optimize_hps else None
-        return HyperConfiguration(graph=rand_arch, hps=rand_hps)
+    @staticmethod
+    def get_meta_information():
+        return {
+            "name": "NASBench301",
+            "capital": 100,
+            "optima": [None],
+            "bounds": [None],
+            "f_opt": [-0.04944576819737756],  # best_test_err,
+            "noise_variance": 0.05,
+        }
 
     @staticmethod
     def get_config_space(
@@ -324,11 +289,11 @@ class NASBench301(AbstractBenchmark):
             config_space = config_space_json_r_w.read(json_string)
         return config_space
 
-    def tuple_to_config_dict(self, configuration):
+    def tuple_to_config_dict(self):
 
         config = dict()
-        Gs = configuration.graph
-        hps = configuration.hps
+        Gs = self.graph
+        hps = self.hps
 
         if Gs is not None:
             prefix = "NetworkSelectorDatasetInfo:darts:"

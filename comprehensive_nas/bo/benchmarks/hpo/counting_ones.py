@@ -22,7 +22,7 @@ class CountingOnes(AbstractBenchmark):
         self.has_continuous_hp = bool(N_CONTINUOUS)
         self.has_categorical_hp = bool(N_CATEGORICAL)
 
-    def query(self):
+    def query(self, **kwargs):  # pylint: disable=unused-argument
 
         x = deepcopy(self.hps)
         if isinstance(x[0], str):

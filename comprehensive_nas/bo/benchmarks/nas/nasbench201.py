@@ -1,6 +1,5 @@
 # For use of the NAS-Bench-201 dataset version NAS-Bench-201-v1_0-e61699.pth
 
-import os
 import random
 
 import ConfigSpace
@@ -8,10 +7,6 @@ import networkx as nx
 import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
-from ..hyperconfiguration import HyperConfiguration
-from .nb_configfiles.api.nas_201_api import (
-    NASBench201API as API,  # TODO check what is imported here
-)
 
 MAX_EDGES_201 = None
 VERTICES_201 = None
@@ -21,12 +16,13 @@ OPS_201 = ["nor_conv_3x3", "nor_conv_1x1", "avg_pool_3x3", "skip_connect", "none
 class NASBench201(AbstractBenchmark):
     def __init__(
         self,
-        data_dir,
         task="cifar10-valid",
         log_scale=True,
         negative=True,
         hp="12",
         seed=None,
+        optimize_arch=False,
+        optimize_hps=True,
     ):
         """
         data_dir: data directory that contains NAS-Bench-201-v1_0-e61699.pth file
@@ -40,28 +36,25 @@ class NASBench201(AbstractBenchmark):
         """
 
         # self.api = API(os.path.join(data_dir, 'NAS-Bench-201-v1_1-096897.pth', verbose=False)
-        self.api = API(
-            os.path.join(data_dir, "NAS-Bench-201-v1_0-e61699.pth"), verbose=False
-        )
         if isinstance(task, list):
             task = task[0]
         self.task = task
         self.hp = hp
 
         if task == "cifar10-valid":
-            best_val_arch_index = 6111
+            best_val_arch_index = 6111  # pylint: disable=unused-variable
             best_val_acc = 91.60666665039064 / 100
-            best_test_arch_index = 1459
+            best_test_arch_index = 1459  # pylint: disable=unused-variable
             best_test_acc = 91.52333333333333 / 100
         elif task == "cifar100":
-            best_val_arch_index = 9930
+            best_val_arch_index = 9930  # pylint: disable=unused-variable
             best_val_acc = 73.49333323567708 / 100
-            best_test_arch_index = 9930
+            best_test_arch_index = 9930  # pylint: disable=unused-variable
             best_test_acc = 73.51333326009114 / 100
         elif task == "ImageNet16-120":
-            best_val_arch_index = 10676
+            best_val_arch_index = 10676  # pylint: disable=unused-variable
             best_val_acc = 46.766666727701825 / 100
-            best_test_arch_index = 857
+            best_test_arch_index = 857  # pylint: disable=unused-variable
             best_test_acc = 47.311111097547744 / 100
         else:
             raise NotImplementedError(
@@ -85,24 +78,18 @@ class NASBench201(AbstractBenchmark):
         self.best_val_acc = best_val_acc
         self.best_test_acc = best_test_acc
 
-        super().__init__(
-            dim=None,
-            optimum_location=best_test_arch_index,
-            optimal_val=best_test_err,
-            bounds=None,
-        )
+        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        self.has_continuous_hp = False
+        self.has_categorical_hp = self.optimize_hps
 
-        self.log_scale = log_scale
-        self.seed = seed
         self.X = []
         self.y_valid_acc = []
         self.y_test_acc = []
         self.costs = []
-        self.negative = negative
         # self.optimal_val =   # lowest mean validation error
         # self.y_star_test =   # lowest mean test error
 
-    def _retrieve(self, config, which="eval"):
+    def _retrieve(self, which="eval", **kwargs):
         #  set random seed for evaluation
         if which == "test":
             seed = 3
@@ -115,44 +102,47 @@ class NASBench201(AbstractBenchmark):
             else:
                 seed = seed_list[self.seed]
 
-        if config.graph is None:
+        if self.graph is None:
             op_labeling = dict()
             for i, hp in enumerate(self.get_config_space().get_hyperparameters()):
 
                 ranges = np.arange(start=0, stop=1, step=1 / len(hp.choices))
-                val = hp.choices[
-                    np.where((float(config.hps[i]) < ranges) == False)[0][-1]
-                ]
-
+                # TODO: Fix this pylint
+                # pylint: disable=singleton-comparison
+                val = hp.choices[np.where((float(self.hps[i]) < ranges) == False)[0][-1]]
+                # pylint: enable=singleton-comparison
                 op_labeling[hp.name] = val
 
             op_node_labeling = [
                 op_labeling["edge_%d" % i] for i in range(len(op_labeling.keys()))
             ]
             # skip only duplicating architecture
-            config.graph = create_nasbench201_graph(op_node_labeling)
+            graph = create_nasbench201_graph(op_node_labeling)
+            arch_str = graph.name
+        else:
+            arch_str = self.graph.name
 
         # find architecture index
-        arch_str = config.graph.name
         # print(arch_str)
 
         try:
-            arch_index = self.api.query_index_by_arch(arch_str)
-            acc_results = self.api.query_by_index(
+            api = kwargs["dataset_api"]
+            arch_index = api.query_index_by_arch(arch_str)
+            acc_results = api.query_by_index(
                 arch_index,
                 self.task,
                 hp=self.hp,
             )
             if seed is not None and 3 <= seed < 777:
                 # some architectures only contain 1 seed result
-                acc_results = self.api.get_more_info(
+                acc_results = api.get_more_info(
                     arch_index, self.task, None, hp=self.hp, is_random=False
                 )
                 val_acc = acc_results["valid-accuracy"] / 100
                 test_acc = acc_results["test-accuracy"] / 100
             else:
                 try:
-                    acc_results = self.api.get_more_info(
+                    acc_results = api.get_more_info(
                         arch_index, self.task, None, hp=self.hp, is_random=seed
                     )
                     val_acc = acc_results["valid-accuracy"] / 100
@@ -162,15 +152,15 @@ class NASBench201(AbstractBenchmark):
                     #     test_acc = acc_results[seed].get_eval('ori-test')['accuracy'] / 100
                     # else:
                     #     test_acc = acc_results[seed].get_eval('x-test')['accuracy'] / 100
-                except:
+                except:  # pylint: disable=bare-except
                     # some architectures only contain 1 seed result
-                    acc_results = self.api.get_more_info(
+                    acc_results = api.get_more_info(
                         arch_index, self.task, None, hp=self.hp, is_random=False
                     )
                     val_acc = acc_results["valid-accuracy"] / 100
                     test_acc = acc_results["test-accuracy"] / 100
 
-            auxiliary_info = self.api.query_meta_info_by_index(arch_index, hp=self.hp)
+            auxiliary_info = api.query_meta_info_by_index(arch_index, hp=self.hp)
             cost_info = auxiliary_info.get_compute_costs(self.task)
 
             # auxiliary cost results such as number of flops and number of parameters
@@ -207,55 +197,54 @@ class NASBench201(AbstractBenchmark):
             y = -y
         return y, {"train_time": cost_results["flops"]}
 
-    def eval(self, config, n_repeat=1):
+    def query(self, n_repeat=1, **kwargs):
         if n_repeat == 1:
-            return self._retrieve(config, "eval")
+            return self._retrieve("eval", **kwargs)
         return np.mean(
-            np.array([self._retrieve(config, "eval") for _ in range(n_repeat)])
+            np.array([self._retrieve("eval", **kwargs) for _ in range(n_repeat)])
         )
 
-    @staticmethod
-    def sample(optimize_arch, optimize_hps):
-        nasbench201_op_label_list = []
+    def sample_random_architecture(self):
         nas201_cs = NASBench201.get_config_space()
 
-        while True:
-            # generate random architecture for nasbench201
+        if self.optimize_arch:
+            nasbench201_op_label_list = []
+            while True:
+                # generate random architecture for nasbench201
+                config = nas201_cs.sample_configuration()
+
+                op_labeling = [config["edge_%d" % i] for i in range(len(config.keys()))]
+                # skip only duplicating architecture
+                if op_labeling in nasbench201_op_label_list:
+                    continue
+
+                nasbench201_op_label_list.append(op_labeling)
+                rand_arch = create_nasbench201_graph(op_labeling)
+
+                # IN Nasbench201, it is possible that invalid graphs consisting entirely from None and skip-line are
+                # generated; remove these invalid architectures.
+
+                # Also remove if the number of edges is zero. This is is possible, one example in NAS-Bench-201:
+                # '|none~0|+|avg_pool_3x3~0|nor_conv_3x3~1|+|none~0|avg_pool_3x3~1|none~2|'
+                if len(rand_arch) == 0 or rand_arch.number_of_edges() == 0:
+                    continue
+                break
+            self.graph = rand_arch  # pylint: disable=attribute-defined-outside-init
+
+        if self.optimize_hps:
+            rand_hps = []
             config = nas201_cs.sample_configuration()
+            config_dict = config.get_dictionary()
+            for key, _ in config_dict.items():
+                hp = nas201_cs.get_hyperparameter(key)
+                nlevels = len(hp.choices)
+                rand_hps.append(str(hp.choices.index(config[key]) / nlevels))
+            self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
 
-            op_labeling = [config["edge_%d" % i] for i in range(len(config.keys()))]
-            # skip only duplicating architecture
-            if op_labeling in nasbench201_op_label_list:
-                continue
+    def test(self, n_repeat=1):
+        return np.mean(np.array([self._retrieve("test") for _ in range(n_repeat)]))
 
-            nasbench201_op_label_list.append(op_labeling)
-            rand_arch = create_nasbench201_graph(op_labeling)
-
-            # IN Nasbench201, it is possible that invalid graphs consisting entirely from None and skip-line are
-            # generated; remove these invalid architectures.
-
-            # Also remove if the number of edges is zero. This is is possible, one example in NAS-Bench-201:
-            # '|none~0|+|avg_pool_3x3~0|nor_conv_3x3~1|+|none~0|avg_pool_3x3~1|none~2|'
-            if len(rand_arch) == 0 or rand_arch.number_of_edges() == 0:
-                continue
-            break
-
-        rand_hps = []
-        config_dict = config.get_dictionary()
-        for key, item in config_dict.items():
-            hp = nas201_cs.get_hyperparameter(key)
-            nlevels = len(hp.choices)
-            rand_hps.append(str(hp.choices.index(config[key]) / nlevels))
-        rand_arch = rand_arch if optimize_arch else None
-        rand_hps = rand_hps if optimize_hps else None
-        return HyperConfiguration(graph=rand_arch, hps=rand_hps)
-
-    def test(self, G, hps, n_repeat=1):
-        return np.mean(
-            np.array([self._retrieve(G, hps, "test") for _ in range(n_repeat)])
-        )
-
-    def get_results(self, ignore_invalid_configs=False):
+    def get_results(self):
 
         regret_validation = []
         regret_test = []
@@ -302,115 +291,101 @@ class NASBench201(AbstractBenchmark):
             )
         return cs
 
+    @staticmethod
+    def get_meta_information():
+        return {
+            "name": "NASBench201",
+            "capital": 100,
+            "optima": [None],  # best_test_arch_index
+            "bounds": [None],
+            "f_opt": [None],  # best_test_err,
+            "noise_variance": 0.05,
+        }
 
-class NAS201edge(NASBench201):
-    def _retrieve(self, G, budget, which="eval"):
-        #  set random seed for evaluation
-        seed_list = [777, 888, 999]
-        if self.seed is None:
-            seed = random.choice(seed_list)
-        elif self.seed >= 3:
-            seed = self.seed
-        else:
-            seed = seed_list[self.seed]
-
-        # find architecture index
-        arch_str = G.name
-        # print(arch_str)
-
-        try:
-            arch_index = self.api.query_index_by_arch(arch_str)
-            acc_results = self.api.query_by_index(arch_index, self.task)
-            if seed >= 3:
-                # some architectures only contain 1 seed result
-                acc_results = self.api.get_more_info(
-                    arch_index, self.task, None, self.use_12_epochs_result, False
-                )
-                val_acc = acc_results["valid-accuracy"] / 100
-                test_acc = acc_results["test-accuracy"] / 100
-            else:
-                try:
-                    val_acc = acc_results[seed].get_eval("x-valid")["accuracy"] / 100
-                    if self.task == "cifar10-valid":
-                        test_acc = (
-                            acc_results[seed].get_eval("ori-test")["accuracy"] / 100
-                        )
-                    else:
-                        test_acc = acc_results[seed].get_eval("x-test")["accuracy"] / 100
-                except:
-                    # some architectures only contain 1 seed result
-                    acc_results = self.api.get_more_info(
-                        arch_index, self.task, None, self.use_12_epochs_result, False
-                    )
-                    val_acc = acc_results["valid-accuracy"] / 100
-                    test_acc = acc_results["test-accuracy"] / 100
-
-            auxiliary_info = self.api.query_meta_info_by_index(arch_index)
-            cost_info = auxiliary_info.get_compute_costs(self.task)
-
-            # auxiliary cost results such as number of flops and number of parameters
-            cost_results = {
-                "flops": cost_info["flops"],
-                "params": cost_info["params"],
-                "latency": cost_info["latency"],
-            }
-
-        except FileNotFoundError:
-            val_acc = 0.01
-            test_acc = 0.01
-            print("missing arch info")
-            cost_results = {"flops": None, "params": None, "latency": None}
-
-        # store val and test performance + auxiliary cost information
-        self.X.append(arch_str)
-        self.y_valid_acc.append(val_acc)
-        self.y_test_acc.append(test_acc)
-        self.costs.append(cost_results)
-
-        if which == "eval":
-            err = 1.0 - val_acc
-        elif which == "test":
-            err = 1.0 - test_acc
-        else:
-            raise ValueError("Unknown query parameter: which = " + str(which))
-
-        if self.log_scale:
-            y = np.log(err)
-        else:
-            y = err
-        if self.negative:
-            y = -y
-        return y
+    def reinitialize(self, negative=False, seed=None):
+        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+        self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
 
-#
-# class NAS201MultiTask(ObjectiveFunction):
-#
-#     def __init__(self, data_dir, tasks,
-#                  task_weights=None,
-#                  log_scale=True, negative=True, use_12_epochs_result=False,
-#                  seed=None):
-#         self.tasks = tasks
-#         # Normalize the task_weights so that they sum to 1
-#         if task_weights is None:
-#             self.task_weights = np.array([1. / len(tasks)] * len(tasks))
+# class NAS201edge(NASBench201):
+#     def _retrieve(self, G, budget, which="eval"):
+#         #  set random seed for evaluation
+#         seed_list = [777, 888, 999]
+#         if self.seed is None:
+#             seed = random.choice(seed_list)
+#         elif self.seed >= 3:
+#             seed = self.seed
 #         else:
-#             self.task_weights = np.array(task_weights).flatten() / np.sum(np.array(task_weights))
-#         assert len(self.tasks) == self.task_weights.shape[0], " mismatch between the task_weights and tasks!"
-#         self.nas201 = [NASBench201(data_dir, t, log_scale, negative, use_12_epochs_result, seed) for t in tasks]
-#         super(NAS201MultiTask, self).__init__(dim=None, optimum_location=None, optimal_val=None, bounds=None)
+#             seed = seed_list[self.seed]
 #
-#     def eval(self, G, budget=100, n_repeat=1, scalarize=True):
-#         evals = np.array([n.eval(G, budget, n_repeat) for n in self.nas201])
-#         return np.sum(evals * self.task_weights) if scalarize else evals
+#         # find architecture index
+#         arch_str = G.name
+#         # print(arch_str)
 #
-#     def test(self, G, budget=100, n_repeat=1, scalarize=True):
-#         tests = np.array([n.test(G, budget, n_repeat) for n in self.nas201])
-#         return np.sum(tests * self.task_weights) if scalarize else tests
+#         try:
+#             arch_index = self.api.query_index_by_arch(arch_str)
+#             acc_results = self.api.query_by_index(arch_index, self.task)
+#             if seed >= 3:
+#                 # some architectures only contain 1 seed result
+#                 acc_results = self.api.get_more_info(
+#                     arch_index, self.task, None, self.use_12_epochs_result, False
+#                 )
+#                 val_acc = acc_results["valid-accuracy"] / 100
+#                 test_acc = acc_results["test-accuracy"] / 100
+#             else:
+#                 try:
+#                     val_acc = acc_results[seed].get_eval("x-valid")["accuracy"] / 100
+#                     if self.task == "cifar10-valid":
+#                         test_acc = (
+#                             acc_results[seed].get_eval("ori-test")["accuracy"] / 100
+#                         )
+#                     else:
+#                         test_acc = acc_results[seed].get_eval("x-test")["accuracy"] / 100
+#                 except:
+#                     # some architectures only contain 1 seed result
+#                     acc_results = self.api.get_more_info(
+#                         arch_index, self.task, None, self.use_12_epochs_result, False
+#                     )
+#                     val_acc = acc_results["valid-accuracy"] / 100
+#                     test_acc = acc_results["test-accuracy"] / 100
 #
-#     def __getattr__(self, item):
-#         method = getattr(self.nas201, item)
-#         return [method() for n in self.nas201]
+#             auxiliary_info = self.api.query_meta_info_by_index(arch_index)
+#             cost_info = auxiliary_info.get_compute_costs(self.task)
+#
+#             # auxiliary cost results such as number of flops and number of parameters
+#             cost_results = {
+#                 "flops": cost_info["flops"],
+#                 "params": cost_info["params"],
+#                 "latency": cost_info["latency"],
+#             }
+#
+#         except FileNotFoundError:
+#             val_acc = 0.01
+#             test_acc = 0.01
+#             print("missing arch info")
+#             cost_results = {"flops": None, "params": None, "latency": None}
+#
+#         # store val and test performance + auxiliary cost information
+#         self.X.append(arch_str)
+#         self.y_valid_acc.append(val_acc)
+#         self.y_test_acc.append(test_acc)
+#         self.costs.append(cost_results)
+#
+#         if which == "eval":
+#             err = 1.0 - val_acc
+#         elif which == "test":
+#             err = 1.0 - test_acc
+#         else:
+#             raise ValueError("Unknown query parameter: which = " + str(which))
+#
+#         if self.log_scale:
+#             y = np.log(err)
+#         else:
+#             y = err
+#         if self.negative:
+#             y = -y
+#         return y
+#
 
 
 def create_nasbench201_graph(op_node_labelling, edge_attr=True):
@@ -513,29 +488,3 @@ def create_nasbench201_graph(op_node_labelling, edge_attr=True):
 
     G.name = arch_query_string
     return G
-
-
-if __name__ == "__main__":
-    import pickle
-
-    from bayesopt.generate_test_graphs import create_nasbench201_graph
-
-    output_path = "../data/"
-    op_node_labelling = [
-        "nor_conv_3x3",
-        "none",
-        "avg_pool_3x3",
-        "skip_connect",
-        "nor_conv_3x3",
-        "skip_connect",
-    ]
-    G = create_nasbench201_graph(op_node_labelling)
-    nascifar10 = NASBench201(
-        data_dir=output_path,
-        task="cifar10-valid",
-        seed=0,
-        negative=False,
-        log_scale=False,
-    )
-    f = nascifar10.eval
-    result = f(G)
