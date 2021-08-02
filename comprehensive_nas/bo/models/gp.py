@@ -250,33 +250,24 @@ class ComprehensiveGP:
                     )
                 optim.step()  # TODO
                 with torch.no_grad():
-                    weights = (
-                        weights.clamp_(0.0, 1.0)
-                        if weights is not None  # and weights.is_leaf
-                        else None
-                    )
-                    theta_vector = (
-                        theta_vector.clamp_(
-                            self.vector_theta_bounds[0], self.vector_theta_bounds[1]
-                        )
-                        if theta_vector is not None and theta_vector.is_leaf
-                        else None
-                    )
-                    likelihood = (
-                        likelihood.clamp_(1e-5, max_lik)
-                        if likelihood is not None and likelihood.is_leaf
-                        else None
-                    )
-                    layer_weights = (
-                        layer_weights.clamp_(0.0, 1.0)
-                        if layer_weights is not None and layer_weights.is_leaf
-                        else None
-                    )
+                    # pylint: disable=expression-not-assigned
+                    weights.clamp_(
+                        0.0, 1.0
+                    ) if weights is not None and weights.is_leaf else None
+                    theta_vector.clamp_(
+                        self.vector_theta_bounds[0], self.vector_theta_bounds[1]
+                    ) if theta_vector is not None and theta_vector.is_leaf else None
+                    likelihood.clamp_(
+                        1e-5, max_lik
+                    ) if likelihood is not None and likelihood.is_leaf else None
+                    layer_weights.clamp_(
+                        0.0, 1.0
+                    ) if layer_weights is not None and layer_weights.is_leaf else None
+                    # pylint: enable=expression-not-assigned
                 # print('grad,', theta_graph)
             K_i, logDetK = compute_pd_inverse(K, likelihood)
-        # Apply the optimal hyperparameters
-        # self.weights = weights.clone() / total_sum_weights
 
+        # Apply the optimal hyperparameters
         self.weights = weights.clone() / torch.sum(weights)
         self.K_i = K_i.clone()
         self.K = K.clone()
