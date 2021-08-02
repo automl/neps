@@ -137,10 +137,16 @@ elif args.strategy == "gbo":
                     se_kernel=StationaryKernelMapping[args.domain_se_kernel]
                 )
             )
-    hp_kernel = StationaryKernelMapping[args.hp_kernel] if args.optimize_hps else None
+    hp_kern = None
+    if args.optimize_hps:
+        hp_kern = []
+        if objective.has_continuous_hp:
+            hp_kern.append(StationaryKernelMapping[args.hp_kernel])
+        if objective.has_categorical_hp:
+            hp_kern.append(StationaryKernelMapping["hm"])
 
     surrogate_model = ComprehensiveGP(
-        graph_kernels=kern, hp_kernel=hp_kernel, verbose=args.verbose
+        graph_kernels=kern, hp_kernels=hp_kern, verbose=args.verbose
     )
     acquisition_function = AcquisitionMapping[args.acquisition](
         surrogate_model=surrogate_model, strategy=args.strategy
@@ -168,12 +174,7 @@ for seed in range(args.seed, args.seed + args.n_repeat):
     train_details = [y[1] for y in y_np_list]
 
     # Initialise the GP surrogate
-    optimizer.initialize_model(
-        x_configs=deepcopy(x_configs),
-        y=deepcopy(y),
-        optimize_arch=args.optimize_arch,
-        optimize_hps=args.optimize_hps,
-    )
+    optimizer.initialize_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
 
     # Main optimization loop
     while experiments.has_budget():

@@ -1,7 +1,5 @@
 from typing import List, Tuple
 
-import numpy as np
-
 from ..core.optimizer import Optimizer
 
 
@@ -17,9 +15,7 @@ class BayesianOptimization(Optimizer):
         self.acquisition_function = acquisition_function
         self.acqusition_function_opt = acquisition_function_opt
 
-    def initialize_model(self, x_configs, y, optimize_arch, optimize_hps):
-        # self.optimize_arch = optimize_arch
-        # self.optimize_hps = optimize_hps
+    def initialize_model(self, x_configs, y):
         self.update_model(x_configs, y)
 
     def update_model(self, x_configs, y):
@@ -41,7 +37,7 @@ class BayesianOptimization(Optimizer):
         # pool = np.array(pool).transpose(1, 0)
 
         # Ask for a location proposal from the acquisition function..
-        next_x, eis, _ = self.acquisition_function.propose_location(
+        next_x, _, _ = self.acquisition_function.propose_location(
             top_n=batch_size, candidates=pool.copy()
         )
 

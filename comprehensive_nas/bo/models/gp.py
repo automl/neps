@@ -44,7 +44,7 @@ class ComprehensiveGP:
     def __init__(
         self,
         graph_kernels: list,
-        hp_kernel,
+        hp_kernels,
         likelihood=1e-3,
         weights=None,
         vector_theta_bounds: tuple = (1e-5, 0.1),
@@ -56,13 +56,8 @@ class ComprehensiveGP:
         self.domain_kernels = []
         if bool(graph_kernels):
             self.domain_kernels += graph_kernels
-        if bool(hp_kernel):
-            self.domain_kernels.append(hp_kernel)
-            # TODO move this decision outside of gp model/unecessary here
-            # if any(isinstance(x, float) for x in self.x_hps[0]):
-            #    self.domain_kernels.append(hp_cont_kernel)
-            # if any(isinstance(x, str) for x in self.x_hps[0]):
-            #    hp_cat_kernel = StationaryKernelMapping['hm']
+        if bool(hp_kernels):
+            self.domain_kernels += hp_kernels
 
         self.n_kernels = len(self.domain_kernels)
         self.n_graph_kernels = len(

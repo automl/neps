@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import ConfigSpace as CS
 import numpy as np
 
@@ -17,10 +19,12 @@ class CountingOnes(AbstractBenchmark):
         optimize_hps=True,
     ):
         super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        self.has_continuous_hp = bool(N_CONTINUOUS)
+        self.has_categorical_hp = bool(N_CATEGORICAL)
 
     def query(self):
 
-        x = self.hps
+        x = deepcopy(self.hps)
         if isinstance(x[0], str):
             x[:N_CATEGORICAL] = list(map(int, x[:N_CATEGORICAL]))
         y = float(np.sum(x))

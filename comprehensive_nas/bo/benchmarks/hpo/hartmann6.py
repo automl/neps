@@ -32,6 +32,8 @@ class Hartmann6(AbstractBenchmark):
         optimize_hps=True,
     ):
         super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        self.has_continuous_hp = True
+        self.has_categorical_hp = False
 
     def query(self):
         """6d Hartmann test function
