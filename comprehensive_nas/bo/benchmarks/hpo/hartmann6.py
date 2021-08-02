@@ -1,13 +1,10 @@
-from abc import ABCMeta
-
 import ConfigSpace as CS
 import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
-from ..hyperconfiguration import HyperConfiguration
 
 
-class Hartmann6_4(AbstractBenchmark):
+class Hartmann6(AbstractBenchmark):
     alpha = [1.00, 1.20, 3.00, 3.20]
     A = np.array(
         [
@@ -26,22 +23,24 @@ class Hartmann6_4(AbstractBenchmark):
         ]
     )
 
-    def __init__(self, multi_fidelity=False, log_scale=False, negative=False, seed=None):
-        super().__init__()
-        self.seed = seed
-        self.multi_fidelity = multi_fidelity
-        self.negative = negative
-        self.log_scale = log_scale
+    def __init__(
+        self,
+        log_scale=False,
+        negative=False,
+        seed=None,
+        optimize_arch=False,
+        optimize_hps=True,
+    ):
+        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
 
-    def eval(self, config, **kwargs):
+    def query(self):
         """6d Hartmann test function
         input bounds:  0 <= xi <= 1, i = 1..6
         fidelity bounds: 0 <= zi <= 1, i = 1..4
         global optimum: (0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573),
         min function value = -3.32237
         """
-        x = config.hps
-        fidelity = [1.0, 1.0, 1.0, 1.0]
+        x = self.hps
 
         y = 0
         for i in range(4):
@@ -49,76 +48,40 @@ class Hartmann6_4(AbstractBenchmark):
             for j in range(6):
                 internal_sum += self.A[i, j] * (x[j] - self.P[i, j]) ** 2
 
-            alpha_fidel = 0.1 * (
-                1 - fidelity[i]
-            )  # according to the paper BOCA, see pg 18
-            y += (self.alpha[i] - alpha_fidel) * np.exp(-internal_sum)
+            y += self.alpha[i] * np.exp(-internal_sum)
 
         if self.negative:
             y = -y
 
-        return y, {"train_time": self.eval_cost(fidelity=fidelity)}
-
-    def eval_cost(self, **kwargs):
-        fidelity = [1.0, 1.0, 1.0, 1.0]
-        return (
-            0.05
-            + (1 - 0.05)
-            * fidelity[0] ** 3
-            * fidelity[1] ** 2
-            * fidelity[2] ** 1.5
-            * fidelity[3]
-        )
+        return y, {"train_time": self.eval_cost()}
 
     @staticmethod
-    def get_config_space(**kwargs):
-        cs = CS.ConfigurationSpace()
-        cs.generate_all_continuous_from_bounds(
-            Hartmann6_4.get_meta_information()["bounds"]
-        )
-        return cs
+    def eval_cost():
+        return 1.0
+
+    def reinitialize(self, negative=False, seed=None):
+        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+        self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
     @staticmethod
-    def get_fidelity_space() -> CS.ConfigurationSpace:
+    def get_config_space():
         cs = CS.ConfigurationSpace()
-        cs.generate_all_continuous_from_bounds(
-            Hartmann6_4.get_meta_information()["fidelity_bounds"]
-        )
+        cs.generate_all_continuous_from_bounds(Hartmann6.get_meta_information()["bounds"])
         return cs
 
     @staticmethod
     def get_meta_information():
         return {
-            "name": "Hartmann6_4",
+            "name": "Hartmann6",
             "capital": 100,
             "optima": ([[0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573]]),
             "bounds": [[0.0, 1.0]] * 6,
-            "fidelity_bounds": [[0.0, 1.0]] * 4,
             "f_opt": -3.322368011391339,
             "noise_variance": 0.05,
         }
 
-
-class Hartmann6(Hartmann6_4):
-    def __init__(self, multi_fidelity=False, log_scale=False, negative=False, seed=None):
-        super().__init__(multi_fidelity, log_scale, negative, seed)
-
-    def eval(self, config, **kwargs):
-        return super(Hartmann6, self).eval(config, fidelity=[1.0, 1.0, 1.0, 1.0])
-
-    def eval_cost(self, **kwargs):
-        return 1.0
-
-    @staticmethod
-    def sample(**kwargs):
-        cs = Hartmann6_4.get_config_space()
+    def sample_random_architecture(self):
+        cs = Hartmann6.get_config_space()
         config = cs.sample_configuration()
         rand_hps = list(config.get_dictionary().values())
-        return HyperConfiguration(graph=None, hps=rand_hps)
-
-    @staticmethod
-    def get_meta_information():
-        meta = Hartmann6_4.get_meta_information()
-        meta["name"] = "Hartmann6"
-        meta["fidelity_bounds"] = [[1.0, 1.0]] * 4
-        return meta
+        self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init

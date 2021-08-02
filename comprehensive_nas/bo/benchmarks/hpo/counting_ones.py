@@ -1,27 +1,26 @@
-import copy
-
-import ConfigSpace
 import ConfigSpace as CS
 import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
-from ..hyperconfiguration import HyperConfiguration
 
 N_CATEGORICAL = 5
 N_CONTINUOUS = 5
 
 
 class CountingOnes(AbstractBenchmark):
-    def __init__(self, multi_fidelity=False, log_scale=False, negative=False, seed=None):
-        super().__init__()
-        self.seed = seed
-        self.multi_fidelity = multi_fidelity
-        self.negative = negative
-        self.log_scale = log_scale
+    def __init__(
+        self,
+        log_scale=False,
+        negative=False,
+        seed=None,
+        optimize_arch=False,
+        optimize_hps=True,
+    ):
+        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
 
-    def eval(self, config, **kwargs):
+    def query(self):
 
-        x = copy.deepcopy(config.hps)
+        x = self.hps
         if isinstance(x[0], str):
             x[:N_CATEGORICAL] = list(map(int, x[:N_CATEGORICAL]))
         y = float(np.sum(x))
@@ -34,20 +33,19 @@ class CountingOnes(AbstractBenchmark):
     def eval_cost():
         return 1.0
 
-    @staticmethod
-    def sample(**kwargs):
+    def sample_random_architecture(self):
         cs = CountingOnes.get_config_space()
         config = cs.sample_configuration()
         rand_hps = list(map(str, config.get_dictionary().values()))[:N_CATEGORICAL]
         rand_hps += list(config.get_dictionary().values())[N_CATEGORICAL:]
-        return HyperConfiguration(graph=None, hps=rand_hps)
+        self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
 
     def reinitialize(self, negative=False, seed=None):
-        self.negative = negative
-        self.seed = seed
+        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+        self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
     @staticmethod
-    def get_config_space(**kwargs):
+    def get_config_space():
         cs = CS.ConfigurationSpace()
         for i in range(N_CATEGORICAL):
             cs.add_hyperparameter(CS.CategoricalHyperparameter("cat_%d" % i, [0, 1]))
@@ -62,7 +60,7 @@ class CountingOnes(AbstractBenchmark):
         return {
             "name": "CountingOnes",
             "capital": 50,
-            "optima": ([0]),
+            "optima": ([1] * (N_CONTINUOUS + N_CATEGORICAL)),
             "bounds": [[0, 1] * N_CONTINUOUS, [0, 1] * N_CATEGORICAL],
             "f_opt": -10.0,
             "noise_variance": 0.05,

@@ -70,7 +70,6 @@ class ComprehensiveGP:
         )
         self.n_vector_kernels = self.n_kernels - self.n_graph_kernels
 
-        # TODO: sth better than hard code
         self.feature_d = None
 
         if weights is not None:
@@ -176,9 +175,9 @@ class ComprehensiveGP:
                 [self.vector_theta_bounds[0] * self.vector_theta_bounds[1]],
             )
         )  # if self.feature_d else None
-        theta_graph = torch.sqrt(
-            torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])
-        ).requires_grad_(True)
+        # theta_graph = torch.sqrt(
+        #     torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])
+        # ).requires_grad_(True)
         # Only requires gradient of lengthscale if there is any vectorial input
         # if self.feature_d:
         theta_vector.requires_grad_(True)
@@ -290,7 +289,10 @@ class ComprehensiveGP:
             print("Optimal NLML: ", nlml)
             print("Lengthscales: ", theta_vector)
             try:
-                print("Optimal h: ", self.domain_kernels[0]._h)
+                print(
+                    "Optimal h: ",
+                    self.domain_kernels[0]._h,  # pylint: disable=protected-access
+                )
             except AttributeError:
                 pass
             print("Weights: ", self.weights)
@@ -545,7 +547,7 @@ def _grid_search_wl_kernel(
     train_x,
     train_y,
     lik,
-    subtree_prior=None,  # pylint: unused-argument
+    subtree_prior=None,  # pylint: disable=unused-argument
     lengthscales=None,
     lengthscales_prior=None,  # pylint: disable=unused-argument
 ):
@@ -587,4 +589,4 @@ def _grid_search_wl_kernel(
     k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})
-    k._gram = best_K
+    k._gram = best_K  # pylint: disable=protected-access

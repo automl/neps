@@ -6,7 +6,7 @@ import torch
 
 from comprehensive_nas.bo.acquisition_function_optimization.sampler import Sampler
 from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
-from comprehensive_nas.bo.benchmarks import *
+from comprehensive_nas.bo.benchmarks import BenchmarkMapping
 from comprehensive_nas.bo.kernel_operators import (
     GraphKernelMapping,
     StationaryKernelMapping,
@@ -84,7 +84,7 @@ parser.add_argument(
     "--optimize_arch", action="store_true", help="Whether to optimize arch"
 )
 parser.add_argument(
-    "--n_graph_kernels", type=int, default=1, help="How many graph kernels to use"
+    "--n_graph_kernels", type=int, default=2, help="How many graph kernels to use"
 )
 parser.add_argument("--optimize_hps", action="store_true", help="Whether to optimize hps")
 parser.add_argument("--cuda", action="store_true", help="Whether to use GPU acceleration")
@@ -112,7 +112,12 @@ else:
 
 # Initialise the objective function and its optimizer.
 assert args.dataset in BenchmarkMapping.keys(), "Required dataset is not implemented!"
-objective = BenchmarkMapping[args.dataset](log_scale=args.log, seed=args.seed)
+objective = BenchmarkMapping[args.dataset](
+    log_scale=args.log,
+    seed=args.seed,
+    optimize_arch=args.optimize_arch,
+    optimize_hps=args.optimize_hps,
+)
 assert args.pool_strategy in [
     "random",
     "mutate",
@@ -158,7 +163,7 @@ for seed in range(args.seed, args.seed + args.n_repeat):
     x_configs = acquisition_function_opt.sample(pool_size=args.n_init)
 
     # & evaluate
-    y_np_list = [objective.eval(config_) for config_ in x_configs]
+    y_np_list = [config_.query() for config_ in x_configs]
     y = torch.tensor([y[0] for y in y_np_list]).float()
     train_details = [y[1] for y in y_np_list]
 
@@ -177,7 +182,7 @@ for seed in range(args.seed, args.seed + args.n_repeat):
         next_x, pool = optimizer.propose_new_location(args.batch_size, args.pool_size)
 
         # Evaluate this location from the objective function
-        detail = [objective.eval(config_) for config_ in next_x]
+        detail = [config_.query() for config_ in next_x]
         next_y = [y[0] for y in detail]
         train_details += [y[1] for y in detail]
 
