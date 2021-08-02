@@ -108,12 +108,10 @@ class WeisfeilerLehman(Kernel):
             if base_graph_kernel is None:
                 base_graph_kernel, params = VertexHistogram, dict()
             # TODO: make sure we're always passing like this
-            # pylint: disable=unidiomatic-typecheck
             elif type(base_graph_kernel) is type and issubclass(
                 base_graph_kernel, Kernel
             ):
                 params = dict()
-            # pylint: disable=unidiomatic-typecheck
             else:
                 try:
                     base_graph_kernel, params = base_graph_kernel
