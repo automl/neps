@@ -4,15 +4,15 @@ import os
 import sys
 import time
 import warnings
-
 from functools import partial
 
 import click
 
-from comprehensive_nas.bo.utils.plot import STRING_TO_PLOTTYPE
-from comprehensive_nas.bo.utils.plot import PlotTypes
-from comprehensive_nas.bo.utils.plot import make_incumbent_plot
-
+from comprehensive_nas.bo.utils.plot import (
+    STRING_TO_PLOTTYPE,
+    PlotTypes,
+    make_incumbent_plot,
+)
 
 optimizers = [
     "random_search",

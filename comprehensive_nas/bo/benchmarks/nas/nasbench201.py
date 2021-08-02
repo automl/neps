@@ -9,8 +9,9 @@ import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
 from ..hyperconfiguration import HyperConfiguration
-from .nb_configfiles.api.nas_201_api import NASBench201API as API  # TODO check what is imported here
-
+from .nb_configfiles.api.nas_201_api import (
+    NASBench201API as API,  # TODO check what is imported here
+)
 
 MAX_EDGES_201 = None
 VERTICES_201 = None

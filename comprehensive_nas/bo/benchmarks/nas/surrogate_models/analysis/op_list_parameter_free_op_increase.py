@@ -1,18 +1,15 @@
 import glob
 import json
 import os
-
 from pathlib import Path
 
 import click
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-
 from matplotlib import rcParams
 from surrogate_models import utils
 from surrogate_models.analysis.utils import extract_paths_for_budget
-
 
 matplotlib.use("Agg")
 

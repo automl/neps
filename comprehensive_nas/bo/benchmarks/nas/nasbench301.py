@@ -6,13 +6,11 @@ import sys
 import ConfigSpace
 import networkx as nx
 import numpy as np
-
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 
 from ..abstract_benchmark import AbstractBenchmark
 from ..hyperconfiguration import HyperConfiguration
 from .surrogate_models import utils  # TODO check what is imported here later
-
 
 MAX_EDGES_301 = 13
 VERTICES_301 = 6

@@ -7,7 +7,6 @@ import numpy as np
 from ..abstract_benchmark import AbstractBenchmark
 from ..hyperconfiguration import HyperConfiguration
 
-
 N_CATEGORICAL = 5
 N_CONTINUOUS = 5
 

@@ -1,6 +1,5 @@
 import argparse
 import warnings
-
 from copy import deepcopy
 
 import torch
@@ -8,13 +7,14 @@ import torch
 from comprehensive_nas.bo.acquisition_function_optimization.sampler import Sampler
 from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
 from comprehensive_nas.bo.benchmarks import *
-from comprehensive_nas.bo.kernel_operators import GraphKernelMapping
-from comprehensive_nas.bo.kernel_operators import StationaryKernelMapping
+from comprehensive_nas.bo.kernel_operators import (
+    GraphKernelMapping,
+    StationaryKernelMapping,
+)
 from comprehensive_nas.bo.models.gp import ComprehensiveGP
 from comprehensive_nas.bo.optimizer import BayesianOptimization
 from comprehensive_nas.rs.optimizer import RandomSearch
 from comprehensive_nas.utils.util import StatisticsTracker
-
 
 warnings.simplefilter("ignore", category=FutureWarning)
 

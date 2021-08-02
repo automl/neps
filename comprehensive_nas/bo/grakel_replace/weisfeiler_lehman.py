@@ -3,17 +3,14 @@
 import collections
 import logging
 import warnings
-
 from collections import OrderedDict
 from copy import deepcopy
 
 import numpy as np
 import torch
-
 from grakel.graph import Graph
 from grakel.kernels import Kernel
-from six import iteritems
-from six import itervalues
+from six import iteritems, itervalues
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 

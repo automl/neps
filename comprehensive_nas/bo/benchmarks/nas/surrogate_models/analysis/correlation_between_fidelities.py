@@ -8,16 +8,13 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import utils
-
 from analysis.utils import ConfigDict
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 from scipy import stats
 from tqdm import tqdm
 
-
 matplotlib.use("Agg")
 from matplotlib import rcParams
-
 
 rcParams.update({"figure.autolayout": True})
 

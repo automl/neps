@@ -3,7 +3,6 @@ import json
 import os
 
 import numpy as np
-
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 from surrogate_models import utils
 

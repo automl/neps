@@ -1,18 +1,13 @@
 import json
 import os
-
 from functools import partial
 
 import click
-
 from nas_benchmark.discrete_optimizers.run_bohb import bohb_frontend
 from nas_benchmark.discrete_optimizers.run_regularized_evolution import (
     random_search_frontend,
-)
-from nas_benchmark.discrete_optimizers.run_regularized_evolution import (
     regularized_evolution_frontend,
 )
-
 
 optimizers = {
     "Regularized Evolution": regularized_evolution_frontend,

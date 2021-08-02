@@ -7,16 +7,13 @@ import click
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-
 from pathvalidate import sanitize_filename
 from surrogate_models import utils
 from surrogate_models.analysis.utils import extract_paths_for_budget
 from tqdm import tqdm
 
-
 matplotlib.use("Agg")
 from matplotlib import rcParams
-
 
 rcParams.update({"figure.autolayout": True})
 

@@ -7,17 +7,14 @@ import click
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 from scipy import stats
 from surrogate_models import utils
 from surrogate_models.analysis.utils import ConfigDict
 from tqdm import tqdm
 
-
 matplotlib.use("Agg")
 from matplotlib import rcParams
-
 
 rcParams.update({"figure.autolayout": True})
 

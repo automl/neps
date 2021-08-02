@@ -3,7 +3,6 @@ import itertools
 import json
 import os
 import re
-
 from functools import partial
 from math import isclose
 
@@ -12,18 +11,13 @@ import ConfigSpace.hyperparameters as CSH
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 from ConfigSpace.read_and_write import json as config_space_json_r_w
-from scipy.stats import kendalltau
-from scipy.stats import norm
-from scipy.stats import spearmanr
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
+from scipy.stats import kendalltau, norm, spearmanr
+from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm
 
 from .gnn.gnn import GNNSurrogateModel
 from .gradient_boosting.xgboost import XGBModelTime
-
 
 sns.set_style("whitegrid")
 

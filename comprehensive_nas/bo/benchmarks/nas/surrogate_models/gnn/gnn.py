@@ -5,16 +5,14 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
-from torch_geometric.data import Batch
-from torch_geometric.data import DataLoader
+from torch_geometric.data import Batch, DataLoader
 from tqdm import tqdm
 
 from .. import utils
+
 # from surrogate_models.gnn.models.vsgae_enc import GNNpred, GNNpred_classifier
 from ..surrogate_model import SurrogateModel
-from .gnn_utils import NASBenchDataset
-from .gnn_utils import Patience
+from .gnn_utils import NASBenchDataset, Patience
 from .models.deep_multisets import DeepMultisets
 from .models.diff_pool import DiffPool
 from .models.gincnn import GIN

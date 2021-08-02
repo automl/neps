@@ -1,8 +1,6 @@
 import ConfigSpace as CS
 import ConfigSpace.hyperparameters as CSH
-
 from ConfigSpace.read_and_write import json as cs_json
-
 
 cs = CS.ConfigurationSpace()
 

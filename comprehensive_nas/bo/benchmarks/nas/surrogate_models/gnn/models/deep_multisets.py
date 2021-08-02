@@ -1,9 +1,7 @@
 import torch
 import torch.nn.functional as F
-
 from torch.nn import Linear
 from torch_geometric.nn import global_add_pool
-
 
 """
 Code from official repository of "A Fair Comparison of Graph Neural Networks for Graph Classification", ICLR 2020

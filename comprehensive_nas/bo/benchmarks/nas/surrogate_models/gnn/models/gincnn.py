@@ -1,13 +1,7 @@
 import torch
 import torch.nn.functional as F
-
-from torch.nn import BatchNorm1d
-from torch.nn import Linear
-from torch.nn import ReLU
-from torch.nn import Sequential
-from torch_geometric.nn import GINConv
-from torch_geometric.nn import global_mean_pool
-
+from torch.nn import BatchNorm1d, Linear, ReLU, Sequential
+from torch_geometric.nn import GINConv, global_mean_pool
 
 """
 Code from official repository of "A Fair Comparison of Graph Neural Networks for Graph Classification", ICLR 2020

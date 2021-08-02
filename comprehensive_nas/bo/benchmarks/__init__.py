@@ -8,7 +8,6 @@ from .hpo.hartmann6 import Hartmann6
 from .nas.nasbench201 import NASBench201
 from .nas.nasbench301 import NASBench301
 
-
 BenchmarkMapping = {
     "branin2": partial(Branin2, negative=True),
     "hartmann3": partial(Hartmann3, negative=False),

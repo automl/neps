@@ -1,7 +1,5 @@
 import random
-
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
 from ..core.optimizer import Optimizer
 

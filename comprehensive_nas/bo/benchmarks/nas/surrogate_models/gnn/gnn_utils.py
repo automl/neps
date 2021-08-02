@@ -1,11 +1,8 @@
 import networkx as nx
 import numpy as np
 import torch
-
 from torch_geometric import utils
-from torch_geometric.data import Data
-from torch_geometric.data import InMemoryDataset
-
+from torch_geometric.data import Data, InMemoryDataset
 
 PRIMITIVES = [
     # 'none',

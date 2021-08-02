@@ -6,7 +6,6 @@ import time
 import numpy as np
 import tabulate
 import torch
-
 from networkx.readwrite import json_graph
 
 

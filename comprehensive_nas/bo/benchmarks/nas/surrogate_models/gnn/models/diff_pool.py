@@ -1,14 +1,10 @@
 from math import ceil
 
 import torch
-
 from torch import nn
 from torch.nn import functional as F
-from torch_geometric.nn import DenseSAGEConv
-from torch_geometric.nn import dense_diff_pool
-from torch_geometric.utils import to_dense_adj
-from torch_geometric.utils import to_dense_batch
-
+from torch_geometric.nn import DenseSAGEConv, dense_diff_pool
+from torch_geometric.utils import to_dense_adj, to_dense_batch
 
 NUM_SAGE_LAYERS = 3
 

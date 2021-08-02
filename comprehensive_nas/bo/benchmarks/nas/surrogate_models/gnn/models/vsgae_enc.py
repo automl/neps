@@ -2,15 +2,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from torch.nn import Parameter
 from torch.nn.init import xavier_uniform
 from torch_geometric.nn import MessagePassing
-from torch_geometric.nn.inits import glorot
-from torch_geometric.nn.inits import zeros
-from torch_geometric.utils import scatter_
-from torch_geometric.utils import softmax
-
+from torch_geometric.nn.inits import glorot, zeros
+from torch_geometric.utils import scatter_, softmax
 
 ### Node embedding
 

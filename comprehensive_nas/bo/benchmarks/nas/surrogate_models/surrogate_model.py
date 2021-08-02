@@ -2,9 +2,7 @@ import json
 import logging
 import os
 import sys
-
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 import numpy as np

@@ -1,22 +1,18 @@
 import glob
 import json
 import os
-
 from pathlib import Path
 
 import click
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-
 from pathvalidate import sanitize_filename
 from surrogate_models import utils
 from surrogate_models.analysis.utils import extract_paths_for_budget
 
-
 matplotlib.use("Agg")
 from matplotlib import rcParams
-
 
 rcParams.update({"figure.autolayout": True})
 

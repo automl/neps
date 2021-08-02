@@ -7,9 +7,7 @@ import matplotlib
 import scipy.stats as stats
 import sklearn
 import yaml
-
 from surrogate_models import utils
-
 
 matplotlib.use("Agg")
 

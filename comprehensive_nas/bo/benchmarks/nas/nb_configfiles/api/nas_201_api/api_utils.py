@@ -14,15 +14,9 @@ import abc
 import copy
 import os
 import random
-
-from collections import OrderedDict
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Text
-from typing import Union
+from typing import Dict, List, Optional, Text, Union
 
 import numpy as np
 import torch

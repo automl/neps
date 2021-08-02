@@ -6,16 +6,13 @@ import time
 import click
 import matplotlib
 import numpy as np
-
 from ConfigSpace.read_and_write import json as config_space_json_r_w
 from sklearn.model_selection import train_test_split
 from surrogate_models import utils
 from surrogate_models.analysis.utils import ConfigDict
 
-
 matplotlib.use("Agg")
 from matplotlib import rcParams
-
 
 rcParams.update({"figure.autolayout": True})
 

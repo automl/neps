@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-
 from surrogate_models.gnn.gnn_utils import NASBenchDataset
 
 

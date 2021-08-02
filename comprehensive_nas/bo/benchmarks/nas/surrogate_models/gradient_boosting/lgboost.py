@@ -5,7 +5,6 @@ import pickle
 import lightgbm as lgb
 import matplotlib.pyplot as plt
 import numpy as np
-
 from surrogate_models import utils
 from surrogate_models.surrogate_model import SurrogateModel
 

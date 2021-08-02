@@ -12,23 +12,14 @@
 import copy
 import os
 import random
-
-from collections import OrderedDict
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Text
-from typing import Union
+from typing import Dict, List, Optional, Text, Union
 
 import numpy as np
 import torch
 
-from .api_utils import ArchResults
-from .api_utils import NASBenchMetaAPI
-from .api_utils import remap_dataset_set_names
-
+from .api_utils import ArchResults, NASBenchMetaAPI, remap_dataset_set_names
 
 ALL_BENCHMARK_FILES = ["NAS-Bench-201-v1_0-e61699.pth", "NAS-Bench-201-v1_1-096897.pth"]
 ALL_ARCHIVE_DIRS = ["NAS-Bench-201-v1_1-archive"]

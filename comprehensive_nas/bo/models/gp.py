@@ -1,5 +1,4 @@
 import logging
-
 from copy import deepcopy
 
 import gpytorch
@@ -7,15 +6,18 @@ import numpy as np
 import torch
 
 from ..kernel_operators.combine_kernels import ProductKernel
+
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from ..kernel_operators.graph_kernel import GraphKernels
 from ..kernel_operators.vectorial_kernels import Stationary
 from ..kernel_operators.weisfilerlehman import WeisfilerLehman
-from ..utils.nasbowl_utils import compute_log_marginal_likelihood
-from ..utils.nasbowl_utils import compute_pd_inverse
-from ..utils.nasbowl_utils import normalize_y
-from ..utils.nasbowl_utils import standardize_x
-from ..utils.nasbowl_utils import unnormalize_y
+from ..utils.nasbowl_utils import (
+    compute_log_marginal_likelihood,
+    compute_pd_inverse,
+    normalize_y,
+    standardize_x,
+    unnormalize_y,
+)
 
 
 # A vanilla GP with RBF kernel
