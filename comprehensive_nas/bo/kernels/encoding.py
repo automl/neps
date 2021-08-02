@@ -4,7 +4,6 @@ import torch
 
 from .graph_kernel import GraphKernels
 
-
 INPUT = "input"
 OUTPUT = "output"
 CONV3X3 = "conv3x3-bn-relu"

@@ -5,13 +5,13 @@ import gpytorch
 import numpy as np
 import torch
 
-from ..kernel_operators.combine_kernels import ProductKernel
+from ..kernels.combine_kernels import ProductKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
-from ..kernel_operators.graph_kernel import GraphKernels
-from ..kernel_operators.vectorial_kernels import Stationary
-from ..kernel_operators.weisfilerlehman import WeisfilerLehman
-from ..utils.nasbowl_utils import (
+from ..kernels.graph_kernel import GraphKernels
+from ..kernels.vectorial_kernels import Stationary
+from ..kernels.weisfilerlehman import WeisfilerLehman
+from .utils import (
     compute_log_marginal_likelihood,
     compute_pd_inverse,
     normalize_y,

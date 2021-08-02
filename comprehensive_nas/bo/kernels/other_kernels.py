@@ -1,7 +1,6 @@
 import logging
 
 import torch
-
 from grakel.kernels import RandomWalkLabeled as _RWL
 from grakel.kernels import ShortestPath as _SPA
 from grakel.utils import graph_from_networkx

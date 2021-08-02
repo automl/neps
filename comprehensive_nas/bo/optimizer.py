@@ -24,17 +24,13 @@ class BayesianOptimization(Optimizer):
 
         self.acquisition_function.reset_surrogate_model(self.surrogate_model)
 
-        # self.acqusition_function_opt.reset_XY(x, y) # TODO maybe need this later for more advanced acq optimizers
+        self.acqusition_function_opt.reset_XY(x_configs, y)
 
     def propose_new_location(
         self, batch_size: int = 5, pool_size: int = 10
     ) -> Tuple[List, List[float]]:
         # create candidate pool
-        pool = self.acqusition_function_opt.sample(
-            pool_size
-        )  # TODO .create_pool(pool_size)
-
-        # pool = np.array(pool).transpose(1, 0)
+        pool = self.acqusition_function_opt.sample(pool_size)
 
         # Ask for a location proposal from the acquisition function..
         next_x, _, _ = self.acquisition_function.propose_location(

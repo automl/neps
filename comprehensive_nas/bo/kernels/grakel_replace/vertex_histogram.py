@@ -1,26 +1,19 @@
 """The vertex kernel as defined in :cite:`sugiyama2015halting`."""
 import logging
-
-from collections import Counter
-from collections import Iterable
+from collections import Counter, Iterable
 from warnings import warn
 
 import numpy as np
 import torch
-
 from grakel.graph import Graph
 from grakel.kernels import Kernel
-from numpy import array
-from numpy import einsum
-from numpy import squeeze
-from numpy import zeros
+from numpy import array, einsum, squeeze, zeros
 from scipy.sparse import csr_matrix
-from six import iteritems
-from six import itervalues
+from six import iteritems, itervalues
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
-from ..kernel_operators.vectorial_kernels import Stationary
+from ..vectorial_kernels import Stationary
 
 
 class VertexHistogram(Kernel):
