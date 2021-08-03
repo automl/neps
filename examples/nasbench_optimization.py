@@ -1,4 +1,5 @@
 import argparse
+import os
 import warnings
 from copy import deepcopy
 
@@ -125,7 +126,11 @@ parser.add_argument(
     "--log", action="store_true", help="Whether to report the results in log scale"
 )
 
-parser.add_argument("--save_path", default="demo/results/", help="path to save log file")
+parser.add_argument(
+    "--save_path",
+    default=os.path.dirname(os.path.realpath(__file__)) + "/results/",
+    help="path to save log file",
+)
 parser.add_argument("--plot", action="store_true", help="Whether to plot the procedure")
 parser.add_argument(
     "--api_data_path",

@@ -6,6 +6,7 @@ from grakel.kernels import ShortestPathAttr
 from grakel.utils import graph_from_networkx
 
 from .grakel_replace.edge_histogram import EdgeHistogram
+from .grakel_replace.utils import calculate_kernel_matrix_as_tensor
 from .grakel_replace.vertex_histogram import VertexHistogram
 from .grakel_replace.weisfeiler_lehman import WeisfeilerLehman as _WL
 from .graph_kernel import GraphKernels
@@ -19,11 +20,11 @@ class WeisfilerLehman(GraphKernels):
     def __init__(
         self,
         h: int = 0,
-        type="edge",
+        type: str = "edge",
         se_kernel: Stationary = None,
         layer_weights=None,
         node_weights=None,
-        oa=False,
+        oa: bool = False,
         node_label: str = "op_name",
         edge_label: tuple = "op_name",
         n_jobs: int = None,
@@ -67,19 +68,19 @@ class WeisfilerLehman(GraphKernels):
         if type == "subtree":
             base_kernel = VertexHistogram, {
                 "sparse": False,
-                "requires_ordered_features": True if requires_grad else False,
+                "requires_ordered_features": requires_grad,
             }
             if oa:
                 base_kernel = VertexHistogram, {
                     "oa": True,
                     "sparse": False,
-                    "requires_ordered_features": True if requires_grad else False,
+                    "requires_ordered_features": requires_grad,
                 }
             elif se_kernel is not None:
                 base_kernel = VertexHistogram, {
                     "se_kernel": se_kernel,
                     "sparse": False,
-                    "requires_ordered_features": True if requires_grad else False,
+                    "requires_ordered_features": requires_grad,
                 }
         elif type == "edge":
             base_kernel = EdgeHistogram, {"sparse": False}
@@ -87,13 +88,13 @@ class WeisfilerLehman(GraphKernels):
                 base_kernel = EdgeHistogram, {
                     "oa": True,
                     "sparse": False,
-                    "requires_ordered_features": True if requires_grad else False,
+                    "requires_ordered_features": requires_grad,
                 }
             elif se_kernel is not None:
                 base_kernel = EdgeHistogram, {
                     "se_kernel": se_kernel,
                     "sparse": False,
-                    "requires_ordered_features": True if requires_grad else False,
+                    "requires_ordered_features": requires_grad,
                 }
 
         elif type == "sp":
@@ -135,7 +136,6 @@ class WeisfilerLehman(GraphKernels):
         return self.se.lengthscale, self.kern.X[0].X.shape[1]
 
     def change_kernel_params(self, params: dict):
-
         for k, v in params.items():
             try:
                 getattr(self.kern, k)
@@ -155,8 +155,8 @@ class WeisfilerLehman(GraphKernels):
     def fit_transform(
         self,
         gr: list,
-        rebuild_model=False,
-        save_gram_matrix=True,
+        rebuild_model: bool = False,
+        save_gram_matrix: bool = True,
         layer_weights=None,
         **kwargs,
     ):
@@ -237,8 +237,6 @@ class WeisfilerLehman(GraphKernels):
         x2 or y: the leaf variable(s) with requires_grad enabled.
         This allows future Jacobian-vector product to be efficiently computed.
         """
-        from nasbowl.grakel_replace.utils import calculate_kernel_matrix_as_tensor
-
         if self.undirected:
             gr2 = transform_to_undirected(gr2)
 

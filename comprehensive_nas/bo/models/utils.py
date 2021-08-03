@@ -38,7 +38,13 @@ def standardize_x(
     return x, x_min, x_max
 
 
-def compute_log_marginal_likelihood(K_i, logDetK, y, normalize=True, log_prior_dist=None):
+def compute_log_marginal_likelihood(
+    K_i: torch.Tensor,
+    logDetK: torch.Tensor,
+    y: torch.Tensor,
+    normalize: bool = True,
+    log_prior_dist=None,
+):
     """Compute the zero mean Gaussian process log marginal likelihood given the inverse of Gram matrix K(x2,x2), its
     log determinant, and the training label vector y.
     Option:
@@ -66,7 +72,7 @@ def compute_log_marginal_likelihood(K_i, logDetK, y, normalize=True, log_prior_d
     return lml / y.shape[0] if normalize else lml
 
 
-def compute_pd_inverse(K, jitter=1e-5):
+def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
     """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
     n = K.shape[0]
     assert (

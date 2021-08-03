@@ -27,7 +27,7 @@ class EdgeHistogram(VertexHistogram):
 
     """
 
-    def parse_input(self, X, **kwargs):
+    def parse_input(self, X: Iterable, **kwargs):  # pylint: disable=unused-argument
         """Parse and check the given input for EH kernel.
 
         Parameters

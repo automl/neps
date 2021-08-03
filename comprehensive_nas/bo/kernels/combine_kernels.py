@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Tuple, Union
 
 import torch
 
@@ -23,32 +23,39 @@ class CombineKernel:
         assert combined_by in ["sum", "product"]
         self.combined_by = combined_by
 
+    @staticmethod
+    def extract_configs(configs: list) -> Tuple[list, list]:
+        N = len(configs)
+        if N > 0 and "get_graph" in dir(configs[0]):
+            graphs = [c.get_graph() for c in configs]
+        elif N > 0 and "graph" in dir(configs[0]):
+            graphs = [c.graph for c in configs]
+        else:
+            graphs = [None] * N
+
+        if N > 0 and "get_hps" in dir(configs[0]):
+            hps = [c.get_hps() for c in configs]
+        elif N > 0 and "hps" in dir(configs[0]):
+            hps = [c.hps for c in configs]
+        else:
+            hps = [None] * N
+
+        return graphs, hps
+
     def fit_transform(
         self,
-        weights,
-        configs,
-        normalize=True,
-        rebuild_model=True,
-        save_gram_matrix=True,
+        weights: torch.Tensor,
+        configs: list,
+        normalize: bool = True,
+        rebuild_model: bool = True,
+        save_gram_matrix: bool = True,
         **kwargs,
     ):
 
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        if N > 0 and "get_graph" in dir(configs[0]):
-            gr1 = [c.get_graph() for c in configs]
-        elif N > 0 and "graph" in dir(configs[0]):
-            gr1 = [c.graph for c in configs]
-        else:
-            gr1 = [None] * N
-
-        if N > 0 and "get_hps" in dir(configs[0]):
-            x1 = [c.get_hps() for c in configs]
-        elif N > 0 and "hps" in dir(configs[0]):
-            x1 = [c.hps for c in configs]
-        else:
-            x1 = [None] * N
+        gr1, x1 = self.extract_configs(configs)
 
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr1:
@@ -62,7 +69,6 @@ class CombineKernel:
                 )
 
             elif isinstance(k, Stationary) and None not in x1:
-
                 update_val = (
                     weights[i]
                     * k.fit_transform(
@@ -89,15 +95,14 @@ class CombineKernel:
         return K
 
     def transform(
-        self, weights, configs: list, x=None, feature_lengthscale=None
-    ):  # pylint: disable=unused-argument
+        self, weights: torch.Tensor, configs: list, x=None, feature_lengthscale=None
+    ):
         if self._gram is None:
             raise ValueError(
                 "The kernel has not been fitted. Call fit_transform first to generate the training Gram"
                 "matrix."
             )
-        gr = [c.graph for c in configs]
-        x = [c.hps for c in configs]
+        gr, x = self.extract_configs(configs)
         # K is in shape of len(Y), len(X)
         size = len(configs)
         K = (
@@ -132,7 +137,7 @@ class SumKernel(CombineKernel):
 
     def forward_t(
         self,
-        weights,
+        weights: torch.Tensor,
         gr2: list,
         x2=None,
         gr1: list = None,

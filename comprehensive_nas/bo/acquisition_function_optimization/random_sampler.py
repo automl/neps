@@ -7,7 +7,7 @@ class RandomSampler(AcquisitionOptimizer):
     def __init__(self, objective):
         super().__init__(objective=objective)
 
-    def sample(self, pool_size) -> list:
+    def sample(self, pool_size: int) -> list:
         pool = []
         while len(pool) < pool_size:
             rand_config = deepcopy(self.objective)

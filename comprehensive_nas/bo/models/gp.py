@@ -95,7 +95,7 @@ class ComprehensiveGP:
         elif combined_kernel == "sum":
             self.combined_kernel = SumKernel(*self.domain_kernels, weights=self.weights)
         else:
-            raise Exception(
+            raise NotImplementedError(
                 f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" or "product" are currently supported.'
             )
         self.vector_theta_bounds = vector_theta_bounds
@@ -108,12 +108,12 @@ class ComprehensiveGP:
         self.layer_weights = None
         self.nlml = None
 
-        self.x_configs = None
-        self.y = None
-        self.y_ = None
-        self.y_mean = None
-        self.y_std = None
-        self.n = None
+        self.x_configs: list = None
+        self.y: torch.Tensor = None
+        self.y_: torch.Tensor = None
+        self.y_mean: torch.Tensor = None
+        self.y_std: torch.Tensor = None
+        self.n: int = None
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
         for i, k in enumerate(self.combined_kernel.kernels):
@@ -144,7 +144,7 @@ class ComprehensiveGP:
         optimize_lik: bool = True,
         max_lik: float = 0.01,
         optimize_wl_layer_weights: bool = False,
-        optimizer_kwargs: bool = None,
+        optimizer_kwargs: dict = None,
     ):
         """
 
@@ -311,9 +311,9 @@ class ComprehensiveGP:
     def predict(self, x_configs, preserve_comp_graph: bool = False):
         """Kriging predictions"""
 
-        # if not isinstance(X_s[0], list):
-        #     # Convert a single input X_s to a singleton list
-        #     X_s = [X_s]
+        if not isinstance(x_configs, list):
+            # Convert a single input X_s to a singleton list
+            x_configs = [x_configs]
 
         if self.K_i is None or self.logDetK is None:
             raise ValueError(
@@ -322,9 +322,8 @@ class ComprehensiveGP:
             )
 
         # Concatenate the full list
-        X_configs_all = deepcopy(self.x_configs)
-        X_configs_all.append(x_configs)
-        dim = 6  # TODO
+        X_configs_all = deepcopy(self.x_configs) + x_configs
+        # dim = 6  # TODO what is this?
 
         # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
         if preserve_comp_graph:
@@ -343,7 +342,7 @@ class ComprehensiveGP:
         K_s = K_full[: self.n :, self.n :]
 
         K_ss = K_full[self.n :, self.n :] + self.likelihood * torch.eye(
-            dim,
+            len(x_configs),
         )
 
         mu_s = K_s.t() @ self.K_i @ self.y
@@ -357,8 +356,7 @@ class ComprehensiveGP:
             del combined_kernel_copy
         return mu_s, cov_s
 
-    def reset_XY(self, train_x, train_y):
-
+    def reset_XY(self, train_x: list, train_y: list):
         self.x_configs = deepcopy(train_x)
         self.n = len(self.x_configs)
         self.y_ = train_y
@@ -552,9 +550,9 @@ def getBack(var_grad_fn):
 def _grid_search_wl_kernel(
     k: WeisfilerLehman,
     subtree_candidates,
-    train_x,
-    train_y,
-    lik,
+    train_x: list,
+    train_y: list,
+    lik: float,
     subtree_prior=None,  # pylint: disable=unused-argument
     lengthscales=None,
     lengthscales_prior=None,  # pylint: disable=unused-argument

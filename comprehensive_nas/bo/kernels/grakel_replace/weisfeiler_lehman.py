@@ -5,6 +5,7 @@ import logging
 import warnings
 from collections import OrderedDict
 from copy import deepcopy
+from typing import Iterable
 
 import numpy as np
 import torch
@@ -64,13 +65,13 @@ class WeisfeilerLehman(Kernel):
     def __init__(
         self,
         n_jobs=None,
-        verbose=False,
-        normalize=False,
-        h=5,
+        verbose: bool = False,
+        normalize: bool = False,
+        h: int = 5,
         base_graph_kernel=VertexHistogram,
         node_weights=None,
         layer_weights=None,
-        as_tensor=True,
+        as_tensor: bool = True,
     ):
         """Initialise a `weisfeiler_lehman` kernel."""
         super().__init__(n_jobs=n_jobs, verbose=verbose, normalize=normalize)
@@ -123,8 +124,7 @@ class WeisfeilerLehman(Kernel):
                     )
 
                 if not (
-                    type(base_graph_kernel)
-                    is type  # pylint: disable=unidiomatic-typecheck
+                    type(base_graph_kernel) is type
                     and issubclass(base_graph_kernel, Kernel)
                 ):
                     raise TypeError(
@@ -167,7 +167,7 @@ class WeisfeilerLehman(Kernel):
         self._params["se_kernel"] = se_kernel
         logging.info("Base kernel changed")
 
-    def parse_input(self, X, return_embedding_only=False):
+    def parse_input(self, X: Iterable, return_embedding_only: bool = False):
         """Parse input for weisfeiler lehman.
 
         Parameters
@@ -295,7 +295,7 @@ class WeisfeilerLehman(Kernel):
         else:
             self._feature_weight = None
 
-        def generate_graphs(label_count, WL_labels_inverse):
+        def generate_graphs(label_count: int, WL_labels_inverse):
             new_graphs = list()
             for j in range(self._nx):
                 new_labels = dict()
@@ -400,7 +400,7 @@ class WeisfeilerLehman(Kernel):
                 return K, base_graph_kernel
             return np.sum(K, axis=0), base_graph_kernel
 
-    def fit_transform(self, X, y=None):  # pylint: disable=unused-argument
+    def fit_transform(self, X: Iterable, y=None):  # pylint: disable=unused-argument
         """Fit and transform, on the same dataset.
 
         Parameters
@@ -436,7 +436,7 @@ class WeisfeilerLehman(Kernel):
 
         return km
 
-    def transform(self, X, return_embedding_only=True):
+    def transform(self, X: Iterable, return_embedding_only: bool = True):
         """Calculate the kernel matrix, between given and fitted dataset.
 
         Parameters
