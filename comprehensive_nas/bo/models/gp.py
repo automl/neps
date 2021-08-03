@@ -1,11 +1,12 @@
 import logging
 from copy import deepcopy
+from typing import Union
 
 import gpytorch
 import numpy as np
 import torch
 
-from ..kernels.combine_kernels import ProductKernel
+from ..kernels.combine_kernels import ProductKernel, SumKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from ..kernels.graph_kernel import GraphKernels
@@ -43,27 +44,28 @@ class GP(gpytorch.models.ExactGP):
 class ComprehensiveGP:
     def __init__(
         self,
-        graph_kernels: list,
-        hp_kernels,
-        likelihood=1e-3,
+        graph_kernels: Union[list, tuple],
+        hp_kernels: Union[list, tuple],
+        likelihood: float = 1e-3,
         weights=None,
         vector_theta_bounds: tuple = (1e-5, 0.1),
         graph_theta_bounds: tuple = (1e-1, 1.0e1),
-        verbose=False,
+        combined_kernel: str = "product",
+        verbose: bool = False,
     ):
         self.likelihood = likelihood
 
-        self.domain_kernels = []
+        self.domain_kernels: list = []
         if bool(graph_kernels):
             self.domain_kernels += graph_kernels
         if bool(hp_kernels):
             self.domain_kernels += hp_kernels
 
-        self.n_kernels = len(self.domain_kernels)
-        self.n_graph_kernels = len(
+        self.n_kernels: int = len(self.domain_kernels)
+        self.n_graph_kernels: int = len(
             [i for i in self.domain_kernels if isinstance(i, GraphKernels)]
         )
-        self.n_vector_kernels = self.n_kernels - self.n_graph_kernels
+        self.n_vector_kernels: int = self.n_kernels - self.n_graph_kernels
 
         self.feature_d = None
 
@@ -80,13 +82,22 @@ class ComprehensiveGP:
                 else torch.tensor(weights).flatten()
             )
         else:
-            self.fixed_weights = False
+            self.fixed_weights: bool = False
             # Initialise the domain kernel weights to uniform
             self.weights = torch.tensor(
                 [1.0 / self.n_kernels] * self.n_kernels,
             )
 
-        self.combined_kernel = ProductKernel(*self.domain_kernels, weights=self.weights)
+        if combined_kernel == "product":
+            self.combined_kernel = ProductKernel(
+                *self.domain_kernels, weights=self.weights
+            )
+        elif combined_kernel == "sum":
+            self.combined_kernel = SumKernel(*self.domain_kernels, weights=self.weights)
+        else:
+            raise Exception(
+                f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" or "product" are currently supported.'
+            )
         self.vector_theta_bounds = vector_theta_bounds
         self.graph_theta_bounds = graph_theta_bounds
         # Verbose mode
@@ -104,7 +115,7 @@ class ComprehensiveGP:
         self.y_std = None
         self.n = None
 
-    def _optimize_graph_kernels(self, h_, lengthscale_):
+    def _optimize_graph_kernels(self, h_: int, lengthscale_):
         for i, k in enumerate(self.combined_kernel.kernels):
             if isinstance(k, WeisfilerLehman):
                 _grid_search_wl_kernel(
@@ -126,14 +137,14 @@ class ComprehensiveGP:
 
     def fit(
         self,
-        iters=20,
-        optimizer="adam",
+        iters: int = 20,
+        optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
         wl_lengthscales=tuple([np.e ** i for i in range(-2, 3)]),
-        optimize_lik=True,
-        max_lik=0.01,
-        optimize_wl_layer_weights=False,
-        optimizer_kwargs=None,
+        optimize_lik: bool = True,
+        max_lik: float = 0.01,
+        optimize_wl_layer_weights: bool = False,
+        optimizer_kwargs: bool = None,
     ):
         """
 
@@ -297,7 +308,7 @@ class ComprehensiveGP:
             print("Optimal layer weights", layer_weights)
         # print('Graph Lengthscale', theta_graph)
 
-    def predict(self, x_configs, preserve_comp_graph=False):
+    def predict(self, x_configs, preserve_comp_graph: bool = False):
         """Kriging predictions"""
 
         # if not isinstance(X_s[0], list):

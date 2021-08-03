@@ -1,4 +1,5 @@
 import logging
+from typing import Union
 
 import torch
 
@@ -19,7 +20,7 @@ class CombineKernel:
         # Store the training graphs and vector features..
         self._gram = None
         self.gr, self.x = None, None
-        assert combined_by in ["sum", "multiply"]
+        assert combined_by in ["sum", "product"]
         self.combined_by = combined_by
 
     def fit_transform(
@@ -35,13 +36,26 @@ class CombineKernel:
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1 = [c.graph for c in configs]
-        x1 = [c.hps for c in configs]
+        if N > 0 and "get_graph" in dir(configs[0]):
+            gr1 = [c.get_graph() for c in configs]
+        elif N > 0 and "graph" in dir(configs[0]):
+            gr1 = [c.graph for c in configs]
+        else:
+            gr1 = [None] * N
+
+        if N > 0 and "get_hps" in dir(configs[0]):
+            x1 = [c.get_hps() for c in configs]
+        elif N > 0 and "hps" in dir(configs[0]):
+            x1 = [c.hps for c in configs]
+        else:
+            x1 = [None] * N
 
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr1:
                 update_val = weights[i] * k.fit_transform(
-                    [g[i] for g in gr1] if isinstance(gr1[0], list) else gr1,
+                    [g[i] for g in gr1]
+                    if isinstance(gr1[0], Union[list, tuple])
+                    else gr1,
                     rebuild_model=rebuild_model,
                     save_gram_matrix=save_gram_matrix,
                     **kwargs,
@@ -63,7 +77,7 @@ class CombineKernel:
 
             if self.combined_by == "sum":
                 K += update_val
-            elif self.combined_by == "multiply":
+            elif self.combined_by == "product":
                 K *= update_val
 
         if normalize:
@@ -106,7 +120,7 @@ class CombineKernel:
 
             if self.combined_by == "sum":
                 K += update_val
-            elif self.combined_by == "multiply":
+            elif self.combined_by == "product":
                 K *= update_val
 
         return K.t()
@@ -162,7 +176,7 @@ class SumKernel(CombineKernel):
 
 class ProductKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):
-        super().__init__("multiply", *kernels, **kwargs)
+        super().__init__("product", *kernels, **kwargs)
 
     def dk_dphi(self, weights, gr: list = None, x=None, feature_lengthscale=None):
         raise NotImplementedError

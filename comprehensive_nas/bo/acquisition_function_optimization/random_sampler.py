@@ -4,11 +4,8 @@ from .base_acq_optimizer import AcquisitionOptimizer
 
 
 class RandomSampler(AcquisitionOptimizer):
-    def __init__(self, args, objective):
+    def __init__(self, objective):
         super().__init__(objective=objective)
-        self.optimize_arch = args.optimize_arch
-        self.optimize_hps = args.optimize_hps
-        self.pool_strategy = args.pool_strategy
 
     def sample(self, pool_size):
         pool = []

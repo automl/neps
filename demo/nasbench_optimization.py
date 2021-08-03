@@ -30,6 +30,7 @@ parser.add_argument(
     help="The benchmark dataset to run the experiments. "
     'options = ["nasbench201", "nasbench301", "hartmann3", '
     '"hartmann6", "counting_ones"].',
+    choices=BenchmarkMapping.keys(),
 )
 parser.add_argument(
     "--task",
@@ -85,6 +86,9 @@ parser.add_argument(
     "the weights between the kernels will be automatically determined"
     " during optimisation (weights will be deemed as additional "
     "hyper-parameters.",
+)
+parser.add_argument(
+    "-oa", "--optimal_assigment", action="store_true", help="Whether to optimize arch"
 )
 parser.add_argument(
     "-kh", "--hp_kernel", default="m52", help="hp kernel to use. Can be [rbf, m52, m32]"
@@ -143,7 +147,6 @@ def run_experiment(args):
     #    device = "cpu"
 
     # Initialise the objective function and its optimizer.
-    assert args.dataset in BenchmarkMapping.keys(), "Required dataset is not implemented!"
     api = None
     if args.dataset == "nasbench201":
         api = API201(args.data_path, verbose=args.verbose)
@@ -159,7 +162,8 @@ def run_experiment(args):
         "random",
         "mutate",
     ]
-    acquisition_function_opt = Sampler(args, objective)
+    initial_design = Sampler(objective)
+    acquisition_function_opt = Sampler(objective)
 
     # Initialise the optimizer strategy.
     assert args.strategy in ["random", "gbo"]
@@ -171,7 +175,8 @@ def run_experiment(args):
             for kg in args.graph_kernels:
                 kern.append(
                     GraphKernelMapping[kg](
-                        se_kernel=StationaryKernelMapping[args.domain_se_kernel]
+                        oa=args.optimal_assigment,
+                        se_kernel=StationaryKernelMapping[args.domain_se_kernel],
                     )
                 )
         hp_kern = None
@@ -203,7 +208,7 @@ def run_experiment(args):
 
         # Take n_init random samples
         # TODO acquisiton function opt can be different to intial design!
-        x_configs = acquisition_function_opt.sample(pool_size=args.n_init)
+        x_configs = initial_design.sample(pool_size=args.n_init)
 
         # & evaluate
         y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
