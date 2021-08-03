@@ -1,6 +1,5 @@
 import networkx as nx
 import numpy as np
-
 from grakel.utils import graph_from_networkx
 
 

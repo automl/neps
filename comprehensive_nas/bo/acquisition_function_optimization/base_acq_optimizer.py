@@ -8,7 +8,7 @@ class AcquisitionOptimizer:
         self.y = None
 
     @abstractmethod
-    def sample(self, pool_size: int):
+    def sample(self, pool_size: int) -> list:
         raise NotImplementedError
 
     def reset_XY(self, x, y):

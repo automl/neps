@@ -7,11 +7,12 @@ import torch
 from networkx.drawing.nx_pydot import graphviz_layout
 from tqdm import tqdm
 
+from comprehensive_nas.utils.draw_nx import draw_graph
+
 from ..kernels import WeisfilerLehman
 from ..models.gp import ComprehensiveGP
-from ..utils.nasbowl_utils import _preprocess, add_color, encoding_to_nx
-from .draw_nx import draw_graph
 from .find_stuctures import find_wl_feature
+from .nasbowl_utils import _preprocess, add_color, encoding_to_nx
 
 
 class Interpreter:
