@@ -22,6 +22,9 @@ class MutationSampler(AcquisitionOptimizer):
         self.random_sampling = RandomSampler(objective)
 
     def sample(self, pool_size: int = 250) -> list:
+        if len(self.x) == 0:
+            return self.random_sampling.sample(pool_size=pool_size)
+
         n_mutate = int(0.5 * pool_size) if self.n_mutate is None else self.n_mutate
         assert pool_size >= n_mutate, " pool_size must be larger or equal to n_mutate"
 
@@ -34,7 +37,7 @@ class MutationSampler(AcquisitionOptimizer):
             patience_ = self.patience
             while n_child < per_arch and patience_ > 0:
                 config_child = deepcopy(config)
-                while True:
+                while patience_ > 0:
                     try:
                         # needs to throw an Exception if config is not valid, e.g., empty graph etc.!
                         child = config_child.mutate()
@@ -42,6 +45,8 @@ class MutationSampler(AcquisitionOptimizer):
                     except Exception:
                         patience_ -= 1
                         continue
+                if child is None:
+                    continue
                 if not self.allow_isomorphism:
                     if child.id == config_child.id:
                         patience_ -= 1
