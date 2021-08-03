@@ -34,8 +34,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--task",
-    default=["None"],
-    nargs="+",
+    default="None",
+    type=str,
+    choices=["None", "cifar10-valid", "cifar100", "ImageNet16-120"],
     help="the benchmark task *for nasbench201 only*.",
 )
 parser.add_argument(
@@ -125,6 +126,7 @@ parser.add_argument(
 )
 
 parser.add_argument("--save_path", default="demo/results/", help="path to save log file")
+parser.add_argument("--plot", action="store_true", help="Whether to plot the procedure")
 parser.add_argument(
     "--api_data_path",
     default="data/NAS-Bench-201-v1_0-e61699.pth",
@@ -245,6 +247,9 @@ def run_experiment(args):
             experiments.next_iteration()
 
         experiments.save_results()
+
+        if args.plot:
+            pass
 
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ import time
 import numpy as np
 import tabulate
 import torch
-from networkx.readwrite import json_graph
 
 
 def set_seed(seed):
@@ -34,7 +33,6 @@ class StatisticsTracker(object):
         self.dataset = args.dataset
 
         options = vars(args)
-        print(options)
 
         if self.save_path is not None:
             import datetime
@@ -61,7 +59,6 @@ class StatisticsTracker(object):
         self.iteration = 0
 
     def calculate_incumbent(self, x, y, next_y):
-
         best_idx = np.argmax(y[self.n_init :])
         incumbent = x[self.n_init :][best_idx]
         incumbent_value = (
@@ -74,7 +71,6 @@ class StatisticsTracker(object):
         self.last_func_eval = np.exp(-np.max(next_y)) if self.log else -np.max(next_y)
 
     def calculate_cost(self, train_details):
-
         self.end_time = time.time()
         # Compute the cumulative training time.
         try:
@@ -84,7 +80,6 @@ class StatisticsTracker(object):
         self.cum_train_times.append(cum_train_time)
 
     def print(self, x, y, next_y, train_details):
-
         # Calculate Incumbent
         self.calculate_incumbent(x, y, next_y)
         self.calculate_cost(train_details)
