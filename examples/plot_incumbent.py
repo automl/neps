@@ -1,18 +1,7 @@
 import json
-import logging
 import os
-import sys
-import time
-import warnings
-from functools import partial
 
-import click
-
-from comprehensive_nas.bo.utils.plot import (
-    STRING_TO_PLOTTYPE,
-    PlotTypes,
-    make_incumbent_plot,
-)
+from comprehensive_nas.utils.plot import PlotTypes, make_incumbent_plot
 
 optimizers = [
     "random_search",
@@ -22,7 +11,7 @@ optimizers = [
 
 results_dict = dict()
 benchmark_name = "nasbench301"
-dir = "demo/plots/{}".format(benchmark_name)
+save_dir = "demo/plots/{}".format(benchmark_name)
 seed = 56
 max_iters = 100
 n_repetitions = 5
@@ -31,7 +20,7 @@ for exp in ["hpo", "nas", "nas_hpo"]:
 
     for name in optimizers:
 
-        res = "{}/{}".format(dir, name)
+        res = "{}/{}".format(save_dir, name)
 
         results_dict[name] = dict()
         results_dict[name]["incumbent_values"] = list()
@@ -48,13 +37,13 @@ for exp in ["hpo", "nas", "nas_hpo"]:
                 results_dict[name]["incumbent_values"].append(result["incumbent_fval"])
                 results_dict[name]["runtime"].append(result["runtime"])
                 # [-len(result['incumbent_fval']):])
-            except:
+            except Exception:
                 pass
 
     make_incumbent_plot(
         results_dict,
         optimizers,
-        dir,
+        save_dir,
         benchmark_name=benchmark_name,
         title_type=PlotTypes.INCUMBENT_RUNTIME,
         experiment_name=exp,
