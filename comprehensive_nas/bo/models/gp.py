@@ -119,7 +119,9 @@ class ComprehensiveGP:
                 )
             else:
                 logging.warning(
-                    "Graph kernel optimisation for " + str(k) + " not implemented yet."
+                    "(Graph) kernel optimisation for "
+                    + type(k).__name__
+                    + " not implemented yet."
                 )
 
     def fit(

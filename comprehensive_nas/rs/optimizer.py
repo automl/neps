@@ -1,5 +1,5 @@
 import random
-from typing import List, Tuple
+from typing import Tuple
 
 from ..core.optimizer import Optimizer
 
@@ -19,11 +19,13 @@ class RandomSearch(Optimizer):
 
     def propose_new_location(
         self, batch_size: int = 5, pool_size: int = 10
-    ) -> Tuple[List, List[float]]:
+    ) -> Tuple[Tuple, dict]:
         # create candidate pool
         pool = self.acquisition_function_opt.sample(pool_size)
 
         next_x = random.sample(pool, batch_size)
         self.sampled_idx.append(next_x)
 
-        return next_x, pool
+        opt_details = {"pool": pool}
+
+        return next_x, opt_details

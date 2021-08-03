@@ -1,5 +1,4 @@
 import argparse
-import os
 import warnings
 from copy import deepcopy
 
@@ -33,6 +32,12 @@ parser.add_argument(
     '"hartmann6", "counting_ones"].',
 )
 parser.add_argument(
+    "--task",
+    default=["None"],
+    nargs="+",
+    help="the benchmark task *for nasbench201 only*.",
+)
+parser.add_argument(
     "--n_repeat", type=int, default=1, help="number of repeats of experiments"
 )
 parser.add_argument(
@@ -59,7 +64,6 @@ parser.add_argument(
     default="random",
     help="the pool generation strategy. Options: random," "mutate",
 )
-parser.add_argument("--save_path", default="demo/results/", help="path to save log file")
 parser.add_argument(
     "-s",
     "--strategy",
@@ -71,6 +75,16 @@ parser.add_argument(
     "--acquisition",
     default="UCB",
     help="the acquisition function for the BO algorithm. option: " "UCB, EI, AEI",
+)
+parser.add_argument(
+    "-kg",
+    "--graph_kernels",
+    default=["wl"],
+    nargs="+",
+    help="graph kernel to use. This can take multiple input arguments, and "
+    "the weights between the kernels will be automatically determined"
+    " during optimisation (weights will be deemed as additional "
+    "hyper-parameters.",
 )
 parser.add_argument(
     "-kh", "--hp_kernel", default="m52", help="hp kernel to use. Can be [rbf, m52, m32]"
@@ -89,9 +103,6 @@ parser.add_argument("--seed", type=int, default=1)
 parser.add_argument(
     "--optimize_arch", action="store_true", help="Whether to optimize arch"
 )
-parser.add_argument(
-    "--n_graph_kernels", type=int, default=2, help="How many graph kernels to use"
-)
 parser.add_argument("--optimize_hps", action="store_true", help="Whether to optimize hps")
 parser.add_argument("--cuda", action="store_true", help="Whether to use GPU acceleration")
 parser.add_argument(
@@ -108,107 +119,134 @@ parser.add_argument(
 parser.add_argument(
     "--log", action="store_true", help="Whether to report the results in log scale"
 )
-args = parser.parse_args()
 
-
-if args.cuda and torch.cuda.is_available():
-    device = "cuda"
-else:
-    device = "cpu"
-
-# Initialise the objective function and its optimizer.
-assert args.dataset in BenchmarkMapping.keys(), "Required dataset is not implemented!"
-api = None
-if args.dataset == "nasbench201":
-    data_dir = "comprehensive_nas/bo/benchmarks/nas/nb_configfiles/data/"
-    api = API201(os.path.join(data_dir, "NAS-Bench-201-v1_0-e61699.pth"), verbose=False)
-elif args.dataset == "nasbench301":
-    api = API301()
-objective = BenchmarkMapping[args.dataset](
-    log_scale=args.log,
-    seed=args.seed,
-    optimize_arch=args.optimize_arch,
-    optimize_hps=args.optimize_hps,
+parser.add_argument("--save_path", default="demo/results/", help="path to save log file")
+parser.add_argument(
+    "--api_data_path",
+    default="data/NAS-Bench-201-v1_0-e61699.pth",
+    help="Full path to data file. Only needed for tabular/surrogate benchmarks!",
 )
-assert args.pool_strategy in [
-    "random",
-    "mutate",
-]
-acquisition_function_opt = Sampler(args, objective)
+parser.add_argument(
+    "--fixed_query_seed",
+    type=int,
+    default=None,
+    help="Whether to use deterministic objective function as NAS-Bench-101 has 3 different seeds for "
+    "validation and test accuracies. Options in [None, 0, 1, 2]. If None the query will be "
+    "random.",
+)
 
-# Initialise the optimizer strategy.
-assert args.strategy in ["random", "gbo"]
-if args.strategy == "random":
-    optimizer = RandomSearch(acquisition_function_opt=acquisition_function_opt)
-elif args.strategy == "gbo":
-    kern = []
-    if args.optimize_arch:
-        for _ in range(args.n_graph_kernels):
-            kern.append(
-                GraphKernelMapping["wl"](
-                    se_kernel=StationaryKernelMapping[args.domain_se_kernel]
+
+def run_experiment(args):
+    # if args.cuda and torch.cuda.is_available():
+    #    device = "cuda"
+    # else:
+    #    device = "cpu"
+
+    # Initialise the objective function and its optimizer.
+    assert args.dataset in BenchmarkMapping.keys(), "Required dataset is not implemented!"
+    api = None
+    if args.dataset == "nasbench201":
+        api = API201(args.data_path, verbose=args.verbose)
+    elif args.dataset == "nasbench301":
+        api = API301()
+    objective = BenchmarkMapping[args.dataset](
+        log_scale=args.log,
+        seed=args.seed,
+        optimize_arch=args.optimize_arch,
+        optimize_hps=args.optimize_hps,
+    )
+    assert args.pool_strategy in [
+        "random",
+        "mutate",
+    ]
+    acquisition_function_opt = Sampler(args, objective)
+
+    # Initialise the optimizer strategy.
+    assert args.strategy in ["random", "gbo"]
+    if args.strategy == "random":
+        optimizer = RandomSearch(acquisition_function_opt=acquisition_function_opt)
+    elif args.strategy == "gbo":
+        kern = []
+        if args.optimize_arch:
+            for kg in args.graph_kernels:
+                kern.append(
+                    GraphKernelMapping[kg](
+                        se_kernel=StationaryKernelMapping[args.domain_se_kernel]
+                    )
                 )
+        hp_kern = None
+        if args.optimize_hps:
+            hp_kern = []
+            if objective.has_continuous_hp:
+                hp_kern.append(StationaryKernelMapping[args.hp_kernel])
+            if objective.has_categorical_hp:
+                hp_kern.append(StationaryKernelMapping["hm"])
+
+        surrogate_model = ComprehensiveGP(
+            graph_kernels=kern, hp_kernels=hp_kern, verbose=args.verbose
+        )
+        acquisition_function = AcquisitionMapping[args.acquisition](
+            surrogate_model=surrogate_model, strategy=args.strategy
+        )
+        optimizer = BayesianOptimization(
+            surrogate_model=surrogate_model,
+            acquisition_function=acquisition_function,
+            acquisition_function_opt=acquisition_function_opt,
+        )
+    else:
+        raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
+
+    experiments = StatisticsTracker(args)
+
+    for seed in range(args.seed, args.seed + args.n_repeat):
+        experiments.reset(seed)
+
+        # Take n_init random samples
+        # TODO acquisiton function opt can be different to intial design!
+        x_configs = acquisition_function_opt.sample(pool_size=args.n_init)
+
+        # & evaluate
+        y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
+        y = torch.tensor([y[0] for y in y_np_list]).float()
+        train_details = [y[1] for y in y_np_list]
+
+        # Initialise the GP surrogate
+        optimizer.initialize_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
+
+        # Main optimization loop
+        while experiments.has_budget():
+
+            # Propose new location to evaluate
+            next_x, opt_details = optimizer.propose_new_location(
+                args.batch_size, args.pool_size
             )
-    hp_kern = None
-    if args.optimize_hps:
-        hp_kern = []
-        if objective.has_continuous_hp:
-            hp_kern.append(StationaryKernelMapping[args.hp_kernel])
-        if objective.has_categorical_hp:
-            hp_kern.append(StationaryKernelMapping["hm"])
+            pool = opt_details["pool"]
 
-    surrogate_model = ComprehensiveGP(
-        graph_kernels=kern, hp_kernels=hp_kern, verbose=args.verbose
-    )
-    acquisition_function = AcquisitionMapping[args.acquisition](
-        surrogate_model=surrogate_model, strategy=args.strategy
-    )
-    optimizer = BayesianOptimization(
-        surrogate_model=surrogate_model,
-        acquisition_function=acquisition_function,
-        acquisition_function_opt=acquisition_function_opt,
-    )
-else:
-    optimizer = None
+            # Evaluate this location from the objective function
+            detail = [config_.query(dataset_api=api) for config_ in next_x]
+            next_y = [y[0] for y in detail]
+            train_details += [y[1] for y in detail]
 
-experiments = StatisticsTracker(args)
+            if optimizer.surrogate_model is not None:
+                pool.extend(next_x)
 
-for seed in range(args.seed, args.seed + args.n_repeat):
-    experiments.reset(seed)
+            x_configs.extend(next_x)
+            y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
 
-    # Take n_init random samples
-    # TODO acquisiton function opt can be different to intial design!
-    x_configs = acquisition_function_opt.sample(pool_size=args.n_init)
+            # Update the GP Surrogate
+            optimizer.update_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
+            experiments.print(x_configs, y, next_y, train_details)
 
-    # & evaluate
-    y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
-    y = torch.tensor([y[0] for y in y_np_list]).float()
-    train_details = [y[1] for y in y_np_list]
+            experiments.next_iteration()
 
-    # Initialise the GP surrogate
-    optimizer.initialize_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
+        experiments.save_results()
 
-    # Main optimization loop
-    while experiments.has_budget():
 
-        # Propose new location to evaluate
-        next_x, pool = optimizer.propose_new_location(args.batch_size, args.pool_size)
+if __name__ == "__main__":
+    args = parser.parse_args()
+    options = vars(args)
+    print(options)
 
-        # Evaluate this location from the objective function
-        detail = [config_.query(dataset_api=api) for config_ in next_x]
-        next_y = [y[0] for y in detail]
-        train_details += [y[1] for y in detail]
+    assert args.dataset in BenchmarkMapping.keys(), "Required dataset is not implemented!"
 
-        if optimizer.surrogate_model is not None:
-            pool.extend(next_x)
-
-        x_configs.extend(next_x)
-        y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
-
-        # Update the GP Surrogate
-        optimizer.update_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
-        experiments.print(x_configs, y, next_y, train_details)
-
-        experiments.next_iteration()
-
-    experiments.save_results()
+    run_experiment(args)

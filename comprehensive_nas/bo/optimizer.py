@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Tuple
 
 from ..core.optimizer import Optimizer
 
@@ -28,13 +28,15 @@ class BayesianOptimization(Optimizer):
 
     def propose_new_location(
         self, batch_size: int = 5, pool_size: int = 10
-    ) -> Tuple[List, List[float]]:
+    ) -> Tuple[Tuple, dict]:
         # create candidate pool
         pool = self.acqusition_function_opt.sample(pool_size)
 
         # Ask for a location proposal from the acquisition function..
-        next_x, _, _ = self.acquisition_function.propose_location(
+        next_x, eis, _ = self.acquisition_function.propose_location(
             top_n=batch_size, candidates=pool.copy()
         )
 
-        return next_x, pool
+        opt_details = {"pool": pool, "eis": eis}
+
+        return next_x, opt_details
