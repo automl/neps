@@ -117,7 +117,9 @@ class ComprehensiveGP:
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
         for i, k in enumerate(self.combined_kernel.kernels):
-            if isinstance(k, WeisfilerLehman):
+            if not isinstance(k, GraphKernels):
+                continue
+            elif isinstance(k, WeisfilerLehman):
                 _grid_search_wl_kernel(
                     k,
                     h_,
