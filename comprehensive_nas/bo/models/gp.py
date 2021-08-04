@@ -50,7 +50,7 @@ class ComprehensiveGP:
         weights=None,
         vector_theta_bounds: tuple = (1e-5, 0.1),
         graph_theta_bounds: tuple = (1e-1, 1.0e1),
-        combined_kernel: str = "product",
+        combined_kernel: str = "sum",
         verbose: bool = False,
     ):
         self.likelihood = likelihood

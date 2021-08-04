@@ -20,7 +20,7 @@ class WeisfilerLehman(GraphKernels):
     def __init__(
         self,
         h: int = 0,
-        type: str = "edge",
+        type: str = "subtree",
         se_kernel: Stationary = None,
         layer_weights=None,
         node_weights=None,
