@@ -155,7 +155,7 @@ def run_experiment(args):
     # Initialise the objective function and its optimizer.
     api = None
     if args.dataset == "nasbench201":
-        api = API201(args.data_path, verbose=args.verbose)
+        api = API201(args.api_data_path, verbose=args.verbose)
     elif args.dataset == "nasbench301":
         api = API301()
     objective = BenchmarkMapping[args.dataset](
