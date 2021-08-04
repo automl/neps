@@ -44,8 +44,8 @@ class GP(gpytorch.models.ExactGP):
 class ComprehensiveGP:
     def __init__(
         self,
-        graph_kernels: Union[list, tuple],
-        hp_kernels: Union[list, tuple],
+        graph_kernels: Iterable,
+        hp_kernels: Iterable,
         likelihood: float = 1e-3,
         weights=None,
         vector_theta_bounds: tuple = (1e-5, 0.1),
@@ -57,9 +57,9 @@ class ComprehensiveGP:
 
         self.domain_kernels: list = []
         if bool(graph_kernels):
-            self.domain_kernels += graph_kernels
+            self.domain_kernels += list(graph_kernels)
         if bool(hp_kernels):
-            self.domain_kernels += hp_kernels
+            self.domain_kernels += list(hp_kernels)
 
         self.n_kernels: int = len(self.domain_kernels)
         self.n_graph_kernels: int = len(
