@@ -19,7 +19,7 @@ from comprehensive_nas.bo.kernels import GraphKernelMapping, StationaryKernelMap
 from comprehensive_nas.bo.models.gp import ComprehensiveGP
 from comprehensive_nas.bo.optimizer import BayesianOptimization
 from comprehensive_nas.rs.optimizer import RandomSearch
-from comprehensive_nas.utils.util import StatisticsTracker
+from comprehensive_nas.utils.util import Experimentator, StatisticsTracker
 
 warnings.simplefilter("ignore", category=FutureWarning)
 
@@ -207,10 +207,14 @@ def run_experiment(args):
     else:
         raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
 
-    experiments = StatisticsTracker(args)
+    experimenter = Experimentator(args.n_init, args.max_iters)
+    tracker = StatisticsTracker(
+        args, args.n_init, args.max_iters, args.save_path, args.log
+    )
 
     for seed in range(args.seed, args.seed + args.n_repeat):
-        experiments.reset(seed)
+        experimenter.reset(seed)
+        tracker.reset()
 
         # Take n_init random samples
         x_configs = initial_design.sample(pool_size=args.n_init)
@@ -220,12 +224,14 @@ def run_experiment(args):
         # y = torch.Tensor([y[0] for y in y_np_list]).float()
         y = [y[0] for y in y_np_list]
         train_details = [y[1] for y in y_np_list]
+        # test = torch.Tensor([config_.query(dataset_api=api, mode='test') for config_ in next_x]).float()
+        test = [config_.query(dataset_api=api, mode="test") for config_ in x_configs]
 
         # Initialise the GP surrogate
         optimizer.initialize_model(x_configs=x_configs, y=y)
 
         # Main optimization loop
-        while experiments.has_budget():
+        while experimenter.has_budget():
 
             # Propose new location to evaluate
             next_x, opt_details = optimizer.propose_new_location(
@@ -237,21 +243,38 @@ def run_experiment(args):
             detail = [config_.query(dataset_api=api) for config_ in next_x]
             next_y = [y[0] for y in detail]
             train_details += [y[1] for y in detail]
+            next_test = [
+                config_.query(dataset_api=api, mode="test")[0] for config_ in next_x
+            ]
 
-            if optimizer.surrogate_model is not None:
-                pool.extend(next_x)
+            if opt_details is not None:
+                pool_vals = [config_.query(dataset_api=api) for config_ in pool]
+                opt_details["pool_vals"] = pool_vals
+            pool.extend(next_x)
 
             x_configs.extend(next_x)
             # y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
             y.extend(next_y)
+            # test = torch.cat((test, torch.tensor(next_test).view(-1))).float()
+            test.extend(next_test)
 
             # Update the GP Surrogate
             optimizer.update_model(x_configs=x_configs, y=y)
-            experiments.print(x_configs, y, next_y, train_details)
 
-            experiments.next_iteration()
+            tracker.update(
+                x=x_configs,
+                y_eval=y,
+                y_eval_cur=next_y,
+                y_test=test,
+                y_test_cur=next_test,
+                train_details=train_details,
+                opt_details=opt_details,
+            )
+            tracker.print()
 
-        experiments.save_results()
+            experimenter.next_iteration()
+
+        tracker.save_results()
 
         if args.plot:
             pass

@@ -1,7 +1,10 @@
+import csv
 import json
 import os
+import pickle
 import random
 import time
+from typing import Iterable
 
 import numpy as np
 import tabulate
@@ -14,23 +17,50 @@ def set_seed(seed):
     torch.manual_seed(seed)
 
 
+class Experimentator(object):
+    def __init__(self, n_init: int, max_iters: int) -> None:
+        super().__init__()
+        self.n_init = n_init
+        self.max_iters = max_iters
+        self.iteration = 0
+
+        self.seed = None
+
+    def reset(self, seed):
+        self.seed = seed
+        set_seed(self.seed)
+        self.iteration = 0
+
+    def has_budget(self):
+        return bool(self.iteration < self.max_iters)
+
+    def next_iteration(self):
+        self.iteration += 1
+
+
 class StatisticsTracker(object):
-    def __init__(self, args):
+    def __init__(
+        self, args, n_init: int, max_iters: int, save_path: str, log: bool = True
+    ):
         self.start_time = time.time()
         self.end_time = np.nan
         self.seed = np.nan
 
-        self.incumbents = []
-        self.incumbent_values = []
+        self.incumbents_eval = []
+        self.incumbent_values_eval = []
+        self.last_func_evals = []
+        self.last_func_tests = []
+        self.incumbents_test = []
+        self.incumbent_values_test = []
         self.cum_train_times = []
-        self.last_func_eval = np.nan
+        self.opt_details = []
         self.iteration = 0
-        self.max_iters = args.max_iters
+        self.max_iters = max_iters
 
-        self.n_init = args.n_init
-        self.log = args.log
-        self.save_path = args.save_path
-        self.dataset = args.dataset
+        self.n_init = n_init
+        self.log = log
+        self.save_path = save_path
+        self.iteration = 0
 
         options = vars(args)
 
@@ -45,20 +75,21 @@ class StatisticsTracker(object):
             with open(os.path.join(self.save_path, "args.json"), "w") as f:
                 json.dump(options, f, indent=6)
 
-    def reset(self, seed):
-        self.seed = seed
-        set_seed(self.seed)
-
+    def reset(self):
         self.start_time = time.time()
         self.end_time = np.nan
 
-        self.incumbents = []
-        self.incumbent_values = []
+        self.incumbents_eval = []
+        self.incumbent_values_eval = []
         self.cum_train_times = []
-        self.last_func_eval = np.nan
+        self.last_func_evals = []
+        self.last_func_tests = []
+        self.incumbents_test = []
+        self.incumbent_values_test = []
+        self.opt_details = []
         self.iteration = 0
 
-    def calculate_incumbent(self, x, y, next_y):
+    def calculate_incumbent(self, x: Iterable, y):
         best_idx = np.argmax(y[self.n_init :])
         incumbent = x[self.n_init :][best_idx]
         incumbent_value = (
@@ -66,33 +97,75 @@ class StatisticsTracker(object):
             if self.log
             else -y[self.n_init :][best_idx].item()
         )
-        self.incumbents.append(incumbent)
-        self.incumbent_values.append(incumbent_value)
-        self.last_func_eval = np.exp(-np.max(next_y)) if self.log else -np.max(next_y)
+        return incumbent, incumbent_value
 
-    def calculate_cost(self, train_details):
-        self.end_time = time.time()
+    @staticmethod
+    def calculate_cum_train_time(train_details):
         # Compute the cumulative training time.
         try:
             cum_train_time = np.sum([item["train_time"] for item in train_details]).item()
         except TypeError:
             cum_train_time = np.nan
-        self.cum_train_times.append(cum_train_time)
+        return cum_train_time
 
-    def print(self, x, y, next_y, train_details):
+    def update(
+        self,
+        x,
+        y_eval,
+        y_eval_cur,
+        train_details,
+        y_test=None,
+        y_test_cur=None,
+        opt_details=None,
+    ):
         # Calculate Incumbent
-        self.calculate_incumbent(x, y, next_y)
-        self.calculate_cost(train_details)
+        incumbent, incumbent_value = self.calculate_incumbent(x, y_eval)
+        self.incumbents_eval.append(incumbent)
+        self.incumbent_values_eval.append(incumbent_value)
 
-        columns = ["Iteration", "Last func val", "Incumbent Value", "Time", "TrainTime"]
+        self.last_func_evals.append(
+            np.exp(-np.max(y_eval_cur)) if self.log else -np.max(y_eval_cur)
+        )
+
+        if y_test is not None:
+            incumbent, incumbent_value = self.calculate_incumbent(x, y_test)
+            self.incumbents_test.append(incumbent)
+            self.incumbent_values_test.append(incumbent_value)
+        if y_test_cur is not None:
+            self.last_func_tests.append(
+                np.exp(-np.max(y_test_cur)) if self.log else -np.max(y_test_cur)
+            )
+        if opt_details is not None:
+            self.opt_details.extend(opt_details)
+
+        self.end_time = time.time()
+        cum_train_time = self.calculate_cum_train_time(train_details)
+        self.cum_train_times.append(cum_train_time)
+        self.iteration += 1
+
+    def print(self):
+        columns = [
+            "Iteration",
+            "Last func val",
+            "Incumbent Value val",
+            "Time",
+            "Train Time",
+        ]
 
         values = [
             str(self.iteration),
-            str(self.last_func_eval),
-            str(self.incumbent_values[-1]),
+            str(self.last_func_evals[-1]),
+            str(self.incumbent_values_eval[-1]),
             str(self.end_time - self.start_time),
             str(self.cum_train_times[-1]),
         ]
+        if self.last_func_tests:
+            columns.append("Last func test")
+            values.extend([self.last_func_tests[-1]])
+        if self.incumbent_values_test:
+            columns.append("Incumbent Value test")
+            values.extend([self.incumbent_values_test[-1]])
+
         table = tabulate.tabulate(
             [values], headers=columns, tablefmt="simple", floatfmt="8.4f"
         )
@@ -104,25 +177,49 @@ class StatisticsTracker(object):
             table = table.split("\n")[2]
         print(table)
 
-    def has_budget(self):
-        return bool(self.iteration < self.max_iters)
-
-    def next_iteration(self):
-        self.iteration += 1
-
     def save_results(self):
-
+        # save all data for later use
         results = {
-            "incumbents": [inc.parse() for inc in self.incumbents],
-            "incumbent_fval": self.incumbent_values,
+            "incumbents_eval": [inc.parse() for inc in self.incumbents_eval],
+            "incumbent_value_eval": self.incumbent_values_eval,
             "runtime": self.cum_train_times,
+            "last_func_evals": self.last_func_evals,
         }
 
-        if self.save_path is not None:
-            with open(
-                os.path.join(
-                    self.save_path, "{}:{}.json".format(self.max_iters, self.seed)
-                ),
-                "w",
-            ) as f:
-                json.dump(results, f, indent=6)
+        if self.incumbents_test:
+            results["incumbent_test"] = ([inc.parse() for inc in self.incumbents_test],)
+        if self.incumbent_values_test:
+            results["incumbent_values_test"] = self.incumbent_values_test
+        if self.last_func_tests:
+            results["last_func_tests"] = self.last_func_tests
+        if self.opt_details:
+            results["opt_details"] = self.opt_details
+
+        pickle.dump(
+            results,
+            open(
+                os.path.join(self.save_path, "data.p"),
+                "wb",
+            ),
+        )
+
+        # save human-readable results
+        columns = ["Iteration", "Last func val", "Incumbent Value val", "Cum Train Time"]
+        values = [
+            range(1, self.iteration + 1),
+            self.last_func_evals,
+            self.incumbent_values_eval,
+            self.cum_train_times,
+        ]
+        if self.last_func_tests:
+            columns.append("Last func test")
+            values.extend([self.last_func_tests])
+        if self.incumbent_values_test:
+            columns.append("Incumbent Value test")
+            values.extend([self.incumbent_values_test])
+        zip_iter = zip(*values)
+        with open(os.path.join(self.save_path, "results.csv"), "w") as csvfile:
+            writer = csv.writer(csvfile, delimiter="\t")
+            writer.writerow(columns)
+            for i, x in enumerate(zip_iter):
+                writer.writerow([i + 1] + list(x))
