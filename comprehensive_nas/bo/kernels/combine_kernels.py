@@ -1,8 +1,9 @@
 import logging
-from typing import Tuple, Union
+from typing import Union
 
 import torch
 
+from .utils import extract_configs
 from .vectorial_kernels import Stationary
 from .weisfilerlehman import GraphKernels
 
@@ -23,25 +24,6 @@ class CombineKernel:
         assert combined_by in ["sum", "product"]
         self.combined_by = combined_by
 
-    @staticmethod
-    def extract_configs(configs: list) -> Tuple[list, list]:
-        N = len(configs)
-        if N > 0 and "get_graph" in dir(configs[0]):
-            graphs = [c.get_graph() for c in configs]
-        elif N > 0 and "graph" in dir(configs[0]):
-            graphs = [c.graph for c in configs]
-        else:
-            graphs = [None] * N
-
-        if N > 0 and "get_hps" in dir(configs[0]):
-            hps = [c.get_hps() for c in configs]
-        elif N > 0 and "hps" in dir(configs[0]):
-            hps = [c.hps for c in configs]
-        else:
-            hps = [None] * N
-
-        return graphs, hps
-
     def fit_transform(
         self,
         weights: torch.Tensor,
@@ -55,7 +37,7 @@ class CombineKernel:
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1, x1 = self.extract_configs(configs)
+        gr1, x1 = extract_configs(configs)
 
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr1:
@@ -102,7 +84,7 @@ class CombineKernel:
                 "The kernel has not been fitted. Call fit_transform first to generate the training Gram"
                 "matrix."
             )
-        gr, x = self.extract_configs(configs)
+        gr, x = extract_configs(configs)
         # K is in shape of len(Y), len(X)
         size = len(configs)
         K = (

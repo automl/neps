@@ -1,11 +1,39 @@
 import multiprocessing
 import sys
 from multiprocessing import Pool
+from typing import Tuple
 
 import networkx as nx
 import numpy as np
 import torch
 from tqdm import tqdm
+
+
+def extract_configs(configs: list) -> Tuple[list, list]:
+    """Extracts graph & HPs from configs objects
+
+    Args:
+        configs (list): Object holding graph and/or HPs
+
+    Returns:
+        Tuple[list, list]: list of graphs, list of HPs
+    """
+    N = len(configs)
+    if N > 0 and "get_graph" in dir(configs[0]):
+        graphs = [c.get_graph() for c in configs]
+    elif N > 0 and "graph" in dir(configs[0]):
+        graphs = [c.graph for c in configs]
+    else:
+        graphs = [None] * N
+
+    if N > 0 and "get_hps" in dir(configs[0]):
+        hps = [c.get_hps() for c in configs]
+    elif N > 0 and "hps" in dir(configs[0]):
+        hps = [c.hps for c in configs]
+    else:
+        hps = [None] * N
+
+    return graphs, hps
 
 
 def get_dataset_attributes(

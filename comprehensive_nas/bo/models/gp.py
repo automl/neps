@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Union
+from typing import Iterable, Union
 
 import gpytorch
 import numpy as np
@@ -322,7 +322,7 @@ class ComprehensiveGP:
             )
 
         # Concatenate the full list
-        X_configs_all = deepcopy(self.x_configs) + x_configs
+        X_configs_all = self.x_configs + x_configs
         # dim = 6  # TODO what is this?
 
         # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
@@ -356,11 +356,16 @@ class ComprehensiveGP:
             del combined_kernel_copy
         return mu_s, cov_s
 
-    def reset_XY(self, train_x: list, train_y: list):
-        self.x_configs = deepcopy(train_x)
+    def reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
+        self.x_configs = train_x
         self.n = len(self.x_configs)
-        self.y_ = train_y
-        self.y, self.y_mean, self.y_std = normalize_y(train_y)
+        train_y_tensor = (
+            train_y
+            if isinstance(train_y, torch.Tensor)
+            else torch.Tensor(train_y).float()
+        )
+        self.y_ = train_y_tensor
+        self.y, self.y_mean, self.y_std = normalize_y(train_y_tensor)
         # The Gram matrix of the training data
         self.K_i, self.logDetK = None, None
 

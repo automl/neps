@@ -1,7 +1,6 @@
 import argparse
 import os
 import warnings
-from copy import deepcopy
 
 import torch
 
@@ -148,10 +147,10 @@ parser.add_argument(
 
 
 def run_experiment(args):
-    # if args.cuda and torch.cuda.is_available():
-    #    device = "cuda"
-    # else:
-    #    device = "cpu"
+    if args.cuda and torch.cuda.is_available():
+        device = "cuda"  # pylint: disable=unused-variable
+    else:
+        device = "cpu"  # pylint: disable=unused-variable
 
     # Initialise the objective function and its optimizer.
     api = None
@@ -214,16 +213,16 @@ def run_experiment(args):
         experiments.reset(seed)
 
         # Take n_init random samples
-        # TODO acquisiton function opt can be different to intial design!
         x_configs = initial_design.sample(pool_size=args.n_init)
 
         # & evaluate
         y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
-        y = torch.tensor([y[0] for y in y_np_list]).float()
+        # y = torch.Tensor([y[0] for y in y_np_list]).float()
+        y = [y[0] for y in y_np_list]
         train_details = [y[1] for y in y_np_list]
 
         # Initialise the GP surrogate
-        optimizer.initialize_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
+        optimizer.initialize_model(x_configs=x_configs, y=y)
 
         # Main optimization loop
         while experiments.has_budget():
@@ -243,10 +242,11 @@ def run_experiment(args):
                 pool.extend(next_x)
 
             x_configs.extend(next_x)
-            y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
+            # y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
+            y.extend(next_y)
 
             # Update the GP Surrogate
-            optimizer.update_model(x_configs=deepcopy(x_configs), y=deepcopy(y))
+            optimizer.update_model(x_configs=x_configs, y=y)
             experiments.print(x_configs, y, next_y, train_details)
 
             experiments.next_iteration()
