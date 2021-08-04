@@ -1,5 +1,4 @@
 import logging
-from typing import Iterable
 
 import torch
 
@@ -42,7 +41,7 @@ class CombineKernel:
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr1:
                 update_val = weights[i] * k.fit_transform(
-                    [g[i] for g in gr1] if isinstance(gr1[0], Iterable) else gr1,
+                    [g[i] for g in gr1] if isinstance(gr1[0], (list, tuple)) else gr1,
                     rebuild_model=rebuild_model,
                     save_gram_matrix=save_gram_matrix,
                     **kwargs,
