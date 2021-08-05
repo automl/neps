@@ -60,7 +60,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             )
         if asscalar:
             ei = ei.detach().numpy().item()
-        return ei
+        return ei.detach().numpy().item()
 
     def _get_incumbent(
         self,

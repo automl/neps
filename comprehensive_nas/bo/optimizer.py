@@ -1,5 +1,7 @@
 from typing import Iterable, Tuple, Union
 
+import torch
+
 from ..core.optimizer import Optimizer
 
 
@@ -20,17 +22,19 @@ class BayesianOptimization(Optimizer):
         self.train_x = None
         self.train_y = None
 
-    def initialize_model(self, x_configs, y):
+    def initialize_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]):
         self.update_model(x_configs, y)
 
-    def update_model(self, x_configs, y):
+    def update_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]) -> None:
         self.train_x = x_configs
         self.train_y = y
 
-        self.surrogate_model.reset_XY(self.train_x, self.train_y)
+        self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
         self.surrogate_model.fit()
-        self.acquisition_function.reset_surrogate_model(self.surrogate_model)
-        self.acqusition_function_opt.reset_XY(self.train_x, self.train_y)
+        self.acquisition_function.reset_surrogate_model(
+            surrogate_model=self.surrogate_model
+        )
+        self.acqusition_function_opt.reset_XY(x=self.train_x, y=self.train_y)
 
     def propose_new_location(
         self, batch_size: int = 5, pool_size: int = 10

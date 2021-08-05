@@ -12,6 +12,7 @@ from ..kernels.combine_kernels import ProductKernel, SumKernel
 from ..kernels.graph_kernel import GraphKernels
 from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
+from ..utils.nasbowl_utils import extract_configs
 from .utils import (
     compute_log_marginal_likelihood,
     compute_pd_inverse,
@@ -116,6 +117,7 @@ class ComprehensiveGP:
         self.n: int = None
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
+        graphs, _ = extract_configs(self.x_configs)
         for i, k in enumerate(self.combined_kernel.kernels):
             if not isinstance(k, GraphKernels):
                 continue
@@ -123,9 +125,9 @@ class ComprehensiveGP:
                 _grid_search_wl_kernel(
                     k,
                     h_,
-                    [x.graph[i] for x in self.x_configs]
-                    if isinstance(self.x_configs[0].graph, list)
-                    else [c.graph for c in self.x_configs],
+                    [x[i] for x in graphs]
+                    if isinstance(graphs[0], list)
+                    else [c for c in graphs],
                     self.y,
                     self.likelihood,
                     lengthscales=lengthscale_,
@@ -358,6 +360,10 @@ class ComprehensiveGP:
             del combined_kernel_copy
         return mu_s, cov_s
 
+    @property
+    def x(self):
+        return self.x_configs
+
     def reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
         self.x_configs = train_x
         self.n = len(self.x_configs)
@@ -558,7 +564,7 @@ def _grid_search_wl_kernel(
     k: WeisfilerLehman,
     subtree_candidates,
     train_x: list,
-    train_y: list,
+    train_y: torch.Tensor,
     lik: float,
     subtree_prior=None,  # pylint: disable=unused-argument
     lengthscales=None,

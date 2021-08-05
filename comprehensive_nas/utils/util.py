@@ -18,17 +18,18 @@ def set_seed(seed):
 
 
 class Experimentator(object):
-    def __init__(self, n_init: int, max_iters: int) -> None:
+    def __init__(self, n_init: int, max_iters: int, seed: int = None) -> None:
         super().__init__()
         self.n_init = n_init
         self.max_iters = max_iters
         self.iteration = 0
 
-        self.seed = None
+        self.seed = seed
 
     def reset(self, seed):
         self.seed = seed
-        set_seed(self.seed)
+        if self.seed is not None:
+            set_seed(self.seed)
         self.iteration = 0
 
     def has_budget(self):

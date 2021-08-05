@@ -29,7 +29,9 @@ class MutationSampler(AcquisitionOptimizer):
         assert pool_size >= n_mutate, " pool_size must be larger or equal to n_mutate"
 
         n_best = len(self.x) if len(self.x) < self.n_best else self.n_best
-        best_configs = [x for _, x in sorted(zip(self.y, self.x))][:n_best]
+        best_configs = [
+            x for (y, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
+        ]
         evaluation_pool, eval_pool_ids = [], []
         per_arch = n_mutate // n_best
         for config in best_configs:

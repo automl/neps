@@ -1,5 +1,7 @@
 from abc import abstractmethod
-from typing import Iterable, NoReturn
+from typing import Iterable, Union
+
+import torch
 
 
 class AcquisitionOptimizer:
@@ -12,6 +14,6 @@ class AcquisitionOptimizer:
     def sample(self, pool_size: int) -> list:
         raise NotImplementedError
 
-    def reset_XY(self, x: Iterable, y: Iterable) -> NoReturn:
+    def reset_XY(self, x: Iterable, y: Union[Iterable, torch.Tensor]) -> None:
         self.x = x
         self.y = y
