@@ -26,14 +26,14 @@ def extract_configs(configs: list) -> Tuple[list, list]:
     """
     N = len(configs)
     if N > 0 and "get_graph" in dir(configs[0]):
-        graphs = [c.get_graph for c in configs]
+        graphs = [c.get_graph() for c in configs]
     elif N > 0 and "graph" in dir(configs[0]):
         graphs = [c.graph for c in configs]
     else:
         graphs = [None] * N
 
     if N > 0 and "get_hps" in dir(configs[0]):
-        hps = [c.get_hps for c in configs]
+        hps = [c.get_hps() for c in configs]
     elif N > 0 and "hps" in dir(configs[0]):
         hps = [c.hps for c in configs]
     else:
