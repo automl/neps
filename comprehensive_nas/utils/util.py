@@ -184,6 +184,14 @@ class StatisticsTracker(object):
             table = table.split("\n")[2]
         print(table)
 
+        if not os.path.isdir(os.path.dirname(self.save_path)):
+            os.makedirs(os.path.dirname(self.save_path))
+            with open(os.path.join(self.save_path, "log.txt"), "w+") as o:
+                o.write(table + "\n")
+        else:
+            with open(os.path.join(self.save_path, "log.txt"), "a+") as o:
+                o.write(table + "\n")
+
     def save_results(self):
         # save all data for later use
         results = {
