@@ -177,7 +177,7 @@ class StatisticsTracker(object):
             [values], headers=columns, tablefmt="simple", floatfmt="8.4f"
         )
 
-        if self.iteration % 40 == 0:
+        if self.iteration == 1:
             table = table.split("\n")
             table = "\n".join([table[1]] + table)
         else:

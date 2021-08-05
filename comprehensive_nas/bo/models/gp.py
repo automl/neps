@@ -333,7 +333,6 @@ class ComprehensiveGP:
 
         # Concatenate the full list
         X_configs_all = self.x_configs + x_configs
-        # dim = 6  # TODO what is this?
 
         # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
         if preserve_comp_graph:

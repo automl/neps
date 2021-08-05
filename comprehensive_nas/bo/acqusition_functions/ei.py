@@ -40,6 +40,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.in_fill = in_fill
         self.augmented_ei = augmented_ei
         self.xi = xi
+        self.incumbent = None
 
     def eval(self, x, asscalar=False):
         """
@@ -65,13 +66,11 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             )
         if asscalar:
             ei = ei.detach().numpy().item()
-        return ei.detach().numpy().item()
+        return ei
 
-    def _get_incumbent(
-        self,
-    ):
+    def _compute_incumbent(self):
         """
-        Get the incumbent
+        Compute and return the incumbent
         """
         if self.in_fill == "max":
             return torch.max(self.surrogate_model.y_)
@@ -81,14 +80,25 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             incumbent_idx = torch.argmax(mu_train)
             return self.surrogate_model.y_[incumbent_idx]
 
+    def _get_incumbent(self):
+        """Get incumbent
+
+        Returns:
+            float: incumbent
+        """
+        return self.incumbent if self.incumbent is not None else self._compute_incumbent()
+
     def propose_location(self, candidates, top_n=5, return_distinct=True):
         """top_n: return the top n candidates wrt the acquisition function."""
         # selected_idx = [i for i in self.candidate_idx if self.evaluated[i] is False]
         # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
         # print(eis)
         self.iters += 1
+        self.incumbent = (
+            self._compute_incumbent()
+        )  # avoid computing inc over and over again
         if return_distinct:
-            eis = np.array([self.eval(c) for c in candidates])
+            eis = np.array([self.eval(c, asscalar=True) for c in candidates])
             eis_, unique_idx = np.unique(eis, return_index=True)
             try:
                 i = np.argpartition(eis_, -top_n)[-top_n:]
@@ -100,6 +110,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             eis = torch.tensor([self.eval(c) for c in candidates])
             _, indices = eis.topk(top_n)
         xs = tuple([candidates[int(i)] for i in indices])
+        self.incumbent = None
         return xs, eis, indices
 
     def optimize(self):

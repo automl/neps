@@ -30,4 +30,4 @@ class ComprehensiveUpperConfidentBound(ComprehensiveExpectedImprovement):
         acq = mu + self.beta * std
         if asscalar:
             acq = acq.detach().numpy().item()
-        return acq.mean().detach().numpy().item()
+        return acq  # .mean()
