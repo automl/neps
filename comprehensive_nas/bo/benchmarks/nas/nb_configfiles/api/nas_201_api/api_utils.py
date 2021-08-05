@@ -19,7 +19,13 @@ from pathlib import Path
 from typing import Dict, List, Optional, Text, Union
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 
 def remap_dataset_set_names(dataset, metric_on_set, verbose=False):

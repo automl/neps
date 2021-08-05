@@ -8,7 +8,13 @@ from typing import Iterable
 
 import numpy as np
 import tabulate
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 
 def set_seed(seed):

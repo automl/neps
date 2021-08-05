@@ -4,8 +4,14 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
-from torch_geometric.data import Batch, DataLoader
+
+try:
+    import torch
+    from torch_geometric.data import Batch, DataLoader
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 from tqdm import tqdm
 
 from .. import utils

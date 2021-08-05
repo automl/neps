@@ -1,4 +1,9 @@
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 
 def min_lp(x: torch.Tensor, y: torch.Tensor, p: int = -5):

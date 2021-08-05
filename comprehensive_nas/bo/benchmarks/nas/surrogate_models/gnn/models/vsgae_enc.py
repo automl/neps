@@ -1,12 +1,18 @@
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn import Parameter
-from torch.nn.init import xavier_uniform
-from torch_geometric.nn import MessagePassing
-from torch_geometric.nn.inits import glorot, zeros
-from torch_geometric.utils import scatter_, softmax
+
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from torch.nn import Parameter
+    from torch.nn.init import xavier_uniform
+    from torch_geometric.nn import MessagePassing
+    from torch_geometric.nn.inits import glorot, zeros
+    from torch_geometric.utils import scatter_, softmax
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 ### Node embedding
 

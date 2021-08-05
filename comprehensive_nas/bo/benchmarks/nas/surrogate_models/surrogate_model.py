@@ -7,8 +7,14 @@ from pathlib import Path
 
 import numpy as np
 import pathvalidate
-import torch
-import torch.backends.cudnn as cudnn
+
+try:
+    import torch
+    import torch.backends.cudnn as cudnn
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 from . import utils
 

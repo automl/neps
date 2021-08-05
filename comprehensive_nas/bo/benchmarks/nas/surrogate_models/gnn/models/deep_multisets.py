@@ -1,7 +1,12 @@
-import torch
-import torch.nn.functional as F
-from torch.nn import Linear
-from torch_geometric.nn import global_add_pool
+try:
+    import torch
+    import torch.nn.functional as F
+    from torch.nn import Linear
+    from torch_geometric.nn import global_add_pool
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 """
 Code from official repository of "A Fair Comparison of Graph Neural Networks for Graph Classification", ICLR 2020

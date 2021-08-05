@@ -2,7 +2,13 @@ from copy import deepcopy
 from math import sqrt
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 
 class Stationary:

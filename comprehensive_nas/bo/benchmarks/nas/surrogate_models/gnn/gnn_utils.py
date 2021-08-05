@@ -1,8 +1,14 @@
 import networkx as nx
 import numpy as np
-import torch
-from torch_geometric import utils
-from torch_geometric.data import Data, InMemoryDataset
+
+try:
+    import torch
+    from torch_geometric import utils
+    from torch_geometric.data import Data, InMemoryDataset
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 PRIMITIVES = [
     # 'none',

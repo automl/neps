@@ -1,7 +1,12 @@
 from abc import abstractmethod
 from typing import Iterable, Union
 
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 
 class AcquisitionOptimizer:

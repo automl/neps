@@ -3,7 +3,13 @@ import copy
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 from networkx.drawing.nx_pydot import graphviz_layout
 from tqdm import tqdm
 

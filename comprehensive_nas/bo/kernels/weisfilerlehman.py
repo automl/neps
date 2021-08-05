@@ -1,7 +1,13 @@
 import logging
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 from grakel.kernels import ShortestPathAttr
 from grakel.utils import graph_from_networkx
 
