@@ -49,7 +49,7 @@ class BayesianOptimization(Optimizer):
 
         # Ask for a location proposal from the acquisition function..
         next_x, eis, _ = self.acquisition_function.propose_location(
-            top_n=batch_size, candidates=pool.copy()
+            top_n=batch_size, candidates=pool
         )
 
         if self.return_opt_details:

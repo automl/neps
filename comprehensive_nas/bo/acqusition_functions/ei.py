@@ -17,7 +17,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         augmented_ei=False,
         xi: float = 0.0,
         in_fill: str = "best",
-        strategy=None,
         iters=0,
     ):
         """
@@ -35,7 +34,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         encountered so far, and is recommended for optimisationn of more noisy functions.
         :param target_fidelity:
         """
-        super().__init__(surrogate_model=surrogate_model, strategy=strategy, iters=iters)
+        super().__init__(surrogate_model=surrogate_model, iters=iters)
 
         assert in_fill in ["best", "posterior"]
         self.in_fill = in_fill

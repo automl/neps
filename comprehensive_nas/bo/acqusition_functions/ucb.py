@@ -13,9 +13,9 @@ class ComprehensiveUpperConfidentBound(ComprehensiveExpectedImprovement):
     Graph version of the upper confidence bound acquisition function
     """
 
-    def __init__(self, surrogate_model, beta=None, strategy=None, iters=0):
+    def __init__(self, surrogate_model, beta=None, iters=0):
         """Same as graphEI with the difference that a beta coefficient is asked for, as per standard GP-UCB acquisition"""
-        super().__init__(surrogate_model=surrogate_model, strategy=strategy, iters=iters)
+        super().__init__(surrogate_model=surrogate_model, iters=iters)
 
         self.beta = beta
 
