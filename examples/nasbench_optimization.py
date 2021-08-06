@@ -2,7 +2,12 @@ import argparse
 import os
 import warnings
 
-import torch
+try:
+    import torch
+except ModuleNotFoundError:
+    from install_dev_utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 
 from comprehensive_nas.bo.acquisition_function_optimization.random_sampler import (
     RandomSampler as Sampler,
@@ -26,11 +31,10 @@ warnings.simplefilter("ignore", category=FutureWarning)
 parser = argparse.ArgumentParser(description="CNAS")
 parser.add_argument(
     "--dataset",
-    default="nasbench301",
+    default="nasbench201",
     help="The benchmark dataset to run the experiments. "
     'options = ["nasbench201", "nasbench301", "hartmann3", '
     '"hartmann6", "counting_ones"].',
-    choices=BenchmarkMapping.keys(),
 )
 parser.add_argument(
     "--task",
@@ -40,13 +44,13 @@ parser.add_argument(
     help="the benchmark task *for nasbench201 only*.",
 )
 parser.add_argument(
-    "--n_repeat", type=int, default=1, help="number of repeats of experiments"
+    "--n_repeat", type=int, default=20, help="number of repeats of experiments"
 )
 parser.add_argument(
-    "--n_init", type=int, default=40, help="number of initialising points"
+    "--n_init", type=int, default=30, help="number of initialising points"
 )
 parser.add_argument(
-    "--max_iters", type=int, default=100, help="number of iterations for the search"
+    "--max_iters", type=int, default=17, help="number of iterations for the search"
 )
 parser.add_argument(
     "-ps",
@@ -63,7 +67,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--pool_strategy",
-    default="random",
+    default="mutate",
     help="the pool generation strategy. Options: random," "mutate",
 )
 parser.add_argument(
@@ -75,13 +79,13 @@ parser.add_argument(
 parser.add_argument(
     "-a",
     "--acquisition",
-    default="UCB",
+    default="EI",
     help="the acquisition function for the BO algorithm. option: " "UCB, EI, AEI",
 )
 parser.add_argument(
     "-kg",
     "--graph_kernels",
-    default=["wl"],
+    default=[],
     nargs="+",
     help="graph kernel to use. This can take multiple input arguments, and "
     "the weights between the kernels will be automatically determined"
@@ -95,16 +99,23 @@ parser.add_argument(
     "-kh", "--hp_kernel", default="m52", help="hp kernel to use. Can be [rbf, m52, m32]"
 )
 parser.add_argument(
+    "-kh",
+    "--hp_kernels",
+    default=[],
+    nargs="+",
+    help="hp kernel to use. Can be [rbf, m52, m32]",
+)
+parser.add_argument(
     "-dsk",
     "--domain_se_kernel",
     default="m52",
     help="Successive Embedding kernel on the domain to use. Can be [rbf, m52, m32]",
 )
 parser.add_argument(
-    "--batch_size", type=int, default=1, help="Number of samples to evaluate"
+    "--batch_size", type=int, default=5, help="Number of samples to evaluate"
 )
 parser.add_argument("-v", "--verbose", action="store_true")
-parser.add_argument("--seed", type=int, default=1)
+parser.add_argument("--seed", type=int, default=None)
 parser.add_argument(
     "--optimize_arch", action="store_true", help="Whether to optimize arch"
 )
@@ -177,27 +188,22 @@ def run_experiment(args):
         optimizer = RandomSearch(acquisition_function_opt=acquisition_function_opt)
     elif args.strategy == "gbo":
         kern = []
-        if args.optimize_arch:
-            for kg in args.graph_kernels:
-                kern.append(
-                    GraphKernelMapping[kg](
-                        oa=args.optimal_assigment,
-                        se_kernel=StationaryKernelMapping[args.domain_se_kernel],
-                    )
+        for kg in args.graph_kernels:
+            kern.append(
+                GraphKernelMapping[kg](
+                    oa=args.optimal_assigment,
+                    se_kernel=StationaryKernelMapping[args.domain_se_kernel],
                 )
-        hp_kern = None
-        if args.optimize_hps:
-            hp_kern = []
-            if objective.has_continuous_hp:
-                hp_kern.append(StationaryKernelMapping[args.hp_kernel])
-            if objective.has_categorical_hp:
-                hp_kern.append(StationaryKernelMapping["hm"])
+            )
+        hp_kern = []
+        for kh in args.hp_kernels:
+            hp_kern.append(StationaryKernelMapping[kh])
 
         surrogate_model = ComprehensiveGP(
             graph_kernels=kern, hp_kernels=hp_kern, verbose=args.verbose
         )
         acquisition_function = AcquisitionMapping[args.acquisition](
-            surrogate_model=surrogate_model, strategy=args.strategy
+            surrogate_model=surrogate_model
         )
         optimizer = BayesianOptimization(
             surrogate_model=surrogate_model,
@@ -207,12 +213,12 @@ def run_experiment(args):
     else:
         raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
 
-    experimenter = Experimentator(args.n_init, args.max_iters)
+    experimenter = Experimentator(args.n_init, args.max_iters, args.seed)
     tracker = StatisticsTracker(
         args, args.n_init, args.max_iters, args.save_path, args.log
     )
 
-    for seed in range(args.seed, args.seed + args.n_repeat):
+    for seed in range(args.n_repeat):
         experimenter.reset(seed)
         tracker.reset()
 
@@ -237,17 +243,17 @@ def run_experiment(args):
             next_x, opt_details = optimizer.propose_new_location(
                 args.batch_size, args.pool_size
             )
-            pool = opt_details["pool"]
 
             # Evaluate this location from the objective function
             detail = [config_.query(dataset_api=api) for config_ in next_x]
             next_y = [y[0] for y in detail]
             train_details += [y[1] for y in detail]
             next_test = [
-                config_.query(dataset_api=api, mode="test")[0] for config_ in next_x
+                config_.query(dataset_api=api, mode="test") for config_ in next_x
             ]
 
             if opt_details is not None:
+                pool = opt_details["pool"]
                 pool_vals = [config_.query(dataset_api=api) for config_ in pool]
                 opt_details["pool_vals"] = pool_vals
             pool.extend(next_x)
