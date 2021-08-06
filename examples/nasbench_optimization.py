@@ -93,7 +93,7 @@ parser.add_argument(
     "hyper-parameters.",
 )
 parser.add_argument(
-    "-oa", "--optimal_assigment", action="store_true", help="Whether to optimize arch"
+    "-oa", "--optimal_assignment", action="store_true", help="Whether to optimize arch"
 )
 parser.add_argument(
     "-kh",
@@ -188,7 +188,7 @@ def run_experiment(args):
         for kg in args.graph_kernels:
             kern.append(
                 GraphKernelMapping[kg](
-                    oa=args.optimal_assigment,
+                    oa=args.optimal_assignment,
                     se_kernel=StationaryKernelMapping[args.domain_se_kernel],
                 )
             )
