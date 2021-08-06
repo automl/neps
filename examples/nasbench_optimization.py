@@ -96,9 +96,6 @@ parser.add_argument(
     "-oa", "--optimal_assigment", action="store_true", help="Whether to optimize arch"
 )
 parser.add_argument(
-    "-kh", "--hp_kernel", default="m52", help="hp kernel to use. Can be [rbf, m52, m32]"
-)
-parser.add_argument(
     "-kh",
     "--hp_kernels",
     default=[],
