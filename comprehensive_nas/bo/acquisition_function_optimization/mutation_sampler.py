@@ -9,12 +9,16 @@ class MutationSampler(AcquisitionOptimizer):
         n_best: int = 10,
         n_mutate: int = None,
         allow_isomorphism: bool = False,
+        check_isomorphism_history: bool = False,
         patience: int = 50,
     ):
         super().__init__(objective)
         self.n_best = n_best
         self.n_mutate = n_mutate
         self.allow_isomorphism = allow_isomorphism
+        self.check_isomorphism_history = (
+            check_isomorphism_history  # check for isomorphisms also in previous graphs
+        )
         self.patience = patience
 
         self.random_sampling = RandomSampler(objective)
@@ -30,8 +34,12 @@ class MutationSampler(AcquisitionOptimizer):
         best_configs = [
             x for (_, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
         ][:n_best]
-        evaluation_pool, eval_pool_ids = [], []
-        # eval_pool_ids = [x.id for x in self.x] check for isomorphisms also in previous graphs
+        evaluation_pool = []
+        eval_pool_ids = (
+            [x.id for x in self.x]
+            if not self.allow_isomorphism and self.check_isomorphism_history
+            else []
+        )
         per_arch = n_mutate // n_best
         for config in best_configs:
             n_child = 0
