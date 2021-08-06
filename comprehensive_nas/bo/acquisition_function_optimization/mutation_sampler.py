@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 from .base_acq_optimizer import AcquisitionOptimizer
 from .random_sampler import RandomSampler
 
@@ -33,24 +31,23 @@ class MutationSampler(AcquisitionOptimizer):
             x for (_, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
         ][:n_best]
         evaluation_pool, eval_pool_ids = [], []
+        # eval_pool_ids = [x.id for x in self.x] check for isomorphisms also in previous graphs
         per_arch = n_mutate // n_best
         for config in best_configs:
             n_child = 0
             patience_ = self.patience
             while n_child < per_arch and patience_ > 0:
-                config_child = deepcopy(config)
-                while patience_ > 0:
-                    try:
-                        # needs to throw an Exception if config is not valid, e.g., empty graph etc.!
-                        child = config_child.mutate()
-                        break
-                    except Exception:
-                        patience_ -= 1
-                        continue
-                if child is None:
+                try:
+                    # needs to throw an Exception if config is not valid, e.g., empty graph etc.!
+                    child = config.mutate()
+                except Exception:
+                    patience_ -= 1
                     continue
+
                 if not self.allow_isomorphism:
-                    if child.id == config_child.id:
+                    # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs. For now we do not
+                    # check the isomorphism in all of the previous graphs though
+                    if child.id == config.id:
                         patience_ -= 1
                         continue
                     if child.id in eval_pool_ids:
