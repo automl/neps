@@ -106,9 +106,9 @@ parser.add_argument(
 parser.add_argument(
     "-dsk",
     "--domain_se_kernel",
-    default="None",
+    default=None,
     help="Successive Embedding kernel on the domain to use. Can be [rbf, m52, m32]",
-    choices=["None"] + list(StationaryKernelMapping.keys()),
+    choices=[None] + list(StationaryKernelMapping.keys()),
 )
 parser.add_argument(
     "--batch_size", type=int, default=5, help="Number of samples to evaluate"
