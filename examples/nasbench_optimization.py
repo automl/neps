@@ -27,9 +27,7 @@ parser = argparse.ArgumentParser(description="CNAS")
 parser.add_argument(
     "--dataset",
     default="nasbench201",
-    help="The benchmark dataset to run the experiments. "
-    'options = ["nasbench201", "nasbench301", "hartmann3", '
-    '"hartmann6", "counting_ones"].',
+    help="The benchmark dataset to run the experiments.",
     choices=BenchmarkMapping.keys(),
 )
 parser.add_argument(
@@ -78,7 +76,7 @@ parser.add_argument(
     "-a",
     "--acquisition",
     default="EI",
-    help="the acquisition function for the BO algorithm. option: " "UCB, EI, AEI",
+    help="the acquisition function for the BO algorithm.",
     choices=AcquisitionMapping.keys(),
 )
 parser.add_argument(
@@ -100,14 +98,14 @@ parser.add_argument(
     "--hp_kernels",
     default=[],
     nargs="+",
-    help="hp kernel to use. Can be [rbf, m52, m32]",
+    help="hp kernel to use.",
     choices=StationaryKernelMapping.keys(),
 )
 parser.add_argument(
     "-dsk",
     "--domain_se_kernel",
     default=None,
-    help="Successive Embedding kernel on the domain to use. Can be [rbf, m52, m32]",
+    help="Successive Embedding kernel on the domain to use.",
     choices=[None] + list(StationaryKernelMapping.keys()),
 )
 parser.add_argument(
@@ -177,7 +175,6 @@ def run_experiment(args):
         optimize_hps=args.optimize_hps,
     )
     initial_design = AcquisitionOptimizerMapping["random"](objective)
-    acquisition_function_opt = AcquisitionOptimizerMapping[args.pool_strategy](objective)
 
     # Initialise the optimizer strategy.
     if args.strategy == "random":
@@ -201,6 +198,9 @@ def run_experiment(args):
         )
         acquisition_function = AcquisitionMapping[args.acquisition](
             surrogate_model=surrogate_model
+        )
+        acquisition_function_opt = AcquisitionOptimizerMapping[args.pool_strategy](
+            objective
         )
         optimizer = BayesianOptimization(
             surrogate_model=surrogate_model,
