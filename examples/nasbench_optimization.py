@@ -9,17 +9,12 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message)
 
-from comprehensive_nas.bo.acquisition_function_optimization.random_sampler import (
-    RandomSampler as Sampler,
+from comprehensive_nas.bo.acquisition_function_optimization import (
+    AcquisitionOptimizerMapping,
 )
 from comprehensive_nas.bo.acqusition_functions import AcquisitionMapping
 from comprehensive_nas.bo.benchmarks import BenchmarkMapping
-from comprehensive_nas.bo.benchmarks.nas.nb_configfiles.api.nas_201_api import (
-    NASBench201API as API201,
-)
-from comprehensive_nas.bo.benchmarks.nas.nb_configfiles.api.nas_301_api import (
-    NASBench301API as API301,
-)
+from comprehensive_nas.bo.benchmarks.nas.nb_configfiles.api import APIMapping
 from comprehensive_nas.bo.kernels import GraphKernelMapping, StationaryKernelMapping
 from comprehensive_nas.bo.models.gp import ComprehensiveGP
 from comprehensive_nas.bo.optimizer import BayesianOptimization
@@ -35,6 +30,7 @@ parser.add_argument(
     help="The benchmark dataset to run the experiments. "
     'options = ["nasbench201", "nasbench301", "hartmann3", '
     '"hartmann6", "counting_ones"].',
+    choices=BenchmarkMapping.keys(),
 )
 parser.add_argument(
     "--task",
@@ -69,18 +65,21 @@ parser.add_argument(
     "--pool_strategy",
     default="mutate",
     help="the pool generation strategy. Options: random," "mutate",
+    choices=AcquisitionOptimizerMapping.keys(),
 )
 parser.add_argument(
     "-s",
     "--strategy",
     default="gbo",
     help="optimisation strategy: option: gbo (graph bo), " "random (random search)",
+    choices=["random", "gbo"],
 )
 parser.add_argument(
     "-a",
     "--acquisition",
     default="EI",
     help="the acquisition function for the BO algorithm. option: " "UCB, EI, AEI",
+    choices=AcquisitionMapping.keys(),
 )
 parser.add_argument(
     "-kg",
@@ -91,6 +90,7 @@ parser.add_argument(
     "the weights between the kernels will be automatically determined"
     " during optimisation (weights will be deemed as additional "
     "hyper-parameters.",
+    choices=GraphKernelMapping.keys(),
 )
 parser.add_argument(
     "-oa", "--optimal_assignment", action="store_true", help="Whether to optimize arch"
@@ -101,12 +101,14 @@ parser.add_argument(
     default=[],
     nargs="+",
     help="hp kernel to use. Can be [rbf, m52, m32]",
+    choices=StationaryKernelMapping.keys(),
 )
 parser.add_argument(
     "-dsk",
     "--domain_se_kernel",
-    default="m52",
+    default="None",
     help="Successive Embedding kernel on the domain to use. Can be [rbf, m52, m32]",
+    choices=["None"] + list(StationaryKernelMapping.keys()),
 )
 parser.add_argument(
     "--batch_size", type=int, default=5, help="Number of samples to evaluate"
@@ -163,38 +165,36 @@ def run_experiment(args):
     # Initialise the objective function and its optimizer.
     api = None
     if args.dataset == "nasbench201":
-        api = API201(args.api_data_path, verbose=args.verbose)
+        assert args.dataset in APIMapping.keys()
+        api = APIMapping[args.dataset](args.api_data_path, verbose=args.verbose)
     elif args.dataset == "nasbench301":
-        api = API301()
+        assert args.dataset in APIMapping.keys()
+        api = APIMapping[args.dataset]
     objective = BenchmarkMapping[args.dataset](
         log_scale=args.log,
         seed=args.seed,
         optimize_arch=args.optimize_arch,
         optimize_hps=args.optimize_hps,
     )
-    assert args.pool_strategy in [
-        "random",
-        "mutate",
-    ]
-    initial_design = Sampler(objective)
-    acquisition_function_opt = Sampler(objective)
+    initial_design = AcquisitionOptimizerMapping["random"](objective)
+    acquisition_function_opt = AcquisitionOptimizerMapping[args.pool_strategy](objective)
 
     # Initialise the optimizer strategy.
-    assert args.strategy in ["random", "gbo"]
     if args.strategy == "random":
-        optimizer = RandomSearch(acquisition_function_opt=acquisition_function_opt)
+        optimizer = RandomSearch(
+            acquisition_function_opt=AcquisitionOptimizerMapping["random"](objective)
+        )
     elif args.strategy == "gbo":
-        kern = []
-        for kg in args.graph_kernels:
-            kern.append(
-                GraphKernelMapping[kg](
-                    oa=args.optimal_assignment,
-                    se_kernel=StationaryKernelMapping[args.domain_se_kernel],
-                )
+        kern = [
+            GraphKernelMapping[kg](
+                oa=args.optimal_assignment,
+                se_kernel=None
+                if args.domain_se_kernel is None
+                else StationaryKernelMapping[args.domain_se_kernel],
             )
-        hp_kern = []
-        for kh in args.hp_kernels:
-            hp_kern.append(StationaryKernelMapping[kh])
+            for kg in args.graph_kernels
+        ]
+        hp_kern = [StationaryKernelMapping[kh]() for kh in args.hp_kernels]
 
         surrogate_model = ComprehensiveGP(
             graph_kernels=kern, hp_kernels=hp_kern, verbose=args.verbose
@@ -278,9 +278,6 @@ def run_experiment(args):
             experimenter.next_iteration()
 
         tracker.save_results()
-
-        if args.plot:
-            pass
 
 
 if __name__ == "__main__":

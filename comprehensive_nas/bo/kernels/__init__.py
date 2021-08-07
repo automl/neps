@@ -5,10 +5,10 @@ from .vectorial_kernels import HammingKernel, Matern32Kernel, Matern52Kernel, RB
 from .weisfilerlehman import WeisfilerLehman
 
 StationaryKernelMapping = {
-    "m52": Matern52Kernel(),
-    "m32": Matern32Kernel(),
-    "rbf": RBFKernel(),
-    "hm": HammingKernel(),
+    "m52": Matern52Kernel,
+    "m32": Matern32Kernel,
+    "rbf": RBFKernel,
+    "hm": HammingKernel,
 }
 
 GraphKernelMapping = {
