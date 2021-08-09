@@ -26,7 +26,7 @@ class WeisfilerLehman(GraphKernels):
     def __init__(
         self,
         h: int = 0,
-        type: str = "subtree",
+        base_type: str = "subtree",
         se_kernel: Stationary = None,
         layer_weights=None,
         node_weights=None,
@@ -44,14 +44,14 @@ class WeisfilerLehman(GraphKernels):
         Parameters
         ----------
         h: int: The number of Weisfeiler-Lehman iterations
-        type: str: defines the base kernel of WL iteration. Possible types are 'subtree' (default), 'sp': shortest path
+        base_type: str: defines the base kernel of WL iteration. Possible types are 'subtree' (default), 'sp': shortest path
         and 'edge' (The latter two are untested)
         se_kernel: Stationary. defines a stationary vector kernel to be used for successive embedding (i.e. the kernel
             function on which the vector embedding inner products are computed). if None, use the default linear kernel
         node_weights
         oa: whether the optimal assignment variant of the Weisfiler-Lehman kernel should be used
         node_label: the node_label defining the key node attribute.
-        edge_label: the edge label defining the key edge attribute. only relevant when type == 'edge'
+        edge_label: the edge label defining the key edge attribute. only relevant when base_type == 'edge'
         n_jobs: Parallisation to be used. *current version does not support parallel computing'
         return_tensor: whether return a torch tensor. If False, a numpy array will be returned.
         kwargs
@@ -70,8 +70,8 @@ class WeisfilerLehman(GraphKernels):
         self.requires_grad = requires_grad
         self.undirected = undirected
 
-        assert type in ["subtree", "sp", "edge"]
-        if type == "subtree":
+        assert base_type in ["subtree", "sp", "edge"]
+        if base_type == "subtree":
             base_kernel = VertexHistogram, {
                 "sparse": False,
                 "requires_ordered_features": requires_grad,
@@ -88,7 +88,7 @@ class WeisfilerLehman(GraphKernels):
                     "sparse": False,
                     "requires_ordered_features": requires_grad,
                 }
-        elif type == "edge":
+        elif base_type == "edge":
             base_kernel = EdgeHistogram, {"sparse": False}
             if oa:
                 base_kernel = EdgeHistogram, {
@@ -103,13 +103,15 @@ class WeisfilerLehman(GraphKernels):
                     "requires_ordered_features": requires_grad,
                 }
 
-        elif type == "sp":
+        elif base_type == "sp":
             base_kernel = ShortestPathAttr, {}
         else:
             raise NotImplementedError(
-                "The selected WL base kernel type" + str(type) + " is not implemented."
+                "The selected WL base kernel type"
+                + str(base_type)
+                + " is not implemented."
             )
-        self.type = type
+        self.base_type = base_type
         self.kern = _WL(
             n_jobs,
             h=h,
@@ -164,6 +166,7 @@ class WeisfilerLehman(GraphKernels):
         rebuild_model: bool = False,
         save_gram_matrix: bool = True,
         layer_weights=None,
+        gp_fit: bool = True,
         **kwargs,
     ):
         # Transform into GraKeL graph format
@@ -171,7 +174,7 @@ class WeisfilerLehman(GraphKernels):
             return self._gram
         if self.undirected:
             gr = transform_to_undirected(gr)
-        if self.type == "edge":
+        if self.base_type == "edge":
             if not all([g.graph_type == "edge_attr" for g in gr]):
                 raise ValueError(
                     "One or more graphs passed are not edge-attributed graphs. You need all graphs to be"
@@ -195,7 +198,7 @@ class WeisfilerLehman(GraphKernels):
             self.change_kernel_params({"layer_weights": layer_weights})
             self.layer_weights = layer_weights
 
-        K = self.kern.fit_transform(gr_)
+        K = self.kern.fit_transform(gr_, gp_fit=gp_fit)
         if self.return_tensor and not isinstance(K, torch.Tensor):
             K = torch.tensor(K)
         if save_gram_matrix:
@@ -211,7 +214,7 @@ class WeisfilerLehman(GraphKernels):
         reshape that to a more conventional shape.."""
         if self.undirected:
             gr = transform_to_undirected(gr)
-        if self.type == "edge":
+        if self.base_type == "edge":
             if not all([g.graph_type == "edge_attr" for g in gr]):
                 raise ValueError(
                     "One or more graphs passed are not edge-attributed graphs. You need all graphs to be"
@@ -247,7 +250,7 @@ class WeisfilerLehman(GraphKernels):
             gr2 = transform_to_undirected(gr2)
 
         # Convert into GraKel compatible graph format
-        if self.type == "edge":
+        if self.base_type == "edge":
             gr2 = graph_from_networkx(gr2, self.node_label, self.edge_label)
         else:
             gr2 = graph_from_networkx(gr2, self.node_label)
@@ -257,7 +260,7 @@ class WeisfilerLehman(GraphKernels):
         else:
             if self.undirected:
                 gr1 = transform_to_undirected(gr1)
-            if self.type == "edge":
+            if self.base_type == "edge":
                 gr1 = graph_from_networkx(gr1, self.node_label, self.edge_label)
             else:
                 gr1 = graph_from_networkx(gr1, self.node_label)

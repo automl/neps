@@ -13,7 +13,12 @@ from .weisfilerlehman import GraphKernels
 
 
 class CombineKernel:
-    def __init__(self, combined_by="sum", *kernels, **kwargs):
+    def __init__(
+        self,
+        combined_by="sum",
+        *kernels: list,
+        **kwargs,  # pylint: disable=unused-argument
+    ):
         self.has_graph_kernels = False
         self.has_vector_kernels = False
         for k in kernels:
@@ -35,6 +40,7 @@ class CombineKernel:
         normalize: bool = True,
         rebuild_model: bool = True,
         save_gram_matrix: bool = True,
+        gp_fit: bool = True,
         **kwargs,
     ):
 
@@ -49,6 +55,7 @@ class CombineKernel:
                     [g[i] for g in gr1] if isinstance(gr1[0], (list, tuple)) else gr1,
                     rebuild_model=rebuild_model,
                     save_gram_matrix=save_gram_matrix,
+                    gp_fit=gp_fit,
                     **kwargs,
                 )
 
@@ -79,7 +86,11 @@ class CombineKernel:
         return K
 
     def transform(
-        self, weights: torch.Tensor, configs: list, x=None, feature_lengthscale=None
+        self,
+        weights: torch.Tensor,
+        configs: list,
+        x=None,
+        feature_lengthscale=None,  # pylint: disable=unused-argument
     ):
         if self._gram is None:
             raise ValueError(

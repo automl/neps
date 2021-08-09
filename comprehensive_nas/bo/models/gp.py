@@ -346,6 +346,7 @@ class ComprehensiveGP:
             layer_weights=self.layer_weights,
             rebuild_model=True,
             save_gram_matrix=False,
+            gp_fit=False,
         )
 
         K_s = K_full[: self.n :, self.n :]

@@ -2,6 +2,7 @@ import numpy as np
 
 try:
     import torch
+    from torch.distributions import Normal
 except ModuleNotFoundError:
     from install_dev_utils.torch_error_message import error_message
 
@@ -18,6 +19,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         xi: float = 0.0,
         in_fill: str = "best",
         iters=0,
+        compute_fast: bool = False,
     ):
         """
         This is the graph BO version of the expected improvement
@@ -41,13 +43,12 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.augmented_ei = augmented_ei
         self.xi = xi
         self.incumbent = None
+        self.compute_fast = compute_fast
 
-    def eval(self, x, asscalar=False):
+    def eval(self, x, asscalar: bool = False):
         """
         Return the negative expected improvement at the query point x2
         """
-        from torch.distributions import Normal
-
         try:
             mu, cov = self.surrogate_model.predict(x)
         except ValueError:
@@ -64,6 +65,8 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
                 sigma_n + torch.diag(cov)
             )
+        if isinstance(x, list) and asscalar:
+            return ei.detach().numpy()
         if asscalar:
             ei = ei.detach().numpy().item()
         return ei
@@ -98,7 +101,10 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             self._compute_incumbent()
         )  # avoid computing inc over and over again
         if return_distinct:
-            eis = np.array([self.eval(c, asscalar=True) for c in candidates])
+            if self.compute_fast:
+                eis = self.eval(candidates, asscalar=True)  # faster
+            else:
+                eis = np.array([self.eval(c, asscalar=True) for c in candidates])
             eis_, unique_idx = np.unique(eis, return_index=True)
             try:
                 i = np.argpartition(eis_, -top_n)[-top_n:]
