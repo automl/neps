@@ -24,9 +24,8 @@ def set_seed(seed):
 
 
 class Experimentator(object):
-    def __init__(self, n_init: int, max_iters: int, seed: int = None) -> None:
+    def __init__(self, max_iters: int, seed: int = None) -> None:
         super().__init__()
-        self.n_init = n_init
         self.max_iters = max_iters
         self.iteration = 0
 
@@ -46,9 +45,7 @@ class Experimentator(object):
 
 
 class StatisticsTracker(object):
-    def __init__(
-        self, args, n_init: int, max_iters: int, save_path: str, log: bool = True
-    ):
+    def __init__(self, args, save_path: str, log: bool = True):
         self.start_time = time.time()
         self.end_time = np.nan
         self.seed = np.nan
@@ -62,9 +59,7 @@ class StatisticsTracker(object):
         self.cum_train_times = []
         self.opt_details = []
         self.iteration = 0
-        self.max_iters = max_iters
 
-        self.n_init = n_init
         self.log = log
         self.save_path = save_path
         self.iteration = 0
@@ -97,13 +92,9 @@ class StatisticsTracker(object):
         self.iteration = 0
 
     def calculate_incumbent(self, x: Iterable, y):
-        best_idx = np.argmax(y[self.n_init :])
-        incumbent = x[self.n_init :][best_idx]
-        incumbent_value = (
-            np.exp(-y[self.n_init :][best_idx]).item()
-            if self.log
-            else -y[self.n_init :][best_idx].item()
-        )
+        best_idx = np.argmax(y)
+        incumbent = x[best_idx]
+        incumbent_value = np.exp(-y[best_idx]).item() if self.log else -y[best_idx].item()
         return incumbent, incumbent_value
 
     @staticmethod

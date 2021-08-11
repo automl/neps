@@ -168,12 +168,7 @@ def run_experiment(args):
     elif args.dataset == "nasbench301":
         assert args.dataset in APIMapping.keys()
         api = APIMapping[args.dataset]
-    objective = BenchmarkMapping[args.dataset](
-        log_scale=args.log,
-        seed=args.seed,
-        optimize_arch=args.optimize_arch,
-        optimize_hps=args.optimize_hps,
-    )
+    objective = BenchmarkMapping[args.dataset]()
     initial_design = AcquisitionOptimizerMapping["random"](objective)
 
     # Initialise the optimizer strategy.
@@ -210,10 +205,8 @@ def run_experiment(args):
     else:
         raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
 
-    experimenter = Experimentator(args.n_init, args.max_iters, args.seed)
-    tracker = StatisticsTracker(
-        args, args.n_init, args.max_iters, args.save_path, args.log
-    )
+    experimenter = Experimentator(args.max_iters, args.seed)
+    tracker = StatisticsTracker(args, args.save_path, args.log)
 
     for seed in range(args.n_repeat):
         experimenter.reset(seed)
