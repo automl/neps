@@ -143,7 +143,7 @@ class StatisticsTracker(object):
                 np.exp(-np.max(y_test_cur)) if self.log else -np.max(y_test_cur)
             )
         if opt_details is not None:
-            self.opt_details.extend(opt_details)
+            self.opt_details.append(opt_details)
 
         self.end_time = time.time()
         cum_train_time = self.calculate_cum_train_time(train_details)
@@ -166,6 +166,22 @@ class StatisticsTracker(object):
             str(self.end_time - self.start_time),
             str(self.cum_train_times[-1]),
         ]
+        if (
+            "pool" in self.opt_details[-1].keys()
+            and "pool_vals" in self.opt_details[-1].keys()
+        ):
+            columns.append("Pool regret")
+            zipped_ranked = list(
+                sorted(
+                    zip(self.opt_details[-1]["pool_vals"], self.opt_details[-1]["pool"]),
+                    key=lambda x: x[0],
+                )
+            )[::-1]
+            true_best_pool = (
+                np.exp(-zipped_ranked[0][0][0]) if self.log else -zipped_ranked[0][0][0]
+            )
+            regret = np.abs(self.last_func_evals[-1] - true_best_pool)
+            values.extend([regret])
         if self.last_func_tests:
             columns.append("Last func test")
             values.extend([self.last_func_tests[-1]])

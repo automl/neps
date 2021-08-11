@@ -19,7 +19,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         xi: float = 0.0,
         in_fill: str = "best",
         iters=0,
-        compute_fast: bool = False,
+        compute_fast: bool = True,
     ):
         """
         This is the graph BO version of the expected improvement
