@@ -54,7 +54,7 @@ class BayesianOptimization(Optimizer):
 
         if self.return_opt_details:
             train_preds = self.surrogate_model.predict(
-                self.train_x,
+                self.train_x + list(next_x),
             )
             train_preds = [t.detach().cpu().numpy() for t in train_preds]
             pool_preds = self.surrogate_model.predict(
