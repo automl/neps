@@ -293,11 +293,9 @@ class StatisticsTracker(object):
                 writer.writerow(columns)
             writer.writerow(values)
 
-    def print(self, plot: bool = False, write_to_csv: bool = False):
+    def print(self, plot: bool = False, write_to_csv: bool = True):
         if plot:
             self.plot()
-        if write_to_csv:
-            self.write_to_csv()
 
         columns = [
             "Iteration",
@@ -351,6 +349,9 @@ class StatisticsTracker(object):
         else:
             table = table.split("\n")[2]
         print(table)
+
+        if write_to_csv:
+            self.write_to_csv()
 
         if not os.path.isdir(os.path.dirname(self.save_path)):
             os.makedirs(os.path.dirname(self.save_path))
