@@ -9,7 +9,7 @@ class MutationSampler(AcquisitionOptimizer):
         n_best: int = 10,
         n_mutate: int = None,
         allow_isomorphism: bool = False,
-        check_isomorphism_history: bool = False,
+        check_isomorphism_history: bool = True,  # on NB201 set to False!
         patience: int = 50,
     ):
         super().__init__(objective)
