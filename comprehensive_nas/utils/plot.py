@@ -3,6 +3,7 @@ from enum import IntEnum
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from path import Path
 
 color_marker_dict = {
     "random_search": {"color": "red", "marker": "o"},
@@ -203,3 +204,40 @@ def plot_losses(
             )
 
     return fig, ax
+
+
+def plot_incumbent_trajectory(
+    x: list,
+    incumbents: dict,
+    save_path: Path,
+    title: str = "",
+    x_label: str = "",
+    y_label: str = "",
+    plot_mean: bool = True,
+):
+    for strategy, vals in incumbents.items():
+        vals = np.array(vals)
+        if len(vals.shape) == 1:
+            plt.plot(x, vals, label=strategy)
+        elif len(vals.shape) == 2:
+            axis = 0 if len(x) == vals.shape[1] else 1
+            if plot_mean:
+                y = np.mean(vals, axis=axis)
+            else:  # plot median and quantils
+                y = np.median(vals, axis=axis)
+            std_dev = np.std(vals, axis=axis)
+            plt.errorbar(x, y, yerr=std_dev, label=strategy)
+        else:
+            raise ValueError(
+                "Plot incumbent trajectory only supports 1- or 2-dimensional values"
+            )
+
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.legend()
+    plt.title(title if title is not None else "Incumbent trajectory")
+    plt.grid(True, which="both", ls="-", alpha=0.8)
+    plt.tight_layout()
+
+    plt.savefig(save_path)
+    plt.close()
