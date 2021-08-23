@@ -97,7 +97,10 @@ class BayesianOptimization(Optimizer):
             )
         if batch_size - model_batch_size > 0:
             random_samples = self.random_sampler.sample(batch_size - model_batch_size)
-            next_x.extend(random_samples)
+            if len(next_x) > 0:
+                next_x.extend(random_samples)
+            else:
+                next_x = random_samples
 
         if self.return_opt_details:
             train_preds = self.surrogate_model.predict(
