@@ -1,3 +1,5 @@
+from typing import Iterable, Tuple, Union
+
 import numpy as np
 
 try:
@@ -15,10 +17,10 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(
         self,
         surrogate_model,
-        augmented_ei=False,
+        augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
-        iters=0,
+        iters: int = 0,
         compute_fast: bool = True,
     ):
         """
@@ -45,7 +47,9 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.incumbent = None
         self.compute_fast = compute_fast
 
-    def eval(self, x, asscalar: bool = False):
+    def eval(
+        self, x: Iterable, asscalar: bool = False
+    ) -> Union[np.ndarray, torch.Tensor, float]:
         """
         Return the negative expected improvement at the query point x2
         """
@@ -71,7 +75,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei = ei.detach().numpy().item()
         return ei
 
-    def _compute_incumbent(self):
+    def _compute_incumbent(self) -> torch.Tensor:
         """
         Compute and return the incumbent
         """
@@ -91,7 +95,9 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         """
         return self.incumbent if self.incumbent is not None else self._compute_incumbent()
 
-    def propose_location(self, candidates, top_n=5, return_distinct=True):
+    def propose_location(
+        self, candidates: Iterable, top_n: int = 5, return_distinct: bool = True
+    ) -> Tuple[Iterable, np.ndarray, np.ndarray]:
         """top_n: return the top n candidates wrt the acquisition function."""
         # selected_idx = [i for i in self.candidate_idx if self.evaluated[i] is False]
         # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
@@ -115,7 +121,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         else:
             eis = torch.tensor([self.eval(c) for c in candidates])
             _, indices = eis.topk(top_n)
-        xs = tuple([candidates[int(i)] for i in indices])
+        xs = [candidates[int(i)] for i in indices]
         self.incumbent = None
         return xs, eis, indices
 

@@ -194,7 +194,7 @@ class StatisticsTracker(object):
         plt.subplot(222)
         # Acquisition function
         plt.title("Acquisition")
-        plt.plot(pool_vals, self.opt_details[-1]["eis"], "b+")
+        plt.plot(pool_vals, self.opt_details[-1]["acq_vals"], "b+")
         # plt.xlim([2.5, None])
         plt.subplot(223)
         plt.title("Train")
