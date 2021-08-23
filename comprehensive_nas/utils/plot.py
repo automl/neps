@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from path import Path
+from scipy import stats
 
 color_marker_dict = {
     "random_search": {"color": "red", "marker": "o"},
@@ -214,6 +215,7 @@ def plot_incumbent_trajectory(
     x_label: str = "",
     y_label: str = "",
     plot_mean: bool = True,
+    plot_std_error: bool = True,
 ):
     for strategy, vals in incumbents.items():
         vals = np.array(vals)
@@ -221,11 +223,10 @@ def plot_incumbent_trajectory(
             plt.plot(x, vals, label=strategy)
         elif len(vals.shape) == 2:
             axis = 0 if len(x) == vals.shape[1] else 1
-            if plot_mean:
-                y = np.mean(vals, axis=axis)
-            else:  # plot median and quantils
-                y = np.median(vals, axis=axis)
-            std_dev = np.std(vals, axis=axis)
+            y = np.mean(vals, axis=axis) if plot_mean else np.median(vals, axis=axis)
+            std_dev = (
+                stats.sem(vals, axis=axis) if plot_std_error else np.std(vals, axis=axis)
+            )
             plt.errorbar(x, y, yerr=std_dev, label=strategy)
         else:
             raise ValueError(
