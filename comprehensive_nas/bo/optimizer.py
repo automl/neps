@@ -91,16 +91,19 @@ class BayesianOptimization(Optimizer):
         # Ask for a location proposal from the acquisition function..
         model_batch_size = np.random.binomial(n=batch_size, p=1 - self.random_interleave)
 
+        next_x = []
         if model_batch_size > 0:
-            next_x, acq_vals, _ = self.acquisition_function.propose_location(
+            model_samples, acq_vals, _ = self.acquisition_function.propose_location(
                 top_n=model_batch_size, candidates=pool
+            )
+            next_x.extend(model_samples)
+        elif self.return_opt_details:  # need to compute acq vals
+            _, acq_vals, _ = self.acquisition_function.propose_location(
+                top_n=1, candidates=pool
             )
         if batch_size - model_batch_size > 0:
             random_samples = self.random_sampler.sample(batch_size - model_batch_size)
-            if len(next_x) > 0:
-                next_x.extend(random_samples)
-            else:
-                next_x = random_samples
+            next_x.extend(random_samples)
 
         if self.return_opt_details:
             train_preds = self.surrogate_model.predict(
