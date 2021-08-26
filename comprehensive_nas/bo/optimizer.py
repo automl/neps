@@ -23,6 +23,7 @@ class BayesianOptimization(Optimizer):
         acquisition_function_opt: AcquisitionOptimizer,
         random_interleave: float = 0.0,
         return_opt_details: bool = True,
+        surrogate_model_fit_args: dict = None,
     ):
         """Implements the basic BO loop.
 
@@ -41,6 +42,7 @@ class BayesianOptimization(Optimizer):
         self.acqusition_function_opt = acquisition_function_opt
         self.random_interleave = random_interleave
         self.return_opt_details = return_opt_details
+        self.surrogate_model_fit_args = surrogate_model_fit_args
 
         self.random_sampler = RandomSampler(acquisition_function_opt.objective)
 
@@ -56,7 +58,11 @@ class BayesianOptimization(Optimizer):
         """
         self.update_model(x_configs, y)
 
-    def update_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]) -> None:
+    def update_model(
+        self,
+        x_configs: Iterable,
+        y: Union[Iterable, torch.Tensor],
+    ) -> None:
         """Updates the surrogate model and updates the acquisiton function (optimizer).
 
         Args:
@@ -67,7 +73,10 @@ class BayesianOptimization(Optimizer):
         self.train_y = y
 
         self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
-        self.surrogate_model.fit()
+        if self.surrogate_model_fit_args is not None:
+            self.surrogate_model.fit(**self.surrogate_model_fit_args)
+        else:
+            self.surrogate_model.fit()
         self.acquisition_function.reset_surrogate_model(
             surrogate_model=self.surrogate_model
         )
