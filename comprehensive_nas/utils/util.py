@@ -1,4 +1,5 @@
 import csv
+import datetime
 import json
 import os
 import pickle
@@ -92,8 +93,6 @@ class StatisticsTracker(object):
         options = vars(args)
 
         if self.save_path is not None:
-            import datetime
-
             time_string = datetime.datetime.now()
             time_string = time_string.strftime("%Y%m%d_%H%M%S")
             self.save_path = os.path.join(self.save_path, time_string)
@@ -278,17 +277,17 @@ class StatisticsTracker(object):
             else:
                 values.append(None)
 
-            columns.append("Last func test")
-            if self.last_func_tests:
-                values.append(self.last_func_tests[-1])
-            else:
-                values.append(None)
+        columns.append("Last func test")
+        if self.last_func_tests:
+            values.append(self.last_func_tests[-1])
+        else:
+            values.append(None)
 
-            columns.append("Incumbent Value test")
-            if self.incumbent_values_test:
-                values.append(self.incumbent_values_test[-1])
-            else:
-                values.append(None)
+        columns.append("Incumbent Value test")
+        if self.incumbent_values_test:
+            values.append(self.incumbent_values_test[-1])
+        else:
+            values.append(None)
 
         full_path = os.path.join(self.save_path, f"results_{self.number}.csv")
         file_exists = os.path.isfile(full_path)
