@@ -22,7 +22,7 @@ class BayesianOptimization(Optimizer):
         acquisition_function: BaseAcquisition,
         acquisition_function_opt: AcquisitionOptimizer,
         random_interleave: float = 0.0,
-        return_opt_details: bool = True,
+        return_opt_details: bool = False,
         surrogate_model_fit_args: dict = None,
     ):
         """Implements the basic BO loop.
@@ -133,4 +133,4 @@ class BayesianOptimization(Optimizer):
             }
             return next_x, opt_details
         else:
-            return next_x
+            return next_x, None

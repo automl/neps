@@ -298,7 +298,7 @@ class StatisticsTracker(object):
             writer.writerow(values)
 
     def print(self, plot: bool = False, write_to_csv: bool = True):
-        if plot:
+        if plot and len(self.opt_details) > 0:
             self.plot()
 
         columns = [
