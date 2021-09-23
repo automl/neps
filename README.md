@@ -17,7 +17,7 @@ To reproduce our exemplary experiments, see below
 
 1. Search on NAS-Bench-201 (by default on the CIFAR-10 valid dataset.)
     ```bash
-    python -u examples/nasbench_optimization.py  --dataset nasbench201 --task cifar10-valid --pool_size 200 --mutate_size 200 --batch_size 5 --n_init 10 --max_iters 30 --log --optimize_arch
+    python -m cnas_examples.nasbench_optimization  --dataset nasbench201 --task cifar10-valid --pool_size 200 --mutate_size 200 --batch_size 5 --n_init 10 --max_iters 30 --log --optimize_arch
     ```
     Append ```--fixed_query_seed 3``` for deterministic objective function. Append ```--task cifar100```
     for CIFAR-100 dataset, and similarly ```--task ImageNet16-120``` for ImageNet16 dataset.
