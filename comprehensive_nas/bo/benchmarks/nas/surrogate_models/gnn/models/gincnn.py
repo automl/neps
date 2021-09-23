@@ -4,7 +4,7 @@ try:
     from torch.nn import BatchNorm1d, Linear, ReLU, Sequential
     from torch_geometric.nn import GINConv, global_mean_pool
 except ModuleNotFoundError:
-    from install_dev_utils.torch_error_message import error_message
+    from comprehensive_nas.utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
 

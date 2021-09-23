@@ -1,5 +1,3 @@
-import numpy as np
-
 try:
     import torch
     import torch.nn as nn
@@ -10,7 +8,7 @@ try:
     from torch_geometric.nn.inits import glorot, zeros
     from torch_geometric.utils import scatter_, softmax
 except ModuleNotFoundError:
-    from install_dev_utils.torch_error_message import error_message
+    from comprehensive_nas.utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
 
@@ -212,7 +210,6 @@ class GNNpred_classifier(nn.Module):
         h = F.softmax(self.class_lin_layers[-1](h))
 
         hc = torch.cat((h, h_G_mean), 1)
-        import pdb
 
         #         pdb.set_trace()
 

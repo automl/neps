@@ -7,7 +7,7 @@ try:
     from torch_geometric.nn import DenseSAGEConv, dense_diff_pool
     from torch_geometric.utils import to_dense_adj, to_dense_batch
 except ModuleNotFoundError:
-    from install_dev_utils.torch_error_message import error_message
+    from comprehensive_nas.utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
 
