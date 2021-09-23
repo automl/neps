@@ -4,7 +4,6 @@ from .base_acqusition import *
 from .ei import *
 from .ucb import *
 
-
 AcquisitionMapping = {
     "EI": partial(
         ComprehensiveExpectedImprovement,
