@@ -1,0 +1,5 @@
+We used materials from the following public code repositories. We would like to express our gratitude towards
+these authors/codebase maintainers
+
+   1. Ru, Binxin al. "Interpretable Neural Architecture Search via Bayesian Optimisation with Weisfeiler-Lehman Kernels."
+   International Conference on Machine Learning (2021). [https://github.com/xingchenwan/nasbowl]
