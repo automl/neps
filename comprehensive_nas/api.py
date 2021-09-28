@@ -1,32 +1,45 @@
-import logging
-
 import metahyper.api
-import numpy as np
+
+from comprehensive_nas.random_search.new_optimizer_dummy import _DummySearcher
 
 
-class _DummySearcher:
-    def __init__(self, config_space):
-        self.config_space = config_space
-        self.logger = logging.getLogger(__name__)
-        self.losses = []
-        self.evaluated_configs = []
+class PipelineSpace:
+    def __init__(self, **parameters_kwargs):
+        self.parameters = parameters_kwargs
 
-    def new_result(self, job):
-        if job.exception is not None:
-            self.logger.warning(f"job {job.id} failed with exception\n{job.exception}")
 
-        self.evaluated_configs.append(job.kwargs["config"])
-        self.losses.append(
-            job.result["loss"] if np.isfinite(job.result["loss"]) else np.inf
-        )
+class _Parameter:
+    pass
 
-    def get_config(self):
-        return self.config_space.sample_configuration().get_dictionary()
+
+class Categorical(_Parameter):
+    def __init__(self, choices):
+        pass
+
+
+class Float(_Parameter):
+    def __init__(self, lower, upper, log=False):
+        pass
+
+
+class Integer(_Parameter):
+    def __init__(self, lower, upper, log=False):
+        pass
+
+
+class GrammarGraph(_Parameter):
+    def __init__(self):
+        pass
+
+
+class DenseGraph(_Parameter):
+    def __init__(self, num_nodes, edge_choices):
+        pass
 
 
 def run_comprehensive_nas(
     run_pipeline,
-    config_space,
+    pipeline_space,
     working_directory,
     n_iterations,
     searcher="dummy_random",
@@ -38,14 +51,14 @@ def run_comprehensive_nas(
     **searcher_kwargs,  # pylint: disable=unused-argument
 ):
     if searcher == "dummy_random":
-        sampler = _DummySearcher(config_space=config_space)
+        sampler = _DummySearcher(pipeline_space=pipeline_space)
     else:
         raise ValueError
 
     return metahyper.api.run(
         sampler,
         run_pipeline,
-        config_space,
+        pipeline_space,
         working_directory,
         n_iterations,
         start_master=start_master,
