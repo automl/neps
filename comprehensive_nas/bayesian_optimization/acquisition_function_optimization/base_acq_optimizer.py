@@ -19,7 +19,7 @@ class AcquisitionOptimizer:
         self.y: Iterable = []
 
     @abstractmethod
-    def sample(self, pool_size: int) -> list:
+    def sample(self, pool_size: int, batch_size: int = None):
         raise NotImplementedError
 
     def reset_surrogate_model(self, surrogate_model) -> None:
