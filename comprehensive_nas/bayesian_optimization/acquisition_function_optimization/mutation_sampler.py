@@ -1,3 +1,8 @@
+from typing import Tuple
+
+import numpy as np
+
+from ..acqusition_functions.base_acqusition import BaseAcquisition
 from .base_acq_optimizer import AcquisitionOptimizer
 from .random_sampler import RandomSampler
 
@@ -6,13 +11,14 @@ class MutationSampler(AcquisitionOptimizer):
     def __init__(
         self,
         objective,
+        acquisition_function: BaseAcquisition,
         n_best: int = 10,
         n_mutate: int = None,
         allow_isomorphism: bool = False,
         check_isomorphism_history: bool = True,  # on NB201 set to False!
         patience: int = 50,
     ):
-        super().__init__(objective)
+        super().__init__(objective, acquisition_function)
         self.n_best = n_best
         self.n_mutate = n_mutate
         self.allow_isomorphism = allow_isomorphism
@@ -23,7 +29,22 @@ class MutationSampler(AcquisitionOptimizer):
 
         self.random_sampling = RandomSampler(objective)
 
-    def sample(self, pool_size: int = 250) -> list:
+    def sample(
+        self, pool_size: int = 250, batch_size: int = 5
+    ) -> Tuple[list, list, np.ndarray]:
+        pool = self.create_pool(pool_size)
+
+        if batch_size is None:
+            return pool
+        if batch_size is not None and self.acquisition_function is None:
+            raise Exception(f"Mutation sampler has no acquisition function!")
+
+        samples, acq_vals, _ = self.acquisition_function.propose_location(
+            top_n=batch_size, candidates=pool
+        )
+        return samples, pool, acq_vals
+
+    def create_pool(self, pool_size: int) -> list:
         if len(self.x) == 0:
             return self.random_sampling.sample(pool_size=pool_size)
 

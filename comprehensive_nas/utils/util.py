@@ -1,5 +1,6 @@
 import csv
-import datetime
+
+# import datetime
 import json
 import os
 import pickle
@@ -92,14 +93,15 @@ class StatisticsTracker(object):
 
         options = vars(args)
 
-        if self.save_path is not None:
-            time_string = datetime.datetime.now()
-            time_string = time_string.strftime("%Y%m%d_%H%M%S")
-            self.save_path = os.path.join(self.save_path, time_string)
-            if not os.path.exists(self.save_path):
-                os.makedirs(self.save_path)
-            with open(os.path.join(self.save_path, "args.json"), "w") as f:
-                json.dump(options, f, indent=6)
+        # if self.save_path is not None:
+        #     time_string = datetime.datetime.now()
+        #     time_string = time_string.strftime("%Y%m%d_%H%M%S")
+        #     self.save_path = os.path.join(self.save_path, time_string)
+
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+        with open(os.path.join(self.save_path, "args.json"), "w") as f:
+            json.dump(options, f, indent=6)
 
     def reset(self):
         self.start_time = time.time()
@@ -116,6 +118,9 @@ class StatisticsTracker(object):
         self.y_evals = None
         self.theoretical_best = 1e10
         self.number += 1
+
+    def set_number(self, new_number: int):
+        self.number = new_number
 
     def calculate_incumbent(self, x: Iterable, y):
         best_idx = np.argmax(y)

@@ -12,14 +12,14 @@ except ModuleNotFoundError:
 from ..core.optimizer import Optimizer
 from .acquisition_function_optimization.base_acq_optimizer import AcquisitionOptimizer
 from .acquisition_function_optimization.random_sampler import RandomSampler
-from .acqusition_functions.base_acqusition import BaseAcquisition
+
+# from .acqusition_functions.base_acqusition import BaseAcquisition
 
 
 class BayesianOptimization(Optimizer):
     def __init__(
         self,
         surrogate_model,
-        acquisition_function: BaseAcquisition,
         acquisition_function_opt: AcquisitionOptimizer,
         random_interleave: float = 0.0,
         return_opt_details: bool = False,
@@ -38,7 +38,6 @@ class BayesianOptimization(Optimizer):
 
         super().__init__()
         self.surrogate_model = surrogate_model
-        self.acquisition_function = acquisition_function
         self.acqusition_function_opt = acquisition_function_opt
         self.random_interleave = random_interleave
         self.return_opt_details = return_opt_details
@@ -77,9 +76,7 @@ class BayesianOptimization(Optimizer):
             self.surrogate_model.fit(**self.surrogate_model_fit_args)
         else:
             self.surrogate_model.fit()
-        self.acquisition_function.reset_surrogate_model(
-            surrogate_model=self.surrogate_model
-        )
+        self.acqusition_function_opt.reset_surrogate_model(self.surrogate_model)
         self.acqusition_function_opt.reset_XY(x=self.train_x, y=self.train_y)
 
     def propose_new_location(
@@ -94,19 +91,17 @@ class BayesianOptimization(Optimizer):
         Returns:
             Union[Iterable, Tuple[Iterable, dict]]: proposals, (model decision information metrics)
         """
-        # create candidate pool
-        pool = self.acqusition_function_opt.sample(pool_size)
-
         # Ask for a location proposal from the acquisition function..
         model_batch_size = np.random.binomial(n=batch_size, p=1 - self.random_interleave)
 
         next_x = []
         if model_batch_size > 0:
-            model_samples, acq_vals, _ = self.acquisition_function.propose_location(
-                top_n=model_batch_size, candidates=pool
+            model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
+                pool_size, batch_size
             )
             next_x.extend(model_samples)
         elif self.return_opt_details:  # need to compute acq vals
+            pool = self.acqusition_function_opt.sample(pool_size)
             _, acq_vals, _ = self.acquisition_function.propose_location(
                 top_n=1, candidates=pool
             )

@@ -5,12 +5,10 @@ import random
 import ConfigSpace
 import networkx as nx
 import numpy as np
-
 from nasbench import api
 from nasbench.lib import graph_util
 
 from ..abstract_benchmark import AbstractBenchmark
-
 
 MAX_EDGES = 9
 VERTICES = 7

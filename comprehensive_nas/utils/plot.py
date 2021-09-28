@@ -217,16 +217,22 @@ def plot_incumbent_trajectory(
     plot_mean: bool = True,
     plot_std_error: bool = True,
 ):
-    for strategy, vals in incumbents.items():
+    for strategy, vals in sorted(incumbents.items()):
         vals = np.array(vals)
         if len(vals.shape) == 1:
             plt.plot(x, vals, label=strategy)
         elif len(vals.shape) == 2:
             axis = 0 if len(x) == vals.shape[1] else 1
             y = np.mean(vals, axis=axis) if plot_mean else np.median(vals, axis=axis)
-            std_dev = (
-                stats.sem(vals, axis=axis) if plot_std_error else np.std(vals, axis=axis)
-            )
+            if vals.shape[0] == 1:
+                print(f"WARNING: {strategy} has only one run!")
+                std_dev = np.zeros_like(x)
+            else:
+                std_dev = (
+                    stats.sem(vals, axis=axis)
+                    if plot_std_error
+                    else np.std(vals, axis=axis)
+                )
             plt.errorbar(x, y, yerr=std_dev, label=strategy)
         else:
             raise ValueError(
