@@ -4,7 +4,7 @@ import metahyper.api
 import numpy as np
 
 
-class _RandomSampler:
+class _DummySearcher:
     def __init__(self, config_space):
         self.config_space = config_space
         self.logger = logging.getLogger(__name__)
@@ -35,9 +35,10 @@ def run_comprehensive_nas(
     nic_name="lo",
     do_live_logging=True,
     overwrite_logging=False,
+    **searcher_kwargs,  # pylint: disable=unused-argument
 ):
     if searcher == "dummy_random":
-        sampler = _RandomSampler(config_space=config_space)
+        sampler = _DummySearcher(config_space=config_space)
     else:
         raise ValueError
 

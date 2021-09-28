@@ -1,6 +1,6 @@
 import ConfigSpace as CS
 
-from comprehensive_nas.api import run_comprehensive_nas
+from comprehensive_nas import run_comprehensive_nas
 
 
 def run_pipeline(  # pylint: disable=unused-argument
