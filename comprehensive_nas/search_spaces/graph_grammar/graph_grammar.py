@@ -1,25 +1,29 @@
+from __future__ import annotations
+
 import collections
 import queue
 from abc import abstractmethod
 from copy import deepcopy
 from functools import partial
-from typing import List, Tuple, Union
 
 import networkx as nx
 import numpy as np
 
 from .cfg import Grammar
+from .crossover import crossover
 from .graph import Graph
-from .mutations import simple_mutate
+from .mutations import bananas_mutate, simple_mutate
 from .primitives import AbstractPrimitive
 
 
-class GraphGrammar(Graph):
+class CoreGraphGrammar(Graph):
     def __init__(
         self,
-        grammars: List[Grammar],
+        grammars: list[Grammar],
         edge_attr: bool = True,
         edge_label: str = "op_name",
+        zero_op: list = None,
+        identity_op: list = None,
         name: str = None,
         scope: str = None,
     ):
@@ -29,12 +33,12 @@ class GraphGrammar(Graph):
         self.edge_attr = edge_attr
         self.edge_label = edge_label
 
-        self.zero_op = ["Zero", "zero"]
-        self.identity_op = ["Identity", "id"]
+        self.zero_op = zero_op
+        self.identity_op = identity_op
 
         self.terminal_to_graph_nodes = None
 
-    def get_grammars(self) -> List[Grammar]:
+    def get_grammars(self) -> list[Grammar]:
         return self.grammars
 
     def clear_graph(self):
@@ -102,7 +106,7 @@ class GraphGrammar(Graph):
         return dfs(set(), tree, self._find_root(tree))
 
     @staticmethod
-    def _dfs_preorder_nodes(G: nx.DiGraph, source: str = None) -> List[int]:
+    def _dfs_preorder_nodes(G: nx.DiGraph, source: str = None) -> list[int]:
         """Generates nodes in DFS pre-ordering starting at source.
         Note that after pruning we cannot reconstruct the associated string tree!
 
@@ -132,7 +136,7 @@ class GraphGrammar(Graph):
         return leafnode
 
     @staticmethod
-    def _get_neighbors_from_parse_tree(tree: nx.DiGraph, node: int) -> List[int]:
+    def _get_neighbors_from_parse_tree(tree: nx.DiGraph, node: int) -> list[int]:
         return tree.nodes[node]["children"]
 
     @staticmethod
@@ -169,10 +173,10 @@ class GraphGrammar(Graph):
 
     def assemble_trees(
         self,
-        base_tree: Union[str, nx.DiGraph],
-        motif_trees: Union[List[str], List[nx.DiGraph]],
+        base_tree: str | nx.DiGraph,
+        motif_trees: list[str] | list[nx.DiGraph],
         node_label: str = "op_name",
-    ) -> Union[str, nx.DiGraph]:
+    ) -> str | nx.DiGraph:
         """Assembles the base parse tree with the motif parse trees
 
         Args:
@@ -286,7 +290,7 @@ class GraphGrammar(Graph):
         node_label: str = "op_name",
         return_cell: bool = False,
         v2: bool = False,
-    ) -> Union[None, Graph]:
+    ) -> None | Graph:
         """Builds the computational graph from a parse tree.
 
         Args:
@@ -705,7 +709,7 @@ class GraphGrammar(Graph):
             return False
 
         def find_longest_match(
-            i: int, string_tree: str, symbols: List[str], max_match: int
+            i: int, string_tree: str, symbols: list[str], max_match: int
         ) -> int:
             # search for longest matching symbol and add it
             # assumes that the longest match is the true match
@@ -844,8 +848,8 @@ class GraphGrammar(Graph):
             add_subtree_map = False
 
         def to_node_attributed_edge_list(
-            edge_list: List[Tuple],
-        ) -> Tuple[List[Tuple], dict]:
+            edge_list: list[tuple],
+        ) -> tuple[list[tuple], dict]:
             node_offset = 2
             edge_to_node_map = {e: i + node_offset for i, e in enumerate(edge_list)}
             first_nodes = {e[0] for e in edge_list}
@@ -1049,7 +1053,7 @@ class GraphGrammar(Graph):
 
         return G
 
-    def prune_graph(self, graph: Union[nx.DiGraph, Graph] = None, edge_attr: bool = True):
+    def prune_graph(self, graph: nx.DiGraph | Graph = None, edge_attr: bool = True):
         use_self = graph is None
         if use_self:
             graph = self
@@ -1125,7 +1129,7 @@ class GraphGrammar(Graph):
                     graph = _backtrack_remove(graph, n)
         return graph
 
-    def _sampler_maxMin(self, largest: bool = True) -> Union[str, List[str]]:
+    def _sampler_maxMin(self, largest: bool = True) -> str | list[str]:
         """Samples new parse tree(s) based on grammars.
         Assumes that the first rule of each production leads to
         smallest DAG and last to largest DAG!
@@ -1150,3 +1154,59 @@ class GraphGrammar(Graph):
         return simple_mutate(
             parent_string_tree=parent_string_tree, grammar=self.grammars[0]
         )
+
+
+class GraphGrammar(CoreGraphGrammar):
+    def __init__(  # pylint: disable=W0102
+        self,
+        grammars: list[Grammar],
+        edge_attr: bool = True,
+        edge_label: str = "op_name",
+        zero_op: list = ["Zero", "zero"],
+        identity_op: list = ["Identity", "id"],
+        name: str = None,
+        scope: str = None,
+    ):
+        super().__init__(
+            grammars, edge_attr, edge_label, zero_op, identity_op, name, scope
+        )
+
+    @abstractmethod
+    def create_graph_from_string(self, string_tree: str):
+        raise NotImplementedError
+
+    def mutate(
+        self,
+        parent: GraphGrammar = None,
+        mutation_rate: float = 1.0,
+        mutation_strategy: str = "bananas",
+    ):
+        if parent is None:
+            parent = self
+        parent_string_tree = parent.string_tree
+
+        if mutation_strategy == "bananas":
+            child_string_tree, is_same = bananas_mutate(
+                parent_string_tree=parent_string_tree,
+                grammar=self.grammars[0],
+                mutation_rate=mutation_rate,
+            )
+        else:
+            child_string_tree, is_same = super().mutate(
+                parent_string_tree=parent_string_tree
+            )
+
+        if is_same:
+            raise Exception("Parent is the same as child!")
+
+        return parent.create_graph_from_string(child_string_tree)
+
+    def crossover(self, parent1: GraphGrammar, parent2: GraphGrammar = None):
+        if parent2 is None:
+            parent2 = self
+        parent1_string_tree = parent1.string_tree
+        parent2_string_tree = parent2.string_tree
+        children = crossover(parent1_string_tree, parent2_string_tree, self.grammars[0])
+        if all(not c for c in children):
+            raise Exception("Cannot create crossover")
+        return [parent2.create_graph_from_string(child) for child in children]
