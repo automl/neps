@@ -9,23 +9,25 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message)
 
-from comprehensive_nas.bayesian_optimization.acquisition_function_optimization import (
+from comprehensive_nas.optimizers.bayesian_optimization.acquisition_function_optimization import (
     AcquisitionOptimizerMapping,
 )
-from comprehensive_nas.bayesian_optimization.acqusition_functions import (
+from comprehensive_nas.optimizers.bayesian_optimization.acqusition_functions import (
     AcquisitionMapping,
 )
-from comprehensive_nas.bayesian_optimization.benchmarks import BenchmarkMapping
-from comprehensive_nas.bayesian_optimization.benchmarks.nas.nb_configfiles.api import (
+from comprehensive_nas.optimizers.bayesian_optimization.benchmarks import BenchmarkMapping
+from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.nas.nb_configfiles.api import (
     APIMapping,
 )
-from comprehensive_nas.bayesian_optimization.kernels import (
+from comprehensive_nas.optimizers.bayesian_optimization.kernels import (
     GraphKernelMapping,
     StationaryKernelMapping,
 )
-from comprehensive_nas.bayesian_optimization.models.gp import ComprehensiveGP
-from comprehensive_nas.bayesian_optimization.optimizer import BayesianOptimization
-from comprehensive_nas.random_search.optimizer import RandomSearch
+from comprehensive_nas.optimizers.bayesian_optimization.models.gp import ComprehensiveGP
+from comprehensive_nas.optimizers.bayesian_optimization.optimizer import (
+    BayesianOptimization,
+)
+from comprehensive_nas.optimizers.random_search.optimizer import RandomSearch
 from comprehensive_nas.utils.util import Experimentator, StatisticsTracker
 
 warnings.simplefilter("ignore", category=FutureWarning)

@@ -9,6 +9,7 @@ from functools import partial
 import networkx as nx
 import numpy as np
 
+from ..parameter import Parameter
 from .cfg import Grammar
 from .crossover import crossover
 from .graph import Graph
@@ -1156,7 +1157,7 @@ class CoreGraphGrammar(Graph):
         )
 
 
-class GraphGrammar(CoreGraphGrammar):
+class GraphGrammar(CoreGraphGrammar, Parameter):
     def __init__(  # pylint: disable=W0102
         self,
         grammars: list[Grammar],
