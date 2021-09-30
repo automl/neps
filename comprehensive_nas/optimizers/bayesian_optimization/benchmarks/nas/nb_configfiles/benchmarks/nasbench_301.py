@@ -135,9 +135,7 @@ class NASBench301_arch_only(NASBench301):
         fidelity_starts = self.surrogate_model.config_loader.fidelity_starts
         for fidelity, fidelity_start in fidelity_starts.items():
             query_config_dict[fidelity] = int(
-                np.round(
-                    (fidelity_start * fidelity_multipliers[fidelity] ** eval_fidelity)
-                )
+                np.round(fidelity_start * fidelity_multipliers[fidelity] ** eval_fidelity)
             )
         try:
             pred_validation_accuracy = self.surrogate_model.query(
@@ -189,9 +187,7 @@ class NASBench301_arch_hyp(NASBench301):
         fidelity_starts = self.surrogate_model.config_loader.fidelity_starts
         for fidelity, fidelity_start in fidelity_starts.items():
             query_config_dict[fidelity] = int(
-                np.round(
-                    (fidelity_start * fidelity_multipliers[fidelity] ** eval_fidelity)
-                )
+                np.round(fidelity_start * fidelity_multipliers[fidelity] ** eval_fidelity)
             )
         try:
             pred_validation_accuracy = self.surrogate_model.query(

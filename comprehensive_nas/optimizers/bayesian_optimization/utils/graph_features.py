@@ -94,7 +94,7 @@ class FeatureExtractor:
         """
         from collections import Counter
 
-        degree_seq = sorted([d for d, n in dict(self.undirected_g.degree)], reverse=True)
+        degree_seq = sorted((d for d, n in dict(self.undirected_g.degree)), reverse=True)
         degree_count = Counter(degree_seq)
         deg, cnt = zip(*degree_count.items())
         if normalize:

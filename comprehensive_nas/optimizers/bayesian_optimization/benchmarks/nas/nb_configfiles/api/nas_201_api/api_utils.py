@@ -857,7 +857,7 @@ class ResultsCount(object):
             return sum(self.latency) / len(self.latency)
 
     def update_eval(self, accs, losses, times):  # new version
-        data_names = set([x.split("@")[0] for x in accs.keys()])
+        data_names = {x.split("@")[0] for x in accs.keys()}
         for data_name in data_names:
             assert (
                 data_name not in self.eval_names
@@ -928,7 +928,7 @@ class ResultsCount(object):
         )
         if self.train_times is not None:
             xtime = self.train_times[iepoch]
-            atime = sum([self.train_times[i] for i in range(iepoch + 1)])
+            atime = sum(self.train_times[i] for i in range(iepoch + 1))
         else:
             xtime, atime = None, None
         return {
@@ -951,10 +951,7 @@ class ResultsCount(object):
             if isinstance(self.eval_times, dict) and len(self.eval_times) > 0:
                 xtime = self.eval_times["{:}@{:}".format(xname, iepoch)]
                 atime = sum(
-                    [
-                        self.eval_times["{:}@{:}".format(xname, i)]
-                        for i in range(iepoch + 1)
-                    ]
+                    self.eval_times["{:}@{:}".format(xname, i)] for i in range(iepoch + 1)
                 )
             else:
                 xtime, atime = None, None

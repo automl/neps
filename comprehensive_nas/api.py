@@ -1,6 +1,6 @@
 import metahyper.api
 
-from comprehensive_nas.random_search.new_optimizer_dummy import _DummySearcher
+from comprehensive_nas.optimizers.random_search.new_optimizer_dummy import _DummySearcher
 
 
 class PipelineSpace:

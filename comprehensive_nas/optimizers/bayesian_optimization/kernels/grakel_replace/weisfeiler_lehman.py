@@ -344,7 +344,7 @@ class WeisfeilerLehman(Kernel):
                             credential = (
                                 str(L[j][v])
                                 + ","
-                                + str(sorted([L[j][n] for n in Gs_ed[j][v].keys()]))
+                                + str(sorted(L[j][n] for n in Gs_ed[j][v].keys()))
                             )
                             L_temp[j][v] = credential
                             label_set.add(credential)
@@ -529,9 +529,9 @@ class WeisfeilerLehman(Kernel):
                     L[nx] = x.get_labels(purpose="dictionary")
 
                     # Hold all the distinct values
-                    distinct_values |= set(
+                    distinct_values |= {
                         v for v in itervalues(L[nx]) if v not in self._inv_labels[0]
-                    )
+                    }
                     nx += 1
                 if nx == 0:
                     raise ValueError("parsed input is empty")
@@ -569,7 +569,7 @@ class WeisfeilerLehman(Kernel):
                         credential = (
                             str(L[j][v])
                             + ","
-                            + str(sorted([L[j][n] for n in Gs_ed[j][v].keys()]))
+                            + str(sorted(L[j][n] for n in Gs_ed[j][v].keys()))
                         )
                         L_temp[j][v] = credential
                         if credential not in self._inv_labels[i]:

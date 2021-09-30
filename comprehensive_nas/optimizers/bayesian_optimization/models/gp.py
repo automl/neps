@@ -150,7 +150,7 @@ class ComprehensiveGP:
         iters: int = 20,
         optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
-        wl_lengthscales: tuple = tuple([np.e ** i for i in range(-2, 3)]),
+        wl_lengthscales: tuple = tuple(np.e ** i for i in range(-2, 3)),
         optimize_lik: bool = True,
         max_lik: float = 0.01,
         optimize_wl_layer_weights: bool = False,

@@ -299,7 +299,7 @@ class MultiscaleLaplacianFast(Kernel):
                     for j in range(ng):
                         K_proj = np.zeros(shape=(data[j][0].shape[0], len(C)))
                         for n in range(data[j][0].shape[0]):
-                            for m in range(len(C)):
+                            for m, _ in enumerate(C):
                                 K_proj[n, m] = self.pairwise_operation(
                                     C[m], calculate_C(j, n, l)
                                 )

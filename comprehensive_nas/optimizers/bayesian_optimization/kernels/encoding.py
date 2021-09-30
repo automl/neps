@@ -244,12 +244,10 @@ class PathDistance(NASBOTDistance):
         """ output one-hot encoding of paths """
         if "~" in g.name:
             LONGEST_PATH_LENGTH = 3
-            num_paths = sum(
-                [len(OPS_201) ** i for i in range(1, LONGEST_PATH_LENGTH + 1)]
-            )
+            num_paths = sum(len(OPS_201) ** i for i in range(1, LONGEST_PATH_LENGTH + 1))
             path_indices = self.get_path_indices_201(g)
         else:
-            num_paths = sum([len(OPS_EX) ** i for i in range(OP_SPOTS + 1)])
+            num_paths = sum(len(OPS_EX) ** i for i in range(OP_SPOTS + 1))
             path_indices = self.get_path_indices(g)
         path_encoding = np.zeros(num_paths)
         for index in path_indices:

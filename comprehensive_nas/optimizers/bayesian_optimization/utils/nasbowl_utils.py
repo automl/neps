@@ -112,7 +112,7 @@ def _preprocess(X, y=None):
     return tmp, y
 
 
-def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
+def heatmap(data, row_labels, col_labels, ax=None, cbar_kw=None, cbarlabel="", **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -134,6 +134,8 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **k
     **kwargs
         All other arguments are forwarded to `imshow`.
     """
+    if cbar_kw is None:
+        cbar_kw = {}
 
     if not ax:
         ax = plt.gca()
@@ -174,7 +176,7 @@ def annotate_heatmap(
     im,
     data=None,
     valfmt="{x2:.2f}",
-    textcolors=["black", "white"],
+    textcolors=None,
     threshold=None,
     **textkw,
 ):
@@ -202,6 +204,8 @@ def annotate_heatmap(
         All other arguments are forwarded to each call to `text` used to create
         the text labels.
     """
+    if textcolors is None:
+        textcolors = ["black", "white"]
 
     if not isinstance(data, (list, np.ndarray)):
         data = im.get_array()
