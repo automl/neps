@@ -101,9 +101,8 @@ class BayesianOptimization(Optimizer):
             )
             next_x.extend(model_samples)
         elif self.return_opt_details:  # need to compute acq vals
-            pool = self.acqusition_function_opt.sample(pool_size)
-            _, acq_vals, _ = self.acquisition_function.propose_location(
-                top_n=1, candidates=pool
+            model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
+                pool_size, 1
             )
         if batch_size - model_batch_size > 0:
             random_samples = self.random_sampler.sample(batch_size - model_batch_size)

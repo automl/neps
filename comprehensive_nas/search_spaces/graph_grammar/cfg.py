@@ -459,8 +459,9 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
     import networkx as nx
-    from hierarchical_nas_benchmarks.search_spaces.core.graph_grammar import GraphGrammar
     from path import Path
+
+    from comprehensive_nas.search_spaces.graph_grammar.graph_grammar import GraphGrammar
 
     g = GraphGrammar([])
 
