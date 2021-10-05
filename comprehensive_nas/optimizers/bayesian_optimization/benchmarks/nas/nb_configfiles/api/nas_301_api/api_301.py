@@ -1,7 +1,7 @@
 import json
 import os
 
-from comprehensive_nas.bo.benchmarks.nas.surrogate_models.utils import model_dict
+from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.nas.surrogate_models.utils import model_dict
 
 
 class NASBench301API:

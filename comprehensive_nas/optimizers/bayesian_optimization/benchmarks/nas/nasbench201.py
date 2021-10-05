@@ -197,12 +197,15 @@ class NASBench201(AbstractBenchmark):
             y = -y
         return y, {"train_time": cost_results["flops"]}
 
-    def query(self, n_repeat=1, **kwargs):
-        if n_repeat == 1:
-            return self._retrieve("eval", **kwargs)
-        return np.mean(
-            np.array([self._retrieve("eval", **kwargs) for _ in range(n_repeat)])
-        )
+    def query(self, mode='eval', n_repeat=1, **kwargs):
+        if mode == "test":
+                return self.test(n_repeat=n_repeat)[0]
+        else:
+            if n_repeat == 1:
+                return self._retrieve("eval", **kwargs)
+            return np.mean(
+                np.array([self._retrieve("eval", **kwargs) for _ in range(n_repeat)])
+            )
 
     def sample_random_architecture(self):
         nas201_cs = NASBench201.get_config_space()
@@ -230,6 +233,7 @@ class NASBench201(AbstractBenchmark):
                     continue
                 break
             self.graph = rand_arch  # pylint: disable=attribute-defined-outside-init
+            self.name = str(self.parse())
 
         if self.optimize_hps:
             rand_hps = []

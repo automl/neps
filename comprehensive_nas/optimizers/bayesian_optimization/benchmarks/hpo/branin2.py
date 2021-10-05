@@ -17,7 +17,7 @@ class Branin2(AbstractBenchmark):
         self.has_continuous_hp = True
         self.has_categorical_hp = False
 
-    def query(self, **kwargs):  # pylint: disable=unused-argument
+    def query(self, mode='eval', **kwargs):  # pylint: disable=unused-argument
 
         x = self.hps
 
@@ -32,7 +32,11 @@ class Branin2(AbstractBenchmark):
 
         if self.negative:
             y = -y
-        return y, {"train_time": self.eval_cost()}
+
+        if mode == "test":
+            return y
+        else:
+            return y, {"train_time": self.eval_cost()}
 
     @staticmethod
     def eval_cost():
@@ -64,3 +68,4 @@ class Branin2(AbstractBenchmark):
         config = cs.sample_configuration()
         rand_hps = list(config.get_dictionary().values())
         self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
+        self.name = str(self.parse())

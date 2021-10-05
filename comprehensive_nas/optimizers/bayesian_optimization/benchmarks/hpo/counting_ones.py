@@ -22,7 +22,7 @@ class CountingOnes(AbstractBenchmark):
         self.has_continuous_hp = bool(N_CONTINUOUS)
         self.has_categorical_hp = bool(N_CATEGORICAL)
 
-    def query(self, **kwargs):  # pylint: disable=unused-argument
+    def query(self, mode='eval', **kwargs):  # pylint: disable=unused-argument
 
         x = deepcopy(self.hps)
         if isinstance(x[0], str):
@@ -31,7 +31,11 @@ class CountingOnes(AbstractBenchmark):
 
         if self.negative:
             y = -y
-        return y, {"train_time": self.eval_cost()}
+
+        if mode == "test":
+            return y
+        else:
+            return y, {"train_time": self.eval_cost()}
 
     @staticmethod
     def eval_cost():
@@ -43,6 +47,7 @@ class CountingOnes(AbstractBenchmark):
         rand_hps = list(map(str, config.get_dictionary().values()))[:N_CATEGORICAL]
         rand_hps += list(config.get_dictionary().values())[N_CATEGORICAL:]
         self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
+        self.name = str(self.parse())
 
     def reinitialize(self, negative=False, seed=None):
         self.negative = negative  # pylint: disable=attribute-defined-outside-init

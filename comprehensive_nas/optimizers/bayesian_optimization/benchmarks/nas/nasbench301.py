@@ -72,8 +72,8 @@ class NASBench301(AbstractBenchmark):
         log_scale=False,
         negative=False,
         seed=None,
-        optimize_arch=False,
-        optimize_hps=True,
+        optimize_arch=True,
+        optimize_hps=False,
     ):
         optim = 0.04944576819737756
         if log_scale:
@@ -104,14 +104,17 @@ class NASBench301(AbstractBenchmark):
         self.negative = negative  # pylint: disable=attribute-defined-outside-init
         self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
-    def query(self, **kwargs):
+    def query(self, mode='eval', **kwargs):
         # input is a list of two graphs [G1,G2] representing normal and reduction cell
-        return self._retrieve(**kwargs)
+        if mode == 'test':
+            return self._retrieve(**kwargs)[0]
+        else:
+            return self._retrieve(**kwargs)
 
     # Budget should be an array of three fidelities in range (0., 1.] for multi-multi
     def _retrieve(self, **kwargs):
 
-        api = kwargs["dataset_api"]
+        api = kwargs["dataset_api"]()
 
         default_config = api.get_default_config()
 
@@ -265,6 +268,7 @@ class NASBench301(AbstractBenchmark):
         self.graph = [normal_rand_arch, reduce_rand_arch] if self.optimize_arch else None
         self.hps = hyperparameters if self.optimize_hps else None
         # pylint: enable=attribute-defined-outside-init
+        self.name = str(self.parse())
 
     @staticmethod
     def get_meta_information():
@@ -315,7 +319,7 @@ class NASBench301(AbstractBenchmark):
                 for key, items in inputs.items():
                     config[
                         prefix + "inputs_node_{}_{}".format(name, key)
-                    ] = "{}_{}".format(items[0], items[1])
+                        ] = "{}_{}".format(items[0], items[1])
 
                 for e, o in zip(edges, ops):
                     config[prefix + "edge_{}_{}".format(name, e)] = OPS_301[o - 1]

@@ -70,8 +70,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--pool_strategy",
-    default="mutate",
-    help="the pool generation strategy. Options: random," "mutate",
+    default="mutation",
+    help="the pool generation strategy. Options: random," "mutation, evolution",
     choices=AcquisitionOptimizerMapping.keys(),
 )
 parser.add_argument(
@@ -150,7 +150,8 @@ parser.add_argument(
 parser.add_argument("--plot", action="store_true", help="Whether to plot the procedure")
 parser.add_argument(
     "--api_data_path",
-    default="data/NAS-Bench-201-v1_0-e61699.pth",
+    default="../comprehensive_nas/optimizers/bayesian_optimization/"
+            "benchmarks/nas/nb_configfiles/data/NAS-Bench-201-v1_0-e61699.pth",
     help="Full path to data file. Only needed for tabular/surrogate benchmarks!",
 )
 parser.add_argument(
@@ -204,12 +205,15 @@ def run_experiment(args):
             surrogate_model=surrogate_model
         )
         acquisition_function_opt = AcquisitionOptimizerMapping[args.pool_strategy](
-            objective
+            objective,
+            acquisition_function,
+            n_mutate=args.mutate_size,
+            allow_isomorphism=args.no_isomorphism,
         )
         optimizer = BayesianOptimization(
             surrogate_model=surrogate_model,
-            acquisition_function=acquisition_function,
             acquisition_function_opt=acquisition_function_opt,
+            return_opt_details=True
         )
     else:
         raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
