@@ -419,7 +419,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         return x
 
     def to_pytorch(self, write_out: bool = False):
-        def add_op(op, varname: str, input_name: str):
+        def add_op(op, varname: str, input_name: str, used_input_names: list):
             """
             Assumes that op is linear!
             """
@@ -506,21 +506,17 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 return obj
 
             if len(op._modules) == 0:
-                if isinstance(input_name, tuple):
-                    _forward_f = (
-                        f"x{int(input_name[1][1:])+1}=self.{varname}({input_name[0]})"
-                    )
-                    _input_name = f"x{int(input_name[1][1:])+1}"
-                else:
-                    _forward_f = f"x{int(input_name[1:])+1}=self.{varname}({input_name})"
-                    _input_name = f"x{int(input_name[1:])+1}"
+                max_xidx = max(used_input_names)
+                _forward_f = f"x{max_xidx+1}=self.{varname}({input_name})"
+                _input_name = f"x{max_xidx+1}"
+                used_input_names.append(max_xidx + 1)
                 func = getattr(torch.nn, op.__class__.__name__)
                 arg_spec = inspect.getfullargspec(func)
                 arg_names = arg_spec.args[1:]
                 arg_annotations = arg_spec.annotations
                 _init_f = f"self.{varname}=getattr(torch.nn, '{op.__class__.__name__}')"
                 if not arg_names:
-                    return _init_f + "()", _forward_f, _input_name
+                    return _init_f + "()", _forward_f, _input_name, used_input_names
                 _init_f += "("
                 for arg in arg_names:
                     if arg == "bias":
@@ -536,16 +532,23 @@ class Graph(torch.nn.Module, nx.DiGraph):
                             _init_f += f"{arg}={getattr(op, arg)},"
                         except AttributeError as error:
                             logger.debug(error)
-                return _init_f[:-1] + ")", _forward_f, _input_name
+                return _init_f[:-1] + ")", _forward_f, _input_name, used_input_names
             else:
                 init_f, forward_f = [], []
                 for attr in op._modules:
-                    _init_f, _forward_f, input_name = add_op(
-                        _getattr(op, attr), varname + f"_{attr}", input_name
+                    _init_f, _forward_f, input_name, used_input_names = add_op(
+                        _getattr(op, attr),
+                        varname + f"_{attr}",
+                        input_name,
+                        used_input_names,
                     )
-                    init_f.append(_init_f)
-                    forward_f.append(_forward_f)
-                return init_f, forward_f, input_name
+                    if isinstance(_forward_f, list):
+                        forward_f.extend(_forward_f)
+                        init_f.extend(_init_f)
+                    else:
+                        forward_f.append(_forward_f)
+                        init_f.append(_init_f)
+                return init_f, forward_f, input_name, used_input_names
 
         def _import_code(code: str, name: str):
             module = types.ModuleType(name)
@@ -561,23 +564,27 @@ class Graph(torch.nn.Module, nx.DiGraph):
 
         init_f = []
         forward_f = []
+        used_input_names = [int(input_name[1:])]
         for node_idx in lexicographical_topological_sort(self):
             node = self.nodes[node_idx]
             if "subgraph" in node:
                 x = node["subgraph"].to_pytorch(node["input"])
             else:
                 if len(node["input"].values()) == 1:
-                    x = list(node["input"].values())[0]
+                    x = next(iter(node["input"].values()))
                 else:
+                    max_xidx = max(used_input_names)
                     if node["comb_op"].__name__ == "sum":
-                        _forward_f = f"x{int(input_name[1:])+1}=sum(["
+                        _forward_f = f"x{max_xidx+1}=sum(["
                         for k in sorted(node["input"].keys()):
                             _forward_f += node["input"][k] + ","
                         _forward_f = _forward_f[:-1] + "])"
                         forward_f.append(_forward_f)
                     else:
                         raise NotImplementedError
-                    x = f"x{int(input_name[1:])+1}"
+                    x = f"x{max_xidx+1}"
+                if int(x[1:]) not in used_input_names:
+                    used_input_names.append(int(x[1:]))
             node["input"] = {}  # clear the input as we have processed it
             if (
                 len(list(self.neighbors(node_idx))) == 0
@@ -596,10 +603,11 @@ class Graph(torch.nn.Module, nx.DiGraph):
                         raise NotImplementedError
                         edge_output = self.to_pytorch(edge_data)
                     elif isinstance(edge_data.op, AbstractPrimitive):
-                        _init_f, _forward_f, input_name = add_op(
+                        _init_f, _forward_f, input_name, used_input_names = add_op(
                             edge_data.op,
                             varname=f"edge{node_idx}_{neigbor_idx}",
-                            input_name=(x, input_name) if x != input_name else x,
+                            input_name=x,
+                            used_input_names=used_input_names,
                         )
                         if isinstance(_init_f, str):
                             _init_f = [_init_f]

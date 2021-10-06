@@ -42,6 +42,10 @@ class Grammar(CFG):
         self.depth_constraints = depth_constraints
         self.depth_constrained = True
         self.convergent = False
+        if not all(k in self.nonterminals for k in self.depth_constraints.keys()):
+            raise Exception(
+                f"Nonterminal {set(self.depth_constraints.keys())-set(self.nonterminals)} does not exist in grammar"
+            )
 
     def is_depth_constrained(self):
         return self.depth_constrained
