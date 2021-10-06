@@ -151,7 +151,7 @@ parser.add_argument("--plot", action="store_true", help="Whether to plot the pro
 parser.add_argument(
     "--api_data_path",
     default="../comprehensive_nas/optimizers/bayesian_optimization/"
-            "benchmarks/nas/nb_configfiles/data/NAS-Bench-201-v1_0-e61699.pth",
+    "benchmarks/nas/nb_configfiles/data/NAS-Bench-201-v1_0-e61699.pth",
     help="Full path to data file. Only needed for tabular/surrogate benchmarks!",
 )
 parser.add_argument(
@@ -226,89 +226,89 @@ def run_experiment(args):
         optimizer = BayesianOptimization(
             surrogate_model=surrogate_model,
             acquisition_function_opt=acquisition_function_opt,
-            return_opt_details=True
+            return_opt_details=True,
         )
     else:
         raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
 
     experimenter = Experimentator(args.max_iters, args.seed)
-    tracker = StatisticsTracker(args, args.save_path,
-                                args.log, is_gbo=args.strategy == "gbo")
+    tracker = StatisticsTracker(
+        args, args.save_path, args.log, is_gbo=args.strategy == "gbo"
+    )
 
     for seed in range(args.n_repeat):
-        experimenter.reset(seed)
-        tracker.reset()
+        tracker = evaluate_seed(
+            api, args, experimenter, initial_design, optimizer, seed, tracker
+        )
+        tracker.save_results()
 
-        # Take n_init random samples
-        x_configs = initial_design.sample(pool_size=args.n_init)
 
-        # & evaluate
-        y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
-        # y = torch.Tensor([y[0] for y in y_np_list]).float()
-        y = [y[0] for y in y_np_list]
-        train_details = [y[1] for y in y_np_list]
-        # test = torch.Tensor([config_.query(dataset_api=api, mode='test') for config_ in next_x]).float()
-        test = [config_.query(dataset_api=api, mode="test") for config_ in x_configs]
+def evaluate_seed(api, args, experimenter, initial_design, optimizer, seed, tracker):
+    experimenter.reset(seed)
+    tracker.reset()
+    # Take n_init random samples
+    x_configs = initial_design.sample(pool_size=args.n_init)
+    # & evaluate
+    y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
+    # y = torch.Tensor([y[0] for y in y_np_list]).float()
+    y = [y[0] for y in y_np_list]
+    train_details = [y[1] for y in y_np_list]
+    # test = torch.Tensor([config_.query(dataset_api=api, mode='test') for config_ in next_x]).float()
+    test = [config_.query(dataset_api=api, mode="test") for config_ in x_configs]
+    tracker.update(
+        x=x_configs,
+        y_eval=y,
+        y_eval_cur=y,
+        y_test=test,
+        y_test_cur=test,
+        train_details=train_details,
+        opt_details=None,
+    )
+    tracker.print(False, True)
+    # Initialise the GP surrogate
+    optimizer.initialize_model(x_configs=x_configs, y=y)
+    # Main optimization loop
+    while experimenter.has_budget():
+
+        # Propose new location to evaluate
+        next_x, opt_details = optimizer.propose_new_location(
+            args.batch_size, args.pool_size
+        )
+
+        # Evaluate this location from the objective function
+        detail = [config_.query(dataset_api=api) for config_ in next_x]
+        next_y = [y[0] for y in detail]
+        train_details += [y[1] for y in detail]
+        next_test = [config_.query(dataset_api=api, mode="test") for config_ in next_x]
+
+        if opt_details is not None:
+            pool = opt_details["pool"]
+            pool_vals = [config_.query(dataset_api=api) for config_ in pool]
+            opt_details["pool_vals"] = pool_vals
+            pool.extend(next_x)
+
+        x_configs.extend(next_x)
+        # y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
+        y.extend(next_y)
+        # test = torch.cat((test, torch.tensor(next_test).view(-1))).float()
+        test.extend(next_test)
+
+        # Update the GP Surrogate
+        optimizer.update_model(x_configs=x_configs, y=y)
 
         tracker.update(
             x=x_configs,
             y_eval=y,
-            y_eval_cur=y,
+            y_eval_cur=next_y,
             y_test=test,
-            y_test_cur=test,
+            y_test_cur=next_test,
             train_details=train_details,
-            opt_details=None,
+            opt_details=opt_details,
         )
-        tracker.print(False, True)
+        tracker.print()
 
-        # Initialise the GP surrogate
-        optimizer.initialize_model(x_configs=x_configs, y=y)
-
-        # Main optimization loop
-        while experimenter.has_budget():
-
-            # Propose new location to evaluate
-            next_x, opt_details = optimizer.propose_new_location(
-                args.batch_size, args.pool_size
-            )
-
-            # Evaluate this location from the objective function
-            detail = [config_.query(dataset_api=api) for config_ in next_x]
-            next_y = [y[0] for y in detail]
-            train_details += [y[1] for y in detail]
-            next_test = [
-                config_.query(dataset_api=api, mode="test") for config_ in next_x
-            ]
-
-            if opt_details is not None:
-                pool = opt_details["pool"]
-                pool_vals = [config_.query(dataset_api=api) for config_ in pool]
-                opt_details["pool_vals"] = pool_vals
-                pool.extend(next_x)
-
-            x_configs.extend(next_x)
-            # y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
-            y.extend(next_y)
-            # test = torch.cat((test, torch.tensor(next_test).view(-1))).float()
-            test.extend(next_test)
-
-            # Update the GP Surrogate
-            optimizer.update_model(x_configs=x_configs, y=y)
-
-            tracker.update(
-                x=x_configs,
-                y_eval=y,
-                y_eval_cur=next_y,
-                y_test=test,
-                y_test_cur=next_test,
-                train_details=train_details,
-                opt_details=opt_details,
-            )
-            tracker.print()
-
-            experimenter.next_iteration()
-
-        tracker.save_results()
+        experimenter.next_iteration()
+    return tracker
 
 
 if __name__ == "__main__":
