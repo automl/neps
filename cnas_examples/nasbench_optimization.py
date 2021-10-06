@@ -9,6 +9,7 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message)
 
+
 from comprehensive_nas.optimizers.bayesian_optimization.acquisition_function_optimization import (
     AcquisitionOptimizerMapping,
 )
@@ -16,6 +17,9 @@ from comprehensive_nas.optimizers.bayesian_optimization.acqusition_functions imp
     AcquisitionMapping,
 )
 from comprehensive_nas.optimizers.bayesian_optimization.benchmarks import BenchmarkMapping
+from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.hpo.hartmann6 import (
+    evaluate_hartmann6,
+)
 from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.nas.nb_configfiles.api import (
     APIMapping,
 )
@@ -181,6 +185,11 @@ def run_experiment(args):
     objective = BenchmarkMapping[args.dataset]()
     initial_design = AcquisitionOptimizerMapping["random"](objective)
 
+    if args.dataset == "hartmann6":
+        run_pipeline_fn = evaluate_hartmann6
+    else:
+        run_pipeline_fn = None
+
     # Initialise the optimizer strategy.
     if args.strategy == "random":
         optimizer = RandomSearch(
@@ -238,23 +247,46 @@ def run_experiment(args):
 
     for seed in range(args.n_repeat):
         tracker = evaluate_seed(
-            api, args, experimenter, initial_design, optimizer, seed, tracker
+            api,
+            args,
+            experimenter,
+            initial_design,
+            optimizer,
+            seed,
+            tracker,
+            run_pipeline_fn=run_pipeline_fn,
         )
         tracker.save_results()
 
 
-def evaluate_seed(api, args, experimenter, initial_design, optimizer, seed, tracker):
+def evaluate_seed(
+    api,
+    args,
+    experimenter,
+    initial_design,
+    optimizer,
+    seed,
+    tracker,
+    run_pipeline_fn=None,
+):
     experimenter.reset(seed)
     tracker.reset()
     # Take n_init random samples
     x_configs = initial_design.sample(pool_size=args.n_init)
+
     # & evaluate
-    y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
-    # y = torch.Tensor([y[0] for y in y_np_list]).float()
-    y = [y[0] for y in y_np_list]
-    train_details = [y[1] for y in y_np_list]
-    # test = torch.Tensor([config_.query(dataset_api=api, mode='test') for config_ in next_x]).float()
-    test = [config_.query(dataset_api=api, mode="test") for config_ in x_configs]
+    if run_pipeline_fn is not None:
+        y_np_list = [run_pipeline_fn(config_) for config_ in x_configs]
+        y = [y[0] for y in y_np_list]
+        train_details = [y[1] for y in y_np_list]
+
+        test = [run_pipeline_fn(config_, mode="test") for config_ in x_configs]
+    else:
+        y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
+        y = [y[0] for y in y_np_list]
+        train_details = [y[1] for y in y_np_list]
+        test = [config_.query(dataset_api=api, mode="test") for config_ in x_configs]
+
     tracker.update(
         x=x_configs,
         y_eval=y,
@@ -276,14 +308,25 @@ def evaluate_seed(api, args, experimenter, initial_design, optimizer, seed, trac
         )
 
         # Evaluate this location from the objective function
-        detail = [config_.query(dataset_api=api) for config_ in next_x]
-        next_y = [y[0] for y in detail]
-        train_details += [y[1] for y in detail]
-        next_test = [config_.query(dataset_api=api, mode="test") for config_ in next_x]
+        if run_pipeline_fn is not None:
+            detail = [run_pipeline_fn(config_) for config_ in next_x]
+            next_y = [y[0] for y in detail]
+            train_details = [y[1] for y in detail]
+            next_test = [run_pipeline_fn(config_, mode="test") for config_ in next_x]
+        else:
+            detail = [config_.query(dataset_api=api) for config_ in next_x]
+            next_y = [y[0] for y in detail]
+            train_details += [y[1] for y in detail]
+            next_test = [
+                config_.query(dataset_api=api, mode="test") for config_ in next_x
+            ]
 
         if opt_details is not None:
             pool = opt_details["pool"]
-            pool_vals = [config_.query(dataset_api=api) for config_ in pool]
+            if run_pipeline_fn is not None:
+                pool_vals = [run_pipeline_fn(config_) for config_ in pool]
+            else:
+                pool_vals = [config_.query(dataset_api=api) for config_ in pool]
             opt_details["pool_vals"] = pool_vals
             pool.extend(next_x)
 
