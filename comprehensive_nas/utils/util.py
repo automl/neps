@@ -132,7 +132,7 @@ class StatisticsTracker(object):
     def calculate_cum_train_time(train_details):
         # Compute the cumulative training time.
         try:
-            cum_train_time = np.sum([item["train_time"] for item in train_details]).item()
+            cum_train_time = np.sum(train_details).item()
         except TypeError:
             cum_train_time = np.nan
         return cum_train_time

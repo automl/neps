@@ -105,7 +105,6 @@ class NASBench201(AbstractBenchmark):
         if self.graph is None:
             op_labeling = dict()
             for i, hp in enumerate(self.get_config_space().get_hyperparameters()):
-
                 ranges = np.arange(start=0, stop=1, step=1 / len(hp.choices))
                 # TODO: Fix this pylint
                 # pylint: disable=singleton-comparison
@@ -195,14 +194,19 @@ class NASBench201(AbstractBenchmark):
             y = err
         if self.negative:
             y = -y
-        return y, {"train_time": cost_results["flops"]}
+        return y, cost_results["flops"]
 
-    def query(self, n_repeat=1, **kwargs):
-        if n_repeat == 1:
-            return self._retrieve("eval", **kwargs)
-        return np.mean(
-            np.array([self._retrieve("eval", **kwargs) for _ in range(n_repeat)])
-        )
+    def query(self, mode='eval', n_repeat=1, **kwargs):
+        if mode == "test":
+            return self._retrieve("test", **kwargs)[0]
+        else:
+            if n_repeat == 1:
+                return self._retrieve("eval", **kwargs)
+            return np.mean(
+                np.array([self._retrieve("eval", **kwargs)[0] for _ in range(n_repeat)])
+            ), np.mean(
+                np.array([self._retrieve("eval", **kwargs)[1] for _ in range(n_repeat)])
+            )
 
     def sample_random_architecture(self):
         nas201_cs = NASBench201.get_config_space()
@@ -230,6 +234,7 @@ class NASBench201(AbstractBenchmark):
                     continue
                 break
             self.graph = rand_arch  # pylint: disable=attribute-defined-outside-init
+            self.name = str(self.parse())
 
         if self.optimize_hps:
             rand_hps = []
@@ -241,8 +246,9 @@ class NASBench201(AbstractBenchmark):
                 rand_hps.append(str(hp.choices.index(config[key]) / nlevels))
             self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
 
-    def test(self, n_repeat=1):
-        return np.mean(np.array([self._retrieve("test") for _ in range(n_repeat)]))
+    def test(self, n_repeat=1, **kwargs):
+        return np.mean(
+            np.array([self._retrieve("test", **kwargs)[0] for _ in range(n_repeat)]))
 
     def get_results(self):
 
