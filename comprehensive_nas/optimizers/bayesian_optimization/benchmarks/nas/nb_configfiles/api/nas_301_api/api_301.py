@@ -6,8 +6,8 @@ from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.nas.surrogate
 
 class NASBench301API:
     def __init__(self):
-        surrogate_model_dir = "comprehensive_nas/bo/benchmarks/nas/nb_configfiles/gnn_gin"
-        runtime_model_dir = "comprehensive_nas/bo/benchmarks/nas/nb_configfiles/xgb_time/"
+        surrogate_model_dir = "../comprehensive_nas/optimizers/bayesian_optimization/benchmarks/nas/nb_configfiles/gnn_gin"
+        runtime_model_dir = "../comprehensive_nas/optimizers/bayesian_optimization/benchmarks/nas/nb_configfiles/xgb_time/"
 
         def _load_model_from_dir(model_dir):
             # Load config

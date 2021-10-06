@@ -166,8 +166,7 @@ class NASBench301(AbstractBenchmark):
         if self.negative:
             y = -y
 
-        cost = {"train_time": data["training_time"]}
-        return y, cost
+        return y, data["training_time"]
 
     # @staticmethod
     # def eval_cost(budget):
@@ -285,7 +284,7 @@ class NASBench301(AbstractBenchmark):
     def get_config_space(
         path=os.path.join(
             os.path.dirname(__file__),
-            "nb_configfiles/benchmarks/" "config_spaces/configspace.json",
+            "nb_configfiles/benchmarks/" "configspace.json",
         )
     ):
         with open(os.path.join(path), "r") as fh:

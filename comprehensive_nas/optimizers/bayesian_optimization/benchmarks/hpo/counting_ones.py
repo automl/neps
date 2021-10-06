@@ -35,7 +35,7 @@ class CountingOnes(AbstractBenchmark):
         if mode == "test":
             return y
         else:
-            return y, {"train_time": self.eval_cost()}
+            return y, self.eval_cost()
 
     @staticmethod
     def eval_cost():
