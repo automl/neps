@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import types
+from functools import partial
 
 import networkx as nx
 
@@ -419,137 +420,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
         return x
 
     def to_pytorch(self, write_out: bool = False):
-        def add_op(op, varname: str, input_name: str, used_input_names: list):
-            """
-            Assumes that op is linear!
-            """
-
-            def _build_instructions(obj, q):
-                """
-                Breaks down a query string into a series of actionable instructions.
-                Each instruction is a (_type, arg) tuple.
-                arg -- The key used for the __getitem__ or __setitem__ call on
-                    the current object.
-                _type -- Used to determine the data type for the value of
-                        obj.__getitem__(arg)
-                If a key/index is missing, _type is used to initialize an empty value.
-                In this way _type provides the ability to
-                """
-                arg = []
-                _type = None
-                instructions = []
-                for i, ch in enumerate(q):
-                    if ch == "[":
-                        # Begin list query
-                        if _type is not None:
-                            arg = "".join(arg)
-                            if _type == list and arg.isalpha():
-                                _type = dict
-                            instructions.append((_type, arg))
-                            _type, arg = None, []
-                        _type = list
-                    elif ch == ".":
-                        # Begin dict query
-                        if _type is not None:
-                            arg = "".join(arg)
-                            if _type == list and arg.isalpha():
-                                _type = dict
-                            instructions.append((_type, arg))
-                            _type, arg = None, []
-
-                        _type = dict
-                    elif ch.isalnum() or ch == "_" or ch == "-":
-                        if i == 0:
-                            # Query begins with alphanum, assume dict access
-                            _type = type(obj)
-
-                        # Fill out args
-                        arg.append(ch)
-                    else:
-                        TypeError("Unrecognized character: {}".format(ch))
-
-                if _type is not None:
-                    # Finish up last query
-                    instructions.append((_type, "".join(arg)))
-
-                return instructions
-
-            def _getattr(obj, query):
-                """
-                Very similar to _setattr. Instead of setting attributes they will be
-                returned. As expected, an error will be raised if a __getitem__ call
-                fails.
-                """
-                instructions = _build_instructions(obj, query)
-                for i, (_, arg) in enumerate(instructions[:-1]):
-                    _type = instructions[i + 1][0]
-                    obj = _get(obj, _type, arg)
-
-                _type, arg = instructions[-1]
-                return _get(obj, _type, arg)
-
-            def _get(obj, _type, arg):
-                """
-                Helper function for calling obj.__getitem__(arg).
-                """
-                if isinstance(obj, dict):
-                    obj = obj[arg]
-                elif isinstance(obj, list):
-                    arg = int(arg)
-                    obj = obj[arg]
-                elif isinstance(obj, torch.nn.Module):
-                    try:
-                        arg = int(arg)
-                        obj = obj[arg]
-                    except ValueError:
-                        obj = getattr(obj, arg)
-                return obj
-
-            if len(op._modules) == 0:
-                max_xidx = max(used_input_names)
-                _forward_f = f"x{max_xidx+1}=self.{varname}({input_name})"
-                _input_name = f"x{max_xidx+1}"
-                used_input_names.append(max_xidx + 1)
-                func = getattr(torch.nn, op.__class__.__name__)
-                arg_spec = inspect.getfullargspec(func)
-                arg_names = arg_spec.args[1:]
-                arg_annotations = arg_spec.annotations
-                _init_f = f"self.{varname}=getattr(torch.nn, '{op.__class__.__name__}')"
-                if not arg_names:
-                    return _init_f + "()", _forward_f, _input_name, used_input_names
-                _init_f += "("
-                for arg in arg_names:
-                    if arg == "bias":
-                        _init_f += f"{arg}={op.bias is not None},"
-                    elif (
-                        len(arg_annotations) != 0
-                        and arg in arg_annotations.keys()
-                        and arg_annotations[arg] is str
-                    ):
-                        _init_f += f"{arg}='{getattr(op, arg)}',"
-                    else:
-                        try:
-                            _init_f += f"{arg}={getattr(op, arg)},"
-                        except AttributeError as error:
-                            logger.debug(error)
-                return _init_f[:-1] + ")", _forward_f, _input_name, used_input_names
-            else:
-                init_f, forward_f = [], []
-                for attr in op._modules:
-                    _init_f, _forward_f, input_name, used_input_names = add_op(
-                        _getattr(op, attr),
-                        varname + f"_{attr}",
-                        input_name,
-                        used_input_names,
-                    )
-                    if isinstance(_forward_f, list):
-                        forward_f.extend(_forward_f)
-                        init_f.extend(_init_f)
-                    else:
-                        forward_f.append(_forward_f)
-                        init_f.append(_init_f)
-                return init_f, forward_f, input_name, used_input_names
-
         def _import_code(code: str, name: str):
             module = types.ModuleType(name)
             exec(code, module.__dict__)  # pylint disable=exec-used
@@ -562,13 +432,14 @@ class Graph(torch.nn.Module, nx.DiGraph):
         input_name = "x0"
         self.nodes[input_node]["input"] = {0: input_name}
 
-        init_f = []
         forward_f = []
         used_input_names = [int(input_name[1:])]
+        submodule_list = []
         for node_idx in lexicographical_topological_sort(self):
             node = self.nodes[node_idx]
             if "subgraph" in node:
-                x = node["subgraph"].to_pytorch(node["input"])
+                raise NotImplementedError
+                x = node["subgraph"].to_pytorch_v2(node["input"])
             else:
                 if len(node["input"].values()) == 1:
                     x = next(iter(node["input"].values()))
@@ -601,19 +472,17 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     # inject edge data only for AbstractPrimitive, not Graphs
                     if isinstance(edge_data.op, Graph):
                         raise NotImplementedError
-                        edge_output = self.to_pytorch(edge_data)
+                        edge_output = self.to_pytorch_v2(edge_data)
                     elif isinstance(edge_data.op, AbstractPrimitive):
-                        _init_f, _forward_f, input_name, used_input_names = add_op(
-                            edge_data.op,
-                            varname=f"edge{node_idx}_{neigbor_idx}",
-                            input_name=x,
-                            used_input_names=used_input_names,
+                        edge_data.op.forward = partial(
+                            edge_data.op.forward, edge_data=edge_data
                         )
-                        if isinstance(_init_f, str):
-                            _init_f = [_init_f]
-                            _forward_f = [_forward_f]
-                        init_f += _init_f
-                        forward_f += _forward_f
+                        submodule_list.append(edge_data.op)
+                        max_xidx = max(used_input_names)
+                        _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}]({x})"
+                        input_name = f"x{max_xidx + 1}"
+                        used_input_names.append(max_xidx + 1)
+                        forward_f.append(_forward_f)
                     else:
                         raise ValueError(
                             "Unknown class as op: {}. Expected either Graph or AbstactPrimitive".format(
@@ -626,11 +495,9 @@ class Graph(torch.nn.Module, nx.DiGraph):
 
         model_file = "# Auto generated\nimport torch\nimport torch.nn\n\nclass Model(torch.nn.Module):\n\tdef __init__(self):\n"
         model_file += "\t\tsuper().__init__()\n"
-        for init_lines in init_f:
-            if isinstance(init_lines, str):
-                init_lines = [init_lines]
-            for init_line in init_lines:
-                model_file += f"\t\t{init_line}\n"
+        model_file += "\t\tself.module_list=torch.nn.ModuleList()\n"
+        model_file += "\n\tdef set_module_list(self,module_list):\n"
+        model_file += "\t\tself.module_list=torch.nn.ModuleList(module_list)\n"
         model_file += "\n\tdef forward(self,x0):\n"
         for forward_lines in forward_f:
             if isinstance(forward_lines, str):
@@ -643,6 +510,8 @@ class Graph(torch.nn.Module, nx.DiGraph):
             model = module_model.Model()
         except Exception as e:
             raise Exception(e)
+
+        model.set_module_list(submodule_list)
 
         if write_out:
             tmp_path = Path(os.path.dirname(os.path.realpath(__file__))) / "model.py"
