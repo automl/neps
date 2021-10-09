@@ -5,10 +5,11 @@ from ..core.optimizer import Optimizer
 
 
 class RandomSearch(Optimizer):
-    def __init__(self, acquisition_function_opt=None):
+    def __init__(self, acquisition_function_opt=None, return_opt_details: bool = False):
         super().__init__()
         self.sampled_idx = []
         self.acquisition_function_opt = acquisition_function_opt
+        self.return_opt_details = return_opt_details
         self.surrogate_model = None
 
     def initialize_model(self, **kwargs):
@@ -26,6 +27,6 @@ class RandomSearch(Optimizer):
         next_x = random.sample(pool, batch_size)
         self.sampled_idx.append(next_x)
 
-        opt_details = {"pool": pool}
+        opt_details = {"pool": pool} if self.return_opt_details else None
 
         return next_x, opt_details
