@@ -176,6 +176,7 @@ class CoreGraphGrammar(Graph):
         self,
         base_tree: str | nx.DiGraph,
         motif_trees: list[str] | list[nx.DiGraph],
+        base_to_motif_map: list = None,
         node_label: str = "op_name",
     ) -> str | nx.DiGraph:
         """Assembles the base parse tree with the motif parse trees
@@ -192,19 +193,13 @@ class CoreGraphGrammar(Graph):
             raise ValueError("All trees must be of the same type!")
         if isinstance(base_tree, str):
             ensembled_tree = base_tree
-            for tree in motif_trees:
-                start_search_idx = 0
-                start_symbol = tree[1 : tree.find(" ")]
-                start_idx = ensembled_tree.find(start_symbol)
-                while start_idx > 0:
-                    ensembled_tree = (
-                        ensembled_tree[:start_idx]
-                        + tree
-                        + ensembled_tree[start_idx + len(start_symbol) :]
-                    )
-                    start_search_idx = start_idx + len(tree)
-                    start_idx = ensembled_tree.find(start_symbol, start_search_idx)
-            raise NotImplementedError("TODO implementation is not tested")
+            if base_to_motif_map is None:
+                raise NotImplementedError
+
+            for motif, idx in base_to_motif_map.items():
+                if motif in ensembled_tree:
+                    replacement = motif_trees[idx]
+                    ensembled_tree = ensembled_tree.replace(motif, replacement)
         elif isinstance(base_tree, nx.DiGraph):
             leafnodes = self._find_leafnodes(base_tree)
             root_nodes = [self._find_root(G) for G in motif_trees]
@@ -818,7 +813,10 @@ class CoreGraphGrammar(Graph):
     def update_op_names(self):
         # update op names
         for u, v in self.edges():
-            self.edges[u, v].update({"op_name": self.edges[u, v]["op"].get_op_name})
+            try:
+                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].get_op_name})
+            except Exception:
+                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].name})
 
     def from_stringTree_to_graph_repr(
         self,
@@ -879,18 +877,6 @@ class CoreGraphGrammar(Graph):
 
         def skip_char(char: str) -> bool:
             return True if char in [" ", "\t", "\n", "[", "]"] else False
-
-        if isinstance(grammar, list) and len(grammar) > 1:
-            full_grammar = deepcopy(grammar[0])
-            rules = full_grammar.productions()
-            nonterminals = full_grammar.nonterminals
-            terminals = full_grammar.terminals
-            for g in grammar[1:]:
-                rules.extend(g.productions())
-                nonterminals.extend(g.nonterminals)
-                terminals.extend(g.terminals)
-            grammar = full_grammar
-            raise NotImplementedError("TODO check implementation")
 
         G = nx.DiGraph()
         if add_subtree_map:

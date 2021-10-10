@@ -291,7 +291,7 @@ class MaxPool1x1(AbstractPrimitive):
     the number of channels.
     """
 
-    def __init__(self, kernel_size, stride, C_in=None, C_out=None, affine=True, **kwargs):
+    def __init__(self, kernel_size, stride, C_in, C_out, affine=True, **kwargs):
         super().__init__(locals())
 
         kernel_size = int(kernel_size)
@@ -347,8 +347,8 @@ class AvgPool1x1(AbstractPrimitive):
         self,
         kernel_size,  # pylint: disable=W0613
         stride,
-        C_in=None,
-        C_out=None,
+        C_in,
+        C_out,
         affine=True,
         **kwargs,  # pylint: disable=W0613
     ):
