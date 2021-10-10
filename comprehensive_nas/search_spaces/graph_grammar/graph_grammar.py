@@ -346,7 +346,9 @@ class CoreGraphGrammar(Graph):
                             raise Exception(
                                 f"Unknown primitive or topology: {tree.nodes[node][node_label]}"
                             )
-                        return terminal_to_torch_map[tree.nodes[node][node_label]]
+                        return deepcopy(
+                            terminal_to_torch_map[tree.nodes[node][node_label]]
+                        )
                 if len(tree.out_edges(node)) == 1:
                     return _build_graph_from_tree(
                         visited,
@@ -426,7 +428,9 @@ class CoreGraphGrammar(Graph):
                     ):  # exclude '[' ']' ... symbols
                         # TODO check if there is a potential bug here?
                         subgraphs.append(
-                            terminal_to_torch_map[tree.nodes[neighbor][node_label]]
+                            deepcopy(
+                                terminal_to_torch_map[tree.nodes[neighbor][node_label]]
+                            )
                         )
 
                 if is_primitive:
