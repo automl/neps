@@ -11,7 +11,7 @@ import numpy as np
 
 from ..parameter import Parameter
 from .cfg import Grammar
-from .crossover import crossover
+from .crossover import simple_crossover
 from .graph import Graph
 from .mutations import bananas_mutate, simple_mutate
 from .primitives import AbstractPrimitive
@@ -911,6 +911,8 @@ class CoreGraphGrammar(Graph):
 
         for split_idx, sym in enumerate(string_tree.split(" ")):
             # for sym in string_tree.split(" "):
+            if sym == "":
+                continue
             if sym[0] == "(":
                 sym = sym[1:]
             if sym[-1] == ")":
@@ -1197,7 +1199,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             parent2 = self
         parent1_string_tree = parent1.string_tree
         parent2_string_tree = parent2.string_tree
-        children = crossover(parent1_string_tree, parent2_string_tree, self.grammars[0])
+        children = simple_crossover(
+            parent1_string_tree, parent2_string_tree, self.grammars[0]
+        )
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
