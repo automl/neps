@@ -26,6 +26,7 @@ networkx = "^2.6.3"
 tqdm = "^4.62.3"
 nltk = "^3.6.4"
 tabulate = "^0.8.9"
+torchmetrics = "^0.5.1"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
