@@ -30,14 +30,17 @@ def reset_weights(model):
                     warn_non_resets.append(type(module).__name__)
 
 
-def train(model, device, optimizer, criterion, loader):
+def train(model, device, optimizer, criterion, loader, **train_args):
     model.train()
+    grad_clip = train_args["grad_clip"] if "grad_clip" in train_args else None
     for data, target in loader:
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model.forward(data)
         loss = criterion(output, target)
         loss.backward()
+        if grad_clip is not None:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         optimizer.step()
 
 
@@ -52,7 +55,7 @@ def evaluate(model, device, metric, loader):
     return metric.compute().cpu()
 
 
-def full_training(
+def run_training(
     model,
     train_criterion,
     evaluation_metric,
@@ -63,6 +66,7 @@ def full_training(
     test_loader,
     n_epochs,
     device,
+    **train_args,
 ):
     model.to(device)
     evaluation_metric.to(device)
@@ -76,6 +80,7 @@ def full_training(
             optimizer=optimizer,
             criterion=train_criterion,
             loader=train_loader,
+            **train_args,
         )
         valid_score = evaluate(
             model=model,
@@ -112,10 +117,11 @@ def training_pipeline(
     valid_loader: torch.utils.data.DataLoader,
     test_loader: torch.utils.data.DataLoader,
     n_epochs: int,
+    **train_args,
 ):
     start = time.time()
     reset_weights(model)
-    results = full_training(
+    results = run_training(
         model=model,
         train_criterion=train_criterion,
         optimizer=optimizer,
@@ -126,6 +132,7 @@ def training_pipeline(
         n_epochs=n_epochs,
         evaluation_metric=evaluation_metric,
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
+        **train_args,
     )
     end = time.time()
     train_time = end - start
