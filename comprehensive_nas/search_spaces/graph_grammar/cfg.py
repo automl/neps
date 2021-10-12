@@ -275,15 +275,7 @@ class Grammar(CFG):
         _patience = patience
         while _patience > 0:
             # sample subtree from donor
-            if self.is_depth_constrained():
-                head_node_constraint = self.compute_depth_information_for_pre(pre)[
-                    subtree_node
-                ]
-                donor_subtree_index = self.rand_subtree_fixed_head(
-                    parent2, subtree_node, head_node_constraint
-                )
-            else:
-                donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
+            donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
             # if no subtrees with right head node return False
             if not donor_subtree_index:
                 _patience -= 1
@@ -693,9 +685,9 @@ class ConstrainedGrammar(Grammar):
     ):
         # chop out subtree
         pre, _, post = self.remove_subtree(parent, subtree_index)
+        not_allowed_productions = self._compute_current_context(pre)
         _patience = patience
         while _patience > 0:
-            not_allowed_productions = self._compute_current_context(pre)
             # only sample subtree -> avoids full sampling of large parse trees
             new_subtree = self.sampler(
                 1,
@@ -709,7 +701,44 @@ class ConstrainedGrammar(Grammar):
         return child
 
     def crossover(self, parent1: str, parent2: str, patience: int = 50):
-        raise NotImplementedError
+        subtree_node, subtree_index = self.rand_subtree(parent1)
+        # chop out subtree
+        pre, sub, post = self.remove_subtree(parent1, subtree_index)
+        parent1_not_allowed_productions = self._compute_current_context(pre)
+        _patience = patience
+        while _patience > 0:
+            # sample subtree from donor
+            donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
+            # if no subtrees with right head node return False
+            if not donor_subtree_index:
+                _patience -= 1
+            else:
+                donor_pre, donor_sub, donor_post = self.remove_subtree(
+                    parent2, donor_subtree_index
+                )
+                parent2_not_allowed_productions = self._compute_current_context(donor_pre)
+                if (
+                    parent1_not_allowed_productions is not None
+                    and "zero" in donor_sub
+                    and donor_sub.count("(") == 1
+                    and donor_sub.count(")") == 1
+                ):
+                    _patience -= 1
+                    continue
+                if (
+                    parent2_not_allowed_productions is not None
+                    and "zero" in sub
+                    and sub.count("(") == 1
+                    and sub.count(")") == 1
+                ):
+                    _patience -= 1
+                    continue
+                # return the two new tree
+                child1 = pre + donor_sub + post
+                child2 = donor_pre + sub + donor_post
+                return child1, child2
+
+        return False, False
 
 
 # helper function for quickly getting a single sample from multinomial with probs
