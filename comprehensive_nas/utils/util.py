@@ -69,7 +69,14 @@ class Experimentator(object):
 
 
 class StatisticsTracker(object):
-    def __init__(self, args, save_path: str, log: bool = True, is_gbo: bool = False):
+    def __init__(
+        self,
+        args,
+        save_path: str,
+        log: bool = True,
+        is_gbo: bool = False,
+        minimize: bool = True,
+    ):
         self.start_time = time.time()
         self.end_time = np.nan
         self.seed = np.nan
@@ -85,25 +92,22 @@ class StatisticsTracker(object):
         self.y_evals = None
         self.theoretical_best = 1e10
         self.number = 0
+        self.id = None
 
         self.log = log
         self.save_path = save_path
         self.is_gbo = is_gbo
         self.args = args
+        self.minimize = minimize
 
         options = vars(args)
-
-        # if self.save_path is not None:
-        #     time_string = datetime.datetime.now()
-        #     time_string = time_string.strftime("%Y%m%d_%H%M%S")
-        #     self.save_path = os.path.join(self.save_path, time_string)
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
         with open(os.path.join(self.save_path, "args.json"), "w") as f:
             json.dump(options, f, indent=6)
 
-    def reset(self):
+    def reset(self, identifier=None):
         self.start_time = time.time()
         self.end_time = np.nan
 
@@ -118,14 +122,17 @@ class StatisticsTracker(object):
         self.y_evals = None
         self.theoretical_best = 1e10
         self.number += 1
+        if identifier is not None:
+            self.id = identifier
 
     def set_number(self, new_number: int):
         self.number = new_number
 
     def calculate_incumbent(self, x: Iterable, y):
-        best_idx = np.argmax(y)
+        best_idx = np.argmin(y) if self.minimize else np.argmax(y)
         incumbent = x[best_idx]
-        incumbent_value = np.exp(-y[best_idx]).item() if self.log else -y[best_idx]
+        # incumbent_value = np.exp(-y[best_idx]).item() if self.log else -y[best_idx]
+        incumbent_value = y[best_idx]
         return incumbent, incumbent_value
 
     @staticmethod
@@ -153,8 +160,11 @@ class StatisticsTracker(object):
         self.incumbents_eval.append(incumbent)
         self.incumbent_values_eval.append(incumbent_value)
 
+        # self.last_func_evals.append(
+        #     np.exp(-np.max(y_eval_cur)) if self.log else -np.max(y_eval_cur)
+        # )
         self.last_func_evals.append(
-            np.exp(-np.max(y_eval_cur)) if self.log else -np.max(y_eval_cur)
+            np.min(y_eval_cur) if self.minimize else np.max(y_eval_cur)
         )
 
         if y_test is not None:
@@ -162,16 +172,20 @@ class StatisticsTracker(object):
             self.incumbents_test.append(incumbent)
             self.incumbent_values_test.append(incumbent_value)
         if y_test_cur is not None:
+            # self.last_func_tests.append(
+            #     np.exp(-np.max(y_test_cur)) if self.log else -np.max(y_test_cur)
+            # )
             self.last_func_tests.append(
-                np.exp(-np.max(y_test_cur)) if self.log else -np.max(y_test_cur)
+                np.min(y_test_cur) if self.minimize else np.mx(y_test_cur)
             )
         if opt_details is not None:
             self.opt_details.append(opt_details)
             if "pool_vals" in self.opt_details[-1].keys():
                 pool_vals = [x[0] for x in self.opt_details[-1]["pool_vals"]]
-                best_pool_val = (
-                    np.exp(-np.max(pool_vals)) if self.log else -np.max(pool_vals)
-                )
+                # best_pool_val = (
+                #     np.exp(-np.max(pool_vals)) if self.log else -np.max(pool_vals)
+                # )
+                best_pool_val = np.min(pool_vals) if self.minimize else np.max(pool_vals)
                 self.theoretical_best = min(self.theoretical_best, best_pool_val)
 
         self.end_time = time.time()
@@ -231,7 +245,12 @@ class StatisticsTracker(object):
             label="Best validation so far",
         )
         plt.legend()
-        plt.savefig(os.path.join(self.save_path, f"plot_{self.number}.png"))
+        plt.savefig(
+            os.path.join(
+                self.save_path,
+                f"plot_{self.id if self.id is not None else self.number}.png",
+            )
+        )
         plt.close()
 
     def write_to_csv(self):
@@ -294,7 +313,10 @@ class StatisticsTracker(object):
         else:
             values.append(None)
 
-        full_path = os.path.join(self.save_path, f"results_{self.number}.csv")
+        full_path = os.path.join(
+            self.save_path,
+            f"results_{self.id if self.id is not None else self.number}.csv",
+        )
         file_exists = os.path.isfile(full_path)
         with open(full_path, "a" if file_exists else "w") as csvfile:
             writer = csv.writer(csvfile, delimiter=",")
@@ -395,3 +417,21 @@ class StatisticsTracker(object):
                 "wb",
             ),
         )
+
+    def save_checkpoint(self, checkpoint_data: list):
+        checkpoint_path = os.path.join(
+            self.save_path,
+            f"checkpoint_{self.id if self.id is not None else self.number}.json",
+        )
+        if not os.path.isdir(os.path.dirname(self.save_path)):
+            os.makedirs(os.path.dirname(self.save_path))
+
+        if os.path.isfile(checkpoint_path):
+            with open(checkpoint_path, "r") as f:
+                _checkpoint_data = json.load(f)
+            _checkpoint_data += checkpoint_data
+        else:
+            _checkpoint_data = checkpoint_data
+
+        with open(checkpoint_path, "w+") as f:
+            json.dump(_checkpoint_data, f, indent=4)
