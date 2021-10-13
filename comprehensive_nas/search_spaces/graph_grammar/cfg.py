@@ -33,31 +33,13 @@ class Grammar(CFG):
         self.max_sampling_level = 2
 
         self.convergent = False
-        self.depth_constrained = False
-        self.depth_constraints: dict = None
 
         self.check_grammar()
 
-    def set_depth_constraints(self, depth_constraints):
-        self.depth_constraints = depth_constraints
-        self.depth_constrained = True
-        self.convergent = False
-        if not all(k in self.nonterminals for k in self.depth_constraints.keys()):
-            raise Exception(
-                f"Nonterminal {set(self.depth_constraints.keys())-set(self.nonterminals)} does not exist in grammar"
-            )
-
-    def is_depth_constrained(self):
-        return self.depth_constrained
-
     def set_convergent(self):
-        self.depth_constraints = None
-        self.depth_constrained = False
         self.convergent = True
 
     def set_unconstrained(self):
-        self.depth_constraints = None
-        self.depth_constrained = False
         self.convergent = False
 
     def check_grammar(self):
@@ -107,7 +89,6 @@ class Grammar(CFG):
         self,
         n=1,
         cfactor=0.1,
-        depth_information: dict = None,
         start_symbol: str = None,
     ):
         # sample n sequences from the CFG
@@ -120,9 +101,6 @@ class Grammar(CFG):
         # less likely it is to terminate. Therefore, we set the default sampler (setting convergent=True) to
         # downweight frequent productions when traversing the grammar.
         # see https://eli.thegreenplace.net/2010/01/28/generating-random-sentences-from-a-context-free-236grammar
-        if self.convergent and self.depth_constrained:
-            raise Exception(f"Sample cannot be convergent and depth constrained")
-
         if start_symbol is None:
             start_symbol = self.start()
         else:
@@ -133,97 +111,8 @@ class Grammar(CFG):
                 f"{self._convergent_sampler(symbol=start_symbol, cfactor=cfactor)[0]})"
                 for i in range(0, n)
             ]
-        elif self.depth_constrained:
-            if self.depth_constraints is None:
-                raise ValueError("Depth constraints are not set!")
-            if depth_information is None:
-                depth_information = {}
-            return [
-                f"{self._depth_constrained_sampler(symbol=start_symbol, depth_information=depth_information)})"
-                for i in range(0, n)
-            ]
         else:
             return [f"{self._sampler(symbol=start_symbol)})" for i in range(0, n)]
-
-    def compute_depth_information_for_pre(self, tree: str) -> dict:
-        depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
-        for split in tree.split(" "):
-            if split == "":
-                continue
-            elif split[0] == "(":
-                q_nonterminals.append(split[1:])
-                depth_information[split[1:]] += 1
-                continue
-            while split[-1] == ")":
-                nt = q_nonterminals.pop()
-                depth_information[nt] -= 1
-                split = split[:-1]
-        return depth_information
-
-    def compute_depth_information(self, tree: str) -> list:
-        split_tree = tree.split(" ")
-        depth_information = [0] * len(split_tree)
-        helper_dict = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
-        for i, split in enumerate(split_tree):
-            if split == "":
-                continue
-            elif split[0] == "(":
-                q_nonterminals.append(split[1:])
-                depth_information[i] = helper_dict[split[1:]] + 1
-                helper_dict[split[1:]] += 1
-                continue
-            while split[-1] == ")":
-                nt = q_nonterminals.pop()
-                helper_dict[nt] -= 1
-                split = split[:-1]
-        return depth_information
-
-    def _depth_constrained_sampler(self, symbol=None, depth_information: dict = None):
-        if depth_information is None:
-            depth_information = {}
-        # init the sequence
-        tree = "(" + str(symbol)
-        # collect possible productions from the starting symbol & filter if constraints are violated
-        lhs = str(symbol)
-        if lhs in depth_information.keys():
-            depth_information[lhs] += 1
-        else:
-            depth_information[lhs] = 1
-        if (
-            lhs in self.depth_constraints.keys()
-            and depth_information[lhs] > self.depth_constraints[lhs]
-        ):
-            productions = [
-                production
-                for production in self.productions(lhs=symbol)
-                if lhs
-                not in [str(sym) for sym in production.rhs() if not isinstance(sym, str)]
-            ]
-        else:
-            productions = self.productions(lhs=symbol)
-
-        if len(productions) == 0:
-            raise Exception(
-                f"There can be no word sampled! This is due to the grammar and/or constraints."
-            )
-
-        # sample
-        production = choice(productions)
-        for sym in production.rhs():
-            if isinstance(sym, str):
-                # if terminal then add string to sequence
-                tree = tree + " " + sym
-            else:
-                tree = (
-                    tree
-                    + " "
-                    + self._depth_constrained_sampler(sym, depth_information)
-                    + ")"
-                )
-        depth_information[lhs] -= 1
-        return tree
 
     def _sampler(self, symbol=None):
         # simple sampler where each production is sampled uniformly from all possible productions
@@ -362,6 +251,45 @@ class Grammar(CFG):
             else:
                 yield [item]
 
+    def mutate(
+        self, parent: str, subtree_index: int, subtree_node: str, patience: int = 50
+    ) -> str:
+        # chop out subtree
+        pre, _, post = self.remove_subtree(parent, subtree_index)
+        _patience = patience
+        while _patience > 0:
+            # only sample subtree -> avoids full sampling of large parse trees
+            new_subtree = self.sampler(1, start_symbol=subtree_node)[0]
+            child = pre + new_subtree + post
+            if parent != child:  # ensure that parent is really mutated
+                break
+            _patience -= 1
+        return child
+
+    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+        # randomly swap subtrees in two trees
+        # if no suitiable subtree exists then return False
+        subtree_node, subtree_index = self.rand_subtree(parent1)
+        # chop out subtree
+        pre, sub, post = self.remove_subtree(parent1, subtree_index)
+        _patience = patience
+        while _patience > 0:
+            # sample subtree from donor
+            donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
+            # if no subtrees with right head node return False
+            if not donor_subtree_index:
+                _patience -= 1
+            else:
+                donor_pre, donor_sub, donor_post = self.remove_subtree(
+                    parent2, donor_subtree_index
+                )
+                # return the two new tree
+                child1 = pre + donor_sub + post
+                child2 = donor_pre + sub + donor_post
+                return child1, child2
+
+        return False, False
+
     def rand_subtree(self, tree: str) -> Tuple[str, int]:
         # helper function to choose a random subtree in a given tree
         # returning the parent node of the subtree and its index
@@ -379,37 +307,32 @@ class Grammar(CFG):
         # return chosen node and its index
         return chosen_non_terminal, chosen_non_terminal_index
 
+    @staticmethod
     def rand_subtree_fixed_head(
-        self, tree: str, head_node: str, head_node_depth_constraint: int = 0
+        tree: str, head_node: str, swappable_indices: list = None
     ) -> int:
         # helper function to choose a random subtree from a given tree with a specific head node
         # if no such subtree then return False, otherwise return the index of the subtree
 
         # single pass through tree (stored as string) to look for the location of swappable_non_terminmals
-        split_tree = tree.split(" ")
-        if self.is_depth_constrained():
-            depth_information = self.compute_depth_information(tree)
-            swappable_indicies = [
-                i
-                for i in range(0, len(split_tree))
-                if split_tree[i][1:] == head_node
-                and depth_information[i] >= head_node_depth_constraint
-            ]
-        else:
-            swappable_indicies = [
+        if swappable_indices is None:
+            split_tree = tree.split(" ")
+            swappable_indices = [
                 i for i in range(0, len(split_tree)) if split_tree[i][1:] == head_node
             ]
-        if len(swappable_indicies) == 0:
+        if not isinstance(swappable_indices, list):
+            raise TypeError("Expected list for swappable indices!")
+        if len(swappable_indices) == 0:
             # no such subtree
             return False
         else:
             # randomly choose one of these non-terminals
             r = (
-                np.random.randint(1, len(swappable_indicies))
-                if len(swappable_indicies) > 1
+                np.random.randint(1, len(swappable_indices))
+                if len(swappable_indices) > 1
                 else 0
             )
-            chosen_non_terminal_index = swappable_indicies[r]
+            chosen_non_terminal_index = swappable_indices[r]
             return chosen_non_terminal_index
 
     @staticmethod
@@ -439,6 +362,382 @@ class Grammar(CFG):
         # get removed tree
         removed = "".join(split_tree[index]) + " " + right[: current_index + 1]
         return (pre_subtree, removed, post_subtree)
+
+
+class DepthConstrainedGrammar(Grammar):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.depth_constraints = None
+
+    def set_depth_constraints(self, depth_constraints):
+        self.depth_constraints = depth_constraints
+        if not all(k in self.nonterminals for k in self.depth_constraints.keys()):
+            raise Exception(
+                f"Nonterminal {set(self.depth_constraints.keys())-set(self.nonterminals)} does not exist in grammar"
+            )
+
+    @staticmethod
+    def is_depth_constrained():
+        return True
+
+    def sampler(
+        self,
+        n=1,
+        depth_information: dict = None,
+        start_symbol: str = None,
+    ):
+        if self.depth_constraints is None:
+            raise ValueError("Depth constraints are not set!")
+
+        if start_symbol is None:
+            start_symbol = self.start()
+        else:
+            start_symbol = Nonterminal(start_symbol)
+
+        if depth_information is None:
+            depth_information = {}
+        return [
+            f"{self._depth_constrained_sampler(symbol=start_symbol, depth_information=depth_information)})"
+            for i in range(0, n)
+        ]
+
+    def _compute_depth_information_for_pre(self, tree: str) -> dict:
+        depth_information = {nt: 0 for nt in self.nonterminals}
+        q_nonterminals = deque()
+        for split in tree.split(" "):
+            if split == "":
+                continue
+            elif split[0] == "(":
+                q_nonterminals.append(split[1:])
+                depth_information[split[1:]] += 1
+                continue
+            while split[-1] == ")":
+                nt = q_nonterminals.pop()
+                depth_information[nt] -= 1
+                split = split[:-1]
+        return depth_information
+
+    def _compute_depth_information(self, tree: str) -> list:
+        split_tree = tree.split(" ")
+        depth_information = [0] * len(split_tree)
+        helper_dict = {nt: 0 for nt in self.nonterminals}
+        q_nonterminals = deque()
+        for i, split in enumerate(split_tree):
+            if split == "":
+                continue
+            elif split[0] == "(":
+                q_nonterminals.append(split[1:])
+                depth_information[i] = helper_dict[split[1:]] + 1
+                helper_dict[split[1:]] += 1
+                continue
+            while split[-1] == ")":
+                nt = q_nonterminals.pop()
+                helper_dict[nt] -= 1
+                split = split[:-1]
+        return depth_information
+
+    def _depth_constrained_sampler(self, symbol=None, depth_information: dict = None):
+        if depth_information is None:
+            depth_information = {}
+        # init the sequence
+        tree = "(" + str(symbol)
+        # collect possible productions from the starting symbol & filter if constraints are violated
+        lhs = str(symbol)
+        if lhs in depth_information.keys():
+            depth_information[lhs] += 1
+        else:
+            depth_information[lhs] = 1
+        if (
+            lhs in self.depth_constraints.keys()
+            and depth_information[lhs] >= self.depth_constraints[lhs]
+        ):
+            productions = [
+                production
+                for production in self.productions(lhs=symbol)
+                if lhs
+                not in [str(sym) for sym in production.rhs() if not isinstance(sym, str)]
+            ]
+        else:
+            productions = self.productions(lhs=symbol)
+
+        if len(productions) == 0:
+            raise Exception(
+                f"There can be no word sampled! This is due to the grammar and/or constraints."
+            )
+
+        # sample
+        production = choice(productions)
+        for sym in production.rhs():
+            if isinstance(sym, str):
+                # if terminal then add string to sequence
+                tree = tree + " " + sym
+            else:
+                tree = (
+                    tree
+                    + " "
+                    + self._depth_constrained_sampler(sym, depth_information)
+                    + ")"
+                )
+        depth_information[lhs] -= 1
+        return tree
+
+    def mutate(
+        self, parent: str, subtree_index: int, subtree_node: str, patience: int = 50
+    ) -> str:
+        # chop out subtree
+        pre, _, post = self.remove_subtree(parent, subtree_index)
+        _patience = patience
+        while _patience > 0:
+            # only sample subtree -> avoids full sampling of large parse trees
+            depth_information = self._compute_depth_information_for_pre(pre)
+            new_subtree = self.sampler(
+                1, start_symbol=subtree_node, depth_information=depth_information
+            )[0]
+            child = pre + new_subtree + post
+            if parent != child:  # ensure that parent is really mutated
+                break
+            _patience -= 1
+        return child
+
+    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+        # randomly swap subtrees in two trees
+        # if no suitiable subtree exists then return False
+        subtree_node, subtree_index = self.rand_subtree(parent1)
+        # chop out subtree
+        pre, sub, post = self.remove_subtree(parent1, subtree_index)
+        _patience = patience
+        while _patience > 0:
+            # sample subtree from donor
+            head_node_constraint = self._compute_depth_information_for_pre(pre)[
+                subtree_node
+            ]
+            donor_subtree_index = self._rand_subtree_fixed_head(
+                parent2, subtree_node, head_node_constraint
+            )
+            # if no subtrees with right head node return False
+            if not donor_subtree_index:
+                _patience -= 1
+            else:
+                donor_pre, donor_sub, donor_post = self.remove_subtree(
+                    parent2, donor_subtree_index
+                )
+                # return the two new tree
+                child1 = pre + donor_sub + post
+                child2 = donor_pre + sub + donor_post
+                return child1, child2
+
+        return False, False
+
+    def _rand_subtree_fixed_head(
+        self, tree: str, head_node: str, head_node_depth_constraint: int = 0
+    ) -> int:
+        # helper function to choose a random subtree from a given tree with a specific head node
+        # if no such subtree then return False, otherwise return the index of the subtree
+
+        # single pass through tree (stored as string) to look for the location of swappable_non_terminmals
+        split_tree = tree.split(" ")
+        depth_information = self._compute_depth_information(tree)
+        swappable_indices = [
+            i
+            for i in range(0, len(split_tree))
+            if split_tree[i][1:] == head_node
+            and depth_information[i] >= head_node_depth_constraint
+        ]
+        return super().rand_subtree_fixed_head(
+            tree=tree, head_node=head_node, swappable_indices=swappable_indices
+        )
+
+
+class ConstrainedGrammar(Grammar):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.constraints = None
+
+    def set_constraints(self, constraints: dict):
+        self.constraints = constraints
+
+    @staticmethod
+    def is_constrained():
+        return True
+
+    def sampler(
+        self,
+        n=1,
+        start_symbol: str = None,
+        not_allowed_productions=None,
+    ):
+        if start_symbol is None:
+            start_symbol = self.start()
+        else:
+            start_symbol = Nonterminal(start_symbol)
+
+        return [
+            self._constrained_sampler(
+                symbol=start_symbol,
+                not_allowed_productions=not_allowed_productions,
+            )
+            + ")"
+            for _ in range(n)
+        ]
+
+    def _constrained_sampler(
+        self,
+        symbol=None,
+        not_allowed_productions=None,
+        current_derivation=None,
+    ):
+        # simple sampler where each production is sampled uniformly from all possible productions
+        # Tree choses if return tree or list of terminals
+        # recursive implementation
+
+        # init the sequence
+        tree = "(" + str(symbol)
+        # collect possible productions from the starting symbol
+        productions = self.productions(lhs=symbol)
+        if not_allowed_productions is not None:
+            productions = list(
+                filter(
+                    lambda production: production not in not_allowed_productions,
+                    productions,
+                )
+            )
+        # sample
+        production = choice(productions)
+        counter = 0
+        current_derivation = self.constraints(production.rhs()[0])
+        for sym in production.rhs():
+            if isinstance(sym, str):
+                # if terminal then add string to sequence
+                tree = tree + " " + sym
+            else:
+                not_allowed_productions = self.constraints(
+                    production.rhs()[0],
+                    self.productions(lhs=sym),
+                    current_derivation,
+                )
+                ret_val = self._constrained_sampler(sym, not_allowed_productions)
+                tree = tree + " " + ret_val + ")"
+                current_derivation[counter] = ret_val
+                counter += 1
+        return tree
+
+    def _compute_current_context(self, pre_subtree: str):
+        q_nonterminals = deque()
+        for sym in pre_subtree.split(" "):
+            if sym == "":
+                continue
+            if sym[0] == "(":
+                sym = sym[1:]
+            if sym[-1] == ")":
+                for _ in range(sym.count(")")):
+                    q_nonterminals.pop()
+                while sym[-1] == ")":
+                    sym = sym[:-1]
+            if len(sym) == 1 and sym[0] in [" ", "\t", "\n", "[", "]"]:
+                continue
+            if sym in self.nonterminals:
+                q_nonterminals.append(sym)
+
+        context_start_idx = pre_subtree.rfind(q_nonterminals[-1])
+        pre_subtree_context = pre_subtree[context_start_idx:]
+        topology = pre_subtree_context[len(q_nonterminals[-1]) + 1 :].split(" ")[0]
+        productions = [
+            prod
+            for prod in self.productions()
+            if pre_subtree_context[: len(q_nonterminals[-1])] == f"{prod.lhs()}"
+            and prod.rhs()[0] == topology
+        ]
+        if len(productions) == 0:
+            raise Exception("Cannot find corresponding production!")
+        if len(productions) > 1:
+            raise NotImplementedError
+        production = productions[0]
+
+        q_context = deque()
+        production_nonterminals = [
+            prod for prod in production.rhs() if str(prod) in self.nonterminals
+        ]
+        current_derivation = self.constraints(production.rhs()[0])
+        counter = 0
+        pre_subtree_context = pre_subtree_context[len(q_nonterminals[-1]) + 1 :]
+        for i, s in enumerate(pre_subtree_context):
+            if s == "(":
+                start_idx = i
+                q_context.append(i)
+            elif s == ")":
+                q_context.pop()
+                if len(q_context) == 0:
+                    end_idx = i
+                    full_context = pre_subtree_context[start_idx:end_idx]
+                    ret_val = full_context[full_context.find(" ") + 1 :]
+                    current_derivation[counter] = ret_val
+                    counter += 1
+
+        return self.constraints(
+            production.rhs()[0],
+            self.productions(lhs=production_nonterminals[counter]),
+            current_derivation,
+        )
+
+    def mutate(
+        self, parent: str, subtree_index: int, subtree_node: str, patience: int = 50
+    ):
+        # chop out subtree
+        pre, _, post = self.remove_subtree(parent, subtree_index)
+        not_allowed_productions = self._compute_current_context(pre)
+        _patience = patience
+        while _patience > 0:
+            # only sample subtree -> avoids full sampling of large parse trees
+            new_subtree = self.sampler(
+                1,
+                start_symbol=subtree_node,
+                not_allowed_productions=not_allowed_productions,
+            )[0]
+            child = pre + new_subtree + post
+            if parent != child:  # ensure that parent is really mutated
+                break
+            _patience -= 1
+        return child
+
+    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+        subtree_node, subtree_index = self.rand_subtree(parent1)
+        # chop out subtree
+        pre, sub, post = self.remove_subtree(parent1, subtree_index)
+        parent1_not_allowed_productions = self._compute_current_context(pre)
+        _patience = patience
+        while _patience > 0:
+            # sample subtree from donor
+            donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
+            # if no subtrees with right head node return False
+            if not donor_subtree_index:
+                _patience -= 1
+            else:
+                donor_pre, donor_sub, donor_post = self.remove_subtree(
+                    parent2, donor_subtree_index
+                )
+                parent2_not_allowed_productions = self._compute_current_context(donor_pre)
+                if (
+                    parent1_not_allowed_productions is not None
+                    and "zero" in donor_sub
+                    and donor_sub.count("(") == 1
+                    and donor_sub.count(")") == 1
+                ):
+                    _patience -= 1
+                    continue
+                if (
+                    parent2_not_allowed_productions is not None
+                    and "zero" in sub
+                    and sub.count("(") == 1
+                    and sub.count(")") == 1
+                ):
+                    _patience -= 1
+                    continue
+                # return the two new tree
+                child1 = pre + donor_sub + post
+                child2 = donor_pre + sub + donor_post
+                return child1, child2
+
+        return False, False
 
 
 # helper function for quickly getting a single sample from multinomial with probs

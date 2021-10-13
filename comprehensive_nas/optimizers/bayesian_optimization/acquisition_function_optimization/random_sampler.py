@@ -21,7 +21,7 @@ class RandomSampler(AcquisitionOptimizer):
             _patience = self.patience
             while _patience > 0:
                 try:
-                    rand_config.sample_random_architecture()
+                    rand_config.sample()
                     break
                 except:  # pylint: disable=bare-except
                     _patience -= 1

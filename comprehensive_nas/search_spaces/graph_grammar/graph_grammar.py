@@ -11,7 +11,7 @@ import numpy as np
 
 from ..parameter import Parameter
 from .cfg import Grammar
-from .crossover import crossover
+from .crossover import simple_crossover
 from .graph import Graph
 from .mutations import bananas_mutate, simple_mutate
 from .primitives import AbstractPrimitive
@@ -176,6 +176,7 @@ class CoreGraphGrammar(Graph):
         self,
         base_tree: str | nx.DiGraph,
         motif_trees: list[str] | list[nx.DiGraph],
+        base_to_motif_map: list = None,
         node_label: str = "op_name",
     ) -> str | nx.DiGraph:
         """Assembles the base parse tree with the motif parse trees
@@ -192,19 +193,13 @@ class CoreGraphGrammar(Graph):
             raise ValueError("All trees must be of the same type!")
         if isinstance(base_tree, str):
             ensembled_tree = base_tree
-            for tree in motif_trees:
-                start_search_idx = 0
-                start_symbol = tree[1 : tree.find(" ")]
-                start_idx = ensembled_tree.find(start_symbol)
-                while start_idx > 0:
-                    ensembled_tree = (
-                        ensembled_tree[:start_idx]
-                        + tree
-                        + ensembled_tree[start_idx + len(start_symbol) :]
-                    )
-                    start_search_idx = start_idx + len(tree)
-                    start_idx = ensembled_tree.find(start_symbol, start_search_idx)
-            raise NotImplementedError("TODO implementation is not tested")
+            if base_to_motif_map is None:
+                raise NotImplementedError
+
+            for motif, idx in base_to_motif_map.items():
+                if motif in ensembled_tree:
+                    replacement = motif_trees[idx]
+                    ensembled_tree = ensembled_tree.replace(motif, replacement)
         elif isinstance(base_tree, nx.DiGraph):
             leafnodes = self._find_leafnodes(base_tree)
             root_nodes = [self._find_root(G) for G in motif_trees]
@@ -346,7 +341,9 @@ class CoreGraphGrammar(Graph):
                             raise Exception(
                                 f"Unknown primitive or topology: {tree.nodes[node][node_label]}"
                             )
-                        return terminal_to_torch_map[tree.nodes[node][node_label]]
+                        return deepcopy(
+                            terminal_to_torch_map[tree.nodes[node][node_label]]
+                        )
                 if len(tree.out_edges(node)) == 1:
                     return _build_graph_from_tree(
                         visited,
@@ -426,7 +423,9 @@ class CoreGraphGrammar(Graph):
                     ):  # exclude '[' ']' ... symbols
                         # TODO check if there is a potential bug here?
                         subgraphs.append(
-                            terminal_to_torch_map[tree.nodes[neighbor][node_label]]
+                            deepcopy(
+                                terminal_to_torch_map[tree.nodes[neighbor][node_label]]
+                            )
                         )
 
                 if is_primitive:
@@ -814,7 +813,10 @@ class CoreGraphGrammar(Graph):
     def update_op_names(self):
         # update op names
         for u, v in self.edges():
-            self.edges[u, v].update({"op_name": self.edges[u, v]["op"].get_op_name})
+            try:
+                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].get_op_name})
+            except Exception:
+                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].name})
 
     def from_stringTree_to_graph_repr(
         self,
@@ -876,18 +878,6 @@ class CoreGraphGrammar(Graph):
         def skip_char(char: str) -> bool:
             return True if char in [" ", "\t", "\n", "[", "]"] else False
 
-        if isinstance(grammar, list) and len(grammar) > 1:
-            full_grammar = deepcopy(grammar[0])
-            rules = full_grammar.productions()
-            nonterminals = full_grammar.nonterminals
-            terminals = full_grammar.terminals
-            for g in grammar[1:]:
-                rules.extend(g.productions())
-                nonterminals.extend(g.nonterminals)
-                terminals.extend(g.terminals)
-            grammar = full_grammar
-            raise NotImplementedError("TODO check implementation")
-
         G = nx.DiGraph()
         if add_subtree_map:
             q_nonterminals = collections.deque()
@@ -921,6 +911,8 @@ class CoreGraphGrammar(Graph):
 
         for split_idx, sym in enumerate(string_tree.split(" ")):
             # for sym in string_tree.split(" "):
+            if sym == "":
+                continue
             if sym[0] == "(":
                 sym = sym[1:]
             if sym[-1] == ")":
@@ -1207,7 +1199,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             parent2 = self
         parent1_string_tree = parent1.string_tree
         parent2_string_tree = parent2.string_tree
-        children = crossover(parent1_string_tree, parent2_string_tree, self.grammars[0])
+        children = simple_crossover(
+            parent1_string_tree, parent2_string_tree, self.grammars[0]
+        )
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]

@@ -17,9 +17,9 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
         pass
 
     def create_graph(self, vals: dict):
-        def get_default_args(func):
+        def get_args_and_defaults(func):
             signature = inspect.signature(func)
-            return {
+            return list(signature.parameters.keys()), {
                 k: v.default
                 for k, v in signature.parameters.items()
                 if v.default is not inspect.Parameter.empty
@@ -29,16 +29,16 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
             # currently assumes that missing args are ints!
             op = val["op"]
             args = {}
-            default_args = get_default_args(op)
-            for varname in op.__init__.__code__.co_varnames:
-                if varname == "self" or varname == "kwargs" or varname in args.keys():
+            arg_names, default_args = get_args_and_defaults(op)
+            for arg_name in arg_names:
+                if arg_name == "self" or arg_name == "kwargs" or arg_name in args.keys():
                     continue
-                if varname in val.keys():
-                    args[varname] = val[varname]
-                elif varname in default_args.keys():
-                    args[varname] = default_args[varname]
+                if arg_name in val.keys():
+                    args[arg_name] = val[arg_name]
+                elif arg_name in default_args.keys():
+                    args[arg_name] = default_args[arg_name]
                 else:
-                    args[varname] = 42
+                    args[arg_name] = 42
             return op(**args).get_op_name
 
         assert isinstance(vals, dict)

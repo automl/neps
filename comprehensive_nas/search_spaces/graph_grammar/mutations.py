@@ -4,41 +4,17 @@ from typing import Callable, List, Tuple
 from .cfg import Grammar
 
 
-def _grammar_mutate(
-    parent: str,
-    subtree_node: str,
-    subtree_index: int,
-    grammar: Grammar,
-    patience: int = 50,
-) -> Tuple[str]:
-    # chop out subtree
-    pre, _, post = grammar.remove_subtree(parent, subtree_index)
-    _patience = patience
-    while _patience > 0:
-        # only sample subtree -> avoids full sampling of large parse trees
-        if grammar.is_depth_constrained():
-            depth_information = grammar.compute_depth_information_for_pre(pre)
-            new_subtree = grammar.sampler(
-                1, start_symbol=subtree_node, depth_information=depth_information
-            )[0]
-        else:
-            new_subtree = grammar.sampler(1, start_symbol=subtree_node)[0]
-        child = pre + new_subtree + post
-        if parent != child:  # ensure that parent is really mutated
-            break
-        _patience -= 1
-    return child
-
-
 def simple_mutate(parent_string_tree: str, grammar: Grammar) -> Tuple[str, bool]:
     # works if there is only one grammar
     # randomly choose a subtree from the parent and replace
     # with a new randomly generated subtree
 
     # choose subtree to delete
-    subtree_node, subtree_index = grammar.rand_subtree(parent_string_tree)
-    child_string_tree = _grammar_mutate(
-        parent_string_tree, subtree_node, subtree_index, grammar
+    subtree_node, subtree_idx = grammar.rand_subtree(parent_string_tree)
+    child_string_tree = grammar.mutate(
+        parent=parent_string_tree,
+        subtree_index=subtree_idx,
+        subtree_node=subtree_node,
     )
     return child_string_tree, parent_string_tree == child_string_tree
 
@@ -67,8 +43,11 @@ def bananas_mutate(
         if random.random() < _mutation_prob:
             subtree_node = split_tree[swap_idx][1:]
             subtree_idx = swap_idx
-            child_string_tree = _grammar_mutate(
-                child_string_tree, subtree_node, subtree_idx, grammar, patience
+            child_string_tree = grammar.mutate(
+                parent=child_string_tree,
+                subtree_index=subtree_idx,
+                subtree_node=subtree_node,
+                patience=patience,
             )
 
             # update swappable indices

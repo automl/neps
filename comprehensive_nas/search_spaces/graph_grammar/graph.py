@@ -724,6 +724,8 @@ class Graph(torch.nn.Module, nx.DiGraph):
                         logger.debug("op {} already compiled. Skipping".format(op))
                     elif inspect.isclass(op) and issubclass(op, AbstractPrimitive):
                         # Init the class
+                        if "op_name" in attr:
+                            del attr["op_name"]
                         edge_data.set("op", op(**attr))
                     elif isinstance(op, Graph):
                         pass  # This is already covered by _get_child_graphs
