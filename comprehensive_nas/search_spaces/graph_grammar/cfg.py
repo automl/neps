@@ -449,8 +449,7 @@ class DepthConstrainedGrammar(Grammar):
             depth_information[lhs] = 1
         if (
             lhs in self.depth_constraints.keys()
-            and depth_information[lhs] > self.depth_constraints[lhs]
-            # and depth_information[lhs] >= self.depth_constraints[lhs] # new design
+            and depth_information[lhs] >= self.depth_constraints[lhs]
         ):
             productions = [
                 production
