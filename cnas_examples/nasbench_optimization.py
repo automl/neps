@@ -16,10 +16,8 @@ from comprehensive_nas.optimizers.bayesian_optimization.acquisition_function_opt
 from comprehensive_nas.optimizers.bayesian_optimization.acqusition_functions import (
     AcquisitionMapping,
 )
-from comprehensive_nas.optimizers.bayesian_optimization.benchmarks import BenchmarkMapping
-from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.hpo.hartmann6 import (
-    evaluate_hartmann6,
-)
+from comprehensive_nas.optimizers.bayesian_optimization.benchmarks import BenchmarkMapping, PipelineFunctionMapping
+
 from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.nas.nb_configfiles.api import (
     APIMapping,
 )
@@ -185,8 +183,8 @@ def run_experiment(args):
     objective = BenchmarkMapping[args.dataset]()
     initial_design = AcquisitionOptimizerMapping["random"](objective)
 
-    if args.dataset == "hartmann6":
-        run_pipeline_fn = evaluate_hartmann6
+    if args.dataset in PipelineFunctionMapping:
+        run_pipeline_fn = PipelineFunctionMapping[args.dataset]
     else:
         run_pipeline_fn = None
 

@@ -3,54 +3,49 @@ import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
 
+alpha = [1.0, 1.2, 3.0, 3.2]
+A = np.array(
+    [[3.0, 10.0, 30.0], [0.1, 10.0, 35.0], [3.0, 10.0, 30.0], [0.1, 10.0, 35.0]]
+)
+P = 0.0001 * np.array(
+    [[3689, 1170, 2673], [4699, 4387, 7470], [1090, 8732, 5547], [381, 5743, 8828]]
+)
+
+
+def evaluate_hartmann3(config, mode="eval", **kwargs):
+    """3d Hartmann test function
+    input bounds:  0 <= xi <= 1, i = 1..3
+    global optimum: (0.114614, 0.555649, 0.852547),
+    min function value = -3.86278
+    """
+    x = config.hps
+
+    y = 0
+    for i in range(4):
+        internal_sum = 0
+        for j in range(3):
+            internal_sum += A[i, j] * (x[j] - P[i, j]) ** 2
+
+        y += alpha[i] * np.exp(-internal_sum)
+
+    if mode == "test":
+        return y
+    else:
+        return y, 1.0
+
 
 class Hartmann3(AbstractBenchmark):
-    alpha = [1.0, 1.2, 3.0, 3.2]
-    A = np.array(
-        [[3.0, 10.0, 30.0], [0.1, 10.0, 35.0], [3.0, 10.0, 30.0], [0.1, 10.0, 35.0]]
-    )
-    P = 0.0001 * np.array(
-        [[3689, 1170, 2673], [4699, 4387, 7470], [1090, 8732, 5547], [381, 5743, 8828]]
-    )
-
     def __init__(
         self,
-        log_scale=False,
-        negative=False,
         seed=None,
         optimize_arch=False,
         optimize_hps=True,
     ):
-        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = True
         self.has_categorical_hp = False
 
-    def query(self, mode='eval', **kwargs):  # pylint: disable=unused-argument
-
-        x = self.hps
-
-        y = 0
-        for i in range(4):
-            internal_sum = 0
-            for j in range(3):
-                internal_sum += self.A[i, j] * (x[j] - self.P[i, j]) ** 2
-
-            y += self.alpha[i] * np.exp(-internal_sum)
-
-        if self.negative:
-            y = -y
-
-        if mode == "test":
-            return y
-        else:
-            return y, self.eval_cost()
-
-    @staticmethod
-    def eval_cost():
-        return 1.0
-
-    def reinitialize(self, negative=False, seed=None):
-        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+    def reinitialize(self, seed=None):
         self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
     @staticmethod

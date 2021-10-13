@@ -9,37 +9,32 @@ N_CATEGORICAL = 5
 N_CONTINUOUS = 5
 
 
+def evaluate_counting_ones(config, mode="eval", **kwargs):
+    """(n_cont + n_cat)d CountingOnes test function
+        input bounds:  0 <= xi <= 1, i = 1..n_cont
+                            xj in [0, 1], j = 1..n_cat
+        global optimum: [1] * (n_cont + n_cat),
+        min function value = -1 * (n_cont + n_cat)
+    """
+    x = np.array(config.hps, dtype=float)
+    y = float(np.sum(x))
+
+    if mode == "test":
+        return y
+    else:
+        return y, 1.0
+
+
 class CountingOnes(AbstractBenchmark):
     def __init__(
         self,
-        log_scale=False,
-        negative=False,
         seed=None,
         optimize_arch=False,
         optimize_hps=True,
     ):
-        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = bool(N_CONTINUOUS)
         self.has_categorical_hp = bool(N_CATEGORICAL)
-
-    def query(self, mode='eval', **kwargs):  # pylint: disable=unused-argument
-
-        x = deepcopy(self.hps)
-        if isinstance(x[0], str):
-            x[:N_CATEGORICAL] = list(map(int, x[:N_CATEGORICAL]))
-        y = float(np.sum(x))
-
-        if self.negative:
-            y = -y
-
-        if mode == "test":
-            return y
-        else:
-            return y, self.eval_cost()
-
-    @staticmethod
-    def eval_cost():
-        return 1.0
 
     def sample_random_architecture(self):
         cs = CountingOnes.get_config_space()
@@ -49,8 +44,7 @@ class CountingOnes(AbstractBenchmark):
         self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
         self.name = str(self.parse())
 
-    def reinitialize(self, negative=False, seed=None):
-        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+    def reinitialize(self, seed=None):
         self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
     @staticmethod
