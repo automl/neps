@@ -1,3 +1,7 @@
+from typing import Iterable, Tuple
+
+import numpy as np
+
 try:
     import torch
 except ModuleNotFoundError:
@@ -5,10 +9,10 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message)
 
-from .ei import ComprehensiveExpectedImprovement
+from .base_acqusition import BaseAcquisition
 
 
-class ComprehensiveUpperConfidentBound(ComprehensiveExpectedImprovement):
+class ComprehensiveUpperConfidentBound(BaseAcquisition):
     """
     Graph version of the upper confidence bound acquisition function
     """
@@ -31,3 +35,9 @@ class ComprehensiveUpperConfidentBound(ComprehensiveExpectedImprovement):
         if asscalar:
             acq = acq.detach().numpy().item()
         return acq  # .mean()
+
+    def propose_location(
+        self, candidates: Iterable, top_n: int = 5, return_distinct: bool = True
+    ) -> Tuple[Iterable, np.ndarray, np.ndarray]:
+        self.iters += 1
+        raise NotImplementedError

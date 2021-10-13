@@ -60,10 +60,12 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         std = torch.sqrt(torch.diag(cov))
         mu_star = self._get_incumbent()
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
-        u = (mu - mu_star - self.xi) / std
+        # u = (mu - mu_star - self.xi) / std
+        u = (mu_star - mu - self.xi) / std
         ucdf = gauss.cdf(u)
         updf = torch.exp(gauss.log_prob(u))
-        ei = std * updf + (mu - mu_star - self.xi) * ucdf
+        # ei = std * updf + (mu - mu_star - self.xi) * ucdf
+        ei = std * updf + (mu_star - mu - self.xi) * ucdf
         if self.augmented_ei:
             sigma_n = self.surrogate_model.likelihood
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
@@ -79,12 +81,14 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         """
         Compute and return the incumbent
         """
-        if self.in_fill == "max":
-            return torch.max(self.surrogate_model.y_)
+        if self.in_fill == "best":
+            # return torch.max(self.surrogate_model.y_)
+            return torch.min(self.surrogate_model.y_)
         else:
             x = self.surrogate_model.x
             mu_train, _ = self.surrogate_model.predict(x)
-            incumbent_idx = torch.argmax(mu_train)
+            # incumbent_idx = torch.argmax(mu_train)
+            incumbent_idx = torch.argmin(mu_train)
             return self.surrogate_model.y_[incumbent_idx]
 
     def _get_incumbent(self):
