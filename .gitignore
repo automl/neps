@@ -39,5 +39,4 @@ poetry.lock
 *.sh
 *.model
 *.pth
-demo/plots/
-demo/results
+cnas_examples/results
