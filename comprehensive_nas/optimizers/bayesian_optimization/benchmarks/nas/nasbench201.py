@@ -208,7 +208,7 @@ class NASBench201(AbstractBenchmark):
                 np.array([self._retrieve("eval", **kwargs)[1] for _ in range(n_repeat)])
             )
 
-    def sample_random_architecture(self):
+    def sample(self):
         nas201_cs = NASBench201.get_config_space()
 
         if self.optimize_arch:

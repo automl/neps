@@ -4,15 +4,10 @@ from networkx.readwrite import json_graph
 class AbstractBenchmark:
     """An abstract class specifying a prototype objective function"""
 
-    def __init__(self, seed, negative, log_scale, optimize_arch, optimize_hps):
-        self.dim = len(self.get_meta_information()["bounds"])
-        self.optimum_location = self.get_meta_information()["optima"]
-        self.optimal_val = self.get_meta_information()["f_opt"]
-        self.bounds = self.get_meta_information()["bounds"]
+    def __init__(self, seed, optimize_arch, optimize_hps):
+        # self.dim = len(self.get_meta_information()["bounds"])
 
         self.seed = seed
-        self.negative = negative
-        self.log_scale = log_scale
         self.optimize_arch = optimize_arch
         self.optimize_hps = optimize_hps
 
@@ -24,13 +19,13 @@ class AbstractBenchmark:
     def __call__(self, *args):
         return self.query(*args)
 
-    def query(self, mode='eval', *args, **kwargs):
-        raise NotImplementedError()
+    # def query(self, mode='eval', *args, **kwargs):
+    #     raise NotImplementedError()
 
     def reinitialize(self, *args, **kwargs):
         raise NotImplementedError
 
-    def sample_random_architecture(self, **kwargs):
+    def sample(self, **kwargs):
         raise NotImplementedError
 
     def parse(self):

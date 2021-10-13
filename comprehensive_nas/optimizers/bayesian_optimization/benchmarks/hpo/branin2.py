@@ -3,47 +3,44 @@ import numpy as np
 
 from ..abstract_benchmark import AbstractBenchmark
 
+a = 1
+b = 5.1 / (4 * np.pi ** 2)
+c = 5 / np.pi
+r = 6
+s = 10
+t = 1 / (8 * np.pi)
+
+
+def evaluate_branin2(config, mode="eval", **kwargs):
+    """2d Branin test function
+    input bounds:  -5 <= x1 <= 10,
+                    0 <= x2 <= 15,
+    global optima: (-pi, 12.275), (pi, 2.275), (9.42478, 2.475)
+    min function value = 0.39789
+    """
+    x = config.hps
+
+    y = a * (x[1] - b * x[0] ** 2 + c * x[0] - r) ** 2
+    y += s * (1 - t) * np.cos(x[0]) + s
+
+    if mode == "test":
+        return -y
+    else:
+        return -y, 1.0
+
 
 class Branin2(AbstractBenchmark):
     def __init__(
         self,
-        log_scale=False,
-        negative=False,
         seed=None,
         optimize_arch=False,
         optimize_hps=True,
     ):
-        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = True
         self.has_categorical_hp = False
 
-    def query(self, mode='eval', **kwargs):  # pylint: disable=unused-argument
-
-        x = self.hps
-
-        a = 1
-        b = 5.1 / (4 * np.pi ** 2)
-        c = 5 / np.pi
-        r = 6
-        s = 10
-        t = 1 / (8 * np.pi)
-        y = a * (x[1] - b * x[0] ** 2 + c * x[0] - r) ** 2
-        y += s * (1 - t) * np.cos(x[0]) + s
-
-        if self.negative:
-            y = -y
-
-        if mode == "test":
-            return y
-        else:
-            return y,  self.eval_cost()
-
-    @staticmethod
-    def eval_cost():
-        return 1.0
-
-    def reinitialize(self, negative=False, seed=None):
-        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+    def reinitialize(self, seed=None):
         self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
     @staticmethod
@@ -63,7 +60,7 @@ class Branin2(AbstractBenchmark):
             "noise_variance": 0.05,
         }
 
-    def sample_random_architecture(self):
+    def sample(self):
         cs = Branin2.get_config_space()
         config = cs.sample_configuration()
         rand_hps = list(config.get_dictionary().values())

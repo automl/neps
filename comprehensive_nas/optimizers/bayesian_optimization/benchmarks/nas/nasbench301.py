@@ -208,7 +208,7 @@ class NASBench301(AbstractBenchmark):
 
         return res
 
-    def sample_random_architecture(self):
+    def sample(self):
         # Sample configuration
         nas301_cs = NASBench301.get_config_space()
         config = nas301_cs.sample_configuration()

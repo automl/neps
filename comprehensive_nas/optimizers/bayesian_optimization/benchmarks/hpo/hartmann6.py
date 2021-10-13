@@ -22,10 +22,9 @@ P = 0.0001 * np.array(
 )
 
 
-def evaluate_hartmann6(config, mode="eval"):
+def evaluate_hartmann6(config, mode="eval", **kwargs):
     """6d Hartmann test function
     input bounds:  0 <= xi <= 1, i = 1..6
-    fidelity bounds: 0 <= zi <= 1, i = 1..4
     global optimum: (0.20169, 0.150011, 0.476874, 0.275332, 0.311652, 0.6573),
     min function value = -3.32237
     """
@@ -48,18 +47,15 @@ def evaluate_hartmann6(config, mode="eval"):
 class Hartmann6(AbstractBenchmark):
     def __init__(
         self,
-        log_scale=False,
-        negative=False,
         seed=None,
         optimize_arch=False,
         optimize_hps=True,
     ):
-        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = True
         self.has_categorical_hp = False
 
-    def reinitialize(self, negative=False, seed=None):
-        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+    def reinitialize(self, seed=None):
         self.seed = seed  # pylint: disable=attribute-defined-outside-init
 
     @staticmethod
@@ -79,7 +75,7 @@ class Hartmann6(AbstractBenchmark):
             "noise_variance": 0.05,
         }
 
-    def sample_random_architecture(self):
+    def sample(self):
         cs = Hartmann6.get_config_space()
         config = cs.sample_configuration()
         rand_hps = list(config.get_dictionary().values())
