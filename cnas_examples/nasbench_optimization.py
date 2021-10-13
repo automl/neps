@@ -16,8 +16,10 @@ from comprehensive_nas.optimizers.bayesian_optimization.acquisition_function_opt
 from comprehensive_nas.optimizers.bayesian_optimization.acqusition_functions import (
     AcquisitionMapping,
 )
-from comprehensive_nas.optimizers.bayesian_optimization.benchmarks import BenchmarkMapping, PipelineFunctionMapping
-
+from comprehensive_nas.optimizers.bayesian_optimization.benchmarks import (
+    BenchmarkMapping,
+    PipelineFunctionMapping,
+)
 from comprehensive_nas.optimizers.bayesian_optimization.benchmarks.nas.nb_configfiles.api import (
     APIMapping,
 )

@@ -11,10 +11,10 @@ N_CONTINUOUS = 5
 
 def evaluate_counting_ones(config, mode="eval", **kwargs):
     """(n_cont + n_cat)d CountingOnes test function
-        input bounds:  0 <= xi <= 1, i = 1..n_cont
-                            xj in [0, 1], j = 1..n_cat
-        global optimum: [1] * (n_cont + n_cat),
-        min function value = -1 * (n_cont + n_cat)
+    input bounds:  0 <= xi <= 1, i = 1..n_cont
+                        xj in [0, 1], j = 1..n_cat
+    global optimum: [1] * (n_cont + n_cat),
+    min function value = -1 * (n_cont + n_cat)
     """
     x = np.array(config.hps, dtype=float)
     y = float(np.sum(x))
