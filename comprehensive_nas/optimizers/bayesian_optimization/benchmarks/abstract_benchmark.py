@@ -25,7 +25,7 @@ class AbstractBenchmark:
     def reinitialize(self, *args, **kwargs):
         raise NotImplementedError
 
-    def sample_random_architecture(self, **kwargs):
+    def sample(self, **kwargs):
         raise NotImplementedError
 
     def parse(self):

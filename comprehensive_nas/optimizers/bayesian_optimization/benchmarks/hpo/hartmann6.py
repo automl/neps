@@ -75,7 +75,7 @@ class Hartmann6(AbstractBenchmark):
             "noise_variance": 0.05,
         }
 
-    def sample_random_architecture(self):
+    def sample(self):
         cs = Hartmann6.get_config_space()
         config = cs.sample_configuration()
         rand_hps = list(config.get_dictionary().values())

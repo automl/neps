@@ -36,7 +36,7 @@ class CountingOnes(AbstractBenchmark):
         self.has_continuous_hp = bool(N_CONTINUOUS)
         self.has_categorical_hp = bool(N_CATEGORICAL)
 
-    def sample_random_architecture(self):
+    def sample(self):
         cs = CountingOnes.get_config_space()
         config = cs.sample_configuration()
         rand_hps = list(map(str, config.get_dictionary().values()))[:N_CATEGORICAL]
