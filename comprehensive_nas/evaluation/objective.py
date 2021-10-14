@@ -43,11 +43,11 @@ class ObjectiveWithAPI(Objective):
         loss = self.api.eval(_config)
         end = time.time()
         return {
-            "loss": loss,
+            "loss": self.api.transform(loss),
             "info_dict": {
                 "config_id": config.id,
-                "val_score": self.api.inv_transform(loss),
-                "test_score": self.api.inv_transform(self.api.test(_config)),
+                "val_score": loss,
+                "test_score": self.api.test(_config),
                 "train_time": end - start,
             },
         }
