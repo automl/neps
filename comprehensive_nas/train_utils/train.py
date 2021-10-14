@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 import torch
 import torchmetrics
@@ -119,7 +117,6 @@ def training_pipeline(
     n_epochs: int,
     **train_args,
 ):
-    start = time.time()
     reset_weights(model)
     results = run_training(
         model=model,
@@ -134,16 +131,7 @@ def training_pipeline(
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
         **train_args,
     )
-    end = time.time()
-    train_time = end - start
-    return {
-        "loss": 1 - results["best_val_score"],
-        "info": {
-            "val_score": results["best_val_score"],
-            "test_score": results["best_test_score"],
-            "train_time": train_time,
-        },
-    }
+    return 1 - results["best_val_score"], 1 - results["best_test_score"]
 
 
 if __name__ == "__main__":
