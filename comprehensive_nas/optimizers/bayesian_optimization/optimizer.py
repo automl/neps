@@ -43,7 +43,7 @@ class BayesianOptimization(Optimizer):
         self.return_opt_details = return_opt_details
         self.surrogate_model_fit_args = surrogate_model_fit_args
 
-        self.random_sampler = RandomSampler(acquisition_function_opt.objective)
+        self.random_sampler = RandomSampler(acquisition_function_opt.search_space)
 
         self.train_x = None
         self.train_y = None
