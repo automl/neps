@@ -9,15 +9,18 @@ from .base_acq_optimizer import AcquisitionOptimizer
 
 class RandomSampler(AcquisitionOptimizer):
     def __init__(
-        self, objective, acquisition_function: BaseAcquisition = None, patience: int = 100
+        self,
+        search_space,
+        acquisition_function: BaseAcquisition = None,
+        patience: int = 100,
     ):
-        super().__init__(objective, acquisition_function)
+        super().__init__(search_space, acquisition_function)
         self.patience = patience
 
     def create_pool(self, pool_size: int) -> list:
         pool = []
         while len(pool) < pool_size:
-            rand_config = deepcopy(self.objective)
+            rand_config = deepcopy(self.search_space)
             _patience = self.patience
             while _patience > 0:
                 try:

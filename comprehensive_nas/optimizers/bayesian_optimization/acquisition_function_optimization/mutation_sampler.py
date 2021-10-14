@@ -10,7 +10,7 @@ from .random_sampler import RandomSampler
 class MutationSampler(AcquisitionOptimizer):
     def __init__(
         self,
-        objective,
+        search_space,
         acquisition_function: BaseAcquisition,
         n_best: int = 10,
         n_mutate: int = None,
@@ -18,7 +18,7 @@ class MutationSampler(AcquisitionOptimizer):
         check_isomorphism_history: bool = True,  # on NB201 set to False!
         patience: int = 50,
     ):
-        super().__init__(objective, acquisition_function)
+        super().__init__(search_space, acquisition_function)
         self.n_best = n_best
         self.n_mutate = n_mutate
         self.allow_isomorphism = allow_isomorphism
@@ -27,7 +27,7 @@ class MutationSampler(AcquisitionOptimizer):
         )
         self.patience = patience
 
-        self.random_sampling = RandomSampler(objective)
+        self.random_sampling = RandomSampler(search_space)
 
     def sample(
         self, pool_size: int = 250, batch_size: int = 5
