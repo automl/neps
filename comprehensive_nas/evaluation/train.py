@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     import torchvision.models as models
 
-    from comprehensive_nas.train_utils.utils import (
+    from comprehensive_nas.evaluation.utils import (
         get_evaluation_metric,
         get_loss,
         get_optimizer,
