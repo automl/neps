@@ -12,9 +12,16 @@ class Objective:
     def __call__(self, config, mode, **kwargs):
         raise NotImplementedError
 
-    def _transform_score(self, score):
+    def transform(self, val):
         if self.log_scale:
-            score = np.log(score + 1e-8)
+            val = np.log(val + 1e-8)  # avoid log(0)
         if self.negative:
-            score = -score
-        return score
+            val *= -1
+        return val
+
+    def inv_transform(self, val):
+        if self.negative:
+            val *= -1
+        if self.log_scale:
+            val = np.exp(val)
+        return val
