@@ -17,7 +17,7 @@ def evaluate_counting_ones(config, mode="eval", **kwargs):
     min function value = -1 * (n_cont + n_cat)
     """
     x = np.array(config.hps, dtype=float)
-    y = float(np.sum(x))
+    y = -float(np.sum(x))
 
     if mode == "test":
         return y

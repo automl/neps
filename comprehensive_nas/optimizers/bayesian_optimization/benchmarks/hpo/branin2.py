@@ -24,9 +24,9 @@ def evaluate_branin2(config, mode="eval", **kwargs):
     y += s * (1 - t) * np.cos(x[0]) + s
 
     if mode == "test":
-        return -y
+        return y
     else:
-        return -y, 1.0
+        return y, 1.0
 
 
 class Branin2(AbstractBenchmark):

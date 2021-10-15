@@ -21,8 +21,8 @@ class NASBench201(AbstractBenchmark):
         negative=True,
         hp="12",
         seed=None,
-        optimize_arch=False,
-        optimize_hps=True,
+        optimize_arch=True,
+        optimize_hps=False,
     ):
         """
         data_dir: data directory that contains NAS-Bench-201-v1_0-e61699.pth file
@@ -78,7 +78,7 @@ class NASBench201(AbstractBenchmark):
         self.best_val_acc = best_val_acc
         self.best_test_acc = best_test_acc
 
-        super().__init__(seed, negative, log_scale, optimize_arch, optimize_hps)
+        super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = False
         self.has_categorical_hp = self.optimize_hps
 
@@ -188,12 +188,12 @@ class NASBench201(AbstractBenchmark):
         else:
             raise ValueError("Unknown query parameter: which = " + str(which))
 
-        if self.log_scale:
-            y = np.log(err)
-        else:
-            y = err
-        if self.negative:
-            y = -y
+        # if self.log_scale:
+        y = np.log(err)
+        # else:
+            # y = err
+        # if self.negative:
+        y = -y
         return y, cost_results["flops"]
 
     def query(self, mode='eval', n_repeat=1, **kwargs):
@@ -308,90 +308,8 @@ class NASBench201(AbstractBenchmark):
             "noise_variance": 0.05,
         }
 
-    def reinitialize(self, negative=False, seed=None):
-        self.negative = negative  # pylint: disable=attribute-defined-outside-init
+    def reinitialize(self, seed=None):
         self.seed = seed  # pylint: disable=attribute-defined-outside-init
-
-
-# class NAS201edge(NASBench201):
-#     def _retrieve(self, G, budget, which="eval"):
-#         #  set random seed for evaluation
-#         seed_list = [777, 888, 999]
-#         if self.seed is None:
-#             seed = random.choice(seed_list)
-#         elif self.seed >= 3:
-#             seed = self.seed
-#         else:
-#             seed = seed_list[self.seed]
-#
-#         # find architecture index
-#         arch_str = G.name
-#         # print(arch_str)
-#
-#         try:
-#             arch_index = self.api.query_index_by_arch(arch_str)
-#             acc_results = self.api.query_by_index(arch_index, self.task)
-#             if seed >= 3:
-#                 # some architectures only contain 1 seed result
-#                 acc_results = self.api.get_more_info(
-#                     arch_index, self.task, None, self.use_12_epochs_result, False
-#                 )
-#                 val_acc = acc_results["valid-accuracy"] / 100
-#                 test_acc = acc_results["test-accuracy"] / 100
-#             else:
-#                 try:
-#                     val_acc = acc_results[seed].get_eval("x-valid")["accuracy"] / 100
-#                     if self.task == "cifar10-valid":
-#                         test_acc = (
-#                             acc_results[seed].get_eval("ori-test")["accuracy"] / 100
-#                         )
-#                     else:
-#                         test_acc = acc_results[seed].get_eval("x-test")["accuracy"] / 100
-#                 except:
-#                     # some architectures only contain 1 seed result
-#                     acc_results = self.api.get_more_info(
-#                         arch_index, self.task, None, self.use_12_epochs_result, False
-#                     )
-#                     val_acc = acc_results["valid-accuracy"] / 100
-#                     test_acc = acc_results["test-accuracy"] / 100
-#
-#             auxiliary_info = self.api.query_meta_info_by_index(arch_index)
-#             cost_info = auxiliary_info.get_compute_costs(self.task)
-#
-#             # auxiliary cost results such as number of flops and number of parameters
-#             cost_results = {
-#                 "flops": cost_info["flops"],
-#                 "params": cost_info["params"],
-#                 "latency": cost_info["latency"],
-#             }
-#
-#         except FileNotFoundError:
-#             val_acc = 0.01
-#             test_acc = 0.01
-#             print("missing arch info")
-#             cost_results = {"flops": None, "params": None, "latency": None}
-#
-#         # store val and test performance + auxiliary cost information
-#         self.X.append(arch_str)
-#         self.y_valid_acc.append(val_acc)
-#         self.y_test_acc.append(test_acc)
-#         self.costs.append(cost_results)
-#
-#         if which == "eval":
-#             err = 1.0 - val_acc
-#         elif which == "test":
-#             err = 1.0 - test_acc
-#         else:
-#             raise ValueError("Unknown query parameter: which = " + str(which))
-#
-#         if self.log_scale:
-#             y = np.log(err)
-#         else:
-#             y = err
-#         if self.negative:
-#             y = -y
-#         return y
-#
 
 
 def create_nasbench201_graph(op_node_labelling, edge_attr=True):

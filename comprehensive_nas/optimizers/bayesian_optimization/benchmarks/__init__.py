@@ -26,5 +26,5 @@ PipelineFunctionMapping = {
     "hartmann3": evaluate_hartmann3,
     "hartmann6": evaluate_hartmann6,
     "counting_ones": evaluate_counting_ones,
-    "nasbench301": None,
+    # "nasbench301": None,
 }

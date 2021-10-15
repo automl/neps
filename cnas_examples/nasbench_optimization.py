@@ -125,7 +125,7 @@ parser.add_argument(
     "--batch_size", type=int, default=5, help="Number of samples to evaluate"
 )
 parser.add_argument("-v", "--verbose", action="store_true")
-parser.add_argument("--seed", type=int, default=None)
+parser.add_argument("--seed", type=int, default=5)
 parser.add_argument(
     "--optimize_arch", action="store_true", help="Whether to optimize arch"
 )
@@ -182,7 +182,7 @@ def run_experiment(args):
     elif args.dataset == "nasbench301":
         assert args.dataset in APIMapping.keys()
         api = APIMapping[args.dataset]
-    objective = BenchmarkMapping[args.dataset]()
+    objective = BenchmarkMapping[args.dataset](seed=args.seed)
     initial_design = AcquisitionOptimizerMapping["random"](objective)
 
     if args.dataset in PipelineFunctionMapping:
