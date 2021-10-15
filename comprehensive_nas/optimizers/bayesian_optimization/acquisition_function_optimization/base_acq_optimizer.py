@@ -12,8 +12,8 @@ from ..acqusition_functions.base_acqusition import BaseAcquisition
 
 
 class AcquisitionOptimizer:
-    def __init__(self, objective, acquisition_function: BaseAcquisition):
-        self.objective = objective
+    def __init__(self, search_space, acquisition_function: BaseAcquisition):
+        self.search_space = search_space
         self.acquisition_function = acquisition_function
         self.x: Iterable = []
         self.y: Iterable = []

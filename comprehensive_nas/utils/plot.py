@@ -226,14 +226,15 @@ def plot_incumbent_trajectory(
             y = np.mean(vals, axis=axis) if plot_mean else np.median(vals, axis=axis)
             if vals.shape[0] == 1:
                 print(f"WARNING: {strategy} has only one run!")
-                std_dev = np.zeros_like(x)
+                y_err = np.zeros_like(x)
             else:
-                std_dev = (
+                y_err = (
                     stats.sem(vals, axis=axis)
                     if plot_std_error
                     else np.std(vals, axis=axis)
                 )
-            plt.errorbar(x, y, yerr=std_dev, label=strategy)
+            plt.plot(x, y, "x-", label=strategy)
+            plt.fill_between(x, y - y_err, y + y_err, alpha=0.4)
         else:
             raise ValueError(
                 "Plot incumbent trajectory only supports 1- or 2-dimensional values"
