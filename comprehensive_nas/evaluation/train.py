@@ -100,8 +100,8 @@ def run_training(
 
     return {
         "best_epoch": best_epoch,
-        "best_val_score": best_valid_score.item(),
-        "best_test_score": best_test_score.item(),
+        "best_val_score": best_valid_score,
+        "best_test_score": best_test_score,
     }
 
 
