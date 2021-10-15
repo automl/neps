@@ -1,5 +1,6 @@
 from networkx.readwrite import json_graph
-
+import random
+import numpy as np
 
 class AbstractBenchmark:
     """An abstract class specifying a prototype objective function"""
@@ -22,8 +23,10 @@ class AbstractBenchmark:
     # def query(self, mode='eval', *args, **kwargs):
     #     raise NotImplementedError()
 
-    def reinitialize(self, *args, **kwargs):
-        raise NotImplementedError
+    def reinitialize(self, seed=1):
+        self.seed = seed  # pylint: disable=attribute-defined-outside-init
+        np.random.seed(seed)
+        random.seed(seed)
 
     def sample(self, **kwargs):
         raise NotImplementedError

@@ -39,9 +39,9 @@ def evaluate_hartmann6(config, mode="eval", **kwargs):
         y += alpha[i] * np.exp(-internal_sum)
 
     if mode == "test":
-        return y
+        return -y
     else:
-        return y, 1.0
+        return -y, 1.0
 
 
 class Hartmann6(AbstractBenchmark):
@@ -54,9 +54,7 @@ class Hartmann6(AbstractBenchmark):
         super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = True
         self.has_categorical_hp = False
-
-    def reinitialize(self, seed=None):
-        self.seed = seed  # pylint: disable=attribute-defined-outside-init
+        self.reinitialize(seed=seed)
 
     @staticmethod
     def get_config_space():

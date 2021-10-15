@@ -27,9 +27,9 @@ def evaluate_hartmann3(config, mode="eval", **kwargs):
         y += alpha[i] * np.exp(-internal_sum)
 
     if mode == "test":
-        return y
+        return -y
     else:
-        return y, 1.0
+        return -y, 1.0
 
 
 class Hartmann3(AbstractBenchmark):
