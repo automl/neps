@@ -439,20 +439,29 @@ class Graph(torch.nn.Module, nx.DiGraph):
             node = self.nodes[node_idx]
             if "subgraph" in node:
                 raise NotImplementedError
-                x = node["subgraph"].to_pytorch_v2(node["input"])
+                x = node["subgraph"].to_pytorch(node["input"])
             else:
                 if len(node["input"].values()) == 1:
                     x = next(iter(node["input"].values()))
                 else:
                     max_xidx = max(used_input_names)
-                    if node["comb_op"].__name__ == "sum":
+                    if (
+                        "__name__" in dir(node["comb_op"])
+                        and node["comb_op"].__name__ == "sum"
+                    ):
                         _forward_f = f"x{max_xidx+1}=sum(["
                         for k in sorted(node["input"].keys()):
                             _forward_f += node["input"][k] + ","
                         _forward_f = _forward_f[:-1] + "])"
                         forward_f.append(_forward_f)
                     else:
-                        raise NotImplementedError
+                        submodule_list.append(node["comb_op"])
+                        _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}](["
+                        for inp in node["input"].values():
+                            _forward_f += inp + ","
+                        _forward_f = _forward_f[:-1] + "])"
+                        used_input_names.append(max_xidx + 1)
+                        forward_f.append(_forward_f)
                     x = f"x{max_xidx+1}"
                 if int(x[1:]) not in used_input_names:
                     used_input_names.append(int(x[1:]))
@@ -471,8 +480,12 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     edge_data = self.get_edge_data(node_idx, neigbor_idx)
                     # inject edge data only for AbstractPrimitive, not Graphs
                     if isinstance(edge_data.op, Graph):
-                        raise NotImplementedError
-                        edge_output = self.to_pytorch_v2(edge_data)
+                        submodule = edge_data.op.to_pytorch()
+                        submodule_list.append(submodule)
+                        _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}]({x})"
+                        input_name = f"x{max_xidx + 1}"
+                        used_input_names.append(max_xidx + 1)
+                        forward_f.append(_forward_f)
                     elif isinstance(edge_data.op, AbstractPrimitive):
                         edge_data.op.forward = partial(
                             edge_data.op.forward, edge_data=edge_data
