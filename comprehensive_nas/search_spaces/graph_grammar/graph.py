@@ -438,8 +438,14 @@ class Graph(torch.nn.Module, nx.DiGraph):
         for node_idx in lexicographical_topological_sort(self):
             node = self.nodes[node_idx]
             if "subgraph" in node:
-                raise NotImplementedError
-                x = node["subgraph"].to_pytorch(node["input"])
+                # TODO implementation not checked yet!
+                submodule = node["subgraph"].to_pytorch()
+                submodule_list.append(submodule)
+                _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}]({node['input']})"
+                input_name = f"x{max_xidx + 1}"
+                used_input_names.append(max_xidx + 1)
+                forward_f.append(_forward_f)
+                x = f"x{max_xidx+1}"
             else:
                 if len(node["input"].values()) == 1:
                     x = next(iter(node["input"].values()))
