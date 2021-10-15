@@ -50,7 +50,7 @@ def evaluate(model, device, metric, loader):
         data, target = data.to(device), target.to(device)
         output = model.forward(data)
         metric.update(output, target)
-    return metric.compute().cpu()
+    return metric.compute().cpu().item()
 
 
 def run_training(
