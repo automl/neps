@@ -535,13 +535,13 @@ class DepthConstrainedGrammar(Grammar):
         subtree_node, subtree_index = self.rand_subtree(parent1)
         # chop out subtree
         pre, sub, post = self.remove_subtree(parent1, subtree_index)
-        head_node_constraint = self._compute_depth_information_for_pre(pre)[subtree_node]
+        head_node_depth = self._compute_depth_information_for_pre(pre)[subtree_node] + 1
         sub_depth = self._compute_max_depth(sub, subtree_node)
         _patience = patience
         while _patience > 0:
             # sample subtree from donor
             donor_subtree_index = self._rand_subtree_fixed_head(
-                parent2, subtree_node, head_node_constraint, sub_depth=sub_depth
+                parent2, subtree_node, head_node_depth, sub_depth=sub_depth
             )
             # if no subtrees with right head node return False
             if not donor_subtree_index:
@@ -561,7 +561,7 @@ class DepthConstrainedGrammar(Grammar):
         self,
         tree: str,
         head_node: str,
-        head_node_depth_constraint: int = 0,
+        head_node_depth: int = 0,
         sub_depth: int = 0,
     ) -> int:
         # helper function to choose a random subtree from a given tree with a specific head node
@@ -575,7 +575,7 @@ class DepthConstrainedGrammar(Grammar):
                 i
                 for i in range(len(split_tree))
                 if split_tree[i][1:] == head_node
-                and head_node_depth_constraint - 1 + subtree_depth[i]
+                and head_node_depth - 1 + subtree_depth[i]
                 <= self.depth_constraints[head_node]
                 and depth_information[i] - 1 + sub_depth
                 <= self.depth_constraints[head_node]
@@ -591,9 +591,11 @@ class ConstrainedGrammar(Grammar):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.constraints = None
+        self.none_operation = None
 
-    def set_constraints(self, constraints: dict):
+    def set_constraints(self, constraints: dict, none_operation: str):
         self.constraints = constraints
+        self.none_operation = none_operation
 
     @staticmethod
     def is_constrained():
@@ -618,6 +620,18 @@ class ConstrainedGrammar(Grammar):
             + ")"
             for _ in range(n)
         ]
+
+    def _get_not_allowed_productions(
+        self, potential_productions, any_production_allowed: bool
+    ):
+        return list(
+            filter(
+                lambda prod: not any_production_allowed
+                and len(prod.rhs()) == 1
+                and prod.rhs()[0] == self.none_operation,
+                potential_productions,
+            )
+        )
 
     def _constrained_sampler(
         self,
@@ -649,10 +663,12 @@ class ConstrainedGrammar(Grammar):
                 # if terminal then add string to sequence
                 tree = tree + " " + sym
             else:
-                not_allowed_productions = self.constraints(
+                context_information = self.constraints(
                     production.rhs()[0],
-                    self.productions(lhs=sym),
                     current_derivation,
+                )
+                not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=sym), context_information[counter]
                 )
                 ret_val = self._constrained_sampler(sym, not_allowed_productions)
                 tree = tree + " " + ret_val + ")"
@@ -660,7 +676,7 @@ class ConstrainedGrammar(Grammar):
                 counter += 1
         return tree
 
-    def _compute_current_context(self, pre_subtree: str):
+    def _compute_current_context(self, pre_subtree: str, post_subtree: str):
         q_nonterminals = deque()
         for sym in pre_subtree.split(" "):
             if sym == "":
@@ -693,37 +709,60 @@ class ConstrainedGrammar(Grammar):
         production = productions[0]
 
         q_context = deque()
-        production_nonterminals = [
-            prod for prod in production.rhs() if str(prod) in self.nonterminals
-        ]
         current_derivation = self.constraints(production.rhs()[0])
         counter = 0
         pre_subtree_context = pre_subtree_context[len(q_nonterminals[-1]) + 1 :]
-        for i, s in enumerate(pre_subtree_context):
-            if s == "(":
-                start_idx = i
-                q_context.append(i)
-            elif s == ")":
-                q_context.pop()
+        for s in pre_subtree_context.split(" "):
+            if s == "":
+                continue
+            if s[0] == "(":
+                q_context.append(s)
+            elif s[-1] == ")":
+                while s[-1] == ")":
+                    q_context.pop()
+                    s = s[:-1]
                 if len(q_context) == 0:
-                    end_idx = i
-                    full_context = pre_subtree_context[start_idx:end_idx]
-                    ret_val = full_context[full_context.find(" ") + 1 :]
-                    current_derivation[counter] = ret_val
+                    current_derivation[counter] = s
                     counter += 1
+                if counter == len(current_derivation):
+                    break
 
-        return self.constraints(
-            production.rhs()[0],
-            self.productions(lhs=production_nonterminals[counter]),
-            current_derivation,
-        )
+        counter += 1
+        if counter < len(current_derivation):
+            q_context = deque()
+            for s in post_subtree.split(" "):
+                if s == "":
+                    continue
+                elif s[0] == "(":
+                    q_context.append(s)
+                elif s[-1] == ")":
+                    while s[-1] == ")":
+                        q_context.pop()
+                        s = s[:-1]
+                    if len(q_context) == 0:
+                        current_derivation[counter] = s
+                        counter += 1
+                    if counter == len(current_derivation):
+                        break
+
+        return topology, current_derivation
 
     def mutate(
         self, parent: str, subtree_index: int, subtree_node: str, patience: int = 50
     ):
         # chop out subtree
         pre, _, post = self.remove_subtree(parent, subtree_index)
-        not_allowed_productions = self._compute_current_context(pre)
+        rhs, current_derivation = self._compute_current_context(pre, post)
+        context_information = self.constraints(
+            rhs,
+            current_derivation,
+        )
+        not_allowed_productions = self._get_not_allowed_productions(
+            self.productions(lhs=Nonterminal(subtree_node)),
+            context_information[
+                [i for i, cd in enumerate(current_derivation) if cd is None][0]
+            ],
+        )
         _patience = patience
         while _patience > 0:
             # only sample subtree -> avoids full sampling of large parse trees
@@ -742,7 +781,17 @@ class ConstrainedGrammar(Grammar):
         subtree_node, subtree_index = self.rand_subtree(parent1)
         # chop out subtree
         pre, sub, post = self.remove_subtree(parent1, subtree_index)
-        parent1_not_allowed_productions = self._compute_current_context(pre)
+        rhs, current_derivation = self._compute_current_context(pre, post)
+        context_information = self.constraints(
+            rhs,
+            current_derivation,
+        )
+        parent1_not_allowed_productions = self._get_not_allowed_productions(
+            self.productions(lhs=Nonterminal(subtree_node)),
+            context_information[
+                [i for i, cd in enumerate(current_derivation) if cd is None][0]
+            ],
+        )
         _patience = patience
         while _patience > 0:
             # sample subtree from donor
@@ -754,7 +803,19 @@ class ConstrainedGrammar(Grammar):
                 donor_pre, donor_sub, donor_post = self.remove_subtree(
                     parent2, donor_subtree_index
                 )
-                parent2_not_allowed_productions = self._compute_current_context(donor_pre)
+                rhs, current_derivation = self._compute_current_context(
+                    donor_pre, donor_post
+                )
+                context_information = self.constraints(
+                    rhs,
+                    current_derivation,
+                )
+                parent2_not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=Nonterminal(subtree_node)),
+                    context_information[
+                        [i for i, cd in enumerate(current_derivation) if cd is None][0]
+                    ],
+                )
                 if (
                     parent1_not_allowed_productions is not None
                     and "zero" in donor_sub
