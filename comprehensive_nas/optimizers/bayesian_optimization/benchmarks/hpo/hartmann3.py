@@ -48,7 +48,7 @@ class Hartmann3(AbstractBenchmark):
 
     @staticmethod
     def get_config_space():
-        cs = CS.ConfigurationSpace()
+        cs = CS.ConfigurationSpace(seed=np.random.randint(low=0, high=10e08))
         cs.generate_all_continuous_from_bounds(Hartmann3.get_meta_information()["bounds"])
         return cs
 

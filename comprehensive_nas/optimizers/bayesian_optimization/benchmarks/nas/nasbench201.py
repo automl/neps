@@ -191,12 +191,12 @@ class NASBench201(AbstractBenchmark):
         # if self.log_scale:
         y = np.log(err)
         # else:
-            # y = err
+        # y = err
         # if self.negative:
         y = -y
         return y, cost_results["flops"]
 
-    def query(self, mode='eval', n_repeat=1, **kwargs):
+    def query(self, mode="eval", n_repeat=1, **kwargs):
         if mode == "test":
             return self._retrieve("test", **kwargs)[0]
         else:
@@ -248,7 +248,8 @@ class NASBench201(AbstractBenchmark):
 
     def test(self, n_repeat=1, **kwargs):
         return np.mean(
-            np.array([self._retrieve("test", **kwargs)[0] for _ in range(n_repeat)]))
+            np.array([self._retrieve("test", **kwargs)[0] for _ in range(n_repeat)])
+        )
 
     def get_results(self):
 

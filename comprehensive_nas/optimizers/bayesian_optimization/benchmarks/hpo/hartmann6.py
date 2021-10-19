@@ -54,11 +54,10 @@ class Hartmann6(AbstractBenchmark):
         super().__init__(seed, optimize_arch, optimize_hps)
         self.has_continuous_hp = True
         self.has_categorical_hp = False
-        self.reinitialize(seed=seed)
 
     @staticmethod
     def get_config_space():
-        cs = CS.ConfigurationSpace()
+        cs = CS.ConfigurationSpace(seed=np.random.randint(low=0, high=10e08))
         cs.generate_all_continuous_from_bounds(Hartmann6.get_meta_information()["bounds"])
         return cs
 

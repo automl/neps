@@ -1,3 +1,4 @@
+import sys
 from copy import deepcopy
 
 import ConfigSpace as CS
@@ -49,7 +50,7 @@ class CountingOnes(AbstractBenchmark):
 
     @staticmethod
     def get_config_space():
-        cs = CS.ConfigurationSpace()
+        cs = CS.ConfigurationSpace(seed=np.random.randint(low=0, high=10e08))
         for i in range(N_CATEGORICAL):
             cs.add_hyperparameter(CS.CategoricalHyperparameter("cat_%d" % i, [0, 1]))
         for i in range(N_CONTINUOUS):
