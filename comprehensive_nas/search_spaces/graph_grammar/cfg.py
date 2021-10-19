@@ -417,24 +417,54 @@ class DepthConstrainedGrammar(Grammar):
                 split = split[:-1]
         return depth_information
 
-    def _compute_depth_information(self, tree: str) -> list:
+    def _compute_depth_information(self, tree: str) -> tuple:
         split_tree = tree.split(" ")
         depth_information = [0] * len(split_tree)
-        helper_dict = {nt: 0 for nt in self.nonterminals}
+        subtree_depth = [0] * len(split_tree)
+        helper_subtree_depth = [0] * len(split_tree)
+        helper_dict_depth_information = {nt: 0 for nt in self.nonterminals}
+        helper_dict_subtree_depth = {nt: deque() for nt in self.nonterminals}
         q_nonterminals = deque()
         for i, split in enumerate(split_tree):
             if split == "":
                 continue
             elif split[0] == "(":
-                q_nonterminals.append(split[1:])
-                depth_information[i] = helper_dict[split[1:]] + 1
-                helper_dict[split[1:]] += 1
+                nt = split[1:]
+                q_nonterminals.append(nt)
+                depth_information[i] = helper_dict_depth_information[nt] + 1
+                helper_dict_depth_information[nt] += 1
+                helper_dict_subtree_depth[nt].append(i)
+                for j in helper_dict_subtree_depth[nt]:
+                    subtree_depth[j] = max(subtree_depth[j], helper_subtree_depth[j] + 1)
+                    helper_subtree_depth[j] += 1
                 continue
             while split[-1] == ")":
                 nt = q_nonterminals.pop()
-                helper_dict[nt] -= 1
+                helper_dict_depth_information[nt] -= 1
+                for j in helper_dict_subtree_depth[nt]:
+                    helper_subtree_depth[j] -= 1
+                _ = helper_dict_subtree_depth[nt].pop()
                 split = split[:-1]
-        return depth_information
+        return depth_information, subtree_depth
+
+    def _compute_max_depth(self, tree: str, subtree_node: str) -> int:
+        max_depth = 0
+        depth_information = {nt: 0 for nt in self.nonterminals}
+        q_nonterminals = deque()
+        for split in tree.split(" "):
+            if split == "":
+                continue
+            elif split[0] == "(":
+                q_nonterminals.append(split[1:])
+                depth_information[split[1:]] += 1
+                if split[1:] == subtree_node and depth_information[split[1:]] > max_depth:
+                    max_depth = depth_information[split[1:]]
+                continue
+            while split[-1] == ")":
+                nt = q_nonterminals.pop()
+                depth_information[nt] -= 1
+                split = split[:-1]
+        return max_depth
 
     def _depth_constrained_sampler(self, symbol=None, depth_information: dict = None):
         if depth_information is None:
@@ -505,14 +535,13 @@ class DepthConstrainedGrammar(Grammar):
         subtree_node, subtree_index = self.rand_subtree(parent1)
         # chop out subtree
         pre, sub, post = self.remove_subtree(parent1, subtree_index)
+        head_node_constraint = self._compute_depth_information_for_pre(pre)[subtree_node]
+        sub_depth = self._compute_max_depth(sub, subtree_node)
         _patience = patience
         while _patience > 0:
             # sample subtree from donor
-            head_node_constraint = self._compute_depth_information_for_pre(pre)[
-                subtree_node
-            ]
             donor_subtree_index = self._rand_subtree_fixed_head(
-                parent2, subtree_node, head_node_constraint
+                parent2, subtree_node, head_node_constraint, sub_depth=sub_depth
             )
             # if no subtrees with right head node return False
             if not donor_subtree_index:
@@ -529,20 +558,30 @@ class DepthConstrainedGrammar(Grammar):
         return False, False
 
     def _rand_subtree_fixed_head(
-        self, tree: str, head_node: str, head_node_depth_constraint: int = 0
+        self,
+        tree: str,
+        head_node: str,
+        head_node_depth_constraint: int = 0,
+        sub_depth: int = 0,
     ) -> int:
         # helper function to choose a random subtree from a given tree with a specific head node
         # if no such subtree then return False, otherwise return the index of the subtree
 
         # single pass through tree (stored as string) to look for the location of swappable_non_terminmals
-        split_tree = tree.split(" ")
-        depth_information = self._compute_depth_information(tree)
-        swappable_indices = [
-            i
-            for i in range(0, len(split_tree))
-            if split_tree[i][1:] == head_node
-            and depth_information[i] >= head_node_depth_constraint
-        ]
+        if head_node in self.depth_constraints:
+            depth_information, subtree_depth = self._compute_depth_information(tree)
+            split_tree = tree.split(" ")
+            swappable_indices = [
+                i
+                for i in range(len(split_tree))
+                if split_tree[i][1:] == head_node
+                and head_node_depth_constraint - 1 + subtree_depth[i]
+                <= self.depth_constraints[head_node]
+                and depth_information[i] - 1 + sub_depth
+                <= self.depth_constraints[head_node]
+            ]
+        else:
+            swappable_indices = None
         return super().rand_subtree_fixed_head(
             tree=tree, head_node=head_node, swappable_indices=swappable_indices
         )

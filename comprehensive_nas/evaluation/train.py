@@ -50,7 +50,7 @@ def evaluate(model, device, metric, loader):
         data, target = data.to(device), target.to(device)
         output = model.forward(data)
         metric.update(output, target)
-    return metric.compute().cpu()
+    return metric.compute().cpu().item()
 
 
 def run_training(
@@ -100,8 +100,8 @@ def run_training(
 
     return {
         "best_epoch": best_epoch,
-        "best_val_score": best_valid_score.item(),
-        "best_test_score": best_test_score.item(),
+        "best_val_score": best_valid_score,
+        "best_test_score": best_test_score,
     }
 
 

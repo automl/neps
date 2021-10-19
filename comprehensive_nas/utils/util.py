@@ -176,7 +176,7 @@ class StatisticsTracker(object):
             #     np.exp(-np.max(y_test_cur)) if self.log else -np.max(y_test_cur)
             # )
             self.last_func_tests.append(
-                np.min(y_test_cur) if self.minimize else np.mx(y_test_cur)
+                np.min(y_test_cur) if self.minimize else np.max(y_test_cur)
             )
         if opt_details is not None:
             self.opt_details.append(opt_details)
@@ -395,14 +395,14 @@ class StatisticsTracker(object):
     def save_results(self):
         # save all data for later use
         results = {
-            "incumbents_eval": [inc.parse() for inc in self.incumbents_eval],
+            "incumbents_eval": [inc for inc in self.incumbents_eval],
             "incumbent_value_eval": self.incumbent_values_eval,
             "runtime": self.cum_train_times,
             "last_func_evals": self.last_func_evals,
         }
 
         if self.incumbents_test:
-            results["incumbent_test"] = ([inc.parse() for inc in self.incumbents_test],)
+            results["incumbent_test"] = ([inc for inc in self.incumbents_test],)
         if self.incumbent_values_test:
             results["incumbent_values_test"] = self.incumbent_values_test
         if self.last_func_tests:
@@ -418,6 +418,18 @@ class StatisticsTracker(object):
             ),
         )
 
+    def read_checkpoint(self):
+        checkpoint_path = os.path.join(
+            self.save_path,
+            f"checkpoint_{self.id if self.id is not None else self.number}.json",
+        )
+        if os.path.isfile(checkpoint_path):
+            with open(checkpoint_path, "r") as f:
+                checkpoint_data = json.load(f)
+        else:
+            raise Exception("Checkpoint does not exist!")
+        return checkpoint_data
+
     def save_checkpoint(self, checkpoint_data: list):
         checkpoint_path = os.path.join(
             self.save_path,
@@ -427,8 +439,9 @@ class StatisticsTracker(object):
             os.makedirs(os.path.dirname(self.save_path))
 
         if os.path.isfile(checkpoint_path):
-            with open(checkpoint_path, "r") as f:
-                _checkpoint_data = json.load(f)
+            # with open(checkpoint_path, "r") as f:
+            #     _checkpoint_data = json.load(f)
+            _checkpoint_data = self.read_checkpoint()
             _checkpoint_data += checkpoint_data
         else:
             _checkpoint_data = checkpoint_data

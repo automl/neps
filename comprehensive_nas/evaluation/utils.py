@@ -200,7 +200,7 @@ def get_train_val_test_loaders(
             root=data, train=True, download=True, transform=train_transform
         )
         test_data = dset.CIFAR10(
-            root=data, train=False, download=True, transform=train_transform
+            root=data, train=False, download=True, transform=valid_transform
         )
     elif dataset == "cifar100":
         train_data = dset.CIFAR100(
