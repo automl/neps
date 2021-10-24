@@ -31,8 +31,8 @@ def reset_weights(model):
 def train(model, device, optimizer, criterion, loader, **train_args):
     model.train()
     grad_clip = train_args["grad_clip"] if "grad_clip" in train_args else None
-    for data, target in loader:
-        data, target = data.to(device), target.to(device)
+    for data_blob in loader:
+        data, target = [x.to(device) for x in data_blob]
         optimizer.zero_grad()
         output = model.forward(data)
         loss = criterion(output, target)
@@ -41,15 +41,26 @@ def train(model, device, optimizer, criterion, loader, **train_args):
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         optimizer.step()
 
+        del data
+        del target
+        if device == "cuda":
+            torch.cuda.empty_cache()
+
 
 @torch.no_grad()
 def evaluate(model, device, metric, loader):
     model.eval()
     metric.reset()
-    for data, target in loader:
-        data, target = data.to(device), target.to(device)
+    for data_blob in loader:
+        data, target = [x.to(device) for x in data_blob]
         output = model.forward(data)
         metric.update(output, target)
+
+        del data
+        del target
+        if device == "cuda":
+            torch.cuda.empty_cache()
+
     return metric.compute().cpu().item()
 
 

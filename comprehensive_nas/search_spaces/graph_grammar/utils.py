@@ -25,12 +25,14 @@ def draw_graph(
     edge_attr: bool = True,
     edge_label: str = "op_name",
     node_label: str = "op_name",
+    fig_size: tuple = (10, 10),
 ):
     if isinstance(graph, Graph) and edge_attr:
         g = graph_to_digraph(graph, edge_label)
     else:
         g = graph
 
+    plt.figure(figsize=fig_size)
     dir_path = Path(os.path.dirname(os.path.realpath(__file__)))
     nx.drawing.nx_agraph.write_dot(g, dir_path / "test.dot")
     pos = nx.drawing.nx_agraph.graphviz_layout(g, prog="dot")
