@@ -1,13 +1,19 @@
-from typing import Union, List
-import numpy as np
 import math
+from typing import List, Union
+
+import numpy as np
 
 from ..hyperparameter import Hyperparameter
 
 
 class FloatHyperparameter(Hyperparameter):
-    def __init__(self, name: str, lower: Union[float, int], upper: Union[float, int],
-                 log: bool = False):
+    def __init__(
+        self,
+        name: str,
+        lower: Union[float, int],
+        upper: Union[float, int],
+        log: bool = False,
+    ):
         super(FloatHyperparameter, self).__init__(name)
 
         self.lower = float(lower)
@@ -28,33 +34,21 @@ class FloatHyperparameter(Hyperparameter):
         if not isinstance(other, self.__class__):
             return False
         return (
-            self.name == other.name and
-            self.lower == other.lower and
-            self.upper == other.upper and
-            self.log == other.log
+            self.name == other.name
+            and self.lower == other.lower
+            and self.upper == other.upper
+            and self.log == other.log
         )
 
     def __hash__(self):
-        return hash(
-            (
-                self.name,
-                self.lower,
-                self.upper,
-                self.log
-            )
-        )
+        return hash((self.name, self.lower, self.upper, self.log))
 
     def __repr__(self):
-        return "Float {}, range: [{}, {}]".format(
-            self.name, self.lower, self.upper
-        )
+        return "Float {}, range: [{}, {}]".format(self.name, self.lower, self.upper)
 
     def __copy__(self):
         return self.__class__(
-            name=self.name,
-            lower=self.lower,
-            upper=self.upper,
-            log=self.log
+            name=self.name, lower=self.lower, upper=self.upper, log=self.log
         )
 
     def sample(self, random_state: np.random):
@@ -70,4 +64,3 @@ class FloatHyperparameter(Hyperparameter):
 
     def crossover(self, parent1, parent2=None):
         raise NotImplementedError
-

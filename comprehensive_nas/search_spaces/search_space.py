@@ -1,8 +1,10 @@
 import random
-import numpy as np
 
+import numpy as np
 from networkx.readwrite import json_graph
+
 from .graph_dense.graph_dense import GraphHyperparameter
+
 
 class SearchSpace:
     def __init__(self, *hyperparameters):
@@ -41,7 +43,7 @@ class SearchSpace:
                 gl = [self.graphs]
             else:
                 gl = self.graphs
-            config.append([json_graph.node_link_data(g)['graph']['name'] for g in gl])
+            config.append([json_graph.node_link_data(g)["graph"]["name"] for g in gl])
         if self.hps is not None:
             config.append(self.hps)
         return config
@@ -58,18 +60,17 @@ class SearchSpace:
 
 
 if __name__ == "__main__":
-    from numerical.categorical import CategoricalHyperparameter
-    from numerical.integer import IntegerHyperparameter
-    from numerical.float import FloatHyperparameter
-    from numerical.constant import ConstantHyperparameter
     from graph_dense.graph_dense import GraphHyperparameter
+    from numerical.categorical import CategoricalHyperparameter
+    from numerical.constant import ConstantHyperparameter
+    from numerical.float import FloatHyperparameter
+    from numerical.integer import IntegerHyperparameter
 
     search_space = SearchSpace(
-            CategoricalHyperparameter(name='operation', choices=["multiply", "add"]),
-            IntegerHyperparameter(name='operant_a', lower=1, upper=100),
-            FloatHyperparameter(name='operant_b', lower=1, upper=100, log=True),
-
-            # architecture=cnas.DenseGraph(num_nodes=3, edge_choices={"identity", "3x3_conv"}),
+        CategoricalHyperparameter(name="operation", choices=["multiply", "add"]),
+        IntegerHyperparameter(name="operant_a", lower=1, upper=100),
+        FloatHyperparameter(name="operant_b", lower=1, upper=100, log=True),
+        # architecture=cnas.DenseGraph(num_nodes=3, edge_choices={"identity", "3x3_conv"}),
     )
     rs = np.random.RandomState(5)
     search_space.sample_config(rs)

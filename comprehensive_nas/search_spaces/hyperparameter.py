@@ -1,6 +1,7 @@
-from abc import abstractmethod
-import numpy as np
 import math
+from abc import abstractmethod
+
+import numpy as np
 
 
 class Hyperparameter:
@@ -37,12 +38,12 @@ if __name__ == "__main__":
     # hp5 = ConstantHyperparameter(name="h5", value="stojak_na_kwiatki")
 
     nb201_choices = [
-            "nor_conv_3x3",
-            "nor_conv_1x1",
-            "avg_pool_3x3",
-            "skip_connect",
-            "none",
-        ]
+        "nor_conv_3x3",
+        "nor_conv_1x1",
+        "avg_pool_3x3",
+        "skip_connect",
+        "none",
+    ]
 
     hp6 = GraphHyperparameter(name="nb2", num_nodes=6, edge_choices=nb201_choices)
 
@@ -56,5 +57,3 @@ if __name__ == "__main__":
     #
     # plt.hist(x)
     # plt.show()
-
-
