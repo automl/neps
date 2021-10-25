@@ -16,7 +16,7 @@ def simple_crossover(
 def repetitive_search_space_crossover(
     base_parent: str,
     motif_parents: List[str],
-    base_grammar: Grammar,
+    base_grammar: Grammar,  # pylint: disable=W0613
     motif_grammars: List[Grammar],
     inner_crossover_strategy: Callable,
     motif_prefix: str = "M",
@@ -83,4 +83,8 @@ def repetitive_search_space_crossover(
             motif_grammars[0],
         )
 
+    if any(not st for st in child1_string_trees) or any(
+        not st for st in child2_string_trees
+    ):
+        return False, False
     return child1_string_trees, child2_string_trees
