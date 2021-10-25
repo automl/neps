@@ -9,7 +9,7 @@ class MyTestCase(unittest.TestCase):
         self.nasbench_dataset = NASBenchDataset(
             "surrogate_models/test/",
             result_paths=["surrogate_models/test/results_fidelity_0/results_0.json"],
-            config_space_path="configspace.json",
+            config_space_path="configspace301.json",
         )
 
     def test_length(self):
