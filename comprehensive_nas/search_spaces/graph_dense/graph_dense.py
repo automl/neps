@@ -1,22 +1,22 @@
-from typing import List
 from itertools import combinations
+from typing import List
+
 import networkx as nx
 
 from ..hyperparameter import Hyperparameter
 from ..numerical.categorical import CategoricalHyperparameter
-from .utils import create_nasbench201_graph
 
 
 class GraphHyperparameter(Hyperparameter):
     def __init__(self, name: str, num_nodes: int, edge_choices: List[str]):
-        super(GraphHyperparameter, self).__init__(name)
+        super().__init__(name)
 
         assert num_nodes > 1, "DAG has to have more than one node"
         self.num_nodes = num_nodes
         self.edge_list = list(combinations(list(range(num_nodes)), 2))
         self.edge_choices = edge_choices
         self.graph = []
-        for edge_id, edge in enumerate(self.edge_list):
+        for edge_id, _ in enumerate(self.edge_list):
             self.graph.append(
                 CategoricalHyperparameter(
                     name="edge_%d" % edge_id, choices=self.edge_choices
