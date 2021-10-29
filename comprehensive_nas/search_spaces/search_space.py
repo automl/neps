@@ -1,5 +1,5 @@
 import random
-
+import itertools
 import numpy as np
 from networkx.readwrite import json_graph
 
@@ -8,32 +8,39 @@ from .graph_dense.graph_dense import GraphHyperparameter
 
 class SearchSpace:
     def __init__(self, *hyperparameters):
-        self.hyperparameters = hyperparameters
+        self.hps = []
+        self.graphs = []
 
-        self.hps = None
-        self.graphs = None
+        for hyperparameter in hyperparameters:
+            if isinstance(hyperparameter, GraphHyperparameter):
+                self.graphs.append(hyperparameter)
+            else:
+                self.hps.append(hyperparameter)
+
         self.name = ""
 
-    def sample_config(self, random_state):
-        hps = []
-        graphs = []
-        for hyperparameter in self.hyperparameters:
-            if isinstance(hyperparameter, GraphHyperparameter):
-                graphs.append(hyperparameter.sample(random_state))
+    def sample_config(self):
+        for hyperparameter in set(itertools.chain.from_iterable((self.hps, self.graphs))):
+            hyperparameter.sample()
+
+        self.name = self.parse()
+
+    def mutate(self, config=None, mutate_probability_per_hyperparameter=1.0, patience=50):
+        new_config = []
+        for hyperparameter in set(itertools.chain.from_iterable((self.hps, self.graphs))):
+            if np.random.random() < mutate_probability_per_hyperparameter:
+                while patience > 0:
+                    try:
+                        new_config.append(hyperparameter.mutate())
+                        break
+                    except Exception:
+                        patience -= 1
+                        continue
             else:
-                hps.append(hyperparameter.sample(random_state))
-
-        self.hps = hps if len(hps) > 0 else None
-        self.graphs = graphs if len(graphs) > 0 else None
-        self.name = self.parse()
-
-    def mutate(self, config, mutate_probability_per_hyperparameter=0.5):
-        for hyperparameter in config:
-            if random.random() < mutate_probability_per_hyperparameter:
-                pass
-                hyperparameter.mutate()
-
-        self.name = self.parse()
+                new_config.append(hyperparameter)
+        child = SearchSpace(*new_config)
+        child.name = child.parse()
+        return child
 
     def parse(self):
         config = []
@@ -43,9 +50,9 @@ class SearchSpace:
                 gl = [self.graphs]
             else:
                 gl = self.graphs
-            config.append([json_graph.node_link_data(g)["graph"]["name"] for g in gl])
+            config.append([g.name for g in gl])
         if self.hps is not None:
-            config.append(self.hps)
+            config.append(["{}-{}".format(hp.name, hp.value) for hp in self.hps])
         return config
 
     @property
@@ -57,20 +64,3 @@ class SearchSpace:
 
     def get_hps(self):
         return self.hps
-
-
-if __name__ == "__main__":
-    from graph_dense.graph_dense import GraphHyperparameter
-    from numerical.categorical import CategoricalHyperparameter
-    from numerical.constant import ConstantHyperparameter
-    from numerical.float import FloatHyperparameter
-    from numerical.integer import IntegerHyperparameter
-
-    search_space = SearchSpace(
-        CategoricalHyperparameter(name="operation", choices=["multiply", "add"]),
-        IntegerHyperparameter(name="operant_a", lower=1, upper=100),
-        FloatHyperparameter(name="operant_b", lower=1, upper=100, log=True),
-        # architecture=cnas.DenseGraph(num_nodes=3, edge_choices={"identity", "3x3_conv"}),
-    )
-    rs = np.random.RandomState(5)
-    search_space.sample_config(rs)
