@@ -99,7 +99,9 @@ class BayesianOptimization(Optimizer):
             Union[Iterable, Tuple[Iterable, dict]]: proposals, (model decision information metrics)
         """
         # Ask for a location proposal from the acquisition function..
-        model_batch_size = np.random.binomial(n=batch_size, p=1 - self.random_interleave)
+        model_batch_size = np.random.binomial(
+            n=batch_size, p=1 - self.random_interleave_prob
+        )
 
         next_x = []
         if model_batch_size > 0:
