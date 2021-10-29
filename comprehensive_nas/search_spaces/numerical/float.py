@@ -1,5 +1,5 @@
 import math
-from typing import List, Union
+from typing import Union
 
 import numpy as np
 
@@ -48,7 +48,9 @@ class FloatHyperparameter(Hyperparameter):
         return hash((self.name, self._id, self.lower, self.upper, self.log, self.value))
 
     def __repr__(self):
-        return "Float {}-{:.07f}, range: [{}, {}], value: {:.07f}".format(self.name, self._id, self.lower, self.upper, self.value)
+        return "Float {}-{:.07f}, range: [{}, {}], value: {:.07f}".format(
+            self.name, self._id, self.lower, self.upper, self.value
+        )
 
     def __copy__(self):
         return self.__class__(
@@ -64,10 +66,9 @@ class FloatHyperparameter(Hyperparameter):
         self.value = min(self.upper, max(self.lower, value))
         self._id = np.random.random()
 
-    def mutate(self,
-               parent=None,
-               mutation_rate: float = 1.0,
-               mutation_strategy: str = "simple"):
+    def mutate(
+        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+    ):
 
         if parent is None:
             parent = self

@@ -1,4 +1,5 @@
-from typing import List, Union
+from typing import Union
+
 import numpy as np
 
 from ..hyperparameter import Hyperparameter
@@ -27,10 +28,9 @@ class ConstantHyperparameter(Hyperparameter):
     def sample(self):
         self._id = np.random.random()
 
-    def mutate(self,
-               parent=None,
-               mutation_rate: float = 1.0,
-               mutation_strategy: str = "simple"):
+    def mutate(
+        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+    ):
 
         child = self.__copy__()
         child.sample()

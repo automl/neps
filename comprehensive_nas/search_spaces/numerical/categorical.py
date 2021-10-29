@@ -1,4 +1,5 @@
 from typing import List, Union
+
 import numpy as np
 
 from ..hyperparameter import Hyperparameter
@@ -16,13 +17,19 @@ class CategoricalHyperparameter(Hyperparameter):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.name == other.name and self.choices == other.choices and self.value == other.value
+        return (
+            self.name == other.name
+            and self.choices == other.choices
+            and self.value == other.value
+        )
 
     def __hash__(self):
         return hash((self.name, self._id, tuple(self.choices), self.value))
 
     def __repr__(self):
-        return "Categorical {}-{:.07f}, choices: {}, value: {}".format(self.name, self._id, self.choices, self.value)
+        return "Categorical {}-{:.07f}, choices: {}, value: {}".format(
+            self.name, self._id, self.choices, self.value
+        )
 
     def __copy__(self):
         return self.__class__(name=self.name, choices=self.choices)
@@ -32,10 +39,9 @@ class CategoricalHyperparameter(Hyperparameter):
         self.value = self.choices[int(idx)]
         self._id = np.random.random()
 
-    def mutate(self,
-               parent=None,
-               mutation_rate: float = 1.0,
-               mutation_strategy: str = "simple"):
+    def mutate(
+        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+    ):
 
         if parent is None:
             parent = self
