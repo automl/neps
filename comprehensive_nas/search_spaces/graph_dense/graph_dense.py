@@ -1,6 +1,6 @@
 from itertools import combinations
 from typing import List
-
+import numpy as np
 import networkx as nx
 
 from ..hyperparameter import Hyperparameter
@@ -22,6 +22,8 @@ class GraphHyperparameter(Hyperparameter):
                     name="edge_%d" % edge_id, choices=self.edge_choices
                 )
             )
+        self.value = None
+        self._id = -1
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -31,14 +33,15 @@ class GraphHyperparameter(Hyperparameter):
             and self.num_nodes == other.num_nodes
             and self.edge_list == other.edge_list
             and self.edge_choices == other.edge_choices
+            and self.value == other.value
         )
 
     def __hash__(self):
-        return hash((self.name, self.num_nodes, self.edge_choices))
+        return hash((self.name, self._id, self.num_nodes, tuple(self.edge_choices)))
 
     def __repr__(self):
-        return "Graph {}, num_nodes: {}, edge_choices: {}".format(
-            self.name, self.num_nodes, self.edge_choices
+        return "Graph {}-{:.07f}, num_nodes: {}, edge_choices: {}".format(
+            self.name, self._id, self.num_nodes, self.edge_choices
         )
 
     def __copy__(self):
@@ -46,10 +49,10 @@ class GraphHyperparameter(Hyperparameter):
             name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
         )
 
-    def sample(self, random_state):
+    def sample(self):
         edge_labels = []
         for edge in self.graph:
-            edge_labels.append(edge.sample(random_state))
+            edge_labels.append(edge.sample())
 
         G = nx.DiGraph()
         G.add_edges_from(self.edge_list)
@@ -83,10 +86,27 @@ class GraphHyperparameter(Hyperparameter):
         if nx.is_empty(G):
             raise ValueError("Invalid DAG")
 
-        return G
+        self.value = G
+        self._id = np.random.random()
 
-    def mutate(self, parent=None):
-        pass
+    def mutate(self,
+               parent=None,
+               mutation_rate: float = 1.0,
+               mutation_strategy: str = "simple"):
+        # TODO
+        if parent is None:
+            parent = self
+
+        if mutation_strategy == "simple":
+            child = self.__copy__()
+            child.sample()
+        else:
+            raise NotImplementedError
+
+        if parent.value == child.value:
+            raise ValueError("Parent is the same as child!")
+
+        return child
 
     def crossover(self, parent1, parent2=None):
         pass
