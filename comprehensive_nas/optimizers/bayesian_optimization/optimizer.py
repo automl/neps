@@ -1,3 +1,4 @@
+import random
 from typing import Iterable, Tuple, Union
 
 import numpy as np
@@ -21,9 +22,11 @@ class BayesianOptimization(Optimizer):
         self,
         surrogate_model,
         acquisition_function_opt: AcquisitionOptimizer,
-        random_interleave: float = 0.0,
-        return_opt_details: bool = False,
+        random_interleave_prob: float = 0.0,
         surrogate_model_fit_args: dict = None,
+        initial_design_size: int = 10,
+        pool_size: int = 200,
+        return_opt_details: bool = False,
     ):
         """Implements the basic BO loop.
 
@@ -34,19 +37,21 @@ class BayesianOptimization(Optimizer):
             random_interleave (float, optional): interleave model samples with random samples. Defaults to 1/3.
             return_opt_details (bool, optional): holds information about model decision. Defaults to True.
         """
-        assert 0 <= random_interleave <= 1
+        assert 0 <= random_interleave_prob <= 1
 
         super().__init__()
         self.surrogate_model = surrogate_model
         self.acqusition_function_opt = acquisition_function_opt
-        self.random_interleave = random_interleave
-        self.return_opt_details = return_opt_details
+        self.random_interleave_prob = random_interleave_prob
         self.surrogate_model_fit_args = surrogate_model_fit_args
+        self.initial_design_size = initial_design_size
+        self.pool_size = pool_size
+        self.return_opt_details = return_opt_details
 
         self.random_sampler = RandomSampler(acquisition_function_opt.search_space)
 
-        self.train_x = None
-        self.train_y = None
+        self.train_x = []
+        self.train_y = []
 
     def initialize_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]):
         """Initializes the surrogate model and acquisition function (optimizer).
@@ -55,12 +60,14 @@ class BayesianOptimization(Optimizer):
             x_configs (Iterable): config.
             y (Union[Iterable, torch.Tensor]): observation.
         """
+        self.train_x = []
+        self.train_y = []
         self.update_model(x_configs, y)
 
     def update_model(
         self,
         x_configs: Iterable,
-        y: Union[Iterable, torch.Tensor],
+        y: Iterable,
     ) -> None:
         """Updates the surrogate model and updates the acquisiton function (optimizer).
 
@@ -97,7 +104,7 @@ class BayesianOptimization(Optimizer):
         next_x = []
         if model_batch_size > 0:
             model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
-                pool_size, batch_size
+                pool_size, model_batch_size
             )
             next_x.extend(model_samples)
         elif self.return_opt_details:  # need to compute acq vals
@@ -128,3 +135,21 @@ class BayesianOptimization(Optimizer):
             return next_x, opt_details
         else:
             return next_x, None
+
+    def get_config(self):
+        if len(self.train_x) < self.initial_design_size:
+            return self.random_sampler.sample(1)
+
+        if random.random() < self.random_interleave_prob:
+            return self.random_sampler.sample(1)
+
+        model_sample, _, _ = self.acqusition_function_opt.sample(self.pool_size, 1)
+        return model_sample
+
+    def new_result(self, job):
+        config = job["config"]
+        loss = job["loss"]
+        # TODO temporary to be back-compatible
+        self.train_x.append(config)
+        self.train_y.append(loss)
+        self.update_model(self.train_x, self.train_y)
