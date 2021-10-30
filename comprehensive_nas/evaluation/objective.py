@@ -10,7 +10,7 @@ class Objective:
         self.negative = negative
 
     @abstractmethod
-    def __call__(self, config, mode, **kwargs):
+    def __call__(self, config, **kwargs):
         raise NotImplementedError
 
     def set_seed(self, seed: int):
@@ -29,3 +29,12 @@ class Objective:
         if self.log_scale:
             val = np.exp(val)
         return val
+
+
+class ObjectiveWithAPI(Objective):
+    def __init__(self, seed: int, log_scale: bool, negative: bool, api) -> None:
+        super().__init__(seed, log_scale, negative)
+        self.api = api
+
+    def __call__(self, config, **kwargs):
+        raise NotImplementedError
