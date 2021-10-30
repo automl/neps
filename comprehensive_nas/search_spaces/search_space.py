@@ -18,7 +18,7 @@ class SearchSpace:
 
         self.name = ""
 
-    def sample_config(self):
+    def sample(self):
         for hyperparameter in set(itertools.chain.from_iterable((self.hps, self.graphs))):
             hyperparameter.sample()
 
@@ -42,16 +42,16 @@ class SearchSpace:
         return child
 
     def parse(self):
-        config = []
+        config = ""
         if self.graphs is not None:
             if not isinstance(self.graphs, list):
                 # Convert to a singleton list
                 gl = [self.graphs]
             else:
                 gl = self.graphs
-            config.append([g.name for g in gl])
+            config = config.join([g.name for g in gl])
         if self.hps is not None:
-            config.append(["{}-{}".format(hp.name, hp.value) for hp in self.hps])
+            config = config.join(["{}-{}".format(hp.name, hp.value) for hp in self.hps])
         return config
 
     @property
@@ -59,7 +59,7 @@ class SearchSpace:
         return self.name
 
     def get_graph(self):
-        return self.graphs
+        return [graph.value for graph in self.graphs]
 
     def get_hps(self):
-        return self.hps
+        return [hp.value for hp in self.hps]
