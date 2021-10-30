@@ -1,71 +1,33 @@
-import sys
-from copy import deepcopy
+import time
 
-import ConfigSpace as CS
 import numpy as np
 
-from ..abstract_benchmark import AbstractBenchmark
-
-N_CATEGORICAL = 5
-N_CONTINUOUS = 5
+from comprehensive_nas.evaluation.objective import Objective
 
 
-def evaluate_counting_ones(config, mode="eval", **kwargs):
-    """(n_cont + n_cat)d CountingOnes test function
-    input bounds:  0 <= xi <= 1, i = 1..n_cont
-                        xj in [0, 1], j = 1..n_cat
-    global optimum: [1] * (n_cont + n_cat),
-    min function value = -1 * (n_cont + n_cat)
-    """
-    x = np.array(config.hps, dtype=float)
-    y = -float(np.sum(x))
+class CountingOnes(Objective):
+    def __init__(self, seed=None, log_scale=False, negative=False):
+        super().__init__(seed, log_scale, negative)
 
-    if mode == "test":
-        return y
-    else:
-        return y, 1.0
+    def __call__(self, config, **kwargs):
+        """(n_cont + n_cat)d CountingOnes test function
+        input bounds:  0 <= xi <= 1, i = 1..n_cont
+                            xj in [0, 1], j = 1..n_cat
+        global optimum: [1] * (n_cont + n_cat),
+        min function value = -1 * (n_cont + n_cat)
+        """
 
+        x = np.array(config.get_hps(), dtype=float)
+        start = time.time()
+        y = -float(np.sum(x))
+        end = time.time()
 
-class CountingOnes(AbstractBenchmark):
-    def __init__(
-        self,
-        seed=None,
-        optimize_arch=False,
-        optimize_hps=True,
-    ):
-        super().__init__(seed, optimize_arch, optimize_hps)
-        self.has_continuous_hp = bool(N_CONTINUOUS)
-        self.has_categorical_hp = bool(N_CATEGORICAL)
-
-    def sample(self):
-        cs = CountingOnes.get_config_space()
-        config = cs.sample_configuration()
-        rand_hps = list(map(str, config.get_dictionary().values()))[:N_CATEGORICAL]
-        rand_hps += list(config.get_dictionary().values())[N_CATEGORICAL:]
-        self.hps = rand_hps  # pylint: disable=attribute-defined-outside-init
-        self.name = str(self.parse())
-
-    def reinitialize(self, seed=None):
-        self.seed = seed  # pylint: disable=attribute-defined-outside-init
-
-    @staticmethod
-    def get_config_space():
-        cs = CS.ConfigurationSpace(seed=np.random.randint(low=0, high=10e08))
-        for i in range(N_CATEGORICAL):
-            cs.add_hyperparameter(CS.CategoricalHyperparameter("cat_%d" % i, [0, 1]))
-        for i in range(N_CONTINUOUS):
-            cs.add_hyperparameter(
-                CS.UniformFloatHyperparameter("float_%d" % i, lower=0, upper=1)
-            )
-        return cs
-
-    @staticmethod
-    def get_meta_information():
         return {
-            "name": "CountingOnes",
-            "capital": 50,
-            "optima": ([1] * (N_CONTINUOUS + N_CATEGORICAL)),
-            "bounds": [[0, 1] * N_CONTINUOUS, [0, 1] * N_CATEGORICAL],
-            "f_opt": -10.0,
-            "noise_variance": 0.05,
+            "loss": y,
+            "info_dict": {
+                "config_id": config.id,
+                "val_score": y,
+                "test_score": y,
+                "train_time": end - start,
+            },
         }
