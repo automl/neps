@@ -29,7 +29,10 @@ class ConstantHyperparameter(Hyperparameter):
         self._id = np.random.random()
 
     def mutate(
-        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+        self,
+        parent=None,
+        mutation_rate: float = 1.0,
+        mutation_strategy: str = "local_search",
     ):
 
         child = self.__copy__()
@@ -39,3 +42,12 @@ class ConstantHyperparameter(Hyperparameter):
 
     def crossover(self, parent1, parent2=None):
         return self.__copy__().sample(), self.__copy__().sample()
+
+    def _get_neighbours(self, **kwargs):
+        pass
+
+    def _transform(self):
+        pass
+
+    def _inv_transform(self):
+        pass

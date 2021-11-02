@@ -1,3 +1,4 @@
+import random
 from typing import List, Union
 
 import numpy as np
@@ -40,7 +41,10 @@ class CategoricalHyperparameter(Hyperparameter):
         self._id = np.random.random()
 
     def mutate(
-        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+        self,
+        parent=None,
+        mutation_rate: float = 1.0,
+        mutation_strategy: str = "local_search",
     ):
 
         if parent is None:
@@ -49,6 +53,8 @@ class CategoricalHyperparameter(Hyperparameter):
         if mutation_strategy == "simple":
             child = self.__copy__()
             child.sample()
+        elif mutation_strategy == "local_search":
+            child = self._get_neighbours(num_neighbours=1)[0]
         else:
             raise NotImplementedError
 
@@ -59,3 +65,31 @@ class CategoricalHyperparameter(Hyperparameter):
 
     def crossover(self, parent1, parent2=None):
         pass
+
+    def _get_neighbours(self, num_neighbours: int = 1):
+        neighbours = []
+
+        idx = 0
+        choices = self.choices.copy()
+        random.shuffle(choices)
+
+        while len(neighbours) < num_neighbours:
+            if num_neighbours > self.num_choices - 1:
+                choice = self.choices[np.random.randint(0, self.num_choices)]
+            else:
+                choice = choices[idx]
+                idx += 1
+            if choice == self.value:
+                continue
+            neighbour = self.__copy__()
+            neighbour.value = choice
+            neighbour._id = np.random.random()
+            neighbours.append(neighbour)
+
+        return neighbours
+
+    def _transform(self):
+        self.value = self.choices.index(self.value) / self.num_choices
+
+    def _inv_transform(self):
+        self.value = self.choices[int(self.value * self.num_choices)]

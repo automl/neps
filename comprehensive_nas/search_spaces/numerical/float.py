@@ -67,7 +67,10 @@ class FloatHyperparameter(Hyperparameter):
         self._id = np.random.random()
 
     def mutate(
-        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+        self,
+        parent=None,
+        mutation_rate: float = 1.0,
+        mutation_strategy: str = "local_search",
     ):
 
         if parent is None:
@@ -76,6 +79,8 @@ class FloatHyperparameter(Hyperparameter):
         if mutation_strategy == "simple":
             child = self.__copy__()
             child.sample()
+        elif mutation_strategy == "local_search":
+            child = self._get_neighbours(num_neighbours=1)[0]
         else:
             raise NotImplementedError
 
@@ -86,3 +91,32 @@ class FloatHyperparameter(Hyperparameter):
 
     def crossover(self, parent1, parent2=None):
         raise NotImplementedError
+
+    def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
+        neighbours = []
+        self._transform()
+
+        while len(neighbours) < num_neighbours:
+            n_val = np.random.normal(self.value, std)
+            if n_val < 0 or n_val > 1:
+                continue
+            neighbour = self.__copy__()
+            neighbour.value = n_val
+            neighbour._inv_transform()
+            neighbour._id = np.random.random()
+            neighbours.append(neighbour)
+
+        self._inv_transform()
+        return neighbours
+
+    def _transform(self):
+        if self.value != self.value:
+            raise ValueError("Hp-{} value is NaN!".format(self.name))
+
+        self.value = (self.value - self.lower) / (self.upper - self.lower)
+
+    def _inv_transform(self):
+        if self.value != self.value:
+            raise ValueError("Hp-{} value is NaN!".format(self.name))
+
+        self.value = self.value * (self.upper - self.lower) + self.lower

@@ -18,3 +18,15 @@ class Hyperparameter:
     @abstractmethod
     def crossover(self, parent1, parent2=None):
         raise NotImplementedError
+
+    @abstractmethod
+    def _get_neighbours(self, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def _transform(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def _inv_transform(self):
+        raise NotImplementedError

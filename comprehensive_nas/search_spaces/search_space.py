@@ -1,3 +1,4 @@
+import random
 from collections import OrderedDict
 
 import numpy as np
@@ -27,22 +28,59 @@ class SearchSpace:
 
         self.name = self.parse()
 
-    def mutate(self, config=None, mutate_probability_per_hyperparameter=1.0, patience=50):
+    def mutate(
+        self,
+        config=None,
+        mutate_probability_per_hyperparameter=1.0,
+        patience=50,
+        mutation_strategy="smbo",
+    ):
+
+        if mutation_strategy == "simple":
+            new_config = self._simple_mutation(
+                mutate_probability_per_hyperparameter, patience
+            )
+        elif mutation_strategy == "smbo":
+            new_config = self._smbo_mutation(patience)
+        else:
+            raise NotImplementedError("No such mutation strategy!")
+
+        child = SearchSpace(*new_config)
+        child.name = child.parse()
+
+        return child
+
+    def _simple_mutation(self, mutate_probability_per_hyperparameter=1.0, patience=50):
         new_config = []
         for hyperparameter in self._hyperparameters.values():
             if np.random.random() < mutate_probability_per_hyperparameter:
                 while patience > 0:
                     try:
-                        new_config.append(hyperparameter.mutate())
+                        new_config.append(
+                            hyperparameter.mutate(mutation_strategy="simple")
+                        )
                         break
                     except Exception:
                         patience -= 1
                         continue
             else:
                 new_config.append(hyperparameter)
-        child = SearchSpace(*new_config)
-        child.name = child.parse()
-        return child
+
+        return new_config
+
+    def _smbo_mutation(self, patience=50):
+        new_config = self.get_array()
+        idx = random.randint(0, self._num_hps - 1)
+        hp = new_config[idx]
+
+        while patience > 0:
+            try:
+                new_config[idx] = hp.mutate(mutation_strategy="local_search")
+                break
+            except Exception:
+                patience -= 1
+                continue
+        return new_config
 
     def parse(self):
         config = ""
@@ -65,6 +103,9 @@ class SearchSpace:
     def get_hps(self):
         return [hp.value for hp in self._hps]
 
+    def get_array(self):
+        return list(self._hyperparameters.values())
+
     def get_hyperparameter_by_name(self, name: str):
         hp = self._hyperparameters.get(name)
 
@@ -72,3 +113,9 @@ class SearchSpace:
             raise KeyError("Hyperparameter is not a part of the search space!")
 
         return hp
+
+    def transform(self):
+        [hp._transform() for hp in self.get_array()]
+
+    def inv_transform(self):
+        [hp._inv_transform() for hp in self.get_array()]

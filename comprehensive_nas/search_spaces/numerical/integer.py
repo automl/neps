@@ -28,34 +28,51 @@ class IntegerHyperparameter(FloatHyperparameter):
             self.name, self._id, self.lower, self.upper, self.value
         )
 
-    def to_integer(self):
-        integer_hp = IntegerHyperparameter(
-            name=self.name,
-            lower=int(round(self.lower)),
-            upper=int(round(self.upper)),
-            log=self.log,
-        )
-        integer_hp._id = self._id
-        integer_hp.value = int(round(self.value))
-        return integer_hp
-
     def sample(self):
         self.fhp.sample()
         self.value = int(round(self.fhp.value))
         self._id = np.random.random()
 
     def mutate(
-        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+        self,
+        parent=None,
+        mutation_rate: float = 1.0,
+        mutation_strategy: str = "local_search",
     ):
         mutant = self.fhp.mutate(
             parent=parent,
             mutation_rate=mutation_rate,
             mutation_strategy=mutation_strategy,
         )
-        child = self.__copy__()
-        child.value = int(round(mutant.value))
-        child._id = mutant._id
+        child = float_to_integer(mutant)
         return child
 
     def crossover(self, parent1, parent2=None):
         pass
+
+    def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
+        neighbours = self.fhp._get_neighbours(std, num_neighbours)
+        for idx, neighbour in enumerate(neighbours):
+            neighbours[idx] = float_to_integer(neighbour)
+        return neighbours
+
+    def _transform(self):
+        self.fhp._transform()
+        self.value = self.fhp.value
+
+    def _inv_transform(self):
+        self.fhp._inv_transform()
+        self.value = int(round(self.fhp.value))
+
+
+def float_to_integer(float_hp):
+    int_hp = IntegerHyperparameter(
+        name=float_hp.name,
+        lower=int(round(float_hp.lower)),
+        upper=int(round(float_hp.upper)),
+        log=float_hp.log,
+    )
+    int_hp._id = float_hp._id
+    int_hp.value = int(round(float_hp.value))
+
+    return int_hp

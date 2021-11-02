@@ -1,7 +1,8 @@
 from itertools import combinations
 from typing import List
-import numpy as np
+
 import networkx as nx
+import numpy as np
 
 from ..hyperparameter import Hyperparameter
 from ..numerical.categorical import CategoricalHyperparameter
@@ -89,10 +90,9 @@ class GraphHyperparameter(Hyperparameter):
         self.value = G
         self._id = np.random.random()
 
-    def mutate(self,
-               parent=None,
-               mutation_rate: float = 1.0,
-               mutation_strategy: str = "simple"):
+    def mutate(
+        self, parent=None, mutation_rate: float = 1.0, mutation_strategy: str = "simple"
+    ):
         # TODO
         if parent is None:
             parent = self
@@ -109,4 +109,13 @@ class GraphHyperparameter(Hyperparameter):
         return child
 
     def crossover(self, parent1, parent2=None):
+        pass
+
+    def _get_neighbours(self, **kwargs):
+        pass
+
+    def _transform(self):
+        pass
+
+    def _inv_transform(self):
         pass
