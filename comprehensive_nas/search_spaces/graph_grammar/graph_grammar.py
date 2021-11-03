@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import inspect
 import queue
 from abc import abstractmethod
 from copy import deepcopy
@@ -284,6 +285,7 @@ class CoreGraphGrammar(Graph):
         tree: nx.DiGraph,
         terminal_to_torch_map: dict,
         node_label: str = "op_name",
+        flatten_graph: bool = True,
         return_cell: bool = False,
         v2: bool = False,
     ) -> None | Graph:
@@ -609,13 +611,18 @@ class CoreGraphGrammar(Graph):
                 set(), tree, root_node, terminal_to_torch_map, node_label
             )
             if return_cell:
-                cell = _flatten_graph(graph, flattened_graph=Graph())
-                # graph_repr = self.to_graph_repr(cell, edge_attr=self.edge_attr)
-                return cell  # , graph_repr
+                cell = (
+                    _flatten_graph(graph, flattened_graph=Graph())
+                    if flatten_graph
+                    else graph
+                )
+                return cell
             else:
-                _flatten_graph(graph, flattened_graph=self)
-                # graph_repr = self.to_graph_repr(self, edge_attr=self.edge_attr)
-                # return None  # , graph_repr
+                if flatten_graph:
+                    _flatten_graph(graph, flattened_graph=self)
+                else:
+                    self.add_edge(0, 1)
+                    self.edges[0, 1].set("op", graph)
 
     def to_graph_repr(self, graph: Graph, edge_attr: bool) -> nx.DiGraph:
         """Transforms NASLib-esque graph to NetworkX graph.
@@ -1064,9 +1071,36 @@ class CoreGraphGrammar(Graph):
 
         if edge_attr:
             # remove edges with none
-            remove_edge_list = [
-                e for e in graph.edges(data=True) if e[-1]["op_name"] in self.zero_op
-            ]
+            remove_edge_list = []
+            for u, v, edge_data in graph.edges.data():
+                if isinstance(edge_data.op, Graph):
+                    self.prune_graph(edge_data.op, edge_attr=edge_attr)
+                elif isinstance(edge_data.op, list):
+                    for op in edge_data.op:
+                        if isinstance(op, Graph):
+                            self.prune_graph(op, edge_attr=edge_attr)
+                elif isinstance(edge_data.op, AbstractPrimitive) or issubclass(
+                    edge_data.op, AbstractPrimitive
+                ):
+                    try:
+                        if any(zero_op in edge_data.op_name for zero_op in self.zero_op):
+                            remove_edge_list.append((u, v))
+                    except TypeError:
+                        if any(
+                            zero_op in edge_data.op.get_op_name
+                            for zero_op in self.zero_op
+                        ):
+                            remove_edge_list.append((u, v))
+                elif inspect.isclass(edge_data.op):
+                    assert not issubclass(
+                        edge_data.op, Graph
+                    ), "Found non-initialized graph. Abort."
+                    # we look at an uncomiled op
+                else:
+                    raise ValueError("Unknown format of op: {}".format(edge_data.op))
+            # remove_edge_list = [
+            #     e for e in graph.edges(data=True) if e[-1]["op_name"] in self.zero_op
+            # ]
             graph.remove_edges_from(remove_edge_list)
         else:
             for n in list(nx.topological_sort(graph)):

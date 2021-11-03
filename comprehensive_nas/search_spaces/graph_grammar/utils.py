@@ -52,7 +52,9 @@ def drawNxTree(
     tree: nx.DiGraph,
     write_out: Path,
     node_label: str = "op_name",
+    fig_size: tuple = (10, 10),
 ) -> None:
+    plt.figure(figsize=fig_size)
     dir_path = Path(os.path.dirname(os.path.realpath(__file__)))
     nx.drawing.nx_agraph.write_dot(tree, dir_path / "test.dot")
     pos = nx.drawing.nx_agraph.graphviz_layout(tree, prog="dot")

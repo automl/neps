@@ -481,6 +481,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
             else:
                 # outgoing edges: process all outgoing edges
                 for neigbor_idx in self.neighbors(node_idx):
+                    max_xidx = max(used_input_names)
                     edge_data = self.get_edge_data(node_idx, neigbor_idx)
                     # inject edge data only for AbstractPrimitive, not Graphs
                     if isinstance(edge_data.op, Graph):
@@ -495,7 +496,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
                             edge_data.op.forward, edge_data=edge_data
                         )
                         submodule_list.append(edge_data.op)
-                        max_xidx = max(used_input_names)
                         _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}]({x})"
                         input_name = f"x{max_xidx + 1}"
                         used_input_names.append(max_xidx + 1)
