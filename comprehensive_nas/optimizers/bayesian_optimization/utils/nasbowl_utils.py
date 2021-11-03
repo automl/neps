@@ -25,8 +25,8 @@ def extract_configs(configs: list) -> Tuple[list, list]:
         Tuple[list, list]: list of graphs, list of HPs
     """
     N = len(configs)
-    if N > 0 and "get_graph" in dir(configs[0]):
-        graphs = [c.get_graph() for c in configs]
+    if N > 0 and "get_graphs" in dir(configs[0]):
+        graphs = [c.get_graphs() for c in configs]
     elif N > 0 and "graph" in dir(configs[0]):
         graphs = [c.graph for c in configs]
     else:

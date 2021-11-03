@@ -234,7 +234,9 @@ class NASBench201(AbstractBenchmark):
                     continue
                 break
             self.graph = rand_arch  # pylint: disable=attribute-defined-outside-init
-            self.name = str(self.parse())
+            self.name = str(
+                self.parse()
+            )  # pylint: disable=attribute-defined-outside-init
 
         if self.optimize_hps:
             rand_hps = []

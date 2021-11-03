@@ -34,6 +34,9 @@ from comprehensive_nas.optimizers.bayesian_optimization.optimizer import (
 from comprehensive_nas.optimizers.random_search.optimizer import RandomSearch
 from comprehensive_nas.utils.util import Experimentator, StatisticsTracker
 
+from comprehensive_nas.search_spaces.search_space import SearchSpace
+from comprehensive_nas.search_spaces import HyperparameterMapping
+
 warnings.simplefilter("ignore", category=FutureWarning)
 
 parser = argparse.ArgumentParser(description="CNAS")
@@ -182,11 +185,58 @@ def run_experiment(args):
     elif args.dataset == "nasbench301":
         assert args.dataset in APIMapping.keys()
         api = APIMapping[args.dataset]
-    objective = BenchmarkMapping[args.dataset](seed=args.seed)
+
+    # branin2
+    objective = SearchSpace(
+        HyperparameterMapping['float'](name='x1', lower=-5, upper=10, log=False),
+        HyperparameterMapping['float'](name='x2', lower=0, upper=15, log=False),
+    )
+
+    # hartmann3
+    objective = SearchSpace(
+        HyperparameterMapping['float'](name='x1', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x2', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x3', lower=0, upper=1, log=False),
+    )
+    #
+    # hartmann6
+    objective = SearchSpace(
+        HyperparameterMapping['float'](name='x1', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x2', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x3', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x4', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x5', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x6', lower=0, upper=1, log=False),
+    )
+    #
+    # counting_ones
+    objective = SearchSpace(
+        HyperparameterMapping['float'](name='x1', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x2', lower=0, upper=1, log=False),
+        HyperparameterMapping['float'](name='x3', lower=0, upper=1, log=False),
+        # HyperparameterMapping['float'](name='x4', lower=0, upper=1, log=False),
+        # HyperparameterMapping['float'](name='x5', lower=0, upper=1, log=False),
+        HyperparameterMapping['categorical'](name='x6', choices=[0, 1]),
+        HyperparameterMapping['categorical'](name='x7', choices=[0, 1]),
+        HyperparameterMapping['categorical'](name='x8', choices=[0, 1]),
+        # HyperparameterMapping['categorical'](name='x9', choices=[0, 1]),
+        # HyperparameterMapping['categorical'](name='x10', choices=[0, 1]),
+        HyperparameterMapping['integer'](name='x11', lower=0, upper=1, log=False),
+        HyperparameterMapping['integer'](name='x12', lower=0, upper=1, log=False),
+        HyperparameterMapping['integer'](name='x13', lower=0, upper=1, log=False),
+        # HyperparameterMapping['integer'](name='x14', lower=0, upper=1, log=False),
+        # HyperparameterMapping['integer'](name='x15', lower=0, upper=1, log=False),
+        HyperparameterMapping['constant'](name='x16', value=1),
+        HyperparameterMapping['constant'](name='x17', value=1),
+        HyperparameterMapping['constant'](name='x18', value=1),
+        HyperparameterMapping['constant'](name='x19', value=1),
+        HyperparameterMapping['constant'](name='x20', value=1),
+    )
+
     initial_design = AcquisitionOptimizerMapping["random"](objective)
 
     if args.dataset in PipelineFunctionMapping:
-        run_pipeline_fn = PipelineFunctionMapping[args.dataset]
+        run_pipeline_fn = PipelineFunctionMapping[args.dataset]()
     else:
         run_pipeline_fn = None
 
@@ -235,8 +285,10 @@ def run_experiment(args):
         optimizer = BayesianOptimization(
             surrogate_model=surrogate_model,
             acquisition_function_opt=acquisition_function_opt,
-            return_opt_details=True,
+            return_opt_details=False,
         )
+    elif args.strategy == "re":
+        optimizer = RegularizedEvolution(objective)
     else:
         raise Exception(f"Optimizer {args.strategy} is not yet implemented!")
 
@@ -247,16 +299,16 @@ def run_experiment(args):
 
     for seed in range(args.n_repeat):
         tracker = evaluate_seed(
-            api,
-            args,
-            experimenter,
-            initial_design,
-            optimizer,
-            seed,
-            tracker,
+            api=api,
+            args=args,
+            experimenter=experimenter,
+            initial_design=initial_design,
+            optimizer=optimizer,
+            seed=seed,
+            tracker=tracker,
             run_pipeline_fn=run_pipeline_fn,
         )
-        tracker.save_results()
+        # tracker.save_results()
 
 
 def evaluate_seed(
@@ -275,80 +327,89 @@ def evaluate_seed(
     x_configs = initial_design.sample(pool_size=args.n_init)
 
     # & evaluate
-    if run_pipeline_fn is not None:
-        y_np_list = [run_pipeline_fn(config_) for config_ in x_configs]
-        y = [y[0] for y in y_np_list]
-        train_details = [y[1] for y in y_np_list]
+    y_np_list = [
+        run_pipeline_fn(config_)
+        if run_pipeline_fn is not None
+        else config_.query(dataset_api=api)
+        for config_ in x_configs
+    ]
 
-        test = [run_pipeline_fn(config_, mode="test") for config_ in x_configs]
-    else:
-        y_np_list = [config_.query(dataset_api=api) for config_ in x_configs]
-        y = [y[0] for y in y_np_list]
-        train_details = [y[1] for y in y_np_list]
-        test = [config_.query(dataset_api=api, mode="test") for config_ in x_configs]
+    # tracker.save_checkpoint(checkpoint_data=y_np_list)
+
+    y = [_y["loss"] for _y in y_np_list]
+    train_details = [_y["info_dict"] for _y in y_np_list]
+    y_val = [_y["val_score"] for _y in train_details]
+    y_test = [_y["test_score"] for _y in train_details]
 
     tracker.update(
         x=x_configs,
-        y_eval=y,
-        y_eval_cur=y,
-        y_test=test,
-        y_test_cur=test,
+        y_eval=y_val,
+        y_eval_cur=y_val,
+        y_test=y_test,
+        y_test_cur=y_test,
         train_details=train_details,
         opt_details=None,
     )
     tracker.print(False, True)
+
     # Initialise the GP surrogate
     optimizer.initialize_model(x_configs=x_configs, y=y)
+
     # Main optimization loop
     while experimenter.has_budget():
 
         # Propose new location to evaluate
         next_x, opt_details = optimizer.propose_new_location(
-            args.batch_size, args.pool_size
+            **{"batch_size": args.batch_size, "pool_size": args.pool_size}
         )
 
         # Evaluate this location from the objective function
-        if run_pipeline_fn is not None:
-            detail = [run_pipeline_fn(config_) for config_ in next_x]
-            next_y = [y[0] for y in detail]
-            train_details = [y[1] for y in detail]
-            next_test = [run_pipeline_fn(config_, mode="test") for config_ in next_x]
-        else:
-            detail = [config_.query(dataset_api=api) for config_ in next_x]
-            next_y = [y[0] for y in detail]
-            train_details += [y[1] for y in detail]
-            next_test = [
-                config_.query(dataset_api=api, mode="test") for config_ in next_x
-            ]
+        detail = [
+            run_pipeline_fn(config_)
+            if run_pipeline_fn is not None
+            else config_.query(dataset_api=api)
+            for config_ in next_x
+        ]
+
+        # tracker.save_checkpoint(checkpoint_data=detail)
+
+        next_y = [_y["loss"] for _y in detail]
+        y_info_dict = [_y["info_dict"] for _y in detail]
+        next_val = [_y["val_score"] for _y in y_info_dict]
+        next_test = [_y["test_score"] for _y in y_info_dict]
+        train_details += y_info_dict
 
         if opt_details is not None:
             pool = opt_details["pool"]
-            if run_pipeline_fn is not None:
-                pool_vals = [run_pipeline_fn(config_) for config_ in pool]
-            else:
-                pool_vals = [config_.query(dataset_api=api) for config_ in pool]
+
+            pool_vals = [
+                run_pipeline_fn(config_)
+                if run_pipeline_fn is not None
+                else config_.query(dataset_api=api)
+                for config_ in pool
+            ]
+
             opt_details["pool_vals"] = pool_vals
             pool.extend(next_x)
 
         x_configs.extend(next_x)
-        # y = torch.cat((y, torch.tensor(next_y).view(-1))).float()
         y.extend(next_y)
-        # test = torch.cat((test, torch.tensor(next_test).view(-1))).float()
-        test.extend(next_test)
+        y_val.extend(next_val)
+        y_test.extend(next_test)
 
         # Update the GP Surrogate
         optimizer.update_model(x_configs=x_configs, y=y)
 
         tracker.update(
             x=x_configs,
-            y_eval=y,
+            y_eval=y_val,
             y_eval_cur=next_y,
-            y_test=test,
+            y_test=y_test,
             y_test_cur=next_test,
             train_details=train_details,
             opt_details=opt_details,
         )
-        tracker.print()
+        tracker.print(args.plot if args.strategy == "gbo" else False, True)
 
         experimenter.next_iteration()
     return tracker

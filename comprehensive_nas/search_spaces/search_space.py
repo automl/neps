@@ -1,76 +1,121 @@
 import random
+from collections import OrderedDict
 
 import numpy as np
-from networkx.readwrite import json_graph
 
 from .graph_dense.graph_dense import GraphHyperparameter
 
 
 class SearchSpace:
     def __init__(self, *hyperparameters):
-        self.hyperparameters = hyperparameters
+        self._num_hps = len(hyperparameters)
+        self._hyperparameters = OrderedDict()
+        self._hps = []
+        self._graphs = []
 
-        self.hps = None
-        self.graphs = None
+        for hyperparameter in hyperparameters:
+            self._hyperparameters[hyperparameter.name] = hyperparameter
+            if isinstance(hyperparameter, GraphHyperparameter):
+                self._graphs.append(hyperparameter)
+            else:
+                self._hps.append(hyperparameter)
+
         self.name = ""
 
-    def sample_config(self, random_state):
-        hps = []
-        graphs = []
-        for hyperparameter in self.hyperparameters:
-            if isinstance(hyperparameter, GraphHyperparameter):
-                graphs.append(hyperparameter.sample(random_state))
+    def sample(self):
+        for hyperparameter in self._hyperparameters.values():
+            hyperparameter.sample()
+
+        self.name = self.parse()
+
+    def mutate(
+        self,
+        config=None,
+        mutate_probability_per_hyperparameter=1.0,
+        patience=50,
+        mutation_strategy="smbo",
+    ):
+
+        if mutation_strategy == "simple":
+            new_config = self._simple_mutation(
+                mutate_probability_per_hyperparameter, patience
+            )
+        elif mutation_strategy == "smbo":
+            new_config = self._smbo_mutation(patience)
+        else:
+            raise NotImplementedError("No such mutation strategy!")
+
+        child = SearchSpace(*new_config)
+        child.name = child.parse()
+
+        return child
+
+    def _simple_mutation(self, mutate_probability_per_hyperparameter=1.0, patience=50):
+        new_config = []
+        for hyperparameter in self._hyperparameters.values():
+            if np.random.random() < mutate_probability_per_hyperparameter:
+                while patience > 0:
+                    try:
+                        new_config.append(
+                            hyperparameter.mutate(mutation_strategy="simple")
+                        )
+                        break
+                    except Exception:
+                        patience -= 1
+                        continue
             else:
-                hps.append(hyperparameter.sample(random_state))
+                new_config.append(hyperparameter)
 
-        self.hps = hps if len(hps) > 0 else None
-        self.graphs = graphs if len(graphs) > 0 else None
-        self.name = self.parse()
+        return new_config
 
-    def mutate(self, config, mutate_probability_per_hyperparameter=0.5):
-        for hyperparameter in config:
-            if random.random() < mutate_probability_per_hyperparameter:
-                pass
-                hyperparameter.mutate()
+    def _smbo_mutation(self, patience=50):
+        new_config = self.get_array()
+        idx = random.randint(0, self._num_hps - 1)
+        hp = new_config[idx]
 
-        self.name = self.parse()
+        while patience > 0:
+            try:
+                new_config[idx] = hp.mutate(mutation_strategy="local_search")
+                break
+            except Exception:
+                patience -= 1
+                continue
+        return new_config
 
     def parse(self):
-        config = []
-        if self.graphs is not None:
-            if not isinstance(self.graphs, list):
-                # Convert to a singleton list
-                gl = [self.graphs]
-            else:
-                gl = self.graphs
-            config.append([json_graph.node_link_data(g)["graph"]["name"] for g in gl])
-        if self.hps is not None:
-            config.append(self.hps)
+        config = ""
+        for hp in self._hyperparameters.values():
+            config += (
+                hp.name
+                if isinstance(hp, GraphHyperparameter)
+                else "{}-{}".format(hp.name, hp.value)
+            )
+            config += "_"
         return config
 
     @property
     def id(self):
         return self.name
 
-    def get_graph(self):
-        return self.graphs
+    def get_graphs(self):
+        return [graph.value for graph in self._graphs]
 
     def get_hps(self):
-        return self.hps
+        return [hp.value for hp in self._hps]
 
+    def get_array(self):
+        return list(self._hyperparameters.values())
 
-if __name__ == "__main__":
-    from graph_dense.graph_dense import GraphHyperparameter
-    from numerical.categorical import CategoricalHyperparameter
-    from numerical.constant import ConstantHyperparameter
-    from numerical.float import FloatHyperparameter
-    from numerical.integer import IntegerHyperparameter
+    def get_hyperparameter_by_name(self, name: str):
+        hp = self._hyperparameters.get(name)
 
-    search_space = SearchSpace(
-        CategoricalHyperparameter(name="operation", choices=["multiply", "add"]),
-        IntegerHyperparameter(name="operant_a", lower=1, upper=100),
-        FloatHyperparameter(name="operant_b", lower=1, upper=100, log=True),
-        # architecture=cnas.DenseGraph(num_nodes=3, edge_choices={"identity", "3x3_conv"}),
-    )
-    rs = np.random.RandomState(5)
-    search_space.sample_config(rs)
+        if hp is None:
+            raise KeyError("Hyperparameter is not a part of the search space!")
+
+        return hp
+
+    def transform(self):
+        [hp._transform() for hp in self.get_array()]
+
+    def inv_transform(self):
+        [hp._inv_transform() for hp in self.get_array()]
