@@ -21,6 +21,9 @@ class EvolutionSampler(AcquisitionOptimizer):
         dynamic: bool = True,
         max_iters: int = 50,
         patience: int = 50,
+        initial_history_last: int = 10,
+        initial_history_best: int = 0,
+        initial_history_acq_best: int = 0,
     ):
         # TODO implement isomorphism checking!
         super().__init__(objective, acquisition_function)
@@ -31,6 +34,9 @@ class EvolutionSampler(AcquisitionOptimizer):
         self.dynamic = dynamic
         self.max_iters = max_iters
         self.patience = patience
+        self.initial_history_last = initial_history_last
+        self.initial_history_best = initial_history_best
+        self.initial_history_acq_best = initial_history_acq_best
 
         self.random_sampling = RandomSampler(objective)
 
@@ -156,6 +162,18 @@ class EvolutionSampler(AcquisitionOptimizer):
                 f"Population size {pool_size} is smaller than batch size {batch_size}!"
             )
         population = self.x
-        if len(population) > 10:
-            population = population[-10:]
+        if self.initial_history_last > 0 and len(self.x) > self.initial_history_last:
+            population = population[-self.initial_history_last :]
+        if self.initial_history_best > 0 and len(self.x) > self.initial_history_best:
+            indices = np.argpartition(self.y, self.initial_history_best)
+            for idx in indices[: self.initial_history_best]:
+                population.append(self.x[idx])
+        if (
+            self.initial_history_acq_best > 0
+            and len(self.x) > self.initial_history_acq_best
+        ):
+            acq_vals = self.acquisition_function.eval(self.x, asscalar=True)
+            indices = np.argpartition(acq_vals, -self.initial_history_acq_best)
+            for idx in indices[-self.initial_history_acq_best :]:
+                population.append(self.x[idx])
         return self.evolution(population, pool_size, batch_size)
