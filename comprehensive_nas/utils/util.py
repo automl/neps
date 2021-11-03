@@ -427,7 +427,7 @@ class StatisticsTracker(object):
             with open(checkpoint_path, "r") as f:
                 checkpoint_data = json.load(f)
         else:
-            raise Exception("Checkpoint does not exist!")
+            raise Exception(f"Checkpoint {checkpoint_path} does not exist!")
         return checkpoint_data
 
     def save_checkpoint(self, checkpoint_data: list):
