@@ -3,6 +3,11 @@ from typing import Iterable, Tuple, Union
 
 import numpy as np
 
+from .acquisition_function_optimization import AcquisitionOptimizerMapping
+from .acqusition_functions import AcquisitionMapping
+from .kernels import GraphKernelMapping, StationaryKernelMapping
+from .models.gp import ComprehensiveGP
+
 try:
     import torch
 except ModuleNotFoundError:
@@ -155,3 +160,67 @@ class BayesianOptimization(Optimizer):
         self.train_x.append(config)
         self.train_y.append(loss)
         self.update_model(self.train_x, self.train_y)
+
+
+class BayesianOptimizationNew:
+    def __new__(
+        cls,
+        pipeline_space,
+        mutate_size=200,
+        pool_strategy="mutation",
+        optimal_assignment=False,
+        domain_se_kernel=None,
+        graph_kernels=None,
+        acquisition="EI",
+        hp_kernels=None,
+        verbose=False,
+        no_isomorphism=False,
+    ):
+        if graph_kernels is None:
+            graph_kernels = list()
+        if graph_kernels is None:
+            hp_kernels = list()
+
+        kern = [
+            GraphKernelMapping[kg](
+                oa=optimal_assignment,
+                se_kernel=None
+                if domain_se_kernel is None
+                else StationaryKernelMapping[domain_se_kernel],
+            )
+            for kg in graph_kernels
+        ]
+        hp_kern = [StationaryKernelMapping[kh]() for kh in hp_kernels]
+
+        surrogate_model = ComprehensiveGP(
+            graph_kernels=kern, hp_kernels=hp_kern, verbose=verbose
+        )
+        acquisition_function = AcquisitionMapping[acquisition](
+            surrogate_model=surrogate_model
+        )
+
+        if pool_strategy == "mutation":
+            acquisition_function_opt = AcquisitionOptimizerMapping[pool_strategy](
+                pipeline_space,
+                acquisition_function,
+                n_mutate=mutate_size,
+                allow_isomorphism=no_isomorphism,
+            )
+        elif pool_strategy == "evolution":
+            acquisition_function_opt = AcquisitionOptimizerMapping[pool_strategy](
+                pipeline_space,
+                acquisition_function,
+            )
+        elif pool_strategy == "random":
+            acquisition_function_opt = AcquisitionOptimizerMapping[pool_strategy](
+                pipeline_space,
+                acquisition_function,
+            )
+        else:
+            raise ValueError
+
+        return BayesianOptimization(
+            surrogate_model=surrogate_model,
+            acquisition_function_opt=acquisition_function_opt,
+            return_opt_details=False,
+        )

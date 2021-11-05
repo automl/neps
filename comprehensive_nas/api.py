@@ -1,40 +1,7 @@
 import metahyper.api
 
-from comprehensive_nas.optimizers.random_search.new_optimizer_dummy import _DummySearcher
-
-
-class PipelineSpace:
-    def __init__(self, **parameters_kwargs):
-        self.parameters = parameters_kwargs
-
-
-class _Parameter:
-    pass
-
-
-class Categorical(_Parameter):
-    def __init__(self, choices):
-        pass
-
-
-class Float(_Parameter):
-    def __init__(self, lower, upper, log=False):
-        pass
-
-
-class Integer(_Parameter):
-    def __init__(self, lower, upper, log=False):
-        pass
-
-
-class GrammarGraph(_Parameter):
-    def __init__(self):
-        pass
-
-
-class DenseGraph(_Parameter):
-    def __init__(self, num_nodes, edge_choices):
-        pass
+from .optimizers.bayesian_optimization.optimizer import BayesianOptimizationNew
+from .optimizers.random_search.new_optimizer_dummy import _DummySearcher
 
 
 def run_comprehensive_nas(
@@ -42,7 +9,7 @@ def run_comprehensive_nas(
     pipeline_space,
     working_directory,
     n_iterations,
-    searcher="dummy_random",
+    searcher="bayesian_optimization",  # TODO: Naming uniform
     start_master=True,
     start_worker=True,
     nic_name="lo",
@@ -52,6 +19,10 @@ def run_comprehensive_nas(
 ):
     if searcher == "dummy_random":
         sampler = _DummySearcher(pipeline_space=pipeline_space)
+    elif searcher == "bayesian_optimization":
+        sampler = BayesianOptimizationNew(
+            pipeline_space=pipeline_space, **searcher_kwargs
+        )
     else:
         raise ValueError
 
