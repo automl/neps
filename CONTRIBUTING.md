@@ -1,6 +1,6 @@
 # Contributing
 
-## Development Practices
+## Development Practices and Tooling
 
 We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/):
 * We work almost exclusively on the master branch
@@ -11,6 +11,11 @@ To manage dependencies and for package distribution we use [poetry](https://pyth
 
 We document major features with an example (see cnas_examples).
 These examples also serve as integration tests, which we will run automatically in the future.
+
+## Python Coding Guidelines
+
+* We use relative imports inside our library
+* We use the black style with line length 90, enforced by our autoformatter as part of our pre-commit hooks
 
 ## Developer Installation
 
