@@ -1,9 +1,16 @@
 # Contributing
 
-## Tools you need to know about
+## Development Practices
 
-* [Poetry](https://python-poetry.org/docs/) to manage python packages (replaces pip), make sure to understand the roles of `poetry.lock` and `pyproject.toml`
-* [pre-commit](https://pre-commit.com/) to run auto-formatting, code quality checks, and bug checks at each commit
+We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/):
+* We work almost exclusively on the master branch
+* We commit, push, and pull often
+* We use [pre-commit](https://pre-commit.com/) to run code quality checks at every commit
+
+To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
+
+We document major features with an example (see cnas_examples).
+These examples also serve as integration tests, which we will run automatically in the future.
 
 ## Developer Installation
 
@@ -24,7 +31,9 @@ poetry install
 pre-commit install
 ```
 
-## Add dependencies
+## Tooling Tips
+
+### Add dependencies
 
 To install a dependency use
 
@@ -36,11 +45,11 @@ and commit the updated `pyproject.toml` to git.
 
 For more advanced dependency management see examples in `pyproject.toml` or have a look at the [poetry documentation](https://python-poetry.org/).
 
-## Do not run pre-commit hooks
+### Do not run pre-commit hooks
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.
 
-## Ignore pylint warning
+### Ignore pylint warning
 
 ```python
 code = "foo"  # pylint: disable=bar
@@ -48,7 +57,7 @@ code = "foo"  # pylint: disable=bar
 
 Or remove warnings in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
 
-## Do not format with black
+### Do not format with black
 
 ```python
 x = 2  # fmt: off
@@ -64,6 +73,6 @@ y = x + 1
 
 ```
 
-## Editorconfig
+### Editorconfig
 
 You might want to install an [editorconfig](https://editorconfig.org/) plugin for your text editor to automatically set line lengths etc.
