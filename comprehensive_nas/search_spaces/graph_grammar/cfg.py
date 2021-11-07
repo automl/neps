@@ -363,6 +363,22 @@ class Grammar(CFG):
         removed = "".join(split_tree[index]) + " " + right[: current_index + 1]
         return (pre_subtree, removed, post_subtree)
 
+    @staticmethod
+    def unparse_tree(tree: str):
+        string = []
+        temp = ""
+        # perform single pass of tree
+        for char in tree:
+            if char == " ":
+                temp = ""
+            elif char == ")":
+                if temp[-1] != ")":
+                    string.append(temp)
+                temp += char
+            else:
+                temp += char
+        return " ".join(string)
+
 
 class DepthConstrainedGrammar(Grammar):
     def __init__(self, *args, **kwargs):
