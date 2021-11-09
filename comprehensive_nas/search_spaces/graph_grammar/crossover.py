@@ -1,4 +1,5 @@
 import random
+from copy import deepcopy
 from typing import Callable, List, Tuple
 
 from .cfg import Grammar
@@ -9,8 +10,14 @@ def simple_crossover(
     parent2: str,
     grammar: Grammar,
     patience: int = 50,
+    return_crossover_subtrees: bool = False,
 ) -> Tuple[str, str]:
-    return grammar.crossover(parent1=parent1, parent2=parent2, patience=patience)
+    return grammar.crossover(
+        parent1=parent1,
+        parent2=parent2,
+        patience=patience,
+        return_crossover_subtrees=return_crossover_subtrees,
+    )
 
 
 def repetitive_search_space_crossover(
@@ -28,12 +35,6 @@ def repetitive_search_space_crossover(
             if f"{motif_prefix}{i}" in base_parent
         ]
 
-    def swap(list1, list2, index1, index2):
-        tmp = list1[index1]
-        list1[index1] = list2[index2]
-        list2[index2] = tmp
-        return list1, list2
-
     child1_string_trees = [base_parent[0]] + motif_parents[0]
     child2_string_trees = [base_parent[1]] + motif_parents[1]
     parent1_potential_motif_candidates = _motifs_in_base_tree(
@@ -50,22 +51,75 @@ def repetitive_search_space_crossover(
             len(parent2_potential_motif_candidates),
         ),
     )
-    if random_draw == 0:
-        # NOTE: only works for 1 hierarchical level!
+    if random_draw == 0:  # crossover high level grammar
         parent1_motifs = _motifs_in_base_tree(
             child1_string_trees[0], motif_grammars, motif_prefix
         )
         parent2_motifs = _motifs_in_base_tree(
             child2_string_trees[0], motif_grammars, motif_prefix
         )
-        parent1_drawn_motif = random.choice(parent1_motifs)
-        parent2_drawn_motif = random.choice(parent2_motifs)
+        (_, _, subtrees_child1, subtrees_child2,) = inner_crossover_strategy(
+            child1_string_trees[0],
+            child2_string_trees[0],
+            base_grammar,
+            return_crossover_subtrees=True,
+        )
+        subtrees_child1 = list(subtrees_child1)
+        subtrees_child2 = list(subtrees_child2)
+        new_child1_motifs = _motifs_in_base_tree(
+            subtrees_child2[1], motif_grammars, motif_prefix
+        )
+        new_child2_motifs = _motifs_in_base_tree(
+            subtrees_child1[1], motif_grammars, motif_prefix
+        )
 
-        child1_string_trees, child2_string_trees = swap(
-            child1_string_trees,
-            child2_string_trees,
-            parent1_drawn_motif,
-            parent2_drawn_motif,
+        old_child1_string_trees = deepcopy(child1_string_trees)
+        free_motifs = list(set(range(1, len(motif_grammars) + 1)) - set(parent1_motifs))
+        if len(free_motifs) > 0:
+            if len(new_child1_motifs) > len(free_motifs):  # too many new child motifs
+                new_child1_motifs = random.sample(
+                    new_child1_motifs,
+                    k=len(free_motifs),
+                )
+            elif len(new_child1_motifs) < len(
+                free_motifs
+            ):  # more free spots than necessary
+                free_motifs = random.sample(
+                    free_motifs,
+                    k=len(new_child1_motifs),
+                )
+            for fm, nm in zip(free_motifs, new_child1_motifs):
+                child1_string_trees[fm] = child2_string_trees[nm].replace(
+                    f"{motif_prefix}{nm}", f"{motif_prefix}{fm}"
+                )
+                subtrees_child2[1] = subtrees_child2[1].replace(
+                    f"{motif_prefix}{nm}", f"{motif_prefix}{fm}"
+                )
+        child1_string_trees[0] = (
+            subtrees_child1[0] + subtrees_child2[1] + subtrees_child1[2]
+        )
+
+        free_motifs = list(set(range(1, len(motif_grammars) + 1)) - set(parent2_motifs))
+        if len(free_motifs) > 0:
+            if len(new_child2_motifs) > len(free_motifs):
+                new_child2_motifs = random.sample(
+                    new_child2_motifs,
+                    k=len(free_motifs),
+                )
+            elif len(new_child2_motifs) < len(free_motifs):
+                free_motifs = random.sample(
+                    free_motifs,
+                    k=len(new_child2_motifs),
+                )
+            for fm, nm in zip(free_motifs, new_child2_motifs):
+                child2_string_trees[fm] = old_child1_string_trees[nm].replace(
+                    f"{motif_prefix}{nm}", f"{motif_prefix}{fm}"
+                )
+                subtrees_child1[1] = subtrees_child1[1].replace(
+                    f"{motif_prefix}{nm}", f"{motif_prefix}{fm}"
+                )
+        child2_string_trees[0] = (
+            subtrees_child2[0] + subtrees_child1[1] + subtrees_child2[2]
         )
     else:
         parent1_random_draw = random.randint(

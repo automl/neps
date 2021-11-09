@@ -266,7 +266,13 @@ class Grammar(CFG):
             _patience -= 1
         return child
 
-    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+    def crossover(
+        self,
+        parent1: str,
+        parent2: str,
+        patience: int = 50,
+        return_crossover_subtrees: bool = False,
+    ):
         # randomly swap subtrees in two trees
         # if no suitiable subtree exists then return False
         subtree_node, subtree_index = self.rand_subtree(parent1)
@@ -286,6 +292,13 @@ class Grammar(CFG):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
                 return child1, child2
 
         return False, False
