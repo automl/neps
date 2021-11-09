@@ -1,6 +1,6 @@
 import metahyper.api
 
-from .optimizers.bayesian_optimization.optimizer import BayesianOptimizationNew
+from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.new_optimizer_dummy import _DummySearcher
 
 
@@ -20,9 +20,7 @@ def run_comprehensive_nas(
     if searcher == "dummy_random":
         sampler = _DummySearcher(pipeline_space=pipeline_space)
     elif searcher == "bayesian_optimization":
-        sampler = BayesianOptimizationNew(
-            pipeline_space=pipeline_space, **searcher_kwargs
-        )
+        sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
     else:
         raise ValueError
 

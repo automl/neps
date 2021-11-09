@@ -13,14 +13,14 @@ class MutationSampler(AcquisitionOptimizer):
         search_space,
         acquisition_function: BaseAcquisition,
         n_best: int = 10,
-        n_mutate: int = None,
+        mutate_size: int = None,
         allow_isomorphism: bool = False,
         check_isomorphism_history: bool = True,  # on NB201 set to False!
         patience: int = 50,
     ):
         super().__init__(search_space, acquisition_function)
         self.n_best = n_best
-        self.n_mutate = n_mutate
+        self.mutate_size = mutate_size
         self.allow_isomorphism = allow_isomorphism
         self.check_isomorphism_history = (
             check_isomorphism_history  # check for isomorphisms also in previous graphs
@@ -48,8 +48,12 @@ class MutationSampler(AcquisitionOptimizer):
         if len(self.x) == 0:
             return self.random_sampling.sample(pool_size=pool_size)
 
-        n_mutate = int(0.5 * pool_size) if self.n_mutate is None else self.n_mutate
-        assert pool_size >= n_mutate, " pool_size must be larger or equal to n_mutate"
+        mutate_size = (
+            int(0.5 * pool_size) if self.mutate_size is None else self.mutate_size
+        )
+        assert (
+            pool_size >= mutate_size
+        ), " pool_size must be larger or equal to mutate_size"
 
         n_best = len(self.x) if len(self.x) < self.n_best else self.n_best
         best_configs = [
@@ -61,7 +65,7 @@ class MutationSampler(AcquisitionOptimizer):
             if not self.allow_isomorphism and self.check_isomorphism_history
             else []
         )
-        per_arch = n_mutate // n_best
+        per_arch = mutate_size // n_best
         for config in best_configs:
             n_child = 0
             patience_ = self.patience

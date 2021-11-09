@@ -1,3 +1,4 @@
+import inspect
 import random
 from typing import Iterable, Tuple, Union
 
@@ -22,7 +23,7 @@ from .acquisition_function_optimization.random_sampler import RandomSampler
 # from .acqusition_functions.base_acqusition import BaseAcquisition
 
 
-class BayesianOptimization(Optimizer):
+class _BayesianOptimization(Optimizer):
     def __init__(
         self,
         surrogate_model,
@@ -30,7 +31,7 @@ class BayesianOptimization(Optimizer):
         random_interleave_prob: float = 0.0,
         surrogate_model_fit_args: dict = None,
         initial_design_size: int = 10,
-        pool_size: int = 200,
+        n_candidates: int = 200,
         return_opt_details: bool = False,
     ):
         """Implements the basic BO loop.
@@ -50,7 +51,7 @@ class BayesianOptimization(Optimizer):
         self.random_interleave_prob = random_interleave_prob
         self.surrogate_model_fit_args = surrogate_model_fit_args
         self.initial_design_size = initial_design_size
-        self.pool_size = pool_size
+        self.n_candidates = n_candidates
         self.return_opt_details = return_opt_details
 
         self.random_sampler = RandomSampler(acquisition_function_opt.search_space)
@@ -92,13 +93,13 @@ class BayesianOptimization(Optimizer):
         self.acqusition_function_opt.reset_XY(x=self.train_x, y=self.train_y)
 
     def propose_new_location(
-        self, batch_size: int = 5, pool_size: int = 10
+        self, batch_size: int = 5, n_candidates: int = 10
     ) -> Union[Iterable, Tuple[Iterable, dict]]:
         """Proposes new locations.
 
         Args:
             batch_size (int, optional): number of proposals. Defaults to 5.
-            pool_size (int, optional): how many candidates to consider. Defaults to 10.
+            n_candidates (int, optional): how many candidates to consider. Defaults to 10.
 
         Returns:
             Union[Iterable, Tuple[Iterable, dict]]: proposals, (model decision information metrics)
@@ -111,12 +112,12 @@ class BayesianOptimization(Optimizer):
         next_x = []
         if model_batch_size > 0:
             model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
-                pool_size, model_batch_size
+                n_candidates, model_batch_size
             )
             next_x.extend(model_samples)
         elif self.return_opt_details:  # need to compute acq vals
             model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
-                pool_size, 1
+                n_candidates, 1
             )
         if batch_size - model_batch_size > 0:
             random_samples = self.random_sampler.sample(batch_size - model_batch_size)
@@ -150,7 +151,7 @@ class BayesianOptimization(Optimizer):
         if random.random() < self.random_interleave_prob:
             return self.random_sampler.sample(1)
 
-        model_sample, _, _ = self.acqusition_function_opt.sample(self.pool_size, 1)
+        model_sample, _, _ = self.acqusition_function_opt.sample(self.n_candidates, 1)
         return model_sample
 
     def new_result(self, job):
@@ -162,65 +163,84 @@ class BayesianOptimization(Optimizer):
         self.update_model(self.train_x, self.train_y)
 
 
-class BayesianOptimizationNew:
+class BayesianOptimization:
     def __new__(
         cls,
         pipeline_space,
-        mutate_size=200,
-        pool_strategy="mutation",
+        initial_design_size: int = 10,
+        surrogate_model: str = "GP",
+        surrogate_model_fit_args: dict = None,
         optimal_assignment=False,
         domain_se_kernel=None,
         graph_kernels=None,
-        acquisition="EI",
         hp_kernels=None,
-        verbose=False,
-        no_isomorphism=False,
+        acquisition: str = "EI",
+        acquisition_opt_strategy: str = "mutation",
+        acquisition_opt_strategy_args: dict = None,
+        n_candidates: int = 200,
+        random_interleave_prob: float = 0.0,
+        verbose: bool = False,
     ):
-        if graph_kernels is None:
+        def _get_args_and_defaults(func):
+            signature = inspect.signature(func)
+            return list(signature.parameters.keys()), {
+                k: v.default
+                for k, v in signature.parameters.items()
+                if v.default is not inspect.Parameter.empty
+            }
+
+        if acquisition_opt_strategy_args is None:
+            acquisition_opt_strategy_args = {}
+
+        if graph_kernels is None or not graph_kernels:
             graph_kernels = list()
-        if graph_kernels is None:
+        if hp_kernels is None or not hp_kernels:
             hp_kernels = list()
 
-        kern = [
-            GraphKernelMapping[kg](
+        graph_kernels = [
+            GraphKernelMapping[kernel](
                 oa=optimal_assignment,
                 se_kernel=None
                 if domain_se_kernel is None
                 else StationaryKernelMapping[domain_se_kernel],
             )
-            for kg in graph_kernels
+            for kernel in graph_kernels
         ]
-        hp_kern = [StationaryKernelMapping[kh]() for kh in hp_kernels]
+        hp_kernels = [StationaryKernelMapping[kernel]() for kernel in hp_kernels]
+
+        if not graph_kernels and not hp_kernels:
+            raise Exception("No kernels are provided!")
 
         surrogate_model = ComprehensiveGP(
-            graph_kernels=kern, hp_kernels=hp_kern, verbose=verbose
+            graph_kernels=graph_kernels, hp_kernels=hp_kernels, verbose=verbose
         )
         acquisition_function = AcquisitionMapping[acquisition](
             surrogate_model=surrogate_model
         )
 
-        if pool_strategy == "mutation":
-            acquisition_function_opt = AcquisitionOptimizerMapping[pool_strategy](
+        if acquisition_opt_strategy in AcquisitionOptimizerMapping.keys():
+            acquisition_function_opt_cls = AcquisitionOptimizerMapping[
+                acquisition_opt_strategy
+            ]
+            arg_names, _ = _get_args_and_defaults(acquisition_function_opt_cls.__init__)
+            if not all(k in arg_names for k in acquisition_opt_strategy_args.keys()):
+                raise ValueError("Parameter mismatch")
+            acquisition_function_opt = acquisition_function_opt_cls(
                 pipeline_space,
                 acquisition_function,
-                n_mutate=mutate_size,
-                allow_isomorphism=no_isomorphism,
-            )
-        elif pool_strategy == "evolution":
-            acquisition_function_opt = AcquisitionOptimizerMapping[pool_strategy](
-                pipeline_space,
-                acquisition_function,
-            )
-        elif pool_strategy == "random":
-            acquisition_function_opt = AcquisitionOptimizerMapping[pool_strategy](
-                pipeline_space,
-                acquisition_function,
+                **acquisition_opt_strategy_args,
             )
         else:
-            raise ValueError
+            raise ValueError(
+                f"Acquisition optimization strategy {acquisition_opt_strategy} is not defined!"
+            )
 
-        return BayesianOptimization(
+        return _BayesianOptimization(
             surrogate_model=surrogate_model,
             acquisition_function_opt=acquisition_function_opt,
+            random_interleave_prob=random_interleave_prob,
+            surrogate_model_fit_args=surrogate_model_fit_args,
+            initial_design_size=initial_design_size,
+            n_candidates=n_candidates,
             return_opt_details=False,
         )
