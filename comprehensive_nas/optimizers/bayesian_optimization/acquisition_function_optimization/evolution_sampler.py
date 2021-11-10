@@ -106,7 +106,10 @@ class EvolutionSampler(AcquisitionOptimizer):
         self, previous_samples: list, population_size: int, batch_size: int = None
     ):
         def inner_loop(population, fitness, X_max, acq_max):
-            fitness_standardized = fitness / np.sum(fitness)
+            try:
+                fitness_standardized = fitness / np.sum(fitness)
+            except Exception:
+                fitness_standardized = 1 / len(fitness)
             population = self._evolve(population, fitness_standardized)
             # recalc fitness by also evaluating previous best configs
             fitness = self.acquisition_function.eval(X_max + population, asscalar=True)
