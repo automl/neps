@@ -39,6 +39,11 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
                     args[arg_name] = default_args[arg_name]
                 else:
                     args[arg_name] = 42
+
+            if "groups" in args and args["groups"] != 1:
+                args["C_in"] = args["groups"]
+                args["C_out"] = args["groups"]
+
             return op(**args).get_op_name
 
         assert isinstance(vals, dict)

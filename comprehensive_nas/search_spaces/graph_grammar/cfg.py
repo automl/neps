@@ -266,7 +266,13 @@ class Grammar(CFG):
             _patience -= 1
         return child
 
-    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+    def crossover(
+        self,
+        parent1: str,
+        parent2: str,
+        patience: int = 50,
+        return_crossover_subtrees: bool = False,
+    ):
         # randomly swap subtrees in two trees
         # if no suitiable subtree exists then return False
         subtree_node, subtree_index = self.rand_subtree(parent1)
@@ -286,6 +292,13 @@ class Grammar(CFG):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
                 return child1, child2
 
         return False, False
@@ -362,6 +375,22 @@ class Grammar(CFG):
         # get removed tree
         removed = "".join(split_tree[index]) + " " + right[: current_index + 1]
         return (pre_subtree, removed, post_subtree)
+
+    @staticmethod
+    def unparse_tree(tree: str):
+        string = []
+        temp = ""
+        # perform single pass of tree
+        for char in tree:
+            if char == " ":
+                temp = ""
+            elif char == ")":
+                if temp[-1] != ")":
+                    string.append(temp)
+                temp += char
+            else:
+                temp += char
+        return " ".join(string)
 
 
 class DepthConstrainedGrammar(Grammar):
