@@ -15,7 +15,7 @@ class MutationSampler(AcquisitionOptimizer):
         n_best: int = 10,
         mutate_size: int = None,
         allow_isomorphism: bool = False,
-        check_isomorphism_history: bool = True,  # on NB201 set to False!
+        check_isomorphism_history: bool = True,
         patience: int = 50,
     ):
         super().__init__(search_space, acquisition_function)

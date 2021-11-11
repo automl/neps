@@ -20,12 +20,13 @@ class EvolutionSampler(AcquisitionOptimizer):
         p_self_crossover: float = 0.5,
         dynamic: bool = True,
         max_iters: int = 50,
-        patience: int = 50,
         initial_history_last: int = 10,
         initial_history_best: int = 0,
         initial_history_acq_best: int = 0,
+        allow_isomorphism: bool = True,
+        check_isomorphism_history: bool = False,
+        patience: int = 50,
     ):
-        # TODO implement isomorphism checking!
         super().__init__(objective, acquisition_function)
         self.num_evolutions = num_evolutions
         self.p_tournament = p_tournament
@@ -37,6 +38,10 @@ class EvolutionSampler(AcquisitionOptimizer):
         self.initial_history_last = initial_history_last
         self.initial_history_best = initial_history_best
         self.initial_history_acq_best = initial_history_acq_best
+        self.allow_isomorphism = allow_isomorphism
+        self.check_isomorphism_history = (
+            check_isomorphism_history  # check for isomorphisms also in previous graphs
+        )
 
         self.random_sampling = RandomSampler(objective)
 
@@ -75,9 +80,14 @@ class EvolutionSampler(AcquisitionOptimizer):
 
     def _evolve(self, population, fitness):
         new_pop = [None] * len(population)
+        new_pop_ids = (
+            [x.id for x in self.x]
+            if not self.allow_isomorphism and self.check_isomorphism_history
+            else []
+        )
         i = 0
         while i < len(population):
-            # sample parent
+            # sample parents
             best, second_best = self._tournament_selection(population, fitness)
             parent1 = population[best]
             parent2 = population[second_best]
@@ -89,15 +99,24 @@ class EvolutionSampler(AcquisitionOptimizer):
                     child1, child2 = self._crossover(parent1, parent2)
                 if child1 is False:
                     continue
+                if not self.allow_isomorphism and child1.id in new_pop_ids:
+                    continue
+                new_pop_ids.append(child1.id)
                 new_pop[i] = child1
                 i += 1
                 if i < len(population):
+                    if not self.allow_isomorphism and child2.id in new_pop_ids:
+                        continue
+                    new_pop_ids.append(child2.id)
                     new_pop[i] = child2
                     i += 1
             else:
                 child1 = self._mutate(parent1)
                 if child1 is False:
                     continue
+                if not self.allow_isomorphism and child1.id in new_pop_ids:
+                    continue
+                new_pop_ids.append(child1.id)
                 new_pop[i] = child1
                 i += 1
         return new_pop
