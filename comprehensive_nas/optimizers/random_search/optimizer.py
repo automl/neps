@@ -19,10 +19,10 @@ class RandomSearch(Optimizer):
         pass
 
     def propose_new_location(
-        self, batch_size: int = 5, pool_size: int = 10
+        self, batch_size: int = 5, n_candidates: int = 10
     ) -> Tuple[Tuple, dict]:
         # create candidate pool
-        pool = self.acquisition_function_opt.sample(pool_size)
+        pool = self.acquisition_function_opt.sample(n_candidates)
 
         next_x = random.sample(pool, batch_size)
         self.sampled_idx.append(next_x)

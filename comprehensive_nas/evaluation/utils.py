@@ -242,19 +242,19 @@ def get_train_val_test_loaders(
             dataset=train_dataset,
             batch_size=int(batch_size),
             shuffle=False,
-            workers=8,
+            num_workers=8,
             worker_init_fn=np.random.seed(seed),
         )
         valid_loader = torch.utils.data.DataLoader(
             dataset=valid_dataset,
             batch_size=int(batch_size),
-            workers=8,
+            num_workers=8,
             worker_init_fn=np.random.seed(seed),
         )
         test_loader = torch.utils.data.DataLoader(
             dataset=test_dataset,
             batch_size=int(batch_size),
-            workers=8,
+            num_workers=8,
             worker_init_fn=np.random.seed(seed),
         )
         return train_loader, valid_loader, test_loader
