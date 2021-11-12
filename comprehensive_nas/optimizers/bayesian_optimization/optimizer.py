@@ -146,21 +146,26 @@ class _BayesianOptimization(Optimizer):
 
     def get_config(self):
         if len(self.train_x) < self.initial_design_size:
-            return self.random_sampler.sample(1)
+            return self.random_sampler.sample(1)[0]
 
         if random.random() < self.random_interleave_prob:
-            return self.random_sampler.sample(1)
+            return self.random_sampler.sample(1)[0]
 
         model_sample, _, _ = self.acqusition_function_opt.sample(self.n_candidates, 1)
-        return model_sample
+        return model_sample[0]
 
     def new_result(self, job):
-        config = job["config"]
-        loss = job["loss"]
+        if job.result is None:
+            loss = np.inf
+        else:
+            loss = job.result["loss"] if np.isfinite(job.result["loss"]) else np.inf
+
+        config = job.kwargs["config"]
         # TODO temporary to be back-compatible
         self.train_x.append(config)
         self.train_y.append(loss)
-        self.update_model(self.train_x, self.train_y)
+        if len(self.train_x) >= self.initial_design_size:
+            self.update_model(self.train_x, self.train_y)
 
 
 class BayesianOptimization:
