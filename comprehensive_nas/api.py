@@ -13,7 +13,7 @@ def run_comprehensive_nas(
     start_master=True,
     start_worker=True,
     nic_name="lo",
-    do_live_logging=True,
+    do_live_logging=False,
     overwrite_logging=False,
     **searcher_kwargs,  # pylint: disable=unused-argument
 ):
