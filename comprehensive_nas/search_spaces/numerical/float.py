@@ -120,3 +120,9 @@ class FloatHyperparameter(Hyperparameter):
             raise ValueError("Hp-{} value is NaN!".format(self.name))
 
         self.value = self.value * (self.upper - self.lower) + self.lower
+
+    def get_dictionary(self):
+        return {self.name: self.value}
+
+    def create_from_id(self, identifier):
+        self.value = identifier

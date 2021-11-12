@@ -64,6 +64,12 @@ class IntegerHyperparameter(FloatHyperparameter):
         self.fhp._inv_transform()
         self.value = int(round(self.fhp.value))
 
+    def get_dictionary(self):
+        return {self.name: self.value}
+
+    def create_from_id(self, identifier):
+        self.value = identifier
+
 
 def float_to_integer(float_hp):
     int_hp = IntegerHyperparameter(
@@ -76,3 +82,4 @@ def float_to_integer(float_hp):
     int_hp.value = int(round(float_hp.value))
 
     return int_hp
+

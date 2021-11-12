@@ -20,6 +20,14 @@ class Hyperparameter:
         raise NotImplementedError
 
     @abstractmethod
+    def get_dictionary(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_from_id(self, identifier):
+        raise NotImplementedError
+
+    @abstractmethod
     def _get_neighbours(self, **kwargs):
         raise NotImplementedError
 

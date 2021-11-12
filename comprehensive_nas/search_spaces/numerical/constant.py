@@ -51,3 +51,10 @@ class ConstantHyperparameter(Hyperparameter):
 
     def _inv_transform(self):
         pass
+
+    def get_dictionary(self):
+        return {self.name: self.value}
+
+    def create_from_id(self, identifier):
+        self.value = identifier
+

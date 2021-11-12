@@ -11,7 +11,7 @@ class CategoricalHyperparameter(Hyperparameter):
         super().__init__(name)
         self.choices = list(choices)
         self.num_choices = len(self.choices)
-        self.probabilities = np.ones(self.num_choices) * (1.0 / self.num_choices)
+        self.probabilities = list(np.ones(self.num_choices) * (1.0 / self.num_choices))
         self.value = None
         self._id = -1
 
@@ -93,3 +93,9 @@ class CategoricalHyperparameter(Hyperparameter):
 
     def _inv_transform(self):
         self.value = self.choices[int(self.value * self.num_choices)]
+
+    def get_dictionary(self):
+        return {self.name: self.value}
+
+    def create_from_id(self, identifier):
+        self.value = identifier

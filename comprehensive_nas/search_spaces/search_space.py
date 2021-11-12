@@ -3,11 +3,12 @@ from collections import OrderedDict
 
 import numpy as np
 
-from .graph_dense.graph_dense import GraphHyperparameter
+from . import HyperparameterMapping
 
 
 class SearchSpace:
     def __init__(self, *hyperparameters):
+        # dict.__init__(self)
         self._num_hps = len(hyperparameters)
         self._hyperparameters = OrderedDict()
         self._hps = []
@@ -15,7 +16,7 @@ class SearchSpace:
 
         for hyperparameter in hyperparameters:
             self._hyperparameters[hyperparameter.name] = hyperparameter
-            if isinstance(hyperparameter, GraphHyperparameter):
+            if isinstance(hyperparameter, HyperparameterMapping['graph_dense']):
                 self._graphs.append(hyperparameter)
             else:
                 self._hps.append(hyperparameter)
@@ -87,7 +88,7 @@ class SearchSpace:
         for hp in self._hyperparameters.values():
             config += (
                 hp.name
-                if isinstance(hp, GraphHyperparameter)
+                if isinstance(hp, HyperparameterMapping['graph_dense'])
                 else "{}-{}".format(hp.name, hp.value)
             )
             config += "_"
@@ -119,3 +120,21 @@ class SearchSpace:
 
     def inv_transform(self):
         [hp._inv_transform() for hp in self.get_array()]
+
+    def get_dictionary(self):
+        d = dict()
+        for hp in self._hyperparameters.values():
+            d = {**d, **hp.get_dictionary()}
+        return d
+
+    def create_from_id(self, config):
+        self._hps = []
+        self._graphs = []
+        for name in config.keys():
+            self._hyperparameters[name].create_from_id(config[name])
+            if isinstance(self._hyperparameters[name], HyperparameterMapping['graph_dense']):
+                self._graphs.append(self._hyperparameters[name])
+            else:
+                self._hps.append(self._hyperparameters[name])
+
+        self.name = self.parse()
