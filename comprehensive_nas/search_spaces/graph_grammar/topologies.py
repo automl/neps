@@ -64,6 +64,20 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
         return type(self).__name__
 
 
+class Linear(AbstractTopology):
+    edge_list = [
+        (1, 2),
+        (2, 3),
+    ]
+
+    def __init__(self, *edge_vals):
+        super().__init__()
+
+        self.name = "linear"
+        self.create_graph(dict(zip(self.edge_list, edge_vals)))
+        self.set_scope(self.name)
+
+
 class Residual(AbstractTopology):
     edge_list = [
         (1, 2),
