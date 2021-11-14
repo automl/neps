@@ -59,6 +59,8 @@ class _BayesianOptimization(Optimizer):
         self.train_x = []
         self.train_y = []
 
+        self.pending_evaluations = []
+
     def initialize_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]):
         """Initializes the surrogate model and acquisition function (optimizer).
 
@@ -68,7 +70,17 @@ class _BayesianOptimization(Optimizer):
         """
         self.train_x = []
         self.train_y = []
+        self.pending_evaluations = []
         self.update_model(x_configs, y)
+
+    def _check_pending_evaluations(self, configs):
+        self.pending_evaluations = [
+            pending_eval
+            for pending_eval in self.pending_evaluations
+            if not any(
+                x.get_dictionary() == pending_eval.get_dictionary() for x in configs
+            )
+        ]
 
     def update_model(
         self,
@@ -81,16 +93,31 @@ class _BayesianOptimization(Optimizer):
             x_configs (Iterable): configs.
             y (Union[Iterable, torch.Tensor]): observations.
         """
+        self._check_pending_evaluations(x_configs)
+
         self.train_x = x_configs
         self.train_y = y
 
-        self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
+        if len(self.pending_evaluations) > 0:
+            self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
+            if self.surrogate_model_fit_args is not None:
+                self.surrogate_model.fit(**self.surrogate_model_fit_args)
+            else:
+                self.surrogate_model.fit()
+            ys, _ = self.surrogate_model.predict(self.pending_evaluations)
+            train_x = self.train_x + self.pending_evaluations
+            train_y = self.train_y + ys
+        else:
+            train_x = self.train_x
+            train_y = self.train_y
+
+        self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
         if self.surrogate_model_fit_args is not None:
             self.surrogate_model.fit(**self.surrogate_model_fit_args)
         else:
             self.surrogate_model.fit()
         self.acqusition_function_opt.reset_surrogate_model(self.surrogate_model)
-        self.acqusition_function_opt.reset_XY(x=self.train_x, y=self.train_y)
+        self.acqusition_function_opt.reset_XY(x=train_x, y=train_y)
 
     def propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
@@ -123,6 +150,8 @@ class _BayesianOptimization(Optimizer):
             random_samples = self.random_sampler.sample(batch_size - model_batch_size)
             next_x.extend(random_samples)
 
+        self.pending_evaluations.extend(next_x)
+
         if self.return_opt_details:
             train_preds = self.surrogate_model.predict(
                 self.train_x + list(next_x),
@@ -146,13 +175,17 @@ class _BayesianOptimization(Optimizer):
 
     def get_config(self):
         if len(self.train_x) < self.initial_design_size:
-            return self.random_sampler.sample(1)[0]
+            config = self.random_sampler.sample(1)[0]
 
         if random.random() < self.random_interleave_prob:
-            return self.random_sampler.sample(1)[0]
+            config = self.random_sampler.sample(1)[0]
+        else:
+            model_sample, _, _ = self.acqusition_function_opt.sample(self.n_candidates, 1)
+            config = model_sample[0]
 
-        model_sample, _, _ = self.acqusition_function_opt.sample(self.n_candidates, 1)
-        return model_sample[0]
+        self.pending_evaluations.append(config)
+
+        return config
 
     def new_result(self, job):
         if job.result is None:
@@ -162,6 +195,7 @@ class _BayesianOptimization(Optimizer):
 
         config = job.kwargs["config"]
         # TODO temporary to be back-compatible
+        self._check_pending_evaluations([config])
         self.train_x.append(config)
         self.train_y.append(loss)
         if len(self.train_x) >= self.initial_design_size:
