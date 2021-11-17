@@ -146,7 +146,31 @@ class EvolutionSampler(AcquisitionOptimizer):
         if batch_size is None:
             batch_size = 1
 
-        population = self.random_sampling.sample(population_size - len(previous_samples))
+        new_pop_ids = (
+            [x.id for x in self.x]
+            if not self.allow_isomorphism and self.check_isomorphism_history
+            else []
+        )
+        population = []
+        _patience = self.patience
+        while (population_size - len(previous_samples)) - len(
+            population
+        ) > 0 and _patience > 0:
+            population += [
+                p_member
+                for p_member in self.random_sampling.sample(
+                    population_size - len(previous_samples) - len(population)
+                )
+                if p_member.id not in new_pop_ids
+            ]
+            _patience -= 1
+        if (
+            _patience == 0
+            and (population_size - len(previous_samples)) - len(population) > 0
+        ):
+            population += self.random_sampling.sample(
+                population_size - len(previous_samples) - len(population)
+            )
         population.extend(previous_samples)
         fitness = self.acquisition_function.eval(population, asscalar=True)
 
@@ -183,7 +207,7 @@ class EvolutionSampler(AcquisitionOptimizer):
             raise Exception(
                 f"Population size {pool_size} is smaller than batch size {batch_size}!"
             )
-        population = self.x
+        population = []
         if self.initial_history_last > 0 and len(self.x) > self.initial_history_last:
             population = population[-self.initial_history_last :]
         if self.initial_history_best > 0 and len(self.x) > self.initial_history_best:
@@ -198,4 +222,20 @@ class EvolutionSampler(AcquisitionOptimizer):
             indices = np.argpartition(acq_vals, -self.initial_history_acq_best)
             for idx in indices[-self.initial_history_acq_best :]:
                 population.append(self.x[idx])
+        if (
+            len(population)
+            < self.initial_history_last
+            + self.initial_history_best
+            + self.initial_history_acq_best
+        ):
+            population += random.sample(
+                self.x,
+                k=min(
+                    self.initial_history_last
+                    + self.initial_history_best
+                    + self.initial_history_acq_best
+                    - len(population),
+                    len(self.x),
+                ),
+            )
         return self.evolution(population, pool_size, batch_size)
