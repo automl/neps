@@ -61,7 +61,7 @@ def evaluate(model, device, metric, loader):
         if device == "cuda":
             torch.cuda.empty_cache()
 
-    return metric.compute().cpu().item()
+    return metric.compute().detach().cpu().item()
 
 
 def run_training(
@@ -109,6 +109,12 @@ def run_training(
             best_epoch = epoch
         scheduler.step()
 
+    model.cpu()
+    evaluation_metric.cpu()
+    for optimizer_metrics in optimizer.state.values():
+        for metric_name, metric in optimizer_metrics.items():
+            if torch.is_tensor(metric):
+                optimizer_metrics[metric_name] = metric.cpu()
     return {
         "best_epoch": best_epoch,
         "best_val_score": best_valid_score,
