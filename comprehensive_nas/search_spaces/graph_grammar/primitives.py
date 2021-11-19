@@ -233,13 +233,13 @@ class Stem(AbstractPrimitive):
     image input.
     """
 
-    def __init__(self, C_out, **kwargs):
+    def __init__(self, C_out, C_in=3, **kwargs):
         super().__init__(locals())
 
         C_out = int(C_out)
 
         self.seq = nn.Sequential(
-            nn.Conv2d(3, C_out, 3, padding=1, bias=False), nn.BatchNorm2d(C_out)
+            nn.Conv2d(C_in, C_out, 3, padding=1, bias=False), nn.BatchNorm2d(C_out)
         )
 
     def forward(self, x, edge_data):
