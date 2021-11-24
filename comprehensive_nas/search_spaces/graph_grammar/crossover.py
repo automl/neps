@@ -12,11 +12,17 @@ def simple_crossover(
     patience: int = 50,
     return_crossover_subtrees: bool = False,
 ) -> Tuple[str, str]:
+    if return_crossover_subtrees:
+        return grammar.crossover(
+            parent1=parent1,
+            parent2=parent2,
+            patience=patience,
+            return_crossover_subtrees=return_crossover_subtrees,
+        )
     return grammar.crossover(
         parent1=parent1,
         parent2=parent2,
         patience=patience,
-        return_crossover_subtrees=return_crossover_subtrees,
     )
 
 

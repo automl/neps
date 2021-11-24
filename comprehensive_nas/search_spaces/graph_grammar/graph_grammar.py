@@ -1197,10 +1197,14 @@ class GraphGrammar(CoreGraphGrammar, Hyperparameter):
         super().__init__(
             grammars, edge_attr, edge_label, zero_op, identity_op, name, scope
         )
+        self.id = None
 
     @abstractmethod
     def create_graph_from_string(self, string_tree: str):
         raise NotImplementedError
+
+    def get_dictionary(self) -> dict:
+        return {"graph_grammar": self.id}
 
     def mutate(
         self,

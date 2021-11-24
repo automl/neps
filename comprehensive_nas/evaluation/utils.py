@@ -78,7 +78,10 @@ def _load_npy_data(dataset, path):
 
 
 def _get_transforms(dataset, args=None):
-    if dataset == "cifar10":
+    if dataset == "fashionMNIST":
+        train_transform = transforms.Compose([transforms.ToTensor()])
+        valid_transform = transforms.Compose([transforms.ToTensor()])
+    elif dataset == "cifar10":
         CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
         CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
         train_transform = transforms.Compose(
@@ -195,7 +198,14 @@ def get_train_val_test_loaders(
     train_portion: float = 0.8,
 ):
     train_transform, valid_transform = _get_transforms(dataset)
-    if dataset == "cifar10":
+    if dataset == "fashionMNIST":
+        train_data = dset.FashionMNIST(
+            root=data, download=True, transform=train_transform
+        )
+        test_data = dset.FashionMNIST(
+            root=data, download=True, train=False, transform=valid_transform
+        )
+    elif dataset == "cifar10":
         train_data = dset.CIFAR10(
             root=data, train=True, download=True, transform=train_transform
         )
