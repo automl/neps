@@ -102,3 +102,25 @@ class Diamond(AbstractTopology):
         self.name = "diamond"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
         self.set_scope(self.name)
+
+
+class DiamondMid(AbstractTopology):
+    edge_list = [(1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]
+
+    def __init__(self, *edge_vals):
+        super().__init__()
+
+        self.name = "diamond_mid"
+        self.create_graph(dict(zip(self.edge_list, edge_vals)))
+        self.set_scope(self.name)
+
+
+class DownsampleBlock(AbstractTopology):
+    edge_list = [(1, 2), (2, 3)]
+
+    def __init__(self, *edge_vals) -> None:
+        super().__init__()
+        self.name = f"{self.__class__.__name__}"
+        self.create_graph(dict(zip(self.edge_list, edge_vals)))
+        self.set_scope(self.name)
+        self.graph_type = "edge_attr"
