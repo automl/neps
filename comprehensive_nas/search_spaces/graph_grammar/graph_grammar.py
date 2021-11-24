@@ -1199,6 +1199,14 @@ class GraphGrammar(CoreGraphGrammar, Hyperparameter):
         )
         self.id = None
 
+    @property
+    def search_space_size(self, primitive_nonterminal: str = "OPS") -> int:
+        if len(self.grammars) != 1:
+            raise NotImplementedError("Does not support multiple grammars")
+        return self.grammars[0].compute_space_size(
+            primitive_nonterminal=primitive_nonterminal
+        )
+
     @abstractmethod
     def create_graph_from_string(self, string_tree: str):
         raise NotImplementedError
