@@ -233,12 +233,14 @@ class BayesianOptimization(Optimizer):
     def get_config(self):
         if len(self.train_x) < self.initial_design_size:
             config = self.random_sampler.sample(1)[0]
-
-        if random.random() < self.random_interleave_prob:
-            config = self.random_sampler.sample(1)[0]
         else:
-            model_sample, _, _ = self.acqusition_function_opt.sample(self.n_candidates, 1)
-            config = model_sample[0]
+            if random.random() < self.random_interleave_prob:
+                config = self.random_sampler.sample(1)[0]
+            else:
+                model_sample, _, _ = self.acqusition_function_opt.sample(
+                    self.n_candidates, 1
+                )
+                config = model_sample[0]
 
         self.pending_evaluations.append(config)
 
