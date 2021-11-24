@@ -115,6 +115,21 @@ class DiamondMid(AbstractTopology):
         self.set_scope(self.name)
 
 
+class DenseNNodeDAG(AbstractTopology):
+    edge_list = None
+
+    def __init__(self, *edge_vals, number_of_nodes: int):
+        super().__init__()
+
+        self.edge_list = [
+            (i + 1, j + 1) for j in range(number_of_nodes) for i in range(j)
+        ]
+
+        self.name = f"dense_{number_of_nodes}_node_dag"
+        self.create_graph(dict(zip(self.edge_list, edge_vals)))
+        self.set_scope(self.name)
+
+
 class DownsampleBlock(AbstractTopology):
     edge_list = [(1, 2), (2, 3)]
 
