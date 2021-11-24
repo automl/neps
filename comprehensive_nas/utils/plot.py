@@ -216,13 +216,17 @@ def plot_incumbent_trajectory(
     y_label: str = "",
     plot_mean: bool = True,
     plot_std_error: bool = True,
+    axis: int = 0,
 ):
     for strategy, vals in sorted(incumbents.items()):
         vals = np.array(vals)
         if len(vals.shape) == 1:
-            plt.plot(x, vals, label=strategy)
+            if len(vals) < len(x):
+                plt.plot(x[: len(vals)], vals, label=strategy)
+            else:
+                plt.plot(x, vals, label=strategy)
         elif len(vals.shape) == 2:
-            axis = 0 if len(x) == vals.shape[1] else 1
+            # axis = 0 if len(x) == vals.shape[1] else 1
             y = np.mean(vals, axis=axis) if plot_mean else np.median(vals, axis=axis)
             if vals.shape[0] == 1:
                 print(f"WARNING: {strategy} has only one run!")
@@ -233,8 +237,12 @@ def plot_incumbent_trajectory(
                     if plot_std_error
                     else np.std(vals, axis=axis)
                 )
-            plt.plot(x, y, "x-", label=strategy)
-            plt.fill_between(x, y - y_err, y + y_err, alpha=0.4)
+            if len(y) < len(x):
+                plt.plot(x[: len(y)], y, "x-", label=strategy)
+                plt.fill_between(x[: len(y)], y - y_err, y + y_err, alpha=0.4)
+            else:
+                plt.plot(x, y, "x-", label=strategy)
+                plt.fill_between(x, y - y_err, y + y_err, alpha=0.4)
         else:
             raise ValueError(
                 "Plot incumbent trajectory only supports 1- or 2-dimensional values"
