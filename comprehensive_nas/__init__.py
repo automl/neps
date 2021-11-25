@@ -3,7 +3,7 @@ from .search_spaces import (
     CategoricalHyperparameter,
     ConstantHyperparameter,
     FloatHyperparameter,
-    GraphHyperparameter,
+    GraphDenseHyperparameter,
     IntegerHyperparameter,
 )
 from .search_spaces.search_space import SearchSpace
@@ -13,6 +13,6 @@ HyperparameterMapping = {
     "constant": ConstantHyperparameter,
     "float": FloatHyperparameter,
     "integer": IntegerHyperparameter,
-    "graph_dense": GraphHyperparameter,
+    "graph_dense": GraphDenseHyperparameter,
     "graph_grammar": None,
 }

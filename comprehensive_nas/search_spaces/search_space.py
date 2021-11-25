@@ -8,7 +8,6 @@ from . import HyperparameterMapping
 
 class SearchSpace:
     def __init__(self, *hyperparameters):
-        # dict.__init__(self)
         self._num_hps = len(hyperparameters)
         self._hyperparameters = OrderedDict()
         self._hps = []
@@ -16,7 +15,7 @@ class SearchSpace:
 
         for hyperparameter in hyperparameters:
             self._hyperparameters[hyperparameter.name] = hyperparameter
-            if isinstance(hyperparameter, HyperparameterMapping['graph_dense']):
+            if isinstance(hyperparameter, HyperparameterMapping["graph_dense"]):
                 self._graphs.append(hyperparameter)
             else:
                 self._hps.append(hyperparameter)
@@ -88,7 +87,7 @@ class SearchSpace:
         for hp in self._hyperparameters.values():
             config += (
                 hp.name
-                if isinstance(hp, HyperparameterMapping['graph_dense'])
+                if isinstance(hp, HyperparameterMapping["graph_dense"])
                 else "{}-{}".format(hp.name, hp.value)
             )
             config += "_"
@@ -132,7 +131,9 @@ class SearchSpace:
         self._graphs = []
         for name in config.keys():
             self._hyperparameters[name].create_from_id(config[name])
-            if isinstance(self._hyperparameters[name], HyperparameterMapping['graph_dense']):
+            if isinstance(
+                self._hyperparameters[name], HyperparameterMapping["graph_dense"]
+            ):
                 self._graphs.append(self._hyperparameters[name])
             else:
                 self._hps.append(self._hyperparameters[name])
