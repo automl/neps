@@ -39,4 +39,5 @@ poetry.lock
 *.sh
 *.model
 *.pth
+*.png
 cnas_examples/results
