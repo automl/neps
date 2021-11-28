@@ -1,22 +1,18 @@
-import os
 from functools import partial
 from itertools import combinations
 from typing import List
 
 import networkx as nx
 import numpy as np
-from hierarchical_nas_benchmarks.search_spaces.nasbench201.primitives import (
-    ResNetBasicblock,
-)
-from path import Path
 
 from comprehensive_nas.search_spaces.graph_grammar import primitives as ops
 from comprehensive_nas.search_spaces.graph_grammar.cfg import Grammar
 from comprehensive_nas.search_spaces.graph_grammar.graph_grammar import GraphGrammar
 from comprehensive_nas.search_spaces.graph_grammar.topologies import DenseNNodeDAG
 
+from .primitives import ResNetBasicblock
+
 try:
-    import torch
     import torch.nn as nn
 except ModuleNotFoundError:
     from hierarchical_nas_benchmarks.utils.torch_error_message import error_message
@@ -74,6 +70,7 @@ class GraphDenseHyperparameter(GraphGrammar):
         self.cell = None
         self.graph_repr = None
         self.trainable = True
+        self.id = None
 
         self.value = None
         self._id = -1
