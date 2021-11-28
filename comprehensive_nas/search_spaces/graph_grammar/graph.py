@@ -1085,9 +1085,7 @@ class EdgeData:
         elif key in self._shared:
             return self._shared[key]
         else:
-            raise AttributeError(
-                f"Cannot find field '{key}' in the given EdgeData!"
-            )
+            raise AttributeError(f"Cannot find field '{key}' in the given EdgeData!")
 
     def __setattr__(self, name: str, val):
         if name.startswith("_"):

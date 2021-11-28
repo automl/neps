@@ -40,7 +40,7 @@ if __name__ == "__main__":
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hierarchical_architecture_example",
-        n_iterations=100,
+        n_iterations=20,
         searcher="bayesian_optimization",
         overwrite_logging=True,
         graph_kernels=["wl"],

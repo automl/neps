@@ -27,6 +27,10 @@ nltk = "^3.6.4"
 tabulate = "^0.8.9"
 torchmetrics = "^0.5.1"
 metahyper = {git = "https://github.com/automl/metahyper.git", rev = "v0.1.2"}
+path = "^16.2.0"
+termcolor = "^1.1.0"
+fvcore = "^0.1.5"
+torchvision = "0.10.0"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
