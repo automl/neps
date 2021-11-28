@@ -15,6 +15,8 @@ from .mutations import bananas_mutate, repetitive_search_space_mutation
 
 
 class GraphGrammar(CoreGraphGrammar, Hyperparameter):
+    hp_name = "graph_grammar"
+
     def __init__(  # pylint: disable=W0102
         self,
         grammar: Grammar,
@@ -142,8 +144,19 @@ class GraphGrammar(CoreGraphGrammar, Hyperparameter):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
 
+    def _get_neighbours(self, **kwargs):
+        return super()._get_neighbours(**kwargs)
+
+    def _inv_transform(self):
+        return super()._inv_transform()
+
+    def _transform(self):
+        return super()._transform()
+
 
 class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
+    hp_name = "graph_grammar_repetitive"
+
     def __init__(  # pylint: disable=W0102
         self,
         grammars: list[Grammar],
@@ -342,3 +355,12 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
             self.grammars[0],
             lower_level_motifs=lower_level_motifs,
         )
+
+    def _get_neighbours(self, **kwargs):
+        return super()._get_neighbours(**kwargs)
+
+    def _inv_transform(self):
+        return super()._inv_transform()
+
+    def _transform(self):
+        return super()._transform()

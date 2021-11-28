@@ -1,4 +1,5 @@
 from .graph_dense.graph_dense import GraphDenseHyperparameter
+from .graph_grammar.graph_grammar import GraphGrammar, GraphGrammarRepetitive
 from .numerical.categorical import CategoricalHyperparameter
 from .numerical.constant import ConstantHyperparameter
 from .numerical.float import FloatHyperparameter
@@ -10,5 +11,6 @@ HyperparameterMapping = {
     "float": FloatHyperparameter,
     "integer": IntegerHyperparameter,
     "graph_dense": GraphDenseHyperparameter,
-    "graph_grammar": None,
+    "graph_grammar": GraphGrammar,
+    "graph_grammar_repetitive": GraphGrammarRepetitive,
 }

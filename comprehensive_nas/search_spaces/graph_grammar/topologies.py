@@ -13,7 +13,7 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
     def mutate(self):
         pass
 
-    def sample_random_architecture(self):
+    def sample(self):
         pass
 
     def create_graph(self, vals: dict):

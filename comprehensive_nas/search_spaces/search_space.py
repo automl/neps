@@ -14,8 +14,17 @@ class SearchSpace:
         self._graphs = []
 
         for hyperparameter in hyperparameters:
-            self._hyperparameters[hyperparameter.name] = hyperparameter
-            if isinstance(hyperparameter, HyperparameterMapping["graph_dense"]):
+            if "hp_name" in dir(hyperparameter):
+                self._hyperparameters[hyperparameter.hp_name] = hyperparameter
+            else:
+                self._hyperparameters[hyperparameter.name] = hyperparameter
+            if (
+                isinstance(hyperparameter, HyperparameterMapping["graph_dense"])
+                or isinstance(hyperparameter, HyperparameterMapping["graph_grammar"])
+                or isinstance(
+                    hyperparameter, HyperparameterMapping["graph_grammar_repetitive"]
+                )
+            ):
                 self._graphs.append(hyperparameter)
             else:
                 self._hps.append(hyperparameter)
@@ -33,7 +42,7 @@ class SearchSpace:
         config=None,
         mutate_probability_per_hyperparameter=1.0,
         patience=50,
-        mutation_strategy="smbo",
+        mutation_strategy="simple",
     ):
 
         if mutation_strategy == "simple":
@@ -56,9 +65,7 @@ class SearchSpace:
             if np.random.random() < mutate_probability_per_hyperparameter:
                 while patience > 0:
                     try:
-                        new_config.append(
-                            hyperparameter.mutate(mutation_strategy="simple")
-                        )
+                        new_config.append(hyperparameter.mutate())
                         break
                     except Exception:
                         patience -= 1
@@ -85,11 +92,14 @@ class SearchSpace:
     def parse(self):
         config = ""
         for hp in self._hyperparameters.values():
-            config += (
-                hp.name
-                if isinstance(hp, HyperparameterMapping["graph_dense"])
-                else "{}-{}".format(hp.name, hp.value)
-            )
+            if isinstance(hp, HyperparameterMapping["graph_dense"]):
+                config += hp.name
+            elif isinstance(hp, HyperparameterMapping["graph_grammar"]) or isinstance(
+                hp, HyperparameterMapping["graph_grammar_repetitive"]
+            ):
+                config += hp.id
+            else:
+                config += "{}-{}".format(hp.name, hp.value)
             config += "_"
         return config
 
@@ -98,7 +108,10 @@ class SearchSpace:
         return self.name
 
     def get_graphs(self):
-        return [graph.value for graph in self._graphs]
+        return [
+            graph.get_graphs() if "get_graphs" in dir(graph) else graph.value
+            for graph in self._graphs
+        ]
 
     def get_hps(self):
         return [hp.value for hp in self._hps]
@@ -131,8 +144,17 @@ class SearchSpace:
         self._graphs = []
         for name in config.keys():
             self._hyperparameters[name].create_from_id(config[name])
-            if isinstance(
-                self._hyperparameters[name], HyperparameterMapping["graph_dense"]
+            if (
+                isinstance(
+                    self._hyperparameters[name], HyperparameterMapping["graph_dense"]
+                )
+                or isinstance(
+                    self._hyperparameters[name], HyperparameterMapping["graph_grammar"]
+                )
+                or isinstance(
+                    self._hyperparameters[name],
+                    HyperparameterMapping["graph_grammar_repetitive"],
+                )
             ):
                 self._graphs.append(self._hyperparameters[name])
             else:

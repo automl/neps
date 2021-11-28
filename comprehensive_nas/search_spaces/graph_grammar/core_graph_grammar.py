@@ -50,7 +50,7 @@ class CoreGraphGrammar(Graph):
             self.remove_node(list(self.nodes())[0])
 
     @abstractmethod
-    def get_graph(self):
+    def get_graphs(self):
         raise NotImplementedError
 
     def prune_tree(
@@ -1174,10 +1174,6 @@ class CoreGraphGrammar(Graph):
             for grammar in self.grammars
         ]
         return trees if len(trees) > 1 else trees[0]
-
-    def unparse_tree(self, tree: str, grammar: Grammar):
-        # turn tree into raw string form
-        raise NotImplementedError
 
     def mutate(self, parent_string_tree: str = None):
         return simple_mutate(
