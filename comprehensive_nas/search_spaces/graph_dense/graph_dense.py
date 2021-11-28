@@ -5,19 +5,20 @@ from typing import List
 import networkx as nx
 import numpy as np
 
+from comprehensive_nas.search_spaces.graph_dense.primitives import ResNetBasicblock
 from comprehensive_nas.search_spaces.graph_grammar import primitives as ops
 from comprehensive_nas.search_spaces.graph_grammar.cfg import Grammar
 from comprehensive_nas.search_spaces.graph_grammar.graph_grammar import GraphGrammar
 from comprehensive_nas.search_spaces.graph_grammar.topologies import DenseNNodeDAG
 
-from .primitives import ResNetBasicblock
-
+# pylint: disable=C0412
 try:
     import torch.nn as nn
 except ModuleNotFoundError:
-    from hierarchical_nas_benchmarks.utils.torch_error_message import error_message
+    from comprehensive_nas.utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
+# pylint: enable=C0412
 
 TERMINAL_2_OP_NAMES = {
     "Identity": ops.Identity(),
