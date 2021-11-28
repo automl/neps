@@ -13,6 +13,7 @@ repos:
     rev: v2.29.0
     hooks:
       - id: pyupgrade
+        args: [--py37-plus]
 
   - repo: https://github.com/PyCQA/pylint
     rev: "2.6"
