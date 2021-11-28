@@ -4,12 +4,14 @@ import os
 
 import networkx as nx
 
+# pylint: disable=C0412
 try:
     import torch.nn as nn
 except ModuleNotFoundError:
-    from hierarchical_nas_benchmarks.utils.torch_error_message import error_message
+    from comprehensive_nas.utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
+# pylint: enable=C0412
 from path import Path
 
 from comprehensive_nas.search_spaces.graph_grammar import primitives as ops
@@ -71,6 +73,10 @@ class HierarchicalArchitectureExample(GraphGrammar):
         self.base_channels = base_channels
         self.out_channels = out_channels
         self.name: str = ""
+
+        self.nxTree = None
+        self.string_tree = ""
+        self.id = None
 
     def setup(self, tree: nx.DiGraph, save_tree: bool = True):
         if save_tree:
