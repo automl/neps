@@ -37,8 +37,13 @@ TERMINAL_2_OP_NAMES = {
     "Cell": None,
 }
 
+TERMINAL_2_GRAPH_REPR = {
+    "Cell": None,
+}
+
 
 class GraphDenseHyperparameter(GraphGrammar):
+
     OPTIMIZER_SCOPE = [
         "stage_1",
         "stage_2",
@@ -49,44 +54,52 @@ class GraphDenseHyperparameter(GraphGrammar):
 
         assert num_nodes > 1, "DAG has to have more than one node"
         self.num_nodes = num_nodes
-        TERMINAL_2_OP_NAMES.update(
-            {"Cell": partial(DenseNNodeDAG, number_of_nodes=self.num_nodes)}
-        )
+
+        dense_cell = partial(DenseNNodeDAG, number_of_nodes=self.num_nodes)
+        TERMINAL_2_OP_NAMES.update({"Cell": dense_cell})
+        TERMINAL_2_GRAPH_REPR.update({"Cell": dense_cell().edge_list})
+
         self.edge_list = list(combinations(list(range(num_nodes)), 2))
         self.edge_choices = edge_choices
 
         productions = 'S -> "Cell" {}\nOPS -> {}'.format(
             "OPS " * len(self.edge_list),
-            "".join(['"{}" | '.format(op) for op in self.edge_choices])[:-2],
+            "".join([f'"{op}" | ' for op in self.edge_choices])[:-2],
         )
         grammar = Grammar.fromstring(productions)
         self.edge_attr = False
 
-        super().__init__(grammars=[grammar], edge_attr=self.edge_attr, name=name)
+        super().__init__(
+            grammar=grammar,
+            terminal_to_op_names=TERMINAL_2_OP_NAMES,
+            terminal_to_graph_repr=TERMINAL_2_GRAPH_REPR,
+            edge_attr=self.edge_attr,
+            id_parse_tree=False,
+            name=name,
+        )
 
         self.num_classes = self.NUM_CLASSES if hasattr(self, "NUM_CLASSES") else 10
 
-        self.string_tree: str = ""
-        self.nxTree: nx.DiGraph = None
         self.cell = None
-        self.graph_repr = None
         self.trainable = True
-        self.id = None
 
         self.value = None
         self._id = -1
 
+    def reset(self):
+        self.cell = None
+        super().reset()
+
     def sample(self):
-        self.string_tree = self.grammars[0].sampler(1)[0]
-        self.nxTree = self.from_stringTree_to_nxTree(self.string_tree, self.grammars[0])
-        self.setup(self.nxTree, save_trees_to_var=False)
+        super().sample()
+        self.id = self.string_tree
         self._id = np.random.random()
 
-    def setup(self, tree: nx.DiGraph, save_trees_to_var: bool = True):
-        if save_trees_to_var:
-            self.nxTree = tree
-            self.string_tree = self.from_nxTree_to_stringTree(self.nxTree)
+    def create_from_id(self, identifier: str):
+        super().create_from_id(identifier)
+        self.id = self.string_tree
 
+    def setup(self, tree: nx.DiGraph):
         # remove all nodes
         self.clear_graph()
 
@@ -97,9 +110,7 @@ class GraphDenseHyperparameter(GraphGrammar):
         )
         self.graph_repr = self.to_graph_repr(self.cell, edge_attr=self.edge_attr)
         self.cell.name = "cell"
-        self.id = self.string_tree
         self.cell = self.prune_graph(self.cell)
-        self.graph_repr = self.prune_graph(self.graph_repr, edge_attr=self.edge_attr)
 
         if self.trainable:
             # Cell is on the edges
@@ -122,6 +133,7 @@ class GraphDenseHyperparameter(GraphGrammar):
             #
 
             # preprocessing
+            # TODO: make C_in parameterizable
             self.edges[1, 2].set("op", ops.Stem(C_out=channels[0], C_in=1))
 
             # stage 1
@@ -167,18 +179,30 @@ class GraphDenseHyperparameter(GraphGrammar):
 
         self._check_graph()
 
+    def _check_graph(self):
+        if len(self.graph_repr) == 0 or self.graph_repr.number_of_edges() == 0:
+            raise ValueError("Invalid DAG")
+
+    def get_model_for_evaluation(self):
+        self.clear_graph()
+        if self.nxTree is None:
+            self.nxTree = self.create_nx_tree(self.string_tree)
+        if len(self.nodes()) == 0:
+            self.setup(self.nxTree)
+        # TODO: change to benchmark/pytorch eval
+        # return self
+        pytorch_model = self.to_pytorch()
+        return pytorch_model
+
     def create_graph_from_string(self, child: str):
         g = GraphDenseHyperparameter(
             name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
         )
         g.string_tree = child
         g.nxTree = g.from_stringTree_to_nxTree(g.string_tree, g.grammars[0])
-        g.setup(g.nxTree, save_trees_to_var=False)
+        g.setup(g.nxTree)
+        g.id = g.string_tree
         return g
-
-    def _check_graph(self):
-        if len(self.graph_repr) == 0 or self.graph_repr.number_of_edges() == 0:
-            raise ValueError("Invalid DAG")
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -203,29 +227,3 @@ class GraphDenseHyperparameter(GraphGrammar):
         return self.__class__(
             name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
         )
-
-    def get_graphs(self):
-        return self.graph_repr
-
-    def get_model_for_evaluation(self):
-        self.clear_graph()
-        if self.nxTree is None:
-            self.nxTree = self.create_nx_tree(self.string_tree)
-        if len(self.nodes()) == 0:
-            self.setup(self.nxTree, save_trees_to_var=False)
-        pytorch_model = self.to_pytorch()
-        return pytorch_model
-
-    def create_from_id(self, identifier: str):
-        self.id = identifier
-        self.string_tree = self.id
-        if self.id_parse_tree:
-            self.nxTree = self.create_nx_tree(self.string_tree)
-        else:
-            self.graph_repr = self.from_stringTree_to_graph_repr(
-                self.string_tree,
-                self.grammars[0],
-                terminal_to_graph_edges=self.terminal_to_graph_repr,
-                valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,
-            )
