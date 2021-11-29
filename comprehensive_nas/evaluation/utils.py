@@ -7,7 +7,7 @@ import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
 
-class Cutout(object):
+class Cutout:
     def __init__(self, length, prob=1.0):
         self.length = length
         self.prob = prob
@@ -291,6 +291,7 @@ def get_train_val_test_loaders(
         num_workers=8,
         worker_init_fn=np.random.seed(seed),
     )
+    valid_loader.dataset.transform = valid_transform
 
     test_loader = torch.utils.data.DataLoader(
         test_data,

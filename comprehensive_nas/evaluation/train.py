@@ -32,7 +32,7 @@ def train(model, device, optimizer, criterion, loader, **train_args):
     model.train()
     grad_clip = train_args["grad_clip"] if "grad_clip" in train_args else None
     for data_blob in loader:
-        data, target = [x.to(device) for x in data_blob]
+        data, target = (x.to(device) for x in data_blob)
         optimizer.zero_grad()
         output = model.forward(data)
         loss = criterion(output, target)
@@ -41,26 +41,15 @@ def train(model, device, optimizer, criterion, loader, **train_args):
             torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
         optimizer.step()
 
-        del data
-        del target
-        if device == "cuda":
-            torch.cuda.empty_cache()
-
 
 @torch.no_grad()
 def evaluate(model, device, metric, loader):
     model.eval()
     metric.reset()
     for data_blob in loader:
-        data, target = [x.to(device) for x in data_blob]
+        data, target = (x.to(device) for x in data_blob)
         output = model.forward(data)
         metric.update(output, target)
-
-        del data
-        del target
-        if device == "cuda":
-            torch.cuda.empty_cache()
-
     return metric.compute().detach().cpu().item()
 
 
@@ -80,8 +69,9 @@ def run_training(
     model.to(device)
     evaluation_metric.to(device)
     best_valid_score = 0
-    best_test_score = 0
     best_epoch = 0
+    valid_scores = []
+    test_scores = []
     for epoch in range(n_epochs):
         train(
             model=model,
@@ -91,22 +81,26 @@ def run_training(
             loader=train_loader,
             **train_args,
         )
-        valid_score = evaluate(
-            model=model,
-            device=device,
-            metric=evaluation_metric,
-            loader=valid_loader,
-        )
-        test_score = evaluate(
-            model=model,
-            device=device,
-            metric=evaluation_metric,
-            loader=test_loader,
-        )
-        if valid_score > best_valid_score:
-            best_valid_score = valid_score
-            best_test_score = test_score
-            best_epoch = epoch
+        if valid_loader is not None:
+            valid_score = evaluate(
+                model=model,
+                device=device,
+                metric=evaluation_metric,
+                loader=valid_loader,
+            )
+            valid_scores.append(valid_score)
+            if valid_score > best_valid_score:
+                best_valid_score = valid_score
+                best_epoch = epoch
+        if test_loader is not None:
+            test_score = evaluate(
+                model=model,
+                device=device,
+                metric=evaluation_metric,
+                loader=test_loader,
+            )
+            test_scores.append(test_score)
+
         scheduler.step()
 
     model.cpu()
@@ -115,11 +109,15 @@ def run_training(
         for metric_name, metric in optimizer_metrics.items():
             if torch.is_tensor(metric):
                 optimizer_metrics[metric_name] = metric.cpu()
-    return {
-        "best_epoch": best_epoch,
-        "best_val_score": best_valid_score,
-        "best_test_score": best_test_score,
-    }
+
+    ret_val = {"best_epoch": best_epoch}
+    if valid_loader is not None:
+        ret_val["val_scores"] = valid_scores
+        ret_val["best_val_score"] = best_valid_score
+    if test_loader is not None:
+        ret_val["test_scores"] = test_scores
+        ret_val["best_test_score"] = test_scores[best_epoch]
+    return ret_val
 
 
 def training_pipeline(
@@ -128,12 +126,31 @@ def training_pipeline(
     evaluation_metric: torchmetrics.Metric,
     optimizer: torch.optim.Optimizer,
     scheduler,
-    train_loader: torch.utils.data.DataLoader,
-    valid_loader: torch.utils.data.DataLoader,
-    test_loader: torch.utils.data.DataLoader,
     n_epochs: int,
+    train_loader: torch.utils.data.DataLoader,
+    valid_loader: torch.utils.data.DataLoader = None,
+    test_loader: torch.utils.data.DataLoader = None,
     **train_args,
-):
+) -> dict:
+    """General training pipeline.
+
+    Args:
+        model (torch.nn.Module): PyTorch model.
+        train_criterion: Loss function.
+        evaluation_metric (torchmetrics.Metric): Metric for outer loop. Needs to be maximized!
+        optimizer (torch.optim.Optimizer): Optimizer.
+        scheduler: Learning rate scheduler.
+        n_epochs (int): Number of epochs.
+        train_loader (torch.utils.data.DataLoader): Training data loader.
+        valid_loader (torch.utils.data.DataLoader, optional): Validation data loader. Defaults to None.
+        test_loader (torch.utils.data.DataLoader, optional): Test data loader. Defaults to None.
+
+    Returns:
+        dict: Dictionary with results. If there is a valid_loader, there will be validation scores per epoch.
+        Additionally, there will be an index indicating the epoch with highest validation score.
+        Similarly, if there is a test_loader, there will be test scores per epoch. Note
+        that there will be no best epoch index if no validation data is provided.
+    """
     reset_weights(model)
     results = run_training(
         model=model,
@@ -148,7 +165,7 @@ def training_pipeline(
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
         **train_args,
     )
-    return 1 - results["best_val_score"], 1 - results["best_test_score"]
+    return results
 
 
 if __name__ == "__main__":
