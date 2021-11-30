@@ -49,6 +49,11 @@ class CoreGraphGrammar(Graph):
         while len(self.nodes()) != 0:
             self.remove_node(list(self.nodes())[0])
 
+    @staticmethod
+    def _check_graph(graph: nx.DiGraph):
+        if len(graph) == 0 or graph.number_of_edges() == 0:
+            raise ValueError("Invalid DAG")
+
     @abstractmethod
     def get_graphs(self):
         raise NotImplementedError
@@ -289,7 +294,6 @@ class CoreGraphGrammar(Graph):
         node_label: str = "op_name",
         flatten_graph: bool = True,
         return_cell: bool = False,
-        v2: bool = False,
     ) -> None | Graph:
         """Builds the computational graph from a parse tree.
 
@@ -299,8 +303,6 @@ class CoreGraphGrammar(Graph):
             node_label (str, optional): Key to access terminal symbol. Defaults to "op_name".
             return_cell (bool, optional): Whether to return a cell. Is only needed if cell is repeated multiple times.
             Defaults to False.
-            v2 (bool, optional): Use faster version for larger spaces (>4 hierarchical levels).
-            But is slower for smaller ones! Defaults to False.
 
         Returns:
             Tuple[Union[None, Graph]]: computational graph (self) or cell.
@@ -489,142 +491,22 @@ class CoreGraphGrammar(Graph):
 
             return flattened_graph
 
-        def _build_graph_from_tree_v2(
-            visited: set,
-            tree: nx.DiGraph,
-            node: int,
-            graph,
-            terminal_to_torch_map: dict,
-            node_label: str,
-            node_counter: int = 1,
-        ):
-            if node not in visited:
-                subgraphs = []
-                if len(tree.out_edges(node)) == 0:
-                    if tree.nodes[node][node_label] not in terminal_to_torch_map.keys():
-                        raise Exception(
-                            f"Unknown primitive or topology: {tree.nodes[node][node_label]}"
-                        )
-                    return tree.nodes[node][node_label], node_counter
-                if len(tree.out_edges(node)) == 1:
-                    return _build_graph_from_tree_v2(
-                        visited,
-                        tree,
-                        list(tree.neighbors(node))[0],
-                        graph,
-                        terminal_to_torch_map,
-                        node_label,
-                        node_counter,
-                    )
-                # for idx, neighbor in enumerate(tree.neighbors(node)):
-                for idx, neighbor in enumerate(
-                    self._get_neighbors_from_parse_tree(tree, node)
-                ):
-                    if idx == 0:  # topology or primitive
-                        n = neighbor
-                        while not tree.nodes[n]["terminal"]:
-                            if len(tree.out_edges(n)) != 1:
-                                raise Exception(
-                                    "Leftmost Child can only be primitive, topology or recursively have one child!"
-                                )
-                            n = next(tree.neighbors(n))
-                        if tree.nodes[n][node_label] not in terminal_to_torch_map.keys():
-                            raise Exception(
-                                f"Unknown primitive or topology: {tree.nodes[n][node_label]}"
-                            )
-                        topology = tree.nodes[n][node_label]
-                    elif not tree.nodes[neighbor][
-                        "terminal"
-                    ]:  # exclude '[' ']' ... symbols
-                        _g, node_counter = _build_graph_from_tree_v2(
-                            visited,
-                            tree,
-                            neighbor,
-                            graph,
-                            terminal_to_torch_map,
-                            node_label,
-                            node_counter,
-                        )
-                        subgraphs.append(_g)
-                    elif (
-                        tree.nodes[neighbor][node_label] in terminal_to_torch_map.keys()
-                    ):  # exclude '[' ']' ... symbols
-                        subgraphs.append(tree.nodes[neighbor][node_label])
-
-                _graph = terminal_to_torch_map[topology](
-                    *[
-                        sub if isinstance(sub, Graph) else terminal_to_torch_map[sub]
-                        for sub in subgraphs
-                    ]
-                )
-                nx.relabel_nodes(
-                    _graph,
-                    mapping={n: node_counter + i for i, n in enumerate(_graph.nodes)},
-                    copy=False,
-                )
-                node_counter += len(_graph)
-                old_edges = list(_graph.edges(data=True))
-                for u, v, data in old_edges:
-                    if isinstance(data["op"], Graph):
-                        source_node = [
-                            n for n in data["op"].nodes if data["op"].in_degree(n) == 0
-                        ][0]
-                        sink_node = [
-                            n for n in data["op"].nodes if data["op"].out_degree(n) == 0
-                        ][0]
-                        nx.relabel_nodes(
-                            graph,
-                            mapping={source_node: u, sink_node: v},
-                            copy=False,
-                        )
-                    else:
-                        graph.add_edge(u, v)
-                        graph.edges[u, v].update(data)
-
-                return _graph, node_counter
-
         root_node = self._find_root(tree)
-        if v2:
-            if return_cell:
-                graph = Graph()
-                _build_graph_from_tree_v2(
-                    set(),
-                    tree,
-                    root_node,
-                    graph,
-                    terminal_to_torch_map,
-                    node_label,
-                )
-                # graph_repr = self.to_graph_repr(graph, edge_attr=self.edge_attr)
-                return graph  # , graph_repr
-            else:
-                _build_graph_from_tree_v2(
-                    set(),
-                    tree,
-                    root_node,
-                    self,
-                    terminal_to_torch_map,
-                    node_label,
-                )
-                # graph_repr = self.to_graph_repr(self, edge_attr=self.edge_attr)
-                # return None, graph_repr
-        else:
-            graph = _build_graph_from_tree(
-                set(), tree, root_node, terminal_to_torch_map, node_label
+        graph = _build_graph_from_tree(
+            set(), tree, root_node, terminal_to_torch_map, node_label
+        )
+        self._check_graph(graph)
+        if return_cell:
+            cell = (
+                _flatten_graph(graph, flattened_graph=Graph()) if flatten_graph else graph
             )
-            if return_cell:
-                cell = (
-                    _flatten_graph(graph, flattened_graph=Graph())
-                    if flatten_graph
-                    else graph
-                )
-                return cell
+            return cell
+        else:
+            if flatten_graph:
+                _flatten_graph(graph, flattened_graph=self)
             else:
-                if flatten_graph:
-                    _flatten_graph(graph, flattened_graph=self)
-                else:
-                    self.add_edge(0, 1)
-                    self.edges[0, 1].set("op", graph)
+                self.add_edge(0, 1)
+                self.edges[0, 1].set("op", graph)
 
     def to_graph_repr(self, graph: Graph, edge_attr: bool) -> nx.DiGraph:
         """Transforms NASLib-esque graph to NetworkX graph.
@@ -684,6 +566,8 @@ class CoreGraphGrammar(Graph):
                         open_edge[v] = [node_counter]
                     node_counter += 1
             g.graph_type = "node_attr"
+
+        self._check_graph(g)
 
         return g
 
@@ -1053,6 +937,8 @@ class CoreGraphGrammar(Graph):
         if prune:
             G = self.prune_unconnected_parts(G, src_node, sink_node)
 
+        self._check_graph(G)
+
         return G
 
     def prune_graph(self, graph: nx.DiGraph | Graph = None, edge_attr: bool = True):
@@ -1099,7 +985,7 @@ class CoreGraphGrammar(Graph):
                     ), "Found non-initialized graph. Abort."
                     # we look at an uncomiled op
                 else:
-                    raise ValueError("Unknown format of op: {}".format(edge_data.op))
+                    raise ValueError(f"Unknown format of op: {edge_data.op}")
             # remove_edge_list = [
             #     e for e in graph.edges(data=True) if e[-1]["op_name"] in self.zero_op
             # ]

@@ -155,6 +155,50 @@ class GraphGrammar(CoreGraphGrammar, Hyperparameter):
         pass
 
 
+class GraphGrammarCell(GraphGrammar):
+    hp_name = "graph_grammar_cell"
+
+    def __init__(  # pylint: disable=W0102
+        self,
+        grammar: Grammar,
+        terminal_to_op_names: dict,
+        terminal_to_graph_repr: dict,
+        edge_attr: bool = True,
+        edge_label: str = "op_name",
+        zero_op: list = ["Zero", "zero"],
+        identity_op: list = ["Identity", "id"],
+        name: str = None,
+        scope: str = None,
+        id_parse_tree: bool = False,
+    ):
+        super().__init__(
+            grammar,
+            terminal_to_op_names,
+            terminal_to_graph_repr,
+            edge_attr=edge_attr,
+            edge_label=edge_label,
+            zero_op=zero_op,
+            identity_op=identity_op,
+            name=name,
+            scope=scope,
+            id_parse_tree=id_parse_tree,
+        )
+
+        self.cell = None
+
+    def reset(self):
+        super().reset()
+        self.cell = None
+
+    @abstractmethod
+    def create_graph_from_string(self, child: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def setup(self, tree: nx.DiGraph):
+        raise NotImplementedError
+
+
 class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
     hp_name = "graph_grammar_repetitive"
 
