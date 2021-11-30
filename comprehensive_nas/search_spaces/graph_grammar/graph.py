@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import types
+from abc import abstractmethod
 from functools import partial
 
 import networkx as nx
@@ -21,7 +22,6 @@ from path import Path
 from .graph_utils.logging import log_first_n, log_formats
 from .graph_utils.utils import AttrDict, iter_flatten
 from .primitives import AbstractPrimitive, Identity
-from .query_metrics import Metric
 
 logger = logging.getLogger(__name__)
 
@@ -955,35 +955,17 @@ class Graph(torch.nn.Module, nx.DiGraph):
         """
         pass
 
+    @abstractmethod
     def sample(self):
         raise NotImplementedError()
 
+    @abstractmethod
     def mutate(self):
         raise NotImplementedError()
 
-    def query(self, metric: Metric, dataset: str, path: str) -> float:
-        """
-        Can be used to query the performance of the architecture using
-        a tabular benchmark.
-
-        The interface must be provided by the search space.
-
-        Args:
-            metric (str): the name of the metric to query.
-            dataset (str): the name of the dataset to query.
-            path (str): path where the tabular data is located
-
-        Returns:
-            float: The performance number
-        """
-        if self.QUERYABLE:
-            raise NotImplementedError(
-                "QUERYABLE set to True therefore query_performance must be implemented"
-            )
-        else:
-            raise NotImplementedError(
-                "This function should not be used if QUERYABLE is False"
-            )
+    @abstractmethod
+    def crossover(self):
+        raise NotImplementedError()
 
     def get_dense_edges(self):
         """
