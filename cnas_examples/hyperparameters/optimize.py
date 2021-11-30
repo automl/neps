@@ -17,7 +17,7 @@ def run_pipeline(  # pylint: disable=unused-argument
     return {
         "loss": y,
         "info_dict": {
-            "config_id": config.id,
+            "config_id": None,
             "val_score": y,
             "test_score": y,
             "train_time": end - start,
@@ -27,24 +27,24 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 if __name__ == "__main__":
     pipeline_space = cnas.SearchSpace(
-        cnas.HyperparameterMapping["float"](name="x1", lower=0, upper=1, log=False),
-        cnas.HyperparameterMapping["float"](name="x2", lower=0, upper=1, log=False),
-        cnas.HyperparameterMapping["float"](name="x3", lower=0, upper=1, log=False),
-        cnas.HyperparameterMapping["float"](name="x4", lower=0, upper=1, log=False),
-        cnas.HyperparameterMapping["float"](name="x5", lower=0, upper=1, log=False),
-        cnas.HyperparameterMapping["categorical"](name="x6", choices=[0, 1]),
-        cnas.HyperparameterMapping["categorical"](name="x7", choices=[0, 1]),
-        cnas.HyperparameterMapping["categorical"](name="x8", choices=[0, 1]),
-        cnas.HyperparameterMapping["categorical"](name="x9", choices=[0, 1]),
-        cnas.HyperparameterMapping["categorical"](name="x10", choices=[0, 1]),
+        x1=cnas.FloatParameter(lower=0, upper=1, log=False),
+        x2=cnas.FloatParameter(lower=0, upper=1, log=False),
+        x3=cnas.FloatParameter(lower=0, upper=1, log=False),
+        x4=cnas.FloatParameter(lower=0, upper=1, log=False),
+        x5=cnas.FloatParameter(lower=0, upper=1, log=False),
+        x6=cnas.CategoricalParameter(choices=[0, 1]),
+        x7=cnas.CategoricalParameter(choices=[0, 1]),
+        x8=cnas.CategoricalParameter(choices=[0, 1]),
+        x9=cnas.CategoricalParameter(choices=[0, 1]),
+        x10=cnas.CategoricalParameter(choices=[0, 1]),
     )
 
     logging.basicConfig(level=logging.INFO)
     result = cnas.run_comprehensive_nas(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
-        working_directory="results/dummy_example",
-        n_iterations=100,
+        working_directory="results/hyperparameters_example",
+        n_iterations=20,
         searcher="bayesian_optimization",
         overwrite_logging=True,
         hp_kernels=["m52", "hm"],
@@ -54,4 +54,4 @@ if __name__ == "__main__":
     incumbent = result.get_incumbent_id()
 
     print("Best found configuration:", id2config[incumbent]["config"])
-    print("A total of %i unique configurations where sampled." % len(id2config.keys()))
+    print("A total of %i unique configurations were sampled." % len(id2config.keys()))

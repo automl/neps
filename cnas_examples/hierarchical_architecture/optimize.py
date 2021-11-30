@@ -32,7 +32,7 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 if __name__ == "__main__":
     pipeline_space = cnas.SearchSpace(
-        HierarchicalArchitectureExample(),
+        graph_grammar=HierarchicalArchitectureExample(),
     )
 
     logging.basicConfig(level=logging.INFO)
@@ -50,4 +50,4 @@ if __name__ == "__main__":
     incumbent = result.get_incumbent_id()
 
     print("Best found configuration:", id2config[incumbent]["config"])
-    print("A total of %i unique configurations where sampled." % len(id2config.keys()))
+    print("A total of %i unique configurations were sampled." % len(id2config.keys()))
