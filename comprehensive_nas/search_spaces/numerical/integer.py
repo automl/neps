@@ -1,19 +1,17 @@
 from typing import Union
 
-from .float import FloatHyperparameter
+from .float import FloatParameter
 
 
-class IntegerHyperparameter(FloatHyperparameter):
+class IntegerParameter(FloatParameter):
     def __init__(
         self,
-        name: str,
         lower: Union[float, int],
         upper: Union[float, int],
         log: bool = False,
     ):
-        super().__init__(name, lower, upper, log)
-        self.fhp = FloatHyperparameter(
-            name=self.name,
+        super().__init__(lower, upper, log)
+        self.fhp = FloatParameter(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,
@@ -21,8 +19,8 @@ class IntegerHyperparameter(FloatHyperparameter):
         self.value = None
 
     def __repr__(self):
-        return "Integer {}, range: [{}, {}], value: {}".format(
-            self.name, self.lower, self.upper, self.value
+        return "Integer, range: [{}, {}], value: {}".format(
+            self.lower, self.upper, self.value
         )
 
     def sample(self):
@@ -61,16 +59,12 @@ class IntegerHyperparameter(FloatHyperparameter):
         self.fhp._inv_transform()  # pylint: disable=protected-access
         self.value = int(round(self.fhp.value))
 
-    def get_dictionary(self):
-        return {self.name: self.value}
-
     def create_from_id(self, identifier):
         self.value = identifier
 
 
 def float_to_integer(float_hp):
-    int_hp = IntegerHyperparameter(
-        name=float_hp.name,
+    int_hp = IntegerParameter(
         lower=int(round(float_hp.lower)),
         upper=int(round(float_hp.upper)),
         log=float_hp.log,
