@@ -80,25 +80,23 @@ class GraphDenseParameter(GraphGrammar):
 
         self.cell = None
         self.trainable = True
-
-        self.value = None
+        self.graph_repr = None
 
     def reset(self):
         self.cell = None
-        self.value = None
         super().reset()
 
     def sample(self):
         super().sample()
+        # pylint: disable=attribute-defined-outside-init
         self.nxTree = self.create_nx_tree(self.string_tree)
         self.setup(self.nxTree)
-        # self.value = self.get_model_for_evaluation()
 
     def create_from_id(self, identifier: str):
         super().create_from_id(identifier)
+        # pylint: disable=attribute-defined-outside-init
         self.nxTree = self.create_nx_tree(self.string_tree)
         self.setup(self.nxTree)
-        self.value = self.get_model_for_evaluation()
 
     def setup(self, tree: nx.DiGraph):
         # remove all nodes
@@ -109,7 +107,7 @@ class GraphDenseParameter(GraphGrammar):
             terminal_to_torch_map=TERMINAL_2_OP_NAMES,
             return_cell=True,
         )
-        self.id = self.string_tree
+        self.id = self.string_tree  # pylint: disable=attribute-defined-outside-init
         self.graph_repr = self.to_graph_repr(self.cell, edge_attr=self.edge_attr)
         self.cell.name = "cell"
         self.cell = self.prune_graph(self.cell)
@@ -180,15 +178,12 @@ class GraphDenseParameter(GraphGrammar):
 
             self.compile()
 
-        self._check_graph()
-
-    def _check_graph(self):
-        if len(self.graph_repr) == 0 or self.graph_repr.number_of_edges() == 0:
-            raise ValueError("Invalid DAG")
+        self._check_graph(self.graph_repr)
 
     def get_model_for_evaluation(self):
         self.clear_graph()
         if self.nxTree is None:
+            # pylint: disable=attribute-defined-outside-init
             self.nxTree = self.create_nx_tree(self.string_tree)
         if len(self.nodes()) == 0:
             self.setup(self.nxTree)
@@ -199,10 +194,10 @@ class GraphDenseParameter(GraphGrammar):
 
     def create_graph_from_string(self, child: str):
         g = GraphDenseParameter(num_nodes=self.num_nodes, edge_choices=self.edge_choices)
-        g.string_tree = child
+        g.string_tree = child  # pylint: disable=attribute-defined-outside-init
+        # pylint: disable=attribute-defined-outside-init
         g.nxTree = g.create_nx_tree(g.string_tree)
         g.setup(g.nxTree)
-        # g.value = g.get_model_for_evaluation()
         return g
 
     def __eq__(self, other):

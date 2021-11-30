@@ -11,7 +11,7 @@ def run_pipeline(  # pylint: disable=unused-argument
 
     # optimizer = config_dict["optimizer"].value  # pylint: disable=unused-argument
     learning_rate = config_dict["learning_rate"].value
-    model = config_dict["graph"].value
+    model = config_dict["graph"].get_model_for_evaluation()
 
     start = time.time()
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_architecture_example",
-        n_iterations=15,
+        n_iterations=50,
         searcher="bayesian_optimization",
         overwrite_logging=True,
         hp_kernels=["m52", "hm"],
