@@ -108,10 +108,7 @@ class SearchSpace:
         return self.name
 
     def get_graphs(self):
-        return [
-            graph.get_graphs() if "get_graphs" in dir(graph) else graph.value
-            for graph in self._graphs
-        ]
+        return [graph.value for graph in self._graphs]
 
     def get_hps(self):
         return [hp.value for hp in self._hps]
