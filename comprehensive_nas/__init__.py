@@ -5,6 +5,7 @@ from .search_spaces import (
     FloatParameter,
     GraphDenseParameter,
     GraphGrammar,
+    GraphGrammarCell,
     GraphGrammarRepetitive,
     IntegerParameter,
 )
@@ -17,5 +18,6 @@ HyperparameterMapping = {
     "integer": IntegerParameter,
     "graph_dense": GraphDenseParameter,
     "graph_grammar": GraphGrammar,
+    "graph_grammar_cell": GraphGrammarCell,
     "graph_grammar_repetitive": GraphGrammarRepetitive,
 }

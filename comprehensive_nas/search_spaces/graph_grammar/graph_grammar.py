@@ -47,7 +47,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.id: str = None
         self.string_tree: str = ""
         self.nxTree: nx.DiGraph = None
-        self.graph_repr: nx.DiGraph = None
+        self.value: nx.DiGraph = None
 
     def get_search_space_size(self, primitive_nonterminal: str = "OPS") -> int:
         if len(self.grammars) != 1:
@@ -60,7 +60,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.clear_graph()
         self.string_tree = ""
         self.nxTree = None
-        self.graph_repr = None
+        self.value = None
         self.id = None
 
     @abstractmethod
@@ -75,7 +75,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         return {"graph_grammar": self.id}
 
     def get_graphs(self):
-        return self.nxTree if self.id_parse_tree else self.graph_repr
+        return self.value
 
     def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
         nxTree = self.from_stringTree_to_nxTree(string_tree, self.grammars[0])
@@ -90,16 +90,17 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.create_representation(self.string_tree)
 
     def create_representation(self, string_tree: str):
-        if self.id_parse_tree:
-            self.nxTree = self.create_nx_tree(string_tree)
-        else:
-            self.graph_repr = self.from_stringTree_to_graph_repr(
+        self.value = (
+            self.create_nx_tree(string_tree)
+            if self.id_parse_tree
+            else self.from_stringTree_to_graph_repr(
                 string_tree,
                 self.grammars[0],
                 terminal_to_graph_edges=self.terminal_to_graph_repr,
                 valid_terminals=self.terminal_to_op_names.keys(),
                 edge_attr=self.edge_attr,
             )
+        )
 
     def create_from_id(self, identifier: str):
         self.id = identifier
@@ -145,6 +146,50 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         return [parent2.create_graph_from_string(child) for child in children]
 
 
+class GraphGrammarCell(GraphGrammar):
+    hp_name = "graph_grammar_cell"
+
+    def __init__(  # pylint: disable=W0102
+        self,
+        grammar: Grammar,
+        terminal_to_op_names: dict,
+        terminal_to_graph_repr: dict,
+        edge_attr: bool = True,
+        edge_label: str = "op_name",
+        zero_op: list = ["Zero", "zero"],
+        identity_op: list = ["Identity", "id"],
+        name: str = None,
+        scope: str = None,
+        id_parse_tree: bool = False,
+    ):
+        super().__init__(
+            grammar,
+            terminal_to_op_names,
+            terminal_to_graph_repr,
+            edge_attr=edge_attr,
+            edge_label=edge_label,
+            zero_op=zero_op,
+            identity_op=identity_op,
+            name=name,
+            scope=scope,
+            id_parse_tree=id_parse_tree,
+        )
+
+        self.cell = None
+
+    def reset(self):
+        super().reset()
+        self.cell = None
+
+    @abstractmethod
+    def create_graph_from_string(self, child: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def setup(self, tree: nx.DiGraph):
+        raise NotImplementedError
+
+
 class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar_repetitive"
 
@@ -181,7 +226,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
         self.nxTree: nx.DiGraph = None
-        self.graph_repr: nx.DiGraph = None
+        self.value: nx.DiGraph = None
 
         self.full_grammar = self.get_full_grammar(self.grammars)
         self.base_to_motif_map = base_to_motif_map
@@ -192,7 +237,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree_list = []
         self.string_tree = ""
         self.nxTree = None
-        self.graph_repr = None
+        self.value = None
         self.id = None
 
     @staticmethod
@@ -219,7 +264,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         return {"graph_grammar": "\n".join(self.string_tree_list)}
 
     def get_graphs(self):
-        return self.nxTree if self.id_parse_tree else self.graph_repr
+        return self.value
 
     def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
         nxTree = self.from_stringTree_to_nxTree(string_tree, self.full_grammar)
@@ -241,16 +286,17 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.create_representation(self.string_tree)
 
     def create_representation(self, string_tree: str):
-        if self.id_parse_tree:
-            self.nxTree = self.create_nx_tree(string_tree)
-        else:
-            self.graph_repr = self.from_stringTree_to_graph_repr(
+        self.value = (
+            self.create_nx_tree(string_tree)
+            if self.id_parse_tree
+            else self.from_stringTree_to_graph_repr(
                 string_tree,
                 self.grammars[0],
                 terminal_to_graph_edges=self.terminal_to_graph_repr,
                 valid_terminals=self.terminal_to_op_names.keys(),
                 edge_attr=self.edge_attr,
             )
+        )
 
     def create_from_id(self, identifier: str):
         self.string_tree_list = identifier.split("\n")

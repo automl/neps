@@ -78,10 +78,7 @@ class SearchSpace:
         return new_config
 
     def get_graphs(self):
-        return [
-            graph.get_graphs() if "get_graphs" in dir(graph) else graph.value
-            for graph in self._graphs
-        ]
+        return [graph.value for graph in self._graphs]
 
     @property
     def id(self):
