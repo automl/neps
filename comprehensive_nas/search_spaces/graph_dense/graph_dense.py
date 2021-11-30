@@ -3,7 +3,6 @@ from itertools import combinations
 from typing import List
 
 import networkx as nx
-import numpy as np
 
 from comprehensive_nas.search_spaces.graph_dense.primitives import ResNetBasicblock
 from comprehensive_nas.search_spaces.graph_grammar import primitives as ops
@@ -42,7 +41,7 @@ TERMINAL_2_GRAPH_REPR = {
 }
 
 
-class GraphDenseHyperparameter(GraphGrammar):
+class GraphDenseParameter(GraphGrammar):
 
     OPTIMIZER_SCOPE = [
         "stage_1",
@@ -50,7 +49,7 @@ class GraphDenseHyperparameter(GraphGrammar):
         "stage_3",
     ]
 
-    def __init__(self, name: str, num_nodes: int, edge_choices: List[str]):
+    def __init__(self, num_nodes: int, edge_choices: List[str]):
 
         assert num_nodes > 1, "DAG has to have more than one node"
         self.num_nodes = num_nodes
@@ -75,7 +74,6 @@ class GraphDenseHyperparameter(GraphGrammar):
             terminal_to_graph_repr=TERMINAL_2_GRAPH_REPR,
             edge_attr=self.edge_attr,
             id_parse_tree=False,
-            name=name,
         )
 
         self.num_classes = self.NUM_CLASSES if hasattr(self, "NUM_CLASSES") else 10
@@ -84,20 +82,23 @@ class GraphDenseHyperparameter(GraphGrammar):
         self.trainable = True
 
         self.value = None
-        self._id = -1
 
     def reset(self):
         self.cell = None
+        self.value = None
         super().reset()
 
     def sample(self):
         super().sample()
-        self.id = self.string_tree
-        self._id = np.random.random()
+        self.nxTree = self.create_nx_tree(self.string_tree)
+        self.setup(self.nxTree)
+        # self.value = self.get_model_for_evaluation()
 
     def create_from_id(self, identifier: str):
         super().create_from_id(identifier)
-        self.id = self.string_tree
+        self.nxTree = self.create_nx_tree(self.string_tree)
+        self.setup(self.nxTree)
+        self.value = self.get_model_for_evaluation()
 
     def setup(self, tree: nx.DiGraph):
         # remove all nodes
@@ -108,9 +109,11 @@ class GraphDenseHyperparameter(GraphGrammar):
             terminal_to_torch_map=TERMINAL_2_OP_NAMES,
             return_cell=True,
         )
+        self.id = self.string_tree
         self.graph_repr = self.to_graph_repr(self.cell, edge_attr=self.edge_attr)
         self.cell.name = "cell"
         self.cell = self.prune_graph(self.cell)
+        self.graph_repr = self.prune_graph(self.graph_repr, False)
 
         if self.trainable:
             # Cell is on the edges
@@ -195,35 +198,30 @@ class GraphDenseHyperparameter(GraphGrammar):
         return pytorch_model
 
     def create_graph_from_string(self, child: str):
-        g = GraphDenseHyperparameter(
-            name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
-        )
+        g = GraphDenseParameter(num_nodes=self.num_nodes, edge_choices=self.edge_choices)
         g.string_tree = child
-        g.nxTree = g.from_stringTree_to_nxTree(g.string_tree, g.grammars[0])
+        g.nxTree = g.create_nx_tree(g.string_tree)
         g.setup(g.nxTree)
-        g.id = g.string_tree
+        # g.value = g.get_model_for_evaluation()
         return g
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
         return (
-            self.name == other.name
-            and self.num_nodes == other.num_nodes
+            self.num_nodes == other.num_nodes
             and self.edge_list == other.edge_list
             and self.edge_choices == other.edge_choices
             and self.graph_repr == other.graph_repr
         )
 
     def __hash__(self):
-        return hash((self.name, self._id, self.num_nodes, tuple(self.edge_choices)))
+        return hash((self.num_nodes, tuple(self.edge_choices)))
 
     def __repr__(self):
-        return "Graph {}-{:.07f}, num_nodes: {}, edge_choices: {}".format(
-            self.name, self._id, self.num_nodes, self.edge_choices
+        return "Graph, num_nodes: {}, edge_choices: {}".format(
+            self.num_nodes, self.edge_choices
         )
 
     def __copy__(self):
-        return self.__class__(
-            name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
-        )
+        return self.__class__(num_nodes=self.num_nodes, edge_choices=self.edge_choices)

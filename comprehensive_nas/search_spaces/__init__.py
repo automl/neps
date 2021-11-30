@@ -1,16 +1,17 @@
-from .graph_dense.graph_dense import GraphDenseHyperparameter
+from .graph_dense.graph_dense import GraphDenseParameter
 from .graph_grammar.graph_grammar import GraphGrammar, GraphGrammarRepetitive
-from .numerical.categorical import CategoricalHyperparameter
-from .numerical.constant import ConstantHyperparameter
-from .numerical.float import FloatHyperparameter
-from .numerical.integer import IntegerHyperparameter
+from .numerical.categorical import CategoricalParameter
+from .numerical.constant import ConstantParameter
+from .numerical.float import FloatParameter
+from .numerical.integer import IntegerParameter
+from .numerical.numerical import NumericalParameter
 
 HyperparameterMapping = {
-    "categorical": CategoricalHyperparameter,
-    "constant": ConstantHyperparameter,
-    "float": FloatHyperparameter,
-    "integer": IntegerHyperparameter,
-    "graph_dense": GraphDenseHyperparameter,
+    "categorical": CategoricalParameter,
+    "constant": ConstantParameter,
+    "float": FloatParameter,
+    "integer": IntegerParameter,
+    "graph_dense": GraphDenseParameter,
     "graph_grammar": GraphGrammar,
     "graph_grammar_repetitive": GraphGrammarRepetitive,
 }
