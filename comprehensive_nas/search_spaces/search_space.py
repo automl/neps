@@ -99,7 +99,7 @@ class SearchSpace:
             ):
                 config += hp.id
             else:
-                config += "{}-{}".format(hp.name, hp.value)
+                config += f"{hp.name}-{hp.value}"
             config += "_"
         return config
 
