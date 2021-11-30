@@ -18,15 +18,8 @@ except ModuleNotFoundError:
 from networkx.algorithms.dag import lexicographical_topological_sort
 from path import Path
 
-from comprehensive_nas.search_spaces.graph_grammar.graph_utils.logging import (
-    log_first_n,
-    log_formats,
-)
-from comprehensive_nas.search_spaces.graph_grammar.graph_utils.utils import (
-    AttrDict,
-    iter_flatten,
-)
-
+from .graph_utils.logging import log_first_n, log_formats
+from .graph_utils.utils import AttrDict, iter_flatten
 from .primitives import AbstractPrimitive, Identity
 from .query_metrics import Metric
 
