@@ -13,7 +13,6 @@ class CategoricalHyperparameter(Hyperparameter):
         self.num_choices = len(self.choices)
         self.probabilities = list(np.ones(self.num_choices) * (1.0 / self.num_choices))
         self.value = None
-        self._id = -1
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -25,11 +24,11 @@ class CategoricalHyperparameter(Hyperparameter):
         )
 
     def __hash__(self):
-        return hash((self.name, self._id, tuple(self.choices), self.value))
+        return hash((self.name, tuple(self.choices), self.value))
 
     def __repr__(self):
-        return "Categorical {}-{:.07f}, choices: {}, value: {}".format(
-            self.name, self._id, self.choices, self.value
+        return "Categorical {}, choices: {}, value: {}".format(
+            self.name, self.choices, self.value
         )
 
     def __copy__(self):
@@ -38,12 +37,11 @@ class CategoricalHyperparameter(Hyperparameter):
     def sample(self):
         idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
         self.value = self.choices[int(idx)]
-        self._id = np.random.random()
 
     def mutate(
         self,
         parent=None,
-        mutation_rate: float = 1.0,
+        mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
     ):
 
@@ -83,7 +81,6 @@ class CategoricalHyperparameter(Hyperparameter):
                 continue
             neighbour = self.__copy__()
             neighbour.value = choice
-            neighbour._id = np.random.random()
             neighbours.append(neighbour)
 
         return neighbours

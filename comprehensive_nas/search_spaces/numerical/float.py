@@ -20,18 +20,17 @@ class FloatHyperparameter(Hyperparameter):
         self.upper = float(upper)
 
         if self.lower >= self.upper:
-            raise ValueError("Hp {}: bounds error (lower >= upper).".format(name))
+            raise ValueError(f"Hp {name}: bounds error (lower >= upper).")
 
         self.log = log
 
         if self.log:
             if self.lower <= 0:
-                raise ValueError("Hp {}: bounds error (log scale).".format(name))
+                raise ValueError(f"Hp {name}: bounds error (log scale).")
             self._lower = np.log(self.lower)
             self._upper = np.log(self.upper)
 
         self.value = None
-        self._id = -1
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -45,11 +44,11 @@ class FloatHyperparameter(Hyperparameter):
         )
 
     def __hash__(self):
-        return hash((self.name, self._id, self.lower, self.upper, self.log, self.value))
+        return hash((self.name, self.lower, self.upper, self.log, self.value))
 
     def __repr__(self):
-        return "Float {}-{:.07f}, range: [{}, {}], value: {:.07f}".format(
-            self.name, self._id, self.lower, self.upper, self.value
+        return "Float {}, range: [{}, {}], value: {:.07f}".format(
+            self.name, self.lower, self.upper, self.value
         )
 
     def __copy__(self):
@@ -64,12 +63,11 @@ class FloatHyperparameter(Hyperparameter):
         else:
             value = np.random.uniform(low=self.lower, high=self.upper)
         self.value = min(self.upper, max(self.lower, value))
-        self._id = np.random.random()
 
     def mutate(
         self,
         parent=None,
-        mutation_rate: float = 1.0,
+        mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
     ):
 
@@ -80,7 +78,9 @@ class FloatHyperparameter(Hyperparameter):
             child = self.__copy__()
             child.sample()
         elif mutation_strategy == "local_search":
-            child = self._get_neighbours(num_neighbours=1)[0]
+            child = self._get_neighbours(num_neighbours=1)[
+                0
+            ]  # pylint: disable=protected-access
         else:
             raise NotImplementedError
 
@@ -94,7 +94,7 @@ class FloatHyperparameter(Hyperparameter):
 
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
         neighbours = []
-        self._transform()
+        self._transform()  # pylint: disable=protected-access
 
         while len(neighbours) < num_neighbours:
             n_val = np.random.normal(self.value, std)
@@ -102,22 +102,21 @@ class FloatHyperparameter(Hyperparameter):
                 continue
             neighbour = self.__copy__()
             neighbour.value = n_val
-            neighbour._inv_transform()
-            neighbour._id = np.random.random()
+            neighbour._inv_transform()  # pylint: disable=protected-access
             neighbours.append(neighbour)
 
-        self._inv_transform()
+        self._inv_transform()  # pylint: disable=protected-access
         return neighbours
 
     def _transform(self):
         if self.value != self.value:
-            raise ValueError("Hp-{} value is NaN!".format(self.name))
+            raise ValueError(f"Hp-{self.name} value is NaN!")
 
         self.value = (self.value - self.lower) / (self.upper - self.lower)
 
     def _inv_transform(self):
         if self.value != self.value:
-            raise ValueError("Hp-{} value is NaN!".format(self.name))
+            raise ValueError(f"Hp-{self.name} value is NaN!")
 
         self.value = self.value * (self.upper - self.lower) + self.lower
 

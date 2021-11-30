@@ -1,7 +1,5 @@
 from typing import Union
 
-import numpy as np
-
 from .float import FloatHyperparameter
 
 
@@ -21,17 +19,15 @@ class IntegerHyperparameter(FloatHyperparameter):
             log=self.log,
         )
         self.value = None
-        self._id = -1
 
     def __repr__(self):
-        return "Integer {}-{:.07f}, range: [{}, {}], value: {}".format(
-            self.name, self._id, self.lower, self.upper, self.value
+        return "Integer {}, range: [{}, {}], value: {}".format(
+            self.name, self.lower, self.upper, self.value
         )
 
     def sample(self):
         self.fhp.sample()
         self.value = int(round(self.fhp.value))
-        self._id = np.random.random()
 
     def mutate(
         self,
@@ -50,6 +46,7 @@ class IntegerHyperparameter(FloatHyperparameter):
     def crossover(self, parent1, parent2=None):
         pass
 
+    # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
         neighbours = self.fhp._get_neighbours(std, num_neighbours)
         for idx, neighbour in enumerate(neighbours):
@@ -57,11 +54,11 @@ class IntegerHyperparameter(FloatHyperparameter):
         return neighbours
 
     def _transform(self):
-        self.fhp._transform()
+        self.fhp._transform()  # pylint: disable=protected-access
         self.value = self.fhp.value
 
     def _inv_transform(self):
-        self.fhp._inv_transform()
+        self.fhp._inv_transform()  # pylint: disable=protected-access
         self.value = int(round(self.fhp.value))
 
     def get_dictionary(self):
@@ -78,8 +75,6 @@ def float_to_integer(float_hp):
         upper=int(round(float_hp.upper)),
         log=float_hp.log,
     )
-    int_hp._id = float_hp._id
     int_hp.value = int(round(float_hp.value))
 
     return int_hp
-

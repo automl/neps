@@ -11,7 +11,7 @@ from comprehensive_nas.search_spaces.graph_grammar.primitives import (
 )
 
 """
-Code below from NASBench-201 and slighly adapted
+Code below from NASBench-201 and slightly adapted
 @inproceedings{dong2020nasbench201,
   title     = {NAS-Bench-201: Extending the Scope of Reproducible Neural Architecture Search},
   author    = {Dong, Xuanyi and Yang, Yi},
@@ -25,7 +25,7 @@ Code below from NASBench-201 and slighly adapted
 class ResNetBasicblock(AbstractPrimitive):
     def __init__(self, C_in, C_out, stride, affine=True):  # pylint:disable=W0613
         super().__init__(locals())
-        assert stride == 1 or stride == 2, "invalid stride {:}".format(stride)
+        assert stride == 1 or stride == 2, f"invalid stride {stride}"
         self.conv_a = ReLUConvBN(C_in, C_out, 3, stride)
         self.conv_b = ReLUConvBN(C_out, C_out, 3)
         if stride == 2:
