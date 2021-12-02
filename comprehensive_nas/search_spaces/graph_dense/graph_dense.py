@@ -58,11 +58,11 @@ class GraphDenseParameter(GraphGrammar):
         TERMINAL_2_OP_NAMES.update({"Cell": dense_cell})
         TERMINAL_2_GRAPH_REPR.update({"Cell": dense_cell().edge_list})
 
-        self.edge_list = list(combinations(list(range(num_nodes)), 2))
+        edge_list = list(combinations(list(range(num_nodes)), 2))
         self.edge_choices = edge_choices
 
         productions = 'S -> "Cell" {}\nOPS -> {}'.format(
-            "OPS " * len(self.edge_list),
+            "OPS " * len(edge_list),
             "".join([f'"{op}" | ' for op in self.edge_choices])[:-2],
         )
         grammar = Grammar.fromstring(productions)
@@ -79,7 +79,7 @@ class GraphDenseParameter(GraphGrammar):
         self.num_classes = self.NUM_CLASSES if hasattr(self, "NUM_CLASSES") else 10
 
         self.cell = None
-        self.trainable = True
+        self.trainable = False
         self.graph_repr = None
 
     def reset(self):
