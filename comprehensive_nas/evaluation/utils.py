@@ -1,7 +1,13 @@
 import os
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from comprehensive_nas.utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 import torchmetrics
 import torchvision.datasets as dset
 import torchvision.transforms as transforms

@@ -283,9 +283,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
 
     def sample(self):
         self.reset()
-        self.string_tree_list: list[str] = [
-            grammar.sampler(1)[0] for grammar in self.grammars
-        ]
+        self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.string_tree = self.assemble_trees(
             self.string_tree_list[0],
             self.string_tree_list[1:],
@@ -307,8 +305,10 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
             )
         )
 
-    def create_from_id(self, identifier: str):
-        self.string_tree_list = identifier.split("\n")
+    def create_from_id(self, identifier: str | list):
+        self.string_tree_list = (
+            identifier.split("\n") if isinstance(identifier, str) else identifier
+        )
         self.string_tree = self.assemble_trees(
             self.string_tree_list[0],
             self.string_tree_list[1:],

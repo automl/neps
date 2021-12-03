@@ -1,5 +1,11 @@
 import numpy as np
-import torch
+
+try:
+    import torch
+except ModuleNotFoundError:
+    from comprehensive_nas.utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
 import torchmetrics
 
 
@@ -10,22 +16,9 @@ def general_num_params(m):
     )
 
 
-def reset_weights(model):
-    warn_non_resets = []
-    diff_non_resets = []
-    for module in model.modules():
-        if type(module) != type(model):  # pylint: disable=C0123
-            if "reset_parameters" in dir(module):
-                module.reset_parameters()
-            else:
-                if "parameters" in dir(module):
-                    n_params = general_num_params(module)
-                    child_params = sum(general_num_params(m) for m in module.children())
-
-                    if n_params != 0 and n_params != child_params:
-                        diff_non_resets.append([type(module).__name__, n_params])
-                else:
-                    warn_non_resets.append(type(module).__name__)
+def reset_weights(m):
+    if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
+        m.reset_parameters()
 
 
 def train(model, device, optimizer, criterion, loader, **train_args):
@@ -151,7 +144,7 @@ def training_pipeline(
         Similarly, if there is a test_loader, there will be test scores per epoch. Note
         that there will be no best epoch index if no validation data is provided.
     """
-    reset_weights(model)
+    model.apply(reset_weights)
     results = run_training(
         model=model,
         train_criterion=train_criterion,
@@ -173,6 +166,7 @@ if __name__ == "__main__":
 
     import torchvision.models as models
 
+    # pylint: disable=C0412
     from comprehensive_nas.evaluation.utils import (
         get_evaluation_metric,
         get_loss,
@@ -180,6 +174,8 @@ if __name__ == "__main__":
         get_scheduler,
         get_train_val_test_loaders,
     )
+
+    # pylint: enable=C0412
 
     parser = argparse.ArgumentParser(description="Train")
     parser.add_argument("--dataset", help="Dataset to select.", required=True)
