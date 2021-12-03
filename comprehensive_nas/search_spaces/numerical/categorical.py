@@ -3,12 +3,12 @@ from typing import List, Union
 
 import numpy as np
 
-from ..hyperparameter import Hyperparameter
+from .numerical import NumericalParameter
 
 
-class CategoricalHyperparameter(Hyperparameter):
-    def __init__(self, name: str, choices: List[Union[float, int, str]]):
-        super().__init__(name)
+class CategoricalParameter(NumericalParameter):
+    def __init__(self, choices: List[Union[float, int, str]]):
+        super().__init__()
         self.choices = list(choices)
         self.num_choices = len(self.choices)
         self.probabilities = list(np.ones(self.num_choices) * (1.0 / self.num_choices))
@@ -27,12 +27,10 @@ class CategoricalHyperparameter(Hyperparameter):
         return hash((self.name, tuple(self.choices), self.value))
 
     def __repr__(self):
-        return "Categorical {}, choices: {}, value: {}".format(
-            self.name, self.choices, self.value
-        )
+        return f"Categorical, choices: {self.choices}, value: {self.value}"
 
     def __copy__(self):
-        return self.__class__(name=self.name, choices=self.choices)
+        return self.__class__(choices=self.choices)
 
     def sample(self):
         idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
@@ -90,9 +88,6 @@ class CategoricalHyperparameter(Hyperparameter):
 
     def _inv_transform(self):
         self.value = self.choices[int(self.value * self.num_choices)]
-
-    def get_dictionary(self):
-        return {self.name: self.value}
 
     def create_from_id(self, identifier):
         self.value = identifier

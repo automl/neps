@@ -1,14 +1,14 @@
-import json
+# import json
 
-from ..graph_dense.graph_dense import GraphHyperparameter
-from ..numerical.categorical import CategoricalHyperparameter
-from ..numerical.constant import ConstantHyperparameter
-from ..numerical.float import FloatHyperparameter
-from ..numerical.integer import IntegerHyperparameter
+# from ..graph_dense.graph_dense import GraphHyperparameter
+# from ..numerical.categorical import CategoricalParameter
+# from ..numerical.constant import ConstantParameter
+# from ..numerical.float import FloatParameter
+# from ..numerical.integer import IntegerParameter
 from ..search_space import SearchSpace
 
 
-def read(json):
+def read():
 
     pass
 

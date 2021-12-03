@@ -1,45 +1,34 @@
 import random
 from collections import OrderedDict
+from typing import List
 
 import numpy as np
 
-from . import HyperparameterMapping
+from . import NumericalParameter
 
 
 class SearchSpace:
-    def __init__(self, *hyperparameters):
+    def __init__(self, **hyperparameters):
         self._num_hps = len(hyperparameters)
         self._hyperparameters = OrderedDict()
         self._hps = []
         self._graphs = []
 
-        for hyperparameter in hyperparameters:
-            if "hp_name" in dir(hyperparameter):
-                self._hyperparameters[hyperparameter.hp_name] = hyperparameter
-            else:
-                self._hyperparameters[hyperparameter.name] = hyperparameter
-            if (
-                isinstance(hyperparameter, HyperparameterMapping["graph_dense"])
-                or isinstance(hyperparameter, HyperparameterMapping["graph_grammar"])
-                or isinstance(
-                    hyperparameter, HyperparameterMapping["graph_grammar_repetitive"]
-                )
-            ):
-                self._graphs.append(hyperparameter)
-            else:
-                self._hps.append(hyperparameter)
+        for key, hyperparameter in hyperparameters.items():
+            self._hyperparameters[key] = hyperparameter
 
-        self.name = ""
+            if isinstance(hyperparameter, NumericalParameter):
+                self._hps.append(hyperparameter)
+            else:
+                self._graphs.append(hyperparameter)
 
     def sample(self):
         for hyperparameter in self._hyperparameters.values():
             hyperparameter.sample()
 
-        self.name = self.parse()
-
     def mutate(
         self,
-        config=None,
+        config=None,  # pylint: disable=unused-argument
         mutate_probability_per_hyperparameter=1.0,
         patience=50,
         mutation_strategy="simple",
@@ -54,8 +43,7 @@ class SearchSpace:
         else:
             raise NotImplementedError("No such mutation strategy!")
 
-        child = SearchSpace(*new_config)
-        child.name = child.parse()
+        child = SearchSpace(dict(zip(self._hyperparameters.keys(), new_config)))
 
         return child
 
@@ -89,26 +77,12 @@ class SearchSpace:
                 continue
         return new_config
 
-    def parse(self):
-        config = ""
-        for hp in self._hyperparameters.values():
-            if isinstance(hp, HyperparameterMapping["graph_dense"]):
-                config += hp.name
-            elif isinstance(hp, HyperparameterMapping["graph_grammar"]) or isinstance(
-                hp, HyperparameterMapping["graph_grammar_repetitive"]
-            ):
-                config += hp.id
-            else:
-                config += f"{hp.name}-{hp.value}"
-            config += "_"
-        return config
+    def get_graphs(self):
+        return [graph.value for graph in self._graphs]
 
     @property
     def id(self):
-        return self.name
-
-    def get_graphs(self):
-        return [graph.value for graph in self._graphs]
+        return [hp.id for hp in self.get_array()]
 
     def get_hps(self):
         return [hp.value for hp in self._hps]
@@ -116,45 +90,15 @@ class SearchSpace:
     def get_array(self):
         return list(self._hyperparameters.values())
 
-    def get_hyperparameter_by_name(self, name: str):
-        hp = self._hyperparameters.get(name)
-
-        if hp is None:
-            raise KeyError("Hyperparameter is not a part of the search space!")
-
-        return hp
-
-    def transform(self):
-        [hp._transform() for hp in self.get_array()]
-
-    def inv_transform(self):
-        [hp._inv_transform() for hp in self.get_array()]
-
     def get_dictionary(self):
-        d = dict()
-        for hp in self._hyperparameters.values():
-            d = {**d, **hp.get_dictionary()}
-        return d
+        return dict(zip(self._hyperparameters.keys(), self.id))
 
-    def create_from_id(self, config):
+    def create_from_id(self, config: List[str]):
         self._hps = []
         self._graphs = []
         for name in config.keys():
             self._hyperparameters[name].create_from_id(config[name])
-            if (
-                isinstance(
-                    self._hyperparameters[name], HyperparameterMapping["graph_dense"]
-                )
-                or isinstance(
-                    self._hyperparameters[name], HyperparameterMapping["graph_grammar"]
-                )
-                or isinstance(
-                    self._hyperparameters[name],
-                    HyperparameterMapping["graph_grammar_repetitive"],
-                )
-            ):
-                self._graphs.append(self._hyperparameters[name])
-            else:
+            if isinstance(self._hyperparameters[name], NumericalParameter):
                 self._hps.append(self._hyperparameters[name])
-
-        self.name = self.parse()
+            else:
+                self._graphs.append(self._hyperparameters[name])

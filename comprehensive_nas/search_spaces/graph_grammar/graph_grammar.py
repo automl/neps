@@ -7,14 +7,14 @@ from functools import partial
 import networkx as nx
 from nltk import Nonterminal
 
-from ..hyperparameter import Hyperparameter
+from ..parameter import Parameter
 from .cfg import Grammar
 from .core_graph_grammar import CoreGraphGrammar
 from .crossover import repetitive_search_space_crossover, simple_crossover
 from .mutations import bananas_mutate, repetitive_search_space_mutation
 
 
-class GraphGrammar(CoreGraphGrammar, Hyperparameter):
+class GraphGrammar(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar"
 
     def __init__(  # pylint: disable=W0102
@@ -145,15 +145,6 @@ class GraphGrammar(CoreGraphGrammar, Hyperparameter):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
 
-    def _get_neighbours(self, **kwargs):
-        pass
-
-    def _inv_transform(self):
-        pass
-
-    def _transform(self):
-        pass
-
 
 class GraphGrammarCell(GraphGrammar):
     hp_name = "graph_grammar_cell"
@@ -199,7 +190,7 @@ class GraphGrammarCell(GraphGrammar):
         raise NotImplementedError
 
 
-class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
+class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar_repetitive"
 
     def __init__(  # pylint: disable=W0102
@@ -401,12 +392,3 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Hyperparameter):
             self.grammars[0],
             lower_level_motifs=lower_level_motifs,
         )
-
-    def _get_neighbours(self, **kwargs):
-        pass
-
-    def _inv_transform(self):
-        pass
-
-    def _transform(self):
-        pass

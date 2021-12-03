@@ -3,7 +3,6 @@ from itertools import combinations
 from typing import List
 
 import networkx as nx
-import numpy as np
 
 from comprehensive_nas.search_spaces.graph_dense.primitives import ResNetBasicblock
 from comprehensive_nas.search_spaces.graph_grammar import primitives as ops
@@ -42,7 +41,7 @@ TERMINAL_2_GRAPH_REPR = {
 }
 
 
-class GraphDenseHyperparameter(GraphGrammar):
+class GraphDenseParameter(GraphGrammar):
 
     OPTIMIZER_SCOPE = [
         "stage_1",
@@ -50,7 +49,7 @@ class GraphDenseHyperparameter(GraphGrammar):
         "stage_3",
     ]
 
-    def __init__(self, name: str, num_nodes: int, edge_choices: List[str]):
+    def __init__(self, num_nodes: int, edge_choices: List[str]):
 
         assert num_nodes > 1, "DAG has to have more than one node"
         self.num_nodes = num_nodes
@@ -59,11 +58,11 @@ class GraphDenseHyperparameter(GraphGrammar):
         TERMINAL_2_OP_NAMES.update({"Cell": dense_cell})
         TERMINAL_2_GRAPH_REPR.update({"Cell": dense_cell().edge_list})
 
-        self.edge_list = list(combinations(list(range(num_nodes)), 2))
+        edge_list = list(combinations(list(range(num_nodes)), 2))
         self.edge_choices = edge_choices
 
         productions = 'S -> "Cell" {}\nOPS -> {}'.format(
-            "OPS " * len(self.edge_list),
+            "OPS " * len(edge_list),
             "".join([f'"{op}" | ' for op in self.edge_choices])[:-2],
         )
         grammar = Grammar.fromstring(productions)
@@ -75,16 +74,13 @@ class GraphDenseHyperparameter(GraphGrammar):
             terminal_to_graph_repr=TERMINAL_2_GRAPH_REPR,
             edge_attr=self.edge_attr,
             id_parse_tree=False,
-            name=name,
         )
 
         self.num_classes = self.NUM_CLASSES if hasattr(self, "NUM_CLASSES") else 10
 
         self.cell = None
-        self.trainable = True
-
-        self.value = None
-        self._id = -1
+        self.trainable = False
+        self.graph_repr = None
 
     def reset(self):
         self.cell = None
@@ -92,12 +88,15 @@ class GraphDenseHyperparameter(GraphGrammar):
 
     def sample(self):
         super().sample()
-        self.id = self.string_tree
-        self._id = np.random.random()
+        # pylint: disable=attribute-defined-outside-init
+        self.nxTree = self.create_nx_tree(self.string_tree)
+        self.setup(self.nxTree)
 
     def create_from_id(self, identifier: str):
         super().create_from_id(identifier)
-        self.id = self.string_tree
+        # pylint: disable=attribute-defined-outside-init
+        self.nxTree = self.create_nx_tree(self.string_tree)
+        self.setup(self.nxTree)
 
     def setup(self, tree: nx.DiGraph):
         # remove all nodes
@@ -108,9 +107,11 @@ class GraphDenseHyperparameter(GraphGrammar):
             terminal_to_torch_map=TERMINAL_2_OP_NAMES,
             return_cell=True,
         )
+        self.id = self.string_tree  # pylint: disable=attribute-defined-outside-init
         self.graph_repr = self.to_graph_repr(self.cell, edge_attr=self.edge_attr)
         self.cell.name = "cell"
         self.cell = self.prune_graph(self.cell)
+        self.graph_repr = self.prune_graph(self.graph_repr, False)
 
         if self.trainable:
             # Cell is on the edges
@@ -177,15 +178,12 @@ class GraphDenseHyperparameter(GraphGrammar):
 
             self.compile()
 
-        self._check_graph()
-
-    def _check_graph(self):
-        if len(self.graph_repr) == 0 or self.graph_repr.number_of_edges() == 0:
-            raise ValueError("Invalid DAG")
+        self._check_graph(self.graph_repr)
 
     def get_model_for_evaluation(self):
         self.clear_graph()
         if self.nxTree is None:
+            # pylint: disable=attribute-defined-outside-init
             self.nxTree = self.create_nx_tree(self.string_tree)
         if len(self.nodes()) == 0:
             self.setup(self.nxTree)
@@ -195,35 +193,30 @@ class GraphDenseHyperparameter(GraphGrammar):
         return pytorch_model
 
     def create_graph_from_string(self, child: str):
-        g = GraphDenseHyperparameter(
-            name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
-        )
-        g.string_tree = child
-        g.nxTree = g.from_stringTree_to_nxTree(g.string_tree, g.grammars[0])
+        g = GraphDenseParameter(num_nodes=self.num_nodes, edge_choices=self.edge_choices)
+        g.string_tree = child  # pylint: disable=attribute-defined-outside-init
+        # pylint: disable=attribute-defined-outside-init
+        g.nxTree = g.create_nx_tree(g.string_tree)
         g.setup(g.nxTree)
-        g.id = g.string_tree
         return g
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
         return (
-            self.name == other.name
-            and self.num_nodes == other.num_nodes
+            self.num_nodes == other.num_nodes
             and self.edge_list == other.edge_list
             and self.edge_choices == other.edge_choices
             and self.graph_repr == other.graph_repr
         )
 
     def __hash__(self):
-        return hash((self.name, self._id, self.num_nodes, tuple(self.edge_choices)))
+        return hash((self.num_nodes, tuple(self.edge_choices)))
 
     def __repr__(self):
-        return "Graph {}-{:.07f}, num_nodes: {}, edge_choices: {}".format(
-            self.name, self._id, self.num_nodes, self.edge_choices
+        return "Graph, num_nodes: {}, edge_choices: {}".format(
+            self.num_nodes, self.edge_choices
         )
 
     def __copy__(self):
-        return self.__class__(
-            name=self.name, num_nodes=self.num_nodes, edge_choices=self.edge_choices
-        )
+        return self.__class__(num_nodes=self.num_nodes, edge_choices=self.edge_choices)

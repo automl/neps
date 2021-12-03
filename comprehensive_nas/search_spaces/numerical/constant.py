@@ -1,26 +1,26 @@
 from typing import Union
 
-from ..hyperparameter import Hyperparameter
+from .numerical import NumericalParameter
 
 
-class ConstantHyperparameter(Hyperparameter):
-    def __init__(self, name: str, value: Union[float, int, str]):
-        super().__init__(name)
+class ConstantParameter(NumericalParameter):
+    def __init__(self, value: Union[float, int, str]):
+        super().__init__()
         self.value = value
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.name == other.name and self.value == other.value
+        return self.value == other.value
 
     def __hash__(self):
-        return hash((self.name, self.value))
+        return hash(self.value)
 
     def __repr__(self):
-        return f"Constant {self.name}, value: {self._id}"
+        return f"Constant, value: {self.id}"
 
     def __copy__(self):
-        return self.__class__(name=self.name, value=self.value)
+        return self.__class__(value=self.value)
 
     def sample(self):
         pass
@@ -48,9 +48,6 @@ class ConstantHyperparameter(Hyperparameter):
 
     def _inv_transform(self):
         pass
-
-    def get_dictionary(self):
-        return {self.name: self.value}
 
     def create_from_id(self, identifier):
         self.value = identifier
