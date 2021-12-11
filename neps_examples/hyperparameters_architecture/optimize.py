@@ -1,7 +1,7 @@
 import logging
 import time
 
-import neps as cnas
+import neps
 
 
 def run_pipeline(  # pylint: disable=unused-argument
@@ -43,14 +43,14 @@ if __name__ == "__main__":
         "Zero",
     ]
 
-    pipeline_space = cnas.SearchSpace(
-        graph=cnas.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
-        optimizer=cnas.CategoricalParameter(choices=["sgd", "adam"]),
-        learning_rate=cnas.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+    pipeline_space = neps.SearchSpace(
+        graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
+        optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
+        learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
     )
 
     logging.basicConfig(level=logging.INFO)
-    result = cnas.run(
+    result = neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_architecture_example",
@@ -65,4 +65,4 @@ if __name__ == "__main__":
     incumbent = result.get_incumbent_id()
 
     print("Best found configuration:", id2config[incumbent]["config"])
-    print("A total of %i unique configurations were sampled." % len(id2config.keys()))
+    print(f"A total of {len(id2config.keys())} unique configurations were sampled.")

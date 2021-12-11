@@ -3,16 +3,8 @@ from __future__ import annotations
 import os
 
 import networkx as nx
-
-# pylint: disable=C0412
-try:
-    import torch.nn as nn
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
-# pylint: enable=C0412
 from path import Path
+from torch import nn
 
 from neps.search_spaces.graph_grammar import primitives as ops
 from neps.search_spaces.graph_grammar import topologies as topos

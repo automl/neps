@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-import neps as cnas
+import neps
 
 
 def run_pipeline(  # pylint: disable=unused-argument
@@ -26,21 +26,21 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 
 if __name__ == "__main__":
-    pipeline_space = cnas.SearchSpace(
-        x1=cnas.FloatParameter(lower=0, upper=1, log=False),
-        x2=cnas.FloatParameter(lower=0, upper=1, log=False),
-        x3=cnas.FloatParameter(lower=0, upper=1, log=False),
-        x4=cnas.FloatParameter(lower=0, upper=1, log=False),
-        x5=cnas.FloatParameter(lower=0, upper=1, log=False),
-        x6=cnas.CategoricalParameter(choices=[0, 1]),
-        x7=cnas.CategoricalParameter(choices=[0, 1]),
-        x8=cnas.CategoricalParameter(choices=[0, 1]),
-        x9=cnas.CategoricalParameter(choices=[0, 1]),
-        x10=cnas.CategoricalParameter(choices=[0, 1]),
+    pipeline_space = neps.SearchSpace(
+        x1=neps.FloatParameter(lower=0, upper=1, log=False),
+        x2=neps.FloatParameter(lower=0, upper=1, log=False),
+        x3=neps.FloatParameter(lower=0, upper=1, log=False),
+        x4=neps.FloatParameter(lower=0, upper=1, log=False),
+        x5=neps.FloatParameter(lower=0, upper=1, log=False),
+        x6=neps.CategoricalParameter(choices=[0, 1]),
+        x7=neps.CategoricalParameter(choices=[0, 1]),
+        x8=neps.CategoricalParameter(choices=[0, 1]),
+        x9=neps.CategoricalParameter(choices=[0, 1]),
+        x10=neps.CategoricalParameter(choices=[0, 1]),
     )
 
     logging.basicConfig(level=logging.INFO)
-    result = cnas.run(
+    result = neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_example",
@@ -53,5 +53,5 @@ if __name__ == "__main__":
     id2config = result.get_id2config_mapping()
     incumbent = result.get_incumbent_id()
 
-    print("Best found configuration:", id2config[incumbent]["config"])
-    print("A total of %i unique configurations were sampled." % len(id2config.keys()))
+    print("Best found configuration: ", id2config[incumbent]["config"])
+    print(f"A total of {len(id2config.keys())} unique configurations were sampled.")
