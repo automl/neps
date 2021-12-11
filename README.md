@@ -5,7 +5,11 @@ Neural Pipeline Search helps deep learning experts find the best neural pipeline
 ## Installation
 
 Using pip
-`pip install git+https://github.com/automl-private/neps.git`.
+
+```bash
+pip install git+https://github.com/automl-private/neps.git
+```
+
 To install torch you might want to use our utility `python -m neps.utils.install_torch`.
 
 ## Usage
@@ -40,7 +44,7 @@ python -m neps_examples.hyperparameters.optimize
 
 ## Contributing
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md)
+Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
