@@ -20,17 +20,39 @@ These examples also serve as integration tests, which we will run automatically 
 
 ## Developer Installation
 
+### Miniconda
+
+To manage python versions install e.g., miniconda with
+
 ```bash
-bash install_dev_utils/miniconda.sh    # For managing python versions
-bash install_dev_utils/poetry.sh       # Python package manager
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O install_miniconda.sh
+bash install_miniconda.sh -b -p $HOME/.conda  # Change to place of preference
+rm install_miniconda.sh
 ```
 
-Create and activate python environment. For example, using conda:
+Then run `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` and append
+`export CONDA_AUTO_ACTIVATE_BASE=false` to your `.bashrc` / `.zshrc`.
+
+Then finally create the environment and activate it
 
 ```bash
 conda create -n neps python=3.7.5
 conda activate neps
 ```
+
+### Poetry, pre-commit, and the neps Package
+
+First, install poetry, e.g., via
+
+```bash
+wget https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -O get-poetry.py
+python get-poetry.py
+rm get-poetry.py
+```
+
+Then append to your `.zshrc` / `.bashrc` or run: `export PATH="$HOME/.poetry/bin:$PATH"`
+
+Finall, install the package and pre-commmit hooks
 
 ```bash
 poetry install
