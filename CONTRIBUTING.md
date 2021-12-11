@@ -10,7 +10,7 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
 
-We document major features with an example (see cnas_examples).
+We document major features with an example (see neps_examples).
 These examples also serve as integration tests, which we will run automatically in the future and currently run via
 simply `pytest`.
 
