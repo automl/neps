@@ -1,4 +1,4 @@
-# Comprehensive NAS
+# Neural Pipeline Search
 
 ##  Installation
 
@@ -11,5 +11,5 @@ To run our exemplary experiments, see below
 
 1. Simple hyperparameter optimization
     ```bash
-    python -m cnas_examples.hyperparameters.optimize
+    python -m neps_examples.hyperparameters.optimize
     ```

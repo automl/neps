@@ -1,13 +1,13 @@
 [tool.poetry]
-name = "comprehensive_nas"
+name = "neps"
 version = "0.1.0"
 description = ""
 authors = ["Danny Stoll", "Maciej Janowski", "Simon Schrodi"]
 readme = "README.md"
 license = "MIT"
 packages = [
-    { include = "comprehensive_nas" },
-    { include = "cnas_examples" },
+    { include = "neps" },
+    { include = "neps_examples" },
 ]
 
 

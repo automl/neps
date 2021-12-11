@@ -27,8 +27,8 @@ bash install_dev_utils/poetry.sh       # Python package manager
 Create and activate python environment. For example, using conda:
 
 ```bash
-conda create -n comprehensive_nas python=3.7.5
-conda activate comprehensive_nas
+conda create -n neps python=3.7.5
+conda activate neps
 ```
 
 ```bash

@@ -40,4 +40,4 @@ poetry.lock
 *.model
 *.pth
 *.png
-cnas_examples/results
+neps_examples/results
