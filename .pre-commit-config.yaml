@@ -39,13 +39,3 @@ repos:
     rev: v2.12.2
     hooks:
       - id: pylint
-
-#  - repo: local
-#    hooks:
-#      - id: pytest
-#        name: pytest
-#        entry: pytest tests
-#        language: system
-#        pass_filenames: false
-#        always_run: true
-#        stages: [push]
