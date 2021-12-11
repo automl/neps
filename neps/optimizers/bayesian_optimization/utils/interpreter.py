@@ -261,7 +261,7 @@ class Interpreter:
         # plt.show()
 
     def plot_motifs(self):
-        """Plot the motifs (the WL features) extracted by the explainer in the train set, """
+        """Plot the motifs (the WL features) extracted by the explainer in the train set,"""
 
         # define a color map for the nodes
         G = nx.DiGraph()

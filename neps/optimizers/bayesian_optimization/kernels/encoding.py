@@ -241,7 +241,7 @@ class PathDistance(NASBOTDistance):
         return tuple(path_indices)
 
     def encode_paths(self, g: nx.Graph):
-        """ output one-hot encoding of paths """
+        """output one-hot encoding of paths"""
         if "~" in g.name:
             LONGEST_PATH_LENGTH = 3
             num_paths = sum(len(OPS_201) ** i for i in range(1, LONGEST_PATH_LENGTH + 1))
