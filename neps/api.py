@@ -5,10 +5,9 @@ try:
 except ModuleNotFoundError:
     from neps.utils.torch_error_message import error_message
 
-    raise ModuleNotFoundError(error_message)
+    raise ModuleNotFoundError(error_message) from None
 
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from .optimizers.random_search.new_optimizer_dummy import _DummySearcher
 from .optimizers.random_search.optimizer import RandomSearch
 
 
@@ -25,9 +24,7 @@ def run(
     overwrite_logging=False,
     **searcher_kwargs,  # pylint: disable=unused-argument
 ):
-    if searcher == "dummy_random":
-        sampler = _DummySearcher(pipeline_space=pipeline_space)
-    elif searcher == "bayesian_optimization":
+    if searcher == "bayesian_optimization":
         sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
     elif searcher == "random_search":
         sampler = RandomSearch(pipeline_space=pipeline_space)

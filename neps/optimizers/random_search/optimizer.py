@@ -1,10 +1,11 @@
 import random
 from typing import Tuple
 
+from neps.optimizers.optimizer import Optimizer
+
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
-from ..core.optimizer import Optimizer
 
 
 class RandomSearch(Optimizer):

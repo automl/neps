@@ -4,8 +4,7 @@ from collections import deque
 from neps.optimizers.bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
-
-from ..core.optimizer import Optimizer
+from neps.optimizers.optimizer import Optimizer
 
 
 class RegularizedEvolution(Optimizer):
