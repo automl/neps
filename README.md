@@ -36,11 +36,7 @@ neps.run(
 )
 ```
 
-Please also see our examples in [neps_examples](neps_examples), e.g.,
-
-```bash
-python -m neps_examples.hyperparameters.optimize
-```
+Please also see our examples in [neps_examples](neps_examples).
 
 ## Contributing
 
