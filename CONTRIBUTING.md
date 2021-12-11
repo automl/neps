@@ -53,7 +53,7 @@ rm get-poetry.py
 
 Then append to your `.zshrc` / `.bashrc` or run: `export PATH="$HOME/.poetry/bin:$PATH"`
 
-Finall, install the package and pre-commmit hooks
+Finally, install the package and pre-commmit hooks
 
 ```bash
 poetry install
