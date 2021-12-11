@@ -3,9 +3,10 @@
 ## Development Practices and Tooling
 
 We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/):
-* We work almost exclusively on the master branch
-* We commit, push, and pull often
-* We use [pre-commit](https://pre-commit.com/) to run code quality checks at every commit
+
+- We work almost exclusively on the master branch
+- We commit, push, and pull often
+- We use [pre-commit](https://pre-commit.com/) to run code quality checks at every commit
 
 To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
 
@@ -14,8 +15,8 @@ These examples also serve as integration tests, which we will run automatically 
 
 ## Python Coding Guidelines
 
-* We use relative imports inside our library
-* We use the black style with line length 90, enforced by our autoformatter as part of our pre-commit hooks
+- We use relative imports inside our library
+- We use the black style with line length 90, enforced by our autoformatter as part of our pre-commit hooks
 
 ## Developer Installation
 
@@ -75,7 +76,6 @@ or for blocks
 x = 2
 y = x + 1
 # fmt: on
-
 ```
 
 ### Editorconfig
