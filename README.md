@@ -1,16 +1,47 @@
 # Neural Pipeline Search
 
+Neural Pipeline Search helps deep learning experts find the best neural pipeline.
+
 ## Installation
 
-1. Create a Python/Conda environment (we used Anaconda with Python 3.7).
-1. Install other dependencies via `poetry install`.
-1. Then install `torch` via `python -m comprehensive_nas.utils.install_torch`.
+Using pip
+`pip install git+https://github.com/automl-private/neps.git`.
+To install torch you might want to use our utility `python -m neps.utils.install_torch`.
 
-## Examples
+## Usage
 
-To run our exemplary experiments, see below
+```python
+import neps
 
-1. Simple hyperparameter optimization
-   ```bash
-   python -m neps_examples.hyperparameters.optimize
-   ```
+
+def run_pipeline(config, config_working_directory, previous_working_directory):
+    return {"loss": config["x"]}
+
+
+pipeline_space = neps.SearchSpace(
+    x=neps.FloatParameter(lower=0, upper=1, log=False),
+)
+neps.run(
+    run_pipeline=run_pipeline,
+    pipeline_space=pipeline_space,
+    working_directory="results/usage",
+    n_iterations=5,
+    searcher="bayesian_optimization",
+    overwrite_logging=True,
+    hp_kernels=["m52"],
+)
+```
+
+Please also see our examples in [neps_examples](neps_examples), e.g.,
+
+```bash
+python -m neps_examples.hyperparameters.optimize
+```
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## License
+
+[MIT](LICENSE)
