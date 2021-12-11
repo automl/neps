@@ -3,21 +3,14 @@ import random
 from typing import Iterable, Tuple, Union
 
 import numpy as np
+import torch
 
+from ..core.optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
+from .acquisition_function_optimization.random_sampler import RandomSampler
 from .acqusition_functions import AcquisitionMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp import ComprehensiveGP
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
-
-from ..core.optimizer import Optimizer
-from .acquisition_function_optimization.random_sampler import RandomSampler
 
 
 class BayesianOptimization(Optimizer):

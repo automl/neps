@@ -1,11 +1,6 @@
 import logging
 
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 from grakel.kernels import RandomWalkLabeled as _RWL
 from grakel.kernels import ShortestPath as _SPA
 from grakel.utils import graph_from_networkx

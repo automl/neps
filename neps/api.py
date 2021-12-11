@@ -1,5 +1,12 @@
 import metahyper.api
 
+try:
+    import torch as _  # Not needed in api.py, but test if torch can be imported
+except ModuleNotFoundError:
+    from neps.utils.torch_error_message import error_message
+
+    raise ModuleNotFoundError(error_message)
+
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.new_optimizer_dummy import _DummySearcher
 from .optimizers.random_search.optimizer import RandomSearch

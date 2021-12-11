@@ -1,12 +1,7 @@
 from abc import abstractmethod
 from typing import Iterable, Union
 
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 
 from ..acqusition_functions.base_acqusition import BaseAcquisition
 

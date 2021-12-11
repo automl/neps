@@ -3,18 +3,13 @@ Official implementation of TrivialAugment from the AutoML Repo:
 https://github.com/automl/trivialaugment/tree/0eec449fdd71d9754e5317226917c6a8dcfcfee3
 """
 
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
 import random
 import re
 from dataclasses import dataclass
 from typing import Union
 
 import numpy as np
+import torch
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageOps
 
 

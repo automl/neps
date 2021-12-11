@@ -1,11 +1,6 @@
 import logging
 
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 
 from ..utils.nasbowl_utils import extract_configs
 from .vectorial_kernels import Stationary

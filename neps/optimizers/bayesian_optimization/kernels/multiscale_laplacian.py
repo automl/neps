@@ -1,9 +1,4 @@
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 from grakel.utils import graph_from_networkx
 
 from .grakel_replace.multiscale_laplacian import MultiscaleLaplacian as ML

@@ -2,16 +2,10 @@ import functools
 import logging  # pylint: disable=import-self
 import os
 import sys
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
 import time
 from collections import Counter
 
+import torch
 from termcolor import colored
 
 

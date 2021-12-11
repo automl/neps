@@ -4,13 +4,7 @@ from typing import Iterable, Union
 
 import gpytorch
 import numpy as np
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 
 from ..kernels.combine_kernels import ProductKernel, SumKernel
 

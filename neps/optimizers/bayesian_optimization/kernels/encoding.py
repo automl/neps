@@ -1,12 +1,6 @@
 import networkx as nx
 import numpy as np
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 
 from .graph_kernel import GraphKernels
 

@@ -4,13 +4,7 @@ from collections import Counter, Iterable
 from warnings import warn
 
 import numpy as np
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 from grakel.graph import Graph
 from grakel.kernels import Kernel
 from numpy import array, einsum, squeeze, zeros

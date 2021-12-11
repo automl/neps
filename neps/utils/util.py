@@ -11,14 +11,8 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import numpy as np
 import tabulate
+import torch
 from scipy import stats
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
 
 
 def set_seed(seed):

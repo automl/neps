@@ -9,13 +9,7 @@ from copy import deepcopy
 from typing import Iterable
 
 import numpy as np
-
-try:
-    import torch
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch
 from grakel.graph import Graph
 from grakel.kernels import Kernel
 from six import iteritems, itervalues
