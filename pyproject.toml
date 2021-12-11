@@ -63,13 +63,15 @@ return-arg-in-generator,invalid-star-assignment-target,bad-reversed-sequence,non
 yield-outside-function,init-is-generator,nonlocal-without-binding,lost-exception,assert-on-tuple,
 dangerous-default-value,duplicate-key,useless-else-on-loop,expression-not-assigned,confusing-with-statement,
 unnecessary-lambda,pointless-statement,unnecessary-pass,unreachable,eval-used,exec-used,using-constant-test,
-deprecated-lambda,blacklisted-name,misplaced-comparison-constant,singleton-comparison,unneeded-not,
+deprecated-lambda,blacklisted-name,misplaced-comparison-constant,singleton-comparison,unneeded-not,ß
 consider-iterating-dictionary,consider-using-enumerate,empty-docstring,unidiomatic-typecheck,
-condition-evals-to-constant,
-# ------------------------------------
+condition-evals-to-constant,consider-using-generator,nan-comparison,consider-using-min-max-builtin,consider-using-with,
+invalid-all-format,consider-using-dict-items,deprecated-decorator,forgotten-debug-statement,unspecified-encoding,
+useless-with-lock,use-implicit-booleaness-not-comparison,
+# -------------use-implicit-booleaness-not-comparison-----------------------
 # Async
 # ------------------------------------
-not-async-context-manager,yield-inside-async-function,
+not-async-context-manager,yield-inside-async-function,await-outside-async,
 # ------------------------------------
 # Typecheck
 # ------------------------------------
@@ -81,7 +83,7 @@ invalid-slice-index,unexpected-keyword-arg,unsupported-membership-test,unsubscri
 # ------------------------------------
 bad-except-order,catching-non-exception,bad-exception-context,notimplemented-raised,raising-bad-type,
 raising-non-exception,misplaced-bare-raise,duplicate-except,nonstandard-exception,binary-op-exception,
-bare-except,
+bare-except,raise-missing-from,consider-using-namedtuple-or-dataclass,consider-using-tuple,
 # ------------------------------------
 # Stdlib
 # ------------------------------------
@@ -90,7 +92,8 @@ bad-open-mode,redundant-unittest-assert,boolean-datetime,deprecated-method
 # Imports
 # ------------------------------------
 import-error,import-self,reimported,relative-import,deprecated-module,wildcard-import,misplaced-future,cyclic-import,
-wrong-import-position,ungrouped-imports,multiple-imports,
+wrong-import-position,ungrouped-imports,multiple-imports,simplifiable-condition,len-as-condition,
+consider-using-from-import,
 # ------------------------------------
 # Variables
 # ------------------------------------
@@ -104,11 +107,12 @@ undefined-loop-variable,global-statement,global-at-module-level,
 format-needs-mapping,truncated-format-string,missing-format-string-key,mixed-format-string,too-few-format-args,
 bad-str-strip-call,too-many-format-args,bad-format-character,format-combined-specification,bad-format-string-key,
 bad-format-string,missing-format-attribute,missing-format-argument-key,unused-format-string-argument,
-unused-format-string-key,invalid-format-index,f-string-without-interpolation
+unused-format-string-key,invalid-format-index,f-string-without-interpolation,use-maxsplit-arg,consider-using-f-string,
 # ------------------------------------
 # String Constant
 # ------------------------------------
-anomalous-unicode-escape-in-string,anomalous-backslash-in-string,
+anomalous-unicode-escape-in-string,anomalous-backslash-in-string,,redundant-u-string-prefix,
+format-string-without-interpolation,
 # ------------------------------------
 # Elif
 # ------------------------------------
@@ -120,7 +124,7 @@ logging-format-truncated,logging-too-few-args,logging-too-many-args,logging-unsu
 # ------------------------------------
 # Iterable
 # ------------------------------------
-not-an-iterable,not-a-mapping,
+not-an-iterable,not-a-mapping,use-sequence-for-iteration,
 # -----------------------------------
 # Format
 # -----------------------------------
@@ -136,7 +140,8 @@ bad-staticmethod-argument,non-parent-init-called,super-init-not-called,no-classm
 no-staticmethod-decorator,no-self-use,bad-classmethod-argument,bad-mcs-classmethod-argument,bad-mcs-method-argument,
 method-check-failed,invalid-bool-returned,invalid-index-returned,invalid-repr-returned,invalid-str-returned,
 invalid-bytes-returned,invalid-hash-returned,invalid-length-hint-returned,invalid-format-returned,
-invalid-getnewargs-returned,invalid-getnewargs-ex-returned,super-with-arguments
+invalid-getnewargs-returned,invalid-getnewargs-ex-returned,super-with-arguments,deprecated-class,invalid-class-object,
+unused-private-member,
 """
 
 [build-system]
