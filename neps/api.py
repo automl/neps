@@ -1,4 +1,5 @@
-import metahyper.api
+import metahyper
+import metahyper.old_metahyper.api
 
 try:
     import torch as _  # Not needed in api.py, but test if torch can be imported
@@ -22,6 +23,7 @@ def run(
     nic_name="lo",
     do_live_logging=False,
     overwrite_logging=False,
+    use_new_metahyper=False,
     **searcher_kwargs,  # pylint: disable=unused-argument
 ):
     if searcher == "bayesian_optimization":
@@ -31,16 +33,24 @@ def run(
     else:
         raise ValueError
 
-    return metahyper.api.run(
-        sampler,
-        run_pipeline,
-        pipeline_space,
-        working_directory,
-        n_iterations,
-        start_master=start_master,
-        start_worker=start_worker,
-        nic_name=nic_name,
-        logger_name="neps",
-        do_live_logging=do_live_logging,
-        overwrite_logging=overwrite_logging,
-    )
+    if use_new_metahyper:
+        return metahyper.run(
+            run_pipeline,
+            sampler,
+            working_directory,
+            max_evaluations=n_iterations,
+        )
+    else:
+        return metahyper.old_metahyper.api.run(
+            sampler,
+            run_pipeline,
+            pipeline_space,
+            working_directory,
+            n_iterations,
+            start_master=start_master,
+            start_worker=start_worker,
+            nic_name=nic_name,
+            logger_name="neps",
+            do_live_logging=do_live_logging,
+            overwrite_logging=overwrite_logging,
+        )
