@@ -38,6 +38,12 @@ neps.run(
 
 Please also see our examples in [neps_examples](neps_examples).
 
+To run our hierarchical architecture example run
+
+```bash
+python neps_examples/hierarchical_architecture/optimize.py
+```
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md).
