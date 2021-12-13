@@ -11,11 +11,13 @@ class RegularizedEvolution(Optimizer):
     def __init__(
         self,
         search_space,
-        population_size: int = 10,
+        initial_population_size: int = 10,
+        population_size: int = 50,
         sample_size: int = 10,
         patience: int = 50,
     ):
         super().__init__()
+        self.initial_population_size = initial_population_size
         self.population_size = population_size
         self.sample_size = sample_size
         self.patience = patience
@@ -27,7 +29,7 @@ class RegularizedEvolution(Optimizer):
         self.tmp_counter = 0
 
     def get_config(self):
-        if len(self.population) < self.population_size:
+        if len(self.population) < self.initial_population_size:
             return self.random_sampler.sample(1)
 
         candidates = [random.choice(self.population) for _ in range(self.sample_size)]
@@ -75,10 +77,6 @@ class RegularizedEvolution(Optimizer):
         self.population.append({"config": child, "loss": loss})
         if len(self.population) > self.population_size:
             self.population.popleft()
-            # for i, p in enumerate(self.history):
-            #     if child[1] < p[1]:
-            #         self.history[i] = {"config": child, "loss": loss}
-            #         break
 
     def get_final_architecture(self):
         return max(self.history, key=lambda c: c[1])
