@@ -112,8 +112,10 @@ class BayesianOptimization(Optimizer):
 
         self.pending_evaluations = []
 
-    def initialize_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]):
+    def _initialize_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]):
         """Initializes the surrogate model and acquisition function (optimizer).
+
+        Note: please do not remove this function or change its functionality!
 
         Args:
             x_configs (Iterable): config.
@@ -122,7 +124,7 @@ class BayesianOptimization(Optimizer):
         self.train_x = []
         self.train_y = []
         self.pending_evaluations = []
-        self.update_model(x_configs, y)
+        self._update_model(x_configs, y)
 
     def _check_pending_evaluations(self, configs):
         self.pending_evaluations = [
@@ -133,12 +135,14 @@ class BayesianOptimization(Optimizer):
             )
         ]
 
-    def update_model(
+    def _update_model(
         self,
         x_configs: Iterable,
         y: Iterable,
     ) -> None:
         """Updates the surrogate model and updates the acquisiton function (optimizer).
+
+        Note: please do not remove this function or change its functionality!
 
         Args:
             x_configs (Iterable): configs.
@@ -170,10 +174,12 @@ class BayesianOptimization(Optimizer):
         self.acqusition_function_opt.reset_surrogate_model(self.surrogate_model)
         self.acqusition_function_opt.reset_XY(x=train_x, y=train_y)
 
-    def propose_new_location(
+    def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
     ) -> Union[Iterable, Tuple[Iterable, dict]]:
         """Proposes new locations.
+
+        Note: please do not remove this function or change its functionality!
 
         Args:
             batch_size (int, optional): number of proposals. Defaults to 5.
@@ -252,4 +258,4 @@ class BayesianOptimization(Optimizer):
         self.train_x.append(config)
         self.train_y.append(loss)
         if len(self.train_x) >= self.initial_design_size:
-            self.update_model(self.train_x, self.train_y)
+            self._update_model(self.train_x, self.train_y)
