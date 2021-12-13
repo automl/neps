@@ -22,4 +22,8 @@ poetry.lock
 *.model
 *.pth
 *.png
+
+# Results
+results
 neps_examples/results
+tests_tmpdir

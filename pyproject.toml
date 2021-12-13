@@ -45,6 +45,9 @@ target-version = ['py37']
 profile = 'black'
 line_length = 90
 
+[tool.pytest.ini_options]
+addopts = "--basetemp ./tests_tmpdir"
+
 [tool.pylint.messages_control]
 disable = 'all'
 enable = [

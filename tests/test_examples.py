@@ -1,3 +1,4 @@
+import os
 import runpy
 from pathlib import Path
 
@@ -16,6 +17,13 @@ example_files = [
     if example_file.exists() and example_file.parent.name not in exclude_tests
 ]
 example_files_names = [example_file.parent.name for example_file in example_files]
+
+
+@pytest.fixture(autouse=True)
+def use_tmpdir(tmp_path, request):
+    os.chdir(tmp_path)
+    yield
+    os.chdir(request.config.invocation_dir)
 
 
 @pytest.mark.parametrize("example", example_files, ids=example_files_names)
