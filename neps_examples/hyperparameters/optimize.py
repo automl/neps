@@ -26,7 +26,7 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 
 if __name__ == "__main__":
-    pipeline_space = neps.SearchSpace(
+    pipeline_space = dict(
         x1=neps.FloatParameter(lower=0, upper=1, log=False),
         x2=neps.FloatParameter(lower=0, upper=1, log=False),
         x3=neps.FloatParameter(lower=0, upper=1, log=False),
