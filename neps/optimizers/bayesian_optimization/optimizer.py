@@ -243,8 +243,20 @@ class BayesianOptimization(Optimizer):
                 config = model_sample[0]
 
         self.pending_evaluations.append(config)
-
         return config
+
+    def get_config_and_ids(self):
+        config = self.get_config()
+        return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
+
+    def load_results(
+        self, previous_results: Iterable, pending_evaluations: Iterable
+    ) -> None:
+        self.train_x = [el.config for el in previous_results.values()]
+        self.train_y = [el.result["loss"] for el in previous_results.values()]
+        self.pending_evaluations = [el for el in pending_evaluations.values()]
+        if len(self.train_x) >= self.initial_design_size:
+            self._update_model(self.train_x, self.train_y)
 
     def new_result(self, job):
         if job.result is None:
