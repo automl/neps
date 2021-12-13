@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torchmetrics
 import torchvision.datasets as dset
-import torchvision.transforms as transforms
+from torchvision import transforms
 
 
 class Cutout:
@@ -79,8 +79,23 @@ def _load_npy_data(dataset, path):
 
 def _get_transforms(dataset, args=None):
     if dataset == "fashionMNIST":
-        train_transform = transforms.Compose([transforms.ToTensor()])
-        valid_transform = transforms.Compose([transforms.ToTensor()])
+        FMNIST_MEAN = [0.2860]
+        FMNIST_STD = [0.3202]
+        train_transform = transforms.Compose(
+            [
+                transforms.RandomCrop(28, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(FMNIST_MEAN, FMNIST_STD),
+            ]
+        )
+        if args is not None and "cutout" in args and args.cutout:
+            train_transform.transforms.append(
+                Cutout(args.cutout_length, args.cutout_prob)
+            )
+        valid_transform = transforms.Compose(
+            [transforms.ToTensor(), transforms.Normalize(FMNIST_MEAN, FMNIST_STD)]
+        )
     elif dataset == "cifar10":
         CIFAR_MEAN = [0.49139968, 0.48215827, 0.44653124]
         CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
@@ -196,6 +211,8 @@ def get_train_val_test_loaders(
     batch_size: int,
     seed: int,
     train_portion: float = 0.8,
+    num_workers: int = 8,
+    eval_mode: bool = False,
 ):
     train_transform, valid_transform = _get_transforms(dataset)
     if dataset == "fashionMNIST":
@@ -252,53 +269,65 @@ def get_train_val_test_loaders(
             dataset=train_dataset,
             batch_size=int(batch_size),
             shuffle=False,
-            num_workers=8,
+            num_workers=num_workers,
             worker_init_fn=np.random.seed(seed),
         )
         valid_loader = torch.utils.data.DataLoader(
             dataset=valid_dataset,
             batch_size=int(batch_size),
-            num_workers=8,
+            num_workers=num_workers,
             worker_init_fn=np.random.seed(seed),
         )
         test_loader = torch.utils.data.DataLoader(
             dataset=test_dataset,
             batch_size=int(batch_size),
-            num_workers=8,
+            num_workers=num_workers,
             worker_init_fn=np.random.seed(seed),
         )
         return train_loader, valid_loader, test_loader
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
-    num_train = len(train_data)
-    indices = list(range(num_train))
-    split = int(np.floor(train_portion * num_train))
-    train_loader = torch.utils.data.DataLoader(
-        train_data,
-        batch_size=batch_size,
-        sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
-        pin_memory=True,
-        num_workers=8,
-        worker_init_fn=np.random.seed(seed),
-    )
+    if eval_mode:
+        train_loader = torch.utils.data.DataLoader(
+            train_data,
+            batch_size=batch_size,
+            pin_memory=True,
+            num_workers=num_workers,
+            worker_init_fn=np.random.seed(seed),
+        )
+        valid_loader = None
+    else:
+        num_train = len(train_data)
+        indices = list(range(num_train))
+        split = int(np.floor(train_portion * num_train))
+        train_loader = torch.utils.data.DataLoader(
+            train_data,
+            batch_size=batch_size,
+            sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
+            pin_memory=True,
+            num_workers=num_workers,
+            worker_init_fn=np.random.seed(seed),
+        )
 
-    valid_loader = torch.utils.data.DataLoader(
-        train_data,
-        batch_size=batch_size,
-        sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[split:num_train]),
-        pin_memory=True,
-        num_workers=8,
-        worker_init_fn=np.random.seed(seed),
-    )
-    valid_loader.dataset.transform = valid_transform
+        valid_loader = torch.utils.data.DataLoader(
+            train_data,
+            batch_size=batch_size,
+            sampler=torch.utils.data.sampler.SubsetRandomSampler(
+                indices[split:num_train]
+            ),
+            pin_memory=False,
+            num_workers=num_workers,
+            worker_init_fn=np.random.seed(seed),
+        )
+        valid_loader.dataset.transform = valid_transform
 
     test_loader = torch.utils.data.DataLoader(
         test_data,
         batch_size=batch_size,
         shuffle=False,
-        pin_memory=True,
-        num_workers=8,
+        pin_memory=False,
+        num_workers=num_workers,
         worker_init_fn=np.random.seed(seed),
     )
 
