@@ -1,3 +1,5 @@
+from metahyper import read as read_results
+
 from .api import run
 from .search_spaces import (
     CategoricalParameter,
@@ -10,5 +12,3 @@ from .search_spaces import (
     IntegerParameter,
 )
 from .search_spaces.search_space import SearchSpace
-
-from metahyper import read as read_results

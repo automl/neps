@@ -51,7 +51,8 @@ if __name__ == "__main__":
         use_new_metahyper=True,
     )
     previous_results, pending_configs, pending_configs_free = neps.read_results(
-        "results/hyperparameters_example")
+        "results/hyperparameters_example"
+    )
 
     # print("Best found configuration: ", id2config[incumbent]["config"])
     print(f"A total of {len(previous_results)} unique configurations were evaluated.")
