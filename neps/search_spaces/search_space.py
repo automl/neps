@@ -10,12 +10,12 @@ from . import NumericalParameter
 class SearchSpace:
     def __init__(self, **hyperparameters):
         self._num_hps = len(hyperparameters)
-        self._hyperparameters = OrderedDict()
+        self.hyperparameters = OrderedDict()
         self._hps = []
         self._graphs = []
 
         for key, hyperparameter in hyperparameters.items():
-            self._hyperparameters[key] = hyperparameter
+            self.hyperparameters[key] = hyperparameter
 
             if isinstance(hyperparameter, NumericalParameter):
                 self._hps.append(hyperparameter)
@@ -23,7 +23,7 @@ class SearchSpace:
                 self._graphs.append(hyperparameter)
 
     def sample(self):
-        for hyperparameter in self._hyperparameters.values():
+        for hyperparameter in self.hyperparameters.values():
             hyperparameter.sample()
 
     def mutate(
@@ -43,13 +43,13 @@ class SearchSpace:
         else:
             raise NotImplementedError("No such mutation strategy!")
 
-        child = SearchSpace(dict(zip(self._hyperparameters.keys(), new_config)))
+        child = SearchSpace(dict(zip(self.hyperparameters.keys(), new_config)))
 
         return child
 
     def _simple_mutation(self, mutate_probability_per_hyperparameter=1.0, patience=50):
         new_config = []
-        for hyperparameter in self._hyperparameters.values():
+        for hyperparameter in self.hyperparameters.values():
             if np.random.random() < mutate_probability_per_hyperparameter:
                 while patience > 0:
                     try:
@@ -88,17 +88,17 @@ class SearchSpace:
         return [hp.value for hp in self._hps]
 
     def get_array(self):
-        return list(self._hyperparameters.values())
+        return list(self.hyperparameters.values())
 
     def get_dictionary(self):
-        return dict(zip(self._hyperparameters.keys(), self.id))
+        return dict(zip(self.hyperparameters.keys(), self.id))
 
     def create_from_id(self, config: List[str]):
         self._hps = []
         self._graphs = []
         for name in config.keys():
-            self._hyperparameters[name].create_from_id(config[name])
-            if isinstance(self._hyperparameters[name], NumericalParameter):
-                self._hps.append(self._hyperparameters[name])
+            self.hyperparameters[name].create_from_id(config[name])
+            if isinstance(self.hyperparameters[name], NumericalParameter):
+                self._hps.append(self.hyperparameters[name])
             else:
-                self._graphs.append(self._hyperparameters[name])
+                self._graphs.append(self.hyperparameters[name])
