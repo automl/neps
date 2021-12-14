@@ -180,15 +180,14 @@ class GraphDenseParameter(GraphGrammar):
 
         self._check_graph(self.graph_repr)
 
-    def get_model_for_evaluation(self):
+    def get_model_for_evaluation(self, trainable=False):
+        self.trainable = trainable
         self.clear_graph()
         if self.nxTree is None:
             # pylint: disable=attribute-defined-outside-init
             self.nxTree = self.create_nx_tree(self.string_tree)
         if len(self.nodes()) == 0:
             self.setup(self.nxTree)
-        # TODO: change to benchmark/pytorch eval
-        # return self
         pytorch_model = self.to_pytorch()
         return pytorch_model
 

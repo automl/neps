@@ -7,27 +7,31 @@ import neps
 def run_pipeline(  # pylint: disable=unused-argument
     config, config_working_directory, previous_working_directory
 ):
-    config_dict = config._hyperparameters  # pylint: disable=protected-access
+    config_dict = config.hyperparameters  # pylint: disable=protected-access
 
-    # optimizer = config_dict["optimizer"].value  # pylint: disable=unused-argument
+    optimizer = config_dict["optimizer"].value
     learning_rate = config_dict["learning_rate"].value
-    model = config_dict["graph"].get_model_for_evaluation()
+    model = config_dict["graph"].get_model_for_evaluation(trainable=True)
 
     start = time.time()
 
+    target_params = 1531258
     number_of_params = sum(p.numel() for p in model.parameters())
-    y = number_of_params
+    y = abs(target_params - number_of_params) / target_params
 
-    y += 100000 * learning_rate
+    target_lr = 10e-3
+    y += abs(target_lr - learning_rate) / target_lr
+
+    y += int(optimizer == "sgd")
 
     end = time.time()
 
     return {
-        "loss": -y,
+        "loss": y,
         "info_dict": {
             "config_id": config.id,
-            "val_score": -y,
-            "test_score": -y,
+            "val_score": y,
+            "test_score": y,
             "train_time": end - start,
         },
     }
@@ -50,19 +54,20 @@ if __name__ == "__main__":
     )
 
     logging.basicConfig(level=logging.INFO)
-    result = neps.run(
+    neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_architecture_example",
-        n_iterations=50,
+        n_iterations=20,
         searcher="bayesian_optimization",
         overwrite_logging=True,
         hp_kernels=["m52", "hm"],
         graph_kernels=["wl"],
+        use_new_metahyper=True
     )
 
-    id2config = result.get_id2config_mapping()
-    incumbent = result.get_incumbent_id()
+    previous_results, pending_configs, pending_configs_free = neps.read_results(
+        "results/hyperparameters_architecture_example"
+    )
 
-    print("Best found configuration:", id2config[incumbent]["config"])
-    print(f"A total of {len(id2config.keys())} unique configurations were sampled.")
+    print(f"A total of {len(previous_results)} unique configurations were evaluated.")
