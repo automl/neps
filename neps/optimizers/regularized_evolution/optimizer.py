@@ -10,9 +10,9 @@ from neps.optimizers.optimizer import Optimizer
 class RegularizedEvolution(Optimizer):
     def __init__(
         self,
-        search_space,
-        initial_population_size: int = 10,
-        population_size: int = 50,
+        pipeline_space,
+        initial_population_size: int = 30,
+        population_size: int = 30,
         sample_size: int = 10,
         patience: int = 50,
     ):
@@ -21,8 +21,8 @@ class RegularizedEvolution(Optimizer):
         self.population_size = population_size
         self.sample_size = sample_size
         self.patience = patience
-        self.search_space = search_space
-        self.random_sampler = RandomSampler(search_space)
+        self.search_space = pipeline_space
+        self.random_sampler = RandomSampler(pipeline_space)
 
         self.population = deque()
         self.history = deque()
@@ -36,7 +36,7 @@ class RegularizedEvolution(Optimizer):
         parent = min(candidates, key=lambda c: c["loss"])
         return self._mutate(parent["config"])
 
-    def propose_new_location(self, **kwargs):  # pylint: disable=W0613
+    def _propose_new_location(self, **kwargs):  # pylint: disable=W0613
         # only for compatability
         return [self.get_config()], None
 
@@ -57,14 +57,14 @@ class RegularizedEvolution(Optimizer):
         loss = job["loss"]
         self._update(config, loss)
 
-    def initialize_model(self, x_configs, y):
+    def _initialize_model(self, x_configs, y):
         # only for compatability
         self.population = deque()
         self.history = deque()
         self.tmp_counter = 0
         self.update_model(x_configs, y)
 
-    def update_model(self, x_configs, y):
+    def _update_model(self, x_configs, y):
         # only for compatability
         while self.tmp_counter < len(x_configs):
             self.new_result(

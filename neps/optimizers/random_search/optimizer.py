@@ -16,13 +16,13 @@ class RandomSearch(Optimizer):
         self.surrogate_model = None
         self.random_sampler = RandomSampler(pipeline_space)
 
-    def initialize_model(self, **kwargs):
+    def _initialize_model(self, **kwargs):
         pass
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         pass
 
-    def propose_new_location(
+    def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
     ) -> Tuple[Tuple, dict]:
         # create candidate pool
