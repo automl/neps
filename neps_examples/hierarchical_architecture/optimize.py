@@ -12,7 +12,7 @@ def run_pipeline(  # pylint: disable=unused-argument
     target_params: int = 1.5e7,
 ):
     start = time.time()
-    model = config._hyperparameters[  # pylint: disable=W0212
+    model = config.hyperparameters[  # pylint: disable=W0212
         "graph_grammar"
     ].get_model_for_evaluation()
     number_of_params = sum(p.numel() for p in model.parameters())
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     )
 
     logging.basicConfig(level=logging.INFO)
-    result = neps.run(
+    neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hierarchical_architecture_example",
@@ -44,10 +44,11 @@ if __name__ == "__main__":
         searcher="bayesian_optimization",
         overwrite_logging=True,
         graph_kernels=["wl"],
+        use_new_metahyper=True
     )
 
-    id2config = result.get_id2config_mapping()
-    incumbent = result.get_incumbent_id()
+    previous_results, pending_configs, pending_configs_free = neps.read_results(
+        "results/hierarchical_architecture_example"
+    )
 
-    print("Best found configuration:", id2config[incumbent]["config"])
-    print("A total of %i unique configurations were sampled." % len(id2config.keys()))
+    print(f"A total of {len(previous_results)} unique configurations were evaluated.")
