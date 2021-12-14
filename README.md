@@ -38,6 +38,18 @@ neps.run(
 
 Please also see our examples in [neps_examples](neps_examples).
 
+To run our HPO example run
+
+```bash
+python neps_examples/hyperparameters/optimize.py
+```
+
+To run our NAS+HPO example run
+
+```bash
+python neps_examples/hyperparameters_architecture/optimize.py
+```
+
 To run our hierarchical architecture example run
 
 ```bash
