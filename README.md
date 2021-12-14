@@ -22,7 +22,7 @@ def run_pipeline(config, config_working_directory, previous_working_directory):
     return {"loss": config["x"]}
 
 
-pipeline_space = neps.SearchSpace(
+pipeline_space = dict(
     x=neps.FloatParameter(lower=0, upper=1, log=False),
 )
 neps.run(
