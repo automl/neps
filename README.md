@@ -22,7 +22,7 @@ def run_pipeline(config, config_working_directory, previous_working_directory):
     return {"loss": config["x"]}
 
 
-pipeline_space = neps.SearchSpace(
+pipeline_space = dict(
     x=neps.FloatParameter(lower=0, upper=1, log=False),
 )
 neps.run(
@@ -37,6 +37,18 @@ neps.run(
 ```
 
 Please also see our examples in [neps_examples](neps_examples).
+
+To run our HPO example run
+
+```bash
+python neps_examples/hyperparameters/optimize.py
+```
+
+To run our NAS+HPO example run
+
+```bash
+python neps_examples/hyperparameters_architecture/optimize.py
+```
 
 To run our hierarchical architecture example run
 
