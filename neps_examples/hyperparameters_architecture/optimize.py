@@ -43,7 +43,7 @@ if __name__ == "__main__":
         "Zero",
     ]
 
-    pipeline_space = neps.SearchSpace(
+    pipeline_space = dict(
         graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
         optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
         learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),

@@ -9,14 +9,3 @@ from .numerical.constant import ConstantParameter
 from .numerical.float import FloatParameter
 from .numerical.integer import IntegerParameter
 from .numerical.numerical import NumericalParameter
-
-HyperparameterMapping = {
-    "categorical": CategoricalParameter,
-    "constant": ConstantParameter,
-    "float": FloatParameter,
-    "integer": IntegerParameter,
-    "graph_dense": GraphDenseParameter,
-    "graph_grammar": GraphGrammar,
-    "graph_grammar_cell": GraphGrammarCell,
-    "graph_grammar_repetitive": GraphGrammarRepetitive,
-}

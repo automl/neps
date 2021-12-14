@@ -31,7 +31,7 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 
 if __name__ == "__main__":
-    pipeline_space = neps.SearchSpace(
+    pipeline_space = dict(
         graph_grammar=HierarchicalArchitectureExample(),
     )
 

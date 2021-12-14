@@ -26,7 +26,7 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 
 if __name__ == "__main__":
-    pipeline_space = neps.SearchSpace(
+    pipeline_space = dict(
         x1=neps.FloatParameter(lower=0, upper=1, log=False),
         x2=neps.FloatParameter(lower=0, upper=1, log=False),
         x3=neps.FloatParameter(lower=0, upper=1, log=False),
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     )
 
     logging.basicConfig(level=logging.INFO)
-    result = neps.run(
+    neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_example",
@@ -48,10 +48,11 @@ if __name__ == "__main__":
         searcher="bayesian_optimization",
         overwrite_logging=True,
         hp_kernels=["m52", "hm"],
+        use_new_metahyper=True,
+    )
+    previous_results, pending_configs, pending_configs_free = neps.read_results(
+        "results/hyperparameters_example"
     )
 
-    id2config = result.get_id2config_mapping()
-    incumbent = result.get_incumbent_id()
-
-    print("Best found configuration: ", id2config[incumbent]["config"])
-    print(f"A total of {len(id2config.keys())} unique configurations were sampled.")
+    # print("Best found configuration: ", id2config[incumbent]["config"])
+    print(f"A total of {len(previous_results)} unique configurations were evaluated.")

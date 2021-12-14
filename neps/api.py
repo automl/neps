@@ -1,3 +1,5 @@
+import warnings
+
 import metahyper
 import metahyper.old_metahyper.api
 
@@ -10,6 +12,7 @@ except ModuleNotFoundError:
 
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.optimizer import RandomSearch
+from .search_spaces.search_space import SearchSpace
 
 
 def run(
@@ -26,6 +29,14 @@ def run(
     use_new_metahyper=False,
     **searcher_kwargs,  # pylint: disable=unused-argument
 ):
+    if not isinstance(pipeline_space, SearchSpace):
+        pipeline_space = SearchSpace(**pipeline_space)
+    else:
+        warnings.warn(
+            "Using neps.SearchSpace is depreciated and will be removed in the future, please use a dict.",
+            DeprecationWarning,
+        )
+
     if searcher == "bayesian_optimization":
         sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
     elif searcher == "random_search":
