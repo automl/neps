@@ -30,7 +30,7 @@ class RegularizedEvolution(Optimizer):
 
     def get_config(self):
         if len(self.population) < self.initial_population_size:
-            return self.random_sampler.sample(1)
+            return self.random_sampler.sample(1)[0]
 
         candidates = [random.choice(self.population) for _ in range(self.sample_size)]
         parent = min(candidates, key=lambda c: c["loss"])
@@ -62,7 +62,7 @@ class RegularizedEvolution(Optimizer):
         self.population = deque()
         self.history = deque()
         self.tmp_counter = 0
-        self.update_model(x_configs, y)
+        self._update_model(x_configs, y)
 
     def _update_model(self, x_configs, y):
         # only for compatability
