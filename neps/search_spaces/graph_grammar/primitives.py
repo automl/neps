@@ -1,10 +1,10 @@
 try:
     import torch
-    import torch.nn as nn
-except ModuleNotFoundError:
+    from torch import nn
+except ModuleNotFoundError as e:
     from neps.utils.torch_error_message import error_message
 
-    raise ModuleNotFoundError(error_message)
+    raise ModuleNotFoundError(error_message) from e
 
 from abc import ABCMeta, abstractmethod
 
@@ -387,6 +387,34 @@ class ReLUConvBN(AbstractPrimitive):
         )
 
     def forward(self, x, edge_data):
+        return self.op(x)
+
+    def get_embedded_ops(self):
+        return None
+
+    @property
+    def get_op_name(self):
+        op_name = super().get_op_name
+        op_name += f"{self.kernel_size}x{self.kernel_size}"
+        return op_name
+
+
+class ConvBnReLU(AbstractPrimitive):
+    """
+    Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation.
+    """
+
+    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
+        super().__init__(locals())
+        self.kernel_size = kernel_size
+        pad = 0 if stride == 1 and kernel_size == 1 else 1
+        self.op = nn.Sequential(
+            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=pad, bias=False),
+            nn.BatchNorm2d(C_out, affine=affine),
+            nn.ReLU(inplace=False),
+        )
+
+    def forward(self, x, edge_data=None):
         return self.op(x)
 
     def get_embedded_ops(self):
