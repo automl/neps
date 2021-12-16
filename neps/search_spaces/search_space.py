@@ -31,7 +31,7 @@ class SearchSpace:
         config=None,  # pylint: disable=unused-argument
         mutate_probability_per_hyperparameter=1.0,
         patience=50,
-        mutation_strategy="smbo",
+        mutation_strategy="simple",
     ):
 
         if mutation_strategy == "simple":
