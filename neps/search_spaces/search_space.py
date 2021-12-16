@@ -4,7 +4,7 @@ from typing import List
 
 import numpy as np
 
-from . import NumericalParameter
+from . import NumericalParameter, ConstantParameter
 
 
 class SearchSpace:
@@ -31,7 +31,7 @@ class SearchSpace:
         config=None,  # pylint: disable=unused-argument
         mutate_probability_per_hyperparameter=1.0,
         patience=50,
-        mutation_strategy="simple",
+        mutation_strategy="smbo",
     ):
 
         if mutation_strategy == "simple":
@@ -43,7 +43,7 @@ class SearchSpace:
         else:
             raise NotImplementedError("No such mutation strategy!")
 
-        child = SearchSpace(dict(zip(self.hyperparameters.keys(), new_config)))
+        child = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config)))
 
         return child
 
@@ -70,7 +70,7 @@ class SearchSpace:
 
         while patience > 0:
             try:
-                new_config[idx] = hp.mutate(mutation_strategy="local_search")
+                new_config[idx] = hp.mutate()
                 break
             except Exception:
                 patience -= 1
@@ -102,3 +102,18 @@ class SearchSpace:
                 self._hps.append(self.hyperparameters[name])
             else:
                 self._graphs.append(self.hyperparameters[name])
+
+    def add_constant_hyperparameter(self, value=None):
+        if value is not None:
+            hp = ConstantParameter(value=value)
+        else:
+            raise NotImplementedError("Adding hps is supported only by value")
+        self._add_hyperparameter(hp)
+
+    def _add_hyperparameter(self, hp=None):
+        self.hyperparameters[str(self._num_hps)] = hp
+        if isinstance(hp, NumericalParameter):
+            self._hps.append(hp)
+        else:
+            self._graphs.append(hp)
+        self._num_hps += 1
