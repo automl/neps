@@ -2,9 +2,8 @@ from abc import ABC
 
 
 class BaseAcquisition(ABC):
-    def __init__(self, surrogate_model, iters=0):
+    def __init__(self, surrogate_model):
         self.surrogate_model = surrogate_model
-        self.iters = iters
 
         # Storage for the current evaluation on the acquisition function
         self.next_location = None
