@@ -23,6 +23,8 @@ def extract_configs(configs: list) -> Tuple[list, list]:
         graphs = [c.get_graphs() for c in configs]
     elif N > 0 and "graph" in dir(configs[0]):
         graphs = [c.graph for c in configs]
+    elif N > 0 and isinstance(configs, list):  # assumes that the list is meaningful!
+        graphs = configs
     else:
         graphs = [None] * N
 
