@@ -10,18 +10,21 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
 
-We document major features with an example (see neps_examples).
-These examples also serve as integration tests, which we will run automatically in the future and currently run via
-simply `pytest`.
+### Examples
 
-## Python Coding Guidelines
+We document major features with an example (see [neps_examples](neps_examples)). When adding a new example also include it in the [example README](neps_examples/README.md)
+
+These examples also serve as integration tests, which we will run automatically in the future and currently run via
+simply `pytest` in the main directory.
+
+### Python Coding Guidelines
 
 - We use relative imports inside our library
 - We use the black style with line length 90, enforced by our autoformatter as part of our pre-commit hooks
 
 ## Developer Installation
 
-### Miniconda
+### Miniconda (optional)
 
 To manage python versions install e.g., miniconda with
 
@@ -31,8 +34,7 @@ bash install_miniconda.sh -b -p $HOME/.conda  # Change to place of preference
 rm install_miniconda.sh
 ```
 
-Then run `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` and append
-`export CONDA_AUTO_ACTIVATE_BASE=false` to your `.bashrc` / `.zshrc`.
+Consider running `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` .
 
 Then finally create the environment and activate it
 
