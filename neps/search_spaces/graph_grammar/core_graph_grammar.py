@@ -721,7 +721,7 @@ class CoreGraphGrammar(Graph):
         sym_name: str = "op_name",
         prune: bool = True,
         add_subtree_map: bool = False,
-        return_subgraph_dict: bool = True,
+        return_subgraph_dict: bool = False,
     ) -> nx.DiGraph | tuple[nx.DiGraph, collections.OrderedDict]:
         """Generates graph from parse tree in string representation.
         Note that we ignore primitive HPs!
