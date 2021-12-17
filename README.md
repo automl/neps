@@ -10,7 +10,11 @@ Using pip
 pip install git+https://github.com/automl-private/neps.git
 ```
 
-To install torch you might want to use our utility `python -m neps.utils.install_torch`.
+To install torch you might want to use our utility
+
+```bash
+python -m neps.utils.install_torch
+```
 
 ## Usage
 
@@ -36,25 +40,9 @@ neps.run(
 )
 ```
 
-Please also see our examples in [neps_examples](neps_examples).
+## Examples
 
-To run our HPO example run
-
-```bash
-python neps_examples/hyperparameters/optimize.py
-```
-
-To run our NAS+HPO example run
-
-```bash
-python neps_examples/hyperparameters_architecture/optimize.py
-```
-
-To run our hierarchical architecture example run
-
-```bash
-python neps_examples/hierarchical_architecture/optimize.py
-```
+Please see our examples in [neps_examples](neps_examples).
 
 ## Contributing
 
