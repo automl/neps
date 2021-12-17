@@ -721,7 +721,8 @@ class CoreGraphGrammar(Graph):
         sym_name: str = "op_name",
         prune: bool = True,
         add_subtree_map: bool = False,
-    ) -> nx.DiGraph:
+        return_subgraph_dict: bool = True,
+    ) -> nx.DiGraph | tuple[nx.DiGraph, collections.OrderedDict]:
         """Generates graph from parse tree in string representation.
         Note that we ignore primitive HPs!
 
@@ -734,8 +735,10 @@ class CoreGraphGrammar(Graph):
             sym_name (str, optional): Attribute name of operation. Defaults to "op_name".
             prune (bool, optional): Prune graph, e.g., None operations etc. Defaults to True.
             add_subtree_map (bool, optional): Add attribute indicating to which subtrees of
-            the parse tree the specific part belongs to. Can only be true if you set prune=False!
-            TODO: Check if we really need this constraint or can also allow pruning.Defaults to False.
+                the parse tree the specific part belongs to. Can only be true if you set prune=False!
+                TODO: Check if we really need this constraint or can also allow pruning. Defaults to False.
+            return_subgraph_dict (bool, optional): Additionally returns an hierarchical dictionary
+                containing all subgraphs. Defaults to False.
 
         Returns:
             nx.DiGraph: [description]
@@ -774,6 +777,10 @@ class CoreGraphGrammar(Graph):
         G = nx.DiGraph()
         if add_subtree_map:
             q_nonterminals = collections.deque()
+        if return_subgraph_dict:
+            q_subtrees = collections.deque()
+            q_subgraph_nodes = collections.deque()
+            subgraphs_dict = collections.OrderedDict()
         if edge_attr:
             node_offset = 0
             q_el = collections.deque()  # edge-attr
@@ -803,17 +810,76 @@ class CoreGraphGrammar(Graph):
             begin_end_nodes[sym] = (begin_node, end_node)
 
         for split_idx, sym in enumerate(string_tree.split(" ")):
-            # for sym in string_tree.split(" "):
             if sym == "":
                 continue
+            if return_subgraph_dict:
+                new_sym = True
+                sym_copy = sym[:]
             if sym[0] == "(":
                 sym = sym[1:]
             if sym[-1] == ")":
                 if add_subtree_map:
                     for _ in range(sym.count(")")):
                         q_nonterminals.pop()
+                if return_subgraph_dict:
+                    new_sym = False
+                    q_subtrees[-1]["id"] += f" {sym_copy}"
+                    for _ in range(sym.count(")")):
+                        el = q_subtrees.pop()
+                        subtree_identifier = el["id"]
+                        children = el["children"]
+                        if len(q_subtrees) > 0:
+                            q_subtrees[-1]["id"] += f" {subtree_identifier}"
+                        if len(q_subtrees) == len(q_subgraph_nodes) - 1:
+                            if len(q_subtrees) > 0:
+                                # subtree_identifier is subgraph graph at [-1]
+                                # (and sub-...-subgraph currently in q_subtrees)
+                                q_subtrees[-1]["children"].append(subtree_identifier)
+
+                            subgraph_nodes = q_subgraph_nodes.pop()
+                            subgraph = nx.DiGraph.subgraph(G, subgraph_nodes).copy()
+                            if not edge_attr:  # node-attr
+                                # ensure there is actually one input and output node
+                                first_nodes = {e[0] for e in subgraph.edges}
+                                second_nodes = {e[1] for e in subgraph.edges}
+                                new_src_node = max(subgraph.nodes) + 1
+                                src_nodes = first_nodes - second_nodes
+                                subgraph.add_edges_from(
+                                    [
+                                        (new_src_node, successor)
+                                        for src_node in src_nodes
+                                        for successor in subgraph.successors(src_node)
+                                    ]
+                                )
+                                subgraph.add_node(new_src_node, **{sym_name: "input"})
+                                subgraph.remove_nodes_from(src_nodes)
+                                new_sink_node = max(subgraph.nodes) + 1
+                                sink_nodes = second_nodes - first_nodes
+                                subgraph.add_edges_from(
+                                    [
+                                        (predecessor, new_sink_node)
+                                        for sink_node in sink_nodes
+                                        for predecessor in subgraph.predecessors(
+                                            sink_node
+                                        )
+                                    ]
+                                )
+                                subgraph.add_node(new_sink_node, **{sym_name: "output"})
+                                subgraph.remove_nodes_from(sink_nodes)
+                            subgraphs_dict[subtree_identifier] = {
+                                "graph": subgraph,
+                                "children": children,
+                            }
                 while sym[-1] == ")" and sym not in valid_terminals:
                     sym = sym[:-1]
+
+            if return_subgraph_dict and new_sym:
+                if sym in grammar.nonterminals:
+                    # need dict as a graph can have multiple subgraphs
+                    q_subtrees.append({"id": sym_copy[:], "children": []})
+                else:
+                    q_subtrees[-1]["id"] += f" {sym_copy}"
+
             if len(sym) == 1 and skip_char(sym[0]):
                 continue
 
@@ -885,6 +951,12 @@ class CoreGraphGrammar(Graph):
 
                     G.add_edges_from(edges)
 
+                    if return_subgraph_dict:
+                        unique_nodes = set(np.unique(edges))
+                        for subgraph_nodes in q_subgraph_nodes:
+                            subgraph_nodes.update(unique_nodes)
+                        q_subgraph_nodes.append(unique_nodes)
+
                     if add_subtree_map:
                         if edge_attr:
                             subtrees.append(q_nonterminals[-1])
@@ -900,7 +972,7 @@ class CoreGraphGrammar(Graph):
                         node_offset += max(max(terminal_to_graph_edges[sym]))
                     else:
                         node_offset += max(terminal_to_graph_nodes[sym][1].values())
-                else:
+                else:  # primitive operations
                     el = q_el.pop()
                     if edge_attr:
                         u, v = el
@@ -930,16 +1002,30 @@ class CoreGraphGrammar(Graph):
                                 G.nodes[n]["subtrees"].append(q_nonterminals[-1])
                                 q_nonterminals.pop()
 
-        # if len(q_nonterminals) != 0 and len(q_el) != 0:
         if len(q_el) != 0:
             raise Exception("Invalid string_tree")
 
         if prune:
             G = self.prune_unconnected_parts(G, src_node, sink_node)
-
         self._check_graph(G)
 
-        return G
+        if return_subgraph_dict:
+            subgraphs_dict = collections.OrderedDict(
+                reversed(list(subgraphs_dict.items()))
+            )
+            if prune:
+                for v in subgraphs_dict.values():
+                    first_nodes = {e[0] for e in v["graph"].edges}
+                    second_nodes = {e[1] for e in v["graph"].edges}
+                    (vG_src_node,) = first_nodes - second_nodes
+                    (vG_sink_node,) = second_nodes - first_nodes
+                    v["graph"] = self.prune_unconnected_parts(
+                        v["graph"], vG_src_node, vG_sink_node
+                    )
+                    self._check_graph(v["graph"])
+            return G, subgraphs_dict
+        else:
+            return G
 
     def prune_graph(self, graph: nx.DiGraph | Graph = None, edge_attr: bool = True):
         use_self = graph is None
