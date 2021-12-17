@@ -70,7 +70,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             # we expect that f_min is in log-space
             f_min = mu_star - self.xi
             v = (f_min - mu) / std
-            ei = np.exp(f_min) * gauss.cdf(v) - np.exp(
+            ei = torch.exp(f_min) * gauss.cdf(v) - torch.exp(
                 0.5 * torch.diag(cov) + mu
             ) * gauss.cdf(v - std)
         else:
