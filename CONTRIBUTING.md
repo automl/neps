@@ -83,7 +83,7 @@ pre-commit install
 
 ## Tooling Tips
 
-### Add dependencies
+### Poetry: Add dependencies
 
 To install a dependency use
 
@@ -95,11 +95,11 @@ and commit the updated `pyproject.toml` to git.
 
 For more advanced dependency management see examples in `pyproject.toml` or have a look at the [poetry documentation](https://python-poetry.org/).
 
-### Do not run pre-commit hooks
+### Pre-commit: Do not run hooks
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.
 
-### Ignore pylint warning
+### Pylint: Ignore warnings
 
 ```python
 code = "foo"  # pylint: disable=bar
@@ -107,7 +107,7 @@ code = "foo"  # pylint: disable=bar
 
 Or remove warnings in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
 
-### Do not format with black
+### Black: Do not format code parts
 
 ```python
 x = 2  # fmt: off
