@@ -6,11 +6,11 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 - We work almost exclusively on the master branch
 - We commit, push, and pull often
-- We use [pre-commit](https://pre-commit.com/) to run code quality checks at every commit
+- We automatically run code quality checks at every commit (using [pre-commit](https://pre-commit.com/))
 
 To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
 
-### Examples
+### Examples and Tests
 
 We document major features with an example (see [neps_examples](neps_examples)). When adding a new example also include it in the [example README](neps_examples/README.md)
 
@@ -24,7 +24,7 @@ simply `pytest` in the main directory.
 
 ## Developer Installation
 
-### Miniconda (optional)
+### 0. Install Miniconda and Create an Environment (optional)
 
 To manage python versions install e.g., miniconda with
 
@@ -43,7 +43,7 @@ conda create -n neps python=3.7.5
 conda activate neps
 ```
 
-### Poetry, pre-commit, and the neps Package
+### 1. Install poetry
 
 First, install poetry, e.g., via
 
@@ -55,10 +55,19 @@ rm get-poetry.py
 
 Then append to your `.zshrc` / `.bashrc` or run: `export PATH="$HOME/.poetry/bin:$PATH"`
 
-Finally, install the package and pre-commmit hooks
+### 2. Install the neps Package Using poetry
+
+Inside the main directory of neps run
 
 ```bash
 poetry install
+```
+
+### 3. Activate pre-commit for the repository
+
+With the python environment used to install the neps package run in the main directory of neps
+
+```bash
 pre-commit install
 ```
 
