@@ -2,11 +2,15 @@
 
 ## Development Practices and Tooling
 
+### Development Workflow
+
 We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/):
 
 - We work almost exclusively on the master branch
 - We commit, push, and pull often
 - We automatically run code quality checks at every commit (using [pre-commit](https://pre-commit.com/))
+
+### Dependency Management
 
 To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
 
@@ -24,7 +28,7 @@ simply `pytest` in the main directory.
 
 ## Developer Installation
 
-### 0. Install Miniconda and Create an Environment (optional)
+### 0. Optional: Install Miniconda and Create an Environment
 
 To manage python versions install e.g., miniconda with
 
