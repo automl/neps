@@ -10,7 +10,7 @@ Using pip
 pip install git+https://github.com/automl-private/neps.git
 ```
 
-To install torch you might want to use our utility
+To install specific versions of torch (e.g., cuda enabled versions) you might want to use our utility
 
 ```bash
 python -m neps.utils.install_torch
