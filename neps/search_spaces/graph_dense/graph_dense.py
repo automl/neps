@@ -4,17 +4,17 @@ from typing import List
 
 import networkx as nx
 
-from neps.search_spaces.graph_dense.primitives import ResNetBasicblock
-from neps.search_spaces.graph_grammar import primitives as ops
-from neps.search_spaces.graph_grammar.cfg import Grammar
-from neps.search_spaces.graph_grammar.graph_grammar import GraphGrammar
-from neps.search_spaces.graph_grammar.topologies import DenseNNodeDAG
+from ..graph_grammar import primitives as ops
+from ..graph_grammar.cfg import Grammar
+from ..graph_grammar.graph_grammar import GraphGrammar
+from ..graph_grammar.topologies import DenseNNodeDAG
+from .primitives import ResNetBasicblock
 
 # pylint: disable=C0412
 try:
     import torch.nn as nn
 except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
+    from ...utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
 # pylint: enable=C0412

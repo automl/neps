@@ -5,8 +5,7 @@ from typing import Iterable, Tuple, Union
 import numpy as np
 import torch
 
-from neps.optimizers.optimizer import Optimizer
-
+from ..optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_function_optimization.random_sampler import RandomSampler
 from .acqusition_functions import AcquisitionMapping

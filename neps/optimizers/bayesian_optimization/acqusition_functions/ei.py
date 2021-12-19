@@ -6,7 +6,7 @@ try:
     import torch
     from torch.distributions import Normal
 except ModuleNotFoundError as e:
-    from neps.utils.torch_error_message import error_message
+    from ....utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message) from e
 

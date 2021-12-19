@@ -20,7 +20,7 @@ try:
     import torchvision.transforms as transforms
     from torch.utils.data import Dataset
 except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
+    from ....utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
 # pylint: disable=C0412

@@ -6,7 +6,7 @@ import metahyper.old_metahyper.api
 try:
     import torch as _  # Not needed in api.py, but test if torch can be imported
 except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
+    from .utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message) from None
 

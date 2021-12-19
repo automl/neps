@@ -4,7 +4,7 @@ from typing import List
 
 import numpy as np
 
-from . import NumericalParameter, ConstantParameter
+from . import ConstantParameter, NumericalParameter
 
 
 class SearchSpace:

@@ -1,11 +1,11 @@
 try:
     import torch.nn as nn
 except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
+    from ...utils.torch_error_message import error_message
 
     raise ModuleNotFoundError(error_message)
 
-from neps.search_spaces.graph_grammar.primitives import AbstractPrimitive, ReLUConvBN
+from ..graph_grammar.primitives import AbstractPrimitive, ReLUConvBN
 
 """
 Code below from NASBench-201 and slightly adapted
