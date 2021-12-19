@@ -132,11 +132,17 @@ To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT ME
 
 ### Pylint: Ignore warnings
 
-```python
-code = "foo"  # pylint: disable=bar
-```
+There are two options:
 
-Or remove warnings in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
+1. Disable the warning locally:
+
+   ```python
+   code = "foo"  # pylint: disable=bar
+   ```
+
+   Make sure to use the named version of the error (e.g., `unspecified-encoding`, not `W1514`).
+
+1. Remove warning in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
 
 ### Black: Do not format code parts
 
