@@ -1,5 +1,10 @@
 # Contributing
 
+## Getting Help
+
+Ask in the neps developer chat on mattermost or any contributor directly.
+If you are not in the mattermost chat yet, ask to get access.
+
 ## Development Practices and Tooling
 
 ### Development Workflow
@@ -28,7 +33,16 @@ simply `pytest` in the main directory.
 
 ## Developer Installation
 
-### 0. Optional: Install Miniconda and Create an Environment
+There are three required steps and one optional:
+
+1. Optional: Install miniconda and create an environment
+1. Install poetry
+1. Install the neps package using poetry
+1. Activate pre-commit for the repository
+
+For instructions see below.
+
+### 1. Optional: Install miniconda and create an environment
 
 To manage python versions install e.g., miniconda with
 
@@ -47,7 +61,7 @@ conda create -n neps python=3.7.5
 conda activate neps
 ```
 
-### 1. Install poetry
+### 2. Install poetry
 
 First, install poetry, e.g., via
 
@@ -59,7 +73,7 @@ rm get-poetry.py
 
 Then append to your `.zshrc` / `.bashrc` or run: `export PATH="$HOME/.poetry/bin:$PATH"`
 
-### 2. Install the neps Package Using poetry
+### 3. Install the neps Package Using poetry
 
 Inside the main directory of neps run
 
@@ -73,7 +87,7 @@ To install specific versions of torch (e.g., cuda enabled versions) you might wa
 python -m neps.utils.install_torch
 ```
 
-### 3. Activate pre-commit for the repository
+### 4. Activate pre-commit for the repository
 
 With the python environment used to install the neps package run in the main directory of neps
 
