@@ -1,14 +1,8 @@
 from typing import Iterable, Tuple, Union
 
 import numpy as np
-
-try:
-    import torch
-    from torch.distributions import Normal
-except ModuleNotFoundError as e:
-    from ....utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message) from e
+import torch
+from torch.distributions import Normal
 
 from .base_acqusition import BaseAcquisition
 

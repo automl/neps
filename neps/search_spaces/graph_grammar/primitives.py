@@ -1,12 +1,7 @@
-try:
-    import torch
-    from torch import nn
-except ModuleNotFoundError as e:
-    from ...utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message) from e
-
 from abc import ABCMeta, abstractmethod
+
+import torch
+from torch import nn
 
 
 class AbstractPrimitive(nn.Module, metaclass=ABCMeta):

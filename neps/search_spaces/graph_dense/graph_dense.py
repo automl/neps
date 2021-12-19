@@ -3,21 +3,13 @@ from itertools import combinations
 from typing import List
 
 import networkx as nx
+import torch.nn as nn
 
 from ..graph_grammar import primitives as ops
 from ..graph_grammar.cfg import Grammar
 from ..graph_grammar.graph_grammar import GraphGrammar
 from ..graph_grammar.topologies import DenseNNodeDAG
 from .primitives import ResNetBasicblock
-
-# pylint: disable=C0412
-try:
-    import torch.nn as nn
-except ModuleNotFoundError:
-    from ...utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
-# pylint: enable=C0412
 
 TERMINAL_2_OP_NAMES = {
     "Identity": ops.Identity(),

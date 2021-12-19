@@ -1,9 +1,4 @@
-try:
-    import torch.nn as nn
-except ModuleNotFoundError:
-    from ...utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
+import torch.nn as nn
 
 from ..graph_grammar.primitives import AbstractPrimitive, ReLUConvBN
 
