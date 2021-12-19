@@ -43,13 +43,13 @@ neps.run(
 )
 ```
 
-## Examples
+## Advanced Usage
 
 Please see our examples in [neps_examples](neps_examples).
 
 ## Contributing
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md).
+Please see our guidelines and guides for contributors at [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
