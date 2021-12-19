@@ -14,6 +14,7 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 - We work almost exclusively on the master branch
 - We commit, push, and pull often
 - We automatically run code quality checks at every commit (using [pre-commit](https://pre-commit.com/))
+- We have short-running tests that we manually run before every critical push  (using `pytest`)
 
 ### Dependency Management
 
@@ -21,15 +22,16 @@ To manage dependencies and for package distribution we use [poetry](https://pyth
 
 ### Examples and Tests
 
-We document major features with an example (see [neps_examples](neps_examples)). When adding a new example also include it in the [example README](neps_examples/README.md)
+We document major features with an example (see [neps_examples](neps_examples)).
+When adding a new example also include it in the [example README](neps_examples/README.md).
 
-These examples also serve as integration tests, which we will run automatically in the future and currently run via
-simply `pytest` in the main directory.
+These examples also serve as integration tests, which we run from the main directory via
 
-### Python Coding Guidelines
+```bash
+pytest
+```
 
-- We use relative imports inside our library
-- We use the black style with line length 90, enforced by our autoformatter as part of our pre-commit hooks
+before every critical push.
 
 ## Developer Installation
 
