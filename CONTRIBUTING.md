@@ -32,6 +32,7 @@ pytest
 ```
 
 before every critical push.
+Running the tests will create a temporary directory `tests_tmpdir` that includes the output of the last three test executions.
 
 If tests fail for you on the master:
 
@@ -78,7 +79,13 @@ python get-poetry.py
 rm get-poetry.py
 ```
 
-Then append to your `.zshrc` / `.bashrc` or run: `export PATH="$HOME/.poetry/bin:$PATH"`
+Then consider appending
+
+```bash
+export PATH="$HOME/.poetry/bin:$PATH"
+```
+
+to your `.zshrc` / `.bashrc` or alternatively simply running the export manually.
 
 ### 3. Install the neps Package Using poetry
 
@@ -139,15 +146,15 @@ To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT ME
 
 There are two options:
 
-1. Disable the warning locally:
+- Disable the warning locally:
 
-   ```python
-   code = "foo"  # pylint: disable=bar
-   ```
+  ```python
+  code = "foo"  # pylint: disable=bar
+  ```
 
-   Make sure to use the named version of the error (e.g., `unspecified-encoding`, not `W1514`).
+  Make sure to use the named version of the error (e.g., `unspecified-encoding`, not `W1514`).
 
-1. Remove warning in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
+- Remove warning in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
 
 ### Black: Do not format code parts
 
