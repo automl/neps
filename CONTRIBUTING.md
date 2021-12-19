@@ -33,6 +33,11 @@ pytest
 
 before every critical push.
 
+If tests fail for you on the master:
+
+1. Try running the tests with a fresh environment install.
+1. If issues persist, notify others in the neps developers chat on mattermost.
+
 ## Developer Installation
 
 There are three required steps and one optional:
