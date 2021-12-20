@@ -1,10 +1,10 @@
 import random
 from collections import deque
 
-from neps.optimizers.bayesian_optimization.acquisition_function_optimization.random_sampler import (
+from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
-from neps.optimizers.optimizer import Optimizer
+from ..optimizer import Optimizer
 
 
 class RegularizedEvolution(Optimizer):

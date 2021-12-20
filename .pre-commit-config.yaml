@@ -14,6 +14,13 @@ repos:
     hooks:
       - id: black
 
+  - repo: https://github.com/MarcoGorelli/absolufy-imports
+    rev: v0.3.0
+    hooks:
+    - id: absolufy-imports
+      args: [--never]
+      exclude: ^(neps_examples/|tests)
+
   - repo: https://github.com/PyCQA/isort
     rev: 5.10.1
     hooks:

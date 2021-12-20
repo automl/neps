@@ -161,7 +161,7 @@ if __name__ == "__main__":
     import torchvision.models as models
 
     # pylint: disable=C0412
-    from neps.evaluation.utils import (
+    from .utils import (
         get_evaluation_metric,
         get_loss,
         get_optimizer,

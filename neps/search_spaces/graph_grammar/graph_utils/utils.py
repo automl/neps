@@ -10,22 +10,17 @@ from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
-from fvcore.common.file_io import PathManager
-from scipy import stats
-from sklearn import metrics
+import torch
+import torchvision.datasets as dset
+import torchvision.transforms as transforms
 
-try:
-    import torch
-    import torchvision.datasets as dset
-    import torchvision.transforms as transforms
-    from torch.utils.data import Dataset
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
 # pylint: disable=C0412
 from fvcore.common.checkpoint import Checkpointer as fvCheckpointer
 from fvcore.common.config import CfgNode
+from fvcore.common.file_io import PathManager
+from scipy import stats
+from sklearn import metrics
+from torch.utils.data import Dataset
 
 # pylint: enable=C0412
 

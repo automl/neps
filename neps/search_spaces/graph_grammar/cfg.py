@@ -695,7 +695,7 @@ if __name__ == "__main__":
     import networkx as nx
     from path import Path
 
-    from neps.search_spaces.graph_grammar.graph_grammar import GraphGrammar
+    from .graph_grammar import GraphGrammar
 
     g = GraphGrammar([])
 

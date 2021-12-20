@@ -63,7 +63,7 @@ if __name__ == "__main__":
         overwrite_logging=True,
         hp_kernels=["m52", "hm"],
         graph_kernels=["wl"],
-        use_new_metahyper=True
+        use_new_metahyper=True,
     )
 
     previous_results, pending_configs, pending_configs_free = neps.read_results(

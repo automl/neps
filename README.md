@@ -2,6 +2,9 @@
 
 Neural Pipeline Search helps deep learning experts find the best neural pipeline.
 
+![Python versions](https://img.shields.io/badge/python-3.7-informational)
+[![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
+
 ## Installation
 
 Using pip
@@ -10,7 +13,7 @@ Using pip
 pip install git+https://github.com/automl-private/neps.git
 ```
 
-To install torch you might want to use our utility
+To install specific versions of torch (e.g., cuda enabled versions) you might want to use our utility
 
 ```bash
 python -m neps.utils.install_torch
@@ -40,14 +43,10 @@ neps.run(
 )
 ```
 
-## Examples
+## Advanced Usage
 
 Please see our examples in [neps_examples](neps_examples).
 
 ## Contributing
 
-Please see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## License
-
-[MIT](LICENSE)
+Please see our guidelines and guides for contributors at [CONTRIBUTING.md](CONTRIBUTING.md).

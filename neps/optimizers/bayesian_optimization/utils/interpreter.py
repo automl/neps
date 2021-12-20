@@ -7,8 +7,7 @@ import torch
 from networkx.drawing.nx_pydot import graphviz_layout
 from tqdm import tqdm
 
-from neps.utils.draw_nx import draw_graph
-
+from ....utils.draw_nx import draw_graph
 from ..kernels import WeisfilerLehman
 from ..models.gp import ComprehensiveGP
 from .find_stuctures import find_wl_feature

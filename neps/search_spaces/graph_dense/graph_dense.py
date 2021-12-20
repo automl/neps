@@ -3,21 +3,13 @@ from itertools import combinations
 from typing import List
 
 import networkx as nx
+import torch.nn as nn
 
-from neps.search_spaces.graph_dense.primitives import ResNetBasicblock
-from neps.search_spaces.graph_grammar import primitives as ops
-from neps.search_spaces.graph_grammar.cfg import Grammar
-from neps.search_spaces.graph_grammar.graph_grammar import GraphGrammar
-from neps.search_spaces.graph_grammar.topologies import DenseNNodeDAG
-
-# pylint: disable=C0412
-try:
-    import torch.nn as nn
-except ModuleNotFoundError:
-    from neps.utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message)
-# pylint: enable=C0412
+from ..graph_grammar import primitives as ops
+from ..graph_grammar.cfg import Grammar
+from ..graph_grammar.graph_grammar import GraphGrammar
+from ..graph_grammar.topologies import DenseNNodeDAG
+from .primitives import ResNetBasicblock
 
 TERMINAL_2_OP_NAMES = {
     "Identity": ops.Identity(),
@@ -135,7 +127,7 @@ class GraphDenseParameter(GraphGrammar):
 
             # preprocessing
             # TODO: make C_in parameterizable
-            self.edges[1, 2].set("op", ops.Stem(C_out=channels[0], C_in=1))
+            self.edges[1, 2].set("op", ops.Stem(C_out=channels[0], C_in=3))
 
             # stage 1
             for i in range(2, 7):
@@ -169,9 +161,10 @@ class GraphDenseParameter(GraphGrammar):
 
             # set the ops at the cells (channel dependent)
             for c, scope in zip(channels, self.OPTIMIZER_SCOPE):
-                channels = {"C_in": c, "C_out": c}
+                # pylint: disable=cell-var-from-loop
+                channels_ = {"C_in": c, "C_out": c}
                 self.update_edges(
-                    update_func=lambda edge: edge.data.update(channels),
+                    update_func=lambda edge: edge.data.update(channels_),
                     scope=scope,
                     private_edge_data=True,
                 )
@@ -198,6 +191,16 @@ class GraphDenseParameter(GraphGrammar):
         g.nxTree = g.create_nx_tree(g.string_tree)
         g.setup(g.nxTree)
         return g
+
+    def mutate(
+        self,
+        parent: GraphGrammar = None,
+        mutation_rate: float = 1.0,
+        mutation_strategy: str = "bananas",
+    ):
+        child = super().mutate(parent, mutation_rate, mutation_strategy)
+        child.create_representation(child.string_tree)
+        return child
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):

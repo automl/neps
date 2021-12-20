@@ -15,7 +15,7 @@ example_files = [
     example_file
     for example_file in example_files
     if example_file.exists()
-       # and example_file.parent.name not in exclude_tests
+    # and example_file.parent.name not in exclude_tests
 ]
 example_files_names = [example_file.parent.name for example_file in example_files]
 
