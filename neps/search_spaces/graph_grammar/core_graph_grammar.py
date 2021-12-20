@@ -1015,7 +1015,7 @@ class CoreGraphGrammar(Graph):
 
                         for atom in filter(lambda x: x[1] is not None, atoms.items()):
                             if edge_attr:
-                                subgraph.edges[atom[0]] = atom[1]
+                                subgraph[atom[0][0]][atom[0][1]][sym_name] = atom[1]
                             else:  # node-attr
                                 subgraph.nodes[atom[0]][sym_name] = atom[1]
 

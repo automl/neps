@@ -289,7 +289,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             if self.id_parse_tree
             else self.from_stringTree_to_graph_repr(
                 string_tree,
-                self.grammars[0],
+                self.full_grammar,
                 terminal_to_graph_edges=self.terminal_to_graph_repr,
                 valid_terminals=self.terminal_to_op_names.keys(),
                 edge_attr=self.edge_attr,
