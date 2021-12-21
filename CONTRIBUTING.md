@@ -173,4 +173,6 @@ y = x + 1
 
 ### Editorconfig
 
-You might want to install an [editorconfig](https://editorconfig.org/) plugin for your text editor to automatically set line lengths etc.
+[Editorconfig](https://editorconfig.org/) allows to set line lengths and other display parameters automatically based on a `.editorconfig` file.
+Many editors have [native support](https://editorconfig.org/#pre-installed) (e.g., PyCharm) so you do not need to do anything.
+For other editors (e.g., VSCode), you need to install a [plugin](https://editorconfig.org/#download).
