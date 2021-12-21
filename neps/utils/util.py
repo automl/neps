@@ -26,6 +26,22 @@ def set_seed(seed):
         torch.cuda.manual_seed_all(seed)
 
 
+def get_seed_states():
+    return {
+        "random_state": random.getstate(),
+        "np_seed_state": np.random.get_state(),
+        "torch_seed_state": torch.random.get_rng_state(),
+        "torch_cuda_seed_state": torch.cuda.get_rng_state_all(),
+    }
+
+
+def set_seed_states(seed_states):
+    random.setstate(seed_states["random_state"])
+    np.random.set_state(seed_states["np_seed_state"])
+    torch.random.set_rng_state(seed_states["torch_seed_state"])
+    torch.cuda.set_rng_state_all(seed_states["torch_cuda_seed_state"])
+
+
 def _check_data(pred, target):
     if not isinstance(pred, np.ndarray):
         pred = np.array(pred).reshape(-1)
@@ -98,7 +114,9 @@ class StatisticsTracker:
 
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
-        with open(os.path.join(self.save_path, "args.json"), "w") as f:
+        with open(
+            os.path.join(self.save_path, "args.json"), mode="w", encoding="UTF-8"
+        ) as f:
             json.dump(options, f, indent=6)
 
     def reset(self, identifier=None):
@@ -312,7 +330,9 @@ class StatisticsTracker:
             f"results_{self.id if self.id is not None else self.number}.csv",
         )
         file_exists = os.path.isfile(full_path)
-        with open(full_path, "a" if file_exists else "w") as csvfile:
+        with open(
+            full_path, mode="a" if file_exists else "w", encoding="UTF-8"
+        ) as csvfile:
             writer = csv.writer(csvfile, delimiter=",")
             if not file_exists:
                 writer.writerow(columns)
@@ -380,10 +400,14 @@ class StatisticsTracker:
 
         if not os.path.isdir(os.path.dirname(self.save_path)):
             os.makedirs(os.path.dirname(self.save_path))
-            with open(os.path.join(self.save_path, "log.txt"), "w+") as o:
+            with open(
+                os.path.join(self.save_path, "log.txt"), mode="w+", encoding="UTF-8"
+            ) as o:
                 o.write(table + "\n")
         else:
-            with open(os.path.join(self.save_path, "log.txt"), "a+") as o:
+            with open(
+                os.path.join(self.save_path, "log.txt"), mode="a+", encoding="UTF-8"
+            ) as o:
                 o.write(table + "\n")
 
     def save_results(self):
@@ -404,13 +428,14 @@ class StatisticsTracker:
         if self.opt_details:
             results["opt_details"] = self.opt_details
 
-        pickle.dump(
-            results,
-            open(
-                os.path.join(self.save_path, "data.p"),
-                "wb",
-            ),
-        )
+        with open(
+            os.path.join(self.save_path, "data.p"),
+            "wb",
+        ) as handle:
+            pickle.dump(
+                results,
+                handle,
+            )
 
     def read_checkpoint(self):
         checkpoint_path = os.path.join(
@@ -418,7 +443,7 @@ class StatisticsTracker:
             f"checkpoint_{self.id if self.id is not None else self.number}.json",
         )
         if os.path.isfile(checkpoint_path):
-            with open(checkpoint_path) as f:
+            with open(checkpoint_path, encoding="UTF-8") as f:
                 checkpoint_data = json.load(f)
         else:
             raise Exception(f"Checkpoint {checkpoint_path} does not exist!")
@@ -440,5 +465,29 @@ class StatisticsTracker:
         else:
             _checkpoint_data = checkpoint_data
 
-        with open(checkpoint_path, "w+") as f:
+        with open(checkpoint_path, mode="w+", encoding="UTF-8") as f:
             json.dump(_checkpoint_data, f, indent=4)
+
+    def save_seed_states(self):
+        seed_state_path = os.path.join(
+            self.save_path,
+            f"seed_state_{self.id if self.id is not None else self.number}.pickle",
+        )
+        with open(seed_state_path, "wb") as handle:
+            pickle.dump(
+                get_seed_states(),
+                handle,
+            )
+
+    def read_seed_states(self):
+        seed_state_path = os.path.join(
+            self.save_path,
+            f"seed_state_{self.id if self.id is not None else self.number}.pickle",
+        )
+        with open(seed_state_path, "rb") as handle:
+            seed_states = pickle.load(handle)
+        return seed_states
+
+    @staticmethod
+    def set_seed_states(seed_states):
+        set_seed_states(seed_states)
