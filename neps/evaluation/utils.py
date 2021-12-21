@@ -209,7 +209,6 @@ def get_train_val_test_loaders(
     dataset: str,
     data,
     batch_size: int,
-    seed: int,
     train_portion: float = 0.8,
     num_workers: int = 8,
     eval_mode: bool = False,
@@ -270,19 +269,16 @@ def get_train_val_test_loaders(
             batch_size=int(batch_size),
             shuffle=False,
             num_workers=num_workers,
-            worker_init_fn=np.random.seed(seed),
         )
         valid_loader = torch.utils.data.DataLoader(
             dataset=valid_dataset,
             batch_size=int(batch_size),
             num_workers=num_workers,
-            worker_init_fn=np.random.seed(seed),
         )
         test_loader = torch.utils.data.DataLoader(
             dataset=test_dataset,
             batch_size=int(batch_size),
             num_workers=num_workers,
-            worker_init_fn=np.random.seed(seed),
         )
         return train_loader, valid_loader, test_loader
     else:
@@ -294,7 +290,6 @@ def get_train_val_test_loaders(
             batch_size=batch_size,
             pin_memory=True,
             num_workers=num_workers,
-            worker_init_fn=np.random.seed(seed),
         )
         valid_loader = None
     else:
@@ -307,7 +302,6 @@ def get_train_val_test_loaders(
             sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
             pin_memory=True,
             num_workers=num_workers,
-            worker_init_fn=np.random.seed(seed),
         )
 
         valid_loader = torch.utils.data.DataLoader(
@@ -318,7 +312,6 @@ def get_train_val_test_loaders(
             ),
             pin_memory=False,
             num_workers=num_workers,
-            worker_init_fn=np.random.seed(seed),
         )
         valid_loader.dataset.transform = valid_transform
 
@@ -328,7 +321,6 @@ def get_train_val_test_loaders(
         shuffle=False,
         pin_memory=False,
         num_workers=num_workers,
-        worker_init_fn=np.random.seed(seed),
     )
 
     return train_loader, valid_loader, test_loader
