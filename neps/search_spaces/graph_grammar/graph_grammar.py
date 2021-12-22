@@ -89,7 +89,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.id = self.string_tree
         self.create_representation(self.string_tree)
 
-    def create_representation(self, string_tree: str):
+    def create_representation(self, string_tree: str): # todo relevant code for conversion
         self.value = (
             self.create_nx_tree(string_tree)
             if self.id_parse_tree
@@ -98,14 +98,14 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                 self.grammars[0],
                 terminal_to_graph_edges=self.terminal_to_graph_repr,
                 valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,
+                edge_attr=self.edge_attr,      # set to false for node attribute
             )
         )
 
     def create_from_id(self, identifier: str):
         self.id = identifier
         self.string_tree = self.id
-        self.create_representation(self.string_tree)
+        self.create_representation(self.string_tree) #todo relevant for conversion
 
     def mutate(
         self,
