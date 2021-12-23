@@ -37,6 +37,10 @@ jupyter = "^1.0"
 pre-commit = "^2.10"
 pytest = "^6.2.5"
 
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.black]
 line-length = 90
 target-version = ['py37']
@@ -99,7 +103,3 @@ enable = [
     'invalid-getnewargs-ex-returned','super-with-arguments','deprecated-class','invalid-class-object',
     'unused-private-member',
 ]
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
