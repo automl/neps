@@ -171,7 +171,7 @@ class ComprehensiveGP:
 
         if optimizer_kwargs is None:
             optimizer_kwargs = {"lr": 0.1}
-        if len(wl_subtree_candidates):
+        if len(wl_subtree_candidates) > 0:
             self._optimize_graph_kernels(
                 wl_subtree_candidates,
                 wl_lengthscales,
