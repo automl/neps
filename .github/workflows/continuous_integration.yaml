@@ -2,7 +2,7 @@ name: Continuous Integration
 on: workflow_dispatch
 
 jobs:
-  ci:
+  continuous_integration:
     strategy:
       fail-fast: false
       matrix:
