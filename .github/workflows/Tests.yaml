@@ -2,7 +2,7 @@ name: Continuous Integration
 on: workflow_dispatch
 
 jobs:
-  continuous_integration:
+  tests:
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +25,6 @@ jobs:
       - name: Run poetry install
         run: poetry install
 
-      - name: Pytest
+      - name: Run pytest
         timeout-minutes: 10
         run: poetry run pytest
