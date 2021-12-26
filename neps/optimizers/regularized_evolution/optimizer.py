@@ -1,6 +1,8 @@
 import random
 from collections import deque
 
+from typing_extensions import Deque
+
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
@@ -24,8 +26,8 @@ class RegularizedEvolution(Optimizer):
         self.search_space = pipeline_space
         self.random_sampler = RandomSampler(pipeline_space)
 
-        self.population = deque()
-        self.history = deque()
+        self.population: Deque = deque()
+        self.history: Deque = deque()
         self.tmp_counter = 0
 
     def get_config(self):

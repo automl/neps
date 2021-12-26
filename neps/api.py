@@ -26,7 +26,7 @@ def run(
     nic_name="lo",
     do_live_logging=False,
     overwrite_logging=False,
-    use_new_metahyper=False,
+    use_new_metahyper: bool = False,
     **searcher_kwargs,  # pylint: disable=unused-argument
 ):
     if not isinstance(pipeline_space, SearchSpace):
@@ -40,7 +40,7 @@ def run(
     if searcher == "bayesian_optimization":
         sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
     elif searcher == "random_search":
-        sampler = RandomSearch(pipeline_space=pipeline_space)
+        sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
     else:
         raise ValueError
 

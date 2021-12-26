@@ -31,6 +31,7 @@ path = "^16.2.0"
 termcolor = "^1.1.0"
 fvcore = "^0.1.5"
 torchvision = "0.10.0"
+typing-extensions = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
@@ -51,6 +52,28 @@ line_length = 90
 
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir"
+
+[tool.mypy]
+files = ["neps"]
+namespace_packages = true
+follow_imports = "skip"
+ignore_missing_imports = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+  "neps.optimizers.bayesian_optimization.utils.*",
+  "neps.optimizers.bayesian_optimization.models.*",
+  "neps.optimizers.bayesian_optimization.kernels.*",
+  "neps.optimizers.bayesian_optimization.acqusition_functions.*",
+  "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
+  "neps.search_spaces.graph_grammar.*",
+  "neps.search_spaces.graph_dense.*",
+  "neps.search_spaces.numerical.*",
+  "neps.utils.util",
+  "neps.evaluation.*",
+]
+ignore_errors = true
 
 [tool.pylint.messages_control]
 disable = 'all'

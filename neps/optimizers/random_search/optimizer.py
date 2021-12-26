@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import random
-from typing import Tuple
 
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
@@ -10,7 +11,7 @@ from ..optimizer import Optimizer
 class RandomSearch(Optimizer):
     def __init__(self, pipeline_space, return_opt_details: bool = False):
         super().__init__()
-        self.sampled_idx = []
+        self.sampled_idx: list = []
         self.return_opt_details = return_opt_details
         self.surrogate_model = None
         self.random_sampler = RandomSampler(pipeline_space)
@@ -23,7 +24,7 @@ class RandomSearch(Optimizer):
 
     def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
-    ) -> Tuple[Tuple, dict]:
+    ) -> tuple[list, dict | None]:
         # create candidate pool
         pool = self.random_sampler.sample(n_candidates)
 
@@ -47,3 +48,9 @@ class RandomSearch(Optimizer):
         #
         # config = job.kwargs["config"]
         pass
+
+    def get_config_and_ids(self):
+        raise NotImplementedError
+
+    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+        raise NotImplementedError

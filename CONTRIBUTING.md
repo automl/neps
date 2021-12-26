@@ -149,12 +149,24 @@ There are two options:
 - Disable the warning locally:
 
   ```python
-  code = "foo"  # pylint: disable=bar
+  code = "foo"  # pylint: disable=ERROR_CODE
   ```
 
   Make sure to use the named version of the error (e.g., `unspecified-encoding`, not `W1514`).
 
 - Remove warning in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
+
+### Mypy: Ignore warnings
+
+There are two options:
+
+- Disable the warning locally:
+
+  ```python
+  code = "foo"  # type: ignore[ERROR_CODE]
+  ```
+
+- If you know what you are doing, you can add the whole module to the `[[tool.mypy.overrides]]` section.
 
 ### Black: Do not format code parts
 

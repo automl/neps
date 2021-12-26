@@ -42,6 +42,15 @@ repos:
       - mdformat-beautysh
       - mdformat-black
 
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.921
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-six
+          - types-tabulate
+          - types-termcolor
+
   - repo: https://github.com/PyCQA/pylint
     rev: v2.12.2
     hooks:

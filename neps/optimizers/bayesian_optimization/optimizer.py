@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import inspect
 import random
-from typing import Iterable, Tuple, Union
+from typing import Iterable
 
 import numpy as np
 import torch
@@ -85,7 +87,9 @@ class BayesianOptimization(Optimizer):
             acquisition_function_opt_cls = AcquisitionOptimizerMapping[
                 acquisition_opt_strategy
             ]
-            arg_names, _ = _get_args_and_defaults(acquisition_function_opt_cls.__init__)
+            arg_names, _ = _get_args_and_defaults(
+                acquisition_function_opt_cls.__init__  # type: ignore[misc]
+            )
             if not all(k in arg_names for k in acquisition_opt_strategy_args.keys()):
                 raise ValueError("Parameter mismatch")
             self.acqusition_function_opt = acquisition_function_opt_cls(
@@ -106,12 +110,12 @@ class BayesianOptimization(Optimizer):
 
         self.random_sampler = RandomSampler(self.acqusition_function_opt.search_space)
 
-        self.train_x = []
-        self.train_y = []
+        self.train_x: list = []
+        self.train_y: Iterable | torch.Tensor = []
 
-        self.pending_evaluations = []
+        self.pending_evaluations: list = []
 
-    def _initialize_model(self, x_configs: Iterable, y: Union[Iterable, torch.Tensor]):
+    def _initialize_model(self, x_configs: list, y: Iterable | torch.Tensor):
         """Initializes the surrogate model and acquisition function (optimizer).
 
         Note: please do not remove this function or change its functionality!
@@ -136,8 +140,8 @@ class BayesianOptimization(Optimizer):
 
     def _update_model(
         self,
-        x_configs: Iterable,
-        y: Iterable,
+        x_configs: list,
+        y: Iterable | torch.Tensor,
     ) -> None:
         """Updates the surrogate model and updates the acquisiton function (optimizer).
 
@@ -175,7 +179,7 @@ class BayesianOptimization(Optimizer):
 
     def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
-    ) -> Union[Iterable, Tuple[Iterable, dict]]:
+    ) -> Iterable | tuple[Iterable, dict]:
         """Proposes new locations.
 
         Note: please do not remove this function or change its functionality!
@@ -248,9 +252,7 @@ class BayesianOptimization(Optimizer):
         config = self.get_config()
         return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
 
-    def load_results(
-        self, previous_results: Iterable, pending_evaluations: Iterable
-    ) -> None:
+    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         self.train_x = [el.config for el in previous_results.values()]
         self.train_y = [el.result["loss"] for el in previous_results.values()]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
