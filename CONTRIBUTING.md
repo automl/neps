@@ -184,6 +184,11 @@ y = x + 1
 # fmt: on
 ```
 
+### MkDocs
+
+See [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/).
+Before running any commands, best `cd docs`.
+
 ### Editorconfig
 
 [Editorconfig](https://editorconfig.org/) allows to set line lengths and other display parameters automatically based on a `.editorconfig` file.
