@@ -37,6 +37,7 @@ typing-extensions = "^4.0.1"
 jupyter = "^1.0"
 pre-commit = "^2.10"
 pytest = "^6.2.5"
+mypy = "^0.930"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
