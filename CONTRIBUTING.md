@@ -167,6 +167,7 @@ There are two options:
   ```
 
 - If you know what you are doing, you can add the whole module to the `[[tool.mypy.overrides]]` section.
+  This is useful e.g., when adding new files that are in early stage development.
 
 ### Black: Do not format code parts
 
