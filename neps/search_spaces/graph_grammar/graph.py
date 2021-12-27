@@ -122,7 +122,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         # across different Graph instances.
 
         # self._nxgraph.edge_attr_dict_factory = lambda: EdgeData()
-        self.edge_attr_dict_factory = EdgeData()
+        self.edge_attr_dict_factory = lambda: EdgeData()  # pylint: disable=W0108
 
         # Replace the default dicts at the nodes to include `input` from the beginning.
         # `input` is required for storing the results of incoming edges.
