@@ -4,7 +4,7 @@ Neural Pipeline Search helps deep learning experts find the best neural pipeline
 
 ![Python versions](https://img.shields.io/badge/python-3.7-informational)
 [![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
-[![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl-private/neps/actions)
+[![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
 ## Installation
 
