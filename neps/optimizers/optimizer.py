@@ -4,12 +4,12 @@ from abc import abstractmethod
 
 
 class Optimizer:
-    
+
     # Old metahyper API
     @abstractmethod
     def new_result(self, job):
         raise NotImplementedError
-        
+
     # Old metahyper API
     @abstractmethod
     def get_config(self):
