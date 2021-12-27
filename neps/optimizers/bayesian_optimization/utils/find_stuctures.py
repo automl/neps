@@ -48,10 +48,10 @@ def find_wl_feature(
     len_feat_map = [len(f) for f in feat_map.values()]
     try:
         idx = list(kernel.feature_map(flatten=True).values()).index(feature[0])
-    except KeyError:
+    except KeyError as _error:
         raise KeyError(
             "Feature " + str(feature) + " is not found in the training set of the kernel!"
-        )
+        ) from _error
     embedding = kernel.kern.transform(test, return_embedding_only=True)
     for i, em in enumerate(embedding):
         embedding[i] = em.flatten()[: len_feat_map[i]]

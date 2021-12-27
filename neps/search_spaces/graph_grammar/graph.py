@@ -122,7 +122,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         # across different Graph instances.
 
         # self._nxgraph.edge_attr_dict_factory = lambda: EdgeData()
-        self.edge_attr_dict_factory = lambda: EdgeData()
+        self.edge_attr_dict_factory = EdgeData()
 
         # Replace the default dicts at the nodes to include `input` from the beginning.
         # `input` is required for storing the results of incoming edges.
@@ -328,7 +328,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 if self.in_degree(node_idx) == 0:
                     self.nodes[node_idx]["input"] = {0: x[next(input_node_iterator)]}
 
-    def forward(self, x, *args):
+    def forward(self, x, *args):  # pylint: disable=W0613
         """
         Forward some data through the graph. This is done recursively
         in case there are graphs defined on nodes or as 'op' on edges.
@@ -416,7 +416,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
     def to_pytorch(self, write_out: bool = False):
         def _import_code(code: str, name: str):
             module = types.ModuleType(name)
-            exec(code, module.__dict__)  # pylint disable=exec-used
+            exec(code, module.__dict__)  # pylint: disable=exec-used
             return module
 
         if not self.is_parsed:
@@ -520,13 +520,13 @@ class Graph(torch.nn.Module, nx.DiGraph):
             module_model = _import_code(model_file, "model")
             model = module_model.Model()
         except Exception as e:
-            raise Exception(e)
+            raise Exception(e) from e
 
         model.set_module_list(submodule_list)
 
         if write_out:
             tmp_path = Path(os.path.dirname(os.path.realpath(__file__))) / "model.py"
-            with open(tmp_path, "w") as outfile:
+            with open(tmp_path, "w", encoding="utf-8") as outfile:
                 outfile.write(model_file)
 
         return model
@@ -581,10 +581,10 @@ class Graph(torch.nn.Module, nx.DiGraph):
 
         # unparse possible child graphs
         # be careful with copying/deepcopying here cause of shared edge data
-        for n, data in graph_nodes.data():
+        for _, data in graph_nodes.data():
             if "subgraph" in data:
                 data["subgraph"] = data["subgraph"].unparse()
-        for u, v, data in graph_edges.data():
+        for _, _, data in graph_edges.data():
             if isinstance(data.op, Graph):
                 data.set("op", data.op.unparse())
 
@@ -597,7 +597,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         g.input_node_idxs = self.input_node_idxs
         g.scope = self.scope
         g.is_parsed = False
-        g._id = self._id
+        g._id = self._id  # pylint: disable=W0212
         g.OPTIMIZER_SCOPE = self.OPTIMIZER_SCOPE
         g.QUERYABLE = self.QUERYABLE
 
@@ -620,29 +620,35 @@ class Graph(torch.nn.Module, nx.DiGraph):
             node_data = self.nodes[node_idx]
             if "subgraph" in node_data:
                 graphs.append(node_data["subgraph"])
-                graphs.append(node_data["subgraph"]._get_child_graphs())
+                graphs.append(
+                    node_data["subgraph"]._get_child_graphs()  # pylint: disable=W0212
+                )
 
         for _, _, edge_data in self.edges.data():
             if isinstance(edge_data.op, Graph):
                 graphs.append(edge_data.op)
-                graphs.append(edge_data.op._get_child_graphs())
+                graphs.append(edge_data.op._get_child_graphs())  # pylint: disable=W0212
             elif isinstance(edge_data.op, list):
                 for op in edge_data.op:
                     if isinstance(op, Graph):
                         graphs.append(op)
-                        graphs.append(op._get_child_graphs())
+                        graphs.append(op._get_child_graphs())  # pylint: disable=W0212
             elif isinstance(edge_data.op, AbstractPrimitive):
                 # maybe it is an embedded op?
                 embedded_ops = edge_data.op.get_embedded_ops()
                 if embedded_ops is not None:
                     if isinstance(embedded_ops, Graph):
                         graphs.append(embedded_ops)
-                        graphs.append(embedded_ops._get_child_graphs())
+                        graphs.append(
+                            embedded_ops._get_child_graphs()  # pylint: disable=W0212
+                        )
                     elif isinstance(embedded_ops, list):
                         for child_op in edge_data.op.get_embedded_ops():
                             if isinstance(child_op, Graph):
                                 graphs.append(child_op)
-                                graphs.append(child_op._get_child_graphs())
+                                graphs.append(
+                                    child_op._get_child_graphs()  # pylint: disable=W0212
+                                )
                     else:
                         logger.debug(
                             "Got embedded op, but is neither a graph nor a list: {}".format(
@@ -653,7 +659,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 assert not issubclass(
                     edge_data.op, Graph
                 ), "Found non-initialized graph. Abort."
-                pass  # we look at an uncomiled op
+                # we look at an uncomiled op
             else:
                 raise ValueError(f"Unknown format of op: {edge_data.op}")
 
@@ -692,7 +698,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 or graph.scope == scope
                 or (isinstance(scope, list) and graph.scope in scope)
             ):
-                for u, v, edge_data in graph.edges.data():
+                for _, _, edge_data in graph.edges.data():
                     if edge_data.has(key):
                         result.append(edge_data[key])
         return result
@@ -713,7 +719,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         """
         for graph in self._get_child_graphs(single_instances=False) + [self]:
             logger.debug(f"Compiling graph {graph.name}")
-            for u, v, edge_data in graph.edges.data():
+            for _, v, edge_data in graph.edges.data():
                 if not edge_data.is_final():
                     attr = edge_data.to_dict()
                     op = attr.pop("op")
@@ -743,6 +749,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     else:
                         raise ValueError(f"Unkown format of op: {op}")
 
+    @staticmethod
     def _verify_update_function(update_func: callable, private_edge_data: bool):
         """
         Verify that the update function actually modifies only
@@ -764,7 +771,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         try:
             result = test.clone()
             update_func(current_edge_data=result)
-        except:
+        except Exception:
             log_first_n(
                 logging.WARN,
                 "Update function could not be veryfied. Be cautious with the "
@@ -778,13 +785,13 @@ class Graph(torch.nn.Module, nx.DiGraph):
         ), "Update function does not return the edge data object."
 
         if private_edge_data:
-            assert result._shared == test._shared, (
+            assert result._shared == test._shared, (  # pylint: disable=W0212
                 "The update function changes shared data although `private_edge_data` set to True. "
                 "This is not the indended use of `update_edges`. The update function should only modify "
                 "private edge data."
             )
         else:
-            assert result._private == test._private, (
+            assert result._private == test._private, (  # pylint: disable=W0212
                 "The update function changes private data although `private_edge_data` set to False. "
                 "This is not the indended use of `update_edges`. The update function should only modify "
                 "shared edge data."
@@ -938,7 +945,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
         discretization is happening, e.g. DARTS. In such chases this should
         be defined in the search space, so all optimizers can call it.
         """
-        pass
 
     def prepare_evaluation(self):
         """
@@ -946,7 +952,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
         one. An example is where the makro_model is extended to increase the
         parameters. This is done here.
         """
-        pass
 
     @abstractmethod
     def sample(self):
@@ -997,7 +1002,7 @@ class EdgeData:
     in a dict-like fashion with `[key]`. To set a new item use `.set()`.
     """
 
-    def __init__(self, data={}):
+    def __init__(self, data: dict = None):
         """
         Initializes a new EdgeData object.
         'op' is set as Identity() and private by default
@@ -1005,6 +1010,8 @@ class EdgeData:
         Args:
             data (dict): Inject some initial data. Will be always private.
         """
+        if data is None:
+            data = {}
         self._private = {}
         self._shared = {}
 
@@ -1029,10 +1036,7 @@ class EdgeData:
 
         """
         assert not key.startswith("_"), "Access to private keys not allowed!"
-        if key in self._private.keys() or key in self._shared.keys():
-            return True
-        else:
-            return False
+        return key in self._private.keys() or key in self._shared.keys()
 
     def __getitem__(self, key: str):
         assert not str(key).startswith("_"), "Access to private keys not allowed!"
@@ -1116,15 +1120,15 @@ class EdgeData:
                 items, but shallow shared items.
         """
         new_self = EdgeData()
-        new_self._private = copy.deepcopy(self._private)
-        new_self._shared = self._shared
+        new_self._private = copy.deepcopy(self._private)  # pylint: disable=W0212
+        new_self._shared = self._shared  # pylint: disable=W0212
 
         # we need to handle copy of graphs seperately
         for k, v in self._private.items():
             if isinstance(v, Graph):
-                new_self._private[k] = v.copy()
+                new_self._private[k] = v.copy()  # pylint: disable=W0212
             elif isinstance(v, list):
-                new_self._private[k] = [
+                new_self._private[k] = [  # pylint: disable=W0212
                     i.copy() if isinstance(i, Graph) else i for i in v
                 ]
 

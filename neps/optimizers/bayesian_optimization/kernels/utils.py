@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 def get_dataset_attributes(
-    Gn, target=None, attr_names=[], node_label=None, edge_label=None
+    Gn, target=None, attr_names: list = None, node_label=None, edge_label=None
 ):
     """Returns the structure and property information of the graph dataset Gn.
     Parameters
@@ -60,6 +60,8 @@ def get_dataset_attributes(
     attrs : dict
         Value for each property.
     """
+    if attr_names is None:
+        attr_names = []
     attrs = {}
 
     def get_dataset_size(Gn):
@@ -89,7 +91,7 @@ def get_dataset_attributes(
     def get_max_edge_num(all_edge_num):
         return np.amax(all_edge_num)
 
-    def is_node_labeled(Gn):
+    def is_node_labeled(Gn):  # pylint: disable=W0613
         return False if node_label is None else True
 
     def get_node_label_num(Gn):
@@ -98,7 +100,7 @@ def get_dataset_attributes(
             nl = nl | set(nx.get_node_attributes(G, node_label).values())
         return len(nl)
 
-    def is_edge_labeled(Gn):
+    def is_edge_labeled(Gn):  # pylint: disable=W0613
         return False if edge_label is None else True
 
     def get_edge_label_num(Gn):
@@ -312,7 +314,6 @@ def parallel_me(
     itr_desc="",
     verbose=True,
 ):
-    """"""
     if method == "imap_unordered":
         if glbv:  # global varibles required.
             #            def init_worker(v_share):
@@ -486,7 +487,7 @@ class S2VGraph:
         ):  # Node tag is not supplied - use degree of each node as the node tag
             try:
                 node_tags = list(nx.get_node_attributes(self.g, "op_name").values())
-            except:
+            except Exception:
                 node_tags = [self.g.degree[i] for i in self.g.nodes]
         else:
             node_tags = np.array(self.node_tags).flatten()
@@ -495,7 +496,7 @@ class S2VGraph:
             b = np.zeros(
                 (len(self.g.nodes), max(int(np.max(node_tags) + 1), self.max_node_tag))
             ).astype(int)
-        except:
+        except Exception:
             print("hold")
         b[np.arange(node_tags.size), node_tags] = 1
         return b

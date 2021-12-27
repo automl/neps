@@ -131,17 +131,20 @@ class NASBOTDistance(GraphKernels):
             self._train_x = gr[:]
         return K
 
-    def transform(self, gr: list, l: float = None, **kwargs):
+    def transform(self, gr: list, l: float = None, **kwargs):  # pylint: disable=W0613
         if self._gram is None:
             raise ValueError("The kernel has not been fitted. Run fit_transform first")
         n = len(gr)
         K = torch.zeros((len(self._train_x), n))
-        for i in range(len(self._train_x)):
+        for i, _ in enumerate(self._train_x):
             for j in range(n):
                 K[i, j] = self._compute_kernel(
                     self._compute_dist(self._train_x[i], gr[j]), l
                 )
         return K
+
+    def forward_t(self, gr2, gr1: list = None):
+        return super().forward_t(gr2, gr1=gr1)
 
 
 class AdjacencyDistance(
@@ -169,7 +172,10 @@ class PathDistance(NASBOTDistance):
         for _, attr in g.nodes(data=True):
             ops.append(attr[self.node_name])
         for j in range(0, NUM_VERTICES):
-            paths.append([[]]) if matrix[0][j] else paths.append([])
+            if matrix[0][j]:
+                paths.append([[]])
+            else:
+                paths.append([])
 
         # create paths sequentially
         for i in range(1, NUM_VERTICES - 1):

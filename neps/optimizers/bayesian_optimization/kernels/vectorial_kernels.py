@@ -16,7 +16,7 @@ class Stationary:
         self._train = None
         self.outputscale = outputscale
 
-    def forward(self, x1, x2=None, l=None, **params):
+    def forward(self, x1, x2=None, l=None, **params):  # pylint: disable=W0613
         if l is not None:
             return _scaled_distance(l, x1, x2)
         return _scaled_distance(self.lengthscale, x1, x2)
@@ -64,7 +64,7 @@ class Stationary:
 
 
 class RBFKernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):
+    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
         if l is None:
             dist_sq = _scaled_distance(self.lengthscale, x1, x2, sq_dist=True)
         else:
@@ -100,7 +100,7 @@ class LayeredRBFKernel(RBFKernel):
 
 
 class Matern32Kernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):
+    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
         if l is None:
             dist = _scaled_distance(
                 self.lengthscale,
@@ -121,7 +121,7 @@ class Matern32Kernel(Stationary):
 
 
 class Matern52Kernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):
+    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
         if l is None:
             dist = _scaled_distance(
                 self.lengthscale,
@@ -149,7 +149,7 @@ class Matern52Kernel(Stationary):
 
 
 class HammingKernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):
+    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
         if l is None:
             dist = _hamming_distance(
                 self.lengthscale,
@@ -175,7 +175,7 @@ class RationalQuadraticKernel(Stationary):
         super().__init__(lengthscale, outputscale, **kwargs)
         self.power = power
 
-    def forward(self, x1, x2=None, **kwargs):
+    def forward(self, x1, x2=None, **kwargs):  # pylint: disable=W0613
         dist_sq = _scaled_distance(self.lengthscale, x1, x2, sq_dist=True)
         return self.outputscale * (1 + dist_sq / 2.0) ** (-self.power)
 

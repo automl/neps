@@ -19,13 +19,13 @@ class FloatParameter(NumericalParameter):
         self.upper = float(upper)
 
         if self.lower >= self.upper:
-            raise ValueError(f"Float parameter: bounds error (lower >= upper).")
+            raise ValueError("Float parameter: bounds error (lower >= upper).")
 
         self.log = log
 
         if self.log:
             if self.lower <= 0:
-                raise ValueError(f"Float parameter: bounds error (log scale).")
+                raise ValueError("Float parameter: bounds error (log scale).")
             self._lower = np.log(self.lower)
             self._upper = np.log(self.upper)
 
@@ -106,13 +106,13 @@ class FloatParameter(NumericalParameter):
 
     def _transform(self):
         if self.value != self.value:
-            raise ValueError(f"Float parameter value is NaN!")
+            raise ValueError("Float parameter value is NaN!")
 
         self.value = (self.value - self.lower) / (self.upper - self.lower)
 
     def _inv_transform(self):
         if self.value != self.value:
-            raise ValueError(f"Float parameter value is NaN!")
+            raise ValueError("Float parameter value is NaN!")
 
         self.value = self.value * (self.upper - self.lower) + self.lower
 

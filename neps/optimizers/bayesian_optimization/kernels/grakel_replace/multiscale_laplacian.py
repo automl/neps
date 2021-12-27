@@ -14,7 +14,6 @@ from numpy.linalg import eig, eigvals, inv, multi_dot
 from scipy.sparse.csgraph import laplacian
 
 # Python 2/3 cross-compatibility import
-from six import iteritems
 from sklearn.utils import check_random_state
 
 positive_eigenvalue_limit = float("+1e-6")
@@ -188,11 +187,11 @@ class MultiscaleLaplacianFast(Kernel):
                 try:
                     phi = np.array([[phi_d[i]] for i in range(A.shape[0])])
                     # phi = np.array([list(phi_d[i]) for i in range(A.shape[0])])
-                except TypeError:
+                except TypeError as _error:
                     raise TypeError(
                         "Features must be iterable and castable "
                         "in total to a numpy array."
-                    )
+                    ) from _error
 
                 Lap = laplacian(A).astype(float)
                 _increment_diagonal_(Lap, self.heta)
@@ -463,11 +462,11 @@ class MultiscaleLaplacian(Kernel):
                 N = x.produce_neighborhoods(r=self.L, sort_neighbors=False)
                 try:
                     phi = np.array([list(phi_d[i]) for i in range(A.shape[0])])
-                except TypeError:
+                except TypeError as _error:
                     raise TypeError(
                         "Features must be iterable and castable "
                         + "in total to a numpy array."
-                    )
+                    ) from _error
                 phi_outer = np.dot(phi, phi.T)
 
                 Lap = laplacian(A).astype(float)

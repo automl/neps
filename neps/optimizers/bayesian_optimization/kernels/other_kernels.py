@@ -68,6 +68,9 @@ class RandomWalk(GraphKernels):
     def transform_t(self, *args):
         raise NotImplementedError
 
+    def forward_t(self, gr2, gr1: list = None):
+        return super().forward_t(gr2, gr1=gr1)
+
 
 class ShortestPath(RandomWalk):
     def __init__(self, sp_algo="auto", node_label="op_name", **kwargs):
@@ -79,3 +82,6 @@ class ShortestPath(RandomWalk):
         )  # For use in Gaussian Process, normalize is required
         self.__name__ = "RandomWalk"
         self._gram, self._train = None, None
+
+    def transform_t(self, *args):
+        return super().transform_t(*args)

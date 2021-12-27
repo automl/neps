@@ -269,7 +269,7 @@ class Grammar(CFG):
                     # Helpful error message while still showing the recursion stack.
                     raise RuntimeError(
                         "The grammar has rule(s) that yield infinite recursion!!"
-                    )
+                    ) from _error
                 else:
                     raise
         else:
@@ -576,7 +576,7 @@ class DepthConstrainedGrammar(Grammar):
 
         if len(productions) == 0:
             raise Exception(
-                f"There can be no word sampled! This is due to the grammar and/or constraints."
+                "There can be no word sampled! This is due to the grammar and/or constraints."
             )
 
         # sample
@@ -703,7 +703,7 @@ if __name__ == "__main__":
 
     # simple arithmetic grammar
     search_space_path = dir_path / ".." / "debug_grammars" / "simple_arithmetic.cfg"
-    with open(search_space_path) as f:
+    with open(search_space_path, encoding="utf-8") as f:
         productions = f.read()
 
     grammar = Grammar.fromstring(productions)
@@ -725,7 +725,7 @@ if __name__ == "__main__":
 
     # SMILES grammar
     search_space_path = dir_path / ".." / "debug_grammars" / "SMILES.cfg"
-    with open(search_space_path) as f:
+    with open(search_space_path, encoding="utf-8") as f:
         productions = f.read()
     grammar = Grammar.fromstring(productions)
     # sample a short sequences

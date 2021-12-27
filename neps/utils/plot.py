@@ -129,20 +129,22 @@ def plot_losses(
     incumbent_trajectories,
     regret=True,
     incumbent=None,
-    show=True,
+    show=True,  # pylint: disable=W0613
     linewidth=1,
     marker_size=3,
-    xscale="log",
-    xlabel="wall clock time [s]",
-    yscale="log",
+    xscale="log",  # pylint: disable=W0613
+    xlabel="wall clock time [s]",  # pylint: disable=W0613
+    yscale="log",  # pylint: disable=W0613
     ylabel=None,
-    legend_loc="best",
-    xlim=None,
-    ylim=None,
+    legend_loc="best",  # pylint: disable=W0613
+    xlim=None,  # pylint: disable=W0613
+    ylim=None,  # pylint: disable=W0613
     plot_mean=True,
-    labels={},
-    figsize=(16, 9),
+    labels=None,
+    figsize=(16, 9),  # pylint: disable=W0613
 ):
+    if labels is None:
+        labels = {}
     if regret:
         if ylabel is None:
             ylabel = "regret"

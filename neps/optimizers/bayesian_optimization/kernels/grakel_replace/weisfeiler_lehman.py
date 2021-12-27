@@ -12,7 +12,6 @@ import numpy as np
 import torch
 from grakel.graph import Graph
 from grakel.kernels import Kernel
-from six import iteritems, itervalues
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
@@ -121,12 +120,12 @@ class WeisfeilerLehman(Kernel):
             else:
                 try:
                     base_graph_kernel, params = base_graph_kernel
-                except Exception:
+                except Exception as _error:
                     raise TypeError(
                         "Base kernel was not formulated in "
                         "the correct way. "
                         "Check documentation."
-                    )
+                    ) from _error
 
                 if not (
                     type(base_graph_kernel) is type  # pylint: disable=C0123

@@ -11,7 +11,7 @@ class ComprehensiveUpperConfidentBound(BaseAcquisition):
     Graph version of the upper confidence bound acquisition function
     """
 
-    def __init__(self, surrogate_model, beta=None, iters=0):
+    def __init__(self, surrogate_model, beta=None):
         """Same as graphEI with the difference that a beta coefficient is asked for, as per standard GP-UCB acquisition"""
         super().__init__(surrogate_model=surrogate_model)
 
@@ -33,5 +33,4 @@ class ComprehensiveUpperConfidentBound(BaseAcquisition):
     def propose_location(
         self, candidates: Iterable, top_n: int = 5, return_distinct: bool = True
     ) -> Tuple[Iterable, np.ndarray, np.ndarray]:
-        self.iters += 1
         raise NotImplementedError

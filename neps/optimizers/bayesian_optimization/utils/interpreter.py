@@ -131,7 +131,7 @@ class Interpreter:
         # for n in range(len(X_s)):
         #     X_s.nodes[n]['color'] = 'gray'
 
-        def _process(X_s, match_set, is_good):
+        def _process(X_s, match_set):
             special_edges = []
             special_nodes = []
             for i in match_set:
@@ -146,11 +146,11 @@ class Interpreter:
                     )
                     print(gm.subgraph_is_isomorphic())
                     mapping = gm.mapping
-                    if not len(mapping):
+                    if not bool(mapping):
                         draw_graph(X_s)
                         draw_graph(f)
                     rev_mapping = {v: k for k, v in mapping.items()}
-                    if len(mapping):
+                    if bool(mapping):
                         root_node = rev_mapping[0]
                         special_edges += [
                             (root_node, m) for m in list(mapping.keys())[1:]
@@ -182,9 +182,9 @@ class Interpreter:
         pos = graphviz_layout(X_s)
         special_edges = []
         special_nodes = []
-        if len(bad_match):
+        if bool(bad_match):
             X_s, sn, se = _process(X_s, bad_match, False)
-            if len(se):
+            if bool(se):
                 nx.draw_networkx_edges(
                     X_s,
                     pos,
@@ -195,7 +195,7 @@ class Interpreter:
                     style="dashed",
                 )
                 special_edges += se
-            if len(sn):
+            if bool(sn):
                 nodes = nx.draw_networkx_nodes(
                     sn,
                     pos,
@@ -205,9 +205,9 @@ class Interpreter:
                 nodes.set_edgecolor("red")
                 special_nodes += sn
 
-        if len(good_match):
+        if bool(good_match):
             X_s, sn, se = _process(X_s, good_match, True)
-            if len(se):
+            if bool(se):
                 nx.draw_networkx_edges(
                     X_s,
                     pos,
@@ -218,7 +218,7 @@ class Interpreter:
                     style="dashed",
                 )
                 special_edges += se
-            if len(sn):
+            if bool(sn):
                 nodes = nx.draw_networkx_nodes(
                     sn,
                     pos,

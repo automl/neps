@@ -99,3 +99,6 @@ class MultiscaleLaplacian(GraphKernels):
         if self.return_tensor:
             K = torch.tensor(K)
         return K
+
+    def forward_t(self, gr2, gr1: list = None):
+        return super().forward_t(gr2, gr1=gr1)

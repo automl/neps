@@ -147,7 +147,8 @@ def get_config_from_args(args=None, config_type="nas"):
     if config_type == "nas":
         # load the default base
         with open(
-            os.path.join(get_project_root(), "defaults", "darts_defaults.yaml")
+            os.path.join(get_project_root(), "defaults", "darts_defaults.yaml"),
+            encoding="utf-8",
         ) as f:
             config = CfgNode.load_cfg(f)
     elif config_type == "predictor":
@@ -155,7 +156,8 @@ def get_config_from_args(args=None, config_type="nas"):
         with open(
             os.path.join(
                 get_project_root(), "benchmarks/predictors", "predictor_config.yaml"
-            )
+            ),
+            encoding="utf-8",
         ) as f:
             config = CfgNode.load_cfg(f)
     elif config_type == "nas_predictor":
@@ -164,7 +166,8 @@ def get_config_from_args(args=None, config_type="nas"):
         with open(
             os.path.join(
                 get_project_root(), "benchmarks/nas_predictors", "discrete_config.yaml"
-            )
+            ),
+            encoding="utf-8",
         ) as f:
             config = CfgNode.load_cfg(f)
     elif config_type == "oneshot":
@@ -173,7 +176,8 @@ def get_config_from_args(args=None, config_type="nas"):
                 get_project_root(),
                 "benchmarks/nas_predictors",
                 "nas_predictor_config.yaml",
-            )
+            ),
+            encoding="utf-8",
         ) as f:
             config = CfgNode.load_cfg(f)
 
@@ -510,7 +514,7 @@ def get_last_checkpoint(config, search=True):
         path = os.path.join(
             config.save, "search" if search else "eval", "last_checkpoint"
         )
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             checkpoint_name = f.readline()
         return os.path.join(config.save, "search" if search else "eval", checkpoint_name)
     except Exception:

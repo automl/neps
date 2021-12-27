@@ -41,13 +41,13 @@ class FeatureExtractor:
         """Identify the feature already implemented in the graph class"""
         try:
             res = getattr(self.g, item)
-        except AttributeError:
+        except AttributeError as _error:
             raise AttributeError(
                 "Item"
                 + str(item)
                 + " is not found either in the feature extractor nor the graph"
                 "instance!"
-            )
+            ) from _error
         if callable(res):
             return res()
         return res
@@ -83,8 +83,8 @@ class FeatureExtractor:
         if (
             len(paths) == 1
         ):  # if the list is a singlet (i.e. the S-T style graph), then return a scalar output only
-            return len(max(paths[0], key=lambda x: len(x)))
-        return [len(max(i, key=lambda x: len(x))) for i in paths]
+            return len(max(paths[0], key=lambda x: len(x)))  # pylint: disable=W0108
+        return [len(max(i, key=lambda x: len(x))) for i in paths]  # pylint: disable=W0108
 
     @property
     def degree_distribution(self, normalize=False):

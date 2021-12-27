@@ -248,7 +248,7 @@ class ResolutionGrammar(Grammar):
 
         if len(productions) == 0:
             raise Exception(
-                f"There can be no word sampled! This is due to the grammar and/or constraints."
+                "There can be no word sampled! This is due to the grammar and/or constraints."
             )
 
         # sample
