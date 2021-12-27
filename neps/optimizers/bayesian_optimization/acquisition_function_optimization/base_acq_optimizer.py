@@ -3,7 +3,7 @@ from typing import Iterable, Union
 
 import torch
 
-from ..acqusition_functions.base_acqusition import BaseAcquisition
+from ..acquisition_functions.base_acquisition import BaseAcquisition
 
 
 class AcquisitionOptimizer:

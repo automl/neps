@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
-from .base_acqusition import *
+from .base_acquisition import *
 from .ei import *
 from .ucb import *
 

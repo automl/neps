@@ -10,7 +10,7 @@ import torch
 from ..optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_function_optimization.random_sampler import RandomSampler
-from .acqusition_functions import AcquisitionMapping
+from .acquisition_functions import AcquisitionMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp import ComprehensiveGP
 
@@ -92,7 +92,7 @@ class BayesianOptimization(Optimizer):
             )
             if not all(k in arg_names for k in acquisition_opt_strategy_args.keys()):
                 raise ValueError("Parameter mismatch")
-            self.acqusition_function_opt = acquisition_function_opt_cls(
+            self.acquisition_function_opt = acquisition_function_opt_cls(
                 pipeline_space,
                 acquisition_function,
                 **acquisition_opt_strategy_args,
@@ -108,7 +108,7 @@ class BayesianOptimization(Optimizer):
         self.n_candidates = n_candidates
         self.return_opt_details = return_opt_details
 
-        self.random_sampler = RandomSampler(self.acqusition_function_opt.search_space)
+        self.random_sampler = RandomSampler(self.acquisition_function_opt.search_space)
 
         self.train_x: list = []
         self.train_y: Iterable | torch.Tensor = []
@@ -174,8 +174,8 @@ class BayesianOptimization(Optimizer):
             self.surrogate_model.fit(**self.surrogate_model_fit_args)
         else:
             self.surrogate_model.fit()
-        self.acqusition_function_opt.reset_surrogate_model(self.surrogate_model)
-        self.acqusition_function_opt.reset_XY(x=train_x, y=train_y)
+        self.acquisition_function_opt.reset_surrogate_model(self.surrogate_model)
+        self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
 
     def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
@@ -198,12 +198,12 @@ class BayesianOptimization(Optimizer):
 
         next_x = []
         if model_batch_size > 0:
-            model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
+            model_samples, pool, acq_vals = self.acquisition_function_opt.sample(
                 n_candidates, model_batch_size
             )
             next_x.extend(model_samples)
         elif self.return_opt_details:  # need to compute acq vals
-            model_samples, pool, acq_vals = self.acqusition_function_opt.sample(
+            model_samples, pool, acq_vals = self.acquisition_function_opt.sample(
                 n_candidates, 1
             )
         if batch_size - model_batch_size > 0:
@@ -240,7 +240,7 @@ class BayesianOptimization(Optimizer):
             if random.random() < self.random_interleave_prob:
                 config = self.random_sampler.sample(1)[0]
             else:
-                model_sample, _, _ = self.acqusition_function_opt.sample(
+                model_sample, _, _ = self.acquisition_function_opt.sample(
                     self.n_candidates, 1
                 )
                 config = model_sample[0]

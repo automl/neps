@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from ..acqusition_functions.base_acqusition import BaseAcquisition
+from ..acquisition_functions.base_acquisition import BaseAcquisition
 from .base_acq_optimizer import AcquisitionOptimizer
 from .random_sampler import RandomSampler
 
@@ -37,7 +37,7 @@ class MutationSampler(AcquisitionOptimizer):
         if batch_size is None:
             return pool
         if batch_size is not None and self.acquisition_function is None:
-            raise Exception(f"Mutation sampler has no acquisition function!")
+            raise Exception("Mutation sampler has no acquisition function!")
 
         samples, acq_vals, _ = self.acquisition_function.propose_location(
             top_n=batch_size, candidates=pool

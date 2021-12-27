@@ -3,7 +3,7 @@ from typing import Iterable, Tuple
 import numpy as np
 import torch
 
-from .base_acqusition import BaseAcquisition
+from .base_acquisition import BaseAcquisition
 
 
 class ComprehensiveUpperConfidentBound(BaseAcquisition):
@@ -13,7 +13,7 @@ class ComprehensiveUpperConfidentBound(BaseAcquisition):
 
     def __init__(self, surrogate_model, beta=None, iters=0):
         """Same as graphEI with the difference that a beta coefficient is asked for, as per standard GP-UCB acquisition"""
-        super().__init__(surrogate_model=surrogate_model, iters=iters)
+        super().__init__(surrogate_model=surrogate_model)
 
         self.beta = beta
 

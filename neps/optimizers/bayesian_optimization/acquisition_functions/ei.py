@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.distributions import Normal
 
-from .base_acqusition import BaseAcquisition
+from .base_acquisition import BaseAcquisition
 
 
 class ComprehensiveExpectedImprovement(BaseAcquisition):

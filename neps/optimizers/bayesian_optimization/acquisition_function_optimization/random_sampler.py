@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from ..acqusition_functions.base_acqusition import BaseAcquisition
+from ..acquisition_functions.base_acquisition import BaseAcquisition
 from .base_acq_optimizer import AcquisitionOptimizer
 
 
@@ -45,7 +45,7 @@ class RandomSampler(AcquisitionOptimizer):
             return pool
 
         if batch_size is not None and self.acquisition_function is None:
-            raise Exception(f"Random sampler has no acquisition function!")
+            raise Exception("Random sampler has no acquisition function!")
 
         samples, acq_vals, _ = self.acquisition_function.propose_location(
             top_n=batch_size, candidates=pool

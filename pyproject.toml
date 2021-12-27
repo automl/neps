@@ -61,13 +61,14 @@ namespace_packages = true
 follow_imports = "skip"
 ignore_missing_imports = true
 show_error_codes = true
+incremental = false
 
 [[tool.mypy.overrides]]
 module = [
   "neps.optimizers.bayesian_optimization.utils.*",
   "neps.optimizers.bayesian_optimization.models.*",
   "neps.optimizers.bayesian_optimization.kernels.*",
-  "neps.optimizers.bayesian_optimization.acqusition_functions.*",
+  "neps.optimizers.bayesian_optimization.acquisition_functions.*",
   "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
   "neps.search_spaces.graph_grammar.*",
   "neps.search_spaces.graph_dense.*",

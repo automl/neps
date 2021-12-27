@@ -4,7 +4,7 @@ from typing import Tuple
 
 import numpy as np
 
-from ..acqusition_functions.base_acqusition import BaseAcquisition
+from ..acquisition_functions.base_acquisition import BaseAcquisition
 from .base_acq_optimizer import AcquisitionOptimizer
 from .random_sampler import RandomSampler
 
