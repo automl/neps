@@ -14,7 +14,7 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 - We work almost exclusively on the master branch
 - We commit, push, and pull often
 - We automatically run code quality checks before every commit (using [pre-commit](https://pre-commit.com/))
-- We manually run tests (using `pytest`) before every critical push and automatically afterwards (using [github actions](https://github.com/automl-private/neps/actions))
+- We manually run tests (using `pytest`) before every critical push and automatically afterwards (using [github actions](https://github.com/automl/neps/actions))
 
 ### Dependency Management
 
