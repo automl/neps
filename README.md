@@ -4,14 +4,14 @@ Neural Pipeline Search helps deep learning experts find the best neural pipeline
 
 ![Python versions](https://img.shields.io/badge/python-3.7-informational)
 [![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
-[![Tests](https://github.com/automl-private/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl-private/neps/actions)
+[![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl-private/neps/actions)
 
 ## Installation
 
 Using pip
 
 ```bash
-pip install git+https://github.com/automl-private/neps.git
+pip install git+https://github.com/automl/neps.git
 ```
 
 To install specific versions of torch (e.g., cuda enabled versions) you might want to use our utility
