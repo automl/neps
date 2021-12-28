@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import random
 
+from ..base_optimizer import Optimizer
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
-from ..optimizer import Optimizer
 
 
 class RandomSearch(Optimizer):

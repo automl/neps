@@ -3,10 +3,10 @@ from collections import deque
 
 from typing_extensions import Deque
 
+from ..base_optimizer import Optimizer
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
-from ..optimizer import Optimizer
 
 
 class RegularizedEvolution(Optimizer):

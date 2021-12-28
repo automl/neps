@@ -7,7 +7,7 @@ from typing import Iterable
 import numpy as np
 import torch
 
-from ..optimizer import Optimizer
+from ..base_optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_function_optimization.random_sampler import RandomSampler
 from .acquisition_functions import AcquisitionMapping
