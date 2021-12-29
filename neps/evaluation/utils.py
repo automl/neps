@@ -288,7 +288,7 @@ def get_train_val_test_loaders(
         train_loader = torch.utils.data.DataLoader(
             train_data,
             batch_size=batch_size,
-            pin_memory=True,
+            pin_memory=False,
             num_workers=num_workers,
         )
         valid_loader = None
@@ -300,7 +300,7 @@ def get_train_val_test_loaders(
             train_data,
             batch_size=batch_size,
             sampler=torch.utils.data.sampler.SubsetRandomSampler(indices[:split]),
-            pin_memory=True,
+            pin_memory=False,
             num_workers=num_workers,
         )
 

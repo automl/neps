@@ -4,8 +4,8 @@ import logging
 import os
 import random
 import types
-from abc import abstractmethod
 from functools import partial
+from typing import Callable
 
 import networkx as nx
 import torch
@@ -433,6 +433,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
             node = self.nodes[node_idx]
             if "subgraph" in node:
                 # TODO implementation not checked yet!
+                max_xidx = max(used_input_names)
                 submodule = node["subgraph"].to_pytorch(write_out=write_out)
                 submodule_list.append(submodule)
                 _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}]({node['input']})"
@@ -511,9 +512,9 @@ class Graph(torch.nn.Module, nx.DiGraph):
         model_file += "\t\tself.module_list=torch.nn.ModuleList(module_list)\n"
         model_file += "\n\tdef forward(self,x0):\n"
         for forward_lines in forward_f:
-            if isinstance(forward_lines, str):
-                forward_lines = [forward_lines]
-            for forward_line in forward_lines:
+            for forward_line in (
+                [forward_lines] if isinstance(forward_lines, str) else forward_lines
+            ):
                 model_file += f"\t\t{forward_line}\n"
 
         try:
@@ -666,7 +667,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         graphs = [g for g in iter_flatten(graphs)]
 
         if single_instances:
-            single = []
+            single: list = []
             for g in graphs:
                 if g.name not in [sg.name for sg in single]:
                     single.append(g)
@@ -750,7 +751,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                         raise ValueError(f"Unkown format of op: {op}")
 
     @staticmethod
-    def _verify_update_function(update_func: callable, private_edge_data: bool):
+    def _verify_update_function(update_func: Callable, private_edge_data: bool):
         """
         Verify that the update function actually modifies only
         shared/private edge data attributes based on setting of
@@ -798,7 +799,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
             )
 
     def update_edges(
-        self, update_func: callable, scope="all", private_edge_data: bool = False
+        self, update_func: Callable, scope="all", private_edge_data: bool = False
     ):
         """
         This updates the edge data of this graph and all child graphs.
@@ -840,7 +841,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         self._delete_flagged_edges()
 
     def update_nodes(
-        self, update_func: callable, scope="all", single_instances: bool = True
+        self, update_func: Callable, scope="all", single_instances: bool = True
     ):
         """
         Update the nodes of the graph and its incoming and outgoing edges by iterating over the
@@ -952,18 +953,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
         one. An example is where the makro_model is extended to increase the
         parameters. This is done here.
         """
-
-    @abstractmethod
-    def sample(self):
-        raise NotImplementedError()
-
-    @abstractmethod
-    def mutate(self):
-        raise NotImplementedError()
-
-    @abstractmethod
-    def crossover(self):
-        raise NotImplementedError()
 
     def get_dense_edges(self):
         """

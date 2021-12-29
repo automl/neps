@@ -32,6 +32,7 @@ termcolor = "^1.1.0"
 fvcore = "^0.1.5"
 torchvision = "0.10.0"
 typing-extensions = "^4.0.1"
+types-termcolor = "^1.1.2"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"

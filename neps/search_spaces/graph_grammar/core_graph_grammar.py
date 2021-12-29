@@ -6,6 +6,7 @@ import queue
 from abc import abstractmethod
 from copy import deepcopy
 from functools import partial
+from typing import Deque
 
 import networkx as nx
 import numpy as np
@@ -20,8 +21,8 @@ class CoreGraphGrammar(Graph):
     def __init__(
         self,
         grammars: list[Grammar],
-        terminal_to_op_names: dict = None,
-        terminal_to_graph_repr: dict = None,
+        terminal_to_op_names: dict,
+        terminal_to_graph_repr: dict,
         edge_attr: bool = True,
         edge_label: str = "op_name",
         zero_op: list = None,
@@ -37,8 +38,8 @@ class CoreGraphGrammar(Graph):
         self.edge_attr = edge_attr
         self.edge_label = edge_label
 
-        self.zero_op = zero_op
-        self.identity_op = identity_op
+        self.zero_op = zero_op if zero_op is not None else []
+        self.identity_op = identity_op if identity_op is not None else []
 
         self.terminal_to_graph_nodes = None
 
@@ -48,6 +49,14 @@ class CoreGraphGrammar(Graph):
     def clear_graph(self):
         while len(self.nodes()) != 0:
             self.remove_node(list(self.nodes())[0])
+
+    @abstractmethod
+    def sample(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def crossover(self):
+        raise NotImplementedError()
 
     @staticmethod
     def _check_graph(graph: nx.DiGraph):
@@ -184,7 +193,7 @@ class CoreGraphGrammar(Graph):
         self,
         base_tree: str | nx.DiGraph,
         motif_trees: list[str] | list[nx.DiGraph],
-        base_to_motif_map: list = None,
+        base_to_motif_map: dict = None,
         node_label: str = "op_name",
     ) -> str | nx.DiGraph:
         """Assembles the base parse tree with the motif parse trees
@@ -200,14 +209,17 @@ class CoreGraphGrammar(Graph):
         if not all([isinstance(base_tree, type(tree)) for tree in motif_trees]):
             raise ValueError("All trees must be of the same type!")
         if isinstance(base_tree, str):
-            ensembled_tree = base_tree
+            ensembled_tree_string = base_tree
             if base_to_motif_map is None:
                 raise NotImplementedError
 
             for motif, idx in base_to_motif_map.items():
-                if motif in ensembled_tree:
+                if motif in ensembled_tree_string:
                     replacement = motif_trees[idx]
-                    ensembled_tree = ensembled_tree.replace(motif, replacement)
+                    ensembled_tree_string = ensembled_tree_string.replace(
+                        motif, replacement
+                    )
+            return ensembled_tree_string
         elif isinstance(base_tree, nx.DiGraph):
             leafnodes = self._find_leafnodes(base_tree)
             root_nodes = [self._find_root(G) for G in motif_trees]
@@ -220,7 +232,7 @@ class CoreGraphGrammar(Graph):
             largest_node_number = max(base_tree.nodes())
             # ensembled_tree = base_tree.copy()
             # recreation is slightly faster
-            ensembled_tree = nx.DiGraph()
+            ensembled_tree: nx.DiGraph = nx.DiGraph()
             ensembled_tree.add_nodes_from(base_tree.nodes(data=True))
             ensembled_tree.add_edges_from(base_tree.edges())
             for leafnode in leafnodes:
@@ -280,12 +292,11 @@ class CoreGraphGrammar(Graph):
                 ensembled_tree.nodes[predecessor_in_base_tree]["children"].remove(
                     leafnode
                 )
+            return ensembled_tree
         else:
             raise NotImplementedError(
                 f"Assembling of trees of type {type(base_tree)} is not supported!"
             )
-
-        return ensembled_tree
 
     def build_graph_from_tree(
         self,
@@ -449,7 +460,7 @@ class CoreGraphGrammar(Graph):
             start_node: int = None,
             end_node: int = None,
         ):
-            nodes = {}
+            nodes: dict = {}
             for u, v, data in graph.edges(data=True):
                 if u in nodes.keys():
                     _u = nodes[u]
@@ -541,7 +552,7 @@ class CoreGraphGrammar(Graph):
                 ]
             )
             node_counter = 1
-            open_edge = {}
+            open_edge: dict = {}
             for node in nx.topological_sort(graph):
                 for edge in graph.out_edges(node):
                     g.add_node(
@@ -629,7 +640,7 @@ class CoreGraphGrammar(Graph):
 
         symbols = grammar.nonterminals + grammar.terminals
         max_match = max(map(len, symbols))
-        find_longest_match = partial(
+        find_longest_match_func = partial(
             find_longest_match,
             string_tree=string_tree,
             symbols=symbols,
@@ -637,8 +648,8 @@ class CoreGraphGrammar(Graph):
         )
 
         G = nx.DiGraph()
-        q = queue.LifoQueue()
-        q_children = queue.LifoQueue()
+        q: queue.LifoQueue = queue.LifoQueue()
+        q_children: queue.LifoQueue = queue.LifoQueue()
         node_number = 0
         i = 0
         while i < len(string_tree):
@@ -651,7 +662,7 @@ class CoreGraphGrammar(Graph):
                 _node_children = q_children.get(block=False)
                 G.nodes[_node_number]["children"] = _node_children
             else:
-                j = find_longest_match(i)
+                j = find_longest_match_func(i)
                 sym = string_tree[i:j]
                 i = j - 1
                 node_number += 1
@@ -777,14 +788,14 @@ class CoreGraphGrammar(Graph):
 
         G = nx.DiGraph()
         if add_subtree_map:
-            q_nonterminals = collections.deque()
+            q_nonterminals: Deque = collections.deque()
         if return_subgraph_dict:
-            q_subtrees = collections.deque()
-            q_subgraphs = collections.deque()
+            q_subtrees: Deque = collections.deque()
+            q_subgraphs: Deque = collections.deque()
             subgraphs_dict = collections.OrderedDict()
         if edge_attr:
             node_offset = 0
-            q_el = collections.deque()  # edge-attr
+            q_el: Deque = collections.deque()  # edge-attr
             terminal_to_graph = terminal_to_graph_edges
         else:  # node-attributed
             G.add_node(0, **{sym_name: "input"})
@@ -1190,7 +1201,7 @@ class CoreGraphGrammar(Graph):
         ]
         return trees if len(trees) > 1 else trees[0]
 
-    def mutate(self, parent_string_tree: str = None):
+    def mutate(self, parent_string_tree: str):
         return simple_mutate(
             parent_string_tree=parent_string_tree, grammar=self.grammars[0]
         )

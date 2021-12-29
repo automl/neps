@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from collections import Counter
+from typing import Counter as CounterType
 
 import torch
 from termcolor import colored
@@ -127,8 +128,8 @@ def _find_caller():
         frame = frame.f_back
 
 
-_LOG_COUNTER = Counter()
-_LOG_TIMER = {}
+_LOG_COUNTER: CounterType = Counter()
+_LOG_TIMER: dict = {}
 
 
 def log_first_n(lvl, msg, n=1, *, name=None, key="caller"):

@@ -1,6 +1,5 @@
 import random
 from collections import OrderedDict
-from typing import List
 
 import numpy as np
 
@@ -93,7 +92,7 @@ class SearchSpace:
     def get_dictionary(self):
         return dict(zip(self.hyperparameters.keys(), self.id))
 
-    def create_from_id(self, config: List[str]):
+    def create_from_id(self, config: dict):
         self._hps = []
         self._graphs = []
         for name in config.keys():

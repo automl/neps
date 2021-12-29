@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Deque
 
 import networkx as nx
 import numpy as np
@@ -26,7 +27,7 @@ class ResolutionGrammar(Grammar):
     ):
         self.n_downsamples = n_downsamples
 
-        terminal_to_graph_map = {}
+        terminal_to_graph_map: dict = {}
         for k, v in terminal_to_graph.items():
             terminal_to_graph_map[k] = {}
             terminal_to_graph_map[k]["edge_list"] = v
@@ -84,7 +85,7 @@ class ResolutionGrammar(Grammar):
 
     def _compute_depth_information_for_pre(self, tree: str) -> dict:
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -104,8 +105,8 @@ class ResolutionGrammar(Grammar):
         subtree_depth = [0] * len(split_tree)
         helper_subtree_depth = [0] * len(split_tree)
         helper_dict_depth_information = {nt: 0 for nt in self.nonterminals}
-        helper_dict_subtree_depth = {nt: deque() for nt in self.nonterminals}
-        q_nonterminals = deque()
+        helper_dict_subtree_depth: dict = {nt: deque() for nt in self.nonterminals}
+        q_nonterminals: Deque = deque()
         for i, split in enumerate(split_tree):
             if split == "":
                 continue
@@ -131,7 +132,7 @@ class ResolutionGrammar(Grammar):
     def _compute_max_depth(self, tree: str, subtree_node: str) -> int:
         max_depth = 0
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue

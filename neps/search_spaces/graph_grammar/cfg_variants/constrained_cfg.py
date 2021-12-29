@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Deque
 
 from nltk.grammar import Nonterminal
 
@@ -95,7 +96,7 @@ class ConstrainedGrammar(Grammar):
         return tree
 
     def _compute_current_context(self, pre_subtree: str, post_subtree: str):
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for sym in pre_subtree.split(" "):
             if sym == "":
                 continue
@@ -126,7 +127,7 @@ class ConstrainedGrammar(Grammar):
             raise NotImplementedError
         production = productions[0]
 
-        q_context = deque()
+        q_context: Deque = deque()
         current_derivation = self.constraints(production.rhs()[0])
         counter = 0
         pre_subtree_context = pre_subtree_context[len(q_nonterminals[-1]) + 1 :]

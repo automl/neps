@@ -222,7 +222,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
 
         self.id_parse_tree = id_parse_tree
 
-        self.id: str = None
+        self.id: str = ""
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
         self.nxTree: nx.DiGraph = None
@@ -253,7 +253,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         return full_grammar
 
     @abstractmethod
-    def create_graph_from_string(self, child: str):
+    def create_graph_from_string(self, child: list[str]):
         raise NotImplementedError
 
     @abstractmethod
@@ -319,18 +319,18 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
 
         # bananas mutate
         if mutation_strategy == "bananas":
-            mutation_strategy = partial(bananas_mutate, mutation_rate=mutation_rate)
+            inner_mutation_strategy = partial(bananas_mutate, mutation_rate=mutation_rate)
             child_string_tree_list, is_same = repetitive_search_space_mutation(
                 base_parent=parent.string_tree_list[0],
                 motif_parents=parent.string_tree_list[1:],
                 base_grammar=self.grammars[0],
                 motif_grammars=self.grammars[1:],
-                inner_mutation_strategy=mutation_strategy,
+                inner_mutation_strategy=inner_mutation_strategy,
             )
         else:
             child_string_tree_list, is_same = repetitive_search_space_mutation(
-                base_parent=parent.string_tree[0],
-                motif_parents=parent.string_tree[1:],
+                base_parent=parent.string_tree_list[0],
+                motif_parents=parent.string_tree_list[1:],
                 base_grammar=self.grammars[0],
                 motif_grammars=self.grammars[1:],
                 inner_mutation_strategy=super().mutate,
