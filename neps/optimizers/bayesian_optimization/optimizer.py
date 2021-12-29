@@ -6,6 +6,7 @@ from typing import Iterable
 
 import numpy as np
 import torch
+from deprecated import deprecated
 
 from ..base_optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
@@ -115,28 +116,24 @@ class BayesianOptimization(Optimizer):
 
         self.pending_evaluations: list = []
 
-    def _initialize_model(self, x_configs: list, y: Iterable | torch.Tensor):
-        """Initializes the surrogate model and acquisition function (optimizer).
+    def get_config(self):
+        if len(self.train_x) < self.initial_design_size:
+            config = self.random_sampler.sample(1)[0]
+        else:
+            if random.random() < self.random_interleave_prob:
+                config = self.random_sampler.sample(1)[0]
+            else:
+                model_sample, _, _ = self.acquisition_function_opt.sample(
+                    self.n_candidates, 1
+                )
+                config = model_sample[0]
 
-        Note: please do not remove this function or change its functionality!
+        self.pending_evaluations.append(config)
+        return config
 
-        Args:
-            x_configs (Iterable): config.
-            y (Union[Iterable, torch.Tensor]): observation.
-        """
-        self.train_x = []
-        self.train_y = []
-        self.pending_evaluations = []
-        self._update_model(x_configs, y)
-
-    def _check_pending_evaluations(self, configs):
-        self.pending_evaluations = [
-            pending_eval
-            for pending_eval in self.pending_evaluations
-            if not any(
-                x.get_dictionary() == pending_eval.get_dictionary() for x in configs
-            )
-        ]
+    def get_config_and_ids(self):
+        config = self.get_config()
+        return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
 
     def _update_model(
         self,
@@ -177,6 +174,39 @@ class BayesianOptimization(Optimizer):
         self.acquisition_function_opt.reset_surrogate_model(self.surrogate_model)
         self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
 
+    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+        self.train_x = [el.config for el in previous_results.values()]
+        self.train_y = [el.result["loss"] for el in previous_results.values()]
+        self.pending_evaluations = [el for el in pending_evaluations.values()]
+        if len(self.train_x) >= self.initial_design_size:
+            self._update_model(self.train_x, self.train_y)
+
+    @deprecated
+    def _initialize_model(self, x_configs: list, y: Iterable | torch.Tensor):
+        """Initializes the surrogate model and acquisition function (optimizer).
+
+        Note: please do not remove this function or change its functionality!
+
+        Args:
+            x_configs (Iterable): config.
+            y (Union[Iterable, torch.Tensor]): observation.
+        """
+        self.train_x = []
+        self.train_y = []
+        self.pending_evaluations = []
+        self._update_model(x_configs, y)
+
+    @deprecated
+    def _check_pending_evaluations(self, configs):
+        self.pending_evaluations = [
+            pending_eval
+            for pending_eval in self.pending_evaluations
+            if not any(
+                x.get_dictionary() == pending_eval.get_dictionary() for x in configs
+            )
+        ]
+
+    @deprecated
     def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
     ) -> Iterable | tuple[Iterable, dict]:
@@ -233,32 +263,7 @@ class BayesianOptimization(Optimizer):
         else:
             return next_x, None
 
-    def get_config(self):
-        if len(self.train_x) < self.initial_design_size:
-            config = self.random_sampler.sample(1)[0]
-        else:
-            if random.random() < self.random_interleave_prob:
-                config = self.random_sampler.sample(1)[0]
-            else:
-                model_sample, _, _ = self.acquisition_function_opt.sample(
-                    self.n_candidates, 1
-                )
-                config = model_sample[0]
-
-        self.pending_evaluations.append(config)
-        return config
-
-    def get_config_and_ids(self):
-        config = self.get_config()
-        return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
-
-    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
-        self.train_x = [el.config for el in previous_results.values()]
-        self.train_y = [el.result["loss"] for el in previous_results.values()]
-        self.pending_evaluations = [el for el in pending_evaluations.values()]
-        if len(self.train_x) >= self.initial_design_size:
-            self._update_model(self.train_x, self.train_y)
-
+    @deprecated
     def new_result(self, job):
         if job.result is None:
             loss = np.inf

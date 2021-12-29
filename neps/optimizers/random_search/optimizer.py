@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import random
 
+from deprecated import deprecated
+
 from ..base_optimizer import Optimizer
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
@@ -15,13 +17,26 @@ class RandomSearch(Optimizer):
         self.return_opt_details = return_opt_details
         self.surrogate_model = None
         self.random_sampler = RandomSampler(pipeline_space)
+        self._len_previous = 0
+        self._len_pending = 0
 
+    def get_config_and_ids(self):
+        config = self.random_sampler.sample(1)[0]
+        return config, f"{self._len_previous}_{self._len_pending}", None
+
+    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+        self._len_previous = len(previous_results)
+        self._len_pending = len(pending_evaluations)
+
+    @deprecated
     def _initialize_model(self, **kwargs):
         pass
 
+    @deprecated
     def _update_model(self, **kwargs):
         pass
 
+    @deprecated
     def _propose_new_location(
         self, batch_size: int = 5, n_candidates: int = 10
     ) -> tuple[list, dict | None]:
@@ -35,11 +50,12 @@ class RandomSearch(Optimizer):
 
         return next_x, opt_details
 
+    @deprecated
     def get_config(self):
         config = self.random_sampler.sample(1)[0]
-
         return config
 
+    @deprecated
     def new_result(self, job):
         # if job.result is None:
         #     loss = np.inf
@@ -48,9 +64,3 @@ class RandomSearch(Optimizer):
         #
         # config = job.kwargs["config"]
         pass
-
-    def get_config_and_ids(self):
-        raise NotImplementedError
-
-    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
-        raise NotImplementedError
