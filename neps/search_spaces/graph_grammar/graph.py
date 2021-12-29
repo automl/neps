@@ -271,7 +271,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         ), "Expecting node index for every input node. Excpected {}, got {}".format(
             num_innodes, len(node_idxs)
         )
-        self.input_node_idxs = node_idxs
+        self.input_node_idxs = node_idxs  # type: ignore[assignment]
         return self
 
     def num_input_nodes(self) -> int:
@@ -487,7 +487,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                         used_input_names.append(max_xidx + 1)
                         forward_f.append(_forward_f)
                     elif isinstance(edge_data.op, AbstractPrimitive):
-                        edge_data.op.forward = partial(
+                        edge_data.op.forward = partial(  # type: ignore[assignment]
                             edge_data.op.forward, edge_data=edge_data
                         )
                         submodule_list.append(edge_data.op)
