@@ -33,6 +33,10 @@ fvcore = "^0.1.5"
 torchvision = "0.10.0"
 typing-extensions = "^4.0.1"
 Deprecated = "^1.2.13"
+types-six = "^1.16.6"
+types-tabulate = "^0.8.4"
+types-termcolor = "^1.1.2"
+types-Deprecated = "^1.2.3"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
