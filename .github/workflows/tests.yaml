@@ -20,6 +20,10 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      
+      # Temporary bugfix see https://github.com/pre-commit/pre-commit/issues/2178
+      - name: Pin virtualenv version  
+        run: pip install virtualenv==20.10.0
 
       - name: Install Poetry
         uses: abatilo/actions-poetry@v2.0.0
