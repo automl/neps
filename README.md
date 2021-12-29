@@ -38,8 +38,6 @@ neps.run(
     pipeline_space=pipeline_space,
     working_directory="results/usage",
     n_iterations=5,
-    searcher="bayesian_optimization",
-    overwrite_logging=True,
     hp_kernels=["m52"],
 )
 ```
