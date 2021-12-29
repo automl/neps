@@ -9,7 +9,7 @@ def run_pipeline(  # pylint: disable=unused-argument
     config,
     config_working_directory,
     previous_working_directory,
-    target_params: int = 1.5e7,
+    target_params: float = 1.5e7,
 ):
     start = time.time()
     model = config.hyperparameters[  # pylint: disable=W0212
@@ -41,8 +41,6 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         working_directory="results/hierarchical_architecture_example",
         n_iterations=20,
-        searcher="bayesian_optimization",
-        overwrite_logging=True,
         graph_kernels=["wl"],
         use_new_metahyper=True,
     )

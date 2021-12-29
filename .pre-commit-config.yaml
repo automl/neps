@@ -50,6 +50,7 @@ repos:
           - types-six
           - types-tabulate
           - types-termcolor
+          - types-Deprecated
 
   - repo: https://github.com/PyCQA/pylint
     rev: v2.12.2

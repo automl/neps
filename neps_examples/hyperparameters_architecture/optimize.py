@@ -59,8 +59,6 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_architecture_example",
         n_iterations=20,
-        searcher="bayesian_optimization",
-        overwrite_logging=True,
         hp_kernels=["m52", "hm"],
         graph_kernels=["wl"],
         use_new_metahyper=True,

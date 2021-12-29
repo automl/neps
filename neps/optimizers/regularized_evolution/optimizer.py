@@ -1,12 +1,13 @@
 import random
 from collections import deque
 
+from deprecated import deprecated
 from typing_extensions import Deque
 
+from ..base_optimizer import Optimizer
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
-from ..optimizer import Optimizer
 
 
 class RegularizedEvolution(Optimizer):
@@ -30,17 +31,11 @@ class RegularizedEvolution(Optimizer):
         self.history: Deque = deque()
         self.tmp_counter = 0
 
-    def get_config(self):
-        if len(self.population) < self.initial_population_size:
-            return self.random_sampler.sample(1)[0]
+    def get_config_and_ids(self):
+        raise NotImplementedError
 
-        candidates = [random.choice(self.population) for _ in range(self.sample_size)]
-        parent = min(candidates, key=lambda c: c["loss"])
-        return self._mutate(parent["config"])
-
-    def _propose_new_location(self, **kwargs):  # pylint: disable=W0613
-        # only for compatability
-        return [self.get_config()], None
+    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+        raise NotImplementedError
 
     def _mutate(self, parent):
         _patience = self.patience
@@ -54,11 +49,33 @@ class RegularizedEvolution(Optimizer):
                 continue
         return False
 
+    def _update(self, child, loss):
+        self.history.append({"config": child, "loss": loss})
+        self.population.append({"config": child, "loss": loss})
+        if len(self.population) > self.population_size:
+            self.population.popleft()
+
+    @deprecated
+    def get_config(self):
+        if len(self.population) < self.initial_population_size:
+            return self.random_sampler.sample(1)[0]
+
+        candidates = [random.choice(self.population) for _ in range(self.sample_size)]
+        parent = min(candidates, key=lambda c: c["loss"])
+        return self._mutate(parent["config"])
+
+    @deprecated
+    def _propose_new_location(self, **kwargs):  # pylint: disable=W0613
+        # only for compatability
+        return [self.get_config()], None
+
+    @deprecated
     def new_result(self, job):
         config = job["config"]
         loss = job["loss"]
         self._update(config, loss)
 
+    @deprecated
     def _initialize_model(self, x_configs, y):
         # only for compatability
         self.population = deque()
@@ -66,6 +83,7 @@ class RegularizedEvolution(Optimizer):
         self.tmp_counter = 0
         self._update_model(x_configs, y)
 
+    @deprecated
     def _update_model(self, x_configs, y):
         # only for compatability
         while self.tmp_counter < len(x_configs):
@@ -74,11 +92,6 @@ class RegularizedEvolution(Optimizer):
             )
             self.tmp_counter += 1
 
-    def _update(self, child, loss):
-        self.history.append({"config": child, "loss": loss})
-        self.population.append({"config": child, "loss": loss})
-        if len(self.population) > self.population_size:
-            self.population.popleft()
-
+    @deprecated
     def get_final_architecture(self):
         return max(self.history, key=lambda c: c[1])

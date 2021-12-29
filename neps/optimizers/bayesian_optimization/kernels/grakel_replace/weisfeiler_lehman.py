@@ -683,15 +683,15 @@ class WeisfeilerLehman(Kernel):
                     X_diag += x
                     Y_diag += y
                     self._X_diag = X_diag
-                else:
-                    # case sub kernel is only fitted
-                    X_diag = self.X[0].diagonal()
-                    # X_diag is considered a mutable and should not affect the kernel matrix itself.
-                    X_diag.flags.writeable = True
-                    for i in range(1, self._n_iter):
-                        x = self.X[i].diagonal()
-                        X_diag += x
-                    self._X_diag = X_diag
+
+                # case sub kernel is only fitted
+                X_diag = self.X[0].diagonal()
+                # X_diag is considered a mutable and should not affect the kernel matrix itself.
+                X_diag.flags.writeable = True
+                for i in range(1, self._n_iter):
+                    x = self.X[i].diagonal()
+                    X_diag += x
+                self._X_diag = X_diag
 
         if self.as_tensor:
             self._X_diag = torch.tensor(self._X_diag)
