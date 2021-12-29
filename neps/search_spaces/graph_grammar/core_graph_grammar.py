@@ -793,7 +793,7 @@ class CoreGraphGrammar(Graph):
             G.add_node(0, **{sym_name: "input"})
             G.add_node(1, **{sym_name: "output"})
             node_offset = 2
-            if self.terminal_to_graph_nodes is not None:
+            if bool(self.terminal_to_graph_nodes):
                 terminal_to_graph_nodes = self.terminal_to_graph_nodes
             else:
                 terminal_to_graph_nodes = {
