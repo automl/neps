@@ -200,7 +200,6 @@ if __name__ == "__main__":
         dataset=args.dataset,
         data=args.data_path,
         batch_size=batch_size,
-        seed=seed,
     )
 
     res = training_pipeline(

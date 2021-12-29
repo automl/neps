@@ -194,9 +194,16 @@ class ConstrainedGrammar(Grammar):
             if parent != child:  # ensure that parent is really mutated
                 break
             _patience -= 1
+        child = self._remove_empty_spaces(child)
         return child
 
-    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+    def crossover(
+        self,
+        parent1: str,
+        parent2: str,
+        patience: int = 50,
+        return_crossover_subtrees: bool = False,
+    ):
         subtree_node, subtree_index = self.rand_subtree(parent1)
         # chop out subtree
         pre, sub, post = self.remove_subtree(parent1, subtree_index)
@@ -254,6 +261,16 @@ class ConstrainedGrammar(Grammar):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+                child1 = self._remove_empty_spaces(child1)
+                child2 = self._remove_empty_spaces(child2)
+
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
                 return child1, child2
 
         return False, False

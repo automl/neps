@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class BaseAcquisition(ABC):
@@ -18,7 +18,8 @@ class BaseAcquisition(ABC):
         """This is the method that user should call for the Bayesian optimisation main loop."""
         raise NotImplementedError
 
-    def eval(self, x):
+    @abstractmethod
+    def eval(self, x, asscalar: bool = False):
         """Evaluate the acquisition function at point x2. This should be overridden by respective acquisition
         function implementations"""
         raise NotImplementedError

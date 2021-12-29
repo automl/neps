@@ -30,6 +30,9 @@ class MinMaxVals:
     cutout: MinMax = MinMax(0.0, 0.2)
 
 
+min_max_vals = MinMaxVals()
+
+
 def float_parameter(level, maxval):
     """Helper function to scale `val` between 0 and maxval .
     Args:

@@ -80,7 +80,6 @@ module = [
   "neps.search_spaces.graph_dense.*",
   "neps.search_spaces.numerical.*",
   "neps.utils.util",
-  "neps.evaluation.*",
 ]
 ignore_errors = true
 

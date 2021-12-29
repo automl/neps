@@ -116,7 +116,7 @@ class DiamondMid(AbstractTopology):
 
 
 class DenseNNodeDAG(AbstractTopology):
-    edge_list = []
+    edge_list: list = []
 
     def __init__(self, *edge_vals, number_of_nodes: int):
         super().__init__()

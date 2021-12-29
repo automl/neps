@@ -122,7 +122,6 @@ class Grammar(CFG):
     def sampler(
         self,
         n=1,
-        cfactor=0.1,
         start_symbol: str = None,
     ):
         # sample n sequences from the CFG
@@ -141,6 +140,7 @@ class Grammar(CFG):
             start_symbol = Nonterminal(start_symbol)
 
         if self.convergent:
+            cfactor = 0.1
             return [
                 f"{self._convergent_sampler(symbol=start_symbol, cfactor=cfactor)[0]})"
                 for i in range(0, n)
@@ -482,8 +482,8 @@ class DepthConstrainedGrammar(Grammar):
     def sampler(
         self,
         n=1,
-        depth_information: dict = None,
         start_symbol: str = None,
+        depth_information: dict = None,
     ):
         if self.depth_constraints is None:
             raise ValueError("Depth constraints are not set!")
@@ -626,9 +626,16 @@ class DepthConstrainedGrammar(Grammar):
             if parent != child:  # ensure that parent is really mutated
                 break
             _patience -= 1
+        child = self._remove_empty_spaces(child)
         return child
 
-    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+    def crossover(
+        self,
+        parent1: str,
+        parent2: str,
+        patience: int = 50,
+        return_crossover_subtrees: bool = False,
+    ):
         # randomly swap subtrees in two trees
         # if no suitiable subtree exists then return False
         subtree_node, subtree_index = self.rand_subtree(parent1)
@@ -652,6 +659,16 @@ class DepthConstrainedGrammar(Grammar):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+                child1 = self._remove_empty_spaces(child1)
+                child2 = self._remove_empty_spaces(child2)
+
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
                 return child1, child2
 
         return False, False

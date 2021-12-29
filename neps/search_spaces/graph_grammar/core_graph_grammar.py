@@ -13,7 +13,6 @@ import numpy as np
 
 from .cfg import Grammar
 from .graph import Graph
-from .mutations import simple_mutate
 from .primitives import AbstractPrimitive
 
 
@@ -41,7 +40,7 @@ class CoreGraphGrammar(Graph):
         self.zero_op = zero_op if zero_op is not None else []
         self.identity_op = identity_op if identity_op is not None else []
 
-        self.terminal_to_graph_nodes = None
+        self.terminal_to_graph_nodes: dict = {}
 
     def get_grammars(self) -> list[Grammar]:
         return self.grammars
@@ -49,14 +48,6 @@ class CoreGraphGrammar(Graph):
     def clear_graph(self):
         while len(self.nodes()) != 0:
             self.remove_node(list(self.nodes())[0])
-
-    @abstractmethod
-    def sample(self):
-        raise NotImplementedError()
-
-    @abstractmethod
-    def crossover(self):
-        raise NotImplementedError()
 
     @staticmethod
     def _check_graph(graph: nx.DiGraph):
@@ -70,7 +61,7 @@ class CoreGraphGrammar(Graph):
     def prune_tree(
         self,
         tree: nx.DiGraph,
-        terminal_to_torch_map_keys: dict = None,
+        terminal_to_torch_map_keys: collections.abc.KeysView,
         node_label: str = "op_name",
     ) -> nx.DiGraph:
         """Prunes unnecessary parts of parse tree, i.e., only one child
@@ -518,6 +509,7 @@ class CoreGraphGrammar(Graph):
             else:
                 self.add_edge(0, 1)
                 self.edges[0, 1].set("op", graph)
+            return None
 
     def to_graph_repr(self, graph: Graph, edge_attr: bool) -> nx.DiGraph:
         """Transforms NASLib-esque graph to NetworkX graph.
@@ -727,7 +719,7 @@ class CoreGraphGrammar(Graph):
         string_tree: str,
         grammar: Grammar,
         terminal_to_graph_edges: dict,
-        valid_terminals: list,
+        valid_terminals: collections.abc.KeysView,
         edge_attr: bool = True,
         sym_name: str = "op_name",
         prune: bool = True,
@@ -760,7 +752,7 @@ class CoreGraphGrammar(Graph):
 
         def to_node_attributed_edge_list(
             edge_list: list[tuple],
-        ) -> tuple[list[tuple], dict]:
+        ) -> tuple[list[tuple[int, int]], dict]:
             node_offset = 2
             edge_to_node_map = {e: i + node_offset for i, e in enumerate(edge_list)}
             first_nodes = {e[0] for e in edge_list}
@@ -1200,8 +1192,3 @@ class CoreGraphGrammar(Graph):
             for grammar in self.grammars
         ]
         return trees if len(trees) > 1 else trees[0]
-
-    def mutate(self, parent_string_tree: str):
-        return simple_mutate(
-            parent_string_tree=parent_string_tree, grammar=self.grammars[0]
-        )

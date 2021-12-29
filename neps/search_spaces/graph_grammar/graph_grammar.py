@@ -11,7 +11,7 @@ from ..parameter import Parameter
 from .cfg import Grammar
 from .core_graph_grammar import CoreGraphGrammar
 from .crossover import repetitive_search_space_crossover, simple_crossover
-from .mutations import bananas_mutate, repetitive_search_space_mutation
+from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_mutate
 
 
 class GraphGrammar(CoreGraphGrammar, Parameter):
@@ -44,7 +44,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
 
         self.id_parse_tree = id_parse_tree
 
-        self.id: str = None
+        self.id: str = ""
         self.string_tree: str = ""
         self.nxTree: nx.DiGraph = None
         self.value: nx.DiGraph = None
@@ -61,7 +61,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.string_tree = ""
         self.nxTree = None
         self.value = None
-        self.id = None
+        self.id = ""
 
     @abstractmethod
     def create_graph_from_string(self, child: str):
@@ -124,8 +124,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                 mutation_rate=mutation_rate,
             )
         else:
-            child_string_tree, is_same = super().mutate(
-                parent_string_tree=parent_string_tree
+            child_string_tree, is_same = simple_mutate(
+                parent_string_tree=parent_string_tree,
+                grammar=self.grammars[0],
             )
 
         if is_same:

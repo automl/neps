@@ -83,7 +83,7 @@ class ComprehensiveGP:
                 else torch.tensor(weights).flatten()
             )
         else:
-            self.fixed_weights: bool = False
+            self.fixed_weights = False
             # Initialise the domain kernel weights to uniform
             self.weights = torch.tensor(
                 [1.0 / self.n_kernels] * self.n_kernels,

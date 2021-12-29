@@ -6,7 +6,6 @@ import os
 import pickle
 import random
 import time
-from typing import Iterable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -91,14 +90,14 @@ class StatisticsTracker:
         self.end_time = np.nan
         self.seed = np.nan
 
-        self.incumbents_eval = []
-        self.incumbent_values_eval = []
-        self.last_func_evals = []
-        self.last_func_tests = []
-        self.incumbents_test = []
-        self.incumbent_values_test = []
-        self.cum_train_times = []
-        self.opt_details = []
+        self.incumbents_eval: list = []
+        self.incumbent_values_eval: list = []
+        self.last_func_evals: list = []
+        self.last_func_tests: list = []
+        self.incumbents_test: list = []
+        self.incumbent_values_test: list = []
+        self.cum_train_times: list = []
+        self.opt_details: list = []
         self.y_evals = None
         self.theoretical_best = 1e10
         self.number = 0
@@ -140,7 +139,7 @@ class StatisticsTracker:
     def set_number(self, new_number: int):
         self.number = new_number
 
-    def calculate_incumbent(self, x: Iterable, y):
+    def calculate_incumbent(self, x: list, y):
         best_idx = np.argmin(y) if self.minimize else np.argmax(y)
         incumbent = x[best_idx]
         # incumbent_value = np.exp(-y[best_idx]).item() if self.log else -y[best_idx]

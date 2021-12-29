@@ -7,7 +7,7 @@ from ..acquisition_functions.base_acquisition import BaseAcquisition
 
 
 class AcquisitionOptimizer:
-    def __init__(self, search_space, acquisition_function: BaseAcquisition):
+    def __init__(self, search_space, acquisition_function: BaseAcquisition = None):
         self.search_space = search_space
         self.acquisition_function = acquisition_function
         self.x: Iterable = []
