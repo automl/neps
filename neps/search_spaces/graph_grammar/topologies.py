@@ -78,6 +78,18 @@ class Linear(AbstractTopology):
         self.set_scope(self.name)
 
 
+class LinearNNode(AbstractTopology):
+    edge_list: list = []
+
+    def __init__(self, *edge_vals, number_of_nodes: int):
+        super().__init__()
+
+        self.name = f"linear_{number_of_nodes}_node"
+        self.edge_list = [(i + 1, i + 2) for i in range(number_of_nodes)]
+        self.create_graph(dict(zip(self.edge_list, edge_vals)))
+        self.set_scope(self.name)
+
+
 class Residual(AbstractTopology):
     edge_list = [
         (1, 2),
