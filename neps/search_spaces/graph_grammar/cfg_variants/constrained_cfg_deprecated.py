@@ -1,11 +1,13 @@
 from collections import deque
 from typing import Deque
 
+from deprecated import deprecated
 from nltk.grammar import Nonterminal
 
 from ..cfg import Grammar, choice
 
 
+@deprecated
 class ConstrainedGrammar(Grammar):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -123,86 +125,90 @@ class ConstrainedGrammar(Grammar):
         ]
         if len(productions) == 0:
             raise Exception("Cannot find corresponding production!")
+        if len(productions) > 1:  # otherwise find selected production (below)
+            q_context_rhs: Deque = deque()
+            rhs_counter = 1
+            for s in pre_subtree_context[len(q_nonterminals[-1]) + 1 :].split(" "):
+                if s == "":
+                    continue
+                if s[0] == "(":
+                    s = s[1:]
+                    if len(q_context_rhs) == 0:
+                        productions = [
+                            production
+                            for production in productions
+                            if str(production.rhs()[rhs_counter]) == s
+                        ]
+                        rhs_counter += 1
+                    q_context_rhs.append(s)
+                elif s[-1] == ")":
+                    while s[-1] == ")":
+                        q_context_rhs.pop()
+                        s = s[:-1]
+                if len(productions) == 1:
+                    break
+            if len(productions) > 1:
+                rhs_counter += 1  # skip mutated subtree
+                for s in post_subtree.split(" "):
+                    if s == "":
+                        continue
+                    if s[0] == "(":
+                        s = s[1:]
+                        if len(q_context_rhs) == 0:
+                            productions = [
+                                production
+                                for production in productions
+                                if str(production.rhs()[rhs_counter]) == s
+                            ]
+                            rhs_counter += 1
+                        q_context_rhs.append(s)
+                    elif s[-1] == ")":
+                        while s[-1] == ")":
+                            q_context_rhs.pop()
+                            s = s[:-1]
+                    if len(productions) == 1:
+                        break
+            if len(productions) > 1:
+                raise Exception(f"Cannot select productions from {productions}")
+        production = productions[0]
 
         q_context: Deque = deque()
-        current_derivation = []
-        rhs_counter = 0
-        tmp_str = ""
-        for s in pre_subtree_context[len(q_nonterminals[-1]) + 1 :].split(" "):
+        current_derivation = self.constraints(production.rhs()[0])
+        counter = 0
+        _pre_subtree_context = pre_subtree_context[len(q_nonterminals[-1]) + 1 :]
+        for s in _pre_subtree_context.split(" "):
             if s == "":
                 continue
             if s[0] == "(":
-                if len(q_context) == 0 and len(s) > 1:
-                    productions = [
-                        production
-                        for production in productions
-                        if [
-                            str(prod_sym)
-                            for prod_sym in production.rhs()
-                            if isinstance(prod_sym, Nonterminal)
-                        ][rhs_counter]
-                        == s[1:]
-                    ]
-                    rhs_counter += 1
                 q_context.append(s)
-                tmp_str += " " + s
             elif s[-1] == ")":
-                tmp_str += " " + s
                 while s[-1] == ")":
                     q_context.pop()
                     s = s[:-1]
                 if len(q_context) == 0:
-                    tmp_str = self._remove_empty_spaces(tmp_str)
-                    current_derivation.append(tmp_str)
-                    if len(productions) == 1 and len(current_derivation) == len(
-                        self.constraints(productions[0].rhs()[0])
-                    ):
-                        break
-                    tmp_str = ""
-            elif len(q_context) > 0:
-                tmp_str += " " + s
-        current_derivation.append(None)  # type: ignore[arg-type]
-        rhs_counter += 1
-        q_context = deque()
-        if len(productions) == 1 and len(current_derivation) == len(
-            self.constraints(productions[0].rhs()[0])
-        ):
-            pass
-        else:
+                    current_derivation[counter] = s
+                    counter += 1
+                if counter == len(current_derivation):
+                    break
+
+        counter += 1
+        if counter < len(current_derivation):
+            q_context = deque()
             for s in post_subtree.split(" "):
                 if s == "":
                     continue
                 elif s[0] == "(":
-                    if len(q_context) == 0 and len(s) > 1:
-                        productions = [
-                            production
-                            for production in productions
-                            if [
-                                str(prod_sym)
-                                for prod_sym in production.rhs()
-                                if isinstance(prod_sym, Nonterminal)
-                            ][rhs_counter]
-                            == s[1:]
-                        ]
-                        rhs_counter += 1
                     q_context.append(s)
-                    tmp_str += " " + s
                 elif s[-1] == ")":
-                    tmp_str += " " + s
                     while s[-1] == ")":
                         if len(q_context) > 0:
                             q_context.pop()
                         s = s[:-1]
                     if len(q_context) == 0:
-                        tmp_str = self._remove_empty_spaces(tmp_str)
-                        current_derivation.append(tmp_str)
-                        if len(productions) == 1 and len(current_derivation) == len(
-                            self.constraints(productions[0].rhs()[0])
-                        ):
-                            break
-                        tmp_str = ""
-                elif len(q_context) > 0:
-                    tmp_str += " " + s
+                        current_derivation[counter] = s
+                        counter += 1
+                    if counter == len(current_derivation):
+                        break
 
         return topology, current_derivation
 
@@ -247,87 +253,73 @@ class ConstrainedGrammar(Grammar):
         patience: int = 50,
         return_crossover_subtrees: bool = False,
     ):
+        subtree_node, subtree_index = self.rand_subtree(parent1)
+        # chop out subtree
+        pre, sub, post = self.remove_subtree(parent1, subtree_index)
+        rhs, current_derivation = self._compute_current_context(pre, post)
+        context_information = self.constraints(
+            rhs,
+            current_derivation,
+        )
+        parent1_not_allowed_productions = self._get_not_allowed_productions(
+            self.productions(lhs=Nonterminal(subtree_node)),
+            context_information[
+                [i for i, cd in enumerate(current_derivation) if cd is None][0]
+            ],
+        )
         _patience = patience
         while _patience > 0:
-            subtree_node, subtree_index = self.rand_subtree(parent1)
-            # chop out subtree
-            pre, sub, post = self.remove_subtree(parent1, subtree_index)
-            rhs, current_derivation = self._compute_current_context(pre, post)
-            context_information = self.constraints(
-                rhs,
-                current_derivation,
-            )
-            parent1_not_allowed_productions = self._get_not_allowed_productions(
-                self.productions(lhs=Nonterminal(subtree_node)),
-                context_information[
-                    [i for i, cd in enumerate(current_derivation) if cd is None][0]
-                ],
-            )
-            first_try = True
-            while first_try or _patience % 10 != 0:
-                first_try = False
-                # sample subtree from donor
-                donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
-                # if no subtrees with right head node return False
-                if not donor_subtree_index:
+            # sample subtree from donor
+            donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
+            # if no subtrees with right head node return False
+            if not donor_subtree_index:
+                _patience -= 1
+            else:
+                donor_pre, donor_sub, donor_post = self.remove_subtree(
+                    parent2, donor_subtree_index
+                )
+                rhs, current_derivation = self._compute_current_context(
+                    donor_pre, donor_post
+                )
+                context_information = self.constraints(
+                    rhs,
+                    current_derivation,
+                )
+                parent2_not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=Nonterminal(subtree_node)),
+                    context_information[
+                        [i for i, cd in enumerate(current_derivation) if cd is None][0]
+                    ],
+                )
+                if (
+                    parent1_not_allowed_productions is not None
+                    and "zero" in donor_sub
+                    and donor_sub.count("(") == 1
+                    and donor_sub.count(")") == 1
+                ):
                     _patience -= 1
-                else:
-                    donor_pre, donor_sub, donor_post = self.remove_subtree(
-                        parent2, donor_subtree_index
-                    )
-                    if sub == donor_sub:  # ensure that there is really a crossover
-                        _patience -= 1
-                        continue
-                    rhs, current_derivation = self._compute_current_context(
-                        donor_pre, donor_post
-                    )
-                    context_information = self.constraints(
-                        rhs,
-                        current_derivation,
-                    )
-                    parent2_not_allowed_productions = self._get_not_allowed_productions(
-                        self.productions(lhs=Nonterminal(subtree_node)),
-                        context_information[
-                            [i for i, cd in enumerate(current_derivation) if cd is None][
-                                0
-                            ]
-                        ],
-                    )
-                    if (
-                        any(
-                            prod.rhs()[0] == "zero"
-                            for prod in parent1_not_allowed_productions
-                        )
-                        and "zero" in donor_sub
-                        and donor_sub.count("(") == 1
-                        and donor_sub.count(")") == 1
-                    ):
-                        _patience -= 1
-                        continue
-                    if (
-                        any(
-                            prod.rhs()[0] == "zero"
-                            for prod in parent2_not_allowed_productions
-                        )
-                        and "zero" in sub
-                        and sub.count("(") == 1
-                        and sub.count(")") == 1
-                    ):
-                        _patience -= 1
-                        continue
-                    # return the two new tree
-                    child1 = pre + donor_sub + post
-                    child2 = donor_pre + sub + donor_post
-                    child1 = self._remove_empty_spaces(child1)
-                    child2 = self._remove_empty_spaces(child2)
+                    continue
+                if (
+                    parent2_not_allowed_productions is not None
+                    and "zero" in sub
+                    and sub.count("(") == 1
+                    and sub.count(")") == 1
+                ):
+                    _patience -= 1
+                    continue
+                # return the two new tree
+                child1 = pre + donor_sub + post
+                child2 = donor_pre + sub + donor_post
+                child1 = self._remove_empty_spaces(child1)
+                child2 = self._remove_empty_spaces(child2)
 
-                    if return_crossover_subtrees:
-                        return (
-                            child1,
-                            child2,
-                            (pre, sub, post),
-                            (donor_pre, donor_sub, donor_post),
-                        )
-                    return child1, child2
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
+                return child1, child2
 
         return False, False
