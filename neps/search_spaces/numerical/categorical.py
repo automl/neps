@@ -34,7 +34,7 @@ class CategoricalParameter(NumericalParameter):
 
     def sample(self):
         idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
-        self.value = self.choices[int(idx)]
+        self.value = str(self.choices[int(idx)])
 
     def mutate(
         self,

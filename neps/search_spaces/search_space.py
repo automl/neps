@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 import numpy as np
 
-from . import ConstantParameter, NumericalParameter
+from . import CategoricalParameter, ConstantParameter, NumericalParameter
 
 
 class SearchSpace:
@@ -84,7 +84,21 @@ class SearchSpace:
         return [hp.id for hp in self.get_array()]
 
     def get_hps(self):
-        return [hp.value for hp in self._hps]
+        # Numerical hyperparameters are split into:
+        # - categorical HPs
+        # - float/integer continuous HPs
+        # user defined dimensionality split not supported yet!
+        cont_hps = []
+        cat_hps = []
+        for hp in self._hps:
+            if isinstance(hp, CategoricalParameter):
+                cat_hps.append(hp.value)
+            else:
+                cont_hps.append(hp.value)
+        return {
+            "continuous": None if len(cont_hps) == 0 else cont_hps,
+            "categorical": None if len(cat_hps) == 0 else cat_hps,
+        }
 
     def get_array(self):
         return list(self.hyperparameters.values())
@@ -116,3 +130,10 @@ class SearchSpace:
         else:
             self._graphs.append(hp)
         self._num_hps += 1
+
+    def get_vectorial_dim(self):
+        # search space object may contain either continuous or categorical hps
+        d = {}
+        for k, v in self.get_hps().items():
+            d[k] = 0 if v is None else len(v)
+        return d

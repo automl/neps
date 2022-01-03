@@ -6,8 +6,9 @@ import torch
 
 
 class Stationary:
-    """Here we follow the structure of GPy to build a sub class of stationary kernel. All the classes (i.e. the class
-    of stationary kernel_operators) derived from this class use the scaled distance to compute the Gram matrix."""
+    """Here we follow the structure of GPy to build a sub class of stationary kernel.
+    All the classes (i.e. the class of stationary kernel_operators) derived from this
+    class use the scaled distance to compute the Gram matrix."""
 
     def __init__(self, lengthscale=1.0, outputscale=1.0, **kwargs):
         super().__init__(**kwargs)
@@ -28,12 +29,6 @@ class Stationary:
         rebuild_model=True,
         save_gram_matrix=True,
     ):
-        if isinstance(self, HammingKernel):
-            x1 = [[value for value in hp if isinstance(value, str)] for hp in x1]
-        else:
-            x1 = [[value for value in hp if not isinstance(value, str)] for hp in x1]
-            x1 = torch.tensor(x1, dtype=torch.float64)
-
         if not rebuild_model and self._gram is not None:
             return self._gram
         K = self.forward(x1, l=l)
@@ -162,12 +157,7 @@ class HammingKernel(Stationary):
                 x1,
                 x2,
             )
-        return dist
-        # # TODO
-        # sq_dist = dist ** 2
-        # if isinstance(dist, torch.Tensor):
-        #     return self.outputscale * (1 + sqrt(5.) * dist + 5. / 3. * sq_dist) * torch.exp(-sqrt(5.) * dist)
-        # return self.outputscale * (1 + sqrt(5.) * dist + 5. / 3. * sq_dist) * np.exp(-sqrt(5.) * dist)
+        return self.outputscale * dist
 
 
 class RationalQuadraticKernel(Stationary):
@@ -215,11 +205,13 @@ def _unscaled_distance(X, X2=None, sq_dist=False):
 
 
 def _scaled_distance(lengthscale, X, X2=None, sq_dist=False):
-    """Compute the *scaled* distance between X and x2 (or, if X2 is not supplied, the distance between X and itself)
-    by the lengthscale.
-    if a scalar (float) or a dim=1 lengthscale vector is supplied, then it is assumed that we use one lengthscale for
-    all dimensions. Otherwise we have an ARD kernel and in which case the length of the lengthscale vector must be
-    the same as the dimensionality of the problem."""
+    """Compute the *scaled* distance between X and x2 (or, if X2 is not supplied,
+    the distance between X and itself) by the lengthscale. if a scalar (float) or a
+    dim=1 lengthscale vector is supplied, then it is assumed that we use one
+    lengthscale for all dimensions. Otherwise, we have an ARD kernel and in which case
+    the length of the lengthscale vector must be the same as the dimensionality of the
+    problem."""
+    X = torch.tensor(X, dtype=torch.float64)
     if X2 is None:
         X2 = X
     if isinstance(lengthscale, float) or len(lengthscale) == 1:
@@ -230,13 +222,7 @@ def _scaled_distance(lengthscale, X, X2=None, sq_dist=False):
         )
     else:
         # ARD kernel - one lengthscale per dimension
-        assert (
-            len(lengthscale) == X.shape[1]
-        ), "For a non-scaler theta, it needs to be of the same length as the dim" " of the input data, but got input dim of " + str(
-            X.shape[1]
-        ) + " and lengthscale dimension of " + str(
-            lengthscale.shape[0]
-        )
+        _check_lengthscale(lengthscale, X)
         dist = _unscaled_distance(X / lengthscale, X2 / lengthscale)
         return dist if not sq_dist else dist ** 2
 
@@ -245,14 +231,27 @@ def _hamming_distance(lengthscale, X, X2=None):
     if X2 is None:
         X2 = X
 
-    def _distance(X, X2, lengthscale):
+    def _distance(X, X2):
         indicator = np.expand_dims(X, axis=1) != X2
-        K = (-1 / (2 * lengthscale ** 2) * indicator).sum(axis=2)
+        K = (-0.5 * indicator).sum(axis=2)
         K = np.exp(K)
         return torch.from_numpy(K)
 
     if isinstance(lengthscale, float) or len(lengthscale) == 1:
-        return _distance(X, X2, lengthscale) / lengthscale
+        return _distance(X, X2) / lengthscale
     else:
-        # return _distance(X / lengthscale, X2 / lengthscale, lengthscale)
-        return _distance(X, X2, lengthscale=1)
+        _check_lengthscale(lengthscale, X)
+        # TODO: scaling of categorical dims
+        return _distance(X, X2)
+
+
+def _check_lengthscale(lengthscale, X):
+    x_shape = len(X[0]) if isinstance(X, list) else X.shape[1]
+    assert len(lengthscale) == x_shape, (
+        "For a non-scaler theta, it needs to be of the same length as the dim"
+        "of the "
+        "input data, but got input dim of "
+        + str(x_shape)
+        + " and lengthscale dimension of "
+        + str(lengthscale.shape[0])
+    )

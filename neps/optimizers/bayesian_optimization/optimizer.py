@@ -78,7 +78,10 @@ class BayesianOptimization(Optimizer):
             raise Exception("No kernels are provided!")
 
         self.surrogate_model = ComprehensiveGP(
-            graph_kernels=graph_kernels, hp_kernels=hp_kernels, verbose=verbose
+            graph_kernels=graph_kernels,
+            hp_kernels=hp_kernels,
+            verbose=verbose,
+            vectorial_features=pipeline_space.get_vectorial_dim(),
         )
         acquisition_function = AcquisitionMapping[acquisition](
             surrogate_model=self.surrogate_model

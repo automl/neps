@@ -10,7 +10,7 @@ from ..kernels.combine_kernels import ProductKernel, SumKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from ..kernels.graph_kernel import GraphKernels
-from ..kernels.vectorial_kernels import Stationary
+from ..kernels.vectorial_kernels import HammingKernel, Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
 from ..utils.nasbowl_utils import extract_configs
 from .utils import (
@@ -41,7 +41,6 @@ class GP(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-# handle normal and reduce graphs as a list
 class ComprehensiveGP:
     def __init__(
         self,
@@ -49,8 +48,8 @@ class ComprehensiveGP:
         hp_kernels: Iterable,
         likelihood: float = 1e-3,
         weights=None,
-        vector_theta_bounds: tuple = (1e-5, 0.1),
-        graph_theta_bounds: tuple = (1e-1, 1.0e1),
+        vector_theta_bounds: tuple = (1e-2, 1e2),
+        vectorial_features: list = None,
         combined_kernel: str = "sum",
         verbose: bool = False,
     ):
@@ -68,12 +67,12 @@ class ComprehensiveGP:
         )
         self.n_vector_kernels: int = self.n_kernels - self.n_graph_kernels
 
-        self.feature_d = None
+        self.vectorial_features = vectorial_features
 
         if weights is not None:
             self.fixed_weights = True
             if weights is not None:
-                assert len(weights) == len(graph_kernels), (
+                assert len(weights) == len(self.n_kernels), (
                     "the weights vector, if supplied, needs to have the same length as "
                     "the number of kernel_operators!"
                 )
@@ -97,10 +96,10 @@ class ComprehensiveGP:
             self.combined_kernel = SumKernel(*self.domain_kernels, weights=self.weights)
         else:
             raise NotImplementedError(
-                f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" or "product" are currently supported.'
+                f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" '
+                f'or "product" are currently supported. '
             )
         self.vector_theta_bounds = vector_theta_bounds
-        self.graph_theta_bounds = graph_theta_bounds
         # Verbose mode
         self.verbose = verbose
         # Cache the Gram matrix inverse and its log-determinant
@@ -182,17 +181,18 @@ class ComprehensiveGP:
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)
         # Initialise the lengthscale to be the geometric mean of the theta_vector bounds.
-        theta_vector = torch.sqrt(
+        theta_mean = torch.sqrt(
             torch.tensor(
                 [self.vector_theta_bounds[0] * self.vector_theta_bounds[1]],
             )
-        )  # if self.feature_d else None
-        # theta_graph = torch.sqrt(
-        #     torch.tensor([self.graph_theta_bounds[0] * self.graph_theta_bounds[1]])
-        # ).requires_grad_(True)
-        # Only requires gradient of lengthscale if there is any vectorial input
-        # if self.feature_d:
-        theta_vector.requires_grad_(True)
+        )
+        theta_vector = {}
+        for key, dim in self.vectorial_features.items():
+            t = torch.ones(dim) * theta_mean
+            if t.shape[0] > 1:
+                t.requires_grad_(True)
+            theta_vector[key] = t
+
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
         likelihood = torch.tensor(
             self.likelihood,
@@ -212,8 +212,11 @@ class ComprehensiveGP:
 
         # Linking the optimizer variables to the sum kernel
         optim_vars = []
-        for a in [theta_vector, weights, likelihood, layer_weights]:
+        for a in [weights, likelihood, layer_weights]:
             if a is not None and a.is_leaf and a.requires_grad:
+                optim_vars.append(a)
+        for a in theta_vector.values():
+            if a is not None and a.requires_grad:
                 optim_vars.append(a)
         nlml = None
         if len(optim_vars) == 0:  # Skip optimisation
@@ -256,7 +259,7 @@ class ComprehensiveGP:
                         "Negative log-marginal likelihood:",
                         nlml.item(),
                         theta_vector,
-                        weights,  # theta_graph,
+                        weights,
                         likelihood,
                     )
                 optim.step()  # TODO
@@ -265,9 +268,14 @@ class ComprehensiveGP:
                     weights.clamp_(
                         0.0, 1.0
                     ) if weights is not None and weights.is_leaf else None
-                    theta_vector.clamp_(
-                        self.vector_theta_bounds[0], self.vector_theta_bounds[1]
-                    ) if theta_vector is not None and theta_vector.is_leaf else None
+                    [
+                        t_.clamp_(
+                            self.vector_theta_bounds[0], self.vector_theta_bounds[1]
+                        )
+                        if t_ is not None and t_.is_leaf
+                        else None
+                        for t_ in theta_vector.values()
+                    ]
                     likelihood.clamp_(
                         1e-5, max_lik
                     ) if likelihood is not None and likelihood.is_leaf else None
@@ -275,7 +283,6 @@ class ComprehensiveGP:
                         0.0, 1.0
                     ) if layer_weights is not None and layer_weights.is_leaf else None
                     # pylint: enable=expression-not-assigned
-                # print('grad,', theta_graph)
             K_i, logDetK = compute_pd_inverse(K, likelihood)
 
         # Apply the optimal hyperparameters
@@ -289,12 +296,15 @@ class ComprehensiveGP:
         self.nlml = nlml.detach().cpu() if nlml is not None else None
 
         for k in self.combined_kernel.kernels:
-            if isinstance(k, Stationary):
-                k.lengthscale = theta_vector.clamp(
-                    self.vector_theta_bounds[0], self.vector_theta_bounds[1]
-                ).item()
-            # elif isinstance(k, GraphKernels) and k.lengthscale_ is not None:
-            #     k.lengthscale_ = theta_graph.clamp(self.graph_theta_bounds[0], self.graph_theta_bounds[1])
+            # TODO: scaling of categorical dims
+            if isinstance(k, Stationary) and not isinstance(k, HammingKernel):
+                k.lengthscale = [
+                    t_.clamp(
+                        self.vector_theta_bounds[0], self.vector_theta_bounds[1]
+                    ).item()
+                    for t_ in theta_vector["continuous"]
+                ]
+
         self.combined_kernel.weights = weights.clone()
         if self.verbose:
             print("Optimisation summary: ")
@@ -310,7 +320,6 @@ class ComprehensiveGP:
             print("Weights: ", self.weights)
             print("Lik:", self.likelihood)
             print("Optimal layer weights", layer_weights)
-        # print('Graph Lengthscale', theta_graph)
 
     def predict(self, x_configs, preserve_comp_graph: bool = False):
         """Kriging predictions"""
@@ -321,14 +330,15 @@ class ComprehensiveGP:
 
         if self.K_i is None or self.logDetK is None:
             raise ValueError(
-                "Inverse of Gram matrix is not instantiated. Please call the optimize function to "
-                "fit on the training data first!"
+                "Inverse of Gram matrix is not instantiated. Please call the optimize "
+                "function to fit on the training data first!"
             )
 
         # Concatenate the full list
         X_configs_all = self.x_configs + x_configs
 
-        # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
+        # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff
+        # if grad guided mutation is used
         if preserve_comp_graph:
             combined_kernel_copy = deepcopy(self.combined_kernel)
         else:
@@ -338,6 +348,7 @@ class ComprehensiveGP:
             self.weights,
             X_configs_all,
             layer_weights=self.layer_weights,
+            feature_lengthscale=self.theta_vector,
             rebuild_model=True,
             save_gram_matrix=False,
             gp_fit=False,
@@ -376,10 +387,6 @@ class ComprehensiveGP:
         self.y, self.y_mean, self.y_std = normalize_y(train_y_tensor)
         # The Gram matrix of the training data
         self.K_i, self.logDetK = None, None
-
-        # if self.n_vector_kernels > 0:
-        #     self.x_features, self.x_features_min, self.x_features_max = \
-        #         standardize_x(self._get_vectorial_features(self.x, self.vectorial_feactures))
 
     def dmu_dphi(
         self,
@@ -429,8 +436,8 @@ class ComprehensiveGP:
         """
         if self.K_i is None or self.logDetK is None:
             raise ValueError(
-                "Inverse of Gram matrix is not instantiated. Please call the optimize function to "
-                "fit on the training data first!"
+                "Inverse of Gram matrix is not instantiated. Please call the optimize "
+                "function to fit on the training data first!"
             )
         if self.n_vector_kernels:
             if X_s is not None:
