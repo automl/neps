@@ -81,7 +81,9 @@ class BayesianOptimization(Optimizer):
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             verbose=verbose,
-            vectorial_features=pipeline_space.get_vectorial_dim(),
+            vectorial_features=pipeline_space.get_vectorial_dim()
+            if hasattr(pipeline_space, "get_vectorial_dim")
+            else None,
         )
         acquisition_function = AcquisitionMapping[acquisition](
             surrogate_model=self.surrogate_model
@@ -179,7 +181,10 @@ class BayesianOptimization(Optimizer):
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         self.train_x = [el.config for el in previous_results.values()]
-        self.train_y = [el.result["loss"] for el in previous_results.values()]
+        self.train_y = [
+            el.result["loss"] if isinstance(el.result, dict) else np.inf
+            for el in previous_results.values()
+        ]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
         if len(self.train_x) >= self.initial_design_size:
             self._update_model(self.train_x, self.train_y)
