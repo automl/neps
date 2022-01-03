@@ -51,7 +51,8 @@ class Grammar(CFG):
             if len(self.productions(Nonterminal(nt))) == 0:
                 raise Exception(f"There is no production for nonterminal {nt}")
 
-    def compute_space_size(self, primitive_nonterminal: str = "OPS") -> int:
+    @property
+    def compute_space_size(self) -> int:
         """Computes the size of the space described by the grammar.
 
         Args:
@@ -61,9 +62,9 @@ class Grammar(CFG):
             int: size of space described by grammar.
         """
 
-        def recursive_worker(nonterminal: Nonterminal) -> int:
-            if str(nonterminal) == primitive_nonterminal:
-                return len(self.productions(lhs=Nonterminal(primitive_nonterminal)))
+        def recursive_worker(nonterminal: Nonterminal, memory_bank: dict = None) -> int:
+            if memory_bank is None:
+                memory_bank = {}
 
             potential_productions = self.productions(lhs=nonterminal)
             _possibilites = 0
@@ -74,9 +75,17 @@ class Grammar(CFG):
                     if str(rhs_sym) in self.nonterminals
                 ]
                 possibilities_per_edge = [
-                    recursive_worker(e_nonterminal)
+                    memory_bank[str(e_nonterminal)]
+                    if str(e_nonterminal) in memory_bank.keys()
+                    else recursive_worker(e_nonterminal, memory_bank)
                     for e_nonterminal in edges_nonterminals
                 ]
+                memory_bank.update(
+                    {
+                        str(e_nonterminal): possibilities_per_edge[i]
+                        for i, e_nonterminal in enumerate(edges_nonterminals)
+                    }
+                )
                 product = 1
                 for p in possibilities_per_edge:
                     product *= p
