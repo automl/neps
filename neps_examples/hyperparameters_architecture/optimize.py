@@ -7,7 +7,7 @@ import neps
 def run_pipeline(  # pylint: disable=unused-argument
     config, config_working_directory, previous_working_directory
 ):
-    config_dict = config.hyperparameters  # pylint: disable=protected-access
+    config_dict = config.hyperparameters
 
     optimizer = config_dict["optimizer"].value
     learning_rate = config_dict["learning_rate"].value

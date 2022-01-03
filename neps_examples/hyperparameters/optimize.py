@@ -9,7 +9,12 @@ import neps
 def run_pipeline(  # pylint: disable=unused-argument
     config, config_working_directory, previous_working_directory
 ):
-    x = np.array(config.get_hps(), dtype=float)
+    x = np.concatenate(
+        (
+            np.array(config.get_hps()["categorical"], dtype=int),
+            np.array(config.get_hps()["continuous"]),
+        )
+    )
     start = time.time()
     y = -float(np.sum(x))
     end = time.time()
