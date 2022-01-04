@@ -67,7 +67,9 @@ class CombineKernel:
                     weights[i]
                     * k.fit_transform(
                         [x_[key] for x_ in x1],
-                        l=feature_lengthscale[key],
+                        l=feature_lengthscale[key]
+                        if isinstance(feature_lengthscale, dict)
+                        else None,
                         rebuild_model=rebuild_model,
                         save_gram_matrix=save_gram_matrix,
                     )
@@ -123,7 +125,10 @@ class CombineKernel:
                 update_val = (
                     weights[i]
                     * k.transform(
-                        [x_[key] for x_ in x], l=feature_lengthscale[key]
+                        [x_[key] for x_ in x],
+                        l=feature_lengthscale[key]
+                        if isinstance(feature_lengthscale, dict)
+                        else None,
                     ).double()
                 )
             else:
