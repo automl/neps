@@ -457,8 +457,6 @@ class StatisticsTracker:
             os.makedirs(os.path.dirname(self.save_path))
 
         if os.path.isfile(checkpoint_path):
-            # with open(checkpoint_path, "r") as f:
-            #     _checkpoint_data = json.load(f)
             _checkpoint_data = self.read_checkpoint()
             _checkpoint_data += checkpoint_data
         else:

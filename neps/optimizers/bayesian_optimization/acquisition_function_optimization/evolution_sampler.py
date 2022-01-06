@@ -67,7 +67,7 @@ class EvolutionSampler(AcquisitionOptimizer):
             except Exception:
                 _patience -= 1
                 continue
-        return False
+        return False, False
 
     def _tournament_selection(self, population: list, fitness: np.ndarray):
         size = int(len(population) * self.p_tournament)

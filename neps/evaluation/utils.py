@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 
 import numpy as np
 import torch
@@ -83,8 +84,8 @@ def _get_transforms(dataset, args=None):
         FMNIST_STD = [0.3202]
         train_transform = transforms.Compose(
             [
-                transforms.RandomCrop(28, padding=4),
-                transforms.RandomHorizontalFlip(),
+                # transforms.RandomCrop(28, padding=4),
+                # transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(FMNIST_MEAN, FMNIST_STD),
             ]
@@ -296,6 +297,7 @@ def get_train_val_test_loaders(
         num_train = len(train_data)
         indices = list(range(num_train))
         split = int(np.floor(train_portion * num_train))
+        valid_data = deepcopy(train_data)
         train_loader = torch.utils.data.DataLoader(
             train_data,
             batch_size=batch_size,
@@ -305,7 +307,7 @@ def get_train_val_test_loaders(
         )
 
         valid_loader = torch.utils.data.DataLoader(
-            train_data,
+            valid_data,
             batch_size=batch_size,
             sampler=torch.utils.data.sampler.SubsetRandomSampler(
                 indices[split:num_train]

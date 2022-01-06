@@ -51,6 +51,7 @@ def run_training(
     test_loader,
     n_epochs,
     device,
+    eval_mode: bool = False,
     **train_args,
 ):
     model.to(device)
@@ -86,6 +87,8 @@ def run_training(
                 metric=evaluation_metric,
                 loader=test_loader,
             )
+            if eval_mode:
+                print(test_score)
             test_scores.append(test_score)
 
         scheduler.step()
@@ -99,10 +102,10 @@ def run_training(
 
     ret_val = {"best_epoch": best_epoch}
     if valid_loader is not None:
-        ret_val["val_scores"] = valid_scores
+        ret_val["val_scores"] = valid_scores  # type: ignore[assignment]
         ret_val["best_val_score"] = best_valid_score
     if test_loader is not None:
-        ret_val["test_scores"] = test_scores
+        ret_val["test_scores"] = test_scores  # type: ignore[assignment]
         ret_val["best_test_score"] = test_scores[best_epoch]
     return ret_val
 
@@ -117,6 +120,7 @@ def training_pipeline(
     train_loader: torch.utils.data.DataLoader,
     valid_loader: torch.utils.data.DataLoader = None,
     test_loader: torch.utils.data.DataLoader = None,
+    eval_mode: bool = False,
     **train_args,
 ) -> dict:
     """General training pipeline.
@@ -150,6 +154,7 @@ def training_pipeline(
         n_epochs=n_epochs,
         evaluation_metric=evaluation_metric,
         device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
+        eval_mode=eval_mode,
         **train_args,
     )
     return results
