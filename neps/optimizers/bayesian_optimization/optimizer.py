@@ -38,7 +38,7 @@ class BayesianOptimization(Optimizer):
 
         Args:
             TODO
-            acquisition_function (BaseAcquisition): acquisiton function, e.g., EI
+            acquisition_function (BaseAcquisition): acquisition function, e.g., EI
             random_interleave (float, optional): interleave model samples with random samples. Defaults to 1/3.
             return_opt_details (bool, optional): holds information about model decision. Defaults to True.
         """
@@ -145,7 +145,7 @@ class BayesianOptimization(Optimizer):
         x_configs: list,
         y: Iterable | torch.Tensor,
     ) -> None:
-        """Updates the surrogate model and updates the acquisiton function (optimizer).
+        """Updates the surrogate model and updates the acquisition function (optimizer).
 
         Note: please do not remove this function or change its functionality!
 

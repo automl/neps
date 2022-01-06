@@ -10,7 +10,7 @@ from ..kernels.combine_kernels import ProductKernel, SumKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from ..kernels.graph_kernel import GraphKernels
-from ..kernels.vectorial_kernels import HammingKernel, Stationary
+from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
 from ..utils.nasbowl_utils import extract_configs
 from .utils import (
@@ -48,7 +48,6 @@ class ComprehensiveGP:
         hp_kernels: Iterable,
         likelihood: float = 1e-3,
         weights=None,
-        vector_theta_bounds: tuple = (1e-2, 1e2),
         vectorial_features: list = None,
         combined_kernel: str = "sum",
         verbose: bool = False,
@@ -66,7 +65,7 @@ class ComprehensiveGP:
             [i for i in self.domain_kernels if isinstance(i, GraphKernels)]
         )
         self.n_vector_kernels: int = self.n_kernels - self.n_graph_kernels
-        self.feature_d = True if vectorial_features is not None else False
+
         self.vectorial_features = vectorial_features
 
         if weights is not None:
@@ -99,7 +98,6 @@ class ComprehensiveGP:
                 f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" '
                 f'or "product" are currently supported. '
             )
-        self.vector_theta_bounds = vector_theta_bounds
         # Verbose mode
         self.verbose = verbose
         # Cache the Gram matrix inverse and its log-determinant
@@ -180,19 +178,8 @@ class ComprehensiveGP:
 
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)
-        # Initialise the lengthscale to be the geometric mean of the theta_vector bounds.
-        if self.feature_d:
-            theta_mean = torch.sqrt(
-                torch.tensor(
-                    [self.vector_theta_bounds[0] * self.vector_theta_bounds[1]],
-                )
-            )
-            theta_vector = {}
-            for key, dim in self.vectorial_features.items():
-                t = torch.ones(dim) * theta_mean
-                if t.shape[0] > 1:
-                    t.requires_grad_(True)
-                theta_vector[key] = t
+
+        theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
 
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
         likelihood = torch.tensor(
@@ -216,7 +203,8 @@ class ComprehensiveGP:
         for a in [weights, likelihood, layer_weights]:
             if a is not None and a.is_leaf and a.requires_grad:
                 optim_vars.append(a)
-        if self.feature_d:
+
+        if theta_vector is not None:
             for a in theta_vector.values():
                 if a is not None and a.requires_grad:
                     optim_vars.append(a)
@@ -225,7 +213,7 @@ class ComprehensiveGP:
             K = self.combined_kernel.fit_transform(
                 weights,
                 self.x_configs,
-                feature_lengthscale=theta_vector if self.feature_d else None,
+                feature_lengthscale=theta_vector,
                 layer_weights=layer_weights,
                 rebuild_model=True,
             )
@@ -244,7 +232,7 @@ class ComprehensiveGP:
                 K = self.combined_kernel.fit_transform(
                     weights,
                     self.x_configs,
-                    feature_lengthscale=theta_vector if self.feature_d else None,
+                    feature_lengthscale=theta_vector,
                     layer_weights=layer_weights,
                     rebuild_model=True,
                     save_gram_matrix=True,
@@ -260,7 +248,7 @@ class ComprehensiveGP:
                         iters,
                         "Negative log-marginal likelihood:",
                         nlml.item(),
-                        theta_vector if self.feature_d else None,
+                        theta_vector,
                         weights,
                         likelihood,
                     )
@@ -270,15 +258,7 @@ class ComprehensiveGP:
                     weights.clamp_(
                         0.0, 1.0
                     ) if weights is not None and weights.is_leaf else None
-                    if self.feature_d:
-                        [
-                            t_.clamp_(
-                                self.vector_theta_bounds[0], self.vector_theta_bounds[1]
-                            )
-                            if t_ is not None and t_.is_leaf
-                            else None
-                            for t_ in theta_vector.values()
-                        ]
+                    theta_vector = self.combined_kernel.clamp_theta_vector(theta_vector)
                     likelihood.clamp_(
                         1e-5, max_lik
                     ) if likelihood is not None and likelihood.is_leaf else None
@@ -294,27 +274,19 @@ class ComprehensiveGP:
         self.K = K.clone()
         self.logDetK = logDetK.clone()
         self.likelihood = likelihood.item()
-        if self.feature_d:
-            self.theta_vector = theta_vector
+        self.theta_vector = theta_vector
         self.layer_weights = layer_weights
         self.nlml = nlml.detach().cpu() if nlml is not None else None
 
         for k in self.combined_kernel.kernels:
-            # TODO: scaling of categorical dims
-            if isinstance(k, Stationary) and not isinstance(k, HammingKernel):
-                if self.feature_d:
-                    k.lengthscale = [
-                        t_.clamp(
-                            self.vector_theta_bounds[0], self.vector_theta_bounds[1]
-                        ).item()
-                        for t_ in theta_vector["continuous"]
-                    ]
+            if isinstance(k, Stationary):
+                k.update_hyperparameters(lengthscale=theta_vector)
 
         self.combined_kernel.weights = weights.clone()
         if self.verbose:
             print("Optimisation summary: ")
             print("Optimal NLML: ", nlml)
-            print("Lengthscales: ", theta_vector if self.feature_d else None)
+            print("Lengthscales: ", theta_vector)
             try:
                 print(
                     "Optimal h: ",
@@ -353,7 +325,7 @@ class ComprehensiveGP:
             self.weights,
             X_configs_all,
             layer_weights=self.layer_weights,
-            feature_lengthscale=self.theta_vector if self.feature_d else None,
+            feature_lengthscale=self.theta_vector,
             rebuild_model=True,
             save_gram_matrix=False,
             gp_fit=False,
@@ -505,10 +477,11 @@ class ComprehensiveGP:
 
 def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
     r"""
-    Average across the samples via a Monte Carlo sampling scheme. Also estimates the empirical variance.
-    :param average_occurrences: if True, do a weighted summation based on the frequency distribution of the occurrence
-        to compute a gradient *per each feature*. Otherwise, each different occurence (\phi_i = k) will get a different
-        gradient estimate.
+    Average across the samples via a Monte Carlo sampling scheme. Also estimates the
+    empirical variance. :param average_occurrences: if True, do a weighted summation
+    based on the frequency distribution of the occurrence to compute a gradient *per
+    each feature*. Otherwise, each different occurrence (\phi_i = k) will get a
+    different gradient estimate.
     """
     assert grad_matrix.shape == feature_matrix.shape
     # Prune out the all-zero columns that pop up sometimes
@@ -621,3 +594,15 @@ def _grid_search_wl_kernel(
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})
     k._gram = best_K  # pylint: disable=protected-access
+
+
+def get_theta_vector(vectorial_features):
+    if vectorial_features is None:
+        return None
+    theta_vector = {}
+    for key, dim in vectorial_features.items():
+        t = torch.ones(dim)
+        if t.shape[0] > 1:
+            t.requires_grad_(True)
+        theta_vector[key] = t
+    return theta_vector

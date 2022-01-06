@@ -134,6 +134,9 @@ class SearchSpace:
     def get_vectorial_dim(self):
         # search space object may contain either continuous or categorical hps
         d = {}
-        for k, v in self.get_hps().items():
+        hps = self.get_hps()
+        if all(hp is None for hp in hps.values()):
+            return None
+        for k, v in hps.items():
             d[k] = 0 if v is None else len(v)
         return d

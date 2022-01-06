@@ -22,11 +22,13 @@ class CombineKernel:
     ):
         self.has_graph_kernels = False
         self.has_vector_kernels = False
+        self.lengthscale_bounds = (None, None)
         for k in kernels:
             if isinstance(k, GraphKernels):
                 self.has_graph_kernels = True
             if not isinstance(k, GraphKernels):
                 self.has_vector_kernels = True
+                self.lengthscale_bounds = k.lengthscale_bounds
         self.kernels = kernels
         # Store the training graphs and vector features..
         self._gram = None
@@ -143,6 +145,18 @@ class CombineKernel:
                 K *= update_val
 
         return K.t()
+
+    def clamp_theta_vector(self, theta_vector):
+        if theta_vector is None:
+            return None
+        # pylint: disable=expression-not-assigned
+        [
+            t_.clamp_(self.lengthscale_bounds[0], self.lengthscale_bounds[1])
+            if t_ is not None and t_.is_leaf
+            else None
+            for t_ in theta_vector.values()
+        ]
+        return theta_vector
 
 
 class SumKernel(CombineKernel):

@@ -1,5 +1,6 @@
 from copy import deepcopy
 from math import sqrt
+from typing import Tuple, Union
 
 import numpy as np
 import torch
@@ -10,12 +11,23 @@ class Stationary:
     All the classes (i.e. the class of stationary kernel_operators) derived from this
     class use the scaled distance to compute the Gram matrix."""
 
-    def __init__(self, lengthscale=1.0, outputscale=1.0, **kwargs):
+    def __init__(
+        self,
+        lengthscale: Union[float, Tuple[float, ...]] = 1.0,
+        lengthscale_bounds: Tuple[float, float] = (
+            np.exp(-6.754111155189306),
+            np.exp(0.0858637988771976),
+        ),
+        outputscale=1.0,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.lengthscale = lengthscale
+        self.lengthscale_bounds = lengthscale_bounds
+        self.outputscale = outputscale
+
         self._gram = None
         self._train = None
-        self.outputscale = outputscale
 
     def forward(self, x1, x2=None, l=None, **params):  # pylint: disable=W0613
         if l is not None:
@@ -57,6 +69,12 @@ class Stationary:
         K = self.forward(x1, x2, l)
         return K, x2
 
+    def update_hyperparameters(self, lengthscale):
+        self.lengthscale = [
+            l_.clamp(self.lengthscale_bounds[0], self.lengthscale_bounds[1]).item()
+            for l_ in lengthscale
+        ]
+
 
 class RBFKernel(Stationary):
     def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
@@ -71,9 +89,9 @@ class RBFKernel(Stationary):
 
 class LayeredRBFKernel(RBFKernel):
     """
-    Same as the conventional RBF kernel, but adapted in a way as a midway between spherical RBF and ARD RBF. In this
-    case, one weight is assigned to each Weisfiler-Lehman iteration only (e.g. one weight for h=0, another for h=1 and
-    etc.)
+    Same as the conventional RBF kernel, but adapted in a way as a midway between
+    spherical RBF and ARD RBF. In this case, one weight is assigned to each
+    Weisfiler-Lehman iteration only (e.g. one weight for h=0, another for h=1 and etc.)
     """
 
     def forward(self, ard_dims, x1, x2=None, l=None, **kwargs):
@@ -142,6 +160,12 @@ class Matern52Kernel(Stationary):
             * np.exp(-sqrt(5.0) * dist)
         )
 
+    def update_hyperparameters(self, lengthscale):
+        if lengthscale is None or "continuous" not in lengthscale.keys():
+            return
+        lengthscale = lengthscale["continuous"]
+        super().update_hyperparameters(lengthscale=lengthscale)
+
 
 class HammingKernel(Stationary):
     def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
@@ -158,6 +182,12 @@ class HammingKernel(Stationary):
                 x2,
             )
         return self.outputscale * dist
+
+    def update_hyperparameters(self, lengthscale):
+        if lengthscale is None or "categorical" not in lengthscale.keys():
+            return
+        lengthscale = lengthscale["categorical"]
+        super().update_hyperparameters(lengthscale=lengthscale)
 
 
 class RationalQuadraticKernel(Stationary):
@@ -231,9 +261,11 @@ def _hamming_distance(lengthscale, X, X2=None):
     if X2 is None:
         X2 = X
 
-    def _distance(X, X2):
+    def _distance(X, X2, lengthscale=1.0):
+        if isinstance(lengthscale, torch.Tensor):
+            lengthscale = lengthscale.detach().numpy()
         indicator = np.expand_dims(X, axis=1) != X2
-        K = (-0.5 * indicator).sum(axis=2)
+        K = (-1 / (2 * lengthscale ** 2) * indicator).sum(axis=2)
         K = np.exp(K)
         return torch.from_numpy(K)
 
@@ -241,8 +273,7 @@ def _hamming_distance(lengthscale, X, X2=None):
         return _distance(X, X2) / lengthscale
     else:
         _check_lengthscale(lengthscale, X)
-        # TODO: scaling of categorical dims
-        return _distance(X, X2)
+        return _distance(X, X2, lengthscale)
 
 
 def _check_lengthscale(lengthscale, X):
