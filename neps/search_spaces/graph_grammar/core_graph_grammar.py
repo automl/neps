@@ -986,6 +986,14 @@ class CoreGraphGrammar(Graph):
                             G.nodes[n][sym_name] = sym
                             if return_subgraph_dict:
                                 q_subgraphs[-1]["graph"].nodes[n][sym_name] = sym
+                                q_subgraphs[-1]["atoms"][
+                                    next(
+                                        filter(
+                                            lambda x: x[1] is None,
+                                            q_subgraphs[-1]["atoms"].items(),
+                                        )
+                                    )[0]
+                                ] = sym
                             if add_subtree_map:
                                 G.nodes[n]["subtrees"].append(q_nonterminals[-1])
                                 q_nonterminals.pop()
