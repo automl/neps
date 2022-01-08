@@ -31,6 +31,7 @@ class BayesianOptimization(Optimizer):
         acquisition_opt_strategy_args: dict = None,
         n_candidates: int = 200,
         random_interleave_prob: float = 0.0,
+        patience: int = 50,
         verbose: bool = False,
         return_opt_details: bool = False,
     ):
@@ -112,6 +113,7 @@ class BayesianOptimization(Optimizer):
         self.surrogate_model_fit_args = surrogate_model_fit_args
         self.initial_design_size = initial_design_size
         self.n_candidates = n_candidates
+        self.patience = patience
         self.return_opt_details = return_opt_details
 
         self.random_sampler = RandomSampler(self.acquisition_function_opt.search_space)
@@ -128,12 +130,34 @@ class BayesianOptimization(Optimizer):
             if random.random() < self.random_interleave_prob:
                 config = self.random_sampler.sample(1)[0]
             else:
-                model_sample, _, _ = self.acquisition_function_opt.sample(
-                    self.n_candidates, 1
-                )
-                config = model_sample[0]
+                if len(self.pending_evaluations) > 0:
+                    pending_evaluation_ids = [
+                        pend_eval.id[0]
+                        if len(pend_eval.id) == 0
+                        else "-".join(pend_eval.id)
+                        for pend_eval in self.pending_evaluations
+                    ]
+                    _patience = self.patience
+                    while _patience > 0:
+                        model_sample, _, _ = self.acquisition_function_opt.sample(
+                            self.n_candidates, 1
+                        )
+                        config = model_sample[0]
+                        config_id = (
+                            config.id if len(config.id) == 0 else "-".join(config.id)
+                        )
+                        if config_id not in pending_evaluation_ids:
+                            break
+                        _patience -= 1
+                    if _patience == 0:
+                        config = self.random_sampler.sample(1)[0]
+                else:
+                    model_sample, _, _ = self.acquisition_function_opt.sample(
+                        self.n_candidates, 1
+                    )
+                    config = model_sample[0]
 
-        self.pending_evaluations.append(config)
+        # self.pending_evaluations.append(config)
         return config
 
     def get_config_and_ids(self):
@@ -143,7 +167,7 @@ class BayesianOptimization(Optimizer):
     def _update_model(
         self,
         x_configs: list,
-        y: Iterable | torch.Tensor,
+        y: list,
     ) -> None:
         """Updates the surrogate model and updates the acquisition function (optimizer).
 
@@ -153,7 +177,7 @@ class BayesianOptimization(Optimizer):
             x_configs (Iterable): configs.
             y (Union[Iterable, torch.Tensor]): observations.
         """
-        self._check_pending_evaluations(x_configs)
+        # self._check_pending_evaluations(x_configs)
 
         self.train_x = x_configs
         self.train_y = y
@@ -166,7 +190,7 @@ class BayesianOptimization(Optimizer):
                 self.surrogate_model.fit()
             ys, _ = self.surrogate_model.predict(self.pending_evaluations)
             train_x = self.train_x + self.pending_evaluations
-            train_y = self.train_y + ys
+            train_y = self.train_y + list(ys.detach().numpy())
         else:
             train_x = self.train_x
             train_y = self.train_y
@@ -190,14 +214,14 @@ class BayesianOptimization(Optimizer):
             self._update_model(self.train_x, self.train_y)
 
     @deprecated
-    def _initialize_model(self, x_configs: list, y: Iterable | torch.Tensor):
+    def _initialize_model(self, x_configs: list, y: list):
         """Initializes the surrogate model and acquisition function (optimizer).
 
         Note: please do not remove this function or change its functionality!
 
         Args:
-            x_configs (Iterable): config.
-            y (Union[Iterable, torch.Tensor]): observation.
+            x_configs (list): config.
+            y (list): observation.
         """
         self.train_x = []
         self.train_y = []

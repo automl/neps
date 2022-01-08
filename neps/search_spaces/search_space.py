@@ -76,6 +76,60 @@ class SearchSpace:
                 continue
         return new_config
 
+    def crossover(
+        self,
+        config2,
+        crossover_probability_per_hyperparameter: float = 1.0,
+        patience: int = 50,
+        crossover_strategy: str = "simple",
+    ):
+
+        if crossover_strategy == "simple":
+            new_config1, new_config2 = self._simple_crossover(
+                config2, crossover_probability_per_hyperparameter, patience
+            )
+        else:
+            raise NotImplementedError("No such mutation strategy!")
+
+        child1 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config1)))
+        child2 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config2)))
+
+        return child1, child2
+
+    def _simple_crossover(
+        self,
+        config2,
+        crossover_probability_per_hyperparameter: float = 1.0,
+        patience: int = 50,
+    ):
+        new_config1 = []
+        new_config2 = []
+        for key, hyperparameter in self.hyperparameters.items():
+            if (
+                hasattr(hyperparameter, "crossover")
+                and np.random.random() < crossover_probability_per_hyperparameter
+            ):
+                while patience > 0:
+                    try:
+                        child1, child2 = hyperparameter.crossover(
+                            config2.hyperparameters[key]
+                        )
+                        new_config1.append(child1)
+                        new_config2.append(child2)
+                        break
+                    except NotImplementedError:
+                        new_config1.append(hyperparameter)
+                        new_config2.append(config2.hyperparameters[key])
+                        break
+                    except Exception:
+                        patience -= 1
+                        continue
+            else:
+                new_config1.append(hyperparameter)
+                new_config2.append(config2.hyperparameters[key])
+
+        return new_config1, new_config2
+
     def get_graphs(self):
         return [graph.value for graph in self._graphs]
 
