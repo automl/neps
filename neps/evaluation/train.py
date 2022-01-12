@@ -15,11 +15,11 @@ def reset_weights(m):
         m.reset_parameters()
 
 
-def train(model, device, optimizer, criterion, loader, **train_args):
+def train(model, optimizer, criterion, loader, **train_args):
     model.train()
     grad_clip = train_args["grad_clip"] if "grad_clip" in train_args else None
     for data_blob in loader:
-        data, target = (x.to(device) for x in data_blob)
+        data, target = (x.cuda() for x in data_blob)
         optimizer.zero_grad()
         output = model.forward(data)
         loss = criterion(output, target)
@@ -30,11 +30,11 @@ def train(model, device, optimizer, criterion, loader, **train_args):
 
 
 @torch.no_grad()
-def evaluate(model, device, metric, loader):
+def evaluate(model, metric, loader):
     model.eval()
     metric.reset()
     for data_blob in loader:
-        data, target = (x.to(device) for x in data_blob)
+        data, target = (x.cuda() for x in data_blob)
         output = model.forward(data)
         metric.update(output, target)
     return metric.compute().detach().cpu().item()
@@ -50,12 +50,9 @@ def run_training(
     valid_loader,
     test_loader,
     n_epochs,
-    device,
     eval_mode: bool = False,
     **train_args,
 ):
-    model.to(device)
-    evaluation_metric.to(device)
     best_valid_score = 0
     best_epoch = 0
     valid_scores = []
@@ -63,7 +60,6 @@ def run_training(
     for epoch in range(n_epochs):
         train(
             model=model,
-            device=device,
             optimizer=optimizer,
             criterion=train_criterion,
             loader=train_loader,
@@ -72,7 +68,6 @@ def run_training(
         if valid_loader is not None:
             valid_score = evaluate(
                 model=model,
-                device=device,
                 metric=evaluation_metric,
                 loader=valid_loader,
             )
@@ -83,7 +78,6 @@ def run_training(
         if test_loader is not None:
             test_score = evaluate(
                 model=model,
-                device=device,
                 metric=evaluation_metric,
                 loader=test_loader,
             )
@@ -153,7 +147,6 @@ def training_pipeline(
         test_loader=test_loader,
         n_epochs=n_epochs,
         evaluation_metric=evaluation_metric,
-        device=torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
         eval_mode=eval_mode,
         **train_args,
     )
