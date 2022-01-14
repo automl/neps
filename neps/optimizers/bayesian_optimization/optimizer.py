@@ -134,7 +134,7 @@ class BayesianOptimization(Optimizer):
                     pending_evaluation_ids = [
                         pend_eval.id[0]
                         if len(pend_eval.id) == 0
-                        else "-".join(pend_eval.id)
+                        else "-".join(map(str, pend_eval.id))
                         for pend_eval in self.pending_evaluations
                     ]
                     _patience = self.patience
@@ -144,7 +144,9 @@ class BayesianOptimization(Optimizer):
                         )
                         config = model_sample[0]
                         config_id = (
-                            config.id if len(config.id) == 0 else "-".join(config.id)
+                            config.id
+                            if len(config.id) == 0
+                            else "-".join(map(str, config.id))
                         )
                         if config_id not in pending_evaluation_ids:
                             break
