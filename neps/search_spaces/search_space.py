@@ -58,7 +58,6 @@ class SearchSpace:
     def sample(self):
         for hyperparameter in self.hyperparameters.values():
             hyperparameter.sample()
-        print()
 
     def mutate(
         self,
