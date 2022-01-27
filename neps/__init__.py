@@ -11,4 +11,3 @@ from .search_spaces import (
     GraphGrammarRepetitive,
     IntegerParameter,
 )
-from .search_spaces.search_space import SearchSpace

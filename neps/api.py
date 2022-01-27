@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Callable, Mapping
 
@@ -25,21 +24,20 @@ from .search_spaces.search_space import SearchSpace, search_space_from_configspa
 
 def run(
     run_pipeline: Callable,
-    pipeline_space: Mapping[str, Parameter] | SearchSpace | CS.ConfigurationSpace,
+    pipeline_space: Mapping[str, Parameter] | CS.ConfigurationSpace,
     working_directory: str | Path,
     n_iterations: int,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
     **searcher_kwargs,
-):
+) -> None:
     if isinstance(pipeline_space, CS.ConfigurationSpace):
         pipeline_space = search_space_from_configspace(pipeline_space)
-    elif not isinstance(pipeline_space, SearchSpace):
-        pipeline_space = SearchSpace(**pipeline_space)
     else:
-        warnings.warn(
-            "Using neps.SearchSpace is depreciated and will be removed in the future, please use a dict.",
-            DeprecationWarning,
-        )
+        try:
+            pipeline_space = SearchSpace(**pipeline_space)
+        except TypeError as e:
+            message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
+            raise TypeError(message) from e
 
     if searcher == "bayesian_optimization":
         sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
@@ -48,7 +46,7 @@ def run(
     else:
         raise ValueError
 
-    return metahyper.run(
+    metahyper.run(
         run_pipeline,
         sampler,
         working_directory,
