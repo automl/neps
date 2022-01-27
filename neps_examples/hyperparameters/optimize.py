@@ -52,7 +52,6 @@ if __name__ == "__main__":
         working_directory="results/hyperparameters_example",
         n_iterations=20,
         hp_kernels=["m52", "hm"],
-        use_new_metahyper=True,
     )
     previous_results, pending_configs, pending_configs_free = neps.read_results(
         "results/hyperparameters_example"

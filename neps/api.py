@@ -29,15 +29,8 @@ def run(
     working_directory: str | Path,
     n_iterations: int,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
-    start_master: bool = True,  # This will be removed in a future version
-    start_worker: bool = True,  # This will be removed in a future version
-    nic_name: str = "lo",  # This will be removed in a future version
-    do_live_logging: bool = False,  # This will be removed in a future version
-    overwrite_logging: bool = False,  # This will be removed in a future version
-    use_new_metahyper: bool = False,  # This will be removed in a future version
     **searcher_kwargs,
 ):
-
     if isinstance(pipeline_space, CS.ConfigurationSpace):
         pipeline_space = search_space_from_configspace(pipeline_space)
     elif not isinstance(pipeline_space, SearchSpace):
@@ -55,24 +48,9 @@ def run(
     else:
         raise ValueError
 
-    if use_new_metahyper:
-        return metahyper.run(
-            run_pipeline,
-            sampler,
-            working_directory,
-            max_evaluations=n_iterations,
-        )
-    else:
-        return metahyper.old_metahyper.api.run(
-            sampler,
-            run_pipeline,
-            pipeline_space,
-            working_directory,
-            n_iterations,
-            start_master=start_master,
-            start_worker=start_worker,
-            nic_name=nic_name,
-            logger_name="neps",
-            do_live_logging=do_live_logging,
-            overwrite_logging=overwrite_logging,
-        )
+    return metahyper.run(
+        run_pipeline,
+        sampler,
+        working_directory,
+        max_evaluations=n_iterations,
+    )

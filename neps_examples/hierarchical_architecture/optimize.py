@@ -42,7 +42,6 @@ if __name__ == "__main__":
         working_directory="results/hierarchical_architecture_example",
         n_iterations=20,
         graph_kernels=["wl"],
-        use_new_metahyper=True,
     )
 
     previous_results, pending_configs, pending_configs_free = neps.read_results(
