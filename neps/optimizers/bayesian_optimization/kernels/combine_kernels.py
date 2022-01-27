@@ -2,7 +2,7 @@ import logging
 
 import torch
 
-from ..utils.nasbowl_utils import extract_configs
+from .utils import extract_configs
 from .vectorial_kernels import HammingKernel, Stationary
 from .weisfilerlehman import GraphKernels
 
