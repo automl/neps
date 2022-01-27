@@ -43,6 +43,9 @@ class ExpectedHypervolumeImprovement(Module):  # , MultiObjectiveBaseAcqusition)
     ) -> None:
         r"""Expected Hypervolume Improvement supporting m>=2 outcomes.
 
+        Implementation from BOtorch, adapted from
+        https://github.com/pytorch/botorch/blob/353f37649fa8d90d881e8ea20c11986b15723ef1/botorch/acquisition/multi_objective/analytic.py#L78
+
         This implements the computes EHVI using the algorithm from [Yang2019]_, but
         additionally computes gradients via auto-differentiation as proposed by
         [Daulton2020qehvi]_.
