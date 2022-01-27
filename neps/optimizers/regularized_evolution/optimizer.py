@@ -1,3 +1,6 @@
+""" Note: This optimizer is currently not supported.
+"""
+
 import random
 from collections import deque
 

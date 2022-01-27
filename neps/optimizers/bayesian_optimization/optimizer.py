@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import inspect
 import random
-from typing import Iterable
 
 import numpy as np
 import torch
-from deprecated import deprecated
 
 from ..base_optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
@@ -35,14 +33,7 @@ class BayesianOptimization(Optimizer):
         verbose: bool = False,
         return_opt_details: bool = False,
     ):
-        """Implements the basic BO loop.
-
-        Args:
-            TODO
-            acquisition_function (BaseAcquisition): acquisition function, e.g., EI
-            random_interleave (float, optional): interleave model samples with random samples. Defaults to 1/3.
-            return_opt_details (bool, optional): holds information about model decision. Defaults to True.
-        """
+        """Implements the basic BO loop."""
 
         assert 0 <= random_interleave_prob <= 1
 
@@ -106,7 +97,8 @@ class BayesianOptimization(Optimizer):
             )
         else:
             raise ValueError(
-                f"Acquisition optimization strategy {acquisition_opt_strategy} is not defined!"
+                f"Acquisition optimization strategy {acquisition_opt_strategy} is not "
+                f"defined!"
             )
 
         self.random_interleave_prob = random_interleave_prob
@@ -119,71 +111,12 @@ class BayesianOptimization(Optimizer):
         self.random_sampler = RandomSampler(self.acquisition_function_opt.search_space)
 
         self.train_x: list = []
-        self.train_y: Iterable | torch.Tensor = []
+        self.train_y: list | torch.Tensor = []
 
         self.pending_evaluations: list = []
 
-    def get_config(self):
-        if len(self.train_x) < self.initial_design_size:
-            config = self.random_sampler.sample(1)[0]
-        else:
-            if random.random() < self.random_interleave_prob:
-                config = self.random_sampler.sample(1)[0]
-            else:
-                if len(self.pending_evaluations) > 0:
-                    pending_evaluation_ids = [
-                        pend_eval.id[0]
-                        if len(pend_eval.id) == 0
-                        else "-".join(map(str, pend_eval.id))
-                        for pend_eval in self.pending_evaluations
-                    ]
-                    _patience = self.patience
-                    while _patience > 0:
-                        model_sample, _, _ = self.acquisition_function_opt.sample(
-                            self.n_candidates, 1
-                        )
-                        config = model_sample[0]
-                        config_id = (
-                            config.id
-                            if len(config.id) == 0
-                            else "-".join(map(str, config.id))
-                        )
-                        if config_id not in pending_evaluation_ids:
-                            break
-                        _patience -= 1
-                    if _patience == 0:
-                        config = self.random_sampler.sample(1)[0]
-                else:
-                    model_sample, _, _ = self.acquisition_function_opt.sample(
-                        self.n_candidates, 1
-                    )
-                    config = model_sample[0]
-
-        # self.pending_evaluations.append(config)
-        return config
-
-    def get_config_and_ids(self):
-        config = self.get_config()
-        return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
-
-    def _update_model(
-        self,
-        x_configs: list,
-        y: list,
-    ) -> None:
-        """Updates the surrogate model and updates the acquisition function (optimizer).
-
-        Note: please do not remove this function or change its functionality!
-
-        Args:
-            x_configs (Iterable): configs.
-            y (Union[Iterable, torch.Tensor]): observations.
-        """
-        # self._check_pending_evaluations(x_configs)
-
-        self.train_x = x_configs
-        self.train_y = y
-
+    def _update_model(self) -> None:
+        """Updates the surrogate model and the acquisition function (optimizer)."""
         if len(self.pending_evaluations) > 0:
             self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
             if self.surrogate_model_fit_args is not None:
@@ -213,101 +146,37 @@ class BayesianOptimization(Optimizer):
         ]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
         if len(self.train_x) >= self.initial_design_size:
-            self._update_model(self.train_x, self.train_y)
+            self._update_model()
 
-    @deprecated
-    def _initialize_model(self, x_configs: list, y: list):
-        """Initializes the surrogate model and acquisition function (optimizer).
-
-        Note: please do not remove this function or change its functionality!
-
-        Args:
-            x_configs (list): config.
-            y (list): observation.
-        """
-        self.train_x = []
-        self.train_y = []
-        self.pending_evaluations = []
-        self._update_model(x_configs, y)
-
-    @deprecated
-    def _check_pending_evaluations(self, configs):
-        self.pending_evaluations = [
-            pending_eval
-            for pending_eval in self.pending_evaluations
-            if not any(
-                x.get_dictionary() == pending_eval.get_dictionary() for x in configs
-            )
-        ]
-
-    @deprecated
-    def _propose_new_location(
-        self, batch_size: int = 5, n_candidates: int = 10
-    ) -> Iterable | tuple[Iterable, dict]:
-        """Proposes new locations.
-
-        Note: please do not remove this function or change its functionality!
-
-        Args:
-            batch_size (int, optional): number of proposals. Defaults to 5.
-            n_candidates (int, optional): how many candidates to consider. Defaults to 10.
-
-        Returns:
-            Union[Iterable, Tuple[Iterable, dict]]: proposals, (model decision information metrics)
-        """
-        # Ask for a location proposal from the acquisition function..
-        model_batch_size = np.random.binomial(
-            n=batch_size, p=1 - self.random_interleave_prob
-        )
-
-        next_x = []
-        if model_batch_size > 0:
-            model_samples, pool, acq_vals = self.acquisition_function_opt.sample(
-                n_candidates, model_batch_size
-            )
-            next_x.extend(model_samples)
-        elif self.return_opt_details:  # need to compute acq vals
-            model_samples, pool, acq_vals = self.acquisition_function_opt.sample(
-                n_candidates, 1
-            )
-        if batch_size - model_batch_size > 0:
-            random_samples = self.random_sampler.sample(batch_size - model_batch_size)
-            next_x.extend(random_samples)
-
-        self.pending_evaluations.extend(next_x)
-
-        if self.return_opt_details:
-            train_preds = self.surrogate_model.predict(
-                self.train_x + list(next_x),
-            )
-            train_preds = [t.detach().cpu().numpy() for t in train_preds]
-            pool_preds = self.surrogate_model.predict(
-                pool,
-            )
-            pool_preds = [p.detach().cpu().numpy() for p in pool_preds]
-            opt_details = {
-                "pool": pool,
-                "acq_vals": acq_vals,
-                "train_preds_mean": train_preds[0],
-                "train_preds_cov": train_preds[1],
-                "pool_preds_mean": pool_preds[0],
-                "pool_preds_cov": pool_preds[1],
-            }
-            return next_x, opt_details
+    def get_config_and_ids(self):
+        if len(self.train_x) < self.initial_design_size:
+            config = self.random_sampler.sample(1)[0]
+        elif random.random() < self.random_interleave_prob:
+            config = self.random_sampler.sample(1)[0]
+        elif len(self.pending_evaluations) > 0:
+            pending_evaluation_ids = [
+                pend_eval.id[0]
+                if len(pend_eval.id) == 0
+                else "-".join(map(str, pend_eval.id))
+                for pend_eval in self.pending_evaluations
+            ]
+            _patience = self.patience
+            while _patience > 0:
+                model_sample, _, _ = self.acquisition_function_opt.sample(
+                    self.n_candidates, 1
+                )
+                config = model_sample[0]
+                config_id = (
+                    config.id if len(config.id) == 0 else "-".join(map(str, config.id))
+                )
+                if config_id not in pending_evaluation_ids:
+                    break
+                _patience -= 1
+            if _patience == 0:
+                config = self.random_sampler.sample(1)[0]
         else:
-            return next_x, None
-
-    @deprecated
-    def new_result(self, job):
-        if job.result is None:
-            loss = np.inf
-        else:
-            loss = job.result["loss"] if np.isfinite(job.result["loss"]) else np.inf
-
-        config = job.kwargs["config"]
-        # TODO temporary to be back-compatible
-        self._check_pending_evaluations([config])
-        self.train_x.append(config)
-        self.train_y.append(loss)
-        if len(self.train_x) >= self.initial_design_size:
-            self._update_model(self.train_x, self.train_y)
+            model_sample, _, _ = self.acquisition_function_opt.sample(
+                self.n_candidates, 1
+            )
+            config = model_sample[0]
+        return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
