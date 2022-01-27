@@ -1,9 +1,41 @@
+from __future__ import annotations
+
 import random
 from collections import OrderedDict
 
+import ConfigSpace as CS
 import numpy as np
 
-from . import CategoricalParameter, ConstantParameter, NumericalParameter
+from . import (
+    CategoricalParameter,
+    ConstantParameter,
+    FloatParameter,
+    IntegerParameter,
+    NumericalParameter,
+)
+
+
+def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchSpace:
+    pipeline_space = dict()
+    for hyperparameter in configspace.get_hyperparameters():
+        if isinstance(hyperparameter, CS.CategoricalHyperparameter):
+            parameter = CategoricalParameter(hyperparameter.choices)
+        elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
+            parameter = IntegerParameter(
+                lower=hyperparameter.lower,
+                upper=hyperparameter.upper,
+                log=hyperparameter.log,
+            )
+        elif isinstance(hyperparameter, CS.UniformFloatHyperparameter):
+            parameter = FloatParameter(
+                lower=hyperparameter.lower,
+                upper=hyperparameter.upper,
+                log=hyperparameter.log,
+            )
+        else:
+            raise ValueError(f"Unkown hyperparameter type {hyperparameter}")
+        pipeline_space[hyperparameter.name] = parameter
+    return SearchSpace(**pipeline_space)
 
 
 class SearchSpace:

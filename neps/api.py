@@ -4,6 +4,7 @@ import warnings
 from pathlib import Path
 from typing import Callable, Mapping
 
+import ConfigSpace as CS
 import metahyper
 import metahyper.old_metahyper.api
 from typing_extensions import Literal
@@ -19,12 +20,12 @@ except ModuleNotFoundError:
 
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.optimizer import RandomSearch
-from .search_spaces.search_space import SearchSpace
+from .search_spaces.search_space import SearchSpace, search_space_from_configspace
 
 
 def run(
     run_pipeline: Callable,
-    pipeline_space: Mapping[str, Parameter] | SearchSpace,
+    pipeline_space: Mapping[str, Parameter] | SearchSpace | CS.ConfigurationSpace,
     working_directory: str | Path,
     n_iterations: int,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
@@ -36,7 +37,10 @@ def run(
     use_new_metahyper: bool = False,  # This will be removed in a future version
     **searcher_kwargs,
 ):
-    if not isinstance(pipeline_space, SearchSpace):
+
+    if isinstance(pipeline_space, CS.ConfigurationSpace):
+        pipeline_space = search_space_from_configspace(pipeline_space)
+    elif not isinstance(pipeline_space, SearchSpace):
         pipeline_space = SearchSpace(**pipeline_space)
     else:
         warnings.warn(

@@ -43,7 +43,6 @@ if __name__ == "__main__":
         x9=neps.CategoricalParameter(choices=[0, 1]),
         x10=neps.CategoricalParameter(choices=[0, 1]),
     )
-
     logging.basicConfig(level=logging.INFO)
     neps.run(
         run_pipeline=run_pipeline,
