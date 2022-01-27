@@ -13,10 +13,12 @@ from . import (
     IntegerParameter,
     NumericalParameter,
 )
+from .parameter import Parameter
 
 
 def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchSpace:
     pipeline_space = dict()
+    parameter: Parameter
     for hyperparameter in configspace.get_hyperparameters():
         if isinstance(hyperparameter, CS.CategoricalHyperparameter):
             parameter = CategoricalParameter(hyperparameter.choices)

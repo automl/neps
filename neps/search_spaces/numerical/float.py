@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import math
-from typing import Union
 
 import numpy as np
 
@@ -9,8 +10,8 @@ from .numerical import NumericalParameter
 class FloatParameter(NumericalParameter):
     def __init__(
         self,
-        lower: Union[float, int],
-        upper: Union[float, int],
+        lower: float | int,
+        upper: float | int,
         log: bool = False,
     ):
         super().__init__()
@@ -89,7 +90,7 @@ class FloatParameter(NumericalParameter):
         raise NotImplementedError
 
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
-        neighbours = []
+        neighbours: list[FloatParameter] = []
         self._transform()  # pylint: disable=protected-access
 
         while len(neighbours) < num_neighbours:

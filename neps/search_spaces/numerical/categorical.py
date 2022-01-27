@@ -1,17 +1,21 @@
+from __future__ import annotations
+
 import random
-from typing import List, Union
 
 import numpy as np
+import numpy.typing as npt
 
 from .numerical import NumericalParameter
 
 
 class CategoricalParameter(NumericalParameter):
-    def __init__(self, choices: List[Union[float, int, str]]):
+    def __init__(self, choices: list[float | int | str]):
         super().__init__()
         self.choices = list(choices)
         self.num_choices = len(self.choices)
-        self.probabilities = list(np.ones(self.num_choices) * (1.0 / self.num_choices))
+        self.probabilities: list[npt.NDArray] = list(
+            np.ones(self.num_choices) * (1.0 / self.num_choices)
+        )
         self.value = None
 
     def __eq__(self, other):
@@ -63,7 +67,7 @@ class CategoricalParameter(NumericalParameter):
         pass
 
     def _get_neighbours(self, num_neighbours: int = 1):
-        neighbours = []
+        neighbours: list[CategoricalParameter] = []
 
         idx = 0
         choices = self.choices.copy()

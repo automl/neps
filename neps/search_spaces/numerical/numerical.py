@@ -12,7 +12,7 @@ class NumericalParameter(Parameter):
         return self.value
 
     @abstractmethod
-    def _get_neighbours(self, **kwargs):
+    def _get_neighbours(self):
         raise NotImplementedError
 
     @abstractmethod
