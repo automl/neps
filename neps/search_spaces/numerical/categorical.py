@@ -83,7 +83,7 @@ class CategoricalParameter(NumericalParameter):
             if choice == self.value:
                 continue
             neighbour = self.__copy__()
-            neighbour.value = choice
+            neighbour.value = str(choice)
             neighbours.append(neighbour)
 
         return neighbours

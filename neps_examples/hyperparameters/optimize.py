@@ -22,7 +22,7 @@ def run_pipeline(  # pylint: disable=unused-argument
     return {
         "loss": y,
         "info_dict": {
-            "config_id": None,
+            "config_id": config.id,
             "val_score": y,
             "test_score": y,
             "train_time": end - start,
@@ -42,6 +42,8 @@ if __name__ == "__main__":
         x8=neps.CategoricalParameter(choices=[0, 1]),
         x9=neps.CategoricalParameter(choices=[0, 1]),
         x10=neps.CategoricalParameter(choices=[0, 1]),
+        x11=neps.IntegerParameter(lower=0, upper=1, log=False),
+        x12=neps.IntegerParameter(lower=0, upper=1, log=False),
     )
     logging.basicConfig(level=logging.INFO)
     neps.run(
@@ -56,5 +58,4 @@ if __name__ == "__main__":
         "results/hyperparameters_example"
     )
 
-    # print("Best found configuration: ", id2config[incumbent]["config"])
     print(f"A total of {len(previous_results)} unique configurations were evaluated.")
