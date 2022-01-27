@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from typing import Iterable
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +10,7 @@ from .numerical import NumericalParameter
 
 
 class CategoricalParameter(NumericalParameter):
-    def __init__(self, choices: list[float | int | str]):
+    def __init__(self, choices: Iterable[float | int | str]):
         super().__init__()
         self.choices = list(choices)
         self.num_choices = len(self.choices)
