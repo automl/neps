@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import collections.abc
 import random
 from collections import OrderedDict
 
@@ -40,7 +41,7 @@ def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchS
     return SearchSpace(**pipeline_space)
 
 
-class SearchSpace:
+class SearchSpace(collections.abc.Mapping):
     def __init__(self, **hyperparameters):
         self._num_hps = len(hyperparameters)
         self.hyperparameters = OrderedDict()
@@ -207,3 +208,15 @@ class SearchSpace:
         for k, v in hps.items():
             d[k] = 0 if v is None else len(v)
         return d
+
+    def __getitem__(self, key):
+        return self.hyperparameters[key]
+
+    def __iter__(self):
+        return iter(self.hyperparameters)
+
+    def __len__(self):
+        return len(self.hyperparameters)
+
+    def __str__(self):
+        return str(self.hyperparameters)
