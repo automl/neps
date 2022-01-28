@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Callable, Mapping
+from typing import Callable, Iterable, Mapping
 
 import ConfigSpace as CS
 import metahyper
@@ -28,7 +28,7 @@ def run(
     working_directory: str | Path,
     n_iterations: int,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
-    run_pipeline_args: Mapping | None = None,
+    run_pipeline_args: Iterable | None = None,
     run_pipeline_kwargs: Mapping | None = None,
     **searcher_kwargs,
 ) -> None:
