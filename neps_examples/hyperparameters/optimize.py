@@ -6,24 +6,13 @@ import numpy as np
 import neps
 
 
-def run_pipeline(  # pylint: disable=unused-argument
-    config, config_working_directory, previous_working_directory
-):
-    x = np.concatenate(
-        (
-            np.array(config.get_hps()["categorical"], dtype=int),
-            np.array(config.get_hps()["continuous"]),
-        )
-    )
+def run_pipeline(working_directory, float1, float2, categorical, integer1, integer2):
     start = time.time()
-    y = -float(np.sum(x))
+    y = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     end = time.time()
-
     return {
         "loss": y,
         "info_dict": {
-            "config_id": config.id,
-            "val_score": y,
             "test_score": y,
             "train_time": end - start,
         },
@@ -32,18 +21,11 @@ def run_pipeline(  # pylint: disable=unused-argument
 
 if __name__ == "__main__":
     pipeline_space = dict(
-        x1=neps.FloatParameter(lower=0, upper=1, log=False),
-        x2=neps.FloatParameter(lower=0, upper=1, log=False),
-        x3=neps.FloatParameter(lower=0, upper=1, log=False),
-        x4=neps.FloatParameter(lower=0, upper=1, log=False),
-        x5=neps.FloatParameter(lower=0, upper=1, log=False),
-        x6=neps.CategoricalParameter(choices=[0, 1]),
-        x7=neps.CategoricalParameter(choices=[0, 1]),
-        x8=neps.CategoricalParameter(choices=[0, 1]),
-        x9=neps.CategoricalParameter(choices=[0, 1]),
-        x10=neps.CategoricalParameter(choices=[0, 1]),
-        x11=neps.IntegerParameter(lower=0, upper=1, log=False),
-        x12=neps.IntegerParameter(lower=0, upper=1, log=False),
+        float1=neps.FloatParameter(lower=0, upper=1, log=False),
+        float2=neps.FloatParameter(lower=0, upper=10, log=False),
+        categorical=neps.CategoricalParameter(choices=[0, 1]),
+        integer1=neps.IntegerParameter(lower=0, upper=1, log=False),
+        integer2=neps.IntegerParameter(lower=0, upper=1, log=False),
     )
     logging.basicConfig(level=logging.INFO)
     neps.run(

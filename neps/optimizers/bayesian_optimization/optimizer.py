@@ -179,4 +179,5 @@ class BayesianOptimization(Optimizer):
                 self.n_candidates, 1
             )
             config = model_sample[0]
+
         return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None

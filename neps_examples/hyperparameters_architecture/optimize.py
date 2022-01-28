@@ -4,14 +4,10 @@ import time
 import neps
 
 
-def run_pipeline(  # pylint: disable=unused-argument
-    config, config_working_directory, previous_working_directory
-):
-    config_dict = config.hyperparameters
-
-    optimizer = config_dict["optimizer"].value
-    learning_rate = config_dict["learning_rate"].value
-    model = config_dict["graph"].get_model_for_evaluation(trainable=True)
+def run_pipeline(working_directory, **config):
+    optimizer = config["optimizer"]
+    learning_rate = config["learning_rate"]
+    model = config["graph"].get_model_for_evaluation(trainable=True)
 
     start = time.time()
 
@@ -21,7 +17,6 @@ def run_pipeline(  # pylint: disable=unused-argument
 
     target_lr = 10e-3
     y += abs(target_lr - learning_rate) / target_lr
-
     y += int(optimizer == "sgd")
 
     end = time.time()
@@ -29,8 +24,6 @@ def run_pipeline(  # pylint: disable=unused-argument
     return {
         "loss": y,
         "info_dict": {
-            "config_id": config.id,
-            "val_score": y,
             "test_score": y,
             "train_time": end - start,
         },

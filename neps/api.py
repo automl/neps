@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Callable, Mapping
 
 import ConfigSpace as CS
 import metahyper
-import metahyper.old_metahyper.api
 from typing_extensions import Literal
 
 from .search_spaces.parameter import Parameter
@@ -51,4 +51,5 @@ def run(
         sampler,
         working_directory,
         max_evaluations=n_iterations,
+        logger=logging.getLogger("neps"),
     )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections.abc
+import pprint
 import random
 from collections import OrderedDict
 
@@ -14,6 +15,7 @@ from . import (
     IntegerParameter,
     NumericalParameter,
 )
+from .graph_grammar.graph import Graph
 from .parameter import Parameter
 
 
@@ -210,7 +212,11 @@ class SearchSpace(collections.abc.Mapping):
         return d
 
     def __getitem__(self, key):
-        return self.hyperparameters[key]
+        hp = self.hyperparameters[key]
+        if isinstance(hp, Graph):
+            return hp
+        else:
+            return hp.value
 
     def __iter__(self):
         return iter(self.hyperparameters)
@@ -219,4 +225,4 @@ class SearchSpace(collections.abc.Mapping):
         return len(self.hyperparameters)
 
     def __str__(self):
-        return str(self.hyperparameters)
+        return pprint.pformat(self.hyperparameters)

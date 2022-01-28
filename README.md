@@ -26,8 +26,8 @@ python -m neps.utils.install_torch
 import neps
 
 
-def run_pipeline(config, config_working_directory, previous_working_directory):
-    return {"loss": config["x"]}
+def run_pipeline(x):
+    return {"loss": x}
 
 
 pipeline_space = dict(
