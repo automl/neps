@@ -28,6 +28,8 @@ def run(
     working_directory: str | Path,
     n_iterations: int,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
+    run_pipeline_args: Mapping | None = None,
+    run_pipeline_kwargs: Mapping | None = None,
     **searcher_kwargs,
 ) -> None:
     if isinstance(pipeline_space, CS.ConfigurationSpace):
@@ -52,4 +54,6 @@ def run(
         working_directory,
         max_evaluations=n_iterations,
         logger=logging.getLogger("neps"),
+        evaluation_fn_args=run_pipeline_args,
+        evaluation_fn_kwargs=run_pipeline_kwargs,
     )
