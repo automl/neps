@@ -33,17 +33,17 @@ In code the usage patterns looks like this:
 ```python
 import neps
 
-# 1. Define a `run_pipeline` function that maps parameters to a loss.
+# 1. Define a run_pipeline function that maps parameters to a loss.
 def run_pipeline(x):
     return {"loss": x}
 
 
-# 2. Define a `pipeline_space` dictionary of parameter spaces
+# 2. Define a pipeline_space dictionary of parameter spaces
 pipeline_space = dict(
     x=neps.FloatParameter(lower=0, upper=1, log=False),
 )
 
-# 3. Call `neps.run` on `run_pipeline` and `pipeline_space`
+# 3. Call neps.run on run_pipeline and pipeline_space
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
