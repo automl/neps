@@ -51,7 +51,7 @@ if __name__ == "__main__":
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_architecture_example",
-        n_iterations=20,
+        max_evaluations_total=20,
         hp_kernels=["m52", "hm"],
         graph_kernels=["wl"],
     )

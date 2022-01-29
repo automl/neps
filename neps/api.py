@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 
@@ -26,7 +27,10 @@ def run(
     run_pipeline: Callable,
     pipeline_space: Mapping[str, Parameter] | CS.ConfigurationSpace,
     working_directory: str | Path,
-    n_iterations: int,
+    n_iterations: int | None = None,
+    max_evaluations_total: int | None = None,
+    max_evaluations_per_run: int | None = None,
+    continue_until_max_evaluation_completed: bool = False,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
     run_pipeline_args: Iterable | None = None,
     run_pipeline_kwargs: Mapping | None = None,
@@ -48,11 +52,21 @@ def run(
     else:
         raise ValueError
 
+    if n_iterations is not None:
+        warnings.warn(
+            "n_iterations is deprecated and will be removed in a future version",
+            DeprecationWarning,
+        )
+        max_evaluations_total = n_iterations
+        continue_until_max_evaluation_completed = True  # Old behavior
+
     metahyper.run(
         run_pipeline,
         sampler,
         working_directory,
-        max_evaluations=n_iterations,
+        max_evaluations_total=max_evaluations_total,
+        max_evaluations_per_run=max_evaluations_per_run,
+        continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         logger=logging.getLogger("neps"),
         evaluation_fn_args=run_pipeline_args,
         evaluation_fn_kwargs=run_pipeline_kwargs,
