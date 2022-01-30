@@ -1,3 +1,8 @@
+"""API for the neps package.
+
+Contains only one function (run) that users are supposed to call.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +41,51 @@ def run(
     run_pipeline_kwargs: Mapping | None = None,
     **searcher_kwargs,
 ) -> None:
+    """Run a neural pipeline search.
+
+    To parallelize:
+        Simply call run(.) multiple times (optionally on different machines). Make sure
+        that working_directory points to the same folder in the same filesystem, otherwise
+        the multiple calls to run(.) will be independent.
+
+    Args:
+        run_pipeline: The objective function to minimize.
+        pipeline_space: The search space to minimize over.
+        working_directory: The directory to save progress to. This is also used to
+            synchronize multiple calls to run(.) for parallelization.
+        n_iterations: deprecated!
+        max_evaluations_total: Number of evaluations after which to terminate.
+        max_evaluations_per_run: Number of evaluations the specific call to run(.) should
+            maximally do.
+        continue_until_max_evaluation_completed: If true, only stop after
+            max_evaluations_total have been completed. This is only relevant in the
+            parallel setting.
+        searcher: Which optimizer to use.
+        run_pipeline_args: Positional arguments that are passed to run_pipeline.
+        run_pipeline_kwargs: Keywoard arguments that are passed to run_pipeline.
+        **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
+            neps develolpers.
+
+    Raises:
+        TypeError: If pipeline_space has invalid type.
+        ValueError: If searcher is unkown.
+
+    Example:
+        >>> import neps
+
+        >>> def run_pipeline(x):
+        >>>    return {"loss": x}
+
+        >>> pipeline_space = dict(x=neps.FloatParameter(lower=0, upper=1, log=False))
+
+        >>> neps.run(
+        >>>    run_pipeline=run_pipeline,
+        >>>    pipeline_space=pipeline_space,
+        >>>    working_directory="results/usage",
+        >>>    max_evaluations_total=5,
+        >>>    hp_kernels=["m52"],
+        >>> )
+    """
     if isinstance(pipeline_space, CS.ConfigurationSpace):
         pipeline_space = search_space_from_configspace(pipeline_space)
     else:
@@ -50,7 +100,7 @@ def run(
     elif searcher == "random_search":
         sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
     else:
-        raise ValueError
+        raise ValueError(f"Unknown searcher: {searcher}")
 
     if n_iterations is not None:
         warnings.warn(
