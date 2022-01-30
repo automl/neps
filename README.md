@@ -48,7 +48,7 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     working_directory="results/usage",
-    n_iterations=5,
+    max_evaluations_total=5,
     hp_kernels=["m52"],
 )
 ```
