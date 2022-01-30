@@ -52,6 +52,13 @@ repos:
           - types-termcolor
           - types-Deprecated
 
+  - repo: https://github.com/terrencepreilly/darglint
+    rev: v1.8.1
+    hooks:
+      - id: darglint
+        args: [-v 2,--indentation 4]
+        files: (neps/api.py)
+
   - repo: https://github.com/PyCQA/pylint
     rev: v2.12.2
     hooks:
