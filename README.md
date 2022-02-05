@@ -13,6 +13,7 @@ Soon-to-come Features:
 * Multi-fidelity
 * Cost-aware
 * Across code version transfer
+* Python 3.8+ support
 * Multi-objective
 
 ![Python versions](https://img.shields.io/badge/python-3.7-informational)
