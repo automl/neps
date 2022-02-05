@@ -3,17 +3,19 @@
 Neural Pipeline Search helps deep learning experts find the best neural pipeline.
 
 Features:
-* Hyperparameter optimization (HPO)
-* Neural architecture search (NAS), cell-based and hierarchical
-* HPO and NAS
-* Asynchronous parallelization and distribution
-* Fault tolerance
+
+- Hyperparameter optimization (HPO)
+- Neural architecture search (NAS), cell-based and hierarchical
+- HPO and NAS
+- Asynchronous parallelization and distribution
+- Fault tolerance
 
 Soon-to-come Features:
-* Multi-fidelity
-* Cost-aware
-* Across code version transfer
-* Multi-objective
+
+- Multi-fidelity
+- Cost-aware
+- Across code version transfer
+- Multi-objective
 
 ![Python versions](https://img.shields.io/badge/python-3.7-informational)
 [![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
@@ -62,7 +64,6 @@ neps.run(
     pipeline_space=pipeline_space,
     working_directory="results/usage",
     max_evaluations_total=5,
-    hp_kernels=["m52"],
 )
 ```
 

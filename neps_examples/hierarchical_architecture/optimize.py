@@ -36,7 +36,6 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         working_directory="results/hierarchical_architecture_example",
         max_evaluations_total=20,
-        graph_kernels=["wl"],
     )
 
     previous_results, pending_configs, pending_configs_free = neps.read_results(

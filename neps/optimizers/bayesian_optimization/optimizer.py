@@ -6,6 +6,12 @@ import random
 import numpy as np
 import torch
 
+from ...search_spaces import (
+    CategoricalParameter,
+    FloatParameter,
+    GraphGrammar,
+    IntegerParameter,
+)
 from ..base_optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_function_optimization.random_sampler import RandomSampler
@@ -52,8 +58,26 @@ class BayesianOptimization(Optimizer):
 
         if graph_kernels is None or not graph_kernels:
             graph_kernels = list()
+            if any(
+                isinstance(parameter, GraphGrammar)
+                for parameter in pipeline_space.values()
+            ):
+                graph_kernels.append("wl")
+
         if hp_kernels is None or not hp_kernels:
             hp_kernels = list()
+            if any(
+                isinstance(parameter, FloatParameter)
+                or isinstance(parameter, IntegerParameter)
+                for parameter in pipeline_space.values()
+            ):
+                hp_kernels.append("m52")
+
+            if any(
+                isinstance(parameter, CategoricalParameter)
+                for parameter in pipeline_space.values()
+            ):
+                hp_kernels.append("hm")
 
         graph_kernels = [
             GraphKernelMapping[kernel](
@@ -180,4 +204,5 @@ class BayesianOptimization(Optimizer):
             )
             config = model_sample[0]
 
-        return config, f"{len(self.train_x)}_{len(self.pending_evaluations)}", None
+        config_id = str(len(self.train_x) + len(self.pending_evaluations))
+        return config, config_id, None

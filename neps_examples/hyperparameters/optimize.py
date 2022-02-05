@@ -33,7 +33,6 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         working_directory="results/hyperparameters_example",
         max_evaluations_total=20,
-        hp_kernels=["m52", "hm"],
     )
     previous_results, pending_configs, pending_configs_free = neps.read_results(
         "results/hyperparameters_example"

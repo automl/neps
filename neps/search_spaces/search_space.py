@@ -213,7 +213,7 @@ class SearchSpace(collections.abc.Mapping):
 
     def __getitem__(self, key):
         hp = self.hyperparameters[key]
-        if isinstance(hp, Graph):
+        if isinstance(hp, Graph) or hp.value is None:
             return hp
         else:
             return hp.value
