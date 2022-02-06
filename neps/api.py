@@ -1,6 +1,4 @@
 """API for the neps package.
-
-Contains only one function (run) that users are supposed to call.
 """
 
 from __future__ import annotations
@@ -26,6 +24,36 @@ except ModuleNotFoundError:
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.optimizer import RandomSearch
 from .search_spaces.search_space import SearchSpace, search_space_from_configspace
+
+
+def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
+    best_loss_trajectory_file = Path(
+        config_working_directory, "../../best_loss_trajectory.txt"
+    )
+
+    loss = result["loss"]
+    if isinstance(loss, dict):
+        logger.info(f"Finished evaluating config {config_id}")
+        return  # The post evaluation hook does not support multiple objectives yet.
+
+    if not best_loss_trajectory_file.exists():
+        is_new_best = True
+    else:
+        best_loss_trajectory = best_loss_trajectory_file.read_text(encoding="utf-8")
+        best_loss_trajectory = list(best_loss_trajectory.rstrip("\n").split("\n"))
+        best_loss = best_loss_trajectory[-1]
+        is_new_best = float(best_loss) > loss
+
+    if is_new_best:
+        with best_loss_trajectory_file.open("a", encoding="utf-8") as f:
+            f.write(f"{loss}\n")
+
+        logger.info(
+            f"Finished evaluating config {config_id}"
+            f" -- new best with loss {loss :.3f}"
+        )
+    else:
+        logger.info(f"Finished evaluating config {config_id}")
 
 
 def run(
@@ -120,4 +148,5 @@ def run(
         logger=logging.getLogger("neps"),
         evaluation_fn_args=run_pipeline_args,
         evaluation_fn_kwargs=run_pipeline_kwargs,
+        post_evaluation_hook=_post_evaluation_hook,
     )
