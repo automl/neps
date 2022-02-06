@@ -18,7 +18,8 @@ class RandomSearch(Optimizer):
 
     def get_config_and_ids(self):
         config = self.random_sampler.sample(1)[0]
-        return config, f"{self._len_previous}_{self._len_pending}", None
+        config_id = str(self._len_previous + self._len_pending + 1)
+        return config, config_id, None
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         self._len_previous = len(previous_results)

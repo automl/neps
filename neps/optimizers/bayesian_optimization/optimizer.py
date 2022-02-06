@@ -204,5 +204,5 @@ class BayesianOptimization(Optimizer):
             )
             config = model_sample[0]
 
-        config_id = str(len(self.train_x) + len(self.pending_evaluations))
+        config_id = str(len(self.train_x) + len(self.pending_evaluations) + 1)
         return config, config_id, None
