@@ -85,7 +85,7 @@ python -m neps.status --help
 ### Parallelization
 
 Simply call `neps.run` multiple times.
-All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synhronization between the `neps.run`'s.
+All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synchronization between the `neps.run`'s.
 
 ## Advanced Usage
 
