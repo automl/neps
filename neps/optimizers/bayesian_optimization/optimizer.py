@@ -38,6 +38,7 @@ class BayesianOptimization(Optimizer):
         patience: int = 50,
         verbose: bool = False,
         return_opt_details: bool = False,
+        cost_function=None,  # pylint: disable=unused-argument
     ):
         """Implements the basic BO loop."""
 
