@@ -27,17 +27,44 @@ from .search_spaces.search_space import SearchSpace, search_space_from_configspa
 
 
 def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
-    best_loss_trajectory_file = Path(
-        config_working_directory, "../../best_loss_trajectory.txt"
+    working_directory = Path(config_working_directory, "../../")
+
+    is_error = result == "error"
+    if is_error:
+        loss = float("inf")
+    else:
+        loss = result["loss"]
+
+    # 1. write all configs and losses
+    all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
+
+    def write_loss_and_config(file_handle, loss_, config_id_, config_):
+        file_handle.write(f"Loss: {loss_}\n")
+        file_handle.write(f"Config ID: {config_id_}\n")
+        file_handle.write(f"Config: {config_}\n")
+        file_handle.write(79 * "-" + "\n")
+
+    with all_configs_losses.open("a", encoding="utf-8") as f:
+        write_loss_and_config(f, loss, config_id, config)
+
+    # No need to handle best loss cases if an error occurred
+    if is_error:
+        return
+
+    # The "best" loss exists only in the pareto sense for multi-objective
+    is_multi_objective = isinstance(loss, dict)
+    if is_multi_objective:
+        logger.info(f"Finished evaluating config {config_id}")
+        return
+
+    # 2. Write best losses / configs
+    best_loss_trajectory_file = Path(working_directory, "best_loss_trajectory.txt")
+    best_loss_config_trajectory_file = Path(
+        working_directory, "best_loss_with_config_trajectory.txt"
     )
 
-    loss = result["loss"]
-    if isinstance(loss, dict):
-        logger.info(f"Finished evaluating config {config_id}")
-        return  # The post evaluation hook does not support multiple objectives yet.
-
     if not best_loss_trajectory_file.exists():
-        is_new_best = True
+        is_new_best = result != "error"
     else:
         best_loss_trajectory = best_loss_trajectory_file.read_text(encoding="utf-8")
         best_loss_trajectory = list(best_loss_trajectory.rstrip("\n").split("\n"))
@@ -47,6 +74,9 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
     if is_new_best:
         with best_loss_trajectory_file.open("a", encoding="utf-8") as f:
             f.write(f"{loss}\n")
+
+        with best_loss_config_trajectory_file.open("a", encoding="utf-8") as f:
+            write_loss_and_config(f, loss, config_id, config)
 
         logger.info(
             f"Finished evaluating config {config_id}"
