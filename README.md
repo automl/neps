@@ -68,6 +68,25 @@ neps.run(
 )
 ```
 
+### Status information
+
+To show status information about a neural pipeline search use
+
+```bash
+python -m neps.status WORKING_DIRECTORY
+```
+
+If you need more status information than is printed per default, please have a look at
+
+```bash
+python -m neps.status --help
+```
+
+### Parallelization
+
+Simply call `neps.run` multiple times.
+All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synhronization between the `neps.run`'s.
+
 ## Advanced Usage
 
 Please see our examples in [neps_examples](neps_examples).
