@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from ..base_optimizer import Optimizer
+import metahyper
+
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
 
 
-class RandomSearch(Optimizer):
+class RandomSearch(metahyper.Sampler):
     def __init__(self, pipeline_space, return_opt_details: bool = False):
         super().__init__()
         self.sampled_idx: list = []

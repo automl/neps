@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 import random
 
+import metahyper
 import numpy as np
 import torch
 
@@ -12,7 +13,6 @@ from ...search_spaces import (
     GraphGrammar,
     IntegerParameter,
 )
-from ..base_optimizer import Optimizer
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_function_optimization.random_sampler import RandomSampler
 from .acquisition_functions import AcquisitionMapping
@@ -20,7 +20,7 @@ from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp import ComprehensiveGP
 
 
-class BayesianOptimization(Optimizer):
+class BayesianOptimization(metahyper.Sampler):
     def __init__(
         self,
         pipeline_space,

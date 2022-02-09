@@ -4,16 +4,16 @@
 import random
 from collections import deque
 
+import metahyper
 from deprecated import deprecated
 from typing_extensions import Deque
 
-from ..base_optimizer import Optimizer
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
 )
 
 
-class RegularizedEvolution(Optimizer):
+class RegularizedEvolution(metahyper.Sampler):
     def __init__(
         self,
         pipeline_space,
