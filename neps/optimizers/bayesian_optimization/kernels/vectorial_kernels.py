@@ -147,7 +147,7 @@ class Matern52Kernel(Stationary):
                 x1,
                 x2,
             )
-        sq_dist = dist ** 2
+        sq_dist = dist**2
         if isinstance(dist, torch.Tensor):
             return (
                 self.outputscale
@@ -209,11 +209,11 @@ def _unscaled_distance(X, X2=None, sq_dist=False):
             assert isinstance(X2, torch.Tensor)
             assert X2.ndimension() == 2
         if X2 is None:
-            Xsq = torch.sum(X ** 2, 1)
+            Xsq = torch.sum(X**2, 1)
             r2 = -2 * X @ X.t() + Xsq[:, None] + Xsq[None, :]
         else:
-            X1sq = torch.sum(X ** 2, 1)
-            X2sq = torch.sum(X2 ** 2, 1)
+            X1sq = torch.sum(X**2, 1)
+            X2sq = torch.sum(X2**2, 1)
             r2 = -2 * X @ X2.t() + X1sq[:, None] + X2sq[None, :]
         r2 += 1e-8
         if not sq_dist:
@@ -223,11 +223,11 @@ def _unscaled_distance(X, X2=None, sq_dist=False):
         if X2 is not None:
             assert X2.ndim == 2
         if X2 is None:
-            Xsq = np.sum(X ** 2, 1)
+            Xsq = np.sum(X**2, 1)
             r2 = -2 * X @ X.transpose() + Xsq[:, None] + Xsq[None, :]
         else:
-            X1sq = np.sum(X ** 2, 1)
-            X2sq = np.sum(X2 ** 2, 1)
+            X1sq = np.sum(X**2, 1)
+            X2sq = np.sum(X2**2, 1)
             r2 = -2 * X @ X2.transpose() + X1sq[:, None] + X2sq[None, :]
         if not sq_dist:
             r2 = np.sqrt(r2)
@@ -248,13 +248,13 @@ def _scaled_distance(lengthscale, X, X2=None, sq_dist=False):
         return (
             _unscaled_distance(X, X2) / lengthscale
             if sq_dist is False
-            else _unscaled_distance(X, X2, sq_dist=True) / (lengthscale ** 2)
+            else _unscaled_distance(X, X2, sq_dist=True) / (lengthscale**2)
         )
     else:
         # ARD kernel - one lengthscale per dimension
         _check_lengthscale(lengthscale, X)
         dist = _unscaled_distance(X / lengthscale, X2 / lengthscale)
-        return dist if not sq_dist else dist ** 2
+        return dist if not sq_dist else dist**2
 
 
 def _hamming_distance(lengthscale, X, X2=None):
@@ -265,7 +265,7 @@ def _hamming_distance(lengthscale, X, X2=None):
         if isinstance(lengthscale, torch.Tensor):
             lengthscale = lengthscale.detach().numpy()
         indicator = np.expand_dims(X, axis=1) != X2
-        K = (-1 / (2 * lengthscale ** 2) * indicator).sum(axis=2)
+        K = (-1 / (2 * lengthscale**2) * indicator).sum(axis=2)
         K = np.exp(K)
         return torch.from_numpy(K)
 

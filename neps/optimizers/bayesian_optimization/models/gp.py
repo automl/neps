@@ -114,7 +114,7 @@ class ComprehensiveGP:
         iters: int = 20,
         optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
-        wl_lengthscales: tuple = tuple(np.e ** i for i in range(-2, 3)),
+        wl_lengthscales: tuple = tuple(np.e**i for i in range(-2, 3)),
         optimize_lik: bool = True,
         max_lik: float = 0.01,
         optimize_wl_layer_weights: bool = False,
@@ -316,7 +316,7 @@ class ComprehensiveGP:
         mu_s = unnormalize_y(mu_s, self.y_mean, self.y_std)
         std_s = torch.sqrt(cov_s)
         std_s = unnormalize_y(std_s, None, self.y_std, True)
-        cov_s = std_s ** 2
+        cov_s = std_s**2
         if preserve_comp_graph:
             del combined_kernel_copy
         return mu_s, cov_s
@@ -478,7 +478,7 @@ def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
             weight_vector /= weight_vector.sum()
             mean = torch.sum(weight_vector * grad_matrix[:, d])
             # Compute the empirical variance of gradients
-            variance = torch.sum(weight_vector * grad_matrix[:, d] ** 2) - mean ** 2
+            variance = torch.sum(weight_vector * grad_matrix[:, d] ** 2) - mean**2
             avg_grad[d] = mean
             avg_grad_var[d] = variance
         return avg_grad, avg_grad_var, feature_matrix.sum(dim=0)
@@ -662,7 +662,7 @@ def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
     max_fail = 3
     while fail_count < max_fail and not is_successful:
         try:
-            jitter_diag = jitter * torch.eye(n, device=K.device) * 10 ** fail_count
+            jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
             K_ = K + jitter_diag
             Kc = torch.linalg.cholesky(K_)
             is_successful = True
