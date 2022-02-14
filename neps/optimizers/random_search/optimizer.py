@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import random
+from typing import Any
+
 import metahyper
+import numpy as np
+import torch
 
 from ..bayesian_optimization.acquisition_function_optimization.random_sampler import (
     RandomSampler,
@@ -25,3 +30,20 @@ class RandomSearch(metahyper.Sampler):
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         self._len_previous = len(previous_results)
         self._len_pending = len(pending_evaluations)
+
+    def get_state(self) -> Any:  # pylint: disable=no-self-use
+        state = {
+            "random_state": random.getstate(),
+            "np_seed_state": np.random.get_state(),
+            "torch_seed_state": torch.random.get_rng_state(),
+        }
+        if torch.cuda.is_available():
+            state["torch_cuda_seed_state"] = torch.cuda.get_rng_state_all()
+        return state
+
+    def load_state(self, state: Any):  # pylint: disable=no-self-use
+        random.setstate(state["random_state"])
+        np.random.set_state(state["np_seed_state"])
+        torch.random.set_rng_state(state["torch_seed_state"])
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(state["torch_cuda_seed_state"])
