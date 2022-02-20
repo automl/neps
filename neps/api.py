@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 
@@ -92,7 +91,6 @@ def run(
     run_pipeline: Callable,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     working_directory: str | Path,
-    n_iterations: int | None = None,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
@@ -113,7 +111,6 @@ def run(
         pipeline_space: The search space to minimize over.
         working_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
-        n_iterations: deprecated!
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
@@ -170,14 +167,6 @@ def run(
         sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
     else:
         raise ValueError(f"Unknown searcher: {searcher}")
-
-    if n_iterations is not None:
-        warnings.warn(
-            "n_iterations is deprecated and will be removed in a future version",
-            DeprecationWarning,
-        )
-        max_evaluations_total = n_iterations
-        continue_until_max_evaluation_completed = True  # Old behavior
 
     metahyper.run(
         run_pipeline,
