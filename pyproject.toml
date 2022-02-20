@@ -71,7 +71,6 @@ explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
-  "neps.optimizers.bayesian_optimization.utils.*",
   "neps.optimizers.bayesian_optimization.models.*",
   "neps.optimizers.bayesian_optimization.kernels.*",
   "neps.optimizers.bayesian_optimization.acquisition_functions.*",
