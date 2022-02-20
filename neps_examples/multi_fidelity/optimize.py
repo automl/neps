@@ -26,11 +26,11 @@ if __name__ == "__main__":
     neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
-        working_directory="results/hyperparameters_example",
+        working_directory="results/multi_fidelity_example",
         max_evaluations_total=20,
     )
     previous_results, pending_configs, pending_configs_free = neps.read_results(
-        "results/hyperparameters_example"
+        "results/multi_fidelity_example"
     )
 
     print(f"A total of {len(previous_results)} unique configurations were evaluated.")
