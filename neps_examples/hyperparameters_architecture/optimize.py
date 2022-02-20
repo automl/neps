@@ -30,32 +30,27 @@ def run_pipeline(working_directory, **config):
     }
 
 
-if __name__ == "__main__":
+nb201_choices = [
+    "ReLUConvBN3x3",
+    "ReLUConvBN1x1",
+    "AvgPool1x1",
+    "Identity",
+    "Zero",
+]
 
-    nb201_choices = [
-        "ReLUConvBN3x3",
-        "ReLUConvBN1x1",
-        "AvgPool1x1",
-        "Identity",
-        "Zero",
-    ]
+pipeline_space = dict(
+    graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
+    optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
+    learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+)
 
-    pipeline_space = dict(
-        graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
-        optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
-        learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
-    )
-
-    logging.basicConfig(level=logging.INFO)
-    neps.run(
-        run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space,
-        working_directory="results/hyperparameters_architecture_example",
-        max_evaluations_total=20,
-    )
-
-    previous_results, pending_configs, pending_configs_free = neps.read_results(
-        "results/hyperparameters_architecture_example"
-    )
-
-    print(f"A total of {len(previous_results)} unique configurations were evaluated.")
+logging.basicConfig(level=logging.INFO)
+neps.run(
+    run_pipeline=run_pipeline,
+    pipeline_space=pipeline_space,
+    working_directory="results/hyperparameters_architecture_example",
+    max_evaluations_total=20,
+)
+previous_results, pending_configs = neps.status(
+    "results/hyperparameters_architecture_example"
+)

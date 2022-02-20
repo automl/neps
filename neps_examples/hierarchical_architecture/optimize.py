@@ -25,21 +25,18 @@ def run_pipeline(
     }
 
 
-if __name__ == "__main__":
-    pipeline_space = dict(
-        architecture=HierarchicalArchitectureExample(),
-    )
+pipeline_space = dict(
+    architecture=HierarchicalArchitectureExample(),
+)
 
-    logging.basicConfig(level=logging.INFO)
-    neps.run(
-        run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space,
-        working_directory="results/hierarchical_architecture_example",
-        max_evaluations_total=20,
-    )
+logging.basicConfig(level=logging.INFO)
+neps.run(
+    run_pipeline=run_pipeline,
+    pipeline_space=pipeline_space,
+    working_directory="results/hierarchical_architecture_example",
+    max_evaluations_total=20,
+)
 
-    previous_results, pending_configs, pending_configs_free = neps.read_results(
-        "results/hierarchical_architecture_example"
-    )
-
-    print(f"A total of {len(previous_results)} unique configurations were evaluated.")
+previous_results, pending_configs = neps.status(
+    "results/hierarchical_architecture_example"
+)
