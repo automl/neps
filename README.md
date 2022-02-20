@@ -60,7 +60,7 @@ pipeline_space = dict(
     some_hyperparameter=neps.FloatParameter(lower=0, upper=1),
 )
 
-# 3. Call `neps.run` to optimize run_pipeline over pipeline_space
+# 3. Call neps.run to optimize run_pipeline over pipeline_space
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
