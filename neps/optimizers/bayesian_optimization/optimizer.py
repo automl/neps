@@ -177,11 +177,11 @@ class BayesianOptimization(metahyper.Sampler):
         if len(self.train_x) >= self.initial_design_size:
             self._update_model()
 
-    def get_config_and_ids(self):
+    def get_config_and_ids(self) -> tuple[SearchSpace, str, None]:
         if len(self.train_x) < self.initial_design_size:
-            config = self.pipeline_space.sample_new()
+            config = self.pipeline_space.sample_new(patience=self.patience)
         elif random.random() < self.random_interleave_prob:
-            config = self.pipeline_space.sample_new()
+            config = self.pipeline_space.sample_new(patience=self.patience)
         elif len(self.pending_evaluations) > 0:
             pending_evaluation_ids = [
                 pend_eval.id[0]
@@ -202,7 +202,7 @@ class BayesianOptimization(metahyper.Sampler):
                     break
                 _patience -= 1
             if _patience == 0:
-                config = self.pipeline_space.sample_new()
+                config = self.pipeline_space.sample_new(patience=self.patience)
         else:
             model_sample, _, _ = self.acquisition_function_opt.sample(
                 self.n_candidates, 1
