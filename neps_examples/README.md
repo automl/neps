@@ -17,3 +17,9 @@
    ```bash
    python -m neps_examples.hierarchical_architecture.optimize
    ```
+
+## Examples not yet supported
+
+1. cost_aware
+1. user_priors
+1. multi_fidelity
