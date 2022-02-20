@@ -14,8 +14,15 @@ class FloatParameter(NumericalParameter):
         upper: float | int,
         log: bool = False,
         is_fidelity: bool = False,
+        default: None | float | int = None,
+        default_confidence: None | float | int = None,
     ):
         super().__init__()
+
+        self.default = default
+        self.default_confidence = default_confidence
+        if default_confidence is not None and not 0 <= default_confidence <= 1.0:
+            raise ValueError("default_confidence must be between 0 and 1.")
 
         self.is_fidelity = is_fidelity
 
@@ -49,9 +56,7 @@ class FloatParameter(NumericalParameter):
         return hash((self.lower, self.upper, self.log, self.value))
 
     def __repr__(self):
-        return "Float, range: [{}, {}], value: {:.07f}".format(
-            self.lower, self.upper, self.value
-        )
+        return f"Float, range: [{self.lower}, {self.upper}], value: {self.value:.07f}"
 
     def __copy__(self):
         return self.__class__(lower=self.lower, upper=self.upper, log=self.log)

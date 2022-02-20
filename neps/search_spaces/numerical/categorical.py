@@ -10,8 +10,17 @@ from .numerical import NumericalParameter
 
 
 class CategoricalParameter(NumericalParameter):
-    def __init__(self, choices: Iterable[float | int | str]):
+    def __init__(
+        self,
+        choices: Iterable[float | int | str],
+        default: None | float | int | str = None,
+        default_confidence: None | float | int = None,
+    ):
         super().__init__()
+
+        self.default = default
+        self.default_confidence = default_confidence
+
         self.choices = list(choices)
         self.num_choices = len(self.choices)
         self.probabilities: list[npt.NDArray] = list(

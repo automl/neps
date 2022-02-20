@@ -1,4 +1,4 @@
-from typing import Union
+from __future__ import annotations
 
 from .float import FloatParameter
 
@@ -6,23 +6,26 @@ from .float import FloatParameter
 class IntegerParameter(FloatParameter):
     def __init__(
         self,
-        lower: Union[float, int],
-        upper: Union[float, int],
+        lower: float | int,
+        upper: float | int,
         log: bool = False,
         is_fidelity: bool = False,
+        default: None | float | int = None,
+        default_confidence: None | float | int = None,
     ):
-        super().__init__(lower, upper, log, is_fidelity)
+        super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
         self.fhp = FloatParameter(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,
+            is_fidelity=is_fidelity,
+            default=default,
+            default_confidence=default_confidence,
         )
         self.value = None
 
     def __repr__(self):
-        return "Integer, range: [{}, {}], value: {}".format(
-            self.lower, self.upper, self.value
-        )
+        return f"Integer, range: [{self.lower}, {self.upper}], value: {self.value}"
 
     def sample(self):
         self.fhp.sample()
