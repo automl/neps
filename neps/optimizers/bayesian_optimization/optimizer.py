@@ -195,7 +195,7 @@ class BayesianOptimization(metahyper.Sampler):
                 config_id = (
                     config.id if len(config.id) == 0 else "-".join(map(str, config.id))
                 )
-                if config_id not in pending_evaluation_ids:
+                if config_id not in pending_evaluation_ids:  # Is this still working?
                     break
                 _patience -= 1
             if _patience == 0:

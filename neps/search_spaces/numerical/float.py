@@ -13,8 +13,11 @@ class FloatParameter(NumericalParameter):
         lower: float | int,
         upper: float | int,
         log: bool = False,
+        is_fidelity: bool = False,
     ):
         super().__init__()
+
+        self.is_fidelity = is_fidelity
 
         self.lower = float(lower)
         self.upper = float(upper)

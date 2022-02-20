@@ -9,8 +9,9 @@ class IntegerParameter(FloatParameter):
         lower: Union[float, int],
         upper: Union[float, int],
         log: bool = False,
+        is_fidelity: bool = False,
     ):
-        super().__init__(lower, upper, log)
+        super().__init__(lower, upper, log, is_fidelity)
         self.fhp = FloatParameter(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
