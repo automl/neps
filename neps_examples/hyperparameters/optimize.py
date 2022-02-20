@@ -8,12 +8,12 @@ import neps
 
 def run_pipeline(working_directory, float1, float2, categorical, integer1, integer2):
     start = time.time()
-    y = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
+    loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     end = time.time()
     return {
-        "loss": y,
-        "info_dict": {
-            "test_score": y,
+        "loss": loss,
+        "info_dict": {  # Optionally include additional information
+            "test_score": loss,
             "train_time": end - start,
         },
     }
@@ -21,11 +21,11 @@ def run_pipeline(working_directory, float1, float2, categorical, integer1, integ
 
 if __name__ == "__main__":
     pipeline_space = dict(
-        float1=neps.FloatParameter(lower=0, upper=1, log=False),
-        float2=neps.FloatParameter(lower=0, upper=10, log=False),
+        float1=neps.FloatParameter(lower=0, upper=1),
+        float2=neps.FloatParameter(lower=-10, upper=10),
         categorical=neps.CategoricalParameter(choices=[0, 1]),
-        integer1=neps.IntegerParameter(lower=0, upper=1, log=False),
-        integer2=neps.IntegerParameter(lower=0, upper=1, log=False),
+        integer1=neps.IntegerParameter(lower=0, upper=1),
+        integer2=neps.IntegerParameter(lower=1, upper=1000, log=True),
     )
     logging.basicConfig(level=logging.INFO)
     neps.run(
