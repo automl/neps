@@ -40,33 +40,36 @@ python -m neps.utils.install_torch
 
 Using `neps` always follows the same pattern:
 
-1. Define a `run_pipeline` function that maps parameters (hyperparameters and/or architectures) to a loss.
-1. Define a `pipeline_space` dictionary of parameter spaces
-1. Call `neps.run` on `run_pipeline` and `pipeline_space`
+1. Define a `run_pipeline` function that accepts architectures/hyperparameters and evaluates them
+1. Define a search space `pipeline_space` of architectures/hyperparameters
+1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
-In code the usage patterns looks like this:
+In code the usage pattern can look like this:
 
 ```python
 import neps
 
-# 1. Define a run_pipeline function that maps parameters to a loss.
-def run_pipeline(x):
-    return {"loss": x}
+# 1. Define a function that accepts a hyperparameter and computes a loss using it
+def run_pipeline(some_hyperparameter: float):
+    loss = -some_hyperparameter
+    return loss
 
 
-# 2. Define a pipeline_space dictionary of parameter spaces
+# 2. Define a search space containing one hyperparameter
 pipeline_space = dict(
-    x=neps.FloatParameter(lower=0, upper=1, log=False),
+    some_hyperparameter=neps.FloatParameter(lower=0, upper=1),
 )
 
-# 3. Call neps.run on run_pipeline and pipeline_space
+# 3. Call `neps.run` to optimize run_pipeline over pipeline_space
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/usage",
+    working_directory="usage_example",
     max_evaluations_total=5,
 )
 ```
+
+For more advanced usage examples have a look at [neps_examples](neps_examples).
 
 ### Status information
 
@@ -86,10 +89,6 @@ python -m neps.status --help
 
 Simply call `neps.run` multiple times.
 All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synchronization between the `neps.run`'s.
-
-## Advanced Usage
-
-Please see our examples in [neps_examples](neps_examples).
 
 ## Contributing
 
