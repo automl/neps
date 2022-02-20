@@ -4,6 +4,7 @@ import collections.abc
 import pprint
 import random
 from collections import OrderedDict
+from copy import deepcopy
 
 import ConfigSpace as CS
 import numpy as np
@@ -57,6 +58,19 @@ class SearchSpace(collections.abc.Mapping):
                 self._hps.append(hyperparameter)
             else:
                 self._graphs.append(hyperparameter)
+
+    def sample_new(self, patience: int = 100) -> SearchSpace:
+        while patience > 0:
+            try:
+                new_config = deepcopy(self)
+                new_config.sample()
+                break
+            except:  # pylint: disable=bare-except
+                patience -= 1
+        else:
+            raise ValueError(f"Could not sample valid config in {patience} tries!")
+
+        return new_config
 
     def sample(self):
         for hyperparameter in self.hyperparameters.values():

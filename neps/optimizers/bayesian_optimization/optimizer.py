@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import random
-from typing import Any
+from typing import Any, Mapping
 
 import metahyper
 import numpy as np
@@ -15,9 +15,9 @@ from ...search_spaces import (
     GraphGrammar,
     IntegerParameter,
 )
+from ...search_spaces.search_space import SearchSpace
 from ...utils.result_utils import get_loss
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
-from .acquisition_function_optimization.random_sampler import RandomSampler
 from .acquisition_functions import AcquisitionMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp import ComprehensiveGP
@@ -26,7 +26,7 @@ from .models.gp import ComprehensiveGP
 class BayesianOptimization(metahyper.Sampler):
     def __init__(
         self,
-        pipeline_space,
+        pipeline_space: SearchSpace,
         initial_design_size: int = 10,
         surrogate_model_fit_args: dict = None,
         optimal_assignment: bool = False,
@@ -41,13 +41,15 @@ class BayesianOptimization(metahyper.Sampler):
         patience: int = 50,
         verbose: bool = False,
         return_opt_details: bool = False,
-        cost_function=None,  # pylint: disable=unused-argument
+        cost_function: None | Mapping = None,  # pylint: disable=unused-argument
     ):
         """Implements the basic BO loop."""
 
         assert 0 <= random_interleave_prob <= 1
 
         super().__init__()
+
+        self.pipeline_space = pipeline_space
 
         def _get_args_and_defaults(func):
             signature = inspect.signature(func)
@@ -64,7 +66,7 @@ class BayesianOptimization(metahyper.Sampler):
             graph_kernels = list()
             if any(
                 isinstance(parameter, GraphGrammar)
-                for parameter in pipeline_space.values()
+                for parameter in self.pipeline_space.values()
             ):
                 graph_kernels.append("wl")
 
@@ -73,13 +75,13 @@ class BayesianOptimization(metahyper.Sampler):
             if any(
                 isinstance(parameter, FloatParameter)
                 or isinstance(parameter, IntegerParameter)
-                for parameter in pipeline_space.values()
+                for parameter in self.pipeline_space.values()
             ):
                 hp_kernels.append("m52")
 
             if any(
                 isinstance(parameter, CategoricalParameter)
-                for parameter in pipeline_space.values()
+                for parameter in self.pipeline_space.values()
             ):
                 hp_kernels.append("hm")
 
@@ -101,8 +103,8 @@ class BayesianOptimization(metahyper.Sampler):
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             verbose=verbose,
-            vectorial_features=pipeline_space.get_vectorial_dim()
-            if hasattr(pipeline_space, "get_vectorial_dim")
+            vectorial_features=self.pipeline_space.get_vectorial_dim()
+            if hasattr(self.pipeline_space, "get_vectorial_dim")
             else None,
         )
         acquisition_function = AcquisitionMapping[acquisition](
@@ -119,7 +121,7 @@ class BayesianOptimization(metahyper.Sampler):
             if not all(k in arg_names for k in acquisition_opt_strategy_args.keys()):
                 raise ValueError("Parameter mismatch")
             self.acquisition_function_opt = acquisition_function_opt_cls(
-                pipeline_space,
+                self.pipeline_space,
                 acquisition_function,
                 **acquisition_opt_strategy_args,
             )
@@ -135,8 +137,6 @@ class BayesianOptimization(metahyper.Sampler):
         self.n_candidates = n_candidates
         self.patience = patience
         self.return_opt_details = return_opt_details
-
-        self.random_sampler = RandomSampler(self.acquisition_function_opt.search_space)
 
         self.train_x: list = []
         self.train_y: list | torch.Tensor = []
@@ -179,9 +179,9 @@ class BayesianOptimization(metahyper.Sampler):
 
     def get_config_and_ids(self):
         if len(self.train_x) < self.initial_design_size:
-            config = self.random_sampler.sample(1)[0]
+            config = self.pipeline_space.sample_new()
         elif random.random() < self.random_interleave_prob:
-            config = self.random_sampler.sample(1)[0]
+            config = self.pipeline_space.sample_new()
         elif len(self.pending_evaluations) > 0:
             pending_evaluation_ids = [
                 pend_eval.id[0]
@@ -202,7 +202,7 @@ class BayesianOptimization(metahyper.Sampler):
                     break
                 _patience -= 1
             if _patience == 0:
-                config = self.random_sampler.sample(1)[0]
+                config = self.pipeline_space.sample_new()
         else:
             model_sample, _, _ = self.acquisition_function_opt.sample(
                 self.n_candidates, 1
