@@ -7,6 +7,7 @@ from typing import Any
 import metahyper
 import numpy as np
 import torch
+from metahyper.api import ConfigResult
 
 from ...search_spaces import (
     CategoricalParameter,
@@ -14,6 +15,7 @@ from ...search_spaces import (
     GraphGrammar,
     IntegerParameter,
 )
+from ...utils.result_utils import get_loss
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_function_optimization.random_sampler import RandomSampler
 from .acquisition_functions import AcquisitionMapping
@@ -164,12 +166,13 @@ class BayesianOptimization(metahyper.Sampler):
         self.acquisition_function_opt.reset_surrogate_model(self.surrogate_model)
         self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
 
-    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+    def load_results(
+        self,
+        previous_results: dict[str, ConfigResult],
+        pending_evaluations: dict[str, ConfigResult],
+    ) -> None:
         self.train_x = [el.config for el in previous_results.values()]
-        self.train_y = [
-            el.result["loss"] if isinstance(el.result, dict) else np.inf
-            for el in previous_results.values()
-        ]
+        self.train_y = [get_loss(el.result) for el in previous_results.values()]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
         if len(self.train_x) >= self.initial_design_size:
             self._update_model()

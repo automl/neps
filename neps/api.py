@@ -32,8 +32,10 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
     is_error = result == "error"
     if is_error:
         loss = float("inf")
-    else:
+    elif isinstance(result, dict):
         loss = result["loss"]
+    else:
+        loss = result
 
     # 1. write all configs and losses
     all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
@@ -131,17 +133,17 @@ def run(
     Example:
         >>> import neps
 
-        >>> def run_pipeline(x):
-        >>>    return {"loss": x}
+        >>> def run_pipeline(some_parameter: float):
+        >>>    loss = -some_parameter
+        >>>    return loss
 
-        >>> pipeline_space = dict(x=neps.FloatParameter(lower=0, upper=1, log=False))
+        >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
 
         >>> neps.run(
         >>>    run_pipeline=run_pipeline,
         >>>    pipeline_space=pipeline_space,
-        >>>    working_directory="results/usage",
+        >>>    working_directory="usage_example",
         >>>    max_evaluations_total=5,
-        >>>    hp_kernels=["m52"],
         >>> )
     """
     if isinstance(pipeline_space, CS.ConfigurationSpace):
