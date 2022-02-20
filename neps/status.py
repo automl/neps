@@ -4,7 +4,10 @@ import argparse
 import logging
 from pathlib import Path
 
-from . import read_results
+from metahyper import read
+from metahyper.api import ConfigResult
+
+from .search_spaces.search_space import SearchSpace
 from .utils.result_utils import get_loss
 
 
@@ -13,8 +16,21 @@ def status(
     best_losses: bool = False,
     best_configs: bool = False,
     all_configs: bool = False,
-):
-    previous_results, pending_configs, pending_configs_free = read_results(
+) -> tuple[dict[str, ConfigResult], dict[str, SearchSpace]]:
+    """Print status information of a neps run and return results.
+
+    Args:
+        working_directory: The working directory given to neps.run.
+        best_losses: If true, show the trajectory of the best loss across evaluations
+        best_configs: If true, show the trajectory of the best configs and their losses
+            across evaluations
+        all_configs: If true, show all configs and their losses
+
+    Returns:
+        previous_results: Already evaluated configurations and results.
+        pending_configs: Configs that have been sampled, but have not finished evaluating
+    """
+    previous_results, pending_configs, pending_configs_free = read(
         working_directory, logging.getLogger("neps.status")
     )
     print(f"#Evaluated configs: {len(previous_results)}")
@@ -24,7 +40,7 @@ def status(
     )
 
     if len(previous_results) == 0:
-        exit(0)
+        return previous_results, pending_configs
 
     best_loss = float("inf")
     best_config_id = None

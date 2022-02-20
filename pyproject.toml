@@ -77,7 +77,6 @@ module = [
   "neps.optimizers.bayesian_optimization.acquisition_functions.*",
   "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
   "neps.search_spaces.graph_dense.*",
-  "neps.utils.util",
 ]
 ignore_errors = true
 

@@ -57,7 +57,7 @@ repos:
     hooks:
       - id: darglint
         args: [-v 2,--indentation 4]
-        files: (neps/api.py)
+        files: (neps/api.py|neps/status.py)
 
   - repo: https://github.com/PyCQA/pylint
     rev: v2.12.2
