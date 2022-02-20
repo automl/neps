@@ -20,7 +20,9 @@ from .graph_grammar.graph import Graph
 from .parameter import Parameter
 
 
-def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchSpace:
+def pipeline_space_from_configspace(
+    configspace: CS.ConfigurationSpace,
+) -> dict[str, Parameter]:
     pipeline_space = dict()
     parameter: Parameter
     for hyperparameter in configspace.get_hyperparameters():
@@ -41,7 +43,7 @@ def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchS
         else:
             raise ValueError(f"Unkown hyperparameter type {hyperparameter}")
         pipeline_space[hyperparameter.name] = parameter
-    return SearchSpace(**pipeline_space)
+    return pipeline_space
 
 
 class SearchSpace(collections.abc.Mapping):

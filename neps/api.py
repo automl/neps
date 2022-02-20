@@ -23,7 +23,7 @@ except ModuleNotFoundError:
 
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.optimizer import RandomSearch
-from .search_spaces.search_space import SearchSpace, search_space_from_configspace
+from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
 
 
 def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
@@ -90,7 +90,7 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
 
 def run(
     run_pipeline: Callable,
-    pipeline_space: Mapping[str, Parameter] | CS.ConfigurationSpace,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     working_directory: str | Path,
     n_iterations: int | None = None,
     max_evaluations_total: int | None = None,
@@ -146,14 +146,23 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
-    if isinstance(pipeline_space, CS.ConfigurationSpace):
-        pipeline_space = search_space_from_configspace(pipeline_space)
-    else:
-        try:
-            pipeline_space = SearchSpace(**pipeline_space)
-        except TypeError as e:
-            message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
-            raise TypeError(message) from e
+    try:
+        # Support pipeline space as ConfigurationSpace definition
+        if isinstance(pipeline_space, CS.ConfigurationSpace):
+            pipeline_space = pipeline_space_from_configspace(pipeline_space)
+
+        # Support pipeline space as mix of ConfigurationSpace and neps parameters
+        for key, value in pipeline_space.items():
+            if isinstance(value, CS.ConfigurationSpace):
+                pipeline_space.pop(key)
+                config_space_parameters = pipeline_space_from_configspace(value)
+                pipeline_space = {**pipeline_space, **config_space_parameters}
+
+        # Transform to neps internal representation of the pipeline space
+        pipeline_space = SearchSpace(**pipeline_space)
+    except TypeError as e:
+        message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
+        raise TypeError(message) from e
 
     if searcher == "bayesian_optimization":
         sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
