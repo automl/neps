@@ -5,6 +5,7 @@ from typing import Iterable
 
 import numpy as np
 import numpy.typing as npt
+from typing_extensions import Literal
 
 from .numerical import NumericalParameter
 
@@ -14,7 +15,7 @@ class CategoricalParameter(NumericalParameter):
         self,
         choices: Iterable[float | int | str],
         default: None | float | int | str = None,
-        default_confidence: None | float | int = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         super().__init__()
 
@@ -46,8 +47,11 @@ class CategoricalParameter(NumericalParameter):
     def __copy__(self):
         return self.__class__(choices=self.choices)
 
-    def sample(self):
-        idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
+    def sample(self, use_user_priors=False):
+        if use_user_priors:
+            default_index = self.choices.index(self.default)
+        else:
+            idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
         self.value = str(self.choices[int(idx)])
 
     def mutate(

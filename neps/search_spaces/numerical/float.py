@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from typing_extensions import Literal
 
 from .numerical import NumericalParameter
 
@@ -15,14 +16,12 @@ class FloatParameter(NumericalParameter):
         log: bool = False,
         is_fidelity: bool = False,
         default: None | float | int = None,
-        default_confidence: None | float | int = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         super().__init__()
 
         self.default = default
         self.default_confidence = default_confidence
-        if default_confidence is not None and not 0 <= default_confidence <= 1.0:
-            raise ValueError("default_confidence must be between 0 and 1.")
 
         self.is_fidelity = is_fidelity
 

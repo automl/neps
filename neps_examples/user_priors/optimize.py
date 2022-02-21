@@ -17,10 +17,14 @@ def run_pipeline(working_directory, some_float, some_cat):
     }
 
 
+# neps uses the default values and a confidence in this default value to construct a prior
+# that speeds up the search
 pipeline_space = dict(
-    some_float=neps.FloatParameter(lower=0, upper=1, default=0.3, default_confidence=0.5),
+    some_float=neps.FloatParameter(
+        lower=0, upper=1, default=0.3, default_confidence="low"
+    ),
     some_cat=neps.CategoricalParameter(
-        choices=["a", "b", "c"], default="a", default_confidence=0.3
+        choices=["a", "b", "c"], default="a", default_confidence="medium"
     ),
 )
 

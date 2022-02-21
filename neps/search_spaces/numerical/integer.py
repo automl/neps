@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing_extensions import Literal
+
 from .float import FloatParameter
 
 
@@ -11,7 +13,7 @@ class IntegerParameter(FloatParameter):
         log: bool = False,
         is_fidelity: bool = False,
         default: None | float | int = None,
-        default_confidence: None | float | int = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
