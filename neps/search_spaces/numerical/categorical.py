@@ -20,14 +20,14 @@ class CategoricalParameter(NumericalParameter):
         super().__init__()
 
         self.default = default
-        self.default_confidence = default_confidence
+        self.confidence_score = dict(low=1.25, medium=1.75, high=2.5)[default_confidence]
 
         self.choices = list(choices)
         self.num_choices = len(self.choices)
         self.probabilities: list[npt.NDArray] = list(
             np.ones(self.num_choices) * (1.0 / self.num_choices)
         )
-        self.value = None
+        self.value: None | float | int | str = None
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -47,11 +47,18 @@ class CategoricalParameter(NumericalParameter):
     def __copy__(self):
         return self.__class__(choices=self.choices)
 
-    def sample(self, use_user_priors=False):
-        if use_user_priors:
+    def sample(self, use_user_priors: bool = False):
+        if use_user_priors and self.default is not None:
+            # The default value should have "confidence_score" more probability than
+            # all the other values.
+            base_probability = 1 / (self.num_choices - 1 + self.confidence_score)
+            probabilities = [base_probability] * self.num_choices
             default_index = self.choices.index(self.default)
+            probabilities[default_index] *= self.confidence_score
         else:
-            idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
+            probabilities = self.probabilities
+
+        idx = np.random.choice(a=self.num_choices, replace=True, p=probabilities)
         self.value = str(self.choices[int(idx)])
 
     def mutate(

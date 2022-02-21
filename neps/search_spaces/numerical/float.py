@@ -39,7 +39,7 @@ class FloatParameter(NumericalParameter):
             self._lower = np.log(self.lower)
             self._upper = np.log(self.upper)
 
-        self.value = None
+        self.value: None | float = None
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -60,7 +60,7 @@ class FloatParameter(NumericalParameter):
     def __copy__(self):
         return self.__class__(lower=self.lower, upper=self.upper, log=self.log)
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         if self.log:
             value = np.random.uniform(low=self._lower, high=self._upper)
             value = math.exp(value)

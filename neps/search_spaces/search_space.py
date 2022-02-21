@@ -61,22 +61,26 @@ class SearchSpace(collections.abc.Mapping):
             else:
                 self._graphs.append(hyperparameter)
 
-    def sample_new(self, patience: int = 100) -> SearchSpace:
-        while patience > 0:
+    def sample_new(
+        self, patience: int = 100, use_user_priors: bool = False
+    ) -> SearchSpace:
+        patience_ = patience
+        while patience_ > 0:
             try:
                 new_config = deepcopy(self)
-                new_config.sample()
+                new_config.sample(use_user_priors=use_user_priors)
                 break
-            except:  # pylint: disable=bare-except
-                patience -= 1
+            except Exception as e:  # pylint: disable=bare-except
+                patience_ -= 1
+                raise e
         else:
             raise ValueError(f"Could not sample valid config in {patience} tries!")
 
         return new_config
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):
         for hyperparameter in self.hyperparameters.values():
-            hyperparameter.sample()
+            hyperparameter.sample(use_user_priors=use_user_priors)
 
     def mutate(
         self,

@@ -27,14 +27,14 @@ class IntegerParameter(FloatParameter):
             default=default,
             default_confidence=default_confidence,
         )
-        self.value = None
+        self.value: None | int = None
 
     def __repr__(self):
         return f"Integer, range: [{self.lower}, {self.upper}], value: {self.value}"
 
-    def sample(self):
-        self.fp.sample()
-        self.value = int(round(self.fp.value))
+    def sample(self, use_user_priors: bool = False):
+        self.fp.sample(use_user_priors=use_user_priors)
+        self.value = int(round(self.fp.value))  # type: ignore[arg-type]
 
     def mutate(
         self,
