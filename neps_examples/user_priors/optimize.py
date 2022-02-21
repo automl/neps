@@ -6,7 +6,10 @@ import neps
 
 def run_pipeline(working_directory, some_float, some_cat):
     start = time.time()
-    y = -some_float
+    if some_cat != "a":
+        y = some_float
+    else:
+        y = -some_float
     end = time.time()
     return {
         "loss": y,
@@ -24,7 +27,7 @@ pipeline_space = dict(
         lower=0, upper=1, default=0.3, default_confidence="low"
     ),
     some_cat=neps.CategoricalParameter(
-        choices=["a", "b", "c"], default="a", default_confidence="medium"
+        choices=["a", "b", "c"], default="a", default_confidence="high"
     ),
 )
 
