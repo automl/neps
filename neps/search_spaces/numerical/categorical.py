@@ -20,7 +20,7 @@ class CategoricalParameter(NumericalParameter):
         super().__init__()
 
         self.default = default
-        self.confidence_score = dict(low=1.25, medium=1.75, high=2.5)[default_confidence]
+        self.confidence_score = dict(low=1.1, medium=1.75, high=2.5)[default_confidence]
 
         self.choices = list(choices)
         self.num_choices = len(self.choices)
