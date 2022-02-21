@@ -4,12 +4,12 @@ import time
 import neps
 
 
-def run_pipeline(working_directory, some_float, some_cat):
+def run_pipeline(working_directory, some_float, some_integer, some_cat):
     start = time.time()
     if some_cat != "a":
-        y = some_float
+        y = some_float + some_integer
     else:
-        y = -some_float
+        y = -some_float - some_integer
     end = time.time()
     return {
         "loss": y,
@@ -24,7 +24,10 @@ def run_pipeline(working_directory, some_float, some_cat):
 # that speeds up the search
 pipeline_space = dict(
     some_float=neps.FloatParameter(
-        lower=0, upper=1, default=0.3, default_confidence="low"
+        lower=1, upper=1000, log=True, default=500, default_confidence="medium"
+    ),
+    some_integer=neps.IntegerParameter(
+        lower=0, upper=50, default=35, default_confidence="low"
     ),
     some_cat=neps.CategoricalParameter(
         choices=["a", "b", "c"], default="a", default_confidence="high"

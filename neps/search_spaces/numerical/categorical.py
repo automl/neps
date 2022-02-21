@@ -20,7 +20,9 @@ class CategoricalParameter(NumericalParameter):
         super().__init__()
 
         self.default = default
-        self.confidence_score = dict(low=1.1, medium=1.75, high=2.5)[default_confidence]
+        self.default_confidence_score = dict(low=1.1, medium=1.75, high=2.5)[
+            default_confidence
+        ]
 
         self.choices = list(choices)
         self.num_choices = len(self.choices)
@@ -49,12 +51,12 @@ class CategoricalParameter(NumericalParameter):
 
     def sample(self, use_user_priors: bool = False):
         if use_user_priors and self.default is not None:
-            # The default value should have "confidence_score" more probability than
+            # The default value should have "default_confidence_score" more probability than
             # all the other values.
-            base_probability = 1 / (self.num_choices - 1 + self.confidence_score)
+            base_probability = 1 / (self.num_choices - 1 + self.default_confidence_score)
             probabilities = [base_probability] * self.num_choices
             default_index = self.choices.index(self.default)
-            probabilities[default_index] *= self.confidence_score
+            probabilities[default_index] *= self.default_confidence_score
         else:
             probabilities = self.probabilities
 
