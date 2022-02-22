@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 
@@ -23,7 +22,7 @@ except ModuleNotFoundError:
 
 from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from .optimizers.random_search.optimizer import RandomSearch
-from .search_spaces.search_space import SearchSpace, search_space_from_configspace
+from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
 
 
 def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
@@ -32,8 +31,10 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
     is_error = result == "error"
     if is_error:
         loss = float("inf")
-    else:
+    elif isinstance(result, dict):
         loss = result["loss"]
+    else:
+        loss = result
 
     # 1. write all configs and losses
     all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
@@ -88,9 +89,8 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
 
 def run(
     run_pipeline: Callable,
-    pipeline_space: Mapping[str, Parameter] | CS.ConfigurationSpace,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     working_directory: str | Path,
-    n_iterations: int | None = None,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
@@ -111,7 +111,6 @@ def run(
         pipeline_space: The search space to minimize over.
         working_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
-        n_iterations: deprecated!
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
@@ -131,27 +130,36 @@ def run(
     Example:
         >>> import neps
 
-        >>> def run_pipeline(x):
-        >>>    return {"loss": x}
+        >>> def run_pipeline(some_parameter: float):
+        >>>    loss = -some_parameter
+        >>>    return loss
 
-        >>> pipeline_space = dict(x=neps.FloatParameter(lower=0, upper=1, log=False))
+        >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
 
         >>> neps.run(
         >>>    run_pipeline=run_pipeline,
         >>>    pipeline_space=pipeline_space,
-        >>>    working_directory="results/usage",
+        >>>    working_directory="usage_example",
         >>>    max_evaluations_total=5,
-        >>>    hp_kernels=["m52"],
         >>> )
     """
-    if isinstance(pipeline_space, CS.ConfigurationSpace):
-        pipeline_space = search_space_from_configspace(pipeline_space)
-    else:
-        try:
-            pipeline_space = SearchSpace(**pipeline_space)
-        except TypeError as e:
-            message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
-            raise TypeError(message) from e
+    try:
+        # Support pipeline space as ConfigurationSpace definition
+        if isinstance(pipeline_space, CS.ConfigurationSpace):
+            pipeline_space = pipeline_space_from_configspace(pipeline_space)
+
+        # Support pipeline space as mix of ConfigurationSpace and neps parameters
+        for key, value in pipeline_space.items():
+            if isinstance(value, CS.ConfigurationSpace):
+                pipeline_space.pop(key)
+                config_space_parameters = pipeline_space_from_configspace(value)
+                pipeline_space = {**pipeline_space, **config_space_parameters}
+
+        # Transform to neps internal representation of the pipeline space
+        pipeline_space = SearchSpace(**pipeline_space)
+    except TypeError as e:
+        message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
+        raise TypeError(message) from e
 
     if searcher == "bayesian_optimization":
         sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
@@ -159,14 +167,6 @@ def run(
         sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
     else:
         raise ValueError(f"Unknown searcher: {searcher}")
-
-    if n_iterations is not None:
-        warnings.warn(
-            "n_iterations is deprecated and will be removed in a future version",
-            DeprecationWarning,
-        )
-        max_evaluations_total = n_iterations
-        continue_until_max_evaluation_completed = True  # Old behavior
 
     metahyper.run(
         run_pipeline,

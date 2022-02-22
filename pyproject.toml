@@ -37,6 +37,7 @@ types-six = "^1.16.6"
 types-tabulate = "^0.8.4"
 types-termcolor = "^1.1.2"
 types-Deprecated = "^1.2.3"
+scipy = "^1.7"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
@@ -71,13 +72,11 @@ explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
-  "neps.optimizers.bayesian_optimization.utils.*",
   "neps.optimizers.bayesian_optimization.models.*",
   "neps.optimizers.bayesian_optimization.kernels.*",
   "neps.optimizers.bayesian_optimization.acquisition_functions.*",
   "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
   "neps.search_spaces.graph_dense.*",
-  "neps.utils.util",
 ]
 ignore_errors = true
 

@@ -27,3 +27,4 @@ poetry.lock
 results
 neps_examples/results
 tests_tmpdir
+usage_example

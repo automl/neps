@@ -4,6 +4,7 @@ import collections.abc
 import pprint
 import random
 from collections import OrderedDict
+from copy import deepcopy
 
 import ConfigSpace as CS
 import numpy as np
@@ -19,7 +20,9 @@ from .graph_grammar.graph import Graph
 from .parameter import Parameter
 
 
-def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchSpace:
+def pipeline_space_from_configspace(
+    configspace: CS.ConfigurationSpace,
+) -> dict[str, Parameter]:
     pipeline_space = dict()
     parameter: Parameter
     for hyperparameter in configspace.get_hyperparameters():
@@ -40,7 +43,7 @@ def search_space_from_configspace(configspace: CS.ConfigurationSpace) -> SearchS
         else:
             raise ValueError(f"Unkown hyperparameter type {hyperparameter}")
         pipeline_space[hyperparameter.name] = parameter
-    return SearchSpace(**pipeline_space)
+    return pipeline_space
 
 
 class SearchSpace(collections.abc.Mapping):
@@ -58,9 +61,26 @@ class SearchSpace(collections.abc.Mapping):
             else:
                 self._graphs.append(hyperparameter)
 
-    def sample(self):
+    def sample_new(
+        self, patience: int = 100, use_user_priors: bool = False
+    ) -> SearchSpace:
+        patience_ = patience
+        while patience_ > 0:
+            try:
+                new_config = deepcopy(self)
+                new_config.sample(use_user_priors=use_user_priors)
+                break
+            except Exception as e:  # pylint: disable=bare-except
+                patience_ -= 1
+                raise e
+        else:
+            raise ValueError(f"Could not sample valid config in {patience} tries!")
+
+        return new_config
+
+    def sample(self, use_user_priors: bool = False):
         for hyperparameter in self.hyperparameters.values():
-            hyperparameter.sample()
+            hyperparameter.sample(use_user_priors=use_user_priors)
 
     def mutate(
         self,

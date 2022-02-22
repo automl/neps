@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import scipy.stats
+from typing_extensions import Literal
 
 from .numerical import NumericalParameter
 
@@ -13,8 +15,18 @@ class FloatParameter(NumericalParameter):
         lower: float | int,
         upper: float | int,
         log: bool = False,
+        is_fidelity: bool = False,
+        default: None | float | int = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         super().__init__()
+
+        self.default = default
+        self.default_confidence_score = dict(low=0.5, medium=0.25, high=0.125)[
+            default_confidence
+        ]
+
+        self.is_fidelity = is_fidelity
 
         self.lower = float(lower)
         self.upper = float(upper)
@@ -29,8 +41,12 @@ class FloatParameter(NumericalParameter):
                 raise ValueError("Float parameter: bounds error (log scale).")
             self._lower = np.log(self.lower)
             self._upper = np.log(self.upper)
+            if self.default is not None:
+                self._default = np.log(self.default)
+            else:
+                self._default = None
 
-        self.value = None
+        self.value: None | float = None
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -46,19 +62,28 @@ class FloatParameter(NumericalParameter):
         return hash((self.lower, self.upper, self.log, self.value))
 
     def __repr__(self):
-        return "Float, range: [{}, {}], value: {:.07f}".format(
-            self.lower, self.upper, self.value
-        )
+        return f"Float, range: [{self.lower}, {self.upper}], value: {self.value:.07f}"
 
     def __copy__(self):
         return self.__class__(lower=self.lower, upper=self.upper, log=self.log)
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         if self.log:
-            value = np.random.uniform(low=self._lower, high=self._upper)
-            value = math.exp(value)
+            low, high, default = self._lower, self._upper, self._default
         else:
-            value = np.random.uniform(low=self.lower, high=self.upper)
+            low, high, default = self.lower, self.upper, self.default
+
+        if use_user_priors and default is not None:
+            std = (high - low) * self.default_confidence_score
+            a, b = (low - default) / std, (high - default) / std
+            dist = scipy.stats.truncnorm(a, b)  # dist.pdf(x) for pibo acq
+            value = dist.rvs() * std + default
+        else:
+            value = np.random.uniform(low=low, high=high)
+
+        if self.log:
+            value = math.exp(value)
+
         self.value = min(self.upper, max(self.lower, value))
 
     def mutate(
