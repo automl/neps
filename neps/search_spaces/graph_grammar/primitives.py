@@ -422,6 +422,33 @@ class ConvBnReLU(AbstractPrimitive):
         return op_name
 
 
+class ConvBn(AbstractPrimitive):
+    """
+    Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation.
+    """
+
+    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
+        super().__init__(locals())
+        self.kernel_size = kernel_size
+        pad = 0 if stride == 1 and kernel_size == 1 else 1
+        self.op = nn.Sequential(
+            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=pad, bias=False),
+            nn.BatchNorm2d(C_out, affine=affine),
+        )
+
+    def forward(self, x, edge_data=None):
+        return self.op(x)
+
+    def get_embedded_ops(self):
+        return None
+
+    @property
+    def get_op_name(self):
+        op_name = super().get_op_name
+        op_name += f"{self.kernel_size}x{self.kernel_size}"
+        return op_name
+
+
 class Concat1x1(nn.Module):
     """
     Implementation of the channel-wise concatination followed by a 1x1 convolution
@@ -470,6 +497,36 @@ class ResNetBasicblock(AbstractPrimitive):
         basicblock = self.conv_b(basicblock, None)
         residual = self.downsample(x) if self.downsample is not None else x
         return residual + basicblock
+
+    @staticmethod
+    def get_embedded_ops():
+        return None
+
+
+class ResNetBasicblockConvBnRelu(AbstractPrimitive):
+    def __init__(
+        self, C_in, C_out, stride, affine=True, **kwargs
+    ):  # pylint:disable=W0613
+        super().__init__(locals())
+        assert stride == 1 or stride == 2, f"invalid stride {stride}"
+        self.conv_a = ConvBnReLU(C_in, C_out, 3, stride)
+        self.conv_b = ConvBn(C_out, C_out, 3)
+        if stride == 2:
+            self.downsample = nn.Sequential(
+                # nn.AvgPool2d(kernel_size=2, stride=2, padding=0),
+                nn.Conv2d(C_in, C_out, kernel_size=1, stride=2, padding=0, bias=False),
+                nn.BatchNorm2d(C_out),
+            )
+        else:
+            self.downsample = None
+
+        self.relu = nn.ReLU()
+
+    def forward(self, x, edge_data):  # pylint: disable=W0613
+        basicblock = self.conv_a(x, None)
+        basicblock = self.conv_b(basicblock, None)
+        residual = self.downsample(x) if self.downsample is not None else x
+        return self.relu(residual + basicblock)
 
     @staticmethod
     def get_embedded_ops():

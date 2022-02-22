@@ -679,15 +679,17 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
         if self.fixed_macro_grammar:
             return np.prod(
-                [recursive_worker(grammar.start(), grammar) for grammar in self.grammars]
+                [grammar.compute_space_size for grammar in self.grammars]
+                # [recursive_worker(grammar.start(), grammar) for grammar in self.grammars]
             )
         else:
             lower_level_motifs = {
                 k: recursive_worker(self.grammars[i + 1].start(), self.grammars[i + 1])
                 for i, k in enumerate(self.base_to_motif_map.keys())
             }
-            return recursive_worker(
+            macro_level_motifs = recursive_worker(
                 self.grammars[0].start(),
                 self.grammars[0],
                 lower_level_motifs=lower_level_motifs,
             )
+            return np.prod(list(lower_level_motifs.values()) + [macro_level_motifs])
