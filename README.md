@@ -41,7 +41,7 @@ python -m neps.utils.install_torch
 
 Using `neps` always follows the same pattern:
 
-1. Define a `run_pipeline` function that accepts architectures/hyperparameters and evaluates them
+1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
 1. Define a search space `pipeline_space` of architectures/hyperparameters
 1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
@@ -88,7 +88,7 @@ python -m neps.status --help
 
 ### Parallelization
 
-Simply call `neps.run` multiple times.
+In order to run a neural pipeline search with multiple processes or multiple machines, simply call `neps.run` multiple times.
 All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synchronization between the `neps.run`'s.
 
 ## Contributing
