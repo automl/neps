@@ -5,10 +5,11 @@ Neural Pipeline Search helps deep learning experts find the best neural pipeline
 Features:
 
 - Hyperparameter optimization (HPO)
-- Neural architecture search (NAS), cell-based and hierarchical
-- HPO and NAS
+- Neural architecture search (NAS): cell-based and hierarchical
+- Joint NAS and HPO
+- Expert priors to guide the search
 - Asynchronous parallelization and distribution
-- Fault tolerance
+- Fault tolerance for crashes and job time limits
 
 Soon-to-come Features:
 
@@ -49,10 +50,10 @@ In code the usage pattern can look like this:
 ```python
 import neps
 
-# 1. Define a function that accepts a hyperparameter and computes a loss using it
+# 1. Define a function that accepts a hyperparameter and computes the validation error
 def run_pipeline(some_hyperparameter: float):
-    loss = -some_hyperparameter
-    return loss
+    validation_error = -some_hyperparameter
+    return validation_error
 
 
 # 2. Define a search space containing one hyperparameter

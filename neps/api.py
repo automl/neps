@@ -131,8 +131,8 @@ def run(
         >>> import neps
 
         >>> def run_pipeline(some_parameter: float):
-        >>>    loss = -some_parameter
-        >>>    return loss
+        >>>    validation_error = -some_parameter
+        >>>    return validation_error
 
         >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
 
