@@ -30,7 +30,7 @@ metahyper = {git = "https://github.com/automl/metahyper.git", rev = "v0.4.2"}
 path = "^16.2.0"
 termcolor = "^1.1.0"
 fvcore = "^0.1.5"
-torchvision = "0.10.0"
+torchvision = "^0.10.0"
 typing-extensions = "^4.0.1"
 Deprecated = "^1.2.13"
 types-six = "^1.16.6"
