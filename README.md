@@ -70,7 +70,9 @@ neps.run(
 )
 ```
 
-For more advanced usage examples have a look at [neps_examples](neps_examples).
+### More examples
+
+For more usage examples for features of neps have a look at [neps_examples](neps_examples).
 
 ### Status information
 
