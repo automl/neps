@@ -87,10 +87,16 @@ To show status information about a neural pipeline search use
 python -m neps.status WORKING_DIRECTORY
 ```
 
-If you need more status information than is printed per default, please have a look at
+If you need more status information than is printed per default (e.g., the best config over time), please have a look at
 
 ```bash
 python -m neps.status --help
+```
+
+To show the status repeatedly, on unix systems you can use
+
+```bash
+watch -n 10 python -m neps.status WORKING_DIRECTORY
 ```
 
 ### Parallelization
