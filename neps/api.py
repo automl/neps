@@ -148,6 +148,9 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
+    logger = logging.getLogger("neps")
+    logger.info(f"Starting neps.run using working directory {working_directory}")
+
     try:
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
@@ -181,7 +184,7 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
-        logger=logging.getLogger("neps"),
+        logger=logger,
         evaluation_fn_args=run_pipeline_args,
         evaluation_fn_kwargs=run_pipeline_kwargs,
         post_evaluation_hook=_post_evaluation_hook,
