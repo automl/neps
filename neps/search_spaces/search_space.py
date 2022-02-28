@@ -53,6 +53,7 @@ class SearchSpace(collections.abc.Mapping):
         self._hps = []
         self._graphs = []
 
+        self.fidelity = None
         for key, hyperparameter in hyperparameters.items():
             self.hyperparameters[key] = hyperparameter
 
@@ -60,6 +61,23 @@ class SearchSpace(collections.abc.Mapping):
                 self._hps.append(hyperparameter)
             else:
                 self._graphs.append(hyperparameter)
+
+            # Only integer / float parameters can be fidelities, so check these
+            if isinstance(hyperparameter, IntegerParameter) or isinstance(
+                hyperparameter, FloatParameter
+            ):
+                if self.fidelity is not None:
+                    raise ValueError(
+                        "neps only supports one fidelity parameter in the pipeline space,"
+                        " but multiple were given. (Hint: check you pipeline space for "
+                        "multiple is_fidelity=True"
+                    )
+
+                if hyperparameter.is_fidelity:
+                    self.fidelity = hyperparameter
+
+    def has_fidelity(self):
+        return self.fidelity is not None
 
     def sample_new(
         self, patience: int = 100, use_user_priors: bool = False
