@@ -57,15 +57,15 @@ import neps
 import logging
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
-def run_pipeline(float_hyperparameter: float, integer_hyperparameter: int):
-    validation_error = -float_hyperparameter * integer_hyperparameter
+def run_pipeline(hyperparameter_a: float, hyperparameter_b: int):
+    validation_error = -hyperparameter_a * hyperparameter_b
     return validation_error
 
 
 # 2. Define a search space of hyperparameters; use the same names as in run_pipeline
 pipeline_space = dict(
-    float_hyperparameter=neps.FloatParameter(lower=0, upper=1),
-    integer_hyperparameter=neps.IntegerParameter(lower=1, upper=100),
+    hyperparameter_a=neps.FloatParameter(lower=0, upper=1),
+    hyperparameter_b=neps.IntegerParameter(lower=1, upper=100),
 )
 
 # 3. Call neps.run to optimize run_pipeline over pipeline_space
