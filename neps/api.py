@@ -137,6 +137,7 @@ def run(
 
         >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
 
+        >>> logging.basicConfig(level=logging.INFO)
         >>> neps.run(
         >>>    run_pipeline=run_pipeline,
         >>>    pipeline_space=pipeline_space,
