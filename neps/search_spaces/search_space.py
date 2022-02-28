@@ -63,18 +63,15 @@ class SearchSpace(collections.abc.Mapping):
                 self._graphs.append(hyperparameter)
 
             # Only integer / float parameters can be fidelities, so check these
-            if isinstance(hyperparameter, IntegerParameter) or isinstance(
-                hyperparameter, FloatParameter
-            ):
+            if hasattr(hyperparameter, "is_fidelity") and hyperparameter.is_fidelity:
                 if self.fidelity is not None:
-                    raise ValueError(
-                        "neps only supports one fidelity parameter in the pipeline space,"
-                        " but multiple were given. (Hint: check you pipeline space for "
-                        "multiple is_fidelity=True"
-                    )
-
-                if hyperparameter.is_fidelity:
-                    self.fidelity = hyperparameter
+                    raise  # pylint: disable=misplaced-bare-raise
+                    # raise ValueError(
+                    #     "neps only supports one fidelity parameter in the pipeline space,"
+                    #     " but multiple were given. (Hint: check you pipeline space for "
+                    #     "multiple is_fidelity=True"
+                    # )
+                self.fidelity = hyperparameter
 
     def has_fidelity(self):
         return self.fidelity is not None
