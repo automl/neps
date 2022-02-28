@@ -1,3 +1,5 @@
+import logging
+
 from .api import run
 from .search_spaces import (
     CategoricalParameter,
@@ -10,3 +12,5 @@ from .search_spaces import (
     IntegerParameter,
 )
 from .status.status import status
+
+logging.getLogger("neps").addHandler(logging.NullHandler())
