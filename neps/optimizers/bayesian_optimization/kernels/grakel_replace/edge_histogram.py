@@ -1,11 +1,11 @@
 """The Edge Histogram kernel as defined in :cite:`sugiyama2015halting`."""
-from collections import Counter, Iterable
+from collections import Counter
+from collections.abc import Iterable
 from warnings import warn
 
 from grakel.graph import Graph
 from numpy import zeros
 from scipy.sparse import csr_matrix
-from six import iteritems, itervalues
 
 from .vertex_histogram import VertexHistogram
 
@@ -52,7 +52,7 @@ class EdgeHistogram(VertexHistogram):
             rows, cols, data = list(), list(), list()
             if self._method_calling in [1, 2]:
                 labels = dict()
-                self._labels = labels
+                self._labels = labels  # pylint: disable=W0201
             elif self._method_calling == 3:
                 labels = dict(self._labels)
             ni = 0
@@ -102,9 +102,11 @@ class EdgeHistogram(VertexHistogram):
             # Initialise the feature matrix
             if self._method_calling in [1, 2]:
                 if self.sparse == "auto":
-                    self.sparse_ = len(cols) / float(ni * len(labels)) <= 0.5
+                    self.sparse_ = (  # pylint: disable=W0201
+                        len(cols) / float(ni * len(labels)) <= 0.5
+                    )
                 else:
-                    self.sparse_ = bool(self.sparse)
+                    self.sparse_ = bool(self.sparse)  # pylint: disable=W0201
 
             if self.sparse_:
                 features = csr_matrix(
@@ -117,7 +119,7 @@ class EdgeHistogram(VertexHistogram):
                     features[rows, cols] = data
                 except MemoryError:
                     warn("memory-error: switching to sparse")
-                    self.sparse_, features = True, csr_matrix(
+                    self.sparse_, features = True, csr_matrix(  # pylint: disable=W0201
                         (data, (rows, cols)), shape=(ni, len(labels)), copy=False
                     )
 

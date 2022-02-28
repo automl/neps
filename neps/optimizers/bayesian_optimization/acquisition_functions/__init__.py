@@ -1,10 +1,13 @@
-from functools import partial
+from __future__ import annotations
 
-from .base_acqusition import *
+from functools import partial
+from typing import Callable
+
+from .base_acquisition import *
 from .ei import *
 from .ucb import *
 
-AcquisitionMapping = {
+AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
         ComprehensiveExpectedImprovement,
         in_fill="best",

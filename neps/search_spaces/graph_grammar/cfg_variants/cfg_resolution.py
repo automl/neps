@@ -1,4 +1,5 @@
 from collections import deque
+from typing import Deque
 
 import networkx as nx
 import numpy as np
@@ -26,7 +27,7 @@ class ResolutionGrammar(Grammar):
     ):
         self.n_downsamples = n_downsamples
 
-        terminal_to_graph_map = {}
+        terminal_to_graph_map: dict = {}
         for k, v in terminal_to_graph.items():
             terminal_to_graph_map[k] = {}
             terminal_to_graph_map[k]["edge_list"] = v
@@ -64,9 +65,9 @@ class ResolutionGrammar(Grammar):
     def sampler(
         self,
         n=1,
+        start_symbol: str = None,
         n_downsamples: int = None,
         depth_information: dict = None,
-        start_symbol: str = None,
     ):
         if start_symbol is None:
             start_symbol = self.start()
@@ -84,7 +85,7 @@ class ResolutionGrammar(Grammar):
 
     def _compute_depth_information_for_pre(self, tree: str) -> dict:
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -104,8 +105,8 @@ class ResolutionGrammar(Grammar):
         subtree_depth = [0] * len(split_tree)
         helper_subtree_depth = [0] * len(split_tree)
         helper_dict_depth_information = {nt: 0 for nt in self.nonterminals}
-        helper_dict_subtree_depth = {nt: deque() for nt in self.nonterminals}
-        q_nonterminals = deque()
+        helper_dict_subtree_depth: dict = {nt: deque() for nt in self.nonterminals}
+        q_nonterminals: Deque = deque()
         for i, split in enumerate(split_tree):
             if split == "":
                 continue
@@ -131,7 +132,7 @@ class ResolutionGrammar(Grammar):
     def _compute_max_depth(self, tree: str, subtree_node: str) -> int:
         max_depth = 0
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -248,7 +249,7 @@ class ResolutionGrammar(Grammar):
 
         if len(productions) == 0:
             raise Exception(
-                f"There can be no word sampled! This is due to the grammar and/or constraints."
+                "There can be no word sampled! This is due to the grammar and/or constraints."
             )
 
         # sample
@@ -305,9 +306,16 @@ class ResolutionGrammar(Grammar):
             if parent != child:  # ensure that parent is really mutated
                 break
             _patience -= 1
+        child = self._remove_empty_spaces(child)
         return child
 
-    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+    def crossover(
+        self,
+        parent1: str,
+        parent2: str,
+        patience: int = 50,
+        return_crossover_subtrees: bool = False,
+    ):
         # randomly swap subtrees in two trees
         # if no suitiable subtree exists then return False
         subtree_node, subtree_index = self.rand_subtree(parent1)
@@ -331,6 +339,18 @@ class ResolutionGrammar(Grammar):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+
+                child1 = self._remove_empty_spaces(child1)
+                child2 = self._remove_empty_spaces(child2)
+
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
+
                 return child1, child2
 
         return False, False

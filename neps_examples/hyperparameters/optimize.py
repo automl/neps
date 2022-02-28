@@ -6,53 +6,33 @@ import numpy as np
 import neps
 
 
-def run_pipeline(  # pylint: disable=unused-argument
-    config, config_working_directory, previous_working_directory
-):
-    x = np.array(config.get_hps(), dtype=float)
+def run_pipeline(working_directory, float1, float2, categorical, integer1, integer2):
     start = time.time()
-    y = -float(np.sum(x))
+    loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     end = time.time()
-
     return {
-        "loss": y,
-        "info_dict": {
-            "config_id": None,
-            "val_score": y,
-            "test_score": y,
+        "loss": loss,
+        "info_dict": {  # Optionally include additional information
+            "test_score": loss,
             "train_time": end - start,
         },
     }
 
 
-if __name__ == "__main__":
-    pipeline_space = dict(
-        x1=neps.FloatParameter(lower=0, upper=1, log=False),
-        x2=neps.FloatParameter(lower=0, upper=1, log=False),
-        x3=neps.FloatParameter(lower=0, upper=1, log=False),
-        x4=neps.FloatParameter(lower=0, upper=1, log=False),
-        x5=neps.FloatParameter(lower=0, upper=1, log=False),
-        x6=neps.CategoricalParameter(choices=[0, 1]),
-        x7=neps.CategoricalParameter(choices=[0, 1]),
-        x8=neps.CategoricalParameter(choices=[0, 1]),
-        x9=neps.CategoricalParameter(choices=[0, 1]),
-        x10=neps.CategoricalParameter(choices=[0, 1]),
-    )
+pipeline_space = dict(
+    float1=neps.FloatParameter(lower=0, upper=1),
+    float2=neps.FloatParameter(lower=-10, upper=10),
+    categorical=neps.CategoricalParameter(choices=[0, 1]),
+    integer1=neps.IntegerParameter(lower=0, upper=1),
+    integer2=neps.IntegerParameter(lower=1, upper=1000, log=True),
+)
 
-    logging.basicConfig(level=logging.INFO)
-    neps.run(
-        run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space,
-        working_directory="results/hyperparameters_example",
-        n_iterations=20,
-        searcher="bayesian_optimization",
-        overwrite_logging=True,
-        hp_kernels=["m52", "hm"],
-        use_new_metahyper=True,
-    )
-    previous_results, pending_configs, pending_configs_free = neps.read_results(
-        "results/hyperparameters_example"
-    )
+logging.basicConfig(level=logging.INFO)
+neps.run(
+    run_pipeline=run_pipeline,
+    pipeline_space=pipeline_space,
+    working_directory="results/hyperparameters_example",
+    max_evaluations_total=20,
+)
 
-    # print("Best found configuration: ", id2config[incumbent]["config"])
-    print(f"A total of {len(previous_results)} unique configurations were evaluated.")
+previous_results, pending_configs = neps.status("results/hyperparameters_example")

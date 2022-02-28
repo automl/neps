@@ -1,7 +1,7 @@
 import itertools
 import sys
 from collections import defaultdict, deque
-from typing import Tuple
+from typing import Deque, Tuple
 
 import numpy as np
 from nltk import CFG
@@ -51,7 +51,8 @@ class Grammar(CFG):
             if len(self.productions(Nonterminal(nt))) == 0:
                 raise Exception(f"There is no production for nonterminal {nt}")
 
-    def compute_space_size(self, primitive_nonterminal: str = "OPS") -> int:
+    @property
+    def compute_space_size(self) -> int:
         """Computes the size of the space described by the grammar.
 
         Args:
@@ -61,9 +62,9 @@ class Grammar(CFG):
             int: size of space described by grammar.
         """
 
-        def recursive_worker(nonterminal: Nonterminal) -> int:
-            if str(nonterminal) == primitive_nonterminal:
-                return len(self.productions(lhs=Nonterminal(primitive_nonterminal)))
+        def recursive_worker(nonterminal: Nonterminal, memory_bank: dict = None) -> int:
+            if memory_bank is None:
+                memory_bank = {}
 
             potential_productions = self.productions(lhs=nonterminal)
             _possibilites = 0
@@ -74,9 +75,17 @@ class Grammar(CFG):
                     if str(rhs_sym) in self.nonterminals
                 ]
                 possibilities_per_edge = [
-                    recursive_worker(e_nonterminal)
+                    memory_bank[str(e_nonterminal)]
+                    if str(e_nonterminal) in memory_bank.keys()
+                    else recursive_worker(e_nonterminal, memory_bank)
                     for e_nonterminal in edges_nonterminals
                 ]
+                memory_bank.update(
+                    {
+                        str(e_nonterminal): possibilities_per_edge[i]
+                        for i, e_nonterminal in enumerate(edges_nonterminals)
+                    }
+                )
                 product = 1
                 for p in possibilities_per_edge:
                     product *= p
@@ -122,7 +131,6 @@ class Grammar(CFG):
     def sampler(
         self,
         n=1,
-        cfactor=0.1,
         start_symbol: str = None,
     ):
         # sample n sequences from the CFG
@@ -141,6 +149,7 @@ class Grammar(CFG):
             start_symbol = Nonterminal(start_symbol)
 
         if self.convergent:
+            cfactor = 0.1
             return [
                 f"{self._convergent_sampler(symbol=start_symbol, cfactor=cfactor)[0]})"
                 for i in range(0, n)
@@ -269,7 +278,7 @@ class Grammar(CFG):
                     # Helpful error message while still showing the recursion stack.
                     raise RuntimeError(
                         "The grammar has rule(s) that yield infinite recursion!!"
-                    )
+                    ) from _error
                 else:
                     raise
         else:
@@ -283,6 +292,14 @@ class Grammar(CFG):
                     yield from self._generate_all(prod.rhs(), depth - 1)
             else:
                 yield [item]
+
+    @staticmethod
+    def _remove_empty_spaces(child):
+        while child[0] == " ":
+            child = child[1:]
+        while child[-1] == " ":
+            child = child[:-1]
+        return child
 
     def mutate(
         self, parent: str, subtree_index: int, subtree_node: str, patience: int = 50
@@ -309,6 +326,9 @@ class Grammar(CFG):
             if parent != child:  # ensure that parent is really mutated
                 break
             _patience -= 1
+
+        child = self._remove_empty_spaces(child)
+
         return child
 
     def crossover(
@@ -337,6 +357,10 @@ class Grammar(CFG):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+
+                child1 = self._remove_empty_spaces(child1)
+                child2 = self._remove_empty_spaces(child2)
+
                 if return_crossover_subtrees:
                     return (
                         child1,
@@ -467,8 +491,8 @@ class DepthConstrainedGrammar(Grammar):
     def sampler(
         self,
         n=1,
-        depth_information: dict = None,
         start_symbol: str = None,
+        depth_information: dict = None,
     ):
         if self.depth_constraints is None:
             raise ValueError("Depth constraints are not set!")
@@ -487,7 +511,7 @@ class DepthConstrainedGrammar(Grammar):
 
     def _compute_depth_information_for_pre(self, tree: str) -> dict:
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -507,8 +531,8 @@ class DepthConstrainedGrammar(Grammar):
         subtree_depth = [0] * len(split_tree)
         helper_subtree_depth = [0] * len(split_tree)
         helper_dict_depth_information = {nt: 0 for nt in self.nonterminals}
-        helper_dict_subtree_depth = {nt: deque() for nt in self.nonterminals}
-        q_nonterminals = deque()
+        helper_dict_subtree_depth: dict = {nt: deque() for nt in self.nonterminals}
+        q_nonterminals: Deque = deque()
         for i, split in enumerate(split_tree):
             if split == "":
                 continue
@@ -534,7 +558,7 @@ class DepthConstrainedGrammar(Grammar):
     def _compute_max_depth(self, tree: str, subtree_node: str) -> int:
         max_depth = 0
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals = deque()
+        q_nonterminals: Deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -576,7 +600,7 @@ class DepthConstrainedGrammar(Grammar):
 
         if len(productions) == 0:
             raise Exception(
-                f"There can be no word sampled! This is due to the grammar and/or constraints."
+                "There can be no word sampled! This is due to the grammar and/or constraints."
             )
 
         # sample
@@ -611,9 +635,16 @@ class DepthConstrainedGrammar(Grammar):
             if parent != child:  # ensure that parent is really mutated
                 break
             _patience -= 1
+        child = self._remove_empty_spaces(child)
         return child
 
-    def crossover(self, parent1: str, parent2: str, patience: int = 50):
+    def crossover(
+        self,
+        parent1: str,
+        parent2: str,
+        patience: int = 50,
+        return_crossover_subtrees: bool = False,
+    ):
         # randomly swap subtrees in two trees
         # if no suitiable subtree exists then return False
         subtree_node, subtree_index = self.rand_subtree(parent1)
@@ -637,6 +668,16 @@ class DepthConstrainedGrammar(Grammar):
                 # return the two new tree
                 child1 = pre + donor_sub + post
                 child2 = donor_pre + sub + donor_post
+                child1 = self._remove_empty_spaces(child1)
+                child2 = self._remove_empty_spaces(child2)
+
+                if return_crossover_subtrees:
+                    return (
+                        child1,
+                        child2,
+                        (pre, sub, post),
+                        (donor_pre, donor_sub, donor_post),
+                    )
                 return child1, child2
 
         return False, False
@@ -686,51 +727,3 @@ def choice(options, probs=None):
             choice = i
             break
     return options[choice]
-
-
-if __name__ == "__main__":
-    import os
-
-    import matplotlib.pyplot as plt
-    import networkx as nx
-    from path import Path
-
-    from .graph_grammar import GraphGrammar
-
-    g = GraphGrammar([])
-
-    dir_path = Path(os.path.dirname(os.path.realpath(__file__)))
-
-    # simple arithmetic grammar
-    search_space_path = dir_path / ".." / "debug_grammars" / "simple_arithmetic.cfg"
-    with open(search_space_path) as f:
-        productions = f.read()
-
-    grammar = Grammar.fromstring(productions)
-    # sample a short sequences
-    tree = grammar.sampler(1, cfactor=0.0001)
-    print(tree)
-    nxTree = g.from_stringTree_to_nxTree(tree[0], grammar, sym_name="sym")
-    # nx.nx_agraph.write_dot(nxTree,'/home/schrodi/hierarchical_nas_benchmarks/test.dot')
-    # pos=graphviz_layout(nxTree, prog='dot')
-    nx.draw(
-        nxTree, with_labels=True, labels={k: v["sym"] for k, v in nxTree.nodes.items()}
-    )
-    plt.savefig("/home/schrodi/hierarchical_nas_benchmarks/test.png")
-    plt.close()
-    # print first sequences of depth 10
-    print(grammar.generator(1, 10))
-    # print the allowed productions
-    print(grammar.productions())
-
-    # SMILES grammar
-    search_space_path = dir_path / ".." / "debug_grammars" / "SMILES.cfg"
-    with open(search_space_path) as f:
-        productions = f.read()
-    grammar = Grammar.fromstring(productions)
-    # sample a short sequences
-    print(grammar.sampler(1, cfactor=0.0001))
-    # print first  sequences of depth 10
-    print(grammar.generator(1, 10))
-    # print the allowed productions
-    print(grammar.productions())

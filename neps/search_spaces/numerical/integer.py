@@ -1,4 +1,6 @@
-from typing import Union
+from __future__ import annotations
+
+from typing_extensions import Literal
 
 from .float import FloatParameter
 
@@ -6,26 +8,33 @@ from .float import FloatParameter
 class IntegerParameter(FloatParameter):
     def __init__(
         self,
-        lower: Union[float, int],
-        upper: Union[float, int],
+        lower: float | int,
+        upper: float | int,
         log: bool = False,
+        is_fidelity: bool = False,
+        default: None | float | int = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
     ):
-        super().__init__(lower, upper, log)
-        self.fhp = FloatParameter(
+        super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
+        # We subtract/add 0.499999 from lower/upper bounds respectively, such that
+        # sampling in the float space gives equal probability for all integer values,
+        # i.e. [x - 499999, x + 499999]
+        self.fp = FloatParameter(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,
+            is_fidelity=is_fidelity,
+            default=default,
+            default_confidence=default_confidence,
         )
-        self.value = None
+        self.value: None | int = None
 
     def __repr__(self):
-        return "Integer, range: [{}, {}], value: {}".format(
-            self.lower, self.upper, self.value
-        )
+        return f"Integer, range: [{self.lower}, {self.upper}], value: {self.value}"
 
-    def sample(self):
-        self.fhp.sample()
-        self.value = int(round(self.fhp.value))
+    def sample(self, use_user_priors: bool = False):
+        self.fp.sample(use_user_priors=use_user_priors)
+        self.value = int(round(self.fp.value))  # type: ignore[arg-type]
 
     def mutate(
         self,
@@ -33,7 +42,7 @@ class IntegerParameter(FloatParameter):
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
     ):
-        mutant = self.fhp.mutate(
+        mutant = self.fp.mutate(
             parent=parent,
             mutation_rate=mutation_rate,
             mutation_strategy=mutation_strategy,
@@ -46,18 +55,18 @@ class IntegerParameter(FloatParameter):
 
     # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
-        neighbours = self.fhp._get_neighbours(std, num_neighbours)
+        neighbours = self.fp._get_neighbours(std, num_neighbours)
         for idx, neighbour in enumerate(neighbours):
             neighbours[idx] = float_to_integer(neighbour)
         return neighbours
 
     def _transform(self):
-        self.fhp._transform()  # pylint: disable=protected-access
-        self.value = self.fhp.value
+        self.fp._transform()  # pylint: disable=protected-access
+        self.value = self.fp.value
 
     def _inv_transform(self):
-        self.fhp._inv_transform()  # pylint: disable=protected-access
-        self.value = int(round(self.fhp.value))
+        self.fp._inv_transform()  # pylint: disable=protected-access
+        self.value = int(round(self.fp.value))
 
     def create_from_id(self, identifier):
         self.value = identifier

@@ -4,14 +4,10 @@ import time
 import neps
 
 
-def run_pipeline(  # pylint: disable=unused-argument
-    config, config_working_directory, previous_working_directory
-):
-    config_dict = config.hyperparameters  # pylint: disable=protected-access
-
-    optimizer = config_dict["optimizer"].value
-    learning_rate = config_dict["learning_rate"].value
-    model = config_dict["graph"].get_model_for_evaluation(trainable=True)
+def run_pipeline(working_directory, **config):
+    optimizer = config["optimizer"]
+    learning_rate = config["learning_rate"]
+    model = config["graph"].get_model_for_evaluation(trainable=True)
 
     start = time.time()
 
@@ -21,7 +17,6 @@ def run_pipeline(  # pylint: disable=unused-argument
 
     target_lr = 10e-3
     y += abs(target_lr - learning_rate) / target_lr
-
     y += int(optimizer == "sgd")
 
     end = time.time()
@@ -29,45 +24,33 @@ def run_pipeline(  # pylint: disable=unused-argument
     return {
         "loss": y,
         "info_dict": {
-            "config_id": config.id,
-            "val_score": y,
             "test_score": y,
             "train_time": end - start,
         },
     }
 
 
-if __name__ == "__main__":
+nb201_choices = [
+    "ReLUConvBN3x3",
+    "ReLUConvBN1x1",
+    "AvgPool1x1",
+    "Identity",
+    "Zero",
+]
 
-    nb201_choices = [
-        "ReLUConvBN3x3",
-        "ReLUConvBN1x1",
-        "AvgPool1x1",
-        "Identity",
-        "Zero",
-    ]
+pipeline_space = dict(
+    graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
+    optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
+    learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+)
 
-    pipeline_space = dict(
-        graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
-        optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
-        learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
-    )
-
-    logging.basicConfig(level=logging.INFO)
-    neps.run(
-        run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space,
-        working_directory="results/hyperparameters_architecture_example",
-        n_iterations=20,
-        searcher="bayesian_optimization",
-        overwrite_logging=True,
-        hp_kernels=["m52", "hm"],
-        graph_kernels=["wl"],
-        use_new_metahyper=True,
-    )
-
-    previous_results, pending_configs, pending_configs_free = neps.read_results(
-        "results/hyperparameters_architecture_example"
-    )
-
-    print(f"A total of {len(previous_results)} unique configurations were evaluated.")
+logging.basicConfig(level=logging.INFO)
+neps.run(
+    run_pipeline=run_pipeline,
+    pipeline_space=pipeline_space,
+    working_directory="results/hyperparameters_architecture_example",
+    max_evaluations_total=20,
+)
+previous_results, pending_configs = neps.status(
+    "results/hyperparameters_architecture_example"
+)

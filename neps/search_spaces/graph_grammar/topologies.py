@@ -5,7 +5,7 @@ from .graph import Graph
 
 
 class AbstractTopology(Graph, metaclass=ABCMeta):
-    edge_list = None
+    edge_list: list = []
 
     def __init__(self, name: str = None, scope: str = None):
         super().__init__(name=name, scope=scope)
@@ -28,7 +28,7 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
         def get_op_name_from_dict(val: dict):
             # currently assumes that missing args are ints!
             op = val["op"]
-            args = {}
+            args: dict = {}
             arg_names, default_args = get_args_and_defaults(op)
             for arg_name in arg_names:
                 if arg_name == "self" or arg_name == "kwargs" or arg_name in args.keys():
@@ -78,6 +78,18 @@ class Linear(AbstractTopology):
         self.set_scope(self.name)
 
 
+class LinearNNode(AbstractTopology):
+    edge_list: list = []
+
+    def __init__(self, *edge_vals, number_of_nodes: int):
+        super().__init__()
+
+        self.name = f"linear_{number_of_nodes}_node"
+        self.edge_list = [(i + 1, i + 2) for i in range(number_of_nodes)]
+        self.create_graph(dict(zip(self.edge_list, edge_vals)))
+        self.set_scope(self.name)
+
+
 class Residual(AbstractTopology):
     edge_list = [
         (1, 2),
@@ -116,7 +128,7 @@ class DiamondMid(AbstractTopology):
 
 
 class DenseNNodeDAG(AbstractTopology):
-    edge_list = None
+    edge_list: list = []
 
     def __init__(self, *edge_vals, number_of_nodes: int):
         super().__init__()
@@ -131,7 +143,7 @@ class DenseNNodeDAG(AbstractTopology):
 
 
 class DownsampleBlock(AbstractTopology):
-    edge_list = [(1, 2), (2, 3)]
+    edge_list: list = [(1, 2), (2, 3)]
 
     def __init__(self, *edge_vals) -> None:
         super().__init__()

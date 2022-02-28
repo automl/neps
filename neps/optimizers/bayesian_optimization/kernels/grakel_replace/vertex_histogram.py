@@ -1,6 +1,7 @@
 """The vertex kernel as defined in :cite:`sugiyama2015halting`."""
 import logging
-from collections import Counter, Iterable
+from collections import Counter
+from collections.abc import Iterable
 from warnings import warn
 
 import numpy as np
@@ -9,7 +10,6 @@ from grakel.graph import Graph
 from grakel.kernels import Kernel
 from numpy import array, einsum, squeeze, zeros
 from scipy.sparse import csr_matrix
-from six import iteritems, itervalues
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 

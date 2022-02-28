@@ -1,4 +1,4 @@
-from metahyper import read as read_results
+import logging
 
 from .api import run
 from .search_spaces import (
@@ -11,4 +11,6 @@ from .search_spaces import (
     GraphGrammarRepetitive,
     IntegerParameter,
 )
-from .search_spaces.search_space import SearchSpace
+from .status.status import status
+
+logging.getLogger("neps").addHandler(logging.NullHandler())

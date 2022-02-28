@@ -1,0 +1,38 @@
+name: tests
+on:
+  push:
+    paths:
+      - '**.py'
+  workflow_dispatch:
+
+jobs:
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.7]
+        os: [ubuntu-20.04]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Temporary bugfix see https://github.com/pre-commit/pre-commit/issues/2178
+      - name: Pin virtualenv version
+        run: pip install virtualenv==20.10.0
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: 1.1.11
+
+      - name: Run poetry install
+        run: poetry install
+
+      - name: Run pytest
+        timeout-minutes: 10
+        run: poetry run pytest

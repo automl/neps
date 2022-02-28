@@ -50,7 +50,7 @@ class HierarchicalArchitectureExample(GraphGrammar):
         if grammar is None:
             dir_path = Path(os.path.dirname(os.path.realpath(__file__)))
             search_space_path = dir_path / "grammar.cfg"
-            with open(search_space_path) as f:
+            with open(search_space_path, encoding="utf-8") as f:
                 productions = f.read()
             grammar = Grammar.fromstring(productions)
 
@@ -68,7 +68,7 @@ class HierarchicalArchitectureExample(GraphGrammar):
 
         self.nxTree = None
         self.string_tree = ""
-        self.id = None
+        self.id = ""
 
     def setup(self, tree: nx.DiGraph, save_tree: bool = True):
         if save_tree:

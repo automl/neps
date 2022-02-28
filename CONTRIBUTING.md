@@ -13,8 +13,8 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 - We work almost exclusively on the master branch
 - We commit, push, and pull often
-- We automatically run code quality checks at every commit (using [pre-commit](https://pre-commit.com/))
-- We have short-running tests that we manually run before every critical push  (using `pytest`)
+- We automatically run code quality checks before every commit (using [pre-commit](https://pre-commit.com/))
+- We manually run tests (using `pytest`) before every critical push and automatically afterwards (using [github actions](https://github.com/automl/neps/actions))
 
 ### Dependency Management
 
@@ -32,6 +32,12 @@ pytest
 ```
 
 before every critical push.
+Running the tests will create a temporary directory `tests_tmpdir` that includes the output of the last three test executions.
+
+If tests fail for you on the master:
+
+1. Try running the tests with a fresh environment install.
+1. If issues persist, notify others in the neps developers chat on mattermost.
 
 ## Developer Installation
 
@@ -73,7 +79,13 @@ python get-poetry.py
 rm get-poetry.py
 ```
 
-Then append to your `.zshrc` / `.bashrc` or run: `export PATH="$HOME/.poetry/bin:$PATH"`
+Then consider appending
+
+```bash
+export PATH="$HOME/.poetry/bin:$PATH"
+```
+
+to your `.zshrc` / `.bashrc` or alternatively simply running the export manually.
 
 ### 3. Install the neps Package Using poetry
 
@@ -132,11 +144,30 @@ To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT ME
 
 ### Pylint: Ignore warnings
 
-```python
-code = "foo"  # pylint: disable=bar
-```
+There are two options:
 
-Or remove warnings in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
+- Disable the warning locally:
+
+  ```python
+  code = "foo"  # pylint: disable=ERROR_CODE
+  ```
+
+  Make sure to use the named version of the error (e.g., `unspecified-encoding`, not `W1514`).
+
+- Remove warning in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
+
+### Mypy: Ignore warnings
+
+There are two options:
+
+- Disable the warning locally:
+
+  ```python
+  code = "foo"  # type: ignore[ERROR_CODE]
+  ```
+
+- If you know what you are doing, you can add the whole module to the `[[tool.mypy.overrides]]` section.
+  This is useful e.g., when adding new files that are in early stage development.
 
 ### Black: Do not format code parts
 
@@ -153,6 +184,13 @@ y = x + 1
 # fmt: on
 ```
 
+### MkDocs
+
+See [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/).
+Before running any commands, best `cd docs`.
+
 ### Editorconfig
 
-You might want to install an [editorconfig](https://editorconfig.org/) plugin for your text editor to automatically set line lengths etc.
+[Editorconfig](https://editorconfig.org/) allows to set line lengths and other display parameters automatically based on a `.editorconfig` file.
+Many editors have [native support](https://editorconfig.org/#pre-installed) (e.g., PyCharm) so you do not need to do anything.
+For other editors (e.g., VSCode), you need to install a [plugin](https://editorconfig.org/#download).

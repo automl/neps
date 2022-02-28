@@ -12,7 +12,6 @@ import numpy as np
 import torch
 from grakel.graph import Graph
 from grakel.kernels import Kernel
-from six import iteritems, itervalues
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
@@ -121,12 +120,12 @@ class WeisfeilerLehman(Kernel):
             else:
                 try:
                     base_graph_kernel, params = base_graph_kernel
-                except Exception:
+                except Exception as _error:
                     raise TypeError(
                         "Base kernel was not formulated in "
                         "the correct way. "
                         "Check documentation."
-                    )
+                    ) from _error
 
                 if not (
                     type(base_graph_kernel) is type  # pylint: disable=C0123
@@ -684,15 +683,15 @@ class WeisfeilerLehman(Kernel):
                     X_diag += x
                     Y_diag += y
                     self._X_diag = X_diag
-                else:
-                    # case sub kernel is only fitted
-                    X_diag = self.X[0].diagonal()
-                    # X_diag is considered a mutable and should not affect the kernel matrix itself.
-                    X_diag.flags.writeable = True
-                    for i in range(1, self._n_iter):
-                        x = self.X[i].diagonal()
-                        X_diag += x
-                    self._X_diag = X_diag
+
+                # case sub kernel is only fitted
+                X_diag = self.X[0].diagonal()
+                # X_diag is considered a mutable and should not affect the kernel matrix itself.
+                X_diag.flags.writeable = True
+                for i in range(1, self._n_iter):
+                    x = self.X[i].diagonal()
+                    X_diag += x
+                self._X_diag = X_diag
 
         if self.as_tensor:
             self._X_diag = torch.tensor(self._X_diag)

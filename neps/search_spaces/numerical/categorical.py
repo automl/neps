@@ -1,18 +1,35 @@
+from __future__ import annotations
+
 import random
-from typing import List, Union
+from typing import Iterable
 
 import numpy as np
+import numpy.typing as npt
+from typing_extensions import Literal
 
 from .numerical import NumericalParameter
 
 
 class CategoricalParameter(NumericalParameter):
-    def __init__(self, choices: List[Union[float, int, str]]):
+    def __init__(
+        self,
+        choices: Iterable[float | int | str],
+        default: None | float | int | str = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
+    ):
         super().__init__()
+
+        self.default = default
+        self.default_confidence_score = dict(low=1.1, medium=1.75, high=2.5)[
+            default_confidence
+        ]
+
         self.choices = list(choices)
         self.num_choices = len(self.choices)
-        self.probabilities = list(np.ones(self.num_choices) * (1.0 / self.num_choices))
-        self.value = None
+        self.probabilities: list[npt.NDArray] = list(
+            np.ones(self.num_choices) * (1.0 / self.num_choices)
+        )
+        self.value: None | float | int | str = None
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -32,9 +49,19 @@ class CategoricalParameter(NumericalParameter):
     def __copy__(self):
         return self.__class__(choices=self.choices)
 
-    def sample(self):
-        idx = np.random.choice(a=self.num_choices, replace=True, p=self.probabilities)
-        self.value = self.choices[int(idx)]
+    def sample(self, use_user_priors: bool = False):
+        if use_user_priors and self.default is not None:
+            # The default value should have "default_confidence_score" more probability than
+            # all the other values.
+            base_probability = 1 / (self.num_choices - 1 + self.default_confidence_score)
+            probabilities = [base_probability] * self.num_choices
+            default_index = self.choices.index(self.default)
+            probabilities[default_index] *= self.default_confidence_score
+        else:
+            probabilities = self.probabilities
+
+        idx = np.random.choice(a=self.num_choices, replace=True, p=probabilities)
+        self.value = str(self.choices[int(idx)])
 
     def mutate(
         self,
@@ -63,7 +90,7 @@ class CategoricalParameter(NumericalParameter):
         pass
 
     def _get_neighbours(self, num_neighbours: int = 1):
-        neighbours = []
+        neighbours: list[CategoricalParameter] = []
 
         idx = 0
         choices = self.choices.copy()
@@ -78,7 +105,7 @@ class CategoricalParameter(NumericalParameter):
             if choice == self.value:
                 continue
             neighbour = self.__copy__()
-            neighbour.value = choice
+            neighbour.value = str(choice)
             neighbours.append(neighbour)
 
         return neighbours

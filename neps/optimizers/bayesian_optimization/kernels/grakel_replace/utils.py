@@ -1,22 +1,6 @@
 import torch
 
 
-def min_lp(x: torch.Tensor, y: torch.Tensor, p: int = -5):
-    """
-    The L-x norm continuous approximation of elementwise min function.
-    Parameters
-    ----------
-    x, y: the input tensors
-    p: the x-norm specification
-
-    Returns
-    -------
-
-    """
-    # An offset to avoid the singularity of autodiff at zero.
-    return (x ** p + y ** p) ** (1.0 / p)
-
-
 def calculate_kernel_matrix_as_tensor(
     X, Y=None, oa=False, se_kernel=None, normalize=True
 ) -> torch.Tensor:

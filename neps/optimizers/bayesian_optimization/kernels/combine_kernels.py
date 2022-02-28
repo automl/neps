@@ -2,9 +2,15 @@ import logging
 
 import torch
 
-from ..utils.nasbowl_utils import extract_configs
-from .vectorial_kernels import Stationary
+from .utils import extract_configs
+from .vectorial_kernels import HammingKernel, Stationary
 from .weisfilerlehman import GraphKernels
+
+
+def _select_dimensions(k):
+    if isinstance(k, HammingKernel):
+        return "categorical"
+    return "continuous"
 
 
 class CombineKernel:
@@ -16,11 +22,13 @@ class CombineKernel:
     ):
         self.has_graph_kernels = False
         self.has_vector_kernels = False
+        self.lengthscale_bounds = (None, None)
         for k in kernels:
             if isinstance(k, GraphKernels):
                 self.has_graph_kernels = True
             if not isinstance(k, GraphKernels):
                 self.has_vector_kernels = True
+                self.lengthscale_bounds = k.lengthscale_bounds
         self.kernels = kernels
         # Store the training graphs and vector features..
         self._gram = None
@@ -36,6 +44,7 @@ class CombineKernel:
         rebuild_model: bool = True,
         save_gram_matrix: bool = True,
         gp_fit: bool = True,
+        feature_lengthscale: list = None,
         **kwargs,
     ):
 
@@ -55,16 +64,23 @@ class CombineKernel:
                 )
 
             elif isinstance(k, Stationary) and None not in x1:
+                key = _select_dimensions(k)
                 update_val = (
                     weights[i]
                     * k.fit_transform(
-                        x1, rebuild_model=rebuild_model, save_gram_matrix=save_gram_matrix
+                        [x_[key] for x_ in x1],
+                        l=feature_lengthscale[key]
+                        if isinstance(feature_lengthscale, dict)
+                        else None,
+                        rebuild_model=rebuild_model,
+                        save_gram_matrix=save_gram_matrix,
                     )
                 ).double()
 
             else:
                 raise NotImplementedError(
-                    " For now, only the Stationary custom built kernel_operators are supported!"
+                    "For now, only the Stationary custom built kernel_operators are "
+                    "supported! "
                 )
 
             if self.combined_by == "sum":
@@ -85,12 +101,12 @@ class CombineKernel:
         weights: torch.Tensor,
         configs: list,
         x=None,
-        feature_lengthscale=None,  # pylint: disable=unused-argument
+        feature_lengthscale=None,
     ):
         if self._gram is None:
             raise ValueError(
-                "The kernel has not been fitted. Call fit_transform first to generate the training Gram"
-                "matrix."
+                "The kernel has not been fitted. Call fit_transform first to generate "
+                "the training Gram matrix."
             )
         gr, x = extract_configs(configs)
         # K is in shape of len(Y), len(X)
@@ -107,10 +123,20 @@ class CombineKernel:
                     [g[i] for g in gr] if isinstance(gr, list) else gr
                 )
             elif isinstance(k, Stationary) and None not in x:
-                update_val = weights[i] * k.transform(x).double()
+                key = _select_dimensions(k)
+                update_val = (
+                    weights[i]
+                    * k.transform(
+                        [x_[key] for x_ in x],
+                        l=feature_lengthscale[key]
+                        if isinstance(feature_lengthscale, dict)
+                        else None,
+                    ).double()
+                )
             else:
                 raise NotImplementedError(
-                    " For now, only the Stationary custom built kernel_operators are supported!"
+                    "For now, only the Stationary custom built kernel_operators are "
+                    "supported! "
                 )
 
             if self.combined_by == "sum":
@@ -119,6 +145,18 @@ class CombineKernel:
                 K *= update_val
 
         return K.t()
+
+    def clamp_theta_vector(self, theta_vector):
+        if theta_vector is None:
+            return None
+        # pylint: disable=expression-not-assigned
+        [
+            t_.clamp_(self.lengthscale_bounds[0], self.lengthscale_bounds[1])
+            if t_ is not None and t_.is_leaf
+            else None
+            for t_ in theta_vector.values()
+        ]
+        return theta_vector
 
 
 class SumKernel(CombineKernel):
@@ -145,11 +183,9 @@ class SumKernel(CombineKernel):
         weights
         gr2
 
-        Returns
-        -------
-        grads: k list of 2-tuple.
-        (K, x2) where K is the weighted Gram matrix of that matrix, x2 is the leaf variable on which Jacobian-vector
-        product to be computed.
+        Returns ------- grads: k list of 2-tuple. (K, x2) where K is the weighted Gram
+        matrix of that matrix, x2 is the leaf variable on which Jacobian-vector product
+        to be computed.
 
         """
         grads = []
@@ -158,7 +194,8 @@ class SumKernel(CombineKernel):
                 handle = k.forward_t(gr2, gr1=gr1)
                 grads.append((weights[i] * handle[0], handle[1], handle[2]))
             elif isinstance(k, Stationary):
-                handle = k.forward_t(x2=x2, x1=x1, l=feature_lengthscale)
+                key = _select_dimensions(k)
+                handle = k.forward_t(x2=x2[key], x1=x1[key], l=feature_lengthscale[i])
                 grads.append((weights[i] * handle[0], handle[1], handle[2]))
             else:
                 logging.warning(
