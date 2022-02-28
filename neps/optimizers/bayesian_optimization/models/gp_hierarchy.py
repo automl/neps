@@ -4,12 +4,13 @@ from typing import Iterable, Union
 
 import numpy as np
 import torch
+import itertools
 
 from ..kernels.combine_kernels import ProductKernel, SumKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from ..kernels.graph_kernel import GraphKernels
-from ..kernels.utils import extract_configs
+from ..kernels.utils import extract_configs_hierarchy
 from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
 
@@ -21,30 +22,40 @@ class ComprehensiveGP:
         hp_kernels: Iterable,
         likelihood: float = 1e-3,
         weights=None,
+        learn_all_h=False,
+        graph_feature_ard=True,
+        normalize_combined_kernel=True,
+        hierarchy_consider: list = None,
         vectorial_features: list = None,
+        d_graph_features: int = 2,
         combined_kernel: str = "sum",
         verbose: bool = False,
     ):
         self.likelihood = likelihood
-
+        self.learn_all_h = learn_all_h
+        self.hierarchy_consider = hierarchy_consider
+        self.normalize_combined_kernel = normalize_combined_kernel
+        if len(self.hierarchy_consider) < 1:
+            self.learn_all_h = False
         self.domain_kernels: list = []
         if bool(graph_kernels):
             self.domain_kernels += list(graph_kernels)
         if bool(hp_kernels):
             self.domain_kernels += list(hp_kernels)
 
+        self.hp_kernels = hp_kernels
         self.n_kernels: int = len(self.domain_kernels)
         self.n_graph_kernels: int = len(
             [i for i in self.domain_kernels if isinstance(i, GraphKernels)]
         )
         self.n_vector_kernels: int = self.n_kernels - self.n_graph_kernels
-
+        self.graph_feature_ard = graph_feature_ard
         self.vectorial_features = vectorial_features
 
         if weights is not None:
             self.fixed_weights = True
             if weights is not None:
-                assert len(weights) == len(self.n_kernels), (
+                assert len(weights) == self.n_kernels, (
                     "the weights vector, if supplied, needs to have the same length as "
                     "the number of kernel_operators!"
                 )
@@ -71,6 +82,7 @@ class ComprehensiveGP:
                 f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" '
                 f'or "product" are currently supported. '
             )
+        self.d_graph_features = d_graph_features
         # Verbose mode
         self.verbose = verbose
         # Cache the Gram matrix inverse and its log-determinant
@@ -87,27 +99,81 @@ class ComprehensiveGP:
         self.n: int = None
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
-        graphs, _ = extract_configs(self.x_configs)
-        for i, k in enumerate(self.combined_kernel.kernels):
-            if not isinstance(k, GraphKernels):
-                continue
-            elif isinstance(k, WeisfilerLehman):
-                _grid_search_wl_kernel(
-                    k,
-                    h_,
-                    [x[i] for x in graphs]
-                    if isinstance(graphs[0], list)
-                    else [c for c in graphs],
-                    self.y,
-                    self.likelihood,
-                    lengthscales=lengthscale_,
-                )
+        if len(self.hierarchy_consider) == 0:
+            graphs, _ = extract_configs_hierarchy(self.x_configs)
+            for i, k in enumerate(self.combined_kernel.kernels):
+                if not isinstance(k, GraphKernels):
+                    continue
+                elif isinstance(k, WeisfilerLehman):
+                    _grid_search_wl_kernel(
+                        k,
+                        h_,
+                        [x[i] for x in graphs]
+                        if isinstance(graphs[0], list)
+                        else [c for c in graphs],
+                        self.y,
+                        self.likelihood,
+                        lengthscales=lengthscale_,
+                    )
+                else:
+                    logging.warning(
+                        "(Graph) kernel optimisation for "
+                        + type(k).__name__
+                        + " not implemented yet."
+                    )
+        else:
+            if self.learn_all_h:
+                best_nlml = torch.tensor(np.inf)
+                best_subtree_depth_combo = None
+                best_K = None
+                train_y = self.y
+                h_combo_candidates = generate_h_combo_candidates(self.hierarchy_consider)
+
+                for h_combo in h_combo_candidates:
+                    for i ,k in enumerate(self.combined_kernel.kernels):
+                        k.change_kernel_params({"h": h_combo[i]})
+                    K = self.combined_kernel.fit_transform(
+                        self.weights,
+                        self.x_configs,
+                        normalize=self.normalize_combined_kernel,
+                        layer_weights=None,
+                        rebuild_model=True,
+                        save_gram_matrix=True,
+                    )
+                    K_i, logDetK = compute_pd_inverse(K, self.likelihood)
+                    nlml = - compute_log_marginal_likelihood(K_i, logDetK, train_y)
+                    if nlml < best_nlml:
+                        best_nlml = nlml
+                        best_subtree_depth_combo = h_combo
+                        best_K = torch.clone(K)
+                for i, k in enumerate(self.combined_kernel.kernels):
+                    k.change_kernel_params({"h": best_subtree_depth_combo[i]})
+                self.combined_kernel._gram = best_K  # pylint: disable=protected-access
             else:
-                logging.warning(
-                    "(Graph) kernel optimisation for "
-                    + type(k).__name__
-                    + " not implemented yet."
-                )
+                best_nlml = torch.tensor(np.inf)
+                best_subtree_depth = None
+                best_K = None
+                train_y = self.y
+
+                for h_i in list(h_):
+                    self.combined_kernel.kernels[len(self.hierarchy_consider)].change_kernel_params({"h": h_i})
+                    K = self.combined_kernel.fit_transform(
+                        self.weights,
+                        self.x_configs,
+                        normalize=self.normalize_combined_kernel,
+                        layer_weights=None,
+                        rebuild_model=True,
+                        save_gram_matrix=True,
+                    )
+                    K_i, logDetK = compute_pd_inverse(K, self.likelihood)
+                    nlml = - compute_log_marginal_likelihood(K_i, logDetK, train_y)
+                    # print(i, nlml)
+                    if nlml < best_nlml:
+                        best_nlml = nlml
+                        best_subtree_depth = h_i
+                        best_K = torch.clone(K)
+                self.combined_kernel.kernels[len(self.hierarchy_consider)].change_kernel_params({"h": best_subtree_depth})
+                self.combined_kernel._gram = best_K  # pylint: disable=protected-access
 
     def fit(
         self,
@@ -151,9 +217,14 @@ class ComprehensiveGP:
 
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)
-
-        theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
-
+        # theta in this case are the lengthscales for the two global property of
+        # the final architecture graph
+        # theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
+        if self.graph_feature_ard:
+            theta_vector = torch.log(torch.tensor([0.6, 0.6], ))
+        else:
+            theta_vector = torch.log(torch.tensor([0.6],))
+        theta_vector.requires_grad_(True)
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
         likelihood = torch.tensor(
             self.likelihood,
@@ -177,7 +248,9 @@ class ComprehensiveGP:
             if a is not None and a.is_leaf and a.requires_grad:
                 optim_vars.append(a)
 
-        if theta_vector is not None:
+        # if use continuous graph properties and we set to use stationary kernels
+        if self.d_graph_features > 0 and len(self.hp_kernels) > 0:
+        # if theta_vector is not None:
             for a in theta_vector.values():
                 if a is not None and a.requires_grad:
                     optim_vars.append(a)
@@ -186,7 +259,8 @@ class ComprehensiveGP:
             K = self.combined_kernel.fit_transform(
                 weights,
                 self.x_configs,
-                feature_lengthscale=theta_vector,
+                normalize=self.normalize_combined_kernel,
+                feature_lengthscale=torch.exp(theta_vector),
                 layer_weights=layer_weights,
                 rebuild_model=True,
             )
@@ -200,12 +274,15 @@ class ComprehensiveGP:
                 optim = torch.optim.SGD(optim_vars, **optimizer_kwargs)
 
             K = None
+            optim_vars_list = []
+            nlml_list = []
             for i in range(iters):
                 optim.zero_grad()
                 K = self.combined_kernel.fit_transform(
                     weights,
                     self.x_configs,
-                    feature_lengthscale=theta_vector,
+                    normalize=self.normalize_combined_kernel,
+                    feature_lengthscale=torch.exp(theta_vector),
                     layer_weights=layer_weights,
                     rebuild_model=True,
                     save_gram_matrix=True,
@@ -225,24 +302,18 @@ class ComprehensiveGP:
                         weights,
                         likelihood,
                     )
-                optim.step()  # TODO
-                with torch.no_grad():
-                    # pylint: disable=expression-not-assigned
-                    weights.clamp_(
-                        0.0, 1.0
-                    ) if weights is not None and weights.is_leaf else None
-                    theta_vector = self.combined_kernel.clamp_theta_vector(theta_vector)
-                    likelihood.clamp_(
-                        1e-5, max_lik
-                    ) if likelihood is not None and likelihood.is_leaf else None
-                    layer_weights.clamp_(
-                        0.0, 1.0
-                    ) if layer_weights is not None and layer_weights.is_leaf else None
-                    # pylint: enable=expression-not-assigned
+                optim.step()
+                optim_vars_list.append([theta_vector.clone().detach(), weights.clone().detach(), likelihood.clone().detach()])
+                nlml_list.append(nlml.item())
+            theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
+            likelihood.clamp_(
+                1e-5, max_lik
+            ) if likelihood is not None and likelihood.is_leaf else None
             K_i, logDetK = compute_pd_inverse(K, likelihood)
 
         # Apply the optimal hyperparameters
-        self.weights = weights.clone() / torch.sum(weights)
+        # transform the weights in the combine_kernel function
+        self.weights = weights
         self.K_i = K_i.clone()
         self.K = K.clone()
         self.logDetK = logDetK.clone()
@@ -253,13 +324,13 @@ class ComprehensiveGP:
 
         for k in self.combined_kernel.kernels:
             if isinstance(k, Stationary):
-                k.update_hyperparameters(lengthscale=theta_vector)
+                k.update_hyperparameters(lengthscale=torch.exp(theta_vector))
 
         self.combined_kernel.weights = weights.clone()
         if self.verbose:
             print("Optimisation summary: ")
             print("Optimal NLML: ", nlml)
-            print("Lengthscales: ", theta_vector)
+            print("Lengthscales: ", torch.exp(theta_vector))
             try:
                 print(
                     "Optimal h: ",
@@ -298,7 +369,8 @@ class ComprehensiveGP:
             self.weights,
             X_configs_all,
             layer_weights=self.layer_weights,
-            feature_lengthscale=self.theta_vector,
+            normalize=self.normalize_combined_kernel,
+            feature_lengthscale=torch.exp(self.theta_vector),
             rebuild_model=True,
             save_gram_matrix=False,
             gp_fit=False,
@@ -312,7 +384,55 @@ class ComprehensiveGP:
 
         mu_s = K_s.t() @ self.K_i @ self.y
         cov_s = K_ss - K_s.t() @ self.K_i @ K_s
+        # TODO not taking the diag?
         cov_s = torch.clamp(cov_s, self.likelihood, np.inf)
+        mu_s = unnormalize_y(mu_s, self.y_mean, self.y_std)
+        std_s = torch.sqrt(cov_s)
+        std_s = unnormalize_y(std_s, None, self.y_std, True)
+        cov_s = std_s**2
+        if preserve_comp_graph:
+            del combined_kernel_copy
+        return mu_s, cov_s
+
+    def predict_single_hierarchy(self, x_configs, hierarchy_id=0, preserve_comp_graph: bool = False):
+        """Kriging predictions"""
+
+        if not isinstance(x_configs, list):
+            # Convert a single input X_s to a singleton list
+            x_configs = [x_configs]
+
+        if self.K_i is None or self.logDetK is None:
+            raise ValueError(
+                "Inverse of Gram matrix is not instantiated. Please call the optimize function to "
+                "fit on the training data first!"
+            )
+
+        # Concatenate the full list
+        X_configs_all = self.x_configs + x_configs
+
+        # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
+        if preserve_comp_graph:
+            combined_kernel_copy = deepcopy(self.combined_kernel)
+        else:
+            combined_kernel_copy = self.combined_kernel
+
+        K_sub_full = combined_kernel_copy.fit_transform_single_hierarchy(
+            self.weights,
+            X_configs_all,
+            normalize=self.normalize_combined_kernel,
+            hierarchy_id=hierarchy_id,
+            feature_lengthscale=torch.exp(self.theta_vector),
+            layer_weights=self.layer_weights,
+            rebuild_model=True,
+            save_gram_matrix=False,
+            gp_fit=False,
+        )
+
+        K_s = K_sub_full[: self.n:, self.n:]
+        K_ss = K_sub_full[self.n:, self.n:]
+        mu_s = K_s.t() @ self.K_i @ self.y
+        cov_s_full = K_ss - K_s.t() @ self.K_i @ K_s
+        cov_s = torch.clamp(cov_s_full, self.likelihood, np.inf)
         mu_s = unnormalize_y(mu_s, self.y_mean, self.y_std)
         std_s = torch.sqrt(cov_s)
         std_s = unnormalize_y(std_s, None, self.y_std, True)
@@ -650,6 +770,16 @@ def compute_log_marginal_likelihood(
         lml -= log_prior_dist
     return lml / y.shape[0] if normalize else lml
 
+def generate_h_combo_candidates(hierarchy_consider):
+    h_range_all_hierarchy = [range(min(hier+2, 4)) for hier in hierarchy_consider]
+    h_range_all_hierarchy.append(range(4))
+    h_combo_all = list(itertools.product(*h_range_all_hierarchy))
+    h_combo_sub = []
+    for h_combo in h_combo_all:
+        sorted_h_combo = sorted(h_combo)
+        if sorted_h_combo not in h_combo_sub:
+            h_combo_sub.append(sorted_h_combo)
+    return h_combo_sub
 
 def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
     """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
