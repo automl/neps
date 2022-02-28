@@ -91,6 +91,7 @@ def run(
     run_pipeline: Callable,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     working_directory: str | Path,
+    overwrite_working_directory: bool = False,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
@@ -112,6 +113,8 @@ def run(
         pipeline_space: The search space to minimize over.
         working_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
+        overwrite_working_directory: If true, delete the working directory at the start of
+            the run.
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
@@ -176,6 +179,7 @@ def run(
         working_directory,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
+        overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         logger=logging.getLogger("neps"),
         evaluation_fn_args=run_pipeline_args,
