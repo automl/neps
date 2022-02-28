@@ -84,9 +84,8 @@ class SearchSpace(collections.abc.Mapping):
                 new_config = deepcopy(self)
                 new_config.sample(use_user_priors=use_user_priors)
                 break
-            except Exception as e:  # pylint: disable=bare-except
+            except ValueError:
                 patience_ -= 1
-                raise e
         else:
             raise ValueError(f"Could not sample valid config in {patience} tries!")
 
