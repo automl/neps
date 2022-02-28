@@ -62,7 +62,7 @@ def run_pipeline(some_float_hyperparameter: float, some_integer_hyperparameter: 
     return validation_error
 
 
-# 2. Define a search space containing hyperparameters
+# 2. Define a search space containing hyperparameters; make sure to use the same names as in run_pipeline
 pipeline_space = dict(
     some_float_hyperparameter=neps.FloatParameter(lower=0, upper=1),
     some_integer_hyperparameter=neps.IntegerParameter(lower=1, upper=100),
