@@ -41,7 +41,7 @@ def pipeline_space_from_configspace(
                 log=hyperparameter.log,
             )
         else:
-            raise ValueError(f"Unkown hyperparameter type {hyperparameter}")
+            raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
         pipeline_space[hyperparameter.name] = parameter
     return pipeline_space
 
