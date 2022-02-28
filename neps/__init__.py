@@ -1,5 +1,3 @@
-from metahyper import read as read_results
-
 from .api import run
 from .search_spaces import (
     CategoricalParameter,
@@ -11,4 +9,4 @@ from .search_spaces import (
     GraphGrammarRepetitive,
     IntegerParameter,
 )
-from .status import status
+from .status.status import status

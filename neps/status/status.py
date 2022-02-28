@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import argparse
 import logging
 from pathlib import Path
 
 from metahyper import read
 from metahyper.api import ConfigResult
 
-from .search_spaces.search_space import SearchSpace
-from .utils.result_utils import get_loss
+from ..search_spaces.search_space import SearchSpace
+from ..utils.result_utils import get_loss
 
 
 def status(
@@ -30,6 +29,8 @@ def status(
         previous_results: Already evaluated configurations and results.
         pending_configs: Configs that have been sampled, but have not finished evaluating
     """
+    working_directory = Path(working_directory)
+
     previous_results, pending_configs, pending_configs_free = read(
         working_directory, logging.getLogger("neps.status")
     )
@@ -64,42 +65,21 @@ def status(
     if best_losses:
         print()
         print("Best loss across evaluations:")
-        best_loss_trajectory = args.working_directory / "best_loss_trajectory.txt"
+        best_loss_trajectory = working_directory / "best_loss_trajectory.txt"
         print(best_loss_trajectory.read_text(encoding="utf-8"))
 
     if best_configs:
         print()
         print("Best configs and their losses across evaluations:")
         print(79 * "-")
-        best_loss_config = args.working_directory / "best_loss_with_config_trajectory.txt"
+        best_loss_config = working_directory / "best_loss_with_config_trajectory.txt"
         print(best_loss_config.read_text(encoding="utf-8"))
 
     if all_configs:
         print()
         print("All evaluated configs and their losses:")
         print(79 * "-")
-        all_loss_config = args.working_directory / "all_losses_and_configs.txt"
+        all_loss_config = working_directory / "all_losses_and_configs.txt"
         print(all_loss_config.read_text(encoding="utf-8"))
 
     return previous_results, pending_configs
-
-
-if __name__ == "__main__":
-    # fmt: off
-    parser = argparse.ArgumentParser(
-        prog="python -m neps.status",
-        description="Displays status information about a working directory of a neps.run"
-    )
-    parser.add_argument("working_directory", type=Path,
-                        help="The working directory given to neps.run")
-    parser.add_argument("--best_losses", action="store_true",
-                        help="Show the trajectory of the best loss across evaluations")
-    parser.add_argument("--best_configs", action="store_true",
-                        help="Show the trajectory of the best configs and their losses across evaluations")
-    parser.add_argument("--all_configs", action="store_true",
-                        help="Show all configs and their losses")
-    args = parser.parse_args()
-    # fmt: on
-
-    logging.basicConfig(level=logging.WARN)
-    status(args.working_directory, args.best_losses, args.best_configs, args.all_configs)
