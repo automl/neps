@@ -186,7 +186,7 @@ y = x + 1
 
 ### Documentation (MkDocs)
 
-We use [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) for documentation.
+We use [MkDocs](https://www.mkdocs.org/getting-started/), more specifically [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) for documentation.
 Source files for the documentation are at [docs](docs) and configuration at  [mkdocs.yml](mkdocs.yml).
 
 To build and view the documentation run
