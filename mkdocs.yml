@@ -1,0 +1,18 @@
+site_name: NePS Documentation
+docs_dir: docs
+repo_url: https://github.com/automl/neps
+repo_name: automl/neps
+edit_uri: ""
+theme:
+  name: material
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Introduction: 'README.md'
+  - Getting started: 'getting_started.md'
+  - The run_pipeline function: 'run_pipeline.md'
+  - The pipeline_space: 'pipeline_space.md'
+  - The neps.run function: 'neps_run.md'
+  - Analysing runs: 'status.md'
+  - Parallelization: 'parallelization.md'

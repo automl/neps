@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import networkx as nx
-
+import numpy as np
 
 def transform_to_undirected(gr: list):
     """Transform a list of directed graphs by undirected graphs."""
@@ -43,3 +43,57 @@ def extract_configs(configs: list) -> Tuple[list, list]:
         hps = [None] * N
 
     return graphs, hps
+
+def graph_metrics(graph, metric=None, directed=True):
+    if directed:
+        G = graph
+    else:
+        G = graph.to_undirected()
+
+    # global metrics
+    if metric == 'avg_path_length':
+        avg_path_length = nx.average_shortest_path_length(G)
+        metric_score = avg_path_length
+
+    elif metric == 'density':
+        density = nx.density(G)
+        metric_score = density
+
+    else:
+        print('Not implemented yet')
+
+    return metric_score
+
+def extract_configs_hierarchy(configs: list) -> Tuple[list, list]:
+    """Extracts graph & graph features from configs objects
+    Args:
+        configs (list): Object holding graph and/or graph features
+    Returns:
+        Tuple[list, list]: list of graphs, list of HPs
+    """
+    N = len(configs)
+    if N > 0 and 'graph' in configs[0].keys():
+        graphs = [c['graph'] for c in configs]
+
+    if N > 0 and 'metafeature' in configs[0].keys():
+        graph_features = [c['metafeature'] for c in configs]
+        # these feature values are normalised between 0 and 1
+        # the two graph features used are 'avg_path_length', 'density'
+        # graph_features = [[graph_metrics(g, metric='avg_path_length'),
+        #                    graph_metrics(g, metric='density')] for g in graphs]
+
+    # normalise hps
+    graph_features_array = np.vstack(graph_features) # shape n_archs x 2
+    if N > 0 and 'hierarchy_graphs' in configs[0].keys():
+        # note the node feature for graph in earlier hierarchical level should be more coarse
+        # i.e. for each graph
+        # original_node_labels = nx.get_node_attributes(G, 'op_name')
+        # new_node_labels = {k: v.split('(')[1] for k, v in original_node_labels.items() if
+        #                    '(' in v and ')' in v}
+        # nx.set_node_attributes(G, new_node_labels, name='op_name')
+        all_hierarchy_graphs = [[c['hierarchy_graphs'][k] for c in configs] for k in configs[0]['hierarchy_graphs'].keys()]
+        all_hierarchy_graphs = all_hierarchy_graphs + [graphs]
+        return all_hierarchy_graphs, graph_features_array
+    else:
+        return graphs, graph_features_array
+
