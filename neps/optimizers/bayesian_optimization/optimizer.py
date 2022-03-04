@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import random
 from typing import Any, Mapping
 
@@ -16,6 +15,7 @@ from ...search_spaces import (
     IntegerParameter,
 )
 from ...search_spaces.search_space import SearchSpace
+from ...utils.common import get_fun_args_and_defaults, has_instance
 from ...utils.result_utils import get_loss
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_functions import AcquisitionMapping
@@ -24,6 +24,17 @@ from .models.gp import ComprehensiveGP
 
 
 class BayesianOptimization(metahyper.Sampler):
+    """Implements the basic BO loop.
+
+    Attributes:
+        surrogate_model: Gaussian process model
+        train_x: Inputs previously sampled on which f has been evaluated
+        train_y: Output of f on the train_x inputs
+        pending_evaluations: Configurations of hyperparameters for which the
+            evaluation of f is not known and will be computed, or is currently
+            beeing evaluated in another process.
+    """
+
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -43,46 +54,54 @@ class BayesianOptimization(metahyper.Sampler):
         return_opt_details: bool = False,
         cost_function: None | Mapping = None,  # pylint: disable=unused-argument
     ):
-        """Implements the basic BO loop."""
+        """Initialise the BO loop.
+
+        Args:
+            pipeline_space: Space in which to search
+            initial_design_size: Number of 'x' samples that need to be
+                evaluated before selecting a sample using a strategy instead of
+                randomly.
+            surrogate_model_fit_args: Arguments that will be given to the
+                surrogate model (the Gaussian processes model).
+            optimal_assignment: whether the optimal assignment kernel should be used.
+            domain_se_kernel: Stationary kernel name
+            graph_kernels: Kernels for NAS
+            hp_kernels: Kernels for HPO
+            acquisition: Acquisition strategy
+            acquisition_opt_strategy: Acquisition function fetching strategy
+            acquisition_opt_strategy_args: Arguments for the acquisition strategy function
+            n_candidates: Number of configurations sampled
+            random_interleave_prob: Frequency at which random configurations are sampled
+                instead of configurations from the acquisition strategy.
+            patience: How many times we try something that fails before giving up.
+            verbose: Print details on stdout
+            return_opt_details: Not used for now
+            cost_function: Not used for now
+
+        Raises:
+            Exception: if no kernel is provided
+            ValueError: if a string is not in a mapping
+        """
 
         assert 0 <= random_interleave_prob <= 1
 
         super().__init__()
 
         self.pipeline_space = pipeline_space
+        acquisition_opt_strategy_args = acquisition_opt_strategy_args or {}
 
-        def _get_args_and_defaults(func):
-            signature = inspect.signature(func)
-            return list(signature.parameters.keys()), {
-                k: v.default
-                for k, v in signature.parameters.items()
-                if v.default is not inspect.Parameter.empty
-            }
-
-        if acquisition_opt_strategy_args is None:
-            acquisition_opt_strategy_args = {}
-
-        if graph_kernels is None or not graph_kernels:
-            graph_kernels = list()
-            if any(
-                isinstance(parameter, GraphGrammar)
-                for parameter in self.pipeline_space.values()
-            ):
+        if not graph_kernels:
+            graph_kernels = []
+            if has_instance(self.pipeline_space.values(), GraphGrammar):
                 graph_kernels.append("wl")
 
-        if hp_kernels is None or not hp_kernels:
-            hp_kernels = list()
-            if any(
-                isinstance(parameter, FloatParameter)
-                or isinstance(parameter, IntegerParameter)
-                for parameter in self.pipeline_space.values()
+        if not hp_kernels:
+            hp_kernels = []
+            if has_instance(
+                self.pipeline_space.values(), FloatParameter, IntegerParameter
             ):
                 hp_kernels.append("m52")
-
-            if any(
-                isinstance(parameter, CategoricalParameter)
-                for parameter in self.pipeline_space.values()
-            ):
+            if has_instance(self.pipeline_space.values(), CategoricalParameter):
                 hp_kernels.append("hm")
 
         graph_kernels = [
@@ -98,6 +117,13 @@ class BayesianOptimization(metahyper.Sampler):
 
         if not graph_kernels and not hp_kernels:
             raise Exception("No kernels are provided!")
+        if acquisition not in AcquisitionMapping:
+            raise ValueError(f"Acquisition function {acquisition} is not defined!")
+        if acquisition_opt_strategy not in AcquisitionOptimizerMapping:
+            raise ValueError(
+                f"Acquisition optimization strategy {acquisition_opt_strategy} is not "
+                f"defined!"
+            )
 
         self.surrogate_model = ComprehensiveGP(
             graph_kernels=graph_kernels,
@@ -111,28 +137,22 @@ class BayesianOptimization(metahyper.Sampler):
             surrogate_model=self.surrogate_model
         )
 
-        if acquisition_opt_strategy in AcquisitionOptimizerMapping.keys():
-            acquisition_function_opt_cls = AcquisitionOptimizerMapping[
-                acquisition_opt_strategy
-            ]
-            arg_names, _ = _get_args_and_defaults(
-                acquisition_function_opt_cls.__init__  # type: ignore[misc]
-            )
-            if not all(k in arg_names for k in acquisition_opt_strategy_args.keys()):
-                raise ValueError("Parameter mismatch")
-            self.acquisition_function_opt = acquisition_function_opt_cls(
-                self.pipeline_space,
-                acquisition_function,
-                **acquisition_opt_strategy_args,
-            )
-        else:
-            raise ValueError(
-                f"Acquisition optimization strategy {acquisition_opt_strategy} is not "
-                f"defined!"
-            )
+        acquisition_function_opt_cls = AcquisitionOptimizerMapping[
+            acquisition_opt_strategy
+        ]
+        arg_names, _ = get_fun_args_and_defaults(
+            acquisition_function_opt_cls.__init__  # type: ignore[misc]
+        )
+        if not all(k in arg_names for k in acquisition_opt_strategy_args):
+            raise ValueError("Parameter mismatch")
+        self.acquisition_function_opt = acquisition_function_opt_cls(
+            self.pipeline_space,
+            acquisition_function,
+            **acquisition_opt_strategy_args,
+        )
 
         self.random_interleave_prob = random_interleave_prob
-        self.surrogate_model_fit_args = surrogate_model_fit_args
+        self.surrogate_model_fit_args = surrogate_model_fit_args or {}
         self.initial_design_size = initial_design_size
         self.n_candidates = n_candidates
         self.patience = patience
@@ -147,10 +167,7 @@ class BayesianOptimization(metahyper.Sampler):
         """Updates the surrogate model and the acquisition function (optimizer)."""
         if len(self.pending_evaluations) > 0:
             self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
-            if self.surrogate_model_fit_args is not None:
-                self.surrogate_model.fit(**self.surrogate_model_fit_args)
-            else:
-                self.surrogate_model.fit()
+            self.surrogate_model.fit(**self.surrogate_model_fit_args)
             ys, _ = self.surrogate_model.predict(self.pending_evaluations)
             train_x = self.train_x + self.pending_evaluations
             train_y = self.train_y + list(ys.detach().numpy())
@@ -159,10 +176,7 @@ class BayesianOptimization(metahyper.Sampler):
             train_y = self.train_y
 
         self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
-        if self.surrogate_model_fit_args is not None:
-            self.surrogate_model.fit(**self.surrogate_model_fit_args)
-        else:
-            self.surrogate_model.fit()
+        self.surrogate_model.fit(**self.surrogate_model_fit_args)
         self.acquisition_function_opt.reset_surrogate_model(self.surrogate_model)
         self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
 
@@ -196,8 +210,7 @@ class BayesianOptimization(metahyper.Sampler):
                 else "-".join(map(str, pend_eval.id))
                 for pend_eval in self.pending_evaluations
             ]
-            _patience = self.patience
-            while _patience > 0:
+            for _ in range(self.patience):
                 model_sample, _, _ = self.acquisition_function_opt.sample(
                     self.n_candidates, 1
                 )
@@ -207,8 +220,7 @@ class BayesianOptimization(metahyper.Sampler):
                 )
                 if config_id not in pending_evaluation_ids:  # Is this still working?
                     break
-                _patience -= 1
-            if _patience == 0:
+            else:
                 config = self.pipeline_space.sample_new(
                     patience=self.patience, use_user_priors=True
                 )

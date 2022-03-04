@@ -129,7 +129,7 @@ def run(
 
     Raises:
         TypeError: If pipeline_space has invalid type.
-        ValueError: If searcher is unkown.
+        ValueError: If searcher is unknown.
 
     Example:
         >>> import neps
