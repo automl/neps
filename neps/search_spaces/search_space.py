@@ -54,6 +54,7 @@ class SearchSpace(collections.abc.Mapping):
         self._graphs = []
 
         self.fidelity = None
+        self.has_prior = False
         for key, hyperparameter in hyperparameters.items():
             self.hyperparameters[key] = hyperparameter
 
@@ -68,9 +69,13 @@ class SearchSpace(collections.abc.Mapping):
                     raise ValueError(
                         "neps only supports one fidelity parameter in the pipeline space,"
                         " but multiple were given. (Hint: check you pipeline space for "
-                        "multiple is_fidelity=True"
+                        "multiple is_fidelity=True)"
                     )
                 self.fidelity = hyperparameter
+
+            # Check if defaults exists to construct prior from
+            if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
+                self.has_prior = True
 
     def has_fidelity(self):
         return self.fidelity is not None
