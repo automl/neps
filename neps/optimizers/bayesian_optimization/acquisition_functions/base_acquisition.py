@@ -7,11 +7,7 @@ class BaseAcquisition(ABC):
 
     @abstractmethod
     def eval(self, x, asscalar: bool = False):
-        """
-        Evaluate the acquisition function at point x2.
-
-        This should be overridden by respective acquisition function implementations
-        """
+        """Evaluate the acquisition function at point x2."""
         raise NotImplementedError
 
     def __call__(self, *args, **kwargs):
