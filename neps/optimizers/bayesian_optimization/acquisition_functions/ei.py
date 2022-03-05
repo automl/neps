@@ -112,9 +112,10 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         # selected_idx = [i for i in self.candidate_idx if self.evaluated[i] is False]
         # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
         # print(eis)
-        self.incumbent = (
-            self._compute_incumbent()
-        )  # avoid computing inc over and over again
+
+        # avoid computing inc over and over again
+        self.incumbent = self._compute_incumbent()
+
         if return_distinct:
             if self.compute_fast:
                 eis = self.eval(candidates, asscalar=True)  # faster
