@@ -77,6 +77,9 @@ class SearchSpace(collections.abc.Mapping):
             if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
                 self.has_prior = True
 
+    def compute_prior(self):
+        return 1
+
     def has_fidelity(self):
         return self.fidelity is not None
 

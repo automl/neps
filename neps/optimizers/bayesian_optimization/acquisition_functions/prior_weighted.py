@@ -15,7 +15,11 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         x: Iterable,
         **base_acquisition_kwargs,
     ) -> Union[np.ndarray, torch.Tensor, float]:
-        return self.base_acquisition(x, **base_acquisition_kwargs)
+        acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
+        for i, candidate in enumerate(x):
+            prior_weight = candidate.compute_prior()
+            acquisition[i] *= prior_weight
+        return acquisition
 
     def update(self, surrogate_model):
         self.base_acquisition.update(surrogate_model)
