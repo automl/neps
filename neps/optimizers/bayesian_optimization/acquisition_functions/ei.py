@@ -17,23 +17,27 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         log_ei: bool = False,
         compute_fast: bool = True,
     ):
-        """
-        This is the graph BO version of the expected improvement
+        """This is the graph BO version of the expected improvement
         key differences are:
+
         1. The input x2 is a networkx graph instead of a vectorial input
-        2. the search space (a collection of x1_graphs) is discrete, so there is no gradient-based optimisation. Instead,
-        we compute the EI at all candidate points and empirically select the best position during optimisation
+
+        2. The search space (a collection of x1_graphs) is discrete, so there is no
+           gradient-based optimisation. Instead, we compute the EI at all candidate points
+           and empirically select the best position during optimisation
 
         Args:
             surrogate_model: surrogate model, e.g., GP.
-            augmented_ei (bool, optional): Using the Augmented EI heuristic modification to the standard expected improvement algorithm
-            according to Huang (2006). Defaults to False.
-            xi (float, optional): manual exploration-exploitation trade-off parameter.. Defaults to 0.0.
-            in_fill (str, optional): the criterion to be used for in-fill for the determination of mu_star. 'best' means the empirical
-            best observation so far (but could be susceptible to noise), 'posterior' means the best *posterior GP mean*
-            encountered so far, and is recommended for optimization of more noisy functions. Defaults to "best".
-            log_ei (bool, optional): log-EI if true otherwise usual EI. Defaults to False.
-            compute_fast (bool, optional): if true use vectorized version. Defaults to True.
+            augmented_ei: Using the Augmented EI heuristic modification to the standard
+                expected improvement algorithm according to Huang (2006).
+            xi: manual exploration-exploitation trade-off parameter.
+            in_fill: the criterion to be used for in-fill for the determination of mu_star
+                'best' means the empirical best observation so far (but could be
+                susceptible to noise), 'posterior' means the best *posterior GP mean*
+                encountered so far, and is recommended for optimization of more noisy
+                functions. Defaults to "best".
+            log_ei: log-EI if true otherwise usual EI.
+            compute_fast: if true use vectorized version.
         """
         super().__init__(surrogate_model=surrogate_model)
 
