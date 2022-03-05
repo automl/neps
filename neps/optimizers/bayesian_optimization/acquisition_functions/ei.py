@@ -133,8 +133,3 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         xs = [candidates[int(i)] for i in indices]
         self.incumbent = None
         return xs, eis, indices
-
-    def optimize(self):
-        raise ValueError(
-            "The kernel invoked does not have hyperparameters to optimse over!"
-        )
