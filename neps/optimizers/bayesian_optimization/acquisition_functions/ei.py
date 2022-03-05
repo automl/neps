@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Union
+from typing import Iterable, Union
 
 import numpy as np
 import torch
@@ -83,7 +83,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei = ei.detach().numpy().item()
         return ei
 
-    def _compute_incumbent(self) -> torch.Tensor:
+    def compute_incumbent(self) -> torch.Tensor:
         """
         Compute and return the incumbent
         """
@@ -103,34 +103,4 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         Returns:
             float: incumbent
         """
-        return self.incumbent if self.incumbent is not None else self._compute_incumbent()
-
-    def propose_location(
-        self, candidates: Iterable, top_n: int = 5, return_distinct: bool = True
-    ) -> Tuple[Iterable, np.ndarray, np.ndarray]:
-        """top_n: return the top n candidates wrt the acquisition function."""
-        # selected_idx = [i for i in self.candidate_idx if self.evaluated[i] is False]
-        # eis = torch.tensor([self.eval(self.candidates[c]) for c in selected_idx])
-        # print(eis)
-
-        # avoid computing inc over and over again
-        self.incumbent = self._compute_incumbent()
-
-        if return_distinct:
-            if self.compute_fast:
-                eis = self.eval(candidates, asscalar=True)  # faster
-            else:
-                eis = np.array([self.eval(c, asscalar=True) for c in candidates])
-            eis_, unique_idx = np.unique(eis, return_index=True)
-            try:
-                i = np.argpartition(eis_, -top_n)[-top_n:]
-                indices = np.array([unique_idx[j] for j in i])
-            except ValueError:
-                eis = torch.tensor([self.eval(c) for c in candidates])
-                _, indices = eis.topk(top_n)
-        else:
-            eis = torch.tensor([self.eval(c) for c in candidates])
-            _, indices = eis.topk(top_n)
-        xs = [candidates[int(i)] for i in indices]
-        self.incumbent = None
-        return xs, eis, indices
+        return self.incumbent if self.incumbent is not None else self.compute_incumbent()

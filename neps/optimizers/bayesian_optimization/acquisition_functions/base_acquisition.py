@@ -5,18 +5,6 @@ class BaseAcquisition(ABC):
     def __init__(self, surrogate_model):
         self.surrogate_model = surrogate_model
 
-        # Storage for the current evaluation on the acquisition function
-        self.next_location = None
-        self.next_acq_value = None
-
-    @abstractmethod
-    def propose_location(self, *args):
-        """Propose new locations for subsequent sampling
-
-        This method should be overriden by respective acquisition function
-        implementations."""
-        raise NotImplementedError
-
     @abstractmethod
     def eval(self, x, asscalar: bool = False):
         """

@@ -1,10 +1,43 @@
-from typing import Tuple
+from typing import Iterable, Tuple
 
 import numpy as np
+import torch
 
 from ..acquisition_functions.base_acquisition import BaseAcquisition
 from .base_acq_optimizer import AcquisitionOptimizer
 from .random_sampler import RandomSampler
+
+
+def _propose_location(
+    acquisition_function,
+    candidates: Iterable,
+    top_n: int = 5,
+    return_distinct: bool = True,
+) -> Tuple[Iterable, np.ndarray, np.ndarray]:
+    """top_n: return the top n candidates wrt the acquisition function."""
+    # avoid computing inc over and over again
+    acquisition_function.incumbent = acquisition_function.compute_incumbent()
+
+    if return_distinct:
+        if acquisition_function.compute_fast:
+            eis = acquisition_function.eval(candidates, asscalar=True)  # faster
+        else:
+            eis = np.array(
+                [acquisition_function.eval(c, asscalar=True) for c in candidates]
+            )
+        eis_, unique_idx = np.unique(eis, return_index=True)
+        try:
+            i = np.argpartition(eis_, -top_n)[-top_n:]
+            indices = np.array([unique_idx[j] for j in i])
+        except ValueError:
+            eis = torch.tensor([acquisition_function.eval(c) for c in candidates])
+            _, indices = eis.topk(top_n)
+    else:
+        eis = torch.tensor([acquisition_function.eval(c) for c in candidates])
+        _, indices = eis.topk(top_n)
+    xs = [candidates[int(i)] for i in indices]
+    acquisition_function.incumbent = None
+    return xs, eis, indices
 
 
 class MutationSampler(AcquisitionOptimizer):
@@ -39,9 +72,12 @@ class MutationSampler(AcquisitionOptimizer):
         if batch_size is not None and self.acquisition_function is None:
             raise Exception("Mutation sampler has no acquisition function!")
 
-        samples, acq_vals, _ = self.acquisition_function.propose_location(
-            top_n=batch_size, candidates=pool
+        samples, acq_vals, _ = _propose_location(
+            acquisition_function=self.acquisition_function,
+            top_n=batch_size,
+            candidates=pool,
         )
+
         return samples, pool, acq_vals
 
     def create_pool(self, pool_size: int) -> list:
