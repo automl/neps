@@ -87,24 +87,27 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei = ei.detach().numpy().item()
         return ei
 
-    def compute_incumbent(self) -> torch.Tensor:
-        """
-        Compute and return the incumbent
-        """
-        if self.in_fill == "best":
-            # return torch.max(self.surrogate_model.y_)
-            return torch.min(self.surrogate_model.y_)
-        else:
-            x = self.surrogate_model.x
-            mu_train, _ = self.surrogate_model.predict(x)
-            # incumbent_idx = torch.argmax(mu_train)
-            incumbent_idx = torch.argmin(mu_train)
-            return self.surrogate_model.y_[incumbent_idx]
-
     def _get_incumbent(self):
         """Get incumbent
 
         Returns:
             float: incumbent
         """
-        return self.incumbent if self.incumbent is not None else self.compute_incumbent()
+        if self.incumbent is None:
+            raise LookupError("Could not lookup incumbent")
+
+        return self.incumbent
+
+    def update(self, surrogate_model):
+        super().update(surrogate_model)
+
+        # Compute incumbent
+        if self.in_fill == "best":
+            # return torch.max(self.surrogate_model.y_)
+            self.incumbent = torch.min(self.surrogate_model.y_)
+        else:
+            x = self.surrogate_model.x
+            mu_train, _ = self.surrogate_model.predict(x)
+            # incumbent_idx = torch.argmax(mu_train)
+            incumbent_idx = torch.argmin(mu_train)
+            self.incumbent = self.surrogate_model.y_[incumbent_idx]

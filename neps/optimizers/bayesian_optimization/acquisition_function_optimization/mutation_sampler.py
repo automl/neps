@@ -16,7 +16,6 @@ def _propose_location(
 ) -> Tuple[Iterable, np.ndarray, np.ndarray]:
     """top_n: return the top n candidates wrt the acquisition function."""
     # avoid computing inc over and over again
-    acquisition_function.incumbent = acquisition_function.compute_incumbent()
 
     if return_distinct:
         if acquisition_function.compute_fast:
@@ -36,7 +35,6 @@ def _propose_location(
         eis = torch.tensor([acquisition_function.eval(c) for c in candidates])
         _, indices = eis.topk(top_n)
     xs = [candidates[int(i)] for i in indices]
-    acquisition_function.incumbent = None
     return xs, eis, indices
 
 
