@@ -1,4 +1,6 @@
-from typing import Iterable, Tuple
+from __future__ import annotations
+
+from typing import Iterable
 
 import numpy as np
 import torch
@@ -10,20 +12,13 @@ from .random_sampler import RandomSampler
 
 def _propose_location(
     acquisition_function,
-    candidates: Iterable,
+    candidates: list,
     top_n: int = 5,
     return_distinct: bool = True,
-) -> Tuple[Iterable, np.ndarray, np.ndarray]:
+) -> tuple[Iterable, np.ndarray, np.ndarray]:
     """top_n: return the top n candidates wrt the acquisition function."""
-    # avoid computing inc over and over again
-
     if return_distinct:
-        if acquisition_function.compute_fast:
-            eis = acquisition_function.eval(candidates, asscalar=True)  # faster
-        else:
-            eis = np.array(
-                [acquisition_function.eval(c, asscalar=True) for c in candidates]
-            )
+        eis = acquisition_function.eval(candidates, asscalar=True)  # faster
         eis_, unique_idx = np.unique(eis, return_index=True)
         try:
             i = np.argpartition(eis_, -top_n)[-top_n:]
@@ -62,7 +57,7 @@ class MutationSampler(AcquisitionOptimizer):
 
     def sample(
         self, pool_size: int = 250, batch_size: int = 5
-    ) -> Tuple[list, list, np.ndarray]:
+    ) -> tuple[list, list, np.ndarray]:
         pool = self.create_pool(pool_size)
 
         if batch_size is None:

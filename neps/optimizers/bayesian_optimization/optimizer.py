@@ -19,6 +19,7 @@ from ...utils.common import get_fun_args_and_defaults, has_instance
 from ...utils.result_utils import get_loss
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_functions import AcquisitionMapping
+from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp import ComprehensiveGP
 
@@ -136,6 +137,8 @@ class BayesianOptimization(metahyper.Sampler):
         acquisition_function = AcquisitionMapping[acquisition](
             surrogate_model=self.surrogate_model
         )
+        if self.pipeline_space.has_prior:
+            acquisition_function = DecayingPriorWeightedAcquisition(acquisition_function)
 
         acquisition_function_opt_cls = AcquisitionOptimizerMapping[
             acquisition_opt_strategy

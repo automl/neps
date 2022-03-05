@@ -7,12 +7,7 @@ from .base_acquisition import BaseAcquisition
 
 
 class DecayingPriorWeightedAcquisition(BaseAcquisition):
-    def __init__(
-        self,
-        surrogate_model,
-        base_acquisition,
-    ):
-        super().__init__(surrogate_model=surrogate_model)
+    def __init__(self, base_acquisition):  # pylint: disable=super-init-not-called
         self.base_acquisition = base_acquisition
 
     def eval(
@@ -23,4 +18,4 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         return self.base_acquisition(x, **base_acquisition_kwargs)
 
     def update(self, surrogate_model):
-        super().update(surrogate_model)
+        self.base_acquisition.update(surrogate_model)

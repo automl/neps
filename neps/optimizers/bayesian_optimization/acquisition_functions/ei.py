@@ -15,7 +15,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         xi: float = 0.0,
         in_fill: str = "best",
         log_ei: bool = False,
-        compute_fast: bool = True,
     ):
         """This is the graph BO version of the expected improvement
         key differences are:
@@ -37,7 +36,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
                 encountered so far, and is recommended for optimization of more noisy
                 functions. Defaults to "best".
             log_ei: log-EI if true otherwise usual EI.
-            compute_fast: if true use vectorized version.
         """
         super().__init__(surrogate_model=surrogate_model)
 
@@ -47,7 +45,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.in_fill = in_fill
         self.log_ei = log_ei
         self.incumbent = None
-        self.compute_fast = compute_fast
 
     def eval(
         self, x: Iterable, asscalar: bool = False
