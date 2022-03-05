@@ -177,7 +177,7 @@ class BayesianOptimization(metahyper.Sampler):
 
         self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
         self.surrogate_model.fit(**self.surrogate_model_fit_args)
-        self.acquisition_function_opt.reset_surrogate_model(self.surrogate_model)
+        self.acquisition_function_opt.acquisition_function.update(self.surrogate_model)
         self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
 
     def load_results(
