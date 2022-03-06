@@ -78,7 +78,11 @@ class SearchSpace(collections.abc.Mapping):
                 self.has_prior = True
 
     def compute_prior(self):
-        return 1
+        density_value = 1
+        for hyperparameter in self.hyperparameters.values():
+            if hyperparameter.has_prior:
+                density_value *= hyperparameter.compute_prior()
+        return density_value
 
     def has_fidelity(self):
         return self.fidelity is not None

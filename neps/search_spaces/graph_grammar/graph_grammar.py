@@ -50,6 +50,8 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.nxTree: nx.DiGraph = None
         self.value: nx.DiGraph = None
 
+        self.has_prior = False
+
     @property
     def search_space_size(self) -> int:
         if len(self.grammars) != 1:
@@ -89,7 +91,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.id = self.string_tree
         self.create_representation(self.string_tree)
 
-    def create_representation(self, string_tree: str): # todo relevant code for conversion
+    def create_representation(
+        self, string_tree: str
+    ):  # todo relevant code for conversion
         self.value = (
             self.create_nx_tree(string_tree)
             if self.id_parse_tree
@@ -98,14 +102,14 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                 self.grammars[0],
                 terminal_to_graph_edges=self.terminal_to_graph_repr,
                 valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,      # set to false for node attribute
+                edge_attr=self.edge_attr,  # set to false for node attribute
             )
         )
 
     def create_from_id(self, identifier: str):
         self.id = identifier
         self.string_tree = self.id
-        self.create_representation(self.string_tree) #todo relevant for conversion
+        self.create_representation(self.string_tree)  # todo relevant for conversion
 
     def mutate(
         self,

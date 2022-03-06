@@ -20,3 +20,6 @@ class Parameter:
     @abstractmethod
     def create_from_id(self, identifier):
         raise NotImplementedError
+
+    def compute_prior(self):  # pylint: disable=no-self-use
+        return 1
