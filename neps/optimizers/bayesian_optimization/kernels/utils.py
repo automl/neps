@@ -72,18 +72,19 @@ def extract_configs_hierarchy(configs: list) -> Tuple[list, list]:
         Tuple[list, list]: list of graphs, list of HPs
     """
     N = len(configs)
+    # final architecture graph
     if N > 0 and 'graph' in configs[0].keys():
-        graphs = [c['graph'] for c in configs]
+        graphs = [c['graph'] for c in configs] # get the list of final graphs
 
     if N > 0 and 'metafeature' in configs[0].keys():
-        graph_features = [c['metafeature'] for c in configs]
+        # graph_features = [c['metafeature'] for c in configs]
         # these feature values are normalised between 0 and 1
         # the two graph features used are 'avg_path_length', 'density'
-        # graph_features = [[graph_metrics(g, metric='avg_path_length'),
-        #                    graph_metrics(g, metric='density')] for g in graphs]
+        graph_features = [[graph_metrics(g, metric='avg_path_length'),
+                           graph_metrics(g, metric='density')] for g in graphs]
+        graph_features_array = np.vstack(graph_features) # shape n_archs x 2 (nx(2+d_hp))
 
-    # normalise hps
-    graph_features_array = np.vstack(graph_features) # shape n_archs x 2
+    # get graph for earlier hierarchical levels
     if N > 0 and 'hierarchy_graphs' in configs[0].keys():
         # note the node feature for graph in earlier hierarchical level should be more coarse
         # i.e. for each graph
@@ -92,7 +93,8 @@ def extract_configs_hierarchy(configs: list) -> Tuple[list, list]:
         #                    '(' in v and ')' in v}
         # nx.set_node_attributes(G, new_node_labels, name='op_name')
         all_hierarchy_graphs = [[c['hierarchy_graphs'][k] for c in configs] for k in configs[0]['hierarchy_graphs'].keys()]
-        all_hierarchy_graphs = all_hierarchy_graphs + [graphs]
+        # if we get hierarchial levels [0,1,2] , all_hierarchy_graphs is a list of 3 lists
+        all_hierarchy_graphs = all_hierarchy_graphs + [graphs] # all_hierarchy_graphs is a list of 4 lists
         return all_hierarchy_graphs, graph_features_array
     else:
         return graphs, graph_features_array

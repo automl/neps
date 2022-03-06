@@ -24,10 +24,10 @@ class ComprehensiveGP:
         weights=None,
         learn_all_h=False,
         graph_feature_ard=True,
-        normalize_combined_kernel=True,
-        hierarchy_consider: list = None,
-        vectorial_features: list = None,
         d_graph_features: int = 2,
+        normalize_combined_kernel=True,
+        hierarchy_consider: list = None, # [0,1,2,3]
+        vectorial_features: list = None,
         combined_kernel: str = "sum",
         verbose: bool = False,
     ):
@@ -35,7 +35,7 @@ class ComprehensiveGP:
         self.learn_all_h = learn_all_h
         self.hierarchy_consider = hierarchy_consider
         self.normalize_combined_kernel = normalize_combined_kernel
-        if len(self.hierarchy_consider) < 1:
+        if self.hierarchy_consider is None:
             self.learn_all_h = False
         self.domain_kernels: list = []
         if bool(graph_kernels):
@@ -43,7 +43,7 @@ class ComprehensiveGP:
         if bool(hp_kernels):
             self.domain_kernels += list(hp_kernels)
 
-        self.hp_kernels = hp_kernels
+        self.hp_kernels = hp_kernels # impose on scalar graph features
         self.n_kernels: int = len(self.domain_kernels)
         self.n_graph_kernels: int = len(
             [i for i in self.domain_kernels if isinstance(i, GraphKernels)]
@@ -99,7 +99,7 @@ class ComprehensiveGP:
         self.n: int = None
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
-        if len(self.hierarchy_consider) == 0:
+        if self.hierarchy_consider is None:
             graphs, _ = extract_configs_hierarchy(self.x_configs)
             for i, k in enumerate(self.combined_kernel.kernels):
                 if not isinstance(k, GraphKernels):
@@ -217,14 +217,20 @@ class ComprehensiveGP:
 
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)
-        # theta in this case are the lengthscales for the two global property of
-        # the final architecture graph
-        # theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
-        if self.graph_feature_ard:
-            theta_vector = torch.log(torch.tensor([0.6, 0.6], ))
+
+        # if use continuous graph properties and we set to use stationary kernels
+        if self.d_graph_features > 0 and len(self.hp_kernels) > 0:
+            # TODO modify the code on theta_vector betlow to be compatibale with HPO
+            # theta in this case are the lengthscales for the two global property of
+            # the final architecture graph
+            # theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
+            if self.graph_feature_ard:
+                theta_vector = torch.log(torch.tensor([0.6, 0.6], ))
+            else:
+                theta_vector = torch.log(torch.tensor([0.6],))
+            theta_vector.requires_grad_(True)
         else:
-            theta_vector = torch.log(torch.tensor([0.6],))
-        theta_vector.requires_grad_(True)
+            theta_vector = None
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
         likelihood = torch.tensor(
             self.likelihood,
@@ -248,9 +254,7 @@ class ComprehensiveGP:
             if a is not None and a.is_leaf and a.requires_grad:
                 optim_vars.append(a)
 
-        # if use continuous graph properties and we set to use stationary kernels
-        if self.d_graph_features > 0 and len(self.hp_kernels) > 0:
-        # if theta_vector is not None:
+        if theta_vector is not None:
             for a in theta_vector.values():
                 if a is not None and a.requires_grad:
                     optim_vars.append(a)
