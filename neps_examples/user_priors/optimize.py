@@ -24,7 +24,7 @@ def run_pipeline(working_directory, some_float, some_integer, some_cat):
 # that speeds up the search
 pipeline_space = dict(
     some_float=neps.FloatParameter(
-        lower=1, upper=1000, log=True, default=500, default_confidence="medium"
+        lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
     some_integer=neps.IntegerParameter(
         lower=0, upper=50, default=35, default_confidence="low"
