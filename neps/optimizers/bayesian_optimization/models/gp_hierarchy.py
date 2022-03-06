@@ -760,7 +760,7 @@ def compute_log_marginal_likelihood(
     """
     lml = (
         -0.5 * y.t() @ K_i @ y
-        - 0.5 * logDetK
+        + 0.5 * logDetK
         - y.shape[0]
         / 2.0
         * torch.log(
