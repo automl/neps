@@ -218,19 +218,6 @@ class SearchSpace(collections.abc.Mapping):
     def get_array(self):
         return list(self.hyperparameters.values())
 
-    def get_dictionary(self):
-        return dict(zip(self.hyperparameters.keys(), self.id))
-
-    def create_from_id(self, config: dict):
-        self._hps = []
-        self._graphs = []
-        for name in config.keys():
-            self.hyperparameters[name].create_from_id(config[name])
-            if isinstance(self.hyperparameters[name], NumericalParameter):
-                self._hps.append(self.hyperparameters[name])
-            else:
-                self._graphs.append(self.hyperparameters[name])
-
     def add_constant_hyperparameter(self, value=None):
         if value is not None:
             hp = ConstantParameter(value=value)
@@ -255,6 +242,19 @@ class SearchSpace(collections.abc.Mapping):
         for k, v in hps.items():
             d[k] = 0 if v is None else len(v)
         return d
+
+    def serialize(self):
+        return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
+
+    def load_from(self, config: dict):
+        self._hps = []
+        self._graphs = []
+        for name in config.keys():
+            self.hyperparameters[name].load_from(config[name])
+            if isinstance(self.hyperparameters[name], NumericalParameter):
+                self._hps.append(self.hyperparameters[name])
+            else:
+                self._graphs.append(self.hyperparameters[name])
 
     def __getitem__(self, key):
         hp = self.hyperparameters[key]

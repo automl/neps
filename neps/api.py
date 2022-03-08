@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import logging
+import warnings
+from functools import partial
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 
@@ -148,6 +150,25 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
+    # Deprecated arguments
+    if run_pipeline_args is not None:
+        warnings.warn(
+            "The run_pipeline_args will soon be removed, "
+            "functools.partial should be used instead",
+            FutureWarning,
+            stacklevel=2,
+        )
+        run_pipeline = partial(run_pipeline, *run_pipeline_args)
+    if run_pipeline_kwargs is not None:
+        warnings.warn(
+            "The run_pipeline_kwargs will soon be removed, "
+            "functools.partial should be used instead",
+            FutureWarning,
+            stacklevel=2,
+        )
+        run_pipeline = partial(run_pipeline, **run_pipeline_kwargs)
+
+    # Actual function start
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {working_directory}")
 
@@ -184,8 +205,7 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+        serializer="json",
         logger=logger,
-        evaluation_fn_args=run_pipeline_args,
-        evaluation_fn_kwargs=run_pipeline_kwargs,
         post_evaluation_hook=_post_evaluation_hook,
     )

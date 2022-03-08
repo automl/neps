@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import random
+from copy import deepcopy
 from typing import Any, Mapping
 
 import metahyper
-import numpy as np
 import torch
 from metahyper.api import ConfigResult
 
@@ -15,7 +15,12 @@ from ...search_spaces import (
     IntegerParameter,
 )
 from ...search_spaces.search_space import SearchSpace
-from ...utils.common import get_fun_args_and_defaults, has_instance
+from ...utils.common import (
+    get_fun_args_and_defaults,
+    get_rnd_state,
+    has_instance,
+    set_rnd_state,
+)
 from ...utils.result_utils import get_loss
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_functions import AcquisitionMapping
@@ -237,21 +242,15 @@ class BayesianOptimization(metahyper.Sampler):
         return config, config_id, None
 
     def get_state(self) -> Any:  # pylint: disable=no-self-use
-        state = {
-            "random_state": random.getstate(),
-            "np_seed_state": np.random.get_state(),
-            "torch_seed_state": torch.random.get_rng_state(),
-        }
-        if torch.cuda.is_available():
-            state["torch_cuda_seed_state"] = torch.cuda.get_rng_state_all()
-        return state
+        return get_rnd_state()
 
     def load_state(self, state: Any):  # pylint: disable=no-self-use
-        random.setstate(state["random_state"])
-        np.random.set_state(state["np_seed_state"])
-        torch.random.set_rng_state(state["torch_seed_state"])
-        if torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(state["torch_cuda_seed_state"])
+        set_rnd_state(state)
+
+    def load_config(self, config_dict):
+        config = deepcopy(self.pipeline_space)
+        config.load_from(config_dict)
+        return config
 
 
 # TODO(neps.api): this BO class gets used when

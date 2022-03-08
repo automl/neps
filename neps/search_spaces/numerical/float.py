@@ -158,5 +158,8 @@ class FloatParameter(NumericalParameter):
 
         self.value = self.value * (self.upper - self.lower) + self.lower
 
-    def create_from_id(self, identifier):
-        self.value = identifier
+    def serialize(self):
+        return self.value
+
+    def load_from(self, value):
+        self.value = value

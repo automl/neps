@@ -111,6 +111,13 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.string_tree = self.id
         self.create_representation(self.string_tree)  # todo relevant for conversion
 
+    # TODO: does this serialization really work for every graph ?
+    def serialize(self):
+        return self.id
+
+    def load_from(self, data):
+        self.create_from_id(data)
+
     def mutate(
         self,
         parent: GraphGrammar = None,

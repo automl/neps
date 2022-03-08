@@ -49,5 +49,8 @@ class ConstantParameter(NumericalParameter):
     def _inv_transform(self):
         pass
 
-    def create_from_id(self, identifier):
-        self.value = identifier
+    def serialize(self):
+        return self.value
+
+    def load_from(self, value):
+        self.value = value

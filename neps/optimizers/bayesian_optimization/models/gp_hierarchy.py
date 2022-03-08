@@ -1,10 +1,10 @@
+import itertools
 import logging
 from copy import deepcopy
 from typing import Iterable, Union
 
 import numpy as np
 import torch
-import itertools
 
 from ..kernels.combine_kernels import ProductKernel, SumKernel
 
@@ -26,7 +26,7 @@ class ComprehensiveGP:
         graph_feature_ard=True,
         d_graph_features: int = 2,
         normalize_combined_kernel=True,
-        hierarchy_consider: list = None, # [0,1,2,3]
+        hierarchy_consider: list = None,  # [0,1,2,3]
         vectorial_features: list = None,
         combined_kernel: str = "sum",
         verbose: bool = False,
@@ -43,7 +43,7 @@ class ComprehensiveGP:
         if bool(hp_kernels):
             self.domain_kernels += list(hp_kernels)
 
-        self.hp_kernels = hp_kernels # impose on scalar graph features
+        self.hp_kernels = hp_kernels  # impose on scalar graph features
         self.n_kernels: int = len(self.domain_kernels)
         self.n_graph_kernels: int = len(
             [i for i in self.domain_kernels if isinstance(i, GraphKernels)]
@@ -130,7 +130,7 @@ class ComprehensiveGP:
                 h_combo_candidates = generate_h_combo_candidates(self.hierarchy_consider)
 
                 for h_combo in h_combo_candidates:
-                    for i ,k in enumerate(self.combined_kernel.kernels):
+                    for i, k in enumerate(self.combined_kernel.kernels):
                         k.change_kernel_params({"h": h_combo[i]})
                     K = self.combined_kernel.fit_transform(
                         self.weights,
@@ -141,7 +141,7 @@ class ComprehensiveGP:
                         save_gram_matrix=True,
                     )
                     K_i, logDetK = compute_pd_inverse(K, self.likelihood)
-                    nlml = - compute_log_marginal_likelihood(K_i, logDetK, train_y)
+                    nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
                     if nlml < best_nlml:
                         best_nlml = nlml
                         best_subtree_depth_combo = h_combo
@@ -156,7 +156,9 @@ class ComprehensiveGP:
                 train_y = self.y
 
                 for h_i in list(h_):
-                    self.combined_kernel.kernels[len(self.hierarchy_consider)].change_kernel_params({"h": h_i})
+                    self.combined_kernel.kernels[
+                        len(self.hierarchy_consider)
+                    ].change_kernel_params({"h": h_i})
                     K = self.combined_kernel.fit_transform(
                         self.weights,
                         self.x_configs,
@@ -166,13 +168,15 @@ class ComprehensiveGP:
                         save_gram_matrix=True,
                     )
                     K_i, logDetK = compute_pd_inverse(K, self.likelihood)
-                    nlml = - compute_log_marginal_likelihood(K_i, logDetK, train_y)
+                    nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
                     # print(i, nlml)
                     if nlml < best_nlml:
                         best_nlml = nlml
                         best_subtree_depth = h_i
                         best_K = torch.clone(K)
-                self.combined_kernel.kernels[len(self.hierarchy_consider)].change_kernel_params({"h": best_subtree_depth})
+                self.combined_kernel.kernels[
+                    len(self.hierarchy_consider)
+                ].change_kernel_params({"h": best_subtree_depth})
                 self.combined_kernel._gram = best_K  # pylint: disable=protected-access
 
     def fit(
@@ -225,9 +229,17 @@ class ComprehensiveGP:
             # the final architecture graph
             # theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
             if self.graph_feature_ard:
-                theta_vector = torch.log(torch.tensor([0.6, 0.6], ))
+                theta_vector = torch.log(
+                    torch.tensor(
+                        [0.6, 0.6],
+                    )
+                )
             else:
-                theta_vector = torch.log(torch.tensor([0.6],))
+                theta_vector = torch.log(
+                    torch.tensor(
+                        [0.6],
+                    )
+                )
             theta_vector.requires_grad_(True)
         else:
             theta_vector = None
@@ -307,7 +319,13 @@ class ComprehensiveGP:
                         likelihood,
                     )
                 optim.step()
-                optim_vars_list.append([theta_vector.clone().detach(), weights.clone().detach(), likelihood.clone().detach()])
+                optim_vars_list.append(
+                    [
+                        theta_vector.clone().detach(),
+                        weights.clone().detach(),
+                        likelihood.clone().detach(),
+                    ]
+                )
                 nlml_list.append(nlml.item())
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
             likelihood.clamp_(
@@ -398,7 +416,9 @@ class ComprehensiveGP:
             del combined_kernel_copy
         return mu_s, cov_s
 
-    def predict_single_hierarchy(self, x_configs, hierarchy_id=0, preserve_comp_graph: bool = False):
+    def predict_single_hierarchy(
+        self, x_configs, hierarchy_id=0, preserve_comp_graph: bool = False
+    ):
         """Kriging predictions"""
 
         if not isinstance(x_configs, list):
@@ -432,8 +452,8 @@ class ComprehensiveGP:
             gp_fit=False,
         )
 
-        K_s = K_sub_full[: self.n:, self.n:]
-        K_ss = K_sub_full[self.n:, self.n:]
+        K_s = K_sub_full[: self.n :, self.n :]
+        K_ss = K_sub_full[self.n :, self.n :]
         mu_s = K_s.t() @ self.K_i @ self.y
         cov_s_full = K_ss - K_s.t() @ self.K_i @ K_s
         cov_s = torch.clamp(cov_s_full, self.likelihood, np.inf)
@@ -774,8 +794,9 @@ def compute_log_marginal_likelihood(
         lml -= log_prior_dist
     return lml / y.shape[0] if normalize else lml
 
+
 def generate_h_combo_candidates(hierarchy_consider):
-    h_range_all_hierarchy = [range(min(hier+2, 4)) for hier in hierarchy_consider]
+    h_range_all_hierarchy = [range(min(hier + 2, 4)) for hier in hierarchy_consider]
     h_range_all_hierarchy.append(range(4))
     h_combo_all = list(itertools.product(*h_range_all_hierarchy))
     h_combo_sub = []
@@ -784,6 +805,7 @@ def generate_h_combo_candidates(hierarchy_consider):
         if sorted_h_combo not in h_combo_sub:
             h_combo_sub.append(sorted_h_combo)
     return h_combo_sub
+
 
 def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
     """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
