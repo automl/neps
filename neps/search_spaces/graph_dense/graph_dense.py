@@ -207,7 +207,7 @@ class GraphDenseParameter(GraphGrammar):
             return False
         return (
             self.num_nodes == other.num_nodes
-            and self.edge_list == other.edge_list
+            # and self.edge_list == other.edge_list # TODO: make this work ?
             and self.edge_choices == other.edge_choices
             and self.graph_repr == other.graph_repr
         )

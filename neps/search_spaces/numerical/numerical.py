@@ -4,8 +4,9 @@ from ..parameter import Parameter
 
 
 class NumericalParameter(Parameter):
-    def __init__(self):
+    def __init__(self, value=None):
         super().__init__()
+        self.value = value
 
     @property
     def id(self):
@@ -22,3 +23,9 @@ class NumericalParameter(Parameter):
     @abstractmethod
     def _inv_transform(self):
         raise NotImplementedError
+
+    def serialize(self):
+        return self.value
+
+    def load_from(self, value):
+        self.value = value

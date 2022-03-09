@@ -212,21 +212,12 @@ class BayesianOptimization(metahyper.Sampler):
                 patience=self.patience, use_user_priors=True
             )
         elif len(self.pending_evaluations) > 0:
-            pending_evaluation_ids = [
-                pend_eval.id[0]
-                if len(pend_eval.id) == 0
-                else "-".join(map(str, pend_eval.id))
-                for pend_eval in self.pending_evaluations
-            ]
             for _ in range(self.patience):
                 model_sample, _, _ = self.acquisition_function_opt.sample(
                     self.n_candidates, 1
                 )
                 config = model_sample[0]
-                config_id = (
-                    config.id if len(config.id) == 0 else "-".join(map(str, config.id))
-                )
-                if config_id not in pending_evaluation_ids:  # Is this still working?
+                if config not in self.pending_evaluations:
                     break
             else:
                 config = self.pipeline_space.sample_new(
@@ -320,4 +311,4 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         config = "TODO"
         config_id = "TODO"  # Needs to take budget level into account now
 
-        return config, config_id, previous_config_id
+        return config, config_id, previous_config_id  # type: ignore

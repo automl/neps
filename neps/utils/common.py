@@ -18,6 +18,7 @@ def get_fun_args_and_defaults(function: Callable):
         if v.default is not inspect.Parameter.empty
     }
 
+
 def has_instance(collection, *types):
     return any([isinstance(el, typ) for el in collection for typ in types])
 

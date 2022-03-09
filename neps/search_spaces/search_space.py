@@ -194,10 +194,6 @@ class SearchSpace(collections.abc.Mapping):
     def get_graphs(self):
         return [graph.value for graph in self._graphs]
 
-    @property
-    def id(self):
-        return [hp.id for hp in self.get_array()]
-
     def get_hps(self):
         # Numerical hyperparameters are split into:
         # - categorical HPs

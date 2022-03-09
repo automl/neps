@@ -157,9 +157,3 @@ class FloatParameter(NumericalParameter):
             raise ValueError("Float parameter value is NaN!")
 
         self.value = self.value * (self.upper - self.lower) + self.lower
-
-    def serialize(self):
-        return self.value
-
-    def load_from(self, value):
-        self.value = value

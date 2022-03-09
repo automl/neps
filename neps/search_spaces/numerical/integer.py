@@ -68,12 +68,6 @@ class IntegerParameter(FloatParameter):
         self.fp._inv_transform()  # pylint: disable=protected-access
         self.value = int(round(self.fp.value))
 
-    def serialize(self):
-        return self.value
-
-    def load_from(self, value):
-        self.value = value
-
 
 def float_to_integer(float_hp):
     int_hp = IntegerParameter(
