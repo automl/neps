@@ -59,6 +59,7 @@ class BayesianOptimization(metahyper.Sampler):
         verbose: bool = False,
         return_opt_details: bool = False,
         cost_function: None | Mapping = None,  # pylint: disable=unused-argument
+        max_cost_total: None | int | float = None,  # pylint: disable=unused-argument
     ):
         """Initialise the BO loop.
 
@@ -83,6 +84,7 @@ class BayesianOptimization(metahyper.Sampler):
             verbose: Print details on stdout
             return_opt_details: Not used for now
             cost_function: Not used for now
+            max_cost_total: TODO(Jan)
 
         Raises:
             Exception: if no kernel is provided

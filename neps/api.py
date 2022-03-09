@@ -96,6 +96,7 @@ def run(
     overwrite_working_directory: bool = False,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
+    max_cost_total: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
     run_pipeline_args: Iterable | None = None,
@@ -120,6 +121,7 @@ def run(
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
+        max_cost_total: TODO(Jan)
         continue_until_max_evaluation_completed: If true, only stop after
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
@@ -191,12 +193,17 @@ def run(
         raise TypeError(message) from e
 
     if searcher == "bayesian_optimization":
-        sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
+        sampler = BayesianOptimization(
+            pipeline_space=pipeline_space,
+            max_cost_total=max_cost_total,
+            **searcher_kwargs,
+        )
     elif searcher == "random_search":
         sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
     else:
         raise ValueError(f"Unknown searcher: {searcher}")
 
+    # TODO(Jan): pass cost to metahyper and implement stopping
     metahyper.run(
         run_pipeline,
         sampler,
