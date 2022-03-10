@@ -35,7 +35,9 @@ def get_rnd_state() -> dict:
         "torch_seed_state": torch.random.get_rng_state().tolist(),
     }
     if torch.cuda.is_available():
-        state["torch_cuda_seed_state"] = torch.cuda.get_rng_state_all().tolist()
+        state["torch_cuda_seed_state"] = [
+            dev.tolist() for dev in torch.cuda.get_rng_state_all()
+        ]
     return state
 
 
@@ -45,4 +47,6 @@ def set_rnd_state(state: dict):
     np.random.set_state(tuple(state["np_seed_state"]))
     torch.random.set_rng_state(torch.ByteTensor(state["torch_seed_state"]))
     if torch.cuda.is_available():
-        torch.cuda.set_rng_state_all(torch.ByteTensor(state["torch_cuda_seed_state"]))
+        torch.cuda.set_rng_state_all(
+            [torch.ByteTensor(dev) for dev in state["torch_cuda_seed_state"]]
+        )

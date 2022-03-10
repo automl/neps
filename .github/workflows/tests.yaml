@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - '**.py'
+      - 'pyproject.toml'
   workflow_dispatch:
 
 jobs:
