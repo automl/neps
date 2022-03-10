@@ -10,6 +10,9 @@ __pycache__
 # slurm scripts
 slurm_scripts/*
 
+# Documentation
+site/*
+
 # IDE related
 .vscode/
 .idea/

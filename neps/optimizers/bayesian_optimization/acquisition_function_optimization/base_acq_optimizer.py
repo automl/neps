@@ -17,9 +17,6 @@ class AcquisitionOptimizer:
     def sample(self, pool_size: int, batch_size: int = None):
         raise NotImplementedError
 
-    def reset_surrogate_model(self, surrogate_model) -> None:
-        self.acquisition_function.reset_surrogate_model(surrogate_model)
-
     def reset_XY(self, x: Iterable, y: Union[Iterable, torch.Tensor]) -> None:
         self.x = x
         self.y = y

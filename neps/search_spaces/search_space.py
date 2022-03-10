@@ -54,6 +54,7 @@ class SearchSpace(collections.abc.Mapping):
         self._graphs = []
 
         self.fidelity = None
+        self.has_prior = False
         for key, hyperparameter in hyperparameters.items():
             self.hyperparameters[key] = hyperparameter
 
@@ -68,9 +69,20 @@ class SearchSpace(collections.abc.Mapping):
                     raise ValueError(
                         "neps only supports one fidelity parameter in the pipeline space,"
                         " but multiple were given. (Hint: check you pipeline space for "
-                        "multiple is_fidelity=True"
+                        "multiple is_fidelity=True)"
                     )
                 self.fidelity = hyperparameter
+
+            # Check if defaults exists to construct prior from
+            if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
+                self.has_prior = True
+
+    def compute_prior(self):
+        density_value = 1
+        for hyperparameter in self.hyperparameters.values():
+            if hyperparameter.has_prior:
+                density_value *= hyperparameter.compute_prior()
+        return density_value
 
     def has_fidelity(self):
         return self.fidelity is not None
@@ -182,10 +194,6 @@ class SearchSpace(collections.abc.Mapping):
     def get_graphs(self):
         return [graph.value for graph in self._graphs]
 
-    @property
-    def id(self):
-        return [hp.id for hp in self.get_array()]
-
     def get_hps(self):
         # Numerical hyperparameters are split into:
         # - categorical HPs
@@ -205,19 +213,6 @@ class SearchSpace(collections.abc.Mapping):
 
     def get_array(self):
         return list(self.hyperparameters.values())
-
-    def get_dictionary(self):
-        return dict(zip(self.hyperparameters.keys(), self.id))
-
-    def create_from_id(self, config: dict):
-        self._hps = []
-        self._graphs = []
-        for name in config.keys():
-            self.hyperparameters[name].create_from_id(config[name])
-            if isinstance(self.hyperparameters[name], NumericalParameter):
-                self._hps.append(self.hyperparameters[name])
-            else:
-                self._graphs.append(self.hyperparameters[name])
 
     def add_constant_hyperparameter(self, value=None):
         if value is not None:
@@ -243,6 +238,19 @@ class SearchSpace(collections.abc.Mapping):
         for k, v in hps.items():
             d[k] = 0 if v is None else len(v)
         return d
+
+    def serialize(self):
+        return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
+
+    def load_from(self, config: dict):
+        self._hps = []
+        self._graphs = []
+        for name in config.keys():
+            self.hyperparameters[name].load_from(config[name])
+            if isinstance(self.hyperparameters[name], NumericalParameter):
+                self._hps.append(self.hyperparameters[name])
+            else:
+                self._graphs.append(self.hyperparameters[name])
 
     def __getitem__(self, key):
         hp = self.hyperparameters[key]

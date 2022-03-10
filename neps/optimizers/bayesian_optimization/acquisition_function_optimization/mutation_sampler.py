@@ -1,10 +1,36 @@
-from typing import Tuple
+from __future__ import annotations
+
+from typing import Iterable
 
 import numpy as np
+import torch
 
 from ..acquisition_functions.base_acquisition import BaseAcquisition
 from .base_acq_optimizer import AcquisitionOptimizer
 from .random_sampler import RandomSampler
+
+
+def _propose_location(
+    acquisition_function,
+    candidates: list,
+    top_n: int = 5,
+    return_distinct: bool = True,
+) -> tuple[Iterable, np.ndarray, np.ndarray]:
+    """top_n: return the top n candidates wrt the acquisition function."""
+    if return_distinct:
+        eis = acquisition_function.eval(candidates, asscalar=True)  # faster
+        eis_, unique_idx = np.unique(eis, return_index=True)
+        try:
+            i = np.argpartition(eis_, -top_n)[-top_n:]
+            indices = np.array([unique_idx[j] for j in i])
+        except ValueError:
+            eis = torch.tensor([acquisition_function.eval(c) for c in candidates])
+            _, indices = eis.topk(top_n)
+    else:
+        eis = torch.tensor([acquisition_function.eval(c) for c in candidates])
+        _, indices = eis.topk(top_n)
+    xs = [candidates[int(i)] for i in indices]
+    return xs, eis, indices
 
 
 class MutationSampler(AcquisitionOptimizer):
@@ -31,7 +57,7 @@ class MutationSampler(AcquisitionOptimizer):
 
     def sample(
         self, pool_size: int = 250, batch_size: int = 5
-    ) -> Tuple[list, list, np.ndarray]:
+    ) -> tuple[list, list, np.ndarray]:
         pool = self.create_pool(pool_size)
 
         if batch_size is None:
@@ -39,9 +65,12 @@ class MutationSampler(AcquisitionOptimizer):
         if batch_size is not None and self.acquisition_function is None:
             raise Exception("Mutation sampler has no acquisition function!")
 
-        samples, acq_vals, _ = self.acquisition_function.propose_location(
-            top_n=batch_size, candidates=pool
+        samples, acq_vals, _ = _propose_location(
+            acquisition_function=self.acquisition_function,
+            top_n=batch_size,
+            candidates=pool,
         )
+
         return samples, pool, acq_vals
 
     def create_pool(self, pool_size: int) -> list:
@@ -60,11 +89,6 @@ class MutationSampler(AcquisitionOptimizer):
             x for (_, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
         ][:n_best]
         evaluation_pool = []
-        eval_pool_ids = (
-            [x.id for x in self.x]
-            if not self.allow_isomorphism and self.check_isomorphism_history
-            else []
-        )
         per_arch = mutate_size // n_best
         for config in best_configs:
             n_child = 0
@@ -80,15 +104,11 @@ class MutationSampler(AcquisitionOptimizer):
                 if not self.allow_isomorphism:
                     # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs. For now we do not
                     # check the isomorphism in all of the previous graphs though
-                    if child.id == config.id:
-                        patience_ -= 1
-                        continue
-                    if child.id in eval_pool_ids:
+                    if child == config or child in evaluation_pool:
                         patience_ -= 1
                         continue
 
                 evaluation_pool.append(child)
-                eval_pool_ids.append(child.id)
                 n_child += 1
 
         # Fill missing pool with random samples

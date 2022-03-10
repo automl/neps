@@ -32,7 +32,7 @@ def status(
     working_directory = Path(working_directory)
 
     previous_results, pending_configs, pending_configs_free = read(
-        working_directory, logging.getLogger("neps.status")
+        working_directory, None, logging.getLogger("neps.status")
     )
     print(f"#Evaluated configs: {len(previous_results)}")
     print(f"#Pending configs: {len(pending_configs)}")

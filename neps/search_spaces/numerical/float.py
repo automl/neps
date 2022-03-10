@@ -25,6 +25,7 @@ class FloatParameter(NumericalParameter):
         self.default_confidence_score = dict(low=0.5, medium=0.25, high=0.125)[
             default_confidence
         ]
+        self.has_prior = self.default is not None
 
         self.is_fidelity = is_fidelity
 
@@ -67,16 +68,31 @@ class FloatParameter(NumericalParameter):
     def __copy__(self):
         return self.__class__(lower=self.lower, upper=self.upper, log=self.log)
 
-    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
+    def _get_low_high_default(self):
         if self.log:
-            low, high, default = self._lower, self._upper, self._default
+            return self._lower, self._upper, self._default
         else:
-            low, high, default = self.lower, self.upper, self.default
+            return self.lower, self.upper, self.default
 
-        if use_user_priors and default is not None:
-            std = (high - low) * self.default_confidence_score
-            a, b = (low - default) / std, (high - default) / std
-            dist = scipy.stats.truncnorm(a, b)  # dist.pdf(x) for pibo acq
+    def _get_truncnorm_prior_and_std(self):
+        low, high, default = self._get_low_high_default()
+        std = (high - low) * self.default_confidence_score
+        a, b = (low - default) / std, (high - default) / std
+        return scipy.stats.truncnorm(a, b), std
+
+    def compute_prior(self):
+        _, _, default = self._get_low_high_default()
+        value = np.log(self.value) if self.log else self.value
+        value -= default
+        dist, std = self._get_truncnorm_prior_and_std()
+        value /= std
+        return dist.pdf(value)
+
+    def sample(self, use_user_priors: bool = False):
+        low, high, default = self._get_low_high_default()
+
+        if use_user_priors and self.has_prior:
+            dist, std = self._get_truncnorm_prior_and_std()
             value = dist.rvs() * std + default
         else:
             value = np.random.uniform(low=low, high=high)
@@ -141,6 +157,3 @@ class FloatParameter(NumericalParameter):
             raise ValueError("Float parameter value is NaN!")
 
         self.value = self.value * (self.upper - self.lower) + self.lower
-
-    def create_from_id(self, identifier):
-        self.value = identifier

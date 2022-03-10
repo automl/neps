@@ -23,6 +23,7 @@ class CategoricalParameter(NumericalParameter):
         self.default_confidence_score = dict(low=1.1, medium=1.75, high=2.5)[
             default_confidence
         ]
+        self.has_prior = self.default is not None
 
         self.choices = list(choices)
         self.num_choices = len(self.choices)
@@ -49,14 +50,23 @@ class CategoricalParameter(NumericalParameter):
     def __copy__(self):
         return self.__class__(choices=self.choices)
 
+    def _compute_user_prior_probabilities(self):
+        # The default value should have "default_confidence_score" more probability than
+        # all the other values.
+        base_probability = 1 / (self.num_choices - 1 + self.default_confidence_score)
+        probabilities = [base_probability] * self.num_choices
+        default_index = self.choices.index(self.default)
+        probabilities[default_index] *= self.default_confidence_score
+        return probabilities
+
+    def compute_prior(self):
+        probabilities = self._compute_user_prior_probabilities()
+        default_index = self.choices.index(self.default)
+        return probabilities[default_index]
+
     def sample(self, use_user_priors: bool = False):
         if use_user_priors and self.default is not None:
-            # The default value should have "default_confidence_score" more probability than
-            # all the other values.
-            base_probability = 1 / (self.num_choices - 1 + self.default_confidence_score)
-            probabilities = [base_probability] * self.num_choices
-            default_index = self.choices.index(self.default)
-            probabilities[default_index] *= self.default_confidence_score
+            probabilities = self._compute_user_prior_probabilities()
         else:
             probabilities = self.probabilities
 
@@ -115,6 +125,3 @@ class CategoricalParameter(NumericalParameter):
 
     def _inv_transform(self):
         self.value = self.choices[int(self.value * self.num_choices)]
-
-    def create_from_id(self, identifier):
-        self.value = identifier

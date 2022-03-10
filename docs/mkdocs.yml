@@ -1,9 +1,0 @@
-site_name: NEPS Documentation
-docs_dir: site
-repo_url: https://github.com/automl/neps
-repo_name: automl/neps
-edit_uri: ""
-theme:
-  name: material
-  icon:
-    repo: fontawesome/brands/github

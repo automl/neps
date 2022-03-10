@@ -6,9 +6,11 @@ from .utils import extract_configs_hierarchy
 from .vectorial_kernels import HammingKernel, Stationary
 from .weisfilerlehman import GraphKernels
 
+
 # normalise weights in front of additive kernels
 def transform_weights(weights):
-    return torch.exp(weights)/ torch.sum(torch.exp(weights))
+    return torch.exp(weights) / torch.sum(torch.exp(weights))
+
 
 def _select_dimensions(k):
     if isinstance(k, HammingKernel):
@@ -79,7 +81,9 @@ class CombineKernel:
                     # assume the combined kernel list always start with graph kernels i.e. kernels=[graph kernels, hp kernels]
                     gr1_i = gr1[i]
                     k_i = k.fit_transform(
-                        [g[i] for g in gr1_i] if isinstance(gr1_i[0], (list, tuple)) else gr1_i,
+                        [g[i] for g in gr1_i]
+                        if isinstance(gr1_i[0], (list, tuple))
+                        else gr1_i,
                         rebuild_model=rebuild_model,
                         save_gram_matrix=save_gram_matrix,
                         gp_fit=gp_fit,
@@ -93,8 +97,12 @@ class CombineKernel:
                 # k_features.append([value.X.shape[1] for key, value in k.kern.X.items()])
 
             elif isinstance(k, Stationary) and None not in x1:
-                k_i = k.fit_transform(x1, rebuild_model=rebuild_model, save_gram_matrix=save_gram_matrix,
-                                l=feature_lengthscale)
+                k_i = k.fit_transform(
+                    x1,
+                    rebuild_model=rebuild_model,
+                    save_gram_matrix=save_gram_matrix,
+                    l=feature_lengthscale,
+                )
                 update_val = (weights[i] * k_i).double()
             else:
                 raise NotImplementedError(
@@ -142,11 +150,11 @@ class CombineKernel:
         gr1_single_hierarchy = gr1[hierarchy_id]
         weight_single_hierarchy = weights[hierarchy_id]
         k_raw = k_single_hierarchy.fit_transform(
-                    gr1_single_hierarchy,
-                    rebuild_model=rebuild_model,
-                    gp_fit=gp_fit,
-                    **kwargs,
-                )
+            gr1_single_hierarchy,
+            rebuild_model=rebuild_model,
+            gp_fit=gp_fit,
+            **kwargs,
+        )
         k_raw = k_raw.to(torch.float32)
         if normalize:
             K_diag = torch.sqrt(torch.diag(k_raw))

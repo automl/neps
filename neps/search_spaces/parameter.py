@@ -18,5 +18,16 @@ class Parameter:
         raise NotImplementedError
 
     @abstractmethod
-    def create_from_id(self, identifier):
+    def serialize(self):
         raise NotImplementedError
+
+    @abstractmethod
+    def load_from(self, data):
+        raise NotImplementedError
+
+    def compute_prior(self):  # pylint: disable=no-self-use
+        return 1
+
+    def __eq__(self, other):
+        # Assuming that two different classes should represent two different parameters
+        return isinstance(other, self.__class__) and self.serialize() == other.serialize()

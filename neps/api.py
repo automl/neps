@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import logging
+import warnings
+from functools import partial
 from pathlib import Path
 from typing import Callable, Iterable, Mapping
 
@@ -94,6 +96,7 @@ def run(
     overwrite_working_directory: bool = False,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
+    max_cost_total: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
     searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
     run_pipeline_args: Iterable | None = None,
@@ -118,6 +121,7 @@ def run(
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
+        max_cost_total: TODO(Jan)
         continue_until_max_evaluation_completed: If true, only stop after
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
@@ -129,7 +133,7 @@ def run(
 
     Raises:
         TypeError: If pipeline_space has invalid type.
-        ValueError: If searcher is unkown.
+        ValueError: If searcher is unknown.
 
     Example:
         >>> import neps
@@ -148,6 +152,25 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
+    # Deprecated arguments
+    if run_pipeline_args is not None:
+        warnings.warn(
+            "The run_pipeline_args will soon be removed, "
+            "functools.partial should be used instead",
+            FutureWarning,
+            stacklevel=2,
+        )
+        run_pipeline = partial(run_pipeline, *run_pipeline_args)
+    if run_pipeline_kwargs is not None:
+        warnings.warn(
+            "The run_pipeline_kwargs will soon be removed, "
+            "functools.partial should be used instead",
+            FutureWarning,
+            stacklevel=2,
+        )
+        run_pipeline = partial(run_pipeline, **run_pipeline_kwargs)
+
+    # Actual function start
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {working_directory}")
 
@@ -170,12 +193,17 @@ def run(
         raise TypeError(message) from e
 
     if searcher == "bayesian_optimization":
-        sampler = BayesianOptimization(pipeline_space=pipeline_space, **searcher_kwargs)
+        sampler = BayesianOptimization(
+            pipeline_space=pipeline_space,
+            max_cost_total=max_cost_total,
+            **searcher_kwargs,
+        )
     elif searcher == "random_search":
         sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
     else:
         raise ValueError(f"Unknown searcher: {searcher}")
 
+    # TODO(Jan): pass cost to metahyper and implement stopping
     metahyper.run(
         run_pipeline,
         sampler,
@@ -184,8 +212,7 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+        serializer="json",
         logger=logger,
-        evaluation_fn_args=run_pipeline_args,
-        evaluation_fn_kwargs=run_pipeline_kwargs,
         post_evaluation_hook=_post_evaluation_hook,
     )

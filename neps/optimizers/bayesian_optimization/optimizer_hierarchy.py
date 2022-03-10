@@ -33,7 +33,7 @@ class BayesianOptimization(metahyper.Sampler):
         domain_se_kernel: str = None,
         graph_kernels: list = None,
         hp_kernels: list = None,
-        early_hierarchies_considered: str = '0_1_2_3',
+        early_hierarchies_considered: str = "0_1_2_3",
         acquisition: str = "EI",
         acquisition_opt_strategy: str = "mutation",
         acquisition_opt_strategy_args: dict = None,
@@ -63,15 +63,17 @@ class BayesianOptimization(metahyper.Sampler):
         if acquisition_opt_strategy_args is None:
             acquisition_opt_strategy_args = {}
 
-        if early_hierarchies_considered == 'null':
+        if early_hierarchies_considered == "null":
             # only consider the final architecture (highest hierarchy)
             self.hierarchy_considered = []
             graph_kernels = ["wl"]
             wl_h = [2]
         else:
-            self.hierarchy_considered = [int(hl) for hl in early_hierarchies_considered.split('_')]
-            graph_kernels = ["wl"]*(len(self.hierarchy_considered)+1)
-            wl_h = [1] + [2]*len(self.hierarchy_considered)
+            self.hierarchy_considered = [
+                int(hl) for hl in early_hierarchies_considered.split("_")
+            ]
+            graph_kernels = ["wl"] * (len(self.hierarchy_considered) + 1)
+            wl_h = [1] + [2] * len(self.hierarchy_considered)
 
         # todo check these block of code
         if graph_kernels is None or not graph_kernels:
@@ -117,7 +119,7 @@ class BayesianOptimization(metahyper.Sampler):
             hp_kernels=hp_kernels,
             verbose=verbose,
             hierarchy_consider=self.hierarchy_considered,
-            d_graph_features=2, # set to 0 if not using additional graph topological features
+            d_graph_features=2,  # set to 0 if not using additional graph topological features
             vectorial_features=self.pipeline_space.get_vectorial_dim()
             if hasattr(self.pipeline_space, "get_vectorial_dim")
             else None,
@@ -178,7 +180,7 @@ class BayesianOptimization(metahyper.Sampler):
             self.surrogate_model.fit(**self.surrogate_model_fit_args)
         else:
             self.surrogate_model.fit()
-        self.acquisition_function_opt.reset_surrogate_model(self.surrogate_model)
+        self.acquisition_function_opt.acquisition_function.update(self.surrogate_model)
         self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
 
     def load_results(
@@ -252,73 +254,3 @@ class BayesianOptimization(metahyper.Sampler):
         torch.random.set_rng_state(state["torch_seed_state"])
         if torch.cuda.is_available():
             torch.cuda.set_rng_state_all(state["torch_cuda_seed_state"])
-
-
-# TODO(neps.api): this BO class gets used when
-# pipeline_space.has_fidelity() == True and BO is chosen
-# also when random_search is chosen, but then use no model
-class BayesianOptimizationMultiFidelity(BayesianOptimization):
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        initial_design_size: int = 10,
-        surrogate_model_fit_args: dict = None,
-        optimal_assignment: bool = False,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
-        acquisition: str = "EI",
-        acquisition_opt_strategy: str = "mutation",
-        acquisition_opt_strategy_args: dict = None,
-        n_candidates: int = 200,
-        random_interleave_prob: float = 0.0,
-        patience: int = 50,
-        verbose: bool = False,
-        return_opt_details: bool = False,
-        # TODO: add eta parameter
-    ):
-        super().__init__(
-            pipeline_space,
-            initial_design_size,
-            surrogate_model_fit_args,
-            optimal_assignment,
-            domain_se_kernel,
-            graph_kernels,
-            hp_kernels,
-            acquisition,
-            acquisition_opt_strategy,
-            acquisition_opt_strategy_args,
-            n_candidates,
-            random_interleave_prob,
-            patience,
-            verbose,
-            return_opt_details,
-        )
-
-        # TODO: set up rungs using eta and pipeline_space.fidelity
-
-    def load_results(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
-    ) -> None:
-        # TODO: Read in rungs using the config id (alternatively, use get/load state)
-        super().load_results(previous_results, pending_evaluations)
-
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        # 1. Check if any rung has enough configs to advance the best one to the next rung
-
-        # 2. If yes, sample this config and make sure to set previous_config_id correctly
-        # to the config that is continued. This is in case the budget is something like
-        # epochs and in case the user wants to load a checkpoint from the previous config
-        # dir.
-        previous_config_id = "TODO"
-
-        # 3. else: sample new config on lowest rung and make sure that the acquisition
-        # function is optimized always on the max fidelity only and set
-        # previous_config_id = None
-
-        config = "TODO"
-        config_id = "TODO"  # Needs to take budget level into account now
-
-        return config, config_id, previous_config_id

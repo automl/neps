@@ -5,7 +5,6 @@ from typing import Callable
 
 from .base_acquisition import *
 from .ei import *
-from .ucb import *
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
@@ -25,8 +24,5 @@ AcquisitionMapping: dict[str, Callable] = {
         ComprehensiveExpectedImprovement,
         in_fill="posterior",
         augmented_ei=True,
-    ),
-    "UCB": partial(
-        ComprehensiveUpperConfidentBound,
     ),
 }
