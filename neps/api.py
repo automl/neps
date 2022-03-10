@@ -100,7 +100,7 @@ def run(
     searcher: str | Any = "bayesian_optimization",
     run_pipeline_args: Iterable | None = None,  # TODO remove (deprecated)
     run_pipeline_kwargs: Mapping | None = None,  # TODO remove (deprecated)
-    serializer="json",
+    serializer="yaml",
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
