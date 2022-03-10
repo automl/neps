@@ -1,5 +1,5 @@
 import inspect
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 
 from .graph import Graph
 
@@ -64,6 +64,16 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
         return type(self).__name__
 
 
+class AbstractVariableTopology(AbstractTopology):
+    def __init__(self, name: str = None, scope: str = None):
+        super().__init__(name, scope)
+
+    @abstractmethod
+    @staticmethod
+    def get_edge_list(**kwargs):
+        raise NotImplementedError
+
+
 class Linear(AbstractTopology):
     edge_list = [
         (1, 2),
@@ -85,9 +95,13 @@ class LinearNNode(AbstractTopology):
         super().__init__()
 
         self.name = f"linear_{number_of_nodes}_node"
-        self.edge_list = [(i + 1, i + 2) for i in range(number_of_nodes)]
+        self.edge_list = self.get_edge_list(number_of_nodes=number_of_nodes)
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
         self.set_scope(self.name)
+
+    @staticmethod
+    def get_edge_list(number_of_nodes: int):
+        return [(i + 1, i + 2) for i in range(number_of_nodes)]
 
 
 class Residual(AbstractTopology):
@@ -133,13 +147,15 @@ class DenseNNodeDAG(AbstractTopology):
     def __init__(self, *edge_vals, number_of_nodes: int):
         super().__init__()
 
-        self.edge_list = [
-            (i + 1, j + 1) for j in range(number_of_nodes) for i in range(j)
-        ]
+        self.edge_list = self.get_edge_list(number_of_nodes=number_of_nodes)
 
         self.name = f"dense_{number_of_nodes}_node_dag"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
         self.set_scope(self.name)
+
+    @staticmethod
+    def get_edge_list(number_of_nodes: int):
+        return [(i + 1, j + 1) for j in range(number_of_nodes) for i in range(j)]
 
 
 class DownsampleBlock(AbstractTopology):

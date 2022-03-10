@@ -38,6 +38,7 @@ types-tabulate = "^0.8.4"
 types-termcolor = "^1.1.2"
 types-Deprecated = "^1.2.3"
 scipy = "^1.7"
+py = "^1.11.0"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
