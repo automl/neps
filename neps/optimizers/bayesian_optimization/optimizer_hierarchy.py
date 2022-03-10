@@ -17,8 +17,8 @@ from ...search_spaces import (
 )
 from ...search_spaces.search_space import SearchSpace
 from ...utils.result_utils import get_loss
-from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_functions import AcquisitionMapping
+from .acquisition_samplers import AcquisitionSamplerMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp_hierarchy import ComprehensiveGP
 
@@ -128,8 +128,8 @@ class BayesianOptimization(metahyper.Sampler):
             surrogate_model=self.surrogate_model
         )
 
-        if acquisition_opt_strategy in AcquisitionOptimizerMapping.keys():
-            acquisition_function_opt_cls = AcquisitionOptimizerMapping[
+        if acquisition_opt_strategy in AcquisitionSamplerMapping.keys():
+            acquisition_function_opt_cls = AcquisitionSamplerMapping[
                 acquisition_opt_strategy
             ]
             arg_names, _ = _get_args_and_defaults(
@@ -197,13 +197,13 @@ class BayesianOptimization(metahyper.Sampler):
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
         if len(self.train_x) == 0:
             # TODO: if default config sample it
-            config = self.pipeline_space.sample_new(
+            config = self.pipeline_space.copy().sample(
                 patience=self.patience, use_user_priors=True
             )
         elif random.random() < self.random_interleave_prob:
-            config = self.pipeline_space.sample_new(patience=self.patience)
+            config = self.pipeline_space.copy().sample(patience=self.patience)
         elif len(self.train_x) < self.initial_design_size:
-            config = self.pipeline_space.sample_new(
+            config = self.pipeline_space.copy().sample(
                 patience=self.patience, use_user_priors=True
             )
         elif len(self.pending_evaluations) > 0:
@@ -226,7 +226,7 @@ class BayesianOptimization(metahyper.Sampler):
                     break
                 _patience -= 1
             if _patience == 0:
-                config = self.pipeline_space.sample_new(
+                config = self.pipeline_space.copy().sample(
                     patience=self.patience, use_user_priors=True
                 )
         else:

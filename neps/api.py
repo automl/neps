@@ -7,11 +7,11 @@ import logging
 import warnings
 from functools import partial
 from pathlib import Path
-from typing import Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 import ConfigSpace as CS
 import metahyper
-from typing_extensions import Literal
+from metahyper.api import instance_from_map
 
 from .search_spaces.parameter import Parameter
 
@@ -22,8 +22,7 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message) from None
 
-from .optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from .optimizers.random_search.optimizer import RandomSearch
+from .optimizers import SearcherMapping
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
 
 
@@ -98,9 +97,10 @@ def run(
     max_evaluations_per_run: int | None = None,
     max_cost_total: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
-    searcher: Literal["bayesian_optimization", "random_search"] = "bayesian_optimization",
-    run_pipeline_args: Iterable | None = None,
-    run_pipeline_kwargs: Mapping | None = None,
+    searcher: str | Any = "bayesian_optimization",
+    run_pipeline_args: Iterable | None = None,  # TODO remove (deprecated)
+    run_pipeline_kwargs: Mapping | None = None,  # TODO remove (deprecated)
+    serializer="json",
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -130,10 +130,11 @@ def run(
         run_pipeline_kwargs: Keywoard arguments that are passed to run_pipeline.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
+        serializer: Serializer to store hyperparameters configurations. Can be an object,
+            or a value in 'json', 'yaml' or 'dill' (see metahyper).
 
     Raises:
         TypeError: If pipeline_space has invalid type.
-        ValueError: If searcher is unknown.
 
     Example:
         >>> import neps
@@ -152,7 +153,7 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
-    # Deprecated arguments
+    # Deprecated arguments (TODO: remove later)
     if run_pipeline_args is not None:
         warnings.warn(
             "The run_pipeline_args will soon be removed, "
@@ -169,8 +170,8 @@ def run(
             stacklevel=2,
         )
         run_pipeline = partial(run_pipeline, **run_pipeline_kwargs)
+    # End of deprecated arguments
 
-    # Actual function start
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {working_directory}")
 
@@ -192,16 +193,11 @@ def run(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if searcher == "bayesian_optimization":
-        sampler = BayesianOptimization(
-            pipeline_space=pipeline_space,
-            max_cost_total=max_cost_total,
-            **searcher_kwargs,
-        )
-    elif searcher == "random_search":
-        sampler = RandomSearch(pipeline_space=pipeline_space)  # type: ignore[assignment]
-    else:
-        raise ValueError(f"Unknown searcher: {searcher}")
+    sampler = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
+        pipeline_space=pipeline_space,
+        max_cost_total=max_cost_total,
+        **searcher_kwargs,
+    )
 
     # TODO(Jan): pass cost to metahyper and implement stopping
     metahyper.run(
@@ -212,7 +208,7 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
-        serializer="json",
+        serializer=serializer,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook,
     )

@@ -87,25 +87,19 @@ class SearchSpace(collections.abc.Mapping):
     def has_fidelity(self):
         return self.fidelity is not None
 
-    def sample_new(
-        self, patience: int = 100, use_user_priors: bool = False
-    ) -> SearchSpace:
-        patience_ = patience
-        while patience_ > 0:
-            try:
-                new_config = deepcopy(self)
-                new_config.sample(use_user_priors=use_user_priors)
-                break
-            except ValueError:
-                patience_ -= 1
-        else:
-            raise ValueError(f"Could not sample valid config in {patience} tries!")
-
-        return new_config
-
-    def sample(self, use_user_priors: bool = False):
-        for hyperparameter in self.hyperparameters.values():
-            hyperparameter.sample(use_user_priors=use_user_priors)
+    def sample(self, use_user_priors: bool = False, patience: int = 1) -> SearchSpace:
+        for hp_name, hyperparameter in self.hyperparameters.items():
+            for _ in range(patience):
+                try:
+                    hyperparameter.sample(use_user_priors=use_user_priors)
+                    break
+                except ValueError:
+                    pass
+            else:
+                raise ValueError(
+                    f"Could not sample valid config for {hp_name} in {patience} tries!"
+                )
+        return self
 
     def mutate(
         self,
@@ -128,12 +122,11 @@ class SearchSpace(collections.abc.Mapping):
         idx = random.randint(0, self._num_hps - 1)
         hp = new_config[idx]
 
-        while patience > 0:
+        for _ in range(patience):
             try:
                 new_config[idx] = hp.mutate()
                 break
             except Exception:
-                patience -= 1
                 continue
         return new_config
 
@@ -251,6 +244,9 @@ class SearchSpace(collections.abc.Mapping):
                 self._hps.append(self.hyperparameters[name])
             else:
                 self._graphs.append(self.hyperparameters[name])
+
+    def copy(self):
+        return deepcopy(self)
 
     def __getitem__(self, key):
         hp = self.hyperparameters[key]

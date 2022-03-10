@@ -25,6 +25,9 @@ class CombineKernel:
         *kernels: list,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        if combined_by not in ["sum", "product"]:
+            raise ValueError(f"Invalid value for combined_by ({combined_by})")
+
         self.has_graph_kernels = False
         self.has_vector_kernels = False
         self.lengthscale_bounds = (None, None)
@@ -38,7 +41,6 @@ class CombineKernel:
         # Store the training graphs and vector features..
         self._gram = None
         self.gr, self.x = None, None
-        assert combined_by in ["sum", "product"]
         self.combined_by = combined_by
 
     def fit_transform(
@@ -143,7 +145,7 @@ class CombineKernel:
         # N = len(configs)
         # K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1, x1 = extract_configs_hierarchy(configs)
+        gr1, _ = extract_configs_hierarchy(configs)
         # get the corresponding graph kernel and hierarchy graph data
         graph_kernel_list = [k for k in self.kernels if isinstance(k, GraphKernels)]
         k_single_hierarchy = graph_kernel_list[hierarchy_id]
@@ -169,9 +171,9 @@ class CombineKernel:
         weights: torch.Tensor,
         configs: list,
         x=None,
-        feature_lengthscale=None,
+        feature_lengthscale=None,  # pylint: disable=unused-argument
     ):
-        # TODO Seem transform function not used at all
+        # TODO Seems transform function not used at all
         if self._gram is None:
             raise ValueError(
                 "The kernel has not been fitted. Call fit_transform first to generate the training Gram"

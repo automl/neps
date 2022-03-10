@@ -23,7 +23,7 @@ class ComprehensiveGP:
         weights=None,
         vectorial_features: list = None,
         combined_kernel: str = "sum",
-        verbose: bool = False,
+        logger=None,
     ):
         self.likelihood = likelihood
 
@@ -71,8 +71,8 @@ class ComprehensiveGP:
                 f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" '
                 f'or "product" are currently supported. '
             )
-        # Verbose mode
-        self.verbose = verbose
+
+        self.logger = logger or logging.getLogger("neps")
         # Cache the Gram matrix inverse and its log-determinant
         self.K, self.K_i, self.logDetK = [None] * 3
         self.theta_vector = None
@@ -103,7 +103,7 @@ class ComprehensiveGP:
                     lengthscales=lengthscale_,
                 )
             else:
-                logging.warning(
+                self.logger.warning(
                     "(Graph) kernel optimisation for "
                     + type(k).__name__
                     + " not implemented yet."
@@ -213,17 +213,11 @@ class ComprehensiveGP:
                 K_i, logDetK = compute_pd_inverse(K, likelihood)
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
                 nlml.backward(create_graph=True)
-                if self.verbose and i % 10 == 0:
-                    print(
-                        "Iteration:",
-                        i,
-                        "/",
-                        iters,
-                        "Negative log-marginal likelihood:",
-                        nlml.item(),
-                        theta_vector,
-                        weights,
-                        likelihood,
+                if i % 10 == 0:
+                    self.logger.info(
+                        f"Iteration: {i}/{iters} "
+                        f"Negative log-marginal likelihood:"
+                        f"{nlml.item()} {theta_vector} {weights} {likelihood}"
                     )
                 optim.step()  # TODO
                 with torch.no_grad():
@@ -256,20 +250,21 @@ class ComprehensiveGP:
                 k.update_hyperparameters(lengthscale=theta_vector)
 
         self.combined_kernel.weights = weights.clone()
-        if self.verbose:
-            print("Optimisation summary: ")
-            print("Optimal NLML: ", nlml)
-            print("Lengthscales: ", theta_vector)
-            try:
-                print(
-                    "Optimal h: ",
-                    self.domain_kernels[0]._h,  # pylint: disable=protected-access
-                )
-            except AttributeError:
-                pass
-            print("Weights: ", self.weights)
-            print("Lik:", self.likelihood)
-            print("Optimal layer weights", layer_weights)
+
+        self.logger.info("Optimisation summary: ")
+        self.logger.info(
+            f"Optimal NLML: {nlml}",
+        )
+        self.logger.info(f"Lengthscales: {theta_vector}")
+        try:
+            self.logger.info(
+                f"Optimal h: {self.domain_kernels[0]._h}",  # pylint: disable=protected-access
+            )
+        except AttributeError:
+            pass
+        self.logger.info(f"Weights: {self.weights}")
+        self.logger.info(f"Lik: {self.likelihood}")
+        self.logger.info(f"Optimal layer weights {layer_weights}")
 
     def predict(self, x_configs, preserve_comp_graph: bool = False):
         """Kriging predictions"""
@@ -504,18 +499,17 @@ def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
 
 
 # Optimize Graph kernel
-def getBack(var_grad_fn):
-    print(var_grad_fn)
+def getBack(var_grad_fn, logger):
+    logger.info(var_grad_fn)
     for n in var_grad_fn.next_functions:
         if n[0]:
             try:
                 tensor = getattr(n[0], "variable")
-                print(n[0])
-                print("Tensor with grad found:", tensor)
-                print(" - gradient:", tensor.grad)
-                print()
+                logger.info(n[0])
+                logger.info(f"Tensor with grad found: {tensor}")
+                logger.info(f" - gradient: {tensor.grad}")
             except AttributeError:
-                getBack(n[0])
+                getBack(n[0], logger)
 
 
 def _grid_search_wl_kernel(
@@ -552,17 +546,17 @@ def _grid_search_wl_kernel(
             k.change_se_params({"lengthscale": i[1]})
         k.change_kernel_params({"h": i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
-        # print(K)
+        # self.logger.debug(K)
         K_i, logDetK = compute_pd_inverse(K, lik)
-        # print(train_y)
+        # self.logger.debug(train_y)
         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
-        # print(i, nlml)
+        # self.logger.debug(f"{i} {nlml}")
         if nlml < best_nlml:
             best_nlml = nlml
             best_subtree_depth, best_lengthscale = i
             best_K = torch.clone(K)
-    # print("h: ", best_subtree_depth, "theta: ", best_lengthscale)
-    # print(best_subtree_depth)
+    # self.logger.debug(f"h: {best_subtree_depth} theta: {best_lengthscale}")
+    # self.logger.debug(best_subtree_depth)
     k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})
@@ -669,7 +663,7 @@ def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
         except RuntimeError:
             fail_count += 1
     if not is_successful:
-        print(K)
+        logging.error(K)
         raise RuntimeError("Gram matrix not positive definite despite of jitter")
     logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
     K_i = torch.cholesky_inverse(Kc)

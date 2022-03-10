@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import random
-from copy import deepcopy
+import warnings
 from typing import Any, Mapping
 
-import metahyper
-import torch
-from metahyper.api import ConfigResult
+from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces import (
     CategoricalParameter,
@@ -15,21 +12,16 @@ from ...search_spaces import (
     IntegerParameter,
 )
 from ...search_spaces.search_space import SearchSpace
-from ...utils.common import (
-    get_fun_args_and_defaults,
-    get_rnd_state,
-    has_instance,
-    set_rnd_state,
-)
-from ...utils.result_utils import get_loss
-from .acquisition_function_optimization import AcquisitionOptimizerMapping
+from ...utils.common import get_fun_args_and_defaults, has_instance
+from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
+from .acquisition_samplers import AcquisitionSamplerMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models.gp import ComprehensiveGP
 
 
-class BayesianOptimization(metahyper.Sampler):
+class BayesianOptimization(BaseOptimizer):
     """Implements the basic BO loop.
 
     Attributes:
@@ -50,16 +42,17 @@ class BayesianOptimization(metahyper.Sampler):
         domain_se_kernel: str = None,
         graph_kernels: list = None,
         hp_kernels: list = None,
-        acquisition: str = "EI",
-        acquisition_opt_strategy: str = "mutation",
-        acquisition_opt_strategy_args: dict = None,
-        n_candidates: int = 200,
+        acquisition: str | Any = "EI",
+        acquisition_sampler: str | Any = "mutation",
+        acquisition_opt_strategy: str = None,  # TODO remove (deprecated because renamed)
+        acquisition_opt_strategy_args: dict = None,  # TODO remove (deprecated)
+        n_candidates: int = None,  # TODO remove (deprecated)
         random_interleave_prob: float = 0.0,
         patience: int = 50,
-        verbose: bool = False,
-        return_opt_details: bool = False,
+        verbose: bool = None,  # TODO remove (deprecated)
         cost_function: None | Mapping = None,  # pylint: disable=unused-argument
         max_cost_total: None | int | float = None,  # pylint: disable=unused-argument
+        logger=None,
     ):
         """Initialise the BO loop.
 
@@ -75,28 +68,70 @@ class BayesianOptimization(metahyper.Sampler):
             graph_kernels: Kernels for NAS
             hp_kernels: Kernels for HPO
             acquisition: Acquisition strategy
-            acquisition_opt_strategy: Acquisition function fetching strategy
-            acquisition_opt_strategy_args: Arguments for the acquisition strategy function
-            n_candidates: Number of configurations sampled
+            acquisition_sampler: Acquisition function fetching strategy
             random_interleave_prob: Frequency at which random configurations are sampled
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
-            verbose: Print details on stdout
-            return_opt_details: Not used for now
             cost_function: Not used for now
             max_cost_total: TODO(Jan)
+            logger: logger object, or None to use the neps logger
+            acquisition_opt_strategy: deprecated
+            acquisition_opt_strategy_args: deprecated
+            n_candidates: deprecated
+            verbose: deprecated
 
         Raises:
             Exception: if no kernel is provided
             ValueError: if a string is not in a mapping
         """
 
-        assert 0 <= random_interleave_prob <= 1
+        # Deprecated arguments (TODO: remove later)
+        if acquisition_opt_strategy is not None:
+            warnings.warn(
+                "The acquisition_opt_strategy will soon be removed, "
+                "use acquisition_sampler instead. Changed for better name"
+                "coherence.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            acquisition_sampler = acquisition_opt_strategy
+        if acquisition_opt_strategy_args is not None:
+            warnings.warn(
+                "acquisition_opt_strategy_args will soon be removed, "
+                "you can directly instantiate an AcquisitionSampler instead",
+                FutureWarning,
+                stacklevel=2,
+            )
+            if acquisition_opt_strategy not in AcquisitionSamplerMapping:
+                raise ValueError(
+                    f"Acquisition optimization strategy {acquisition_opt_strategy} is not "
+                    f"defined!"
+                )
+            acquisition_sampler_cls = AcquisitionSamplerMapping[acquisition_sampler]
+            arg_names, _ = get_fun_args_and_defaults(
+                acquisition_sampler_cls.__init__  # type: ignore[misc]
+            )
+            if not all(k in arg_names for k in acquisition_opt_strategy_args):
+                raise ValueError("Parameter mismatch")
+            acquisition_sampler = acquisition_sampler_cls(
+                **acquisition_opt_strategy_args,
+            )
+        if verbose is not None:
+            warnings.warn(
+                "The verbose flag does nothing and will be removed soon.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        # End of deprecated arguments
 
-        super().__init__()
+        if initial_design_size < 1:
+            raise ValueError(
+                "BayesianOptimization need initial_design_size to be at least 1"
+            )
 
-        self.pipeline_space = pipeline_space
-        acquisition_opt_strategy_args = acquisition_opt_strategy_args or {}
+        super().__init__(
+            pipeline_space, initial_design_size, random_interleave_prob, patience, logger
+        )
 
         if not graph_kernels:
             graph_kernels = []
@@ -113,65 +148,53 @@ class BayesianOptimization(metahyper.Sampler):
                 hp_kernels.append("hm")
 
         graph_kernels = [
-            GraphKernelMapping[kernel](
+            instance_from_map(GraphKernelMapping, kernel, "kernel", as_class=True)(
                 oa=optimal_assignment,
-                se_kernel=None
-                if domain_se_kernel is None
-                else StationaryKernelMapping[domain_se_kernel],
+                se_kernel=instance_from_map(
+                    StationaryKernelMapping, domain_se_kernel, "se kernel"
+                ),
             )
             for kernel in graph_kernels
         ]
-        hp_kernels = [StationaryKernelMapping[kernel]() for kernel in hp_kernels]
+        hp_kernels = [
+            instance_from_map(StationaryKernelMapping, kernel, "kernel")
+            for kernel in hp_kernels
+        ]
 
         if not graph_kernels and not hp_kernels:
             raise Exception("No kernels are provided!")
-        if acquisition not in AcquisitionMapping:
-            raise ValueError(f"Acquisition function {acquisition} is not defined!")
-        if acquisition_opt_strategy not in AcquisitionOptimizerMapping:
-            raise ValueError(
-                f"Acquisition optimization strategy {acquisition_opt_strategy} is not "
-                f"defined!"
-            )
 
         self.surrogate_model = ComprehensiveGP(
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
-            verbose=verbose,
-            vectorial_features=self.pipeline_space.get_vectorial_dim()
-            if hasattr(self.pipeline_space, "get_vectorial_dim")
-            else None,
+            vectorial_features=self.pipeline_space.get_vectorial_dim(),
         )
-        acquisition_function = AcquisitionMapping[acquisition](
-            surrogate_model=self.surrogate_model
+        self.acquisition = instance_from_map(
+            AcquisitionMapping,
+            acquisition,
+            name="acquisition function",
+        )
+        self.acquisition_sampler = instance_from_map(
+            AcquisitionSamplerMapping,
+            acquisition_sampler,
+            name="acquisition sampler function",
+            kwargs={"patience": self.patience},
         )
         if self.pipeline_space.has_prior:
-            acquisition_function = DecayingPriorWeightedAcquisition(acquisition_function)
+            self.acquisition = DecayingPriorWeightedAcquisition(self.acquisition)
 
-        acquisition_function_opt_cls = AcquisitionOptimizerMapping[
-            acquisition_opt_strategy
-        ]
-        arg_names, _ = get_fun_args_and_defaults(
-            acquisition_function_opt_cls.__init__  # type: ignore[misc]
-        )
-        if not all(k in arg_names for k in acquisition_opt_strategy_args):
-            raise ValueError("Parameter mismatch")
-        self.acquisition_function_opt = acquisition_function_opt_cls(
-            self.pipeline_space,
-            acquisition_function,
-            **acquisition_opt_strategy_args,
-        )
-
-        self.random_interleave_prob = random_interleave_prob
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}
-        self.initial_design_size = initial_design_size
-        self.n_candidates = n_candidates
-        self.patience = patience
-        self.return_opt_details = return_opt_details
 
-        self.train_x: list = []
-        self.train_y: list | torch.Tensor = []
-
-        self.pending_evaluations: list = []
+        # Deprecated arguments (TODO: remove later)
+        if n_candidates is not None:
+            warnings.warn(
+                "The n_candidates argument will soon be removed, "
+                "use the pool_size argument of the acquisition sampler",
+                FutureWarning,
+                stacklevel=2,
+            )
+            self.acquisition_sampler.pool_size = n_candidates
+        # End of deprecated arguments
 
     def _update_model(self) -> None:
         """Updates the surrogate model and the acquisition function (optimizer)."""
@@ -187,63 +210,11 @@ class BayesianOptimization(metahyper.Sampler):
 
         self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
         self.surrogate_model.fit(**self.surrogate_model_fit_args)
-        self.acquisition_function_opt.acquisition_function.update(self.surrogate_model)
-        self.acquisition_function_opt.reset_XY(x=train_x, y=train_y)
+        self.acquisition.fit_on_model(self.surrogate_model)
+        self.acquisition_sampler.work_with(self.pipeline_space, x=train_x, y=train_y)
 
-    def load_results(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
-    ) -> None:
-        self.train_x = [el.config for el in previous_results.values()]
-        self.train_y = [get_loss(el.result) for el in previous_results.values()]
-        self.pending_evaluations = [el for el in pending_evaluations.values()]
-        if len(self.train_x) >= self.initial_design_size:
-            self._update_model()
-
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        if len(self.train_x) == 0:
-            # TODO: if default config sample it
-            config = self.pipeline_space.sample_new(
-                patience=self.patience, use_user_priors=True
-            )
-        elif random.random() < self.random_interleave_prob:
-            config = self.pipeline_space.sample_new(patience=self.patience)
-        elif len(self.train_x) < self.initial_design_size:
-            config = self.pipeline_space.sample_new(
-                patience=self.patience, use_user_priors=True
-            )
-        elif len(self.pending_evaluations) > 0:
-            for _ in range(self.patience):
-                model_sample, _, _ = self.acquisition_function_opt.sample(
-                    self.n_candidates, 1
-                )
-                config = model_sample[0]
-                if config not in self.pending_evaluations:
-                    break
-            else:
-                config = self.pipeline_space.sample_new(
-                    patience=self.patience, use_user_priors=True
-                )
-        else:
-            model_sample, _, _ = self.acquisition_function_opt.sample(
-                self.n_candidates, 1
-            )
-            config = model_sample[0]
-
-        config_id = str(len(self.train_x) + len(self.pending_evaluations) + 1)
-        return config, config_id, None
-
-    def get_state(self) -> Any:  # pylint: disable=no-self-use
-        return get_rnd_state()
-
-    def load_state(self, state: Any):  # pylint: disable=no-self-use
-        set_rnd_state(state)
-
-    def load_config(self, config_dict):
-        config = deepcopy(self.pipeline_space)
-        config.load_from(config_dict)
-        return config
+    def sample(self):
+        return self.acquisition_sampler.sample(self.acquisition)
 
 
 # TODO(neps.api): this BO class gets used when
@@ -265,26 +236,23 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         n_candidates: int = 200,
         random_interleave_prob: float = 0.0,
         patience: int = 50,
-        verbose: bool = False,
-        return_opt_details: bool = False,
         # TODO: add eta parameter
+        # TODO: update signature according to BayesianOptimization
     ):
         super().__init__(
-            pipeline_space,
-            initial_design_size,
-            surrogate_model_fit_args,
-            optimal_assignment,
-            domain_se_kernel,
-            graph_kernels,
-            hp_kernels,
-            acquisition,
-            acquisition_opt_strategy,
-            acquisition_opt_strategy_args,
-            n_candidates,
-            random_interleave_prob,
-            patience,
-            verbose,
-            return_opt_details,
+            pipeline_space=pipeline_space,
+            initial_design_size=initial_design_size,
+            surrogate_model_fit_args=surrogate_model_fit_args,
+            optimal_assignment=optimal_assignment,
+            domain_se_kernel=domain_se_kernel,
+            graph_kernels=graph_kernels,
+            hp_kernels=hp_kernels,
+            acquisition=acquisition,
+            acquisition_opt_strategy=acquisition_opt_strategy,
+            acquisition_opt_strategy_args=acquisition_opt_strategy_args,
+            n_candidates=n_candidates,
+            random_interleave_prob=random_interleave_prob,
+            patience=patience,
         )
 
         # TODO: set up rungs using eta and pipeline_space.fidelity
@@ -297,7 +265,9 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         super().load_results(previous_results, pending_evaluations)
 
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(  # pylint: disable=no-self-use
+        self,
+    ) -> tuple[SearchSpace, str, str | None]:
         # 1. Check if any rung has enough configs to advance the best one to the next rung
 
         # 2. If yes, sample this config and make sure to set previous_config_id correctly

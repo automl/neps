@@ -62,7 +62,7 @@ def graph_metrics(graph, metric=None, directed=True):
         metric_score = density
 
     else:
-        print("Not implemented yet")
+        raise NotImplementedError
 
     return metric_score
 

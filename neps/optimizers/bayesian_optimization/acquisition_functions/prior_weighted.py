@@ -27,5 +27,5 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
             )
         return acquisition
 
-    def update(self, surrogate_model):
-        self.base_acquisition.update(surrogate_model)
+    def fit_on_model(self, surrogate_model):
+        self.base_acquisition.fit_on_model(surrogate_model)

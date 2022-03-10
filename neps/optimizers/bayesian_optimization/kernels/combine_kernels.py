@@ -20,6 +20,9 @@ class CombineKernel:
         *kernels: list,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        if combined_by not in ["sum", "product"]:
+            raise ValueError(f"Invalid value for combined_by ({combined_by})")
+
         self.has_graph_kernels = False
         self.has_vector_kernels = False
         self.lengthscale_bounds = (None, None)
@@ -33,7 +36,6 @@ class CombineKernel:
         # Store the training graphs and vector features..
         self._gram = None
         self.gr, self.x = None, None
-        assert combined_by in ["sum", "product"]
         self.combined_by = combined_by
 
     def fit_transform(

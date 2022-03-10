@@ -10,7 +10,6 @@ from .base_acquisition import BaseAcquisition
 class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(
         self,
-        surrogate_model,
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
@@ -37,9 +36,10 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
                 functions. Defaults to "best".
             log_ei: log-EI if true otherwise usual EI.
         """
-        super().__init__(surrogate_model=surrogate_model)
+        super().__init__()
 
-        assert in_fill in ["best", "posterior"]
+        if in_fill not in ["best", "posterior"]:
+            raise ValueError(f"Invalid value for in_fill ({in_fill})")
         self.augmented_ei = augmented_ei
         self.xi = xi
         self.in_fill = in_fill
@@ -52,12 +52,13 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         """
         Return the negative expected improvement at the query point x2
         """
+        assert self.incumbent is not None, "EI function not fitted on model"
         try:
             mu, cov = self.surrogate_model.predict(x)
         except ValueError:
             return -1.0  # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
-        mu_star = self._get_incumbent()
+        mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
         # u = (mu - mu_star - self.xi) / std
         # ei = std * updf + (mu - mu_star - self.xi) * ucdf
@@ -84,23 +85,12 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei = ei.detach().numpy().item()
         return ei
 
-    def _get_incumbent(self):
-        """Get incumbent
-
-        Returns:
-            float: incumbent
-        """
-        if self.incumbent is None:
-            raise LookupError("Could not lookup incumbent")
-
-        return self.incumbent
-
-    def update(self, surrogate_model):
-        super().update(surrogate_model)
+    def fit_on_model(self, surrogate_model):
+        super().fit_on_model(surrogate_model)
 
         # Compute incumbent
         if self.in_fill == "best":
-            # return torch.max(self.surrogate_model.y_)
+            # return torch.max(surrogate_model.y_)
             self.incumbent = torch.min(self.surrogate_model.y_)
         else:
             x = self.surrogate_model.x

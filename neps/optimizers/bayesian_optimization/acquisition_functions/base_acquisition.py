@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 
 class BaseAcquisition(ABC):
-    def __init__(self, surrogate_model):
-        self.surrogate_model = surrogate_model
+    def __init__(self):
+        self.surrogate_model = None
 
     @abstractmethod
     def eval(self, x, asscalar: bool = False):
@@ -13,5 +13,5 @@ class BaseAcquisition(ABC):
     def __call__(self, *args, **kwargs):
         return self.eval(*args, **kwargs)
 
-    def update(self, surrogate_model):
+    def fit_on_model(self, surrogate_model):
         self.surrogate_model = surrogate_model

@@ -64,7 +64,8 @@ class WeisfilerLehman(GraphKernels):
         self.requires_grad = requires_grad
         self.undirected = undirected
 
-        assert base_type in ["subtree", "sp", "edge"]
+        if base_type not in ["subtree", "sp", "edge"]:
+            raise ValueError(f"Invalid value for base_type ({base_type})")
         if base_type == "subtree":
             base_kernel = VertexHistogram, {
                 "sparse": False,

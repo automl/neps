@@ -65,7 +65,6 @@ class WeisfeilerLehman(Kernel):
     def __init__(
         self,
         n_jobs=None,
-        verbose: bool = False,
         normalize: bool = False,
         h: int = 5,
         base_graph_kernel=VertexHistogram,
@@ -74,7 +73,7 @@ class WeisfeilerLehman(Kernel):
         as_tensor: bool = True,
     ):
         """Initialise a `weisfeiler_lehman` kernel."""
-        super().__init__(n_jobs=n_jobs, verbose=verbose, normalize=normalize)
+        super().__init__(n_jobs=n_jobs, normalize=normalize)
 
         self.h = h
         self.base_graph_kernel = base_graph_kernel
@@ -145,7 +144,6 @@ class WeisfeilerLehman(Kernel):
                 params.pop("normalize", None)
 
             params["normalize"] = False
-            params["verbose"] = self.verbose
             params["n_jobs"] = None
             self._base_graph_kernel = base_graph_kernel
             self._params = params
@@ -382,7 +380,6 @@ class WeisfeilerLehman(Kernel):
             for (i, g) in enumerate(generate_graphs(label_count, WL_labels_inverse)):
                 param = self._params
                 if self._feature_weight is not None:
-                    # print(self._feature_weight)
                     param.update({"mahalanobis_precision": self._feature_weight[i]})
                 base_graph_kernel.update({i: self._base_graph_kernel(**param)})
                 if return_embedding_only:

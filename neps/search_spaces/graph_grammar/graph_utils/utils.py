@@ -183,7 +183,6 @@ def get_config_from_args(args=None, config_type="nas"):
 
     if args is None:
         args = parse_args()
-    print(args)
     logger.info(f"Command line args: {args}")
 
     # load config file
@@ -270,7 +269,7 @@ def get_config_from_args(args=None, config_type="nas"):
             config.seed,
         )
     else:
-        print("invalid config type in utils/utils.py")
+        logger.error("invalid config type in utils/utils.py")
 
     config.data = f"{get_project_root()}/data"
 
@@ -787,7 +786,7 @@ class Checkpointer(fvCheckpointer):
                 try:
                     obj.load_state_dict(checkpoint.pop(key))  # pyre-ignore
                 except Exception:
-                    print("exception loading")
+                    logger.error("exception loading")
 
         # return any further checkpoint data
         return checkpoint

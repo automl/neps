@@ -51,7 +51,6 @@ class VertexHistogram(Kernel):
         self,
         n_jobs=None,
         normalize=False,
-        verbose=False,
         sparse="auto",
         oa=False,
         mahalanobis_precision=None,
@@ -70,7 +69,7 @@ class VertexHistogram(Kernel):
             this option on could break the code, as the label in general is non-int.
 
         """
-        super().__init__(n_jobs=n_jobs, normalize=normalize, verbose=verbose)
+        super().__init__(n_jobs=n_jobs, normalize=normalize)
         self.as_tensor = as_tensor
         if self.as_tensor:
             self.sparse = False
