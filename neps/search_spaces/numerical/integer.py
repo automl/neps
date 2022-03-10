@@ -68,9 +68,6 @@ class IntegerParameter(FloatParameter):
         self.fp._inv_transform()  # pylint: disable=protected-access
         self.value = int(round(self.fp.value))
 
-    def create_from_id(self, identifier):
-        self.value = identifier
-
 
 def float_to_integer(float_hp):
     int_hp = IntegerParameter(

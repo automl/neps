@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import random
+from copy import deepcopy
 from typing import Any, Mapping
 
 import metahyper
-import numpy as np
 import torch
 from metahyper.api import ConfigResult
 
@@ -15,7 +15,12 @@ from ...search_spaces import (
     IntegerParameter,
 )
 from ...search_spaces.search_space import SearchSpace
-from ...utils.common import get_fun_args_and_defaults, has_instance
+from ...utils.common import (
+    get_fun_args_and_defaults,
+    get_rnd_state,
+    has_instance,
+    set_rnd_state,
+)
 from ...utils.result_utils import get_loss
 from .acquisition_function_optimization import AcquisitionOptimizerMapping
 from .acquisition_functions import AcquisitionMapping
@@ -54,6 +59,7 @@ class BayesianOptimization(metahyper.Sampler):
         verbose: bool = False,
         return_opt_details: bool = False,
         cost_function: None | Mapping = None,  # pylint: disable=unused-argument
+        max_cost_total: None | int | float = None,  # pylint: disable=unused-argument
     ):
         """Initialise the BO loop.
 
@@ -78,6 +84,7 @@ class BayesianOptimization(metahyper.Sampler):
             verbose: Print details on stdout
             return_opt_details: Not used for now
             cost_function: Not used for now
+            max_cost_total: TODO(Jan)
 
         Raises:
             Exception: if no kernel is provided
@@ -207,21 +214,12 @@ class BayesianOptimization(metahyper.Sampler):
                 patience=self.patience, use_user_priors=True
             )
         elif len(self.pending_evaluations) > 0:
-            pending_evaluation_ids = [
-                pend_eval.id[0]
-                if len(pend_eval.id) == 0
-                else "-".join(map(str, pend_eval.id))
-                for pend_eval in self.pending_evaluations
-            ]
             for _ in range(self.patience):
                 model_sample, _, _ = self.acquisition_function_opt.sample(
                     self.n_candidates, 1
                 )
                 config = model_sample[0]
-                config_id = (
-                    config.id if len(config.id) == 0 else "-".join(map(str, config.id))
-                )
-                if config_id not in pending_evaluation_ids:  # Is this still working?
+                if config not in self.pending_evaluations:
                     break
             else:
                 config = self.pipeline_space.sample_new(
@@ -237,21 +235,15 @@ class BayesianOptimization(metahyper.Sampler):
         return config, config_id, None
 
     def get_state(self) -> Any:  # pylint: disable=no-self-use
-        state = {
-            "random_state": random.getstate(),
-            "np_seed_state": np.random.get_state(),
-            "torch_seed_state": torch.random.get_rng_state(),
-        }
-        if torch.cuda.is_available():
-            state["torch_cuda_seed_state"] = torch.cuda.get_rng_state_all()
-        return state
+        return get_rnd_state()
 
     def load_state(self, state: Any):  # pylint: disable=no-self-use
-        random.setstate(state["random_state"])
-        np.random.set_state(state["np_seed_state"])
-        torch.random.set_rng_state(state["torch_seed_state"])
-        if torch.cuda.is_available():
-            torch.cuda.set_rng_state_all(state["torch_cuda_seed_state"])
+        set_rnd_state(state)
+
+    def load_config(self, config_dict):
+        config = deepcopy(self.pipeline_space)
+        config.load_from(config_dict)
+        return config
 
 
 # TODO(neps.api): this BO class gets used when
@@ -321,4 +313,4 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         config = "TODO"
         config_id = "TODO"  # Needs to take budget level into account now
 
-        return config, config_id, previous_config_id
+        return config, config_id, previous_config_id  # type: ignore

@@ -79,14 +79,8 @@ class EvolutionSampler(AcquisitionOptimizer):
         return contender_indices[indices]
 
     def _evolve(self, population, fitness):
-        new_pop = [None] * len(population)
-        new_pop_ids = (
-            [x.id for x in self.x]
-            if not self.allow_isomorphism and self.check_isomorphism_history
-            else []
-        )
-        i = 0
-        while i < len(population):
+        new_pop = []
+        while len(new_pop) < len(population):
             # sample parents
             best, second_best = self._tournament_selection(population, fitness)
             parent1 = population[best]
@@ -99,26 +93,20 @@ class EvolutionSampler(AcquisitionOptimizer):
                     child1, child2 = self._crossover(parent1, parent2)
                 if child1 is False:
                     continue
-                if not self.allow_isomorphism and child1.id in new_pop_ids:
+                if not self.allow_isomorphism and child1 in new_pop:
                     continue
-                new_pop_ids.append(child1.id)
-                new_pop[i] = child1
-                i += 1
-                if i < len(population):
-                    if not self.allow_isomorphism and child2.id in new_pop_ids:
+                new_pop.append(child1)
+                if len(new_pop) < len(population):
+                    if not self.allow_isomorphism and child2 in new_pop:
                         continue
-                    new_pop_ids.append(child2.id)
-                    new_pop[i] = child2
-                    i += 1
+                    new_pop.append(child2)
             else:
                 child1 = self._mutate(parent1)
                 if child1 is False:
                     continue
-                if not self.allow_isomorphism and child1.id in new_pop_ids:
+                if not self.allow_isomorphism and child1 in new_pop:
                     continue
-                new_pop_ids.append(child1.id)
-                new_pop[i] = child1
-                i += 1
+                new_pop.append(child1)
         return new_pop
 
     def evolution(
@@ -146,23 +134,23 @@ class EvolutionSampler(AcquisitionOptimizer):
         if batch_size is None:
             batch_size = 1
 
-        new_pop_ids = (
-            [x.id for x in self.x]
+        new_pop = (
+            self.x
             if not self.allow_isomorphism and self.check_isomorphism_history
             else []
         )
         population = []
         _patience = self.patience
-        while (population_size - len(previous_samples)) - len(
-            population
-        ) > 0 and _patience > 0:
-            population += [
-                p_member
-                for p_member in self.random_sampling.sample(
-                    population_size - len(previous_samples) - len(population)
-                )
-                if p_member.id not in new_pop_ids
-            ]
+        while population_size - len(previous_samples) > len(population) and _patience > 0:
+            population.extend(
+                [
+                    p_member
+                    for p_member in self.random_sampling.sample(
+                        population_size - len(previous_samples) - len(population)
+                    )
+                    if p_member not in new_pop
+                ]
+            )
             _patience -= 1
         if (
             _patience == 0

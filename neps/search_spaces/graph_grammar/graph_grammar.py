@@ -52,6 +52,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
 
         self.has_prior = False
 
+    def __eq__(self, other):
+        return self.id == other.id
+
     @property
     def search_space_size(self) -> int:
         if len(self.grammars) != 1:
@@ -110,6 +113,13 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.id = identifier
         self.string_tree = self.id
         self.create_representation(self.string_tree)  # todo relevant for conversion
+
+    # TODO: does this serialization really work for every graph ?
+    def serialize(self):
+        return self.id
+
+    def load_from(self, data):
+        self.create_from_id(data)
 
     def mutate(
         self,
@@ -236,6 +246,9 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.full_grammar = self.get_full_grammar(self.grammars)
         self.base_to_motif_map = base_to_motif_map
         self.number_of_repetitive_motifs = number_of_repetitive_motifs
+
+    def __eq__(self, other):
+        return self.id == other.id
 
     def reset(self):
         self.clear_graph()
@@ -457,6 +470,9 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
         self.base_to_motif_map = base_to_motif_map
         self.number_of_repetitive_motifs = number_of_repetitive_motifs
+
+    def __eq__(self, other):
+        return self.id == other.id
 
     def reset(self):
         self.clear_graph()

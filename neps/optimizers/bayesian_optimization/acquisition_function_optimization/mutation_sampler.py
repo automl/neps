@@ -89,11 +89,6 @@ class MutationSampler(AcquisitionOptimizer):
             x for (_, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
         ][:n_best]
         evaluation_pool = []
-        eval_pool_ids = (
-            [x.id for x in self.x]
-            if not self.allow_isomorphism and self.check_isomorphism_history
-            else []
-        )
         per_arch = mutate_size // n_best
         for config in best_configs:
             n_child = 0
@@ -109,15 +104,11 @@ class MutationSampler(AcquisitionOptimizer):
                 if not self.allow_isomorphism:
                     # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs. For now we do not
                     # check the isomorphism in all of the previous graphs though
-                    if child.id == config.id:
-                        patience_ -= 1
-                        continue
-                    if child.id in eval_pool_ids:
+                    if child == config or child in evaluation_pool:
                         patience_ -= 1
                         continue
 
                 evaluation_pool.append(child)
-                eval_pool_ids.append(child.id)
                 n_child += 1
 
         # Fill missing pool with random samples

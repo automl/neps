@@ -157,6 +157,3 @@ class FloatParameter(NumericalParameter):
             raise ValueError("Float parameter value is NaN!")
 
         self.value = self.value * (self.upper - self.lower) + self.lower
-
-    def create_from_id(self, identifier):
-        self.value = identifier
