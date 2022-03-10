@@ -68,8 +68,8 @@ class AbstractVariableTopology(AbstractTopology):
     def __init__(self, name: str = None, scope: str = None):
         super().__init__(name, scope)
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def get_edge_list(**kwargs):
         raise NotImplementedError
 
