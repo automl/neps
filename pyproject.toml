@@ -26,7 +26,7 @@ tqdm = "^4.62.3"
 nltk = "^3.6.4"
 tabulate = "^0.8.9"
 torchmetrics = "^0.5.1"
-metahyper = { git = "https://github.com/automl/metahyper.git", rev = "bbb91be4a232cdb4febecb90b73ed88a8a448016" }
+metahyper = { git = "https://github.com/automl/metahyper.git", rev = "fd5cc62232557358303a4f68b73a85d73387aa8e" }
 path = "^16.2.0"
 termcolor = "^1.1.0"
 fvcore = "^0.1.5"
