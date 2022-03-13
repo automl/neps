@@ -46,7 +46,7 @@ def set_rnd_state(state: dict):
     random.setstate((rnd_s1, tuple(rnd_s2), rnd_s3))
     np.random.set_state(tuple(state["np_seed_state"]))
     torch.random.set_rng_state(torch.ByteTensor(state["torch_seed_state"]))
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and "torch_cuda_seed_state" in state:
         torch.cuda.set_rng_state_all(
             [torch.ByteTensor(dev) for dev in state["torch_cuda_seed_state"]]
         )
