@@ -198,6 +198,7 @@ class BayesianOptimization(BaseOptimizer):
 
     def _update_model(self) -> None:
         """Updates the surrogate model and the acquisition function (optimizer)."""
+        # TODO: filter out error configs as they can not be used for model building?
         if len(self.pending_evaluations) > 0:
             self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
             self.surrogate_model.fit(**self.surrogate_model_fit_args)

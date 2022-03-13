@@ -43,6 +43,8 @@ class BaseOptimizer(metahyper.Sampler):
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
 
+        self._model_update_failed = False
+
     @abstractmethod
     def sample(self) -> SearchSpace:
         raise NotImplementedError
@@ -56,7 +58,15 @@ class BaseOptimizer(metahyper.Sampler):
         self.train_y = [get_loss(el.result) for el in previous_results.values()]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
         if len(self.train_x) >= self.initial_design_size:
-            self._update_model()
+            try:
+                self._update_model()
+                self._model_update_failed = False
+            except RuntimeError:
+                self.logger.exception(
+                    "Model could not be updated due to below error. Sampling will not use"
+                    " the model."
+                )
+                self._model_update_failed = True
 
     def _update_model(self):
         pass
@@ -80,7 +90,7 @@ class BaseOptimizer(metahyper.Sampler):
             )
         elif random.random() < self.random_interleave_prob:
             config = self.pipeline_space.copy().sample(patience=self.patience)
-        elif len(self.train_x) < self.initial_design_size:
+        elif len(self.train_x) < self.initial_design_size or self._model_update_failed:
             config = self.pipeline_space.copy().sample(
                 patience=self.patience, use_user_priors=True
             )
