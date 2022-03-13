@@ -214,7 +214,7 @@ class ComprehensiveGP:
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
                 nlml.backward(create_graph=True)
                 if i % 10 == 0:
-                    self.logger.info(
+                    self.logger.debug(
                         f"Iteration: {i}/{iters} "
                         f"Negative log-marginal likelihood:"
                         f"{nlml.item()} {theta_vector} {weights} {likelihood}"
@@ -251,20 +251,20 @@ class ComprehensiveGP:
 
         self.combined_kernel.weights = weights.clone()
 
-        self.logger.info("Optimisation summary: ")
-        self.logger.info(
+        self.logger.debug("Optimisation summary: ")
+        self.logger.debug(
             f"Optimal NLML: {nlml}",
         )
-        self.logger.info(f"Lengthscales: {theta_vector}")
+        self.logger.debug(f"Lengthscales: {theta_vector}")
         try:
-            self.logger.info(
+            self.logger.debug(
                 f"Optimal h: {self.domain_kernels[0]._h}",  # pylint: disable=protected-access
             )
         except AttributeError:
             pass
-        self.logger.info(f"Weights: {self.weights}")
-        self.logger.info(f"Lik: {self.likelihood}")
-        self.logger.info(f"Optimal layer weights {layer_weights}")
+        self.logger.debug(f"Weights: {self.weights}")
+        self.logger.debug(f"Lik: {self.likelihood}")
+        self.logger.debug(f"Optimal layer weights {layer_weights}")
 
     def predict(self, x_configs, preserve_comp_graph: bool = False):
         """Kriging predictions"""
@@ -500,14 +500,14 @@ def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
 
 # Optimize Graph kernel
 def getBack(var_grad_fn, logger):
-    logger.info(var_grad_fn)
+    logger.debug(var_grad_fn)
     for n in var_grad_fn.next_functions:
         if n[0]:
             try:
                 tensor = getattr(n[0], "variable")
-                logger.info(n[0])
-                logger.info(f"Tensor with grad found: {tensor}")
-                logger.info(f" - gradient: {tensor.grad}")
+                logger.debug(n[0])
+                logger.debug(f"Tensor with grad found: {tensor}")
+                logger.debug(f" - gradient: {tensor.grad}")
             except AttributeError:
                 getBack(n[0], logger)
 
