@@ -186,7 +186,7 @@ class ComprehensiveGP:
         wl_subtree_candidates: tuple = tuple(range(5)),
         wl_lengthscales: tuple = tuple(np.e**i for i in range(-2, 3)),
         optimize_lik: bool = True,
-        max_lik: float = 0.01,
+        max_lik: float = 0.01,  # pylint: disable=unused-argument
         optimize_wl_layer_weights: bool = False,
         optimizer_kwargs: dict = None,
     ):
@@ -328,9 +328,10 @@ class ComprehensiveGP:
                 )
                 nlml_list.append(nlml.item())
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
-            likelihood.clamp_(
-                1e-5, max_lik
-            ) if likelihood is not None and likelihood.is_leaf else None
+            # TODO : I commented this, not used. What is it doing ?
+            # likelihood.clamp_(
+            #     1e-5, max_lik
+            # ) if likelihood is not None and likelihood.is_leaf else None
             K_i, logDetK = compute_pd_inverse(K, likelihood)
 
         # Apply the optimal hyperparameters
@@ -475,7 +476,7 @@ class ComprehensiveGP:
         train_y_tensor = (
             train_y
             if isinstance(train_y, torch.Tensor)
-            else torch.Tensor(train_y).float()
+            else torch.tensor(train_y, dtype=torch.get_default_dtype())
         )
         self.y_ = train_y_tensor
         self.y, self.y_mean, self.y_std = normalize_y(train_y_tensor)
@@ -829,4 +830,4 @@ def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
         raise RuntimeError("Gram matrix not positive definite despite of jitter")
     logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
     K_i = torch.cholesky_inverse(Kc)
-    return K_i.float(), logDetK.float()
+    return K_i.to(torch.get_default_dtype()), logDetK.to(torch.get_default_dtype())

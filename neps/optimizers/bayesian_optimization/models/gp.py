@@ -326,7 +326,7 @@ class ComprehensiveGP:
         train_y_tensor = (
             train_y
             if isinstance(train_y, torch.Tensor)
-            else torch.Tensor(train_y).float()
+            else torch.tensor(train_y, dtype=torch.get_default_dtype())
         )
         self.y_ = train_y_tensor
         self.y, self.y_mean, self.y_std = normalize_y(train_y_tensor)
@@ -666,4 +666,4 @@ def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
         raise RuntimeError(f"Gram matrix not positive definite despite of jitter:\n{K}")
     logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
     K_i = torch.cholesky_inverse(Kc)
-    return K_i.float(), logDetK.float()
+    return K_i.to(torch.get_default_dtype()), logDetK.to(torch.get_default_dtype())
