@@ -34,7 +34,6 @@ neps.run(
     pipeline_space=pipeline_space,
     working_directory="results/cost_aware_example",
     max_evaluations_total=10,  # TODO(Jan): remove
-    max_cost_total=100,  # TODO(Jan): something reasonable
-    cost_function=None,
+    budget=100,  # TODO(Jan): something reasonable
 )
 previous_results, pending_configs = neps.status("results/cost_aware_example")

@@ -4,7 +4,7 @@ import logging
 import random
 from abc import abstractmethod
 from copy import deepcopy
-from typing import Any, Mapping
+from typing import Any
 
 import metahyper
 import torch
@@ -25,9 +25,9 @@ class BaseOptimizer(metahyper.Sampler):
         random_interleave_prob: float = 0.0,
         patience: int = 50,
         logger=None,
-        cost_function: None | Mapping = None,  # pylint: disable=unused-argument
-        max_cost_total: None | int | float = None,  # pylint: disable=unused-argument
+        budget: None | int | float = None,
     ):
+        super().__init__(budget=budget)
         if not 0 <= random_interleave_prob <= 1:
             raise ValueError("random_interleave_prob should be between 0.0 and 1.0")
         if patience < 1:
@@ -72,10 +72,14 @@ class BaseOptimizer(metahyper.Sampler):
         pass
 
     def get_state(self) -> Any:  # pylint: disable=no-self-use
-        return {"rnd_seeds": get_rnd_state()}
+        return {
+            "rnd_seeds": get_rnd_state(),
+            **super().get_state(),
+        }
 
     def load_state(self, state: Any):  # pylint: disable=no-self-use
         set_rnd_state(state["rnd_seeds"])
+        super().load_state(state)
 
     def load_config(self, config_dict):
         config = deepcopy(self.pipeline_space)

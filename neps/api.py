@@ -95,7 +95,7 @@ def run(
     overwrite_working_directory: bool = False,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
-    max_cost_total: int | float | None = None,
+    budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
     searcher: str | Any = "bayesian_optimization",
     run_pipeline_args: Iterable | None = None,  # TODO remove (deprecated)
@@ -121,7 +121,8 @@ def run(
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
-        max_cost_total: TODO(Jan)
+        budget: Maximum allowed budget. Currently, can be exceeded, but no new evaluations
+            will start when the budget it depleted.
         continue_until_max_evaluation_completed: If true, only stop after
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
@@ -195,7 +196,7 @@ def run(
 
     sampler = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
         pipeline_space=pipeline_space,
-        max_cost_total=max_cost_total,
+        budget=budget,
         **searcher_kwargs,
     )
 

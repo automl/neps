@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Mapping
+from typing import Any
 
 from metahyper.api import ConfigResult, instance_from_map
 
@@ -50,8 +50,7 @@ class BayesianOptimization(BaseOptimizer):
         random_interleave_prob: float = 0.0,
         patience: int = 50,
         verbose: bool = None,  # TODO remove (deprecated)
-        cost_function: None | Mapping = None,  # pylint: disable=unused-argument
-        max_cost_total: None | int | float = None,  # pylint: disable=unused-argument
+        budget: None | int | float = None,
         logger=None,
     ):
         """Initialise the BO loop.
@@ -72,8 +71,7 @@ class BayesianOptimization(BaseOptimizer):
             random_interleave_prob: Frequency at which random configurations are sampled
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
-            cost_function: Not used for now
-            max_cost_total: TODO(Jan)
+            budget: Maximum budget
             logger: logger object, or None to use the neps logger
             acquisition_opt_strategy: deprecated
             acquisition_opt_strategy_args: deprecated
@@ -130,7 +128,12 @@ class BayesianOptimization(BaseOptimizer):
             )
 
         super().__init__(
-            pipeline_space, initial_design_size, random_interleave_prob, patience, logger
+            pipeline_space=pipeline_space,
+            initial_design_size=initial_design_size,
+            random_interleave_prob=random_interleave_prob,
+            patience=patience,
+            logger=logger,
+            budget=budget,
         )
 
         if not graph_kernels:

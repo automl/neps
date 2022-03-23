@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 import random
-from typing import Any, Mapping
+from typing import Any
 
 import metahyper
 import numpy as np
@@ -42,7 +42,6 @@ class BayesianOptimization(metahyper.Sampler):
         patience: int = 50,
         verbose: bool = False,
         return_opt_details: bool = False,
-        cost_function: None | Mapping = None,  # pylint: disable=unused-argument
     ):
         """Implements the basic BO loop."""
 
