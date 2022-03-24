@@ -1,29 +1,13 @@
 from __future__ import annotations
 
-import inspect
 import random
-from typing import Callable
 
 import numpy as np
 import torch
 
-# Inspecting functions
-
-
-def get_fun_args_and_defaults(function: Callable):
-    signature = inspect.signature(function)
-    return list(signature.parameters.keys()), {
-        k: v.default
-        for k, v in signature.parameters.items()
-        if v.default is not inspect.Parameter.empty
-    }
-
 
 def has_instance(collection, *types):
     return any([isinstance(el, typ) for el in collection for typ in types])
-
-
-# Synchronizing state
 
 
 def get_rnd_state() -> dict:

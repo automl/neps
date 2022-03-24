@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import Any
 
 from metahyper.api import ConfigResult, instance_from_map
@@ -12,7 +11,7 @@ from ...search_spaces import (
     IntegerParameter,
 )
 from ...search_spaces.search_space import SearchSpace
-from ...utils.common import get_fun_args_and_defaults, has_instance
+from ...utils.common import has_instance
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
@@ -28,9 +27,9 @@ class BayesianOptimization(BaseOptimizer):
         surrogate_model: Gaussian process model
         train_x: Inputs previously sampled on which f has been evaluated
         train_y: Output of f on the train_x inputs
-        pending_evaluations: Configurations of hyperparameters for which the
-            evaluation of f is not known and will be computed, or is currently
-            beeing evaluated in another process.
+        pending_evaluations: Configurations of hyperparameters for which the evaluation of
+            f is not known and will be computed, or is currently beeing evaluated in
+            another process.
     """
 
     def __init__(
@@ -44,12 +43,8 @@ class BayesianOptimization(BaseOptimizer):
         hp_kernels: list = None,
         acquisition: str | Any = "EI",
         acquisition_sampler: str | Any = "mutation",
-        acquisition_opt_strategy: str = None,  # TODO remove (deprecated because renamed)
-        acquisition_opt_strategy_args: dict = None,  # TODO remove (deprecated)
-        n_candidates: int = None,  # TODO remove (deprecated)
         random_interleave_prob: float = 0.0,
         patience: int = 50,
-        verbose: bool = None,  # TODO remove (deprecated)
         budget: None | int | float = None,
         logger=None,
     ):
@@ -57,11 +52,10 @@ class BayesianOptimization(BaseOptimizer):
 
         Args:
             pipeline_space: Space in which to search
-            initial_design_size: Number of 'x' samples that need to be
-                evaluated before selecting a sample using a strategy instead of
-                randomly.
-            surrogate_model_fit_args: Arguments that will be given to the
-                surrogate model (the Gaussian processes model).
+            initial_design_size: Number of 'x' samples that need to be evaluated before
+                selecting a sample using a strategy instead of randomly.
+            surrogate_model_fit_args: Arguments that will be given to the surrogate model
+                (the Gaussian processes model).
             optimal_assignment: whether the optimal assignment kernel should be used.
             domain_se_kernel: Stationary kernel name
             graph_kernels: Kernels for NAS
@@ -73,58 +67,14 @@ class BayesianOptimization(BaseOptimizer):
             patience: How many times we try something that fails before giving up.
             budget: Maximum budget
             logger: logger object, or None to use the neps logger
-            acquisition_opt_strategy: deprecated
-            acquisition_opt_strategy_args: deprecated
-            n_candidates: deprecated
-            verbose: deprecated
 
         Raises:
             Exception: if no kernel is provided
             ValueError: if a string is not in a mapping
         """
-
-        # Deprecated arguments (TODO: remove later)
-        if acquisition_opt_strategy is not None:
-            warnings.warn(
-                "The acquisition_opt_strategy will soon be removed, "
-                "use acquisition_sampler instead. Changed for better name"
-                "coherence.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            acquisition_sampler = acquisition_opt_strategy
-        if acquisition_opt_strategy_args is not None:
-            warnings.warn(
-                "acquisition_opt_strategy_args will soon be removed, "
-                "you can directly instantiate an AcquisitionSampler instead",
-                FutureWarning,
-                stacklevel=2,
-            )
-            if acquisition_opt_strategy not in AcquisitionSamplerMapping:
-                raise ValueError(
-                    f"Acquisition optimization strategy {acquisition_opt_strategy} is not "
-                    f"defined!"
-                )
-            acquisition_sampler_cls = AcquisitionSamplerMapping[acquisition_sampler]
-            arg_names, _ = get_fun_args_and_defaults(
-                acquisition_sampler_cls.__init__  # type: ignore[misc]
-            )
-            if not all(k in arg_names for k in acquisition_opt_strategy_args):
-                raise ValueError("Parameter mismatch")
-            acquisition_sampler = acquisition_sampler_cls(
-                **acquisition_opt_strategy_args,
-            )
-        if verbose is not None:
-            warnings.warn(
-                "The verbose flag does nothing and will be removed soon.",
-                FutureWarning,
-                stacklevel=2,
-            )
-        # End of deprecated arguments
-
         if initial_design_size < 1:
             raise ValueError(
-                "BayesianOptimization need initial_design_size to be at least 1"
+                "BayesianOptimization needs initial_design_size to be at least 1"
             )
 
         super().__init__(
@@ -188,17 +138,6 @@ class BayesianOptimization(BaseOptimizer):
 
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}
 
-        # Deprecated arguments (TODO: remove later)
-        if n_candidates is not None:
-            warnings.warn(
-                "The n_candidates argument will soon be removed, "
-                "use the pool_size argument of the acquisition sampler",
-                FutureWarning,
-                stacklevel=2,
-            )
-            self.acquisition_sampler.pool_size = n_candidates
-        # End of deprecated arguments
-
     def _update_model(self) -> None:
         """Updates the surrogate model and the acquisition function (optimizer)."""
         # TODO: filter out error configs as they can not be used for model building?
@@ -221,6 +160,7 @@ class BayesianOptimization(BaseOptimizer):
         return self.acquisition_sampler.sample(self.acquisition)
 
 
+# TODO: Update according to the changes above
 # TODO(neps.api): this BO class gets used when
 # pipeline_space.has_fidelity() == True and BO is chosen
 # also when random_search is chosen, but then use no model
@@ -235,9 +175,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: str = "EI",
-        acquisition_opt_strategy: str = "mutation",
-        acquisition_opt_strategy_args: dict = None,
-        n_candidates: int = 200,
         random_interleave_prob: float = 0.0,
         patience: int = 50,
         # TODO: add eta parameter
@@ -252,9 +189,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             acquisition=acquisition,
-            acquisition_opt_strategy=acquisition_opt_strategy,
-            acquisition_opt_strategy_args=acquisition_opt_strategy_args,
-            n_candidates=n_candidates,
+
             random_interleave_prob=random_interleave_prob,
             patience=patience,
         )

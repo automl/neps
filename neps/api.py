@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import logging
-import warnings
-from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable
 
 import ConfigSpace as CS
 import metahyper
@@ -92,8 +90,6 @@ def run(
     budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
     searcher: str | Any = "bayesian_optimization",
-    run_pipeline_args: Iterable | None = None,  # TODO remove (deprecated)
-    run_pipeline_kwargs: Mapping | None = None,  # TODO remove (deprecated)
     serializer="yaml",
     **searcher_kwargs,
 ) -> None:
@@ -121,12 +117,10 @@ def run(
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
         searcher: Which optimizer to use.
-        run_pipeline_args: Positional arguments that are passed to run_pipeline.
-        run_pipeline_kwargs: Keywoard arguments that are passed to run_pipeline.
-        **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
-            neps develolpers.
         serializer: Serializer to store hyperparameters configurations. Can be an object,
             or a value in 'json', 'yaml' or 'dill' (see metahyper).
+        **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
+            neps develolpers.
 
     Raises:
         TypeError: If pipeline_space has invalid type.
@@ -148,28 +142,8 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
-    # Deprecated arguments (TODO: remove later)
-    if run_pipeline_args is not None:
-        warnings.warn(
-            "The run_pipeline_args will soon be removed, "
-            "functools.partial should be used instead",
-            FutureWarning,
-            stacklevel=2,
-        )
-        run_pipeline = partial(run_pipeline, *run_pipeline_args)
-    if run_pipeline_kwargs is not None:
-        warnings.warn(
-            "The run_pipeline_kwargs will soon be removed, "
-            "functools.partial should be used instead",
-            FutureWarning,
-            stacklevel=2,
-        )
-        run_pipeline = partial(run_pipeline, **run_pipeline_kwargs)
-    # End of deprecated arguments
-
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {working_directory}")
-
     try:
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
@@ -188,16 +162,15 @@ def run(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    sampler = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
+    searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
         pipeline_space=pipeline_space,
         budget=budget,
         **searcher_kwargs,
     )
 
-    # TODO(Jan): pass cost to metahyper and implement stopping
     metahyper.run(
         run_pipeline,
-        sampler,
+        searcher,
         working_directory,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
