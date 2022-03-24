@@ -44,7 +44,7 @@ class BayesianOptimization(BaseOptimizer):
         acquisition: str | Any = "EI",
         acquisition_sampler: str | Any = "mutation",
         random_interleave_prob: float = 0.0,
-        patience: int = 50,
+        patience: int = 100,
         budget: None | int | float = None,
         logger=None,
     ):
