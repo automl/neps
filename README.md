@@ -99,7 +99,7 @@ python -m neps.status --help
 To show the status repeatedly, on unix systems you can use
 
 ```bash
-watch --interval 10 python -m neps.status WORKING_DIRECTORY
+watch --interval 30 python -m neps.status WORKING_DIRECTORY
 ```
 
 ### Parallelization
