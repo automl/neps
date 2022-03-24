@@ -189,7 +189,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             acquisition=acquisition,
-
             random_interleave_prob=random_interleave_prob,
             patience=patience,
         )
