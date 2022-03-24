@@ -7,6 +7,6 @@ def get_loss(result: str | dict | float) -> float | Any:
     if result == "error":
         return float("inf")
     elif isinstance(result, dict):
-        return result["loss"]
+        return float(result["loss"])
     else:
-        return result
+        return float(result)

@@ -14,6 +14,7 @@ import metahyper
 from metahyper.api import instance_from_map
 
 from .search_spaces.parameter import Parameter
+from .utils.result_utils import get_loss
 
 try:
     import torch as _  # Not needed in api.py, but test if torch can be imported
@@ -28,14 +29,7 @@ from .search_spaces.search_space import SearchSpace, pipeline_space_from_configs
 
 def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
     working_directory = Path(config_working_directory, "../../")
-
-    is_error = result == "error"
-    if is_error:
-        loss = float("inf")
-    elif isinstance(result, dict):
-        loss = result["loss"]
-    else:
-        loss = result
+    loss = get_loss(result)
 
     # 1. write all configs and losses
     all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
@@ -50,7 +44,7 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
         write_loss_and_config(f, loss, config_id, config)
 
     # No need to handle best loss cases if an error occurred
-    if is_error:
+    if result == "error":
         return
 
     # The "best" loss exists only in the pareto sense for multi-objective
@@ -82,7 +76,7 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
 
         logger.info(
             f"Finished evaluating config {config_id}"
-            f" -- new best with loss {loss :.3f}"
+            f" -- new best with loss {float(loss) :.3f}"
         )
     else:
         logger.info(f"Finished evaluating config {config_id}")
