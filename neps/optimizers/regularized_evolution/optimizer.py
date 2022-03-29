@@ -57,7 +57,7 @@ class RegularizedEvolution(BaseOptimizer):
     @deprecated
     def get_config(self):
         if len(self.population) < self.initial_population_size:
-            return self.random_sampler.sample(1)[0]
+            return self.random_sampler.sample()[0]
 
         candidates = [random.choice(self.population) for _ in range(self.sample_size)]
         parent = min(candidates, key=lambda c: c["loss"])

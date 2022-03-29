@@ -11,6 +11,6 @@ class RandomSampler(AcquisitionSampler):
     ):
         super().__init__(patience=patience)
 
-    def sample(self, _) -> list[SearchSpace]:
+    def sample(self, acquisition_function=None) -> list[SearchSpace]:
         rand_config = self.search_space.copy().sample(patience=self.patience)
         return rand_config

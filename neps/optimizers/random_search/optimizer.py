@@ -6,6 +6,7 @@ from ..bayesian_optimization.acquisition_samplers.random_sampler import RandomSa
 
 class RandomSearch(BaseOptimizer):
     def __init__(self, **optimizer_kwargs):
+        optimizer_kwargs["initial_design_size"] = 0
         super().__init__(**optimizer_kwargs)
         self.random_sampler = RandomSampler()
 
@@ -13,4 +14,4 @@ class RandomSearch(BaseOptimizer):
         return self.random_sampler.sample()
 
     def _update_model(self):
-        self.random_sampler.work_with(self.pipeline_space)
+        self.random_sampler.work_with(self.pipeline_space, self.train_x, self.train_y)

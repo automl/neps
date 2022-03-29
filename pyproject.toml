@@ -2,7 +2,7 @@
 name = "neps"
 version = "0.2.0"
 description = ""
-authors = ["Danny Stoll", "Maciej Janowski", "Simon Schrodi"]
+authors = ["Danny Stoll", "Maciej Janowski", "Simon Schrodi", "Théophane Vallaeys"]
 readme = "README.md"
 license = "MIT"
 packages = [
