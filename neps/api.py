@@ -10,6 +10,7 @@ from typing import Any, Callable
 import ConfigSpace as CS
 import metahyper
 from metahyper.api import instance_from_map
+from typing_extensions import Literal
 
 from .search_spaces.parameter import Parameter
 from .utils.result_utils import get_loss
@@ -89,7 +90,8 @@ def run(
     max_evaluations_per_run: int | None = None,
     budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
-    searcher: str | Any = "bayesian_optimization",
+    searcher: Literal["bayesian_optimization", "random_search"]
+    | Any = "bayesian_optimization",
     serializer="yaml",
     **searcher_kwargs,
 ) -> None:

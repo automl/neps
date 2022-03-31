@@ -115,17 +115,8 @@ class LayeredRBFKernel(RBFKernel):
 class Matern32Kernel(Stationary):
     def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
         if l is None:
-            dist = _scaled_distance(
-                self.lengthscale,
-                x1,
-                x2,
-            )
-        else:
-            dist = _scaled_distance(
-                l,
-                x1,
-                x2,
-            )
+            l = self.lengthscale
+        dist = _scaled_distance(l, x1, x2)
         if isinstance(dist, torch.Tensor):
             return (
                 self.outputscale * (1 + sqrt(3.0) * dist) * torch.exp(-sqrt(3.0) * dist)
@@ -136,17 +127,8 @@ class Matern32Kernel(Stationary):
 class Matern52Kernel(Stationary):
     def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
         if l is None:
-            dist = _scaled_distance(
-                self.lengthscale,
-                x1,
-                x2,
-            )
-        else:
-            dist = _scaled_distance(
-                l,
-                x1,
-                x2,
-            )
+            l = self.lengthscale
+        dist = _scaled_distance(l, x1, x2)
         sq_dist = dist**2
         if isinstance(dist, torch.Tensor):
             return (

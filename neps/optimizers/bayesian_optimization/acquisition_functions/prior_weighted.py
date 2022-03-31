@@ -22,9 +22,10 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         num_bo_iterations = len(self.base_acquisition.surrogate_model.x)
         for i, candidate in enumerate(x):
             prior_weight = candidate.compute_prior()
-            acquisition[i] *= np.power(
-                prior_weight + 1e-12, self.pibo_beta / num_bo_iterations
-            )
+            if prior_weight != 1.0:
+                acquisition[i] *= np.power(
+                    prior_weight + 1e-12, self.pibo_beta / num_bo_iterations
+                )
         return acquisition
 
     def fit_on_model(self, surrogate_model):

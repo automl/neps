@@ -127,14 +127,13 @@ class BayesianOptimization(BaseOptimizer):
             acquisition,
             name="acquisition function",
         )
+        self.acquisition = DecayingPriorWeightedAcquisition(self.acquisition)
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
             kwargs={"patience": self.patience},
         )
-        if self.pipeline_space.has_prior:
-            self.acquisition = DecayingPriorWeightedAcquisition(self.acquisition)
 
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}
 
