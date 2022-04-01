@@ -14,6 +14,7 @@ import numpy as np
 from .cfg import Grammar
 from .graph import Graph
 from .primitives import AbstractPrimitive
+from .topologies import AbstractTopology
 
 
 class CoreGraphGrammar(Graph):
@@ -21,7 +22,7 @@ class CoreGraphGrammar(Graph):
         self,
         grammars: list[Grammar],
         terminal_to_op_names: dict,
-        terminal_to_graph_repr: dict,
+        terminal_to_graph_repr: dict = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
         zero_op: list = None,
@@ -33,7 +34,12 @@ class CoreGraphGrammar(Graph):
 
         self.grammars = grammars
         self.terminal_to_op_names = terminal_to_op_names
-        self.terminal_to_graph_repr = terminal_to_graph_repr
+        if terminal_to_graph_repr is None:  # only compute it once -> more efficient
+            self.terminal_to_graph_repr = self.get_edge_lists_of_topologies(
+                self.terminal_to_op_names
+            )
+        else:
+            self.terminal_to_graph_repr = terminal_to_graph_repr
         self.edge_attr = edge_attr
         self.edge_label = edge_label
 
@@ -41,6 +47,29 @@ class CoreGraphGrammar(Graph):
         self.identity_op = identity_op if identity_op is not None else []
 
         self.terminal_to_graph_nodes: dict = {}
+
+    @staticmethod
+    def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
+        topology_edge_lists = {}
+        for k, v in terminal_map.items():
+            if inspect.isclass(v):
+                is_topology = issubclass(v, AbstractTopology)
+            elif isinstance(v, partial):
+                is_topology = issubclass(v.func, AbstractTopology)  # type: ignore[arg-type]
+            else:
+                is_topology = False
+            if is_topology:
+                if isinstance(v, partial):
+                    if not hasattr(v.func, "get_edge_list"):
+                        raise Exception(
+                            f"Please implement a get_edge_list static method for {v.func.__name__}!"
+                        )
+                    func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
+                    kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
+                    topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
+                else:
+                    topology_edge_lists[k] = v.edge_list
+        return topology_edge_lists
 
     def get_grammars(self) -> list[Grammar]:
         return self.grammars
