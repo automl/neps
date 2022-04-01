@@ -233,6 +233,9 @@ class ComprehensiveGP:
                         0.0, 1.0
                     ) if layer_weights is not None and layer_weights.is_leaf else None
                     # pylint: enable=expression-not-assigned
+
+                optim.zero_grad(set_to_none=True)
+
             K_i, logDetK = compute_pd_inverse(K, likelihood)
 
         # Apply the optimal hyperparameters

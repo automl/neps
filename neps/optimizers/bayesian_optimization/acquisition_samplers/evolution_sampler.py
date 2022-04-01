@@ -194,15 +194,15 @@ class EvolutionSampler(AcquisitionSampler):
 
     def sample(self, acquisition_function) -> Tuple[list, list, list]:
         population: List[SearchSpace] = []
-        if self.initial_history_last > 0 and len(self.x) > self.initial_history_last:
-            population = population[-self.initial_history_last :]
-        if self.initial_history_best > 0 and len(self.x) > self.initial_history_best:
+        if self.initial_history_last > 0 and len(self.x) >= self.initial_history_last:
+            population = self.x[-self.initial_history_last :]
+        if self.initial_history_best > 0 and len(self.x) >= self.initial_history_best:
             indices = np.argpartition(self.y, self.initial_history_best)
             for idx in indices[: self.initial_history_best]:
                 population.append(self.x[idx])
         if (
             self.initial_history_acq_best > 0
-            and len(self.x) > self.initial_history_acq_best
+            and len(self.x) >= self.initial_history_acq_best
         ):
             acq_vals = acquisition_function(self.x, asscalar=True)
             indices = np.argpartition(acq_vals, -self.initial_history_acq_best)
@@ -226,4 +226,5 @@ class EvolutionSampler(AcquisitionSampler):
                     ),
                 )
             )
-        return self.evolution(acquisition_function, population, self.pool_size, 1)
+        X_max, _, _ = self.evolution(acquisition_function, population, self.pool_size, 1)
+        return X_max[0]
