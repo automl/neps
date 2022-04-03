@@ -17,7 +17,7 @@ from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
 from .acquisition_samplers import AcquisitionSamplerMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
-from .models.gp import ComprehensiveGP
+from .models import SurrogateModelMapping
 
 
 class BayesianOptimization(BaseOptimizer):
@@ -36,6 +36,7 @@ class BayesianOptimization(BaseOptimizer):
         self,
         pipeline_space: SearchSpace,
         initial_design_size: int = 10,
+        surrogate_model: str | Any = "gp",
         surrogate_model_fit_args: dict = None,
         optimal_assignment: bool = False,
         domain_se_kernel: str = None,
@@ -54,6 +55,7 @@ class BayesianOptimization(BaseOptimizer):
             pipeline_space: Space in which to search
             initial_design_size: Number of 'x' samples that need to be evaluated before
                 selecting a sample using a strategy instead of randomly.
+            surrogate_model: Surrogate model
             surrogate_model_fit_args: Arguments that will be given to the surrogate model
                 (the Gaussian processes model).
             optimal_assignment: whether the optimal assignment kernel should be used.
@@ -117,11 +119,18 @@ class BayesianOptimization(BaseOptimizer):
         if not graph_kernels and not hp_kernels:
             raise Exception("No kernels are provided!")
 
-        self.surrogate_model = ComprehensiveGP(
-            graph_kernels=graph_kernels,
-            hp_kernels=hp_kernels,
-            vectorial_features=self.pipeline_space.get_vectorial_dim(),
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            surrogate_model,
+            name="surrogate model",
+            kwargs={
+                "graph_kernels": graph_kernels,
+                "hp_kernels": hp_kernels,
+                "vectorial_features": self.pipeline_space.get_vectorial_dim(),
+            },
         )
+        self.surrogate_model_fit_args = surrogate_model_fit_args or {}
+
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
@@ -134,8 +143,6 @@ class BayesianOptimization(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience},
         )
-
-        self.surrogate_model_fit_args = surrogate_model_fit_args or {}
 
     def _update_model(self) -> None:
         """Updates the surrogate model and the acquisition function (optimizer)."""

@@ -15,7 +15,7 @@ from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
 
 
-class ComprehensiveGP:
+class ComprehensiveGPHierarchy:
     def __init__(
         self,
         graph_kernels: Iterable,
