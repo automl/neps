@@ -71,8 +71,10 @@ class BayesianOptimization(BaseOptimizer):
             logger: logger object, or None to use the neps logger
 
         Raises:
-            Exception: if no kernel is provided
-            ValueError: if a string is not in a mapping
+            ValueError: if initial_design_size < 1
+            ValueError: if no kernel is provided
+            ValueError: if random_interleave_prob is not between 0.0 and 1.0
+            ValueError: if patience < 1
         """
         if initial_design_size < 1:
             raise ValueError(
@@ -117,7 +119,7 @@ class BayesianOptimization(BaseOptimizer):
         ]
 
         if not graph_kernels and not hp_kernels:
-            raise Exception("No kernels are provided!")
+            raise ValueError("No kernels are provided!")
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
