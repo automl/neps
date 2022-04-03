@@ -1,17 +1,26 @@
 from __future__ import annotations
 
+from metahyper.api import ConfigResult
+
+from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
-from ..bayesian_optimization.acquisition_samplers.random_sampler import RandomSampler
 
 
 class RandomSearch(BaseOptimizer):
     def __init__(self, **optimizer_kwargs):
-        optimizer_kwargs["initial_design_size"] = 0
         super().__init__(**optimizer_kwargs)
-        self.random_sampler = RandomSampler()
+        self._num_previous_configs: int = 0
 
-    def sample(self):
-        return self.random_sampler.sample()
+    def load_results(
+        self,
+        previous_results: dict[str, ConfigResult],
+        pending_evaluations: dict[str, ConfigResult],
+    ) -> None:
+        self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 
-    def _update_model(self):
-        self.random_sampler.work_with(self.pipeline_space, self.train_x, self.train_y)
+    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+        config = self.pipeline_space.copy().sample(
+            patience=self.patience, use_user_priors=True
+        )
+        config_id = str(self._num_previous_configs + 1)
+        return config, config_id, None

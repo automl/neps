@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import random
 from typing import Any
 
+import torch
 from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces import (
@@ -12,6 +14,7 @@ from ...search_spaces import (
 )
 from ...search_spaces.search_space import SearchSpace
 from ...utils.common import has_instance
+from ...utils.result_utils import get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
@@ -21,16 +24,7 @@ from .models import SurrogateModelMapping
 
 
 class BayesianOptimization(BaseOptimizer):
-    """Implements the basic BO loop.
-
-    Attributes:
-        surrogate_model: Gaussian process model
-        train_x: Inputs previously sampled on which f has been evaluated
-        train_y: Output of f on the train_x inputs
-        pending_evaluations: Configurations of hyperparameters for which the evaluation of
-            f is not known and will be computed, or is currently beeing evaluated in
-            another process.
-    """
+    """Implements the basic BO loop."""
 
     def __init__(
         self,
@@ -71,24 +65,31 @@ class BayesianOptimization(BaseOptimizer):
             logger: logger object, or None to use the neps logger
 
         Raises:
-            ValueError: if initial_design_size < 1
-            ValueError: if no kernel is provided
-            ValueError: if random_interleave_prob is not between 0.0 and 1.0
             ValueError: if patience < 1
+            ValueError: if initial_design_size < 1
+            ValueError: if random_interleave_prob is not between 0.0 and 1.0
+            ValueError: if no kernel is provided
         """
-        if initial_design_size < 1:
-            raise ValueError(
-                "BayesianOptimization needs initial_design_size to be at least 1"
-            )
-
         super().__init__(
             pipeline_space=pipeline_space,
-            initial_design_size=initial_design_size,
-            random_interleave_prob=random_interleave_prob,
             patience=patience,
             logger=logger,
             budget=budget,
         )
+
+        if initial_design_size < 1:
+            raise ValueError(
+                "BayesianOptimization needs initial_design_size to be at least 1"
+            )
+        if not 0 <= random_interleave_prob <= 1:
+            raise ValueError("random_interleave_prob should be between 0.0 and 1.0")
+
+        self._initial_design_size = initial_design_size
+        self._random_interleave_prob = random_interleave_prob
+        self._train_x: list = []
+        self._train_y: list | torch.Tensor = []
+        self._pending_evaluations: list = []
+        self._model_update_failed = False
 
         if not graph_kernels:
             graph_kernels = []
@@ -149,23 +150,64 @@ class BayesianOptimization(BaseOptimizer):
     def _update_model(self) -> None:
         """Updates the surrogate model and the acquisition function (optimizer)."""
         # TODO: filter out error configs as they can not be used for model building?
-        if len(self.pending_evaluations) > 0:
-            self.surrogate_model.reset_XY(train_x=self.train_x, train_y=self.train_y)
+        if len(self._pending_evaluations) > 0:
+            self.surrogate_model.reset_XY(train_x=self._train_x, train_y=self._train_y)
             self.surrogate_model.fit(**self.surrogate_model_fit_args)
-            ys, _ = self.surrogate_model.predict(self.pending_evaluations)
-            train_x = self.train_x + self.pending_evaluations
-            train_y = self.train_y + list(ys.detach().numpy())
+            ys, _ = self.surrogate_model.predict(self._pending_evaluations)
+            train_x = self._train_x + self._pending_evaluations
+            train_y = self._train_y + list(ys.detach().numpy())
         else:
-            train_x = self.train_x
-            train_y = self.train_y
+            train_x = self._train_x
+            train_y = self._train_y
 
         self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
         self.surrogate_model.fit(**self.surrogate_model_fit_args)
         self.acquisition.fit_on_model(self.surrogate_model)
         self.acquisition_sampler.work_with(self.pipeline_space, x=train_x, y=train_y)
 
-    def sample(self):
-        return self.acquisition_sampler.sample(self.acquisition)
+    def load_results(
+        self,
+        previous_results: dict[str, ConfigResult],
+        pending_evaluations: dict[str, ConfigResult],
+    ) -> None:
+        self._train_x = [el.config for el in previous_results.values()]
+        self._train_y = [get_loss(el.result) for el in previous_results.values()]
+        self._pending_evaluations = [el for el in pending_evaluations.values()]
+        if len(self._train_x) >= self._initial_design_size:
+            try:
+                self._update_model()
+                self._model_update_failed = False
+            except RuntimeError:
+                self.logger.exception(
+                    "Model could not be updated due to below error. Sampling will not use"
+                    " the model."
+                )
+                self._model_update_failed = True
+
+    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+        if len(self._train_x) == 0 and self._initial_design_size >= 1:
+            # TODO: if default config sample it
+            config = self.pipeline_space.copy().sample(
+                patience=self.patience, use_user_priors=True
+            )
+        elif random.random() < self._random_interleave_prob:
+            config = self.pipeline_space.copy().sample(patience=self.patience)
+        elif len(self._train_x) < self._initial_design_size or self._model_update_failed:
+            config = self.pipeline_space.copy().sample(
+                patience=self.patience, use_user_priors=True
+            )
+        else:
+            for _ in range(self.patience):
+                config = self.acquisition_sampler.sample(self.acquisition)
+                if config not in self._pending_evaluations:
+                    break
+            else:
+                config = self.pipeline_space.copy().sample(
+                    patience=self.patience, use_user_priors=True
+                )
+
+        config_id = str(len(self._train_x) + len(self._pending_evaluations) + 1)
+        return config, config_id, None
 
 
 # TODO: Update according to the changes above
