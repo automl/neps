@@ -90,7 +90,7 @@ def run(
     max_evaluations_per_run: int | None = None,
     budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
-    searcher: Literal["bayesian_optimization", "random_search"]
+    searcher: Literal["bayesian_optimization", "random_search", "CArBO"]
     | Any = "bayesian_optimization",
     serializer="yaml",
     **searcher_kwargs,
