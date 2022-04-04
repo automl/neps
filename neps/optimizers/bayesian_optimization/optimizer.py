@@ -147,24 +147,6 @@ class BayesianOptimization(BaseOptimizer):
             kwargs={"patience": self.patience},
         )
 
-    def _update_model(self) -> None:
-        """Updates the surrogate model and the acquisition function (optimizer)."""
-        # TODO: filter out error configs as they can not be used for model building?
-        if len(self._pending_evaluations) > 0:
-            self.surrogate_model.reset_XY(train_x=self._train_x, train_y=self._train_y)
-            self.surrogate_model.fit(**self.surrogate_model_fit_args)
-            ys, _ = self.surrogate_model.predict(self._pending_evaluations)
-            train_x = self._train_x + self._pending_evaluations
-            train_y = self._train_y + list(ys.detach().numpy())
-        else:
-            train_x = self._train_x
-            train_y = self._train_y
-
-        self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
-        self.surrogate_model.fit(**self.surrogate_model_fit_args)
-        self.acquisition.fit_on_model(self.surrogate_model)
-        self.acquisition_sampler.work_with(self.pipeline_space, x=train_x, y=train_y)
-
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
@@ -175,7 +157,25 @@ class BayesianOptimization(BaseOptimizer):
         self._pending_evaluations = [el for el in pending_evaluations.values()]
         if len(self._train_x) >= self._initial_design_size:
             try:
-                self._update_model()
+                # TODO: filter out error configs as they can not be used for modeling?
+                if len(self._pending_evaluations) > 0:
+                    self.surrogate_model.reset_XY(
+                        train_x=self._train_x, train_y=self._train_y
+                    )
+                    self.surrogate_model.fit(**self.surrogate_model_fit_args)
+                    ys, _ = self.surrogate_model.predict(self._pending_evaluations)
+                    train_x = self._train_x + self._pending_evaluations
+                    train_y = self._train_y + list(ys.detach().numpy())
+                else:
+                    train_x = self._train_x
+                    train_y = self._train_y
+
+                self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
+                self.surrogate_model.fit(**self.surrogate_model_fit_args)
+                self.acquisition.fit_on_model(self.surrogate_model)
+                self.acquisition_sampler.work_with(
+                    self.pipeline_space, x=train_x, y=train_y
+                )
                 self._model_update_failed = False
             except RuntimeError:
                 self.logger.exception(
