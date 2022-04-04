@@ -153,13 +153,16 @@ class BayesianOptimization(BaseOptimizer):
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
+        # TODO: filter out error configs as they can not be used for modeling?
         self._train_x = [el.config for el in previous_results.values()]
         self._train_y = [get_loss(el.result) for el in previous_results.values()]
         self._pending_evaluations = [el for el in pending_evaluations.values()]
         if len(self._train_x) >= self._initial_design_size:
             try:
-                # TODO: filter out error configs as they can not be used for modeling?
                 if len(self._pending_evaluations) > 0:
+                    # We want to use hallucinated results for the evaluations that have
+                    # not finished yet. For this we fit a model on the finished
+                    # evaluations and add these to the other results to fit another model.
                     self.surrogate_model.reset_XY(
                         train_x=self._train_x, train_y=self._train_y
                     )
