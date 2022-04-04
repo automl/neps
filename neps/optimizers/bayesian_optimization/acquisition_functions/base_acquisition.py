@@ -13,5 +13,5 @@ class BaseAcquisition(ABC):
     def __call__(self, *args, **kwargs):
         return self.eval(*args, **kwargs)
 
-    def fit_on_model(self, surrogate_model):
+    def fit_on_model(self, surrogate_model):  # TODO: make set_state
         self.surrogate_model = surrogate_model

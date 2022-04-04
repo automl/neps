@@ -42,6 +42,7 @@ class BayesianOptimization(BaseOptimizer):
         patience: int = 100,
         budget: None | int | float = None,
         logger=None,
+        # TODO: add cost function
     ):
         """Initialise the BO loop.
 
@@ -172,7 +173,8 @@ class BayesianOptimization(BaseOptimizer):
 
                 self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
                 self.surrogate_model.fit(**self.surrogate_model_fit_args)
-                self.acquisition.fit_on_model(self.surrogate_model)
+                # TODO: read out cost if they exist
+                self.acquisition.fit_on_model(self.surrogate_model)  # TODO: to set_state
                 self.acquisition_sampler.work_with(
                     self.pipeline_space, x=train_x, y=train_y
                 )
