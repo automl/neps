@@ -25,14 +25,6 @@ TERMINAL_2_OP_NAMES = {
     "down1": topos.DownsampleBlock,
 }
 
-TERMINAL_2_GRAPH_REPR = {
-    "residual": topos.Residual.edge_list,
-    "diamond": topos.Diamond.edge_list,
-    "linear": topos.Linear.edge_list,
-    "diamond_mid": topos.DiamondMid.edge_list,
-    "down1": topos.DownsampleBlock.edge_list,
-}
-
 
 class HierarchicalArchitectureExample(GraphGrammar):
     TRAINABLE = True
@@ -57,7 +49,6 @@ class HierarchicalArchitectureExample(GraphGrammar):
         super().__init__(
             grammar=grammar,
             terminal_to_op_names=TERMINAL_2_OP_NAMES,
-            terminal_to_graph_repr=TERMINAL_2_GRAPH_REPR,
             edge_attr=edge_attr,
             id_parse_tree=id_parse_tree,
         )
