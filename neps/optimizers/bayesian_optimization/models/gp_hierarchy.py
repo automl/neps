@@ -6,7 +6,7 @@ from typing import Iterable, Union
 import numpy as np
 import torch
 
-from ..kernels.combine_kernels import ProductKernel, SumKernel
+from ..kernels.combine_kernels_hierarchy import ProductKernel, SumKernel
 
 # GP model as a weighted average between the vanilla vectorial GP and the graph GP
 from ..kernels.graph_kernel import GraphKernels
@@ -26,7 +26,7 @@ class ComprehensiveGPHierarchy:
         graph_feature_ard=True,
         d_graph_features: int = 2,
         normalize_combined_kernel=True,
-        hierarchy_consider: list = None,  # [0,1,2,3]
+        hierarchy_consider: list = None,  # or a list of integers e.g. [0,1,2,3]
         vectorial_features: list = None,
         combined_kernel: str = "sum",
         verbose: bool = False,
@@ -51,6 +51,7 @@ class ComprehensiveGPHierarchy:
         self.n_vector_kernels: int = self.n_kernels - self.n_graph_kernels
         self.graph_feature_ard = graph_feature_ard
         self.vectorial_features = vectorial_features
+        self.d_graph_features = d_graph_features
 
         if weights is not None:
             self.fixed_weights = True
@@ -73,21 +74,24 @@ class ComprehensiveGPHierarchy:
 
         if combined_kernel == "product":
             self.combined_kernel = ProductKernel(
-                *self.domain_kernels, weights=self.weights
+                *self.domain_kernels, weights=self.weights,
+                hierarchy_consider=self.hierarchy_consider,
+                d_graph_features = self.d_graph_features
             )
         elif combined_kernel == "sum":
-            self.combined_kernel = SumKernel(*self.domain_kernels, weights=self.weights)
+            self.combined_kernel = SumKernel(*self.domain_kernels, weights=self.weights,
+                                             hierarchy_consider=self.hierarchy_consider,
+                                             d_graph_features=self.d_graph_features
+                                             )
         else:
             raise NotImplementedError(
                 f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" '
                 f'or "product" are currently supported. '
             )
-        self.d_graph_features = d_graph_features
         # Verbose mode
         self.verbose = verbose
         # Cache the Gram matrix inverse and its log-determinant
         self.K, self.K_i, self.logDetK = [None] * 3
-        self.theta_vector = None
         self.layer_weights = None
         self.nlml = None
 
@@ -100,7 +104,9 @@ class ComprehensiveGPHierarchy:
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
         if self.hierarchy_consider is None:
-            graphs, _ = extract_configs_hierarchy(self.x_configs)
+            graphs, _ = extract_configs_hierarchy(self.x_configs,
+                                                  d_graph_features=self.d_graph_features,
+                                                  hierarchy_consider=self.hierarchy_consider)
             for i, k in enumerate(self.combined_kernel.kernels):
                 if not isinstance(k, GraphKernels):
                     continue
@@ -222,27 +228,20 @@ class ComprehensiveGPHierarchy:
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)
 
+        # set the prior values for the lengthscales of the two global features of the final architecture graph
+        if self.graph_feature_ard:
+            theta_vector = torch.log(torch.tensor([0.6, 0.6]))
+        else:
+            theta_vector = torch.log(torch.tensor([0.6]))
+
         # if use continuous graph properties and we set to use stationary kernels
         if self.d_graph_features > 0 and len(self.hp_kernels) > 0:
             # TODO modify the code on theta_vector betlow to be compatibale with HPO
             # theta in this case are the lengthscales for the two global property of
             # the final architecture graph
             # theta_vector = get_theta_vector(vectorial_features=self.vectorial_features)
-            if self.graph_feature_ard:
-                theta_vector = torch.log(
-                    torch.tensor(
-                        [0.6, 0.6],
-                    )
-                )
-            else:
-                theta_vector = torch.log(
-                    torch.tensor(
-                        [0.6],
-                    )
-                )
             theta_vector.requires_grad_(True)
-        else:
-            theta_vector = None
+
         # Whether to include the likelihood (jitter or noise variance) as a hyperparameter
         likelihood = torch.tensor(
             self.likelihood,
@@ -266,10 +265,14 @@ class ComprehensiveGPHierarchy:
             if a is not None and a.is_leaf and a.requires_grad:
                 optim_vars.append(a)
 
-        if theta_vector is not None:
-            for a in theta_vector.values():
-                if a is not None and a.requires_grad:
-                    optim_vars.append(a)
+        # if theta_vector is not None: # TODO used for HPO
+        #     for a in theta_vector.values():
+        #         if a is not None and a.requires_grad:
+        #             optim_vars.append(a)
+        # if we use graph features, we will optimize the corresponding stationary kernel lengthscales
+        if self.d_graph_features > 0 and theta_vector.requires_grad:
+            optim_vars.append(theta_vector)
+
         nlml = None
         if len(optim_vars) == 0:  # Skip optimisation
             K = self.combined_kernel.fit_transform(
@@ -649,18 +652,17 @@ def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
 
 
 # Optimize Graph kernel
-def getBack(var_grad_fn):
-    print(var_grad_fn)
+def getBack(var_grad_fn, logger):
+    logger.debug(var_grad_fn)
     for n in var_grad_fn.next_functions:
         if n[0]:
             try:
                 tensor = getattr(n[0], "variable")
-                print(n[0])
-                print("Tensor with grad found:", tensor)
-                print(" - gradient:", tensor.grad)
-                print()
+                logger.debug(n[0])
+                logger.debug(f"Tensor with grad found: {tensor}")
+                logger.debug(f" - gradient: {tensor.grad}")
             except AttributeError:
-                getBack(n[0])
+                getBack(n[0], logger)
 
 
 def _grid_search_wl_kernel(
@@ -826,8 +828,7 @@ def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
         except RuntimeError:
             fail_count += 1
     if not is_successful:
-        print(K)
-        raise RuntimeError("Gram matrix not positive definite despite of jitter")
+        raise RuntimeError(f"Gram matrix not positive definite despite of jitter:\n{K}")
     logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
     K_i = torch.cholesky_inverse(Kc)
     return K_i.to(torch.get_default_dtype()), logDetK.to(torch.get_default_dtype())

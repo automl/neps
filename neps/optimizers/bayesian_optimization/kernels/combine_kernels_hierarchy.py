@@ -5,7 +5,7 @@ import torch
 from .utils import extract_configs_hierarchy
 from .vectorial_kernels import HammingKernel, Stationary
 from .weisfilerlehman import GraphKernels
-
+import numpy as np
 
 # normalise weights in front of additive kernels
 def transform_weights(weights):
@@ -30,6 +30,14 @@ class CombineKernel:
 
         self.has_graph_kernels = False
         self.has_vector_kernels = False
+        self.hierarchy_consider = kwargs['hierarchy_consider']
+        self.d_graph_features = kwargs['d_graph_features']
+        # if use global graph features of the final architecture graph, prepare for normalising
+        # them based on training data
+        if self.d_graph_features > 0:
+            self.train_graph_feature_mean = None
+            self.train_graph_feature_std = None
+
         self.lengthscale_bounds = (None, None)
         for k in kernels:
             if isinstance(k, GraphKernels):
@@ -59,12 +67,22 @@ class CombineKernel:
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1, x1 = extract_configs_hierarchy(configs)
+        gr1, x1 = extract_configs_hierarchy(configs,
+                                            d_graph_features = self.d_graph_features,
+                                            hierarchy_consider=self.hierarchy_consider)
+
+        # normalise the global graph features if we plan to use them
+        if self.d_graph_features > 0:
+            if gp_fit:
+                # compute the mean and std based on training data
+                self.train_graph_feature_mean = np.mean(x1, 0)
+                self.train_graph_feature_std = np.std(x1, 0)
+            x1 = (x1 - self.train_graph_feature_mean)/self.train_graph_feature_std
         # k_values = [] # for debug
         # k_features = [] # for debug
         for i, k in enumerate(self.kernels):
             if isinstance(k, GraphKernels) and None not in gr1:
-                if len(gr1) == N:
+                if len(gr1) == N and self.hierarchy_consider is None:
                     # only the final graph is used
                     k_i = k.fit_transform(
                         [g[i] for g in gr1] if isinstance(gr1[0], (list, tuple)) else gr1,
@@ -145,7 +163,9 @@ class CombineKernel:
         # N = len(configs)
         # K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1, _ = extract_configs_hierarchy(configs)
+        gr1, _ = extract_configs_hierarchy(configs,
+                                           d_graph_features=self.d_graph_features,
+                                           hierarchy_consider=self.hierarchy_consider)
         # get the corresponding graph kernel and hierarchy graph data
         graph_kernel_list = [k for k in self.kernels if isinstance(k, GraphKernels)]
         k_single_hierarchy = graph_kernel_list[hierarchy_id]
@@ -181,7 +201,9 @@ class CombineKernel:
             )
 
         weights = transform_weights(weights.clone())
-        gr, x = extract_configs_hierarchy(configs)
+        gr, x = extract_configs_hierarchy(configs,
+                                          d_graph_features=self.d_graph_features,
+                                          hierarchy_consider=self.hierarchy_consider)
         # K is in shape of len(Y), len(X)
         size = len(configs)
         K = (

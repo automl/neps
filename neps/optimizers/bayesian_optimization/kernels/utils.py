@@ -67,10 +67,12 @@ def graph_metrics(graph, metric=None, directed=True):
     return metric_score
 
 
-def extract_configs_hierarchy(configs: list) -> Tuple[list, list]:
+def extract_configs_hierarchy(configs: list, d_graph_features: int, hierarchy_consider=None) -> Tuple[list, list]:
     """Extracts graph & graph features from configs objects
     Args:
         configs (list): Object holding graph and/or graph features
+        d_graph_features (int): Number of global graph features used; if d_graph_features=0, indicate not using global graph features
+        hierarchy_consider (list or None): Specify graphs at which earlier hierarchical levels to be considered
     Returns:
         Tuple[list, list]: list of graphs, list of HPs
     """
@@ -79,7 +81,7 @@ def extract_configs_hierarchy(configs: list) -> Tuple[list, list]:
     if N > 0 and "graph" in configs[0].keys():
         graphs = [c["graph"] for c in configs]  # get the list of final graphs
 
-    if N > 0 and "metafeature" in configs[0].keys():
+    if N > 0 and d_graph_features > 0:
         # graph_features = [c['metafeature'] for c in configs]
         # these feature values are normalised between 0 and 1
         # the two graph features used are 'avg_path_length', 'density'
@@ -91,9 +93,12 @@ def extract_configs_hierarchy(configs: list) -> Tuple[list, list]:
             for g in graphs
         ]
         graph_features_array = np.vstack(graph_features)  # shape n_archs x 2 (nx(2+d_hp))
+    else:
+        # if not using global graph features of the final architectures, set them to None
+        graph_features_array = [None]*len(graphs)
 
     # get graph for earlier hierarchical levels
-    if N > 0 and "hierarchy_graphs" in configs[0].keys():
+    if N > 0 and hierarchy_consider is not None:
         # note the node feature for graph in earlier hierarchical level should be more coarse
         # i.e. for each graph
         # original_node_labels = nx.get_node_attributes(G, 'op_name')

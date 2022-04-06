@@ -20,7 +20,7 @@ from ...utils.result_utils import get_loss
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_samplers import AcquisitionSamplerMapping
 from .kernels import GraphKernelMapping, StationaryKernelMapping
-from .models.gp_hierarchy import ComprehensiveGP
+from .models.gp_hierarchy import ComprehensiveGPHierarchy
 
 
 class BayesianOptimization(metahyper.Sampler):
@@ -113,7 +113,7 @@ class BayesianOptimization(metahyper.Sampler):
         if not graph_kernels and not hp_kernels:
             raise Exception("No kernels are provided!")
 
-        self.surrogate_model = ComprehensiveGP(
+        self.surrogate_model = ComprehensiveGPHierarchy(
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             verbose=verbose,
