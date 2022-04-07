@@ -15,6 +15,7 @@ class FunctionParameter(GraphGrammar):
         grammar: Grammar | str,
         terminal_to_op_names,
         name: str = "",
+        **kwargs,
     ):
         if isinstance(grammar, str):
             grammar = Grammar.fromstring(grammar)
@@ -23,6 +24,7 @@ class FunctionParameter(GraphGrammar):
             grammar=grammar,
             terminal_to_op_names=terminal_to_op_names,
             edge_attr=False,
+            **kwargs,
         )
 
         self.build: Callable = build_fn

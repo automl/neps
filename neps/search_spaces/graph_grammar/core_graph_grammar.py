@@ -29,6 +29,8 @@ class CoreGraphGrammar(Graph):
         identity_op: list = None,
         name: str = None,
         scope: str = None,
+        return_all_subgraphs: bool = False,
+        return_graph_per_hierarchy: bool = False,
     ):
         super().__init__(name, scope)
 
@@ -47,6 +49,9 @@ class CoreGraphGrammar(Graph):
         self.identity_op = identity_op if identity_op is not None else []
 
         self.terminal_to_graph_nodes: dict = {}
+
+        self.return_all_subgraphs = return_all_subgraphs
+        self.return_graph_per_hierarchy = return_graph_per_hierarchy
 
     @staticmethod
     def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
@@ -752,8 +757,8 @@ class CoreGraphGrammar(Graph):
         sym_name: str = "op_name",
         prune: bool = True,
         add_subtree_map: bool = False,
-        return_all_subgraphs: bool = False,
-        return_graph_per_hierarchy: bool = False,
+        return_all_subgraphs: bool = None,
+        return_graph_per_hierarchy: bool = None,
     ) -> nx.DiGraph | tuple[nx.DiGraph, collections.OrderedDict]:
         """Generates graph from parse tree in string representation.
         Note that we ignore primitive HPs!
@@ -798,7 +803,7 @@ class CoreGraphGrammar(Graph):
             hierarchy_dict[hierarchy_level_counter].append(string_tree)
             node_labels = get_node_labels(subgraphs[string_tree])
             for _, node_label in node_labels:
-                if node_label in subgraph.keys():
+                if node_label in subgraphs.keys():
                     hierarchy_dict = get_hierarchicy_dict(
                         node_label, subgraphs, hierarchy_dict, hierarchy_level_counter + 1
                     )
@@ -896,10 +901,16 @@ class CoreGraphGrammar(Graph):
         if prune:
             add_subtree_map = False
 
+        if return_all_subgraphs is None:
+            return_all_subgraphs = self.return_all_subgraphs
+        if return_graph_per_hierarchy is None:
+            return_graph_per_hierarchy = self.return_graph_per_hierarchy
+        compute_subgraphs = return_all_subgraphs or return_graph_per_hierarchy
+
         G = nx.DiGraph()
         if add_subtree_map:
             q_nonterminals: Deque = collections.deque()
-        if return_all_subgraphs:
+        if compute_subgraphs:
             q_subtrees: Deque = collections.deque()
             q_subgraphs: Deque = collections.deque()
             subgraphs_dict = collections.OrderedDict()
@@ -934,7 +945,7 @@ class CoreGraphGrammar(Graph):
         for split_idx, sym in enumerate(string_tree.split(" ")):
             if sym == "":
                 continue
-            if return_all_subgraphs:
+            if compute_subgraphs:
                 new_sym = True
                 sym_copy = sym[:]
             if sym[0] == "(":
@@ -943,12 +954,12 @@ class CoreGraphGrammar(Graph):
                 if add_subtree_map:
                     for _ in range(sym.count(")")):
                         q_nonterminals.pop()
-                if return_all_subgraphs:
+                if compute_subgraphs:
                     new_sym = False
                 while sym[-1] == ")" and sym not in valid_terminals:
                     sym = sym[:-1]
 
-            if return_all_subgraphs and new_sym:
+            if compute_subgraphs and new_sym:
                 if sym in grammar.nonterminals:
                     # need dict as a graph can have multiple subgraphs
                     q_subtrees.append(sym_copy[:])
@@ -1026,7 +1037,7 @@ class CoreGraphGrammar(Graph):
 
                     G.add_edges_from(edges)
 
-                    if return_all_subgraphs:
+                    if compute_subgraphs:
                         subgraph = nx.DiGraph()
                         subgraph.add_edges_from(edges)
                         q_subgraphs.append(
@@ -1060,12 +1071,12 @@ class CoreGraphGrammar(Graph):
                         u, v = el
                         if prune and sym in self.zero_op:
                             G.remove_edge(u, v)
-                            if return_all_subgraphs:
+                            if compute_subgraphs:
                                 q_subgraphs[-1]["graph"].remove_edge(u, v)
                                 del q_subgraphs[-1]["atoms"][(u, v)]
                         else:
                             G[u][v][sym_name] = sym
-                            if return_all_subgraphs:
+                            if compute_subgraphs:
                                 q_subgraphs[-1]["graph"][u][v][sym_name] = sym
                             if add_subtree_map:
                                 G[u][v]["subtrees"].append(q_nonterminals[-1])
@@ -1074,7 +1085,7 @@ class CoreGraphGrammar(Graph):
                         n = el
                         if prune and sym in self.zero_op:
                             G.remove_node(n)
-                            if return_all_subgraphs:
+                            if compute_subgraphs:
                                 q_subgraphs[-1]["graph"].remove_node(n)
                                 del q_subgraphs[-1]["atoms"][n]
                         elif prune and sym in self.identity_op:
@@ -1086,7 +1097,7 @@ class CoreGraphGrammar(Graph):
                                 ]
                             )
                             G.remove_node(n)
-                            if return_all_subgraphs:
+                            if compute_subgraphs:
                                 q_subgraphs[-1]["graph"].add_edges_from(
                                     [
                                         (n_in, n_out)
@@ -1102,7 +1113,7 @@ class CoreGraphGrammar(Graph):
                                 del q_subgraphs[-1]["atoms"][n]
                         else:
                             G.nodes[n][sym_name] = sym
-                            if return_all_subgraphs:
+                            if compute_subgraphs:
                                 q_subgraphs[-1]["graph"].nodes[n][sym_name] = sym
                                 q_subgraphs[-1]["atoms"][
                                     next(
@@ -1115,7 +1126,7 @@ class CoreGraphGrammar(Graph):
                             if add_subtree_map:
                                 G.nodes[n]["subtrees"].append(q_nonterminals[-1])
                                 q_nonterminals.pop()
-            if return_all_subgraphs and sym_copy[-1] == ")":
+            if compute_subgraphs and sym_copy[-1] == ")":
                 q_subtrees[-1] += f" {sym_copy}"
                 for _ in range(sym_copy.count(")")):
                     subtree_identifier = q_subtrees.pop()
@@ -1199,7 +1210,7 @@ class CoreGraphGrammar(Graph):
             if return_all_subgraphs:
                 return_val.append(subgraphs_dict)
             if return_graph_per_hierarchy:
-                return_val.append(get_graph_per_hierarchy(string_tree, subgraph_dict))
+                return_val.append(get_graph_per_hierarchy(string_tree, subgraphs_dict))
             return return_val
         return G
 

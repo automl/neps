@@ -67,7 +67,9 @@ def graph_metrics(graph, metric=None, directed=True):
     return metric_score
 
 
-def extract_configs_hierarchy(configs: list, d_graph_features: int, hierarchy_consider=None) -> Tuple[list, list]:
+def extract_configs_hierarchy(
+    configs: list, d_graph_features: int, hierarchy_consider=None
+) -> Tuple[list, list]:
     """Extracts graph & graph features from configs objects
     Args:
         configs (list): Object holding graph and/or graph features
@@ -77,9 +79,25 @@ def extract_configs_hierarchy(configs: list, d_graph_features: int, hierarchy_co
         Tuple[list, list]: list of graphs, list of HPs
     """
     N = len(configs)
+
+    if N > 0 and "get_graphs" in dir(configs[0]):
+        combined_graphs = [c.get_graphs() for c in configs]
     # final architecture graph
-    if N > 0 and "graph" in configs[0].keys():
-        graphs = [c["graph"] for c in configs]  # get the list of final graphs
+    elif N > 0 and "graph" in configs[0].keys():
+        combined_graphs = [c["graph"] for c in configs]  # get the list of final graphs
+
+    if N > 0 and hierarchy_consider is not None and isinstance(combined_graphs[0], list):
+        graphs = list(
+            map(
+                list,
+                zip(
+                    *[
+                        [g[0][0]] + [hg for _, hg in g[0][1].items()]
+                        for g in combined_graphs
+                    ]
+                ),
+            )
+        )
 
     if N > 0 and d_graph_features > 0:
         # graph_features = [c['metafeature'] for c in configs]
@@ -95,24 +113,25 @@ def extract_configs_hierarchy(configs: list, d_graph_features: int, hierarchy_co
         graph_features_array = np.vstack(graph_features)  # shape n_archs x 2 (nx(2+d_hp))
     else:
         # if not using global graph features of the final architectures, set them to None
-        graph_features_array = [None]*len(graphs)
+        graph_features_array = [None] * len(graphs)
 
     # get graph for earlier hierarchical levels
-    if N > 0 and hierarchy_consider is not None:
-        # note the node feature for graph in earlier hierarchical level should be more coarse
-        # i.e. for each graph
-        # original_node_labels = nx.get_node_attributes(G, 'op_name')
-        # new_node_labels = {k: v.split('(')[1] for k, v in original_node_labels.items() if
-        #                    '(' in v and ')' in v}
-        # nx.set_node_attributes(G, new_node_labels, name='op_name')
-        all_hierarchy_graphs = [
-            [c["hierarchy_graphs"][k] for c in configs]
-            for k in configs[0]["hierarchy_graphs"].keys()
-        ]
-        # if we get hierarchial levels [0,1,2] , all_hierarchy_graphs is a list of 3 lists
-        all_hierarchy_graphs = all_hierarchy_graphs + [
-            graphs
-        ]  # all_hierarchy_graphs is a list of 4 lists
-        return all_hierarchy_graphs, graph_features_array
-    else:
-        return graphs, graph_features_array
+    # if N > 0 and hierarchy_consider is not None:
+    #     # note the node feature for graph in earlier hierarchical level should be more coarse
+    #     # i.e. for each graph
+    #     # original_node_labels = nx.get_node_attributes(G, 'op_name')
+    #     # new_node_labels = {k: v.split('(')[1] for k, v in original_node_labels.items() if
+    #     #                    '(' in v and ')' in v}
+    #     # nx.set_node_attributes(G, new_node_labels, name='op_name')
+    #     all_hierarchy_graphs = [
+    #         [c["hierarchy_graphs"][k] for c in configs]
+    #         for k in configs[0]["hierarchy_graphs"].keys()
+    #     ]
+    #     # if we get hierarchial levels [0,1,2] , all_hierarchy_graphs is a list of 3 lists
+    #     all_hierarchy_graphs = all_hierarchy_graphs + [
+    #         graphs
+    #     ]  # all_hierarchy_graphs is a list of 4 lists
+    #     return all_hierarchy_graphs, graph_features_array
+    # else:
+    #     return graphs, graph_features_array
+    return graphs, graph_features_array

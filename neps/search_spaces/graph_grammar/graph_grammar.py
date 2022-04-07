@@ -29,6 +29,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
+        **kwargs,
     ):
         if isinstance(grammar, list) and len(grammar) != 1:
             raise NotImplementedError("Does not support multiple grammars")
@@ -43,6 +44,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             identity_op=identity_op,
             name=name,
             scope=scope,
+            **kwargs,
         )
 
         self.id: str = ""
