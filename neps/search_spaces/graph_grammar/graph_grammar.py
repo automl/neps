@@ -22,7 +22,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
-        terminal_to_graph_repr: dict = None,
+        terminal_to_graph_edges: dict = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
         zero_op: list = ["Zero", "zero"],
@@ -30,10 +30,13 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         name: str = None,
         scope: str = None,
     ):
+        if isinstance(grammar, list) and len(grammar) != 1:
+            raise NotImplementedError("Does not support multiple grammars")
+
         super().__init__(
-            grammars=[grammar],
+            grammars=grammar,
             terminal_to_op_names=terminal_to_op_names,
-            terminal_to_graph_repr=terminal_to_graph_repr,
+            terminal_to_graph_edges=terminal_to_graph_edges,
             edge_attr=edge_attr,
             edge_label=edge_label,
             zero_op=zero_op,
@@ -45,24 +48,22 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.id: str = ""
         self.string_tree: str = ""
         self.nxTree: nx.DiGraph = None
-        self.value: nx.DiGraph = None
+        self._value: nx.DiGraph = None
 
-        self.has_prior = False
+        self.has_prior: bool = False
 
     def __eq__(self, other):
         return self.id == other.id
 
     @property
     def search_space_size(self) -> int:
-        if len(self.grammars) != 1:
-            raise NotImplementedError("Does not support multiple grammars")
         return self.grammars[0].compute_space_size
 
     def reset(self):
         self.clear_graph()
         self.string_tree = ""
         self.nxTree = None
-        self.value = None
+        self._value = None
         self.id = ""
 
     @abstractmethod
@@ -89,23 +90,22 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.reset()
         self.string_tree = self.grammars[0].sampler(1)[0]
         self.id = self.string_tree
-        self.create_representation(self.string_tree)
 
-    def create_representation(
-        self, string_tree: str
-    ):  # todo relevant code for conversion
-        self.value = self.from_stringTree_to_graph_repr(
-            string_tree,
-            self.grammars[0],
-            terminal_to_graph_edges=self.terminal_to_graph_repr,
-            valid_terminals=self.terminal_to_op_names.keys(),
-            edge_attr=self.edge_attr,  # set to false for node attribute
-        )
+    @property
+    def value(self):
+        if self._value is None:
+            self._value = self.from_stringTree_to_graph_repr(
+                self.string_tree,
+                self.grammars[0],
+                valid_terminals=self.terminal_to_op_names.keys(),
+                edge_attr=self.edge_attr,  # set to false for node attribute
+            )
+        return self._value
 
     def create_from_id(self, identifier: str):
+        self.reset()
         self.id = identifier
         self.string_tree = self.id
-        self.create_representation(self.string_tree)  # todo relevant for conversion
 
     # TODO: does this serialization really work for every graph ?
     def serialize(self):
@@ -161,7 +161,7 @@ class GraphGrammarCell(GraphGrammar):
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
-        terminal_to_graph_repr: dict = None,
+        terminal_to_graph_edges: dict = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
         zero_op: list = ["Zero", "zero"],
@@ -172,7 +172,7 @@ class GraphGrammarCell(GraphGrammar):
         super().__init__(
             grammar,
             terminal_to_op_names,
-            terminal_to_graph_repr,
+            terminal_to_graph_edges,
             edge_attr=edge_attr,
             edge_label=edge_label,
             zero_op=zero_op,
@@ -205,7 +205,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         terminal_to_op_names: dict,
         base_to_motif_map: dict,
         number_of_repetitive_motifs: int,
-        terminal_to_graph_repr: dict = None,
+        terminal_to_graph_edges: dict = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
         zero_op: list = ["Zero", "zero"],
@@ -216,7 +216,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         super().__init__(
             grammars=grammars,
             terminal_to_op_names=terminal_to_op_names,
-            terminal_to_graph_repr=terminal_to_graph_repr,
+            terminal_to_graph_edges=terminal_to_graph_edges,
             edge_attr=edge_attr,
             edge_label=edge_label,
             zero_op=zero_op,
@@ -229,7 +229,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
         self.nxTree: nx.DiGraph = None
-        self.value: nx.DiGraph = None
+        self._value: nx.DiGraph = None
 
         self.full_grammar = self.get_full_grammar(self.grammars)
         self.base_to_motif_map = base_to_motif_map
@@ -243,7 +243,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree_list = []
         self.string_tree = ""
         self.nxTree = None
-        self.value = None
+        self._value = None
         self.id = ""
 
     @staticmethod
@@ -287,18 +287,20 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             base_to_motif_map=self.base_to_motif_map,
         )
         self.id = "\n".join(self.string_tree_list)
-        self.create_representation(self.string_tree)
 
-    def create_representation(self, string_tree: str):
-        self.value = self.from_stringTree_to_graph_repr(
-            string_tree,
-            self.full_grammar,
-            terminal_to_graph_edges=self.terminal_to_graph_repr,
-            valid_terminals=self.terminal_to_op_names.keys(),
-            edge_attr=self.edge_attr,
-        )
+    @property
+    def value(self):
+        if self._value is None:
+            self._value = self.from_stringTree_to_graph_repr(
+                self.string_tree,
+                self.full_grammar,
+                valid_terminals=self.terminal_to_op_names.keys(),
+                edge_attr=self.edge_attr,
+            )
+        return self._value
 
     def create_from_id(self, identifier: str | list):
+        self.reset()
         self.string_tree_list = (
             identifier.split("\n") if isinstance(identifier, str) else identifier
         )
@@ -308,7 +310,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             base_to_motif_map=self.base_to_motif_map,
         )
         self.id = "\n".join(self.string_tree_list)
-        self.create_representation(self.string_tree)
 
     def mutate(
         self,
@@ -410,7 +411,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         terminal_to_op_names: dict,
         base_to_motif_map: dict,
         number_of_repetitive_motifs: list[int],
-        terminal_to_graph_repr: dict = None,
+        terminal_to_graph_edges: dict = None,
         fixed_macro_grammar: bool = False,
         edge_attr: bool = True,
         edge_label: str = "op_name",
@@ -426,7 +427,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         super().__init__(
             grammars=grammars,
             terminal_to_op_names=terminal_to_op_names,
-            terminal_to_graph_repr=terminal_to_graph_repr,
+            terminal_to_graph_edges=terminal_to_graph_edges,
             edge_attr=edge_attr,
             edge_label=edge_label,
             zero_op=zero_op,
@@ -439,7 +440,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
         self.nxTree: nx.DiGraph = None
-        self.value: nx.DiGraph = None
+        self._value: nx.DiGraph = None
 
         if self.fixed_macro_grammar:
             self.full_grammar = self.get_full_grammar([macro_grammar] + self.grammars)
@@ -460,7 +461,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree_list = []
         self.string_tree = ""
         self.nxTree = None
-        self.value = None
+        self._value = None
         self.id = ""
 
     @staticmethod
@@ -505,40 +506,38 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 self.string_tree_list,
                 base_to_motif_map=self.base_to_motif_map,
             )
-            self.create_representation(self.string_tree_list)
         else:
             self.string_tree = self.assemble_trees(
                 self.string_tree_list[0],
                 self.string_tree_list[1:],
                 base_to_motif_map=self.base_to_motif_map,
             )
-            self.create_representation(self.string_tree)
 
-    def create_representation(self, string_tree: str | list[str]):
-        if isinstance(string_tree, str):
-            self.value = self.from_stringTree_to_graph_repr(
-                string_tree,
-                self.full_grammar,
-                terminal_to_graph_edges=self.terminal_to_graph_repr,
-                valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,
-            )
-        elif isinstance(string_tree, list):
-            self.value = []
-            for g, st in zip(self.grammars, string_tree):
-                self.value.append(
-                    self.from_stringTree_to_graph_repr(
-                        st,
-                        g,
-                        terminal_to_graph_edges=self.terminal_to_graph_repr,
-                        valid_terminals=self.terminal_to_op_names.keys(),
-                        edge_attr=self.edge_attr,
+    @property
+    def value(self):
+        if self._value is None:
+            if self.fixed_macro_grammar:
+                self._value = []
+                for g, st in zip(self.grammars, self.string_tree_list):
+                    self._value.append(
+                        self.from_stringTree_to_graph_repr(
+                            st,
+                            g,
+                            valid_terminals=self.terminal_to_op_names.keys(),
+                            edge_attr=self.edge_attr,
+                        )
                     )
+            else:
+                self._value = self.from_stringTree_to_graph_repr(
+                    self.string_tree,
+                    self.full_grammar,
+                    valid_terminals=self.terminal_to_op_names.keys(),
+                    edge_attr=self.edge_attr,
                 )
-        else:
-            raise NotImplementedError
+        return self._value
 
     def create_from_id(self, identifier: str | list):
+        self.reset()
         self.string_tree_list = (
             identifier.split("\n") if isinstance(identifier, str) else identifier
         )
@@ -549,14 +548,12 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 self.string_tree_list,
                 base_to_motif_map=self.base_to_motif_map,
             )
-            self.create_representation(self.string_tree_list)
         else:
             self.string_tree = self.assemble_trees(
                 self.string_tree_list[0],
                 self.string_tree_list[1:],
                 base_to_motif_map=self.base_to_motif_map,
             )
-            self.create_representation(self.string_tree)
 
     def mutate(
         self,

@@ -25,11 +25,11 @@ class FunctionParameter(GraphGrammar):
             edge_attr=False,
         )
 
-        self.build = build_fn
+        self.build: Callable = build_fn
         self.name: str = name
-        self.nxTree = None
-        self.string_tree = ""
-        self.id = ""
+        self.nxTree: nx.DiGraph = None
+        self.string_tree: str = ""
+        self.id: str = ""
 
     def setup(self, tree: nx.DiGraph):
         self.build_graph_from_tree(
@@ -49,17 +49,15 @@ class FunctionParameter(GraphGrammar):
             self.nxTree = self.create_nx_tree(self.string_tree)
         if len(self.nodes()) == 0:
             self.setup(self.nxTree)
-        pytorch_model = super().to_pytorch()
-        return pytorch_model
+        return super().to_pytorch()
 
     def create_graph_from_string(self, child: str):
         g = FunctionParameter(
             grammar=self.grammars[0],
-            build_fn=self.build_fn,
+            build_fn=self.build,
             terminal_to_op_names=self.terminal_to_op_names,
             name=self.name,
         )
         g.string_tree = child
         g.id = child
-        g.create_representation(g.string_tree)
         return g
