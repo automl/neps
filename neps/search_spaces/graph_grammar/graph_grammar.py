@@ -29,7 +29,6 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
-        id_parse_tree: bool = False,
     ):
         super().__init__(
             grammars=[grammar],
@@ -42,8 +41,6 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             name=name,
             scope=scope,
         )
-
-        self.id_parse_tree = id_parse_tree
 
         self.id: str = ""
         self.string_tree: str = ""
@@ -97,16 +94,12 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def create_representation(
         self, string_tree: str
     ):  # todo relevant code for conversion
-        self.value = (
-            self.create_nx_tree(string_tree)
-            if self.id_parse_tree
-            else self.from_stringTree_to_graph_repr(
-                string_tree,
-                self.grammars[0],
-                terminal_to_graph_edges=self.terminal_to_graph_repr,
-                valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,  # set to false for node attribute
-            )
+        self.value = self.from_stringTree_to_graph_repr(
+            string_tree,
+            self.grammars[0],
+            terminal_to_graph_edges=self.terminal_to_graph_repr,
+            valid_terminals=self.terminal_to_op_names.keys(),
+            edge_attr=self.edge_attr,  # set to false for node attribute
         )
 
     def create_from_id(self, identifier: str):
@@ -175,7 +168,6 @@ class GraphGrammarCell(GraphGrammar):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
-        id_parse_tree: bool = False,
     ):
         super().__init__(
             grammar,
@@ -187,7 +179,6 @@ class GraphGrammarCell(GraphGrammar):
             identity_op=identity_op,
             name=name,
             scope=scope,
-            id_parse_tree=id_parse_tree,
         )
 
         self.cell = None
@@ -221,7 +212,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
-        id_parse_tree: bool = False,
     ):
         super().__init__(
             grammars=grammars,
@@ -234,8 +224,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             name=name,
             scope=scope,
         )
-
-        self.id_parse_tree = id_parse_tree
 
         self.id: str = ""
         self.string_tree: str = ""
@@ -302,16 +290,12 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.create_representation(self.string_tree)
 
     def create_representation(self, string_tree: str):
-        self.value = (
-            self.create_nx_tree(string_tree)
-            if self.id_parse_tree
-            else self.from_stringTree_to_graph_repr(
-                string_tree,
-                self.full_grammar,
-                terminal_to_graph_edges=self.terminal_to_graph_repr,
-                valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,
-            )
+        self.value = self.from_stringTree_to_graph_repr(
+            string_tree,
+            self.full_grammar,
+            terminal_to_graph_edges=self.terminal_to_graph_repr,
+            valid_terminals=self.terminal_to_op_names.keys(),
+            edge_attr=self.edge_attr,
         )
 
     def create_from_id(self, identifier: str | list):
@@ -434,7 +418,6 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
-        id_parse_tree: bool = False,
     ):
         self.macro_grammar = macro_grammar
         self.fixed_macro_grammar = fixed_macro_grammar
@@ -451,8 +434,6 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             name=name,
             scope=scope,
         )
-
-        self.id_parse_tree = id_parse_tree
 
         self.id: str = ""
         self.string_tree: str = ""
@@ -535,24 +516,18 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
     def create_representation(self, string_tree: str | list[str]):
         if isinstance(string_tree, str):
-            self.value = (
-                self.create_nx_tree(string_tree)
-                if self.id_parse_tree
-                else self.from_stringTree_to_graph_repr(
-                    string_tree,
-                    self.full_grammar,
-                    terminal_to_graph_edges=self.terminal_to_graph_repr,
-                    valid_terminals=self.terminal_to_op_names.keys(),
-                    edge_attr=self.edge_attr,
-                )
+            self.value = self.from_stringTree_to_graph_repr(
+                string_tree,
+                self.full_grammar,
+                terminal_to_graph_edges=self.terminal_to_graph_repr,
+                valid_terminals=self.terminal_to_op_names.keys(),
+                edge_attr=self.edge_attr,
             )
         elif isinstance(string_tree, list):
             self.value = []
             for g, st in zip(self.grammars, string_tree):
                 self.value.append(
-                    self.create_nx_tree(st)
-                    if self.id_parse_tree
-                    else self.from_stringTree_to_graph_repr(
+                    self.from_stringTree_to_graph_repr(
                         st,
                         g,
                         terminal_to_graph_edges=self.terminal_to_graph_repr,

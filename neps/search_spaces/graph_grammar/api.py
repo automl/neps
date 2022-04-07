@@ -23,7 +23,6 @@ class FunctionParameter(GraphGrammar):
             grammar=grammar,
             terminal_to_op_names=terminal_to_op_names,
             edge_attr=False,
-            id_parse_tree=False,
         )
 
         self.build = build_fn
