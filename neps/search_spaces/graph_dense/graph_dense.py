@@ -65,7 +65,6 @@ class GraphDenseParameter(GraphGrammar):
             terminal_to_op_names=TERMINAL_2_OP_NAMES,
             terminal_to_graph_repr=TERMINAL_2_GRAPH_REPR,
             edge_attr=self.edge_attr,
-            id_parse_tree=False,
         )
 
         self.num_classes = self.NUM_CLASSES if hasattr(self, "NUM_CLASSES") else 10
