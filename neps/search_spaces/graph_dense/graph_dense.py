@@ -63,7 +63,7 @@ class GraphDenseParameter(GraphGrammar):
         super().__init__(
             grammar=grammar,
             terminal_to_op_names=TERMINAL_2_OP_NAMES,
-            terminal_to_graph_repr=TERMINAL_2_GRAPH_REPR,
+            terminal_to_graph_edges=TERMINAL_2_GRAPH_REPR,
             edge_attr=self.edge_attr,
         )
 

@@ -134,5 +134,4 @@ class HierarchicalArchitectureExample(GraphGrammar):
         )
         g.string_tree = child
         g.id = child
-        g.create_representation(g.string_tree)
         return g
