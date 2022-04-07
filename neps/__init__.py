@@ -5,6 +5,7 @@ from .search_spaces import (
     CategoricalParameter,
     ConstantParameter,
     FloatParameter,
+    FunctionParameter,
     GraphDenseParameter,
     GraphGrammar,
     GraphGrammarCell,
