@@ -28,5 +28,5 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
                 )
         return acquisition
 
-    def fit_on_model(self, surrogate_model):
-        self.base_acquisition.fit_on_model(surrogate_model)
+    def set_state(self, surrogate_model, **kwargs):
+        self.base_acquisition.set_state(surrogate_model)

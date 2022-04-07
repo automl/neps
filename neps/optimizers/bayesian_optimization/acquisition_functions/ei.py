@@ -85,8 +85,8 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei = ei.detach().numpy().item()
         return ei
 
-    def fit_on_model(self, surrogate_model):
-        super().fit_on_model(surrogate_model)
+    def set_state(self, surrogate_model):
+        super().set_state(surrogate_model)
 
         # Compute incumbent
         if self.in_fill == "best":
