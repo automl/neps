@@ -29,6 +29,7 @@ class BaseOptimizer(metahyper.Sampler):
         self.pipeline_space = pipeline_space
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
+        print("INIT", self, self.__class__)
 
     @abstractmethod
     def load_results(
