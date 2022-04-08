@@ -11,6 +11,7 @@ import networkx as nx
 import torch
 from networkx.algorithms.dag import lexicographical_topological_sort
 from path import Path
+from torch import nn
 
 from .graph_utils.logging import log_first_n, log_formats
 from .graph_utils.utils import AttrDict, iter_flatten
@@ -413,7 +414,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         logger.debug(f"Graph {self.name} exiting. Output {log_formats(x)}.")
         return x
 
-    def to_pytorch(self, write_out: bool = False):
+    def to_pytorch(self, write_out: bool = False) -> nn.Module:
         def _import_code(code: str, name: str):
             module = types.ModuleType(name)
             exec(code, module.__dict__)  # pylint: disable=exec-used

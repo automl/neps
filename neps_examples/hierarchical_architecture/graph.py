@@ -34,7 +34,6 @@ class HierarchicalArchitectureExample(GraphGrammar):
     def __init__(
         self,
         edge_attr: bool = False,
-        id_parse_tree: bool = False,
         grammar: Grammar = None,
         base_channels: int = 64,
         out_channels: int = 512,
@@ -50,7 +49,6 @@ class HierarchicalArchitectureExample(GraphGrammar):
             grammar=grammar,
             terminal_to_op_names=TERMINAL_2_OP_NAMES,
             edge_attr=edge_attr,
-            id_parse_tree=id_parse_tree,
         )
 
         self.base_channels = base_channels
@@ -130,12 +128,10 @@ class HierarchicalArchitectureExample(GraphGrammar):
     def create_graph_from_string(self, child: str):
         g = HierarchicalArchitectureExample(
             edge_attr=self.edge_attr,
-            id_parse_tree=self.id_parse_tree,
             grammar=self.grammars[0],
             base_channels=self.base_channels,
             out_channels=self.out_channels,
         )
         g.string_tree = child
         g.id = child
-        g.create_representation(g.string_tree)
         return g
