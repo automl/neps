@@ -98,6 +98,9 @@ def extract_configs_hierarchy(
                 ),
             )
         )
+        ### full graph, 0th hierarchy (high-level, smallest), 1st hierarchy, 2nd hierarchy, 3rd hierarchy, ...
+        ### graph gets bigger of hierarchies
+        ### list shape: (1+4) x N
 
     if N > 0 and d_graph_features > 0:
         # graph_features = [c['metafeature'] for c in configs]
