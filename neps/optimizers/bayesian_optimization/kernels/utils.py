@@ -101,6 +101,8 @@ def extract_configs_hierarchy(
         ### full graph, 0th hierarchy (high-level, smallest), 1st hierarchy, 2nd hierarchy, 3rd hierarchy, ...
         ### graph gets bigger of hierarchies
         ### list shape: (1+4) x N
+    else:
+        graphs = [g[0][0] for g in combined_graphs]
 
     if N > 0 and d_graph_features > 0:
         # graph_features = [c['metafeature'] for c in configs]
@@ -108,15 +110,15 @@ def extract_configs_hierarchy(
         # the two graph features used are 'avg_path_length', 'density'
         graph_features = [
             [
-                graph_metrics(g, metric="avg_path_length"),
-                graph_metrics(g, metric="density"),
+                graph_metrics(g[0][0], metric="avg_path_length"),
+                graph_metrics(g[0][0], metric="density"),
             ]
-            for g in graphs
+            for g in combined_graphs
         ]
         graph_features_array = np.vstack(graph_features)  # shape n_archs x 2 (nx(2+d_hp))
     else:
         # if not using global graph features of the final architectures, set them to None
-        graph_features_array = [None] * len(graphs)
+        graph_features_array = [None] * N
 
     # get graph for earlier hierarchical levels
     # if N > 0 and hierarchy_consider is not None:

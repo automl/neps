@@ -5,7 +5,7 @@ import warnings
 
 import networkx as nx
 import numpy as np
-from hierarchical_nas_benchmarks.search_spaces.robin_test.graph import PRODUCTIONS
+# from hierarchical_nas_benchmarks.search_spaces.robin_test.graph import PRODUCTIONS
 from scipy import stats
 from torch import nn
 
@@ -121,7 +121,7 @@ def data_loader_graph(
     x_all = []
     y_all = []
 
-    for arch_info in arch_data_list[:100]:
+    for arch_info in arch_data_list[:2000]:
         # for arch_info in arch_data_list[:5000]:
         # arch = {}
         # arch['graph'] = arch_info['graph']
@@ -168,15 +168,13 @@ if __name__ == "__main__":
         "-m", "--method", help="regression model", default="gpwl", type=str
     )
     parser.add_argument(
-        "-ntr", "--n_train", help="number of training data", default=50, type=int
+        "-ntr", "--n_train", help="number of training data", default=100, type=int
     )
     parser.add_argument(
-        "-d", "--dataset", help="dataset name", default="cifar10spatial_aug", type=str
+        "-d", "--dataset", help="dataset name", default="addNISTspatial_aug", type=str
     )
     # parser.add_argument('-hl', '--hierarchy', help='hierarchies considered', default='null', type=str)
-    parser.add_argument(
-        "-hl", "--hierarchy", help="hierarchies considered", default="0_1_2_3", type=str
-    )
+    parser.add_argument("-hl", "--hierarchy", help="hierarchies considered", default="0_1_2_3", type=str)
     parser.add_argument(
         "-ns", "--n_seeds", help="number of training data", default=1, type=int
     )
@@ -193,7 +191,7 @@ if __name__ == "__main__":
     domain_se_kernel = None
     verbose = False
     # set to 2 to use graph meta features else 0
-    d_graph_features = 0
+    d_graph_features = 2
     # set whether to use stationary kernels
     if d_graph_features == 0:
         hp_kernels = []
@@ -212,7 +210,7 @@ if __name__ == "__main__":
     else:
         hierarchy_considered = [int(hl) for hl in early_hierarchies_considered.split("_")]
         graph_kernels = ["wl"] * (len(hierarchy_considered) + 1)
-        wl_h = [1] + [2] * len(hierarchy_considered)
+        wl_h = [2, 1] + [2] * (len(hierarchy_considered)-1)
 
     graph_kernels = [
         GraphKernelMapping[kernel](
