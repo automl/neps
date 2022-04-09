@@ -59,10 +59,7 @@ structure = {
 
 
 def build(graph):
-    in_channels = 3
-    n_classes = 20
     base_channels = 64
-    out_channels = 512
 
     # Assign channels
     in_node = [n for n in graph.nodes if graph.in_degree(n) == 0][0]
@@ -79,37 +76,27 @@ def build(graph):
             else:
                 graph.edges[e].update({"C_in": channels, "C_out": channels})
 
-    in_node = [n for n in graph.nodes if graph.in_degree(n) == 0][0]
-    out_node = [n for n in graph.nodes if graph.out_degree(n) == 0][0]
-    max_node_label = max(graph.nodes())
-    graph.add_nodes_from([max_node_label + 1, max_node_label + 2])
-    graph.add_edge(max_node_label + 1, in_node)
-    graph.edges[max_node_label + 1, in_node].update(
-        {
-            "op": ops.Stem(base_channels, C_in=in_channels),
-            "op_name": "Stem",
-        }
-    )
-    graph.add_nodes_from([out_node, max_node_label + 2])
-    graph.add_edge(out_node, max_node_label + 2)
-
-    graph.edges[out_node, max_node_label + 2].update(
-        {
-            "op": ops.Sequential(
-                nn.AdaptiveAvgPool2d(1),
-                nn.Flatten(),
-                nn.Linear(out_channels, n_classes),
-            ),
-            "op_name": "Out",
-        }
-    )
-
 
 def run_pipeline(working_directory, architecture):
     start = time.time()
+
+    in_channels = 3
+    n_classes = 20
+    base_channels = 64
+    out_channels = 512
+
     model = architecture.to_pytorch()
+    model = nn.Sequential(
+        ops.Stem(base_channels, C_in=in_channels),
+        model,
+        nn.AdaptiveAvgPool2d(1),
+        nn.Flatten(),
+        nn.Linear(out_channels, n_classes),
+    )
+
     number_of_params = sum(p.numel() for p in model.parameters())
     y = abs(1.5e7 - number_of_params)
+
     end = time.time()
 
     return {
