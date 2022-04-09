@@ -110,10 +110,7 @@ def run_pipeline(working_directory, architecture):
 
 pipeline_space = dict(
     architecture=neps.FunctionParameter(
-        build_fn=build,
-        name="makrograph",
-        grammar=structure,
-        terminal_to_op_names=primitives,
+        build_fn=build, structure=structure, primitives=primitives, name="makrograph"
     )
 )
 

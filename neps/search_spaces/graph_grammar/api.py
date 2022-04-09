@@ -22,19 +22,19 @@ class FunctionParameter(GraphGrammar):
     def __init__(
         self,
         build_fn: Callable,
-        grammar: Grammar | str | dict,
-        terminal_to_op_names,
+        structure: Grammar | str | dict,
+        primitives,
         name: str = "",
         **kwargs,
     ):
-        if isinstance(grammar, dict):
-            grammar = _dict_structure_to_str(grammar, terminal_to_op_names)
-        if isinstance(grammar, str):
-            grammar = Grammar.fromstring(grammar)
+        if isinstance(structure, dict):
+            structure = _dict_structure_to_str(structure, primitives)
+        if isinstance(structure, str):
+            structure = Grammar.fromstring(structure)
 
         super().__init__(
-            grammar=grammar,
-            terminal_to_op_names=terminal_to_op_names,
+            grammar=structure,
+            terminal_to_op_names=primitives,
             edge_attr=False,
             **kwargs,
         )
@@ -67,9 +67,9 @@ class FunctionParameter(GraphGrammar):
 
     def create_graph_from_string(self, child: str):
         g = FunctionParameter(
-            grammar=self.grammars[0],
             build_fn=self.build,
-            terminal_to_op_names=self.terminal_to_op_names,
+            structure=self.grammars[0],
+            primitives=self.terminal_to_op_names,
             name=self.name,
         )
         g.string_tree = child
