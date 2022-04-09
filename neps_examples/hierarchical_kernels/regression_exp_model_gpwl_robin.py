@@ -112,6 +112,7 @@ def data_loader_graph(
             primitives=TERMINAL_2_OP_NAMES,
             name="makrograph",
             return_graph_per_hierarchy=True,
+            old_build_api=True,
         )
     )
     pipeline_space = SearchSpace(**pipeline_space)

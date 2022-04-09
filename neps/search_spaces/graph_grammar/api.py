@@ -39,6 +39,7 @@ class FunctionParameter(GraphGrammar):
         primitives,
         name: str = "",
         set_recursive_attribute: Callable | None = None,
+        old_build_api=False,
         **kwargs,
     ):
         if isinstance(structure, dict):
@@ -54,6 +55,7 @@ class FunctionParameter(GraphGrammar):
         )
 
         self._set_recursive_attribute = set_recursive_attribute
+        self._old_build_api = old_build_api
         self.name: str = name
         self.nxTree: nx.DiGraph = None
         self.string_tree: str = ""
@@ -66,7 +68,9 @@ class FunctionParameter(GraphGrammar):
         )
         self.prune_graph()
 
-        if self._set_recursive_attribute:
+        if self._old_build_api:
+            self._set_recursive_attribute(self)  # This is the full build_fn
+        elif self._set_recursive_attribute:
             _build(self, self._set_recursive_attribute)
 
         self.compile()
