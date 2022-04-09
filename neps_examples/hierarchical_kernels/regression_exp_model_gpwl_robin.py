@@ -107,7 +107,7 @@ def data_loader_graph(
 ):
     pipeline_space = dict(
         architecture=FunctionParameter(
-            build_fn=build,
+            set_recursive_attribute=build,
             structure=PRODUCTIONS,
             primitives=TERMINAL_2_OP_NAMES,
             name="makrograph",

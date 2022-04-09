@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import time
 
-import networkx as nx
 from torch import nn
 
 import neps
@@ -58,23 +57,10 @@ structure = {
 }
 
 
-def build(graph):
-    base_channels = 64
-
-    # Assign channels
-    in_node = [n for n in graph.nodes if graph.in_degree(n) == 0][0]
-    for n in nx.topological_sort(graph):
-        for pred in graph.predecessors(n):
-            e = (pred, n)
-            if pred == in_node:
-                channels = base_channels
-            else:
-                pred_pred = list(graph.predecessors(pred))[0]
-                channels = graph.edges[(pred_pred, pred)]["C_out"]
-            if graph.edges[e]["op_name"] == "ResNetBasicblock":
-                graph.edges[e].update({"C_in": channels, "C_out": channels * 2})
-            else:
-                graph.edges[e].update({"C_in": channels, "C_out": channels})
+def set_recursive_attribute(op_name, predecessor_values):
+    in_channels = 64 if predecessor_values is None else predecessor_values["C_out"]
+    out_channels = in_channels * 2 if op_name == "ResNetBasicblock" else in_channels
+    return dict(C_in=in_channels, C_out=out_channels)
 
 
 def run_pipeline(working_directory, architecture):
@@ -110,7 +96,10 @@ def run_pipeline(working_directory, architecture):
 
 pipeline_space = dict(
     architecture=neps.FunctionParameter(
-        build_fn=build, structure=structure, primitives=primitives, name="makrograph"
+        set_recursive_attribute=set_recursive_attribute,
+        structure=structure,
+        primitives=primitives,
+        name="makrograph",
     )
 )
 

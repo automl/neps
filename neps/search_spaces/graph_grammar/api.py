@@ -18,13 +18,27 @@ def _dict_structure_to_str(structure, primitives):
     return grammar
 
 
+def _build(graph, set_recursive_attribute):
+    in_node = [n for n in graph.nodes if graph.in_degree(n) == 0][0]
+    for n in nx.topological_sort(graph):
+        for pred in graph.predecessors(n):
+            e = (pred, n)
+            op_name = graph.edges[e]["op_name"]
+            if pred == in_node:
+                predecessor_values = None
+            else:
+                pred_pred = list(graph.predecessors(pred))[0]
+                predecessor_values = graph.edges[(pred_pred, pred)]
+            graph.edges[e].update(set_recursive_attribute(op_name, predecessor_values))
+
+
 class FunctionParameter(GraphGrammar):
     def __init__(
         self,
-        build_fn: Callable,
         structure: Grammar | str | dict,
         primitives,
         name: str = "",
+        set_recursive_attribute: Callable | None = None,
         **kwargs,
     ):
         if isinstance(structure, dict):
@@ -39,7 +53,7 @@ class FunctionParameter(GraphGrammar):
             **kwargs,
         )
 
-        self.build: Callable = build_fn
+        self._set_recursive_attribute = set_recursive_attribute
         self.name: str = name
         self.nxTree: nx.DiGraph = None
         self.string_tree: str = ""
@@ -52,7 +66,8 @@ class FunctionParameter(GraphGrammar):
         )
         self.prune_graph()
 
-        self.build(self)
+        if self._set_recursive_attribute:
+            _build(self, self._set_recursive_attribute)
 
         self.compile()
         self.update_op_names()
@@ -67,7 +82,7 @@ class FunctionParameter(GraphGrammar):
 
     def create_graph_from_string(self, child: str):
         g = FunctionParameter(
-            build_fn=self.build,
+            set_recursive_attribute=self.build,
             structure=self.grammars[0],
             primitives=self.terminal_to_op_names,
             name=self.name,
