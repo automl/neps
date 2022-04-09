@@ -7,11 +7,10 @@ import networkx as nx
 from torch import nn
 
 import neps
-from neps import FunctionParameter
 from neps.search_spaces.graph_grammar import primitives as ops
 from neps.search_spaces.graph_grammar import topologies as topos
 
-TERMINAL_2_OP_NAMES = {
+primitives = {
     "id": ops.Identity(),
     "conv3x3": {"op": ops.ReLUConvBN, "kernel_size": 3, "stride": 1, "padding": 1},
     "conv1x1": {"op": ops.ReLUConvBN, "kernel_size": 1},
@@ -24,14 +23,39 @@ TERMINAL_2_OP_NAMES = {
     "down1": topos.DownsampleBlock,
 }
 
-
-PRODUCTIONS = """S -> "diamond" D2 D2 D1 D1 | "diamond" D1 D2 D2 D1 | "diamond" D1 D1 D2 D2 | "linear" D2 D1 | "linear" D1 D2 | "diamond_mid" D1 D2 D1 D2 D1 | "diamond_mid" D2 D2 Cell D1 D1
-D2 -> "diamond" D1 D1 D1 D1 | "linear" D1 D1 | "diamond_mid" D1 D1 Cell D1 D1
-D1 -> "diamond" D1Helper D1Helper Cell Cell | "diamond" Cell Cell D1Helper D1Helper | "diamond" D1Helper Cell Cell D1Helper | "linear" D1Helper Cell | "linear" Cell D1Helper | "diamond_mid" D1Helper D1Helper Cell Cell Cell | "diamond_mid" Cell D1Helper D1Helper D1Helper Cell
-D1Helper -> "down1" Cell "downsample"
-Cell -> "residual" OPS OPS OPS | "diamond" OPS OPS OPS OPS | "linear" OPS OPS | "diamond_mid" OPS OPS OPS OPS OPS
-OPS -> "conv3x3" | "conv1x1" | "avg_pool" | "id"
-"""
+structure = {
+    "S": [
+        "diamond D2 D2 D1 D1",
+        "diamond D1 D2 D2 D1",
+        "diamond D1 D1 D2 D2",
+        "linear D2 D1",
+        "linear D1 D2",
+        "diamond_mid D1 D2 D1 D2 D1",
+        "diamond_mid D2 D2 Cell D1 D1",
+    ],
+    "D2": [
+        "diamond D1 D1 D1 D1",
+        "linear D1 D1",
+        "diamond_mid D1 D1 Cell D1 D1",
+    ],
+    "D1": [
+        "diamond D1Helper D1Helper Cell Cell",
+        "diamond Cell Cell D1Helper D1Helper",
+        "diamond D1Helper Cell Cell D1Helper",
+        "linear D1Helper Cell",
+        "linear Cell D1Helper",
+        "diamond_mid D1Helper D1Helper Cell Cell Cell",
+        "diamond_mid Cell D1Helper D1Helper D1Helper Cell",
+    ],
+    "D1Helper": ["down1 Cell downsample"],
+    "Cell": [
+        "residual OPS OPS OPS",
+        "diamond OPS OPS OPS OPS",
+        "linear OPS OPS",
+        "diamond_mid OPS OPS OPS OPS OPS",
+    ],
+    "OPS": ["conv3x3", "conv1x1", "avg_pool", "id"],
+}
 
 
 def build(graph):
@@ -98,11 +122,11 @@ def run_pipeline(working_directory, architecture):
 
 
 pipeline_space = dict(
-    architecture=FunctionParameter(
+    architecture=neps.FunctionParameter(
         build_fn=build,
         name="makrograph",
-        grammar=PRODUCTIONS,
-        terminal_to_op_names=TERMINAL_2_OP_NAMES,
+        grammar=structure,
+        terminal_to_op_names=primitives,
     )
 )
 

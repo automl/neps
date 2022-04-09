@@ -8,15 +8,27 @@ from .cfg import Grammar
 from .graph_grammar import GraphGrammar
 
 
+def _dict_structure_to_str(structure, primitives):
+    grammar = ""
+    for nonterminal, productions in structure.items():
+        grammar += nonterminal + " -> " + " | ".join(productions) + "\n"
+    for primitive in primitives.keys():
+        grammar = grammar.replace(f" {primitive} ", f' "{primitive}" ')
+        grammar = grammar.replace(f" {primitive}\n", f' "{primitive}"\n')
+    return grammar
+
+
 class FunctionParameter(GraphGrammar):
     def __init__(
         self,
         build_fn: Callable,
-        grammar: Grammar | str,
+        grammar: Grammar | str | dict,
         terminal_to_op_names,
         name: str = "",
         **kwargs,
     ):
+        if isinstance(grammar, dict):
+            grammar = _dict_structure_to_str(grammar, terminal_to_op_names)
         if isinstance(grammar, str):
             grammar = Grammar.fromstring(grammar)
 
