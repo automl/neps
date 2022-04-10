@@ -72,10 +72,6 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def create_graph_from_string(self, child: str):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
 
@@ -100,7 +96,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                 self.string_tree,
                 self.grammars[0],
                 valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,  # set to false for node attribute
+                edge_attr=self.edge_attr,
             )
         return self._value
 
@@ -193,10 +189,6 @@ class GraphGrammarCell(GraphGrammar):
     def create_graph_from_string(self, child: str):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
 
 class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar_repetitive"
@@ -264,10 +256,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     def create_graph_from_string(self, child: list[str]):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
     def get_dictionary(self) -> dict:
         return {"graph_grammar": "\n".join(self.string_tree_list)}
 
@@ -280,7 +268,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.string_tree = self.assemble_trees(
@@ -482,10 +470,6 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
     def create_graph_from_string(self, child: list[str]):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
     def get_dictionary(self) -> dict:
         return {"graph_grammar": "\n".join(self.string_tree_list)}
 
@@ -498,7 +482,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.id = "\n".join(self.string_tree_list)
