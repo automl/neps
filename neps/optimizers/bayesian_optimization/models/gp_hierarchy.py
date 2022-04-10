@@ -162,9 +162,8 @@ class ComprehensiveGPHierarchy:
                 train_y = self.y
 
                 for h_i in list(h_):
-                    self.combined_kernel.kernels[
-                        len(self.hierarchy_consider)
-                    ].change_kernel_params({"h": h_i})
+                    # only optimize h in wl kernel
+                    self.combined_kernel.kernels[0].change_kernel_params({"h": h_i})
                     K = self.combined_kernel.fit_transform(
                         self.weights,
                         self.x_configs,
@@ -180,9 +179,7 @@ class ComprehensiveGPHierarchy:
                         best_nlml = nlml
                         best_subtree_depth = h_i
                         best_K = torch.clone(K)
-                self.combined_kernel.kernels[
-                    len(self.hierarchy_consider)
-                ].change_kernel_params({"h": best_subtree_depth})
+                self.combined_kernel.kernels[0].change_kernel_params({"h": best_subtree_depth})
                 self.combined_kernel._gram = best_K  # pylint: disable=protected-access
 
     def fit(
@@ -800,7 +797,7 @@ def compute_log_marginal_likelihood(
 
 def generate_h_combo_candidates(hierarchy_consider):
     h_range_all_hierarchy = [range(min(hier + 2, 4)) for hier in hierarchy_consider]
-    h_range_all_hierarchy.append(range(4))
+    h_range_all_hierarchy = [range(5)] + h_range_all_hierarchy
     h_combo_all = list(itertools.product(*h_range_all_hierarchy))
     h_combo_sub = []
     for h_combo in h_combo_all:

@@ -168,9 +168,10 @@ class CombineKernel:
                                            hierarchy_consider=self.hierarchy_consider)
         # get the corresponding graph kernel and hierarchy graph data
         graph_kernel_list = [k for k in self.kernels if isinstance(k, GraphKernels)]
-        k_single_hierarchy = graph_kernel_list[hierarchy_id]
-        gr1_single_hierarchy = gr1[hierarchy_id]
-        weight_single_hierarchy = weights[hierarchy_id]
+        # first graph kernel is on the final architecture graph
+        k_single_hierarchy = graph_kernel_list[int(hierarchy_id+1)]
+        gr1_single_hierarchy = gr1[int(hierarchy_id+1)]
+        weight_single_hierarchy = weights[int(hierarchy_id+1)]
         k_raw = k_single_hierarchy.fit_transform(
             gr1_single_hierarchy,
             rebuild_model=rebuild_model,
@@ -185,62 +186,6 @@ class CombineKernel:
         K = weight_single_hierarchy * k_raw
 
         return K
-
-    def transform(
-        self,
-        weights: torch.Tensor,
-        configs: list,
-        x=None,
-        feature_lengthscale=None,  # pylint: disable=unused-argument
-    ):
-        # TODO Seems transform function not used at all
-        if self._gram is None:
-            raise ValueError(
-                "The kernel has not been fitted. Call fit_transform first to generate the training Gram"
-                "matrix."
-            )
-
-        weights = transform_weights(weights.clone())
-        gr, x = extract_configs_hierarchy(configs,
-                                          d_graph_features=self.d_graph_features,
-                                          hierarchy_consider=self.hierarchy_consider)
-        # K is in shape of len(Y), len(X)
-        size = len(configs)
-        K = (
-            torch.zeros(size, self._gram.shape[0])
-            if self.combined_by == "sum"
-            else torch.ones(size, self._gram.shape[0])
-        )
-
-        for i, k in enumerate(self.kernels):
-            if isinstance(k, GraphKernels) and None not in gr:
-                if len(gr) == size:
-                    # only the final graph is used
-                    update_val = weights[i] * k.transform(
-                        [g[i] for g in gr] if isinstance(gr, list) else gr
-                    )
-                else:
-                    # graphs in the early hierarchies are also used;
-                    # assume the combined kernel list always start with graph kernels i.e. kernels=[graph kernels, hp kernels]
-                    gr_i = gr[i]
-                    update_val = weights[i] * k.transform(
-                        [g[i] for g in gr_i] if isinstance(gr_i, list) else gr_i
-                    )
-
-            elif isinstance(k, Stationary) and None not in x:
-                update_val = weights[i] * k.transform(x).double()
-            else:
-                raise NotImplementedError(
-                    " For now, only the Stationary custom built kernel_operators are supported!"
-                )
-
-            if self.combined_by == "sum":
-                K += update_val
-            elif self.combined_by == "product":
-                K *= update_val
-
-        return K.t()
-
 
 class SumKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):
