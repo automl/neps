@@ -24,7 +24,7 @@ class ComprehensiveGPHierarchy:
         weights=None,
         learn_all_h=False,
         graph_feature_ard=True,
-        d_graph_features: int = 2,
+        d_graph_features: int = 0,
         normalize_combined_kernel=True,
         hierarchy_consider: list = None,  # or a list of integers e.g. [0,1,2,3]
         vectorial_features: list = None,
@@ -189,7 +189,7 @@ class ComprehensiveGPHierarchy:
         wl_subtree_candidates: tuple = tuple(range(5)),
         wl_lengthscales: tuple = tuple(np.e**i for i in range(-2, 3)),
         optimize_lik: bool = True,
-        max_lik: float = 0.01,  # pylint: disable=unused-argument
+        max_lik: float = 0.5,  # pylint: disable=unused-argument
         optimize_wl_layer_weights: bool = False,
         optimizer_kwargs: dict = None,
     ):
@@ -258,10 +258,6 @@ class ComprehensiveGPHierarchy:
 
         # Linking the optimizer variables to the sum kernel
         optim_vars = []
-        for a in [weights, likelihood, layer_weights]:
-            if a is not None and a.is_leaf and a.requires_grad:
-                optim_vars.append(a)
-
         # if theta_vector is not None: # TODO used for HPO
         #     for a in theta_vector.values():
         #         if a is not None and a.requires_grad:
@@ -269,6 +265,10 @@ class ComprehensiveGPHierarchy:
         # if we use graph features, we will optimize the corresponding stationary kernel lengthscales
         if self.d_graph_features > 0 and theta_vector.requires_grad:
             optim_vars.append(theta_vector)
+
+        for a in [weights, likelihood, layer_weights]:
+            if a is not None and a.is_leaf and a.requires_grad:
+                optim_vars.append(a)
 
         nlml = None
         if len(optim_vars) == 0:  # Skip optimisation
@@ -329,9 +329,9 @@ class ComprehensiveGPHierarchy:
                 nlml_list.append(nlml.item())
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
             # TODO : I commented this, not used. What is it doing ?
-            # likelihood.clamp_(
-            #     1e-5, max_lik
-            # ) if likelihood is not None and likelihood.is_leaf else None
+            likelihood.clamp_(
+                1e-5, max_lik
+            ) if likelihood is not None and likelihood.is_leaf else None
             K_i, logDetK = compute_pd_inverse(K, likelihood)
 
         # Apply the optimal hyperparameters

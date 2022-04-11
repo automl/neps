@@ -92,7 +92,7 @@ def extract_configs_hierarchy(
                 list,
                 zip(
                     *[
-                        [g[0][0]] + [hg for _, hg in g[0][1].items()]
+                        [g[0][0]] + [g[0][1][hierarchy_id] for hierarchy_id in hierarchy_consider]
                         for g in combined_graphs
                     ]
                 ),
@@ -101,6 +101,16 @@ def extract_configs_hierarchy(
         ### full graph, 0th hierarchy (high-level, smallest), 1st hierarchy, 2nd hierarchy, 3rd hierarchy, ...
         ### graph gets bigger of hierarchies
         ### list shape: (1+4) x N
+
+        # modify the node attribute labels on earlier hierarchy graphs e.g.
+        # note the node feature for graph in earlier hierarchical level should be more coarse
+        # e.g. {'op_name': '(Cell diamond (OPS id) (OPS avg_pool) (OPS id) (OPS avg_pool))'} -> {'op_name': 'Cell diamond '}
+        for hg_list in graphs[1:]:
+            for G in hg_list:
+                original_node_labels = nx.get_node_attributes(G, 'op_name')
+                new_node_labels = {k: v.split('(')[1] for k, v in original_node_labels.items() if
+                                   '(' in v and ')' in v}
+                nx.set_node_attributes(G, new_node_labels, name='op_name')
     else:
         graphs = [g[0][0] for g in combined_graphs]
 
@@ -120,23 +130,4 @@ def extract_configs_hierarchy(
         # if not using global graph features of the final architectures, set them to None
         graph_features_array = [None] * N
 
-    # get graph for earlier hierarchical levels
-    # if N > 0 and hierarchy_consider is not None:
-    #     # note the node feature for graph in earlier hierarchical level should be more coarse
-    #     # i.e. for each graph
-    #     # original_node_labels = nx.get_node_attributes(G, 'op_name')
-    #     # new_node_labels = {k: v.split('(')[1] for k, v in original_node_labels.items() if
-    #     #                    '(' in v and ')' in v}
-    #     # nx.set_node_attributes(G, new_node_labels, name='op_name')
-    #     all_hierarchy_graphs = [
-    #         [c["hierarchy_graphs"][k] for c in configs]
-    #         for k in configs[0]["hierarchy_graphs"].keys()
-    #     ]
-    #     # if we get hierarchial levels [0,1,2] , all_hierarchy_graphs is a list of 3 lists
-    #     all_hierarchy_graphs = all_hierarchy_graphs + [
-    #         graphs
-    #     ]  # all_hierarchy_graphs is a list of 4 lists
-    #     return all_hierarchy_graphs, graph_features_array
-    # else:
-    #     return graphs, graph_features_array
     return graphs, graph_features_array
