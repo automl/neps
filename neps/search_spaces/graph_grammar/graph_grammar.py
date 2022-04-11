@@ -88,6 +88,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.reset()
         self.string_tree = self.grammars[0].sampler(1)[0]
         self.id = self.string_tree
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def value(self):
@@ -104,6 +105,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.reset()
         self.id = identifier
         self.string_tree = self.id
+        _ = self.value  # required for checking if graph is valid!
 
     # TODO: does this serialization really work for every graph ?
     def serialize(self):
@@ -277,6 +279,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             base_to_motif_map=self.base_to_motif_map,
         )
         self.id = "\n".join(self.string_tree_list)
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def value(self):
@@ -300,6 +303,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             base_to_motif_map=self.base_to_motif_map,
         )
         self.id = "\n".join(self.string_tree_list)
+        _ = self.value  # required for checking if graph is valid!
 
     def mutate(
         self,
@@ -498,6 +502,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 self.string_tree_list[1:],
                 base_to_motif_map=self.base_to_motif_map,
             )
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def value(self):
@@ -540,6 +545,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 self.string_tree_list[1:],
                 base_to_motif_map=self.base_to_motif_map,
             )
+        _ = self.value  # required for checking if graph is valid!
 
     def mutate(
         self,

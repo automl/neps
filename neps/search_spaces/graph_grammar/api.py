@@ -69,7 +69,7 @@ class FunctionParameter(GraphGrammar):
         self.prune_graph()
 
         if self._old_build_api:
-            self._set_recursive_attribute(self)  # This is the full build_fn
+            self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
         elif self._set_recursive_attribute:
             _build(self, self._set_recursive_attribute)
 
@@ -93,4 +93,5 @@ class FunctionParameter(GraphGrammar):
         )
         g.string_tree = child
         g.id = child
+        _ = g.value  # required for checking if graph is valid!
         return g
