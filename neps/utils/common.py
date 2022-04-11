@@ -26,8 +26,13 @@ def get_rnd_state() -> dict:
 
 
 def set_rnd_state(state: dict):
-    rnd_s1, rnd_s2, rnd_s3 = state["random_state"]
-    random.setstate((rnd_s1, tuple(rnd_s2), rnd_s3))
+    # rnd_s1, rnd_s2, rnd_s3 = state["random_state"]
+    random.setstate(
+        tuple(
+            tuple(rnd_s) if isinstance(rnd_s, list) else rnd_s
+            for rnd_s in state["random_state"]
+        )
+    )
     np.random.set_state(tuple(state["np_seed_state"]))
     torch.random.set_rng_state(torch.ByteTensor(state["torch_seed_state"]))
     if torch.cuda.is_available() and "torch_cuda_seed_state" in state:
