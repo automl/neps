@@ -28,6 +28,8 @@ def pipeline_space_from_configspace(
     for hyperparameter in configspace.get_hyperparameters():
         if isinstance(hyperparameter, CS.CategoricalHyperparameter):
             parameter = CategoricalParameter(hyperparameter.choices)
+        elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
+            parameter = CategoricalParameter(hyperparameter.sequence)
         elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
             parameter = IntegerParameter(
                 lower=hyperparameter.lower,

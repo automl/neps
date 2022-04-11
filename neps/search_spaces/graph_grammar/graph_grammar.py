@@ -72,10 +72,6 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def create_graph_from_string(self, child: str):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
 
@@ -92,6 +88,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.reset()
         self.string_tree = self.grammars[0].sampler(1)[0]
         self.id = self.string_tree
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def value(self):
@@ -100,7 +97,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                 self.string_tree,
                 self.grammars[0],
                 valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,  # set to false for node attribute
+                edge_attr=self.edge_attr,
             )
         return self._value
 
@@ -108,6 +105,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.reset()
         self.id = identifier
         self.string_tree = self.id
+        _ = self.value  # required for checking if graph is valid!
 
     # TODO: does this serialization really work for every graph ?
     def serialize(self):
@@ -193,10 +191,6 @@ class GraphGrammarCell(GraphGrammar):
     def create_graph_from_string(self, child: str):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
 
 class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar_repetitive"
@@ -264,10 +258,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     def create_graph_from_string(self, child: list[str]):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
     def get_dictionary(self) -> dict:
         return {"graph_grammar": "\n".join(self.string_tree_list)}
 
@@ -280,7 +270,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.string_tree = self.assemble_trees(
@@ -289,6 +279,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             base_to_motif_map=self.base_to_motif_map,
         )
         self.id = "\n".join(self.string_tree_list)
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def value(self):
@@ -312,6 +303,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             base_to_motif_map=self.base_to_motif_map,
         )
         self.id = "\n".join(self.string_tree_list)
+        _ = self.value  # required for checking if graph is valid!
 
     def mutate(
         self,
@@ -482,10 +474,6 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
     def create_graph_from_string(self, child: list[str]):
         raise NotImplementedError
 
-    @abstractmethod
-    def setup(self, tree: nx.DiGraph):
-        raise NotImplementedError
-
     def get_dictionary(self) -> dict:
         return {"graph_grammar": "\n".join(self.string_tree_list)}
 
@@ -498,7 +486,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self):
+    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.id = "\n".join(self.string_tree_list)
@@ -514,6 +502,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 self.string_tree_list[1:],
                 base_to_motif_map=self.base_to_motif_map,
             )
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def value(self):
@@ -556,6 +545,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 self.string_tree_list[1:],
                 base_to_motif_map=self.base_to_motif_map,
             )
+        _ = self.value  # required for checking if graph is valid!
 
     def mutate(
         self,

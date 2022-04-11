@@ -55,8 +55,9 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         assert self.incumbent is not None, "EI function not fitted on model"
         try:
             mu, cov = self.surrogate_model.predict(x)
-        except ValueError:
-            return -1.0  # in case of error. return ei of -1
+        except ValueError as e:
+            raise e
+            # return -1.0  # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
         mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))

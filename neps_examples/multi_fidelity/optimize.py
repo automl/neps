@@ -27,6 +27,6 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     working_directory="results/multi_fidelity_example",
-    max_evaluations_total=20,
+    max_evaluations_total=15,
 )
 previous_results, pending_configs = neps.status("results/multi_fidelity_example")
