@@ -74,15 +74,18 @@ class ComprehensiveGPHierarchy:
 
         if combined_kernel == "product":
             self.combined_kernel = ProductKernel(
-                *self.domain_kernels, weights=self.weights,
+                *self.domain_kernels,
+                weights=self.weights,
                 hierarchy_consider=self.hierarchy_consider,
-                d_graph_features = self.d_graph_features
+                d_graph_features=self.d_graph_features,
             )
         elif combined_kernel == "sum":
-            self.combined_kernel = SumKernel(*self.domain_kernels, weights=self.weights,
-                                             hierarchy_consider=self.hierarchy_consider,
-                                             d_graph_features=self.d_graph_features
-                                             )
+            self.combined_kernel = SumKernel(
+                *self.domain_kernels,
+                weights=self.weights,
+                hierarchy_consider=self.hierarchy_consider,
+                d_graph_features=self.d_graph_features,
+            )
         else:
             raise NotImplementedError(
                 f'Combining kernel {combined_kernel} is not yet implemented! Only "sum" '
@@ -104,9 +107,11 @@ class ComprehensiveGPHierarchy:
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
         if self.hierarchy_consider is None:
-            graphs, _ = extract_configs_hierarchy(self.x_configs,
-                                                  d_graph_features=self.d_graph_features,
-                                                  hierarchy_consider=self.hierarchy_consider)
+            graphs, _ = extract_configs_hierarchy(
+                self.x_configs,
+                d_graph_features=self.d_graph_features,
+                hierarchy_consider=self.hierarchy_consider,
+            )
             for i, k in enumerate(self.combined_kernel.kernels):
                 if not isinstance(k, GraphKernels):
                     continue
@@ -179,7 +184,9 @@ class ComprehensiveGPHierarchy:
                         best_nlml = nlml
                         best_subtree_depth = h_i
                         best_K = torch.clone(K)
-                self.combined_kernel.kernels[0].change_kernel_params({"h": best_subtree_depth})
+                self.combined_kernel.kernels[0].change_kernel_params(
+                    {"h": best_subtree_depth}
+                )
                 self.combined_kernel._gram = best_K  # pylint: disable=protected-access
 
     def fit(
@@ -327,9 +334,12 @@ class ComprehensiveGPHierarchy:
                     ]
                 )
                 nlml_list.append(nlml.item())
+
+                optim.zero_grad(set_to_none=True)
+
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
             # TODO : I commented this, not used. What is it doing ?
-            likelihood.clamp_(
+            likelihood.clamp_(  # pylint: disable=expression-not-assigned
                 1e-5, max_lik
             ) if likelihood is not None and likelihood.is_leaf else None
             K_i, logDetK = compute_pd_inverse(K, likelihood)
@@ -341,7 +351,7 @@ class ComprehensiveGPHierarchy:
         self.K = K.clone()
         self.logDetK = logDetK.clone()
         self.likelihood = likelihood.item()
-        self.theta_vector = theta_vector
+        self.theta_vector = theta_vector  # pylint: disable=attribute-defined-outside-init
         self.layer_weights = layer_weights
         self.nlml = nlml.detach().cpu() if nlml is not None else None
 
