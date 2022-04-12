@@ -84,6 +84,12 @@ class FunctionParameter(GraphGrammar):
             self.setup(self.nxTree)
         return super().to_pytorch()
 
+    def to_tensorflow(self, inputs):
+        composed_function = self.compose_functions(
+            self.string_tree, self.grammars[0], flatten_graph=False
+        )
+        return composed_function(inputs)
+
     def create_graph_from_string(self, child: str):
         g = FunctionParameter(
             set_recursive_attribute=self.build,

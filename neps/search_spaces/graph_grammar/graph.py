@@ -662,6 +662,8 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     edge_data.op, Graph
                 ), "Found non-initialized graph. Abort."
                 # we look at an uncomiled op
+            elif callable(edge_data.op):
+                pass
             else:
                 raise ValueError(f"Unknown format of op: {edge_data.op}")
 

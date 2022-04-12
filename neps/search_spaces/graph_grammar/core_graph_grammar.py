@@ -36,6 +36,16 @@ class CoreGraphGrammar(Graph):
 
         self.grammars = [grammars] if isinstance(grammars, Grammar) else grammars
         self.terminal_to_op_names = terminal_to_op_names
+
+        grammar_terminals = {
+            terminal for grammar in self.grammars for terminal in grammar.terminals
+        }
+        diff_terminals = grammar_terminals - set(self.terminal_to_op_names.keys())
+        if len(diff_terminals) != 0:
+            raise Exception(
+                f"Terminals {diff_terminals} not defined in primitive mapping!"
+            )
+
         if terminal_to_graph_edges is None:  # only compute it once -> more efficient
             self.terminal_to_graph_edges = self.get_edge_lists_of_topologies(
                 self.terminal_to_op_names
@@ -1333,3 +1343,149 @@ class CoreGraphGrammar(Graph):
             for grammar in self.grammars
         ]
         return trees if len(trees) > 1 else trees[0]
+
+    @staticmethod
+    def flatten_graph(
+        graph: nx.DiGraph,
+        flattened_graph: Graph = None,
+        start_node: int = None,
+        end_node: int = None,
+    ):
+        if flattened_graph is None:
+            flattened_graph = Graph()
+        nodes: dict = {}
+        for u, v, data in graph.edges(data=True):
+            if u in nodes.keys():
+                _u = nodes[u]
+            else:
+                _u = (
+                    1
+                    if len(flattened_graph.nodes.keys()) == 0  # type: ignore[union-attr]
+                    else max(flattened_graph.nodes.keys()) + 1  # type: ignore[union-attr]
+                )
+                _u = (
+                    start_node
+                    if graph.in_degree(u) == 0 and start_node is not None
+                    else _u
+                )
+                nodes[u] = _u
+                if _u not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
+                    flattened_graph.add_node(_u)  # type: ignore[union-attr]
+
+            if v in nodes.keys():
+                _v = nodes[v]
+            else:
+                _v = max(flattened_graph.nodes.keys()) + 1  # type: ignore[union-attr]
+                _v = end_node if graph.out_degree(v) == 0 and end_node is not None else _v
+                nodes[v] = _v
+                if _v not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
+                    flattened_graph.add_node(_v)  # type: ignore[union-attr]
+
+            if isinstance(data["op"], Graph):
+                # TODO Debug this too
+                flattened_graph = CoreGraphGrammar.flatten_graph(
+                    data["op"], flattened_graph, start_node=_u, end_node=_v
+                )
+            else:
+                flattened_graph.add_edge(_u, _v)  # type: ignore[union-attr]
+                flattened_graph.edges[_u, _v].update(data)  # type: ignore[union-attr]
+
+        return flattened_graph
+
+    def compose_functions(
+        self, descriptor: str, grammar: Grammar, flatten_graph: bool = True
+    ):
+        def skip_char(char: str) -> bool:
+            if char in [" ", "\t", "\n"]:
+                return True
+            # special case: "(" is (part of) a terminal
+            if (
+                i != 0
+                and char == "("
+                and descriptor[i - 1] == " "
+                and descriptor[i + 1] == " "
+            ):
+                return False
+            if char == "(":
+                return True
+            return False
+
+        def find_longest_match(
+            i: int, descriptor: str, symbols: list[str], max_match: int
+        ) -> int:
+            # search for longest matching symbol and add it
+            # assumes that the longest match is the true match
+            j = min(i + max_match, len(descriptor) - 1)
+            while j > i and j < len(descriptor):
+                if descriptor[i:j] in symbols:
+                    break
+                j -= 1
+            if j == i:
+                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
+            return j
+
+        symbols = grammar.nonterminals + grammar.terminals
+        max_match = max(map(len, symbols))
+        find_longest_match_func = partial(
+            find_longest_match,
+            descriptor=descriptor,
+            symbols=symbols,
+            max_match=max_match,
+        )
+
+        q_topologies: queue.LifoQueue = queue.LifoQueue()
+        q_primitives: queue.LifoQueue = queue.LifoQueue()
+        i = 0
+        while i < len(descriptor):
+            char = descriptor[i]
+            if skip_char(char):
+                pass
+            elif char == ")" and not descriptor[i - 1] == " ":
+                # closing symbol of production
+                topology, number_of_primitives = q_topologies.get(block=False)
+                primitives = [
+                    q_primitives.get(block=False) for _ in range(number_of_primitives)
+                ][::-1]
+                composed_function = topology(*primitives)
+                if not q_topologies.empty():
+                    q_primitives.put(composed_function)
+                    q_topologies.queue[-1][1] += 1
+            else:
+                j = find_longest_match_func(i)
+                sym = descriptor[i:j]
+                i = j - 1
+
+                if sym in grammar.terminals:
+                    is_topology = False
+                    if inspect.isclass(self.terminal_to_op_names[sym]) and issubclass(
+                        self.terminal_to_op_names[sym], AbstractTopology
+                    ):
+                        is_topology = True
+                    elif isinstance(
+                        self.terminal_to_op_names[sym], partial
+                    ) and issubclass(
+                        self.terminal_to_op_names[sym].func, AbstractTopology
+                    ):
+                        is_topology = True
+
+                    if is_topology:
+                        q_topologies.put([self.terminal_to_op_names[sym], 0])
+                    else:  # is primitive operation
+                        q_primitives.put(self.terminal_to_op_names[sym])
+                        q_topologies.queue[-1][1] += 1  # count number of primitives
+                elif sym in grammar.nonterminals:
+                    pass
+                else:
+                    raise Exception(f"Unknown symbol {sym}")
+
+            i += 1
+
+        if not q_topologies.empty():
+            raise Exception("Invalid descriptor")
+
+        self._check_graph(composed_function)
+
+        if flatten_graph:
+            composed_function = self.flatten_graph(composed_function)
+
+        return composed_function
