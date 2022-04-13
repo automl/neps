@@ -71,7 +71,7 @@ class CategoricalParameter(NumericalParameter):
             probabilities = self.probabilities
 
         idx = np.random.choice(a=self.num_choices, replace=True, p=probabilities)
-        self.value = str(self.choices[int(idx)])
+        self.value = self.choices[int(idx)]
 
     def mutate(
         self,
@@ -112,10 +112,10 @@ class CategoricalParameter(NumericalParameter):
             else:
                 choice = choices[idx]
                 idx += 1
-            if choice == self.value:
+            if choice == self.value and len(self.choices) > 1:
                 continue
             neighbour = self.__copy__()
-            neighbour.value = str(choice)
+            neighbour.value = choice
             neighbours.append(neighbour)
 
         return neighbours
