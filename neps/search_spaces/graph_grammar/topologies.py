@@ -1,6 +1,7 @@
 import inspect
 import queue
 from abc import ABCMeta, abstractmethod
+from typing import Callable
 
 from .graph import Graph
 
@@ -8,8 +9,10 @@ from .graph import Graph
 class AbstractTopology(Graph, metaclass=ABCMeta):
     edge_list: list = []
 
-    def __init__(self, name: str = None, scope: str = None):
+    def __init__(self, name: str = None, scope: str = None, merge_fn: Callable = sum):
         super().__init__(name=name, scope=scope)
+
+        self.merge_fn = merge_fn
 
     def mutate(self):
         pass
@@ -71,28 +74,37 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
 
     def __call__(self, x):
         cur_node_idx = [node for node in self.nodes if self.in_degree(node) == 0][0]
-        out_node_idx = [node for node in self.nodes if self.out_degree(node) == 0][0]
-        predecessor_inputs = {cur_node_idx: x}
+        predecessor_inputs = {cur_node_idx: [x]}
         next_successors = queue.Queue()
         next_successors.put(cur_node_idx)
         cur_successors = queue.Queue()
+        inputs = None
         while not cur_successors.empty() or not next_successors.empty():
             if not cur_successors.empty():
                 next_node_idx = cur_successors.get(block=False)
-                next_successors.put(next_node_idx)
-                predecessor_inputs[next_node_idx] = self.edges[
-                    (cur_node_idx, next_node_idx)
-                ].op(predecessor_inputs[cur_node_idx])
+                if next_node_idx not in next_successors.queue:
+                    next_successors.put(next_node_idx)
+                if next_node_idx not in predecessor_inputs:
+                    predecessor_inputs[next_node_idx] = []
+                predecessor_inputs[next_node_idx].append(
+                    self.edges[(cur_node_idx, next_node_idx)].op(inputs)
+                )
             else:
                 cur_node_idx = next_successors.get(block=False)
                 if self.out_degree(cur_node_idx) > 0:
-                    cur_successors.put(*self.successors(cur_node_idx))
-        return predecessor_inputs[out_node_idx]
+                    for successor in self.successors(cur_node_idx):
+                        cur_successors.put(successor)
+
+                if len(predecessor_inputs[cur_node_idx]) == 1:
+                    inputs = predecessor_inputs[cur_node_idx][0]
+                else:
+                    inputs = self.merge_fn(predecessor_inputs[cur_node_idx])
+        return inputs
 
 
 class AbstractVariableTopology(AbstractTopology):
-    def __init__(self, name: str = None, scope: str = None):
-        super().__init__(name, scope)
+    def __init__(self, name: str = None, scope: str = None, **kwargs):
+        super().__init__(name, scope, **kwargs)
 
     @staticmethod
     @abstractmethod
@@ -106,8 +118,8 @@ class Linear(AbstractTopology):
         (2, 3),
     ]
 
-    def __init__(self, *edge_vals):
-        super().__init__()
+    def __init__(self, *edge_vals, **kwargs):
+        super().__init__(**kwargs)
 
         self.name = "linear"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
@@ -117,8 +129,8 @@ class Linear(AbstractTopology):
 class LinearNEdge(AbstractTopology):
     edge_list: list = []
 
-    def __init__(self, *edge_vals, number_of_edges: int):
-        super().__init__()
+    def __init__(self, *edge_vals, number_of_edges: int, **kwargs):
+        super().__init__(**kwargs)
 
         self.name = f"linear_{number_of_edges}_edges"
         self.edge_list = self.get_edge_list(number_of_edges=number_of_edges)
@@ -137,8 +149,8 @@ class Residual(AbstractTopology):
         (2, 3),
     ]
 
-    def __init__(self, *edge_vals):
-        super().__init__()
+    def __init__(self, *edge_vals, **kwargs):
+        super().__init__(**kwargs)
 
         self.name = "residual"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
@@ -148,8 +160,8 @@ class Residual(AbstractTopology):
 class Diamond(AbstractTopology):
     edge_list = [(1, 2), (1, 3), (2, 4), (3, 4)]
 
-    def __init__(self, *edge_vals):
-        super().__init__()
+    def __init__(self, *edge_vals, **kwargs):
+        super().__init__(**kwargs)
 
         self.name = "diamond"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
@@ -159,8 +171,8 @@ class Diamond(AbstractTopology):
 class DiamondMid(AbstractTopology):
     edge_list = [(1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]
 
-    def __init__(self, *edge_vals):
-        super().__init__()
+    def __init__(self, *edge_vals, **kwargs):
+        super().__init__(**kwargs)
 
         self.name = "diamond_mid"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
@@ -170,8 +182,8 @@ class DiamondMid(AbstractTopology):
 class DenseNNodeDAG(AbstractTopology):
     edge_list: list = []
 
-    def __init__(self, *edge_vals, number_of_nodes: int):
-        super().__init__()
+    def __init__(self, *edge_vals, number_of_nodes: int, **kwargs):
+        super().__init__(**kwargs)
 
         self.edge_list = self.get_edge_list(number_of_nodes=number_of_nodes)
 
@@ -187,8 +199,8 @@ class DenseNNodeDAG(AbstractTopology):
 class DownsampleBlock(AbstractTopology):
     edge_list: list = [(1, 2), (2, 3)]
 
-    def __init__(self, *edge_vals) -> None:
-        super().__init__()
+    def __init__(self, *edge_vals, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.name = f"{self.__class__.__name__}"
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
         self.set_scope(self.name)

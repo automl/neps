@@ -75,13 +75,16 @@ class CoreGraphGrammar(Graph):
                 is_topology = False
             if is_topology:
                 if isinstance(v, partial):
-                    if not hasattr(v.func, "get_edge_list"):
+                    if hasattr(v.func, "get_edge_list"):
+                        func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
+                        kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
+                        topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
+                    elif hasattr(v.func, "edge_list"):
+                        topology_edge_lists[k] = v.func.edge_list  # type: ignore[attr-defined]
+                    else:
                         raise Exception(
-                            f"Please implement a get_edge_list static method for {v.func.__name__}!"
+                            f"Please implement a get_edge_list static method for {v.func.__name__} or set edge_list!"
                         )
-                    func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
-                    kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
-                    topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
                 else:
                     topology_edge_lists[k] = v.edge_list
         return topology_edge_lists
