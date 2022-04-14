@@ -198,6 +198,7 @@ def _unscaled_distance(X, X2=None, sq_dist=False):
             X2sq = torch.sum(X2**2, 1)
             r2 = -2 * X @ X2.t() + X1sq[:, None] + X2sq[None, :]
         r2 += 1e-8
+        r2 = torch.maximum(r2, torch.tensor(0))
         if not sq_dist:
             r2 = torch.sqrt(r2)
     else:
