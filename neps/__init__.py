@@ -10,6 +10,7 @@ from .search_spaces import (
     GraphGrammarCell,
     GraphGrammarRepetitive,
     IntegerParameter,
+    SearchSpace
 )
 from .status.status import status
 

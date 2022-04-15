@@ -9,3 +9,5 @@ from .numerical.constant import ConstantParameter
 from .numerical.float import FloatParameter
 from .numerical.integer import IntegerParameter
 from .numerical.numerical import NumericalParameter
+
+from .search_space import SearchSpace
