@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import numpy as np
+import pandas as pd
 from typing import Any
+from copy import deepcopy
 
 from metahyper.api import ConfigResult, instance_from_map
 
@@ -12,6 +15,7 @@ from ...search_spaces import (
 )
 from ...search_spaces.search_space import SearchSpace
 from ...utils.common import has_instance
+from ...utils.result_utils import get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
@@ -180,6 +184,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         eta: int = 4,
         early_stopping_rate: int = 0,
         logger=None,
+        **kwargs
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -193,6 +198,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             random_interleave_prob=random_interleave_prob,
             patience=patience,
             logger=logger,
+            **kwargs
         )
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper
@@ -206,7 +212,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         assert self.early_stopping_rate <= self.stopping_rate_limit
 
         # maps rungs to a fidelity value
-        self.rung_map = self._get_rung_map(s)
+        self.rung_map = self._get_rung_map(self.early_stopping_rate)
         self.max_rung = len(self.rung_map) - 1
         self.fidelities = list(self.rung_map.values())
         # stores the observations made and the corresponding fidelity explored
@@ -217,6 +223,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # one-to-one with self.rung_members, storing corresponding performance
         self.rung_members_performance = {k: [] for k in self.rung_map.keys()}
         self.rung_promotions = dict()
+        self.total_fevals = None
 
     def _get_rung_map(self, s: int = 0) -> dict:
         """ Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s.
@@ -225,10 +232,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         new_min_budget = self.min_budget * (self.eta ** s)
         nrungs = np.floor(
             np.log(self.max_budget / new_min_budget) / np.log(self.eta)
-        ).astpye(int) + 1
+        ).astype(int) + 1
         rung_map = dict()
-        for i in range(1, nrungs + 1):
-            rung_map[i] = new_min_budget
+        for i in range(nrungs):
+            rung_map[i] = int(new_min_budget) if isinstance(
+                self.pipeline_space.fidelity, IntegerParameter
+            ) else new_min_budget
             new_min_budget *= self.eta
         return rung_map
 
@@ -240,18 +249,21 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         super().load_results(previous_results, pending_evaluations)
 
+        self.total_fevals = len(previous_results)
         # iterates over all previous results and updates the list of observed
         # configs with the highest fidelity it was evaluated on and its performance
         for config_id, config_result in previous_results.items():
+            # any config occurring in `previous_results` should be in `observed_configs`
             _config, _rung = config_id.split("_")
-            _rung = max(_rung, self.observed_configs.iloc[int(_config)]["rung"])
-            self.observed_configs.iloc[int(_config)]["rung"] = _rung
+            _rung = max(int(_rung), self.observed_configs.iloc[int(_config)]["rung"])
+            _config = int(_config)
+            self.observed_configs.at[_config, "rung"] = _rung
             perf = get_loss(previous_results["{}_{}".format(_config, _rung)].result)
-            self.observed_configs.iloc[int(_config)]["perf"] = perf
+            self.observed_configs.at[_config, "perf"] = perf
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
-        self.rung_members = dict()
-        self.rung_members_performance = dict()
+        self.rung_members = {k: [] for k in range(self.max_rung)}
+        self.rung_members_performance = {k: [] for k in range(self.max_rung)}
         for _rung in self.observed_configs.rung.unique():
             self.rung_members[_rung] = self.observed_configs.index[
                 self.observed_configs.rung == _rung
@@ -267,9 +279,10 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 continue
             top_k = len(self.rung_members_performance[_rung]) // self.eta
             # TODO: (verify) argsort here assumes the objective is being `minimized`
-            self.rung_promotions[_rung] = np.argsort(
-                self.rung_members_performance[_rung]
-            )[:top_k].tolist()
+            self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
+                np.argsort(self.rung_members_performance[_rung])[:top_k]
+            ].tolist()
+        return
 
     def is_promotable(self) -> int | None:
         rung_to_promote = None
@@ -292,12 +305,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             # assigning the fidelity to evaluate the config at
             config.fidelity.value = self.rung_map[rung]
             # updating config IDs
-            previous_config_id = "{}_{}".format(row, rung_to_promote)
-            config_id = "{}_{}".format(row, rung)
+            previous_config_id = "{}_{}".format(row.name, rung_to_promote)
+            config_id = "{}_{}".format(row.name, rung)
             # updating observation tracker
-            self.observed_configs.iloc[row].rung = rung
+            self.observed_configs.at[row.name, "rung"] = rung
         else:
-            if len(self.observed_configs) <= self.initial_design_size:
+            if self.total_fevals <= self.initial_design_size:
                 # random sampling a config at base rung
                 config = self.pipeline_space.copy().sample(
                     patience=self.patience, use_user_priors=True
@@ -311,9 +324,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             # assigning the fidelity to evaluate the config at
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             # updating observation tracker
-            _df = pd.DataFram([[config, 0, None]], columns=self.observed_configs.columns)
+            _df = pd.DataFrame(
+                [[config, 0, None]],
+                columns=self.observed_configs.columns,
+                index=pd.Series(len(self.observed_configs))  # key for config_id
+            )
             self.observed_configs = pd.concat((self.observed_configs, _df))
             # updating config IDs
-            config_id = "{}_{}".format(len(self.observed_configs), 0)
+            config_id = "{}_{}".format(len(self.observed_configs) - 1, 0)
             previous_config_id = None
         return config, config_id, previous_config_id  # type: ignore
