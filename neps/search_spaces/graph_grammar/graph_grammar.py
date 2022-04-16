@@ -22,6 +22,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
+        prior: dict = None,
         terminal_to_graph_edges: dict = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
@@ -52,7 +53,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self.nxTree: nx.DiGraph = None
         self._value: nx.DiGraph = None
 
-        self.has_prior: bool = False
+        if prior is not None:
+            self.grammars[0].prior = prior
+        self.has_prior = prior is not None
 
     def __eq__(self, other):
         return self.id == other.id
@@ -86,7 +89,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
 
     def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
-        self.string_tree = self.grammars[0].sampler(1)[0]
+        self.string_tree = self.grammars[0].sampler(1, use_user_priors=use_user_priors)[0]
         self.id = self.string_tree
         _ = self.value  # required for checking if graph is valid!
 
@@ -152,6 +155,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
+
+    def compute_prior(self, log: bool = True) -> float:
+        return self.grammars[0].compute_prior(self.string_tree, log=log)
 
 
 class GraphGrammarCell(GraphGrammar):

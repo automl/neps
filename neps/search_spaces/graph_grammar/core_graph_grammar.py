@@ -35,6 +35,7 @@ class CoreGraphGrammar(Graph):
         super().__init__(name, scope)
 
         self.grammars = [grammars] if isinstance(grammars, Grammar) else grammars
+
         self.terminal_to_op_names = terminal_to_op_names
 
         grammar_terminals = {
@@ -95,6 +96,10 @@ class CoreGraphGrammar(Graph):
     def clear_graph(self):
         while len(self.nodes()) != 0:
             self.remove_node(list(self.nodes())[0])
+
+    @abstractmethod
+    def compute_prior(self, log: bool = True):
+        raise NotImplementedError
 
     @staticmethod
     def _check_graph(graph: nx.DiGraph):

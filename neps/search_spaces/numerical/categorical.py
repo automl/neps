@@ -55,14 +55,18 @@ class CategoricalParameter(NumericalParameter):
         # all the other values.
         base_probability = 1 / (self.num_choices - 1 + self.default_confidence_score)
         probabilities = [base_probability] * self.num_choices
-        default_index = self.choices.index(self.default)
+        default_index = self.choices.index(self.default)  # type: ignore[arg-type]
         probabilities[default_index] *= self.default_confidence_score
         return probabilities
 
-    def compute_prior(self):
+    def compute_prior(self, log: bool = False):
         probabilities = self._compute_user_prior_probabilities()
-        default_index = self.choices.index(self.default)
-        return probabilities[default_index]
+        default_index = self.choices.index(self.default)  # type: ignore[arg-type]
+        return (
+            np.log(probabilities[default_index] + 1e-12)
+            if log
+            else probabilities[default_index]
+        )
 
     def sample(self, use_user_priors: bool = False):
         if use_user_priors and self.default is not None:

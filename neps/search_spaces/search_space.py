@@ -79,11 +79,14 @@ class SearchSpace(collections.abc.Mapping):
             if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
                 self.has_prior = True
 
-    def compute_prior(self):
-        density_value = 1
+    def compute_prior(self, log: bool = False):
+        density_value = 0.0 if log else 1.0
         for hyperparameter in self.hyperparameters.values():
             if hyperparameter.has_prior:
-                density_value *= hyperparameter.compute_prior()
+                if log:
+                    density_value += hyperparameter.compute_prior(log=True)
+                else:
+                    density_value *= hyperparameter.compute_prior(log=False)
         return density_value
 
     def has_fidelity(self):

@@ -36,19 +36,30 @@ class FunctionParameter(GraphGrammar):
     def __init__(
         self,
         structure: Grammar | str | dict,
-        primitives,
+        primitives: dict,
         name: str = "",
         set_recursive_attribute: Callable | None = None,
-        old_build_api=False,
+        old_build_api: bool = False,
         **kwargs,
     ):
+        self.input_args = {
+            **{
+                "structure": structure,
+                "primitives": primitives,
+                "name": name,
+                "set_recursive_attribute": set_recursive_attribute,
+                "old_build_api": old_build_api,
+            },
+            **kwargs,
+        }
+
         if isinstance(structure, dict):
             structure = _dict_structure_to_str(structure, primitives)
         if isinstance(structure, str):
             structure = Grammar.fromstring(structure)
 
         super().__init__(
-            grammar=structure,
+            grammar=structure,  # type: ignore[arg-type]
             terminal_to_op_names=primitives,
             edge_attr=False,
             **kwargs,
@@ -91,12 +102,7 @@ class FunctionParameter(GraphGrammar):
         return composed_function(inputs)
 
     def create_graph_from_string(self, child: str):
-        g = FunctionParameter(
-            set_recursive_attribute=self.build,
-            structure=self.grammars[0],
-            primitives=self.terminal_to_op_names,
-            name=self.name,
-        )
+        g = FunctionParameter(**self.input_args)  # type: ignore[arg-type]
         g.string_tree = child
         g.id = child
         _ = g.value  # required for checking if graph is valid!

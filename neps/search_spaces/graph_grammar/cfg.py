@@ -1,6 +1,9 @@
 import itertools
+import math
 import sys
 from collections import defaultdict, deque
+from functools import partial
+from queue import LifoQueue
 from typing import Deque, Tuple
 
 import numpy as np
@@ -33,6 +36,7 @@ class Grammar(CFG):
         self.max_sampling_level = 2
 
         self.convergent = False
+        self._prior = None
 
         self.check_grammar()
 
@@ -41,6 +45,33 @@ class Grammar(CFG):
 
     def set_unconstrained(self):
         self.convergent = False
+
+    @property
+    def prior(self):
+        return self._prior
+
+    @prior.setter
+    def prior(self, value: dict):
+        def _check_prior(value: dict):
+            for nonterminal in self.nonterminals:
+                if nonterminal not in value:
+                    raise Exception(
+                        f"Nonterminal {nonterminal} not defined in prior distribution!"
+                    )
+                if len(value[nonterminal]) != len(
+                    self.productions(lhs=Nonterminal(nonterminal))
+                ):
+                    raise Exception(
+                        f"Not all RHS of nonterminal {nonterminal} have a probability!"
+                    )
+                if not math.isclose(sum(value[nonterminal]), 1.0):
+                    raise Exception(
+                        f"Prior for {nonterminal} is no probablility distribution (=1)!"
+                    )
+
+        if value is not None:
+            _check_prior(value)
+        self._prior = value
 
     def check_grammar(self):
         if len(set(self.terminals).intersection(set(self.nonterminals))) > 0:
@@ -132,6 +163,7 @@ class Grammar(CFG):
         self,
         n=1,
         start_symbol: str = None,
+        use_user_priors: bool = False,
     ):
         # sample n sequences from the CFG
         # convergent: avoids very long sequences (we advise setting True)
@@ -155,9 +187,12 @@ class Grammar(CFG):
                 for i in range(0, n)
             ]
         else:
-            return [f"{self._sampler(symbol=start_symbol)})" for i in range(0, n)]
+            return [
+                f"{self._sampler(symbol=start_symbol, use_user_priors=use_user_priors)})"
+                for i in range(0, n)
+            ]
 
-    def _sampler(self, symbol=None):
+    def _sampler(self, symbol=None, use_user_priors: bool = False):
         # simple sampler where each production is sampled uniformly from all possible productions
         # Tree choses if return tree or list of terminals
         # recursive implementation
@@ -167,13 +202,18 @@ class Grammar(CFG):
         # collect possible productions from the starting symbol
         productions = self.productions(lhs=symbol)
         # sample
-        production = choice(productions)
+        if use_user_priors and self._prior is not None:
+            production = choice(productions, probs=self._prior[str(symbol)])
+        else:
+            production = choice(productions)
         for sym in production.rhs():
             if isinstance(sym, str):
                 # if terminal then add string to sequence
                 tree = tree + " " + sym
             else:
-                tree = tree + " " + self._sampler(sym) + ")"
+                tree = (
+                    tree + " " + self._sampler(sym, use_user_priors=use_user_priors) + ")"
+                )
         return tree
 
     def sampler_maxMin_func(self, symbol: str = None, largest: bool = True):
@@ -242,6 +282,93 @@ class Grammar(CFG):
         # update counts
         pcount[production] -= 1
         return tree, depth, num_prod
+
+    def compute_prior(self, string_tree: str, log: bool = True) -> float:
+        def skip_char(char: str) -> bool:
+            if char in [" ", "\t", "\n"]:
+                return True
+            # special case: "(" is (part of) a terminal
+            if (
+                i != 0
+                and char == "("
+                and string_tree[i - 1] == " "
+                and string_tree[i + 1] == " "
+            ):
+                return False
+            if char == "(":
+                return True
+            return False
+
+        def find_longest_match(
+            i: int, string_tree: str, symbols: list, max_match: int
+        ) -> int:
+            # search for longest matching symbol and add it
+            # assumes that the longest match is the true match
+            j = min(i + max_match, len(string_tree) - 1)
+            while j > i and j < len(string_tree):
+                if string_tree[i:j] in symbols:
+                    break
+                j -= 1
+            if j == i:
+                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
+            return j
+
+        prior_prob = 1.0 if not log else 0.0
+
+        symbols = self.nonterminals + self.terminals
+        max_match = max(map(len, symbols))
+        find_longest_match_func = partial(
+            find_longest_match,
+            string_tree=string_tree,
+            symbols=symbols,
+            max_match=max_match,
+        )
+
+        q_production_rules: LifoQueue = LifoQueue()
+
+        i = 0
+        while i < len(string_tree):
+            char = string_tree[i]
+            if skip_char(char):
+                pass
+            elif char == ")" and not string_tree[i - 1] == " ":
+                # closing symbol of production
+                production = q_production_rules.get(block=False)[0][0]
+                idx = self.productions(production.lhs()).index(production)
+                if log:
+                    prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-12)
+                else:
+                    prior_prob *= self.prior[str(production.lhs())][idx]
+            else:
+                j = find_longest_match_func(i)
+                sym = string_tree[i:j]
+                i = j - 1
+
+                if sym in self.terminals:
+                    q_production_rules.queue[-1][0] = [
+                        production
+                        for production in q_production_rules.queue[-1][0]
+                        if production.rhs()[q_production_rules.queue[-1][1]] == sym
+                    ]
+                    q_production_rules.queue[-1][1] += 1
+                elif sym in self.nonterminals:
+                    if not q_production_rules.empty():
+                        q_production_rules.queue[-1][0] = [
+                            production
+                            for production in q_production_rules.queue[-1][0]
+                            if str(production.rhs()[q_production_rules.queue[-1][1]])
+                            == sym
+                        ]
+                        q_production_rules.queue[-1][1] += 1
+                    q_production_rules.put([self.productions(lhs=Nonterminal(sym)), 0])
+                else:
+                    raise Exception(f"Unknown symbol {sym}")
+            i += 1
+
+        if not q_production_rules.empty():
+            raise Exception(f"Error in prior computation for {string_tree}")
+
+        return prior_prob
 
     def _generate(self, start=None, depth=None, n=None):
         """
@@ -488,9 +615,9 @@ class DepthConstrainedGrammar(Grammar):
     def is_depth_constrained():
         return True
 
-    def sampler(
+    def sampler(  # type: ignore[override]
         self,
-        n=1,
+        n: int = 1,
         start_symbol: str = None,
         depth_information: dict = None,
     ):

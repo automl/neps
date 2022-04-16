@@ -80,13 +80,13 @@ class FloatParameter(NumericalParameter):
         a, b = (low - default) / std, (high - default) / std
         return scipy.stats.truncnorm(a, b), std
 
-    def compute_prior(self):
+    def compute_prior(self, log: bool = False):
         _, _, default = self._get_low_high_default()
         value = np.log(self.value) if self.log else self.value
         value -= default
         dist, std = self._get_truncnorm_prior_and_std()
         value /= std
-        return dist.pdf(value)
+        return np.log(dist.pdf(value) + 1e-12) if log else dist.pdf(value)
 
     def sample(self, use_user_priors: bool = False):
         low, high, default = self._get_low_high_default()
