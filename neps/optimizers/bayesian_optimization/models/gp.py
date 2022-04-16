@@ -48,7 +48,7 @@ class ComprehensiveGP:
                     "the weights vector, if supplied, needs to have the same length as "
                     "the number of kernel_operators!"
                 )
-            self.weights = (
+            self.init_weights = (
                 weights
                 if isinstance(weights, torch.Tensor)
                 else torch.tensor(weights).flatten()
@@ -56,9 +56,10 @@ class ComprehensiveGP:
         else:
             self.fixed_weights = False
             # Initialise the domain kernel weights to uniform
-            self.weights = torch.tensor(
+            self.init_weights = torch.tensor(
                 [1.0 / self.n_kernels] * self.n_kernels,
             )
+        self.weights = self.init_weights.clone()
 
         if combined_kernel == "product":
             self.combined_kernel = ProductKernel(
@@ -147,7 +148,7 @@ class ComprehensiveGP:
                 wl_lengthscales,
             )
 
-        weights = self.weights.clone()
+        weights = self.init_weights.clone()
 
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)

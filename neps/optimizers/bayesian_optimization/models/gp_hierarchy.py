@@ -60,7 +60,7 @@ class ComprehensiveGPHierarchy:
                     "the weights vector, if supplied, needs to have the same length as "
                     "the number of kernel_operators!"
                 )
-            self.weights = (
+            self.init_weights = (
                 weights
                 if isinstance(weights, torch.Tensor)
                 else torch.tensor(weights).flatten()
@@ -68,9 +68,11 @@ class ComprehensiveGPHierarchy:
         else:
             self.fixed_weights = False
             # Initialise the domain kernel weights to uniform
-            self.weights = torch.tensor(
+            self.init_weights = torch.tensor(
                 [1.0 / self.n_kernels] * self.n_kernels,
             )
+
+        self.weights = self.init_weights.clone()
 
         if combined_kernel == "product":
             self.combined_kernel = ProductKernel(
@@ -106,6 +108,7 @@ class ComprehensiveGPHierarchy:
         self.n: int = None
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
+        weights = self.init_weights.clone()
         if self.hierarchy_consider is None:
             graphs, _ = extract_configs_hierarchy(
                 self.x_configs,
@@ -144,7 +147,7 @@ class ComprehensiveGPHierarchy:
                     for i, k in enumerate(self.combined_kernel.kernels):
                         k.change_kernel_params({"h": h_combo[i]})
                     K = self.combined_kernel.fit_transform(
-                        self.weights,
+                        weights,
                         self.x_configs,
                         normalize=self.normalize_combined_kernel,
                         layer_weights=None,
@@ -170,7 +173,7 @@ class ComprehensiveGPHierarchy:
                     # only optimize h in wl kernel
                     self.combined_kernel.kernels[0].change_kernel_params({"h": h_i})
                     K = self.combined_kernel.fit_transform(
-                        self.weights,
+                        weights,
                         self.x_configs,
                         normalize=self.normalize_combined_kernel,
                         layer_weights=None,
@@ -227,7 +230,7 @@ class ComprehensiveGPHierarchy:
                 wl_lengthscales,
             )
 
-        weights = self.weights.clone()
+        weights = self.init_weights.clone()
 
         if (not self.fixed_weights) and len(self.domain_kernels) > 1:
             weights.requires_grad_(True)
