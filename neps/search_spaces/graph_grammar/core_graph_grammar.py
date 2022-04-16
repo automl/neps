@@ -1228,7 +1228,11 @@ class CoreGraphGrammar(Graph):
             if return_all_subgraphs:
                 return_val.append(subgraphs_dict)
             if return_graph_per_hierarchy:
-                return_val.append(get_graph_per_hierarchy(string_tree, subgraphs_dict))
+                graph_per_hierarchy = get_graph_per_hierarchy(string_tree, subgraphs_dict)
+                _ = (
+                    graph_per_hierarchy.popitem()
+                )  # remove last graph since it is equal to full graph
+                return_val.append(graph_per_hierarchy)
             return return_val
         return G
 
