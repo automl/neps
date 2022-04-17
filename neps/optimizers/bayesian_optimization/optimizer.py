@@ -310,17 +310,15 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             # updating observation tracker
             self.observed_configs.at[row.name, "rung"] = rung
         else:
-            if self.total_fevals <= self.initial_design_size:
+            # TODO: revisit --- currently samples `n_init` random configs at base rung
+            if len(self.observed_configs) <= self.initial_design_size:
                 # random sampling a config at base rung
                 config = self.pipeline_space.copy().sample(
                     patience=self.patience, use_user_priors=True
                 )
             else:
                 # sampling from AF at base rung
-                model_sample, _, _ = self.acquisition_function_opt.sample(
-                    self.n_candidates, 1
-                )
-                config = model_sample[0]
+                config = self.acquisition_sampler.sample(self.acquisition)
             # assigning the fidelity to evaluate the config at
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             # updating observation tracker
