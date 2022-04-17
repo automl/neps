@@ -11,11 +11,11 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         self,
         base_acquisition,
         pibo_beta=10,
-        log_pibo: bool = False,
+        log: bool = False,
     ):  # pylint: disable=super-init-not-called
         self.pibo_beta = pibo_beta
         self.base_acquisition = base_acquisition
-        self.log_pibo = log_pibo
+        self.log = log
 
     def eval(
         self,
@@ -25,12 +25,11 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
         num_bo_iterations = len(self.base_acquisition.surrogate_model.x)
         for i, candidate in enumerate(x):
-            prior_weight = candidate.compute_prior(log=self.log_pibo)
+            prior_weight = candidate.compute_prior(log=self.log)
             if prior_weight != 1.0:
-                if self.log_pibo:
+                if self.log:
                     # for log -> the smaller the prior_weight,
                     # the more unlikely it is from the prior
-                    # TODO: might need some scaling between acquisition and prior_weight?
                     acquisition[i] = (
                         np.log(acquisition[i] + 1e-12)
                         + (self.pibo_beta / num_bo_iterations) * prior_weight

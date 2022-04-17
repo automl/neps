@@ -37,6 +37,7 @@ class BayesianOptimization(BaseOptimizer):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: str | Any = "EI",
+        log_prior_weighted: bool = False,
         acquisition_sampler: str | Any = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 100,
@@ -58,6 +59,7 @@ class BayesianOptimization(BaseOptimizer):
             graph_kernels: Kernels for NAS
             hp_kernels: Kernels for HPO
             acquisition: Acquisition strategy
+            log_prior_weighted: if to use log for prior
             acquisition_sampler: Acquisition function fetching strategy
             random_interleave_prob: Frequency at which random configurations are sampled
                 instead of configurations from the acquisition strategy.
@@ -140,7 +142,9 @@ class BayesianOptimization(BaseOptimizer):
             acquisition,
             name="acquisition function",
         )
-        self.acquisition = DecayingPriorWeightedAcquisition(self.acquisition)
+        self.acquisition = DecayingPriorWeightedAcquisition(
+            self.acquisition, log=log_prior_weighted
+        )
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
