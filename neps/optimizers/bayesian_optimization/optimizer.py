@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import Any
 
-import torch
 from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces import (
@@ -89,8 +88,7 @@ class BayesianOptimization(BaseOptimizer):
 
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
-        self._train_x: list = []
-        self._train_y: list | torch.Tensor = []
+        self._num_train_x: int
         self._pending_evaluations: list = []
         self._model_update_failed = False
 
@@ -158,30 +156,28 @@ class BayesianOptimization(BaseOptimizer):
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         # TODO: filter out error configs as they can not be used for modeling?
-        self._train_x = [el.config for el in previous_results.values()]
-        self._train_y = [get_loss(el.result) for el in previous_results.values()]
+        train_x = [el.config for el in previous_results.values()]
+        train_y = [get_loss(el.result) for el in previous_results.values()]
+        self._num_train_x = len(train_x)
         self._pending_evaluations = [el for el in pending_evaluations.values()]
-        if len(self._train_x) >= self._initial_design_size:
+        if self._num_train_x >= self._initial_design_size:
             try:
                 if len(self._pending_evaluations) > 0:
                     # We want to use hallucinated results for the evaluations that have
                     # not finished yet. For this we fit a model on the finished
                     # evaluations and add these to the other results to fit another model.
-                    self.surrogate_model.reset_XY(
-                        train_x=self._train_x, train_y=self._train_y
+                    self.surrogate_model.fit(
+                        train_x, train_y, **self.surrogate_model_fit_args
                     )
-                    self.surrogate_model.fit(**self.surrogate_model_fit_args)
                     ys, _ = self.surrogate_model.predict(self._pending_evaluations)
-                    train_x = self._train_x + self._pending_evaluations
-                    train_y = self._train_y + list(ys.detach().numpy())
-                else:
-                    train_x = self._train_x
-                    train_y = self._train_y
+                    train_x += self._pending_evaluations
+                    train_y += list(ys.detach().numpy())
 
-                self.surrogate_model.reset_XY(train_x=train_x, train_y=train_y)
-                self.surrogate_model.fit(**self.surrogate_model_fit_args)
+                self.surrogate_model.fit(
+                    train_x, train_y, **self.surrogate_model_fit_args
+                )
                 # TODO: read out cost if they exist
-                self.acquisition.set_state(self.surrogate_model)  # TODO: to set_state
+                self.acquisition.set_state(self.surrogate_model)
                 self.acquisition_sampler.work_with(
                     self.pipeline_space, x=train_x, y=train_y
                 )
@@ -194,12 +190,12 @@ class BayesianOptimization(BaseOptimizer):
                 self._model_update_failed = True
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        if len(self._train_x) == 0 and self._initial_design_size >= 1:
+        if self._num_train_x == 0 and self._initial_design_size >= 1:
             # TODO: if default config sample it
             config = self.pipeline_space.sample(patience=self.patience, user_priors=True)
         elif random.random() < self._random_interleave_prob:
             config = self.pipeline_space.sample(patience=self.patience)
-        elif len(self._train_x) < self._initial_design_size or self._model_update_failed:
+        elif self._num_train_x < self._initial_design_size or self._model_update_failed:
             config = self.pipeline_space.sample(patience=self.patience, user_priors=True)
         else:
             for _ in range(self.patience):
@@ -211,7 +207,7 @@ class BayesianOptimization(BaseOptimizer):
                     patience=self.patience, user_priors=True
                 )
 
-        config_id = str(len(self._train_x) + len(self._pending_evaluations) + 1)
+        config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config, config_id, None
 
 

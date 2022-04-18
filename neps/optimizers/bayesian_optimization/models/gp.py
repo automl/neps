@@ -112,6 +112,8 @@ class ComprehensiveGP:
 
     def fit(
         self,
+        train_x,
+        train_y,
         iters: int = 20,
         optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
@@ -138,6 +140,8 @@ class ComprehensiveGP:
         -------
 
         """
+        self._reset_XY(train_x, train_y)
+
         # Get the node weights, if needed
 
         if optimizer_kwargs is None:
@@ -324,7 +328,7 @@ class ComprehensiveGP:
     def x(self):
         return self.x_configs
 
-    def reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
+    def _reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
         self.x_configs = train_x
         self.n = len(self.x_configs)
         train_y_tensor = (
