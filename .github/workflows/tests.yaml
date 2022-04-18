@@ -36,4 +36,4 @@ jobs:
 
       - name: Run pytest
         timeout-minutes: 10
-        run: poetry run pytest
+        run: poetry run pytest -m all_examples

@@ -34,6 +34,14 @@ pytest
 before every critical push.
 Running the tests will create a temporary directory `tests_tmpdir` that includes the output of the last three test executions.
 
+To speedup testing for developers, we only run a core set of tests per default. To run all tests use
+
+```bash
+pytest -m all_examples
+```
+
+On github, we always run all examples.
+
 If tests fail for you on the master:
 
 1. Try running the tests with a fresh environment install.
