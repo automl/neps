@@ -46,9 +46,9 @@ class EvolutionSampler(AcquisitionSampler):
             pipeline_space=pipeline_space, patience=self.patience
         )
 
-    def work_with(self, x, y) -> None:
-        super().work_with(x, y)
-        self.random_sampling.work_with(x, y)
+    def set_state(self, x, y) -> None:
+        super().set_state(x, y)
+        self.random_sampling.set_state(x, y)
 
     def _mutate(self, parent):
         for _ in range(self.patience):

@@ -25,6 +25,6 @@ class AcquisitionSampler:
     def sample_batch(self, acquisition_function, batch) -> list[SearchSpace]:
         return [self.sample(acquisition_function) for _ in range(batch)]
 
-    def work_with(self, x: list, y: list | torch.Tensor) -> None:
+    def set_state(self, x: list, y: list | torch.Tensor) -> None:
         self.x = x
         self.y = y

@@ -42,7 +42,6 @@ class BayesianOptimization(BaseOptimizer):
         patience: int = 100,
         budget: None | int | float = None,
         logger=None,
-        # TODO: add cost function
     ):
         """Initialise the BO loop.
 
@@ -156,6 +155,7 @@ class BayesianOptimization(BaseOptimizer):
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         # TODO: filter out error configs as they can not be used for modeling?
+        # TODO: read out cost if they exist
         train_x = [el.config for el in previous_results.values()]
         train_y = [get_loss(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
@@ -172,9 +172,9 @@ class BayesianOptimization(BaseOptimizer):
                     train_y += list(ys.detach().numpy())
 
                 self.surrogate_model.fit(train_x, train_y)
-                # TODO: read out cost if they exist
                 self.acquisition.set_state(self.surrogate_model)
-                self.acquisition_sampler.work_with(x=train_x, y=train_y)
+                self.acquisition_sampler.set_state(x=train_x, y=train_y)
+
                 self._model_update_failed = False
             except RuntimeError:
                 self.logger.exception(
