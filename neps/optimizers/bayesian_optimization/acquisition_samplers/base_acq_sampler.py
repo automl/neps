@@ -8,11 +8,11 @@ from ....search_spaces.search_space import SearchSpace
 
 
 class AcquisitionSampler:
-    def __init__(self, patience: int = 50):
+    def __init__(self, pipeline_space: SearchSpace, patience: int = 50):
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.search_space: SearchSpace = None
+        self.pipeline_space = pipeline_space
         self.acquisition_function = None
         self.x: list = []
         self.y: list = []
@@ -25,7 +25,6 @@ class AcquisitionSampler:
     def sample_batch(self, acquisition_function, batch) -> list[SearchSpace]:
         return [self.sample(acquisition_function) for _ in range(batch)]
 
-    def work_with(self, search_space, x: list, y: list | torch.Tensor) -> None:
-        self.search_space = search_space
+    def work_with(self, x: list, y: list | torch.Tensor) -> None:
         self.x = x
         self.y = y

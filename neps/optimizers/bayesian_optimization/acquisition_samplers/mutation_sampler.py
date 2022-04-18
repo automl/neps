@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from more_itertools import first
 
+from ....search_spaces import SearchSpace
 from .base_acq_sampler import AcquisitionSampler
 from .random_sampler import RandomSampler
 
@@ -36,6 +37,7 @@ def _propose_location(
 class MutationSampler(AcquisitionSampler):
     def __init__(
         self,
+        pipeline_space: SearchSpace,
         pool_size: int = 250,
         n_best: int = 10,
         mutate_size: int = None,
@@ -43,7 +45,7 @@ class MutationSampler(AcquisitionSampler):
         check_isomorphism_history: bool = True,
         patience: int = 50,
     ):
-        super().__init__(patience=patience)
+        super().__init__(pipeline_space=pipeline_space, patience=patience)
         self.pool_size = pool_size
         self.n_best = n_best
         self.mutate_size = mutate_size
@@ -52,11 +54,13 @@ class MutationSampler(AcquisitionSampler):
             check_isomorphism_history  # check for isomorphisms also in previous graphs
         )
 
-        self.random_sampling = RandomSampler(patience=patience)
+        self.random_sampling = RandomSampler(
+            pipeline_space=pipeline_space, patience=patience
+        )
 
-    def work_with(self, search_space, x, y) -> None:
-        super().work_with(search_space, x, y)
-        self.random_sampling.work_with(search_space, x, y)
+    def work_with(self, x, y) -> None:
+        super().work_with(x, y)
+        self.random_sampling.work_with(x, y)
 
     def sample(self, acquisition_function) -> tuple[list, list, np.ndarray]:
         pool = self.create_pool(acquisition_function, self.pool_size)

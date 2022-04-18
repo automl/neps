@@ -24,8 +24,10 @@ class ComprehensiveGP:
         vectorial_features: list = None,
         combined_kernel: str = "sum",
         logger=None,
+        surrogate_model_fit_args=None,
     ):
         self.likelihood = likelihood
+        self.surrogate_model_fit_args = surrogate_model_fit_args or {}
 
         self.domain_kernels: list = []
         if bool(graph_kernels):
@@ -110,7 +112,10 @@ class ComprehensiveGP:
                     + " not implemented yet."
                 )
 
-    def fit(
+    def fit(self, train_x, train_y):
+        self._fit(train_x, train_y, **self.surrogate_model_fit_args)
+
+    def _fit(
         self,
         train_x,
         train_y,
@@ -123,23 +128,7 @@ class ComprehensiveGP:
         optimize_wl_layer_weights: bool = False,
         optimizer_kwargs: dict = None,
     ):
-        """
-
-        Parameters
-        ----------
-        iters
-        optimizer
-        wl_subtree_candidates
-        wl_lengthscales
-        optimize_lik
-        max_lik
-        optimize_wl_layer_weights
-        optimizer_kwargs
-
-        Returns
-        -------
-
-        """
+        """Called by self.fit"""
         self._reset_XY(train_x, train_y)
 
         # Get the node weights, if needed

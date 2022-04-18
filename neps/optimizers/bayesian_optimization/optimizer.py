@@ -131,15 +131,15 @@ class BayesianOptimization(BaseOptimizer):
                 "graph_kernels": graph_kernels,
                 "hp_kernels": hp_kernels,
                 "vectorial_features": self.pipeline_space.get_vectorial_dim(),
+                "surrogate_model_fit_args": surrogate_model_fit_args or {},
             },
         )
-        self.surrogate_model_fit_args = surrogate_model_fit_args or {}
-
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
             name="acquisition function",
         )
+        # TODO: Do we want to apply this everytime?
         self.acquisition = DecayingPriorWeightedAcquisition(
             self.acquisition, log=log_prior_weighted
         )
@@ -147,7 +147,7 @@ class BayesianOptimization(BaseOptimizer):
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience},
+            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
 
     def load_results(
@@ -166,21 +166,15 @@ class BayesianOptimization(BaseOptimizer):
                     # We want to use hallucinated results for the evaluations that have
                     # not finished yet. For this we fit a model on the finished
                     # evaluations and add these to the other results to fit another model.
-                    self.surrogate_model.fit(
-                        train_x, train_y, **self.surrogate_model_fit_args
-                    )
+                    self.surrogate_model.fit(train_x, train_y)
                     ys, _ = self.surrogate_model.predict(self._pending_evaluations)
                     train_x += self._pending_evaluations
                     train_y += list(ys.detach().numpy())
 
-                self.surrogate_model.fit(
-                    train_x, train_y, **self.surrogate_model_fit_args
-                )
+                self.surrogate_model.fit(train_x, train_y)
                 # TODO: read out cost if they exist
                 self.acquisition.set_state(self.surrogate_model)
-                self.acquisition_sampler.work_with(
-                    self.pipeline_space, x=train_x, y=train_y
-                )
+                self.acquisition_sampler.work_with(x=train_x, y=train_y)
                 self._model_update_failed = False
             except RuntimeError:
                 self.logger.exception(

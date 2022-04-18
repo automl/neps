@@ -12,6 +12,7 @@ from .random_sampler import RandomSampler
 class EvolutionSampler(AcquisitionSampler):
     def __init__(
         self,
+        pipeline_space: SearchSpace,
         pool_size: int = 200,
         num_evolutions: int = 10,
         p_tournament: float = 0.2,
@@ -26,7 +27,7 @@ class EvolutionSampler(AcquisitionSampler):
         check_isomorphism_history: bool = False,
         patience: int = 50,
     ):
-        super().__init__(patience=patience)
+        super().__init__(pipeline_space=pipeline_space, patience=patience)
         self.pool_size = pool_size
         self.num_evolutions = num_evolutions
         self.p_tournament = p_tournament
@@ -41,11 +42,13 @@ class EvolutionSampler(AcquisitionSampler):
         # check for isomorphisms also in previous graphs
         self.check_isomorphism_history = check_isomorphism_history
 
-        self.random_sampling = RandomSampler(patience=self.patience)
+        self.random_sampling = RandomSampler(
+            pipeline_space=pipeline_space, patience=self.patience
+        )
 
-    def work_with(self, search_space, x, y) -> None:
-        super().work_with(search_space, x, y)
-        self.random_sampling.work_with(search_space, x, y)
+    def work_with(self, x, y) -> None:
+        super().work_with(x, y)
+        self.random_sampling.work_with(x, y)
 
     def _mutate(self, parent):
         for _ in range(self.patience):
