@@ -92,12 +92,12 @@ class SearchSpace(collections.abc.Mapping):
     def has_fidelity(self):
         return self.fidelity is not None
 
-    def sample(self, use_user_priors: bool = False, patience: int = 1) -> SearchSpace:
+    def sample(self, user_priors: bool = False, patience: int = 1) -> SearchSpace:
         sample = self.copy()
         for hp_name, hyperparameter in sample.hyperparameters.items():
             for _ in range(patience):
                 try:
-                    hyperparameter.sample(use_user_priors=use_user_priors)
+                    hyperparameter.sample(user_priors=user_priors)
                     break
                 except ValueError:
                     pass

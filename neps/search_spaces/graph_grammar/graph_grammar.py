@@ -87,9 +87,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
-        self.string_tree = self.grammars[0].sampler(1, use_user_priors=use_user_priors)[0]
+        self.string_tree = self.grammars[0].sampler(1, user_priors=user_priors)[0]
         self.id = self.string_tree
         _ = self.value  # required for checking if graph is valid!
 
@@ -276,7 +276,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.string_tree = self.assemble_trees(
@@ -492,7 +492,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.id = "\n".join(self.string_tree_list)

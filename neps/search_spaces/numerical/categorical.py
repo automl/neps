@@ -68,8 +68,8 @@ class CategoricalParameter(NumericalParameter):
             else probabilities[default_index]
         )
 
-    def sample(self, use_user_priors: bool = False):
-        if use_user_priors and self.default is not None:
+    def sample(self, user_priors: bool = False):
+        if user_priors and self.default is not None:
             probabilities = self._compute_user_prior_probabilities()
         else:
             probabilities = self.probabilities

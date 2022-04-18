@@ -163,7 +163,7 @@ class Grammar(CFG):
         self,
         n=1,
         start_symbol: str = None,
-        use_user_priors: bool = False,
+        user_priors: bool = False,
     ):
         # sample n sequences from the CFG
         # convergent: avoids very long sequences (we advise setting True)
@@ -188,11 +188,11 @@ class Grammar(CFG):
             ]
         else:
             return [
-                f"{self._sampler(symbol=start_symbol, use_user_priors=use_user_priors)})"
+                f"{self._sampler(symbol=start_symbol, user_priors=user_priors)})"
                 for i in range(0, n)
             ]
 
-    def _sampler(self, symbol=None, use_user_priors: bool = False):
+    def _sampler(self, symbol=None, user_priors: bool = False):
         # simple sampler where each production is sampled uniformly from all possible productions
         # Tree choses if return tree or list of terminals
         # recursive implementation
@@ -202,7 +202,7 @@ class Grammar(CFG):
         # collect possible productions from the starting symbol
         productions = self.productions(lhs=symbol)
         # sample
-        if use_user_priors and self._prior is not None:
+        if user_priors and self._prior is not None:
             production = choice(productions, probs=self._prior[str(symbol)])
         else:
             production = choice(productions)
@@ -211,9 +211,7 @@ class Grammar(CFG):
                 # if terminal then add string to sequence
                 tree = tree + " " + sym
             else:
-                tree = (
-                    tree + " " + self._sampler(sym, use_user_priors=use_user_priors) + ")"
-                )
+                tree = tree + " " + self._sampler(sym, user_priors=user_priors) + ")"
         return tree
 
     def sampler_maxMin_func(self, symbol: str = None, largest: bool = True):

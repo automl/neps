@@ -77,7 +77,7 @@ class GraphDenseParameter(GraphGrammar):
         self.cell = None
         super().reset()
 
-    def sample(self, use_user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
         super().sample()
         # pylint: disable=attribute-defined-outside-init
         self.nxTree = self.create_nx_tree(self.string_tree)

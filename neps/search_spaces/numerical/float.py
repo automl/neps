@@ -88,10 +88,10 @@ class FloatParameter(NumericalParameter):
         value /= std
         return np.log(dist.pdf(value) + 1e-12) if log else dist.pdf(value)
 
-    def sample(self, use_user_priors: bool = False):
+    def sample(self, user_priors: bool = False):
         low, high, default = self._get_low_high_default()
 
-        if use_user_priors and self.has_prior:
+        if user_priors and self.has_prior:
             dist, std = self._get_truncnorm_prior_and_std()
             value = dist.rvs() * std + default
         else:

@@ -32,8 +32,8 @@ class IntegerParameter(FloatParameter):
     def __repr__(self):
         return f"Integer, range: [{self.lower}, {self.upper}], value: {self.value}"
 
-    def sample(self, use_user_priors: bool = False):
-        self.fp.sample(use_user_priors=use_user_priors)
+    def sample(self, user_priors: bool = False):
+        self.fp.sample(user_priors=user_priors)
         self.value = int(round(self.fp.value))  # type: ignore[arg-type]
 
     def mutate(
