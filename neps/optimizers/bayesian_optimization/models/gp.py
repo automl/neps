@@ -24,7 +24,7 @@ class ComprehensiveGP:
         vectorial_features: list = None,
         combined_kernel: str = "sum",
         logger=None,
-        surrogate_model_fit_args=None,
+        surrogate_model_fit_args: dict = None,
     ):
         self.likelihood = likelihood
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}

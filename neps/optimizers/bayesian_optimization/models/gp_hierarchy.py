@@ -30,8 +30,10 @@ class ComprehensiveGPHierarchy:
         vectorial_features: list = None,
         combined_kernel: str = "sum",
         verbose: bool = False,
+        surrogate_model_fit_args: dict = None,
     ):
         self.likelihood = likelihood
+        self.surrogate_model_fit_args = surrogate_model_fit_args or {}
         self.learn_all_h = learn_all_h
         self.hierarchy_consider = hierarchy_consider
         self.normalize_combined_kernel = normalize_combined_kernel
@@ -192,8 +194,13 @@ class ComprehensiveGPHierarchy:
                 )
                 self.combined_kernel._gram = best_K  # pylint: disable=protected-access
 
-    def fit(
+    def fit(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
+        self._fit(train_x, train_y, **self.surrogate_model_fit_args)
+
+    def _fit(
         self,
+        train_x: Iterable,
+        train_y: Union[Iterable, torch.Tensor],
         iters: int = 20,
         optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
@@ -203,25 +210,10 @@ class ComprehensiveGPHierarchy:
         optimize_wl_layer_weights: bool = False,
         optimizer_kwargs: dict = None,
     ):
-        """
+        # Called by self._fit
+        self._reset_XY(train_x, train_y)
 
-        Parameters
-        ----------
-        iters
-        optimizer
-        wl_subtree_candidates
-        wl_lengthscales
-        optimize_lik
-        max_lik
-        optimize_wl_layer_weights
-        optimizer_kwargs
-
-        Returns
-        -------
-
-        """
         # Get the node weights, if needed
-
         if optimizer_kwargs is None:
             optimizer_kwargs = {"lr": 0.1}
         if len(wl_subtree_candidates) > 0:
@@ -485,7 +477,7 @@ class ComprehensiveGPHierarchy:
     def x(self):
         return self.x_configs
 
-    def reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
+    def _reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
         self.x_configs = train_x
         self.n = len(self.x_configs)
         train_y_tensor = (
