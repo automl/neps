@@ -196,13 +196,13 @@ class BayesianOptimization(BaseOptimizer):
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
         if len(self._train_x) == 0 and self._initial_design_size >= 1:
             # TODO: if default config sample it
-            config = self.pipeline_space.copy().sample(
+            config = self.pipeline_space.sample(
                 patience=self.patience, use_user_priors=True
             )
         elif random.random() < self._random_interleave_prob:
-            config = self.pipeline_space.copy().sample(patience=self.patience)
+            config = self.pipeline_space.sample(patience=self.patience)
         elif len(self._train_x) < self._initial_design_size or self._model_update_failed:
-            config = self.pipeline_space.copy().sample(
+            config = self.pipeline_space.sample(
                 patience=self.patience, use_user_priors=True
             )
         else:
@@ -211,7 +211,7 @@ class BayesianOptimization(BaseOptimizer):
                 if config not in self._pending_evaluations:
                     break
             else:
-                config = self.pipeline_space.copy().sample(
+                config = self.pipeline_space.sample(
                     patience=self.patience, use_user_priors=True
                 )
 

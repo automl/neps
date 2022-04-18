@@ -93,7 +93,8 @@ class SearchSpace(collections.abc.Mapping):
         return self.fidelity is not None
 
     def sample(self, use_user_priors: bool = False, patience: int = 1) -> SearchSpace:
-        for hp_name, hyperparameter in self.hyperparameters.items():
+        sample = self.copy()
+        for hp_name, hyperparameter in sample.hyperparameters.items():
             for _ in range(patience):
                 try:
                     hyperparameter.sample(use_user_priors=use_user_priors)
@@ -104,7 +105,7 @@ class SearchSpace(collections.abc.Mapping):
                 raise ValueError(
                     f"Could not sample valid config for {hp_name} in {patience} tries!"
                 )
-        return self
+        return sample
 
     def mutate(
         self,
