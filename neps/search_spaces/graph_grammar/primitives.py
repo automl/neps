@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 
-class AbstractPrimitive(nn.Module, metaclass=ABCMeta):
+class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
     """
     Use this class when creating new operations for edges.
 
@@ -13,7 +13,7 @@ class AbstractPrimitive(nn.Module, metaclass=ABCMeta):
     which requires naslib to detect and properly process them.
     """
 
-    def __init__(self, kwargs):
+    def __init__(self, **kwargs):
         super().__init__()
 
         self.init_params = {
@@ -23,11 +23,11 @@ class AbstractPrimitive(nn.Module, metaclass=ABCMeta):
         }
 
     @abstractmethod
-    def forward(self, x, edge_data):
+    def forward(self, x):
         """
         The forward processing of the operation.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def get_embedded_ops(self):
@@ -39,11 +39,22 @@ class AbstractPrimitive(nn.Module, metaclass=ABCMeta):
         If there are no embedded ops, then simply return
         `None`. Should return a list otherwise.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def get_op_name(self):
         return type(self).__name__
+
+
+class AbstractPrimitive(_AbstractPrimitive):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def forward(self, x):
+        raise NotImplementedError
+
+    def get_embedded_ops(self):
+        return None
 
 
 class Identity(AbstractPrimitive):
@@ -54,11 +65,8 @@ class Identity(AbstractPrimitive):
     def __init__(self, **kwargs):
         super().__init__(locals())
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         return x
-
-    def get_embedded_ops(self):
-        return None
 
 
 class Zero(AbstractPrimitive):
@@ -75,14 +83,11 @@ class Zero(AbstractPrimitive):
         super().__init__(locals())
         self.stride = int(stride)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         if self.stride == 1:
             return x.mul(0.0)
         else:
             return x[:, :, :: self.stride, :: self.stride].mul(0.0)
-
-    def get_embedded_ops(self):
-        return None
 
     def __repr__(self):
         return f"Zero (stride={self.stride})"
@@ -102,15 +107,12 @@ class Zero1x1(AbstractPrimitive):
         super().__init__(locals())
         self.stride = int(stride)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         if self.stride == 1:
             return x.mul(0.0)
         else:
             x = x[:, :, :: self.stride, :: self.stride].mul(0.0)
             return torch.cat([x, x], dim=1)  # double the channels TODO: ugly as hell
-
-    def get_embedded_ops(self):
-        return None
 
     def __repr__(self):
         return f"Zero1x1 (stride={self.stride})"
@@ -160,11 +162,8 @@ class SepConv(AbstractPrimitive):
             nn.BatchNorm2d(C_out, affine=affine),
         )
 
-    def forward(self, x, edge_data=None):
+    def forward(self, x):
         return self.op(x)
-
-    def get_embedded_ops(self):
-        return None
 
     @property
     def get_op_name(self):
@@ -209,11 +208,8 @@ class DilConv(AbstractPrimitive):
             nn.BatchNorm2d(C_out, affine=affine),
         )
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         return self.op(x)
-
-    def get_embedded_ops(self):
-        return None
 
     @property
     def get_op_name(self):
@@ -237,11 +233,8 @@ class Stem(AbstractPrimitive):
             nn.Conv2d(C_in, C_out, 3, padding=1, bias=False), nn.BatchNorm2d(C_out)
         )
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         return self.seq(x)
-
-    def get_embedded_ops(self):
-        return None
 
 
 class Sequential(AbstractPrimitive):
@@ -255,7 +248,7 @@ class Sequential(AbstractPrimitive):
         self.primitives = args
         self.op = nn.Sequential(*args)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         return self.op(x)
 
     def get_embedded_ops(self):
@@ -271,12 +264,9 @@ class MaxPool(AbstractPrimitive):
 
         self.maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=1)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         x = self.maxpool(x)
         return x
-
-    def get_embedded_ops(self):
-        return None
 
 
 class MaxPool1x1(AbstractPrimitive):
@@ -302,15 +292,12 @@ class MaxPool1x1(AbstractPrimitive):
             self.conv = nn.Conv2d(C_in, C_out, 1, stride=1, padding=0, bias=False)
             self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         x = self.maxpool(x)
         if self.stride > 1:
             x = self.conv(x)
             x = self.bn(x)
         return x
-
-    def get_embedded_ops(self):
-        return None
 
 
 class AvgPool(AbstractPrimitive):
@@ -323,12 +310,9 @@ class AvgPool(AbstractPrimitive):
         super().__init__(locals())
         self.avgpool = nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         x = self.avgpool(x)
         return x
-
-    def get_embedded_ops(self):
-        return None
 
 
 class AvgPool1x1(AbstractPrimitive):
@@ -356,15 +340,12 @@ class AvgPool1x1(AbstractPrimitive):
             self.conv = nn.Conv2d(C_in, C_out, 1, stride=1, padding=0, bias=False)
             self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         x = self.avgpool(x)
         if self.stride > 1:
             x = self.conv(x)
             x = self.bn(x)
         return x
-
-    def get_embedded_ops(self):
-        return None
 
 
 class ReLUConvBN(AbstractPrimitive):
@@ -381,11 +362,8 @@ class ReLUConvBN(AbstractPrimitive):
             nn.BatchNorm2d(C_out, affine=affine),
         )
 
-    def forward(self, x, edge_data):
+    def forward(self, x):
         return self.op(x)
-
-    def get_embedded_ops(self):
-        return None
 
     @property
     def get_op_name(self):
@@ -409,11 +387,8 @@ class ConvBnReLU(AbstractPrimitive):
             nn.ReLU(inplace=False),
         )
 
-    def forward(self, x, edge_data=None):
+    def forward(self, x):
         return self.op(x)
-
-    def get_embedded_ops(self):
-        return None
 
     @property
     def get_op_name(self):
@@ -436,11 +411,8 @@ class ConvBn(AbstractPrimitive):
             nn.BatchNorm2d(C_out, affine=affine),
         )
 
-    def forward(self, x, edge_data=None):
+    def forward(self, x):
         return self.op(x)
-
-    def get_embedded_ops(self):
-        return None
 
     @property
     def get_op_name(self):
@@ -449,7 +421,7 @@ class ConvBn(AbstractPrimitive):
         return op_name
 
 
-class Concat1x1(nn.Module):
+class Concat1x1(AbstractPrimitive):
     """
     Implementation of the channel-wise concatination followed by a 1x1 convolution
     to retain the channel dimension.
@@ -492,15 +464,11 @@ class ResNetBasicblock(AbstractPrimitive):
         else:
             self.downsample = None
 
-    def forward(self, x, edge_data):  # pylint: disable=W0613
+    def forward(self, x):
         basicblock = self.conv_a(x, None)
         basicblock = self.conv_b(basicblock, None)
         residual = self.downsample(x) if self.downsample is not None else x
         return residual + basicblock
-
-    @staticmethod
-    def get_embedded_ops():
-        return None
 
 
 class ResNetBasicblockConvBnRelu(AbstractPrimitive):
@@ -522,12 +490,8 @@ class ResNetBasicblockConvBnRelu(AbstractPrimitive):
 
         self.relu = nn.ReLU()
 
-    def forward(self, x, edge_data):  # pylint: disable=W0613
+    def forward(self, x):
         basicblock = self.conv_a(x, None)
         basicblock = self.conv_b(basicblock, None)
         residual = self.downsample(x) if self.downsample is not None else x
         return self.relu(residual + basicblock)
-
-    @staticmethod
-    def get_embedded_ops():
-        return None

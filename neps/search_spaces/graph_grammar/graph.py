@@ -4,7 +4,6 @@ import logging
 import os
 import random
 import types
-from functools import partial
 from typing import Callable
 
 import networkx as nx
@@ -400,7 +399,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                                 edge_data.op, node_idx, neigbor_idx
                             )
                         )
-                        edge_output = edge_data.op.forward(x, edge_data=edge_data)
+                        edge_output = edge_data.op.forward(x)
                     else:
                         raise ValueError(
                             "Unknown class as op: {}. Expected either Graph or AbstactPrimitive".format(
@@ -488,9 +487,9 @@ class Graph(torch.nn.Module, nx.DiGraph):
                         used_input_names.append(max_xidx + 1)
                         forward_f.append(_forward_f)
                     elif isinstance(edge_data.op, AbstractPrimitive):
-                        edge_data.op.forward = partial(  # type: ignore[assignment]
-                            edge_data.op.forward, edge_data=edge_data
-                        )
+                        # edge_data.op.forward = partial(  # type: ignore[assignment]
+                        #     edge_data.op.forward, edge_data=edge_data
+                        # )
                         submodule_list.append(edge_data.op)
                         _forward_f = f"x{max_xidx + 1}=self.module_list[{len(submodule_list) - 1}]({x})"
                         input_name = f"x{max_xidx + 1}"
