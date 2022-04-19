@@ -13,7 +13,7 @@ class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
     which requires naslib to detect and properly process them.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, kwargs):
         super().__init__()
 
         self.init_params = {
@@ -47,9 +47,6 @@ class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
 
 
 class AbstractPrimitive(_AbstractPrimitive):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
     def forward(self, x):
         raise NotImplementedError
 
@@ -430,7 +427,7 @@ class Concat1x1(AbstractPrimitive):
     def __init__(
         self, num_in_edges, C_out, affine=True, **kwargs  # pylint: disable=W0613
     ):
-        super().__init__()
+        super().__init__(locals())
         self.conv = nn.Conv2d(
             num_in_edges * C_out, C_out, kernel_size=1, stride=1, padding=0, bias=False
         )
