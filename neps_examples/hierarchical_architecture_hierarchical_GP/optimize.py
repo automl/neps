@@ -85,7 +85,7 @@ def run_pipeline(architecture):
     )
 
     number_of_params = sum(p.numel() for p in model.parameters())
-    y = abs(1.5e7 - number_of_params)
+    y = abs(1.5e7 - number_of_params) / 1.5e7
 
     end = time.time()
 
