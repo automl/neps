@@ -321,6 +321,12 @@ class ComprehensiveGPHierarchy:
                         likelihood,
                     )
                 optim.step()
+
+                with torch.no_grad():
+                    likelihood.clamp_(  # pylint: disable=expression-not-assigned
+                        1e-5, max_lik
+                    ) if likelihood is not None and likelihood.is_leaf else None
+
                 optim_vars_list.append(
                     [
                         theta_vector.clone().detach(),
@@ -331,12 +337,6 @@ class ComprehensiveGPHierarchy:
                 nlml_list.append(nlml.item())
 
                 optim.zero_grad(set_to_none=True)
-
-                with torch.no_grad():
-                    # TODO : I commented this, not used. What is it doing ?
-                    likelihood.clamp_(  # pylint: disable=expression-not-assigned
-                        1e-5, max_lik
-                    ) if likelihood is not None and likelihood.is_leaf else None
 
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
             K_i, logDetK = compute_pd_inverse(K, likelihood)
