@@ -350,10 +350,10 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search.
 
-        If `max_budget_init` is True, the number of evaluations made at the target
-            budget is compared to `initial_design_size`.
-        Else if False, the total number of unique configurations is compared to the
-            `initial_design_size` to decide if model-based search can begin.
+        If `initial_design_type` is `max_budget`, the number of evaluations made at the
+            target budget is compared to `initial_design_size`.
+        If `initial_design_type` is `unique_configs`, the total number of unique
+            configurations is compared to the `initial_design_size`.
         """
         if self.initial_design_type == "max_budget":
             val = (
