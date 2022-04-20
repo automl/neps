@@ -10,7 +10,7 @@ repos:
       - id: check-toml
 
   - repo: https://github.com/psf/black
-    rev: 22.1.0
+    rev: 22.3.0
     hooks:
       - id: black
 
@@ -53,7 +53,7 @@ repos:
     rev: v1.8.1
     hooks:
       - id: darglint
-        args: [-v 2,--indentation 4]
+        args: [-v 2,--indentation 4,--strictness short]
         files: (neps/api.py|neps/status.py|neps/optimizers/bayesian_optimization/optimizer.py)
 
   - repo: https://github.com/PyCQA/pylint
