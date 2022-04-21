@@ -84,6 +84,10 @@ class CoreGraphGrammar(Graph):
     def compute_prior(self, log: bool = True):
         raise NotImplementedError
 
+    @abstractmethod
+    def compose_functions(self, identifier: str, flatten_graph: bool = True):
+        raise NotImplementedError
+
     @staticmethod
     def _check_graph(graph: nx.DiGraph):
         if len(graph) == 0 or graph.number_of_edges() == 0:
@@ -1389,7 +1393,19 @@ class CoreGraphGrammar(Graph):
 
     def _compose_functions(
         self, identifier: str, grammar: Grammar, flatten_graph: bool = True
-    ):
+    ) -> nx.DiGraph:
+        """This functions takes an identifier and constructs the
+        (multi-variate) composition of the functions it describes.
+
+        Args:
+            identifier (str): identifier
+            grammar (Grammar): grammar
+            flatten_graph (bool, optional): Whether to flatten the graph. Defaults to True.
+
+        Returns:
+            nx.DiGraph: (multi-variate) composition of functions
+        """
+
         def skip_char(char: str) -> bool:
             if char in [" ", "\t", "\n"]:
                 return True
@@ -1491,6 +1507,11 @@ class CoreGraphGrammar(Graph):
         return composed_function
 
     def graph_to_self(self, graph: nx.DiGraph):
+        """Copies graph to self
+
+        Args:
+            graph (nx.DiGraph): graph
+        """
         for u, v, data in graph.edges(data=True):
             self.add_edge(u, v)  # type: ignore[union-attr]
             self.edges[u, v].update(data)  # type: ignore[union-attr]

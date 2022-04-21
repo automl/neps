@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import inspect
-from typing import Callable
+from typing import Callable, TypeVar
 
 import networkx as nx
+from torch import nn
 
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
 from .graph_grammar import GraphGrammar
 
+T_FunctionParameter = TypeVar("T_FunctionParameter", bound="FunctionParameter")
 
-def _dict_structure_to_str(structure, primitives):
+
+def _dict_structure_to_str(structure: dict, primitives: dict) -> str:
     grammar = ""
     for nonterminal, productions in structure.items():
         grammar += nonterminal + " -> " + " | ".join(productions) + "\n"
@@ -73,30 +76,28 @@ class FunctionParameter(GraphGrammar):
         self._old_build_api = old_build_api
         self.name: str = name
 
-    def setup(self):
-        composed_function = self.compose_functions(self.id)
-        self.graph_to_self(composed_function)
-        self.prune_graph()
-
-        if self._old_build_api:
-            self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
-        elif self._set_recursive_attribute:
-            _build(self, self._set_recursive_attribute)
-
-        self.compile()
-        self.update_op_names()
-
-    def to_pytorch(self):
+    def to_pytorch(self) -> nn.Module:
         self.clear_graph()
         if len(self.nodes()) == 0:
-            self.setup()
-        return super().to_pytorch()
+            composed_function = self.compose_functions(self.id)
+            # part below is required since PyTorch has no standard functional API
+            self.graph_to_self(composed_function)
+            self.prune_graph()
+
+            if self._old_build_api:
+                self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
+            elif self._set_recursive_attribute:
+                _build(self, self._set_recursive_attribute)
+
+            self.compile()
+            self.update_op_names()
+        return super().to_pytorch()  # create PyTorch model
 
     def to_tensorflow(self, inputs):
         composed_function = self.compose_functions(self.id, flatten_graph=False)
         return composed_function(inputs)
 
-    def create_new_instance_from_id(self, identifier: str):
+    def create_new_instance_from_id(self, identifier: str) -> T_FunctionParameter:
         g = FunctionParameter(**self.input_kwargs)  # type: ignore[arg-type]
         g.load_from(identifier)
         return g
