@@ -90,9 +90,11 @@ def run(
     max_evaluations_per_run: int | None = None,
     budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
-    searcher: Literal["bayesian_optimization", "random_search", "CArBO"]
+    searcher: Literal[
+        "bayesian_optimization", "random_search", "CArBO", "mf_bayesian_optimization"
+    ]
     | Any = "bayesian_optimization",
-    serializer="yaml",
+    serializer: Literal["yaml", "dill", "json"] = "yaml",
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.

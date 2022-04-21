@@ -7,6 +7,7 @@ from typing import Any, Dict
 import numpy as np
 import pandas as pd
 from metahyper.api import ConfigResult, instance_from_map
+from typing_extensions import Literal
 
 from ...search_spaces import (
     CategoricalParameter,
@@ -227,7 +228,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         patience: int = 50,
         eta: int = 4,
         early_stopping_rate: int = 0,
-        initial_design_type: str = "unique_configs",
+        initial_design_type: Literal["max_budget", "unique_configs"] = "unique_configs",
         logger=None,
         **kwargs,
     ):
