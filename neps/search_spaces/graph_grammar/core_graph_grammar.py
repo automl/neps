@@ -15,6 +15,7 @@ from .cfg import Grammar
 from .graph import Graph
 from .primitives import AbstractPrimitive
 from .topologies import AbstractTopology
+from .utils import get_edge_lists_of_topologies
 
 
 class CoreGraphGrammar(Graph):
@@ -48,7 +49,7 @@ class CoreGraphGrammar(Graph):
             )
 
         if terminal_to_graph_edges is None:  # only compute it once -> more efficient
-            self.terminal_to_graph_edges = self.get_edge_lists_of_topologies(
+            self.terminal_to_graph_edges = get_edge_lists_of_topologies(
                 self.terminal_to_op_names
             )
         else:
@@ -63,32 +64,6 @@ class CoreGraphGrammar(Graph):
 
         self.return_all_subgraphs = return_all_subgraphs
         self.return_graph_per_hierarchy = return_graph_per_hierarchy
-
-    @staticmethod
-    def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
-        topology_edge_lists = {}
-        for k, v in terminal_map.items():
-            if inspect.isclass(v):
-                is_topology = issubclass(v, AbstractTopology)
-            elif isinstance(v, partial):
-                is_topology = issubclass(v.func, AbstractTopology)  # type: ignore[arg-type]
-            else:
-                is_topology = False
-            if is_topology:
-                if isinstance(v, partial):
-                    if hasattr(v.func, "get_edge_list"):
-                        func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
-                        kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
-                        topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
-                    elif hasattr(v.func, "edge_list"):
-                        topology_edge_lists[k] = v.func.edge_list  # type: ignore[attr-defined]
-                    else:
-                        raise Exception(
-                            f"Please implement a get_edge_list static method for {v.func.__name__} or set edge_list!"
-                        )
-                else:
-                    topology_edge_lists[k] = v.edge_list
-        return topology_edge_lists
 
     def get_grammars(self) -> list[Grammar]:
         return self.grammars

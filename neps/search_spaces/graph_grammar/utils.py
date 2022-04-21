@@ -1,10 +1,39 @@
+import inspect
 import os
+from functools import partial
 
 import matplotlib.pyplot as plt
 import networkx as nx
 from path import Path
 
 from .graph import Graph
+from .topologies import AbstractTopology
+
+
+def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
+    topology_edge_lists = {}
+    for k, v in terminal_map.items():
+        if inspect.isclass(v):
+            is_topology = issubclass(v, AbstractTopology)
+        elif isinstance(v, partial):
+            is_topology = issubclass(v.func, AbstractTopology)  # type: ignore[arg-type]
+        else:
+            is_topology = False
+        if is_topology:
+            if isinstance(v, partial):
+                if hasattr(v.func, "get_edge_list"):
+                    func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
+                    kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
+                    topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
+                elif hasattr(v.func, "edge_list"):
+                    topology_edge_lists[k] = v.func.edge_list  # type: ignore[attr-defined]
+                else:
+                    raise Exception(
+                        f"Please implement a get_edge_list static method for {v.func.__name__} or set edge_list!"
+                    )
+            else:
+                topology_edge_lists[k] = v.edge_list
+    return topology_edge_lists
 
 
 def graph_to_digraph(graph: Graph, edge_label: str = "op_name") -> nx.DiGraph:
