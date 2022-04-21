@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -11,13 +10,11 @@ from typing_extensions import Literal
 from ...search_spaces.numerical.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ...utils.result_utils import get_loss
+from .acquisition_functions.base_acquisition import BaseAcquisition
+from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .optimizer import BayesianOptimization
 
 
-# TODO: Update according to the changes above
-# TODO(neps.api): this BO class gets used when
-# pipeline_space.has_fidelity() == True and BO is chosen
-# also when random_search is chosen, but then use no model
 class BayesianOptimizationMultiFidelity(BayesianOptimization):
     def __init__(
         self,
@@ -28,7 +25,9 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         domain_se_kernel: str = None,
         graph_kernels: list = None,
         hp_kernels: list = None,
-        acquisition: str = "EI",
+        acquisition: str | BaseAcquisition = "EI",
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 50,
         eta: int = 4,
@@ -46,6 +45,8 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             acquisition=acquisition,
+            log_prior_weighted=log_prior_weighted,
+            acquisition_sampler=acquisition_sampler,
             random_interleave_prob=random_interleave_prob,
             patience=patience,
             logger=logger,
@@ -73,13 +74,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # crucial data structure used for determining promotion candidates
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
         # stores which configs occupy each rung at any time
-        self.rung_members = {k: [] for k in self.rung_map.keys()}  # type: Dict
+        self.rung_members: dict = {k: [] for k in self.rung_map.keys()}
         # one-to-one with self.rung_members, storing corresponding performance
-        self.rung_members_performance = {
-            k: [] for k in self.rung_map.keys()
-        }  # type: Dict
-        self.rung_promotions = dict()  # type: Dict
-        self.total_fevals = 0  # type: int
+        self.rung_members_performance: dict = {k: [] for k in self.rung_map.keys()}
+        self.rung_promotions: dict = dict()
+        self.total_fevals = 0
 
     def _get_rung_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""

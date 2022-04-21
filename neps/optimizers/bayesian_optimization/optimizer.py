@@ -16,8 +16,10 @@ from ...utils.common import has_instance
 from ...utils.result_utils import get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
+from .acquisition_functions.base_acquisition import BaseAcquisition
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
 from .acquisition_samplers import AcquisitionSamplerMapping
+from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .kernels import GraphKernelMapping, StationaryKernelMapping
 from .models import SurrogateModelMapping
 
@@ -35,9 +37,9 @@ class BayesianOptimization(BaseOptimizer):
         domain_se_kernel: str = None,
         graph_kernels: list = None,
         hp_kernels: list = None,
-        acquisition: str | Any = "EI",
+        acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
-        acquisition_sampler: str | Any = "mutation",
+        acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 100,
         budget: None | int | float = None,

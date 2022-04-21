@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 import ConfigSpace as CS
 import metahyper
@@ -22,7 +22,7 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message) from None
 
-from .optimizers import SearcherMapping
+from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
 
 
@@ -91,9 +91,13 @@ def run(
     budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
     searcher: Literal[
-        "bayesian_optimization", "random_search", "CArBO", "mf_bayesian_optimization"
+        "default",
+        "bayesian_optimization",
+        "random_search",
+        "CArBO",
+        "mf_bayesian_optimization",
     ]
-    | Any = "bayesian_optimization",
+    | BaseOptimizer = "default",
     serializer: Literal["yaml", "dill", "json"] = "yaml",
     **searcher_kwargs,
 ) -> None:
@@ -165,6 +169,12 @@ def run(
     except TypeError as e:
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
+
+    if searcher == "default":
+        if pipeline_space.has_fidelity():
+            searcher = "mf_bayesian_optimization"
+        else:
+            searcher = "bayesian_optimization"
 
     searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
         pipeline_space=pipeline_space,
