@@ -111,7 +111,7 @@ pipeline_space = dict(
 early_hierarchies_considered = "0_1_2_3"
 hierarchy_considered = [int(hl) for hl in early_hierarchies_considered.split("_")]
 graph_kernels = ["wl"] * (len(hierarchy_considered) + 1)
-wl_h = [1] + [2] * len(hierarchy_considered)
+wl_h = [2, 1] + [2] * (len(hierarchy_considered) - 1)
 graph_kernels = [
     GraphKernelMapping[kernel](
         h=wl_h[j],
