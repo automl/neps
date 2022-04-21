@@ -95,6 +95,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self._value = None
         self._function_id = ""
 
+    def compose_functions(self, descriptor: str, flatten_graph: bool = True):
+        return self._compose_functions(descriptor, self.grammars[0], flatten_graph)
+
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
 

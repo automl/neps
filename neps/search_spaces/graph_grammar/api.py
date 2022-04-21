@@ -72,14 +72,10 @@ class FunctionParameter(GraphGrammar):
         self._set_recursive_attribute = set_recursive_attribute
         self._old_build_api = old_build_api
         self.name: str = name
-        self.nxTree: nx.DiGraph = None
-        self.string_tree: str = ""
 
-    def setup(self, tree: nx.DiGraph):
-        self.build_graph_from_tree(
-            tree=tree,
-            terminal_to_torch_map=self.terminal_to_op_names,
-        )
+    def setup(self):
+        composed_function = self.compose_functions(self.id)
+        self.graph_to_self(composed_function)
         self.prune_graph()
 
         if self._old_build_api:
@@ -92,16 +88,12 @@ class FunctionParameter(GraphGrammar):
 
     def to_pytorch(self):
         self.clear_graph()
-        if self.nxTree is None:
-            self.nxTree = self.create_nx_tree(self.string_tree)
         if len(self.nodes()) == 0:
-            self.setup(self.nxTree)
+            self.setup()
         return super().to_pytorch()
 
     def to_tensorflow(self, inputs):
-        composed_function = self.compose_functions(
-            self.string_tree, self.grammars[0], flatten_graph=False
-        )
+        composed_function = self.compose_functions(self.id, flatten_graph=False)
         return composed_function(inputs)
 
     def create_new_instance_from_id(self, identifier: str):

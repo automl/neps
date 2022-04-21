@@ -73,6 +73,14 @@ class CoreGraphGrammar(Graph):
             self.remove_node(list(self.nodes())[0])
 
     @abstractmethod
+    def id_to_string_tree(self, identifier: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def string_tree_to_id(self, string_tree: str):
+        raise NotImplementedError
+
+    @abstractmethod
     def compute_prior(self, log: bool = True):
         raise NotImplementedError
 
@@ -1379,8 +1387,8 @@ class CoreGraphGrammar(Graph):
 
         return flattened_graph
 
-    def compose_functions(
-        self, descriptor: str, grammar: Grammar, flatten_graph: bool = True
+    def _compose_functions(
+        self, identifier: str, grammar: Grammar, flatten_graph: bool = True
     ):
         def skip_char(char: str) -> bool:
             if char in [" ", "\t", "\n"]:
@@ -1411,6 +1419,8 @@ class CoreGraphGrammar(Graph):
                 raise Exception(f"Terminal or nonterminal at position {i} does not exist")
             return j
 
+        descriptor = self.id_to_string_tree(identifier)
+
         symbols = grammar.nonterminals + grammar.terminals
         max_match = max(map(len, symbols))
         find_longest_match_func = partial(
@@ -1420,6 +1430,7 @@ class CoreGraphGrammar(Graph):
             max_match=max_match,
         )
 
+        q_nonterminals: queue.LifoQueue = queue.LifoQueue()
         q_topologies: queue.LifoQueue = queue.LifoQueue()
         q_primitives: queue.LifoQueue = queue.LifoQueue()
         i = 0
@@ -1429,14 +1440,16 @@ class CoreGraphGrammar(Graph):
                 pass
             elif char == ")" and not descriptor[i - 1] == " ":
                 # closing symbol of production
-                topology, number_of_primitives = q_topologies.get(block=False)
-                primitives = [
-                    q_primitives.get(block=False) for _ in range(number_of_primitives)
-                ][::-1]
-                composed_function = topology(*primitives)
-                if not q_topologies.empty():
-                    q_primitives.put(composed_function)
-                    q_topologies.queue[-1][1] += 1
+                if q_nonterminals.qsize() == q_topologies.qsize():
+                    topology, number_of_primitives = q_topologies.get(block=False)
+                    primitives = [
+                        q_primitives.get(block=False) for _ in range(number_of_primitives)
+                    ][::-1]
+                    composed_function = topology(*primitives)
+                    if not q_topologies.empty():
+                        q_primitives.put(composed_function)
+                        q_topologies.queue[-1][1] += 1
+                _ = q_nonterminals.get(block=False)
             else:
                 j = find_longest_match_func(i)
                 sym = descriptor[i:j]
@@ -1461,7 +1474,7 @@ class CoreGraphGrammar(Graph):
                         q_primitives.put(self.terminal_to_op_names[sym])
                         q_topologies.queue[-1][1] += 1  # count number of primitives
                 elif sym in grammar.nonterminals:
-                    pass
+                    q_nonterminals.put(sym)
                 else:
                     raise Exception(f"Unknown symbol {sym}")
 
@@ -1476,3 +1489,8 @@ class CoreGraphGrammar(Graph):
             composed_function = self.flatten_graph(composed_function)
 
         return composed_function
+
+    def graph_to_self(self, graph: nx.DiGraph):
+        for u, v, data in graph.edges(data=True):
+            self.add_edge(u, v)  # type: ignore[union-attr]
+            self.edges[u, v].update(data)  # type: ignore[union-attr]
