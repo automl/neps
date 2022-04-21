@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import inspect
 from typing import Callable
 
 import networkx as nx
 
 from .cfg import Grammar
+from .cfg_variants.constrained_cfg import ConstrainedGrammar
 from .graph_grammar import GraphGrammar
 
 
@@ -35,28 +37,30 @@ def _build(graph, set_recursive_attribute):
 class FunctionParameter(GraphGrammar):
     def __init__(
         self,
-        structure: Grammar | str | dict,
+        structure: Grammar | ConstrainedGrammar | str | dict,
         primitives: dict,
+        constraint_kwargs: dict | None = None,
         name: str = "",
         set_recursive_attribute: Callable | None = None,
         old_build_api: bool = False,
         **kwargs,
     ):
-        self.input_args = {
-            **{
-                "structure": structure,
-                "primitives": primitives,
-                "name": name,
-                "set_recursive_attribute": set_recursive_attribute,
-                "old_build_api": old_build_api,
-            },
-            **kwargs,
+        local_vars = locals()
+        self.input_kwargs = {
+            args: local_vars[args]
+            for args in inspect.getfullargspec(self.__init__).args  # type: ignore[misc]
+            if args != "self"
         }
+        self.input_kwargs.update(**kwargs)
 
         if isinstance(structure, dict):
             structure = _dict_structure_to_str(structure, primitives)
         if isinstance(structure, str):
-            structure = Grammar.fromstring(structure)
+            if constraint_kwargs is None:
+                structure = Grammar.fromstring(structure)
+            else:
+                structure = ConstrainedGrammar.fromstring(structure)
+                structure.set_constraints(**constraint_kwargs)
 
         super().__init__(
             grammar=structure,  # type: ignore[arg-type]
@@ -70,7 +74,6 @@ class FunctionParameter(GraphGrammar):
         self.name: str = name
         self.nxTree: nx.DiGraph = None
         self.string_tree: str = ""
-        self.id: str = ""
 
     def setup(self, tree: nx.DiGraph):
         self.build_graph_from_tree(
@@ -101,9 +104,7 @@ class FunctionParameter(GraphGrammar):
         )
         return composed_function(inputs)
 
-    def create_graph_from_string(self, child: str):
-        g = FunctionParameter(**self.input_args)  # type: ignore[arg-type]
-        g.string_tree = child
-        g.id = child
-        _ = g.value  # required for checking if graph is valid!
+    def create_new_instance_from_id(self, identifier: str):
+        g = FunctionParameter(**self.input_kwargs)  # type: ignore[arg-type]
+        g.load_from(identifier)
         return g

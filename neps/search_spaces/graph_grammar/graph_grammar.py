@@ -48,14 +48,34 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             **kwargs,
         )
 
-        self.id: str = ""
         self.string_tree: str = ""
+        self._function_id: str = ""
         self.nxTree: nx.DiGraph = None
         self._value: nx.DiGraph = None
 
         if prior is not None:
             self.grammars[0].prior = prior
         self.has_prior = prior is not None
+
+    @property
+    def id(self):
+        if self._function_id is None or self._function_id == "":
+            if self.string_tree == "":
+                raise ValueError("Cannot infer identifier!")
+            self._function_id = self.string_tree_to_id(self.string_tree)
+        return self._function_id
+
+    @id.setter
+    def id(self, value):
+        self._function_id = value
+
+    @staticmethod
+    def id_to_string_tree(identifier: str):
+        return identifier
+
+    @staticmethod
+    def string_tree_to_id(string_tree: str):
+        return string_tree
 
     def __eq__(self, other):
         return self.id == other.id
@@ -64,16 +84,16 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def search_space_size(self) -> int:
         return self.grammars[0].compute_space_size
 
+    @abstractmethod
+    def create_new_instance_from_id(self, identifier: str):
+        raise NotImplementedError
+
     def reset(self):
         self.clear_graph()
         self.string_tree = ""
         self.nxTree = None
         self._value = None
-        self.id = ""
-
-    @abstractmethod
-    def create_graph_from_string(self, child: str):
-        raise NotImplementedError
+        self._function_id = ""
 
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
@@ -90,7 +110,6 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
         self.reset()
         self.string_tree = self.grammars[0].sampler(1, user_priors=user_priors)[0]
-        self.id = self.string_tree
         _ = self.value  # required for checking if graph is valid!
 
     @property
@@ -107,7 +126,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def create_from_id(self, identifier: str):
         self.reset()
         self.id = identifier
-        self.string_tree = self.id
+        self.string_tree = self.id_to_string_tree(self.id)
         _ = self.value  # required for checking if graph is valid!
 
     # TODO: does this serialization really work for every graph ?
@@ -142,7 +161,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         if is_same:
             raise Exception("Parent is the same as child!")
 
-        return parent.create_graph_from_string(child_string_tree)
+        return parent.create_new_instance_from_id(
+            self.string_tree_to_id(child_string_tree)
+        )
 
     def crossover(self, parent1: GraphGrammar, parent2: GraphGrammar = None):
         if parent2 is None:
@@ -154,7 +175,10 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         )
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
-        return [parent2.create_graph_from_string(child) for child in children]
+        return [
+            parent2.create_new_instance_from_id(self.string_tree_to_id(child))
+            for child in children
+        ]
 
     def compute_prior(self, log: bool = True) -> float:
         return self.grammars[0].compute_prior(self.string_tree, log=log)
@@ -475,6 +499,12 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             nonterminals.extend(g.nonterminals)
             terminals.extend(g.terminals)
         return full_grammar
+
+    def serialize(self):
+        return self.id
+
+    def load_from(self, data):
+        self.create_from_id(data)
 
     @abstractmethod
     def create_graph_from_string(self, child: list[str]):
