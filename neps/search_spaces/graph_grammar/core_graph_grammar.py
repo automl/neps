@@ -85,7 +85,7 @@ class CoreGraphGrammar(Graph):
         raise NotImplementedError
 
     @abstractmethod
-    def compose_functions(self, identifier: str, flatten_graph: bool = True):
+    def compose_functions(self, flatten_graph: bool = True):
         raise NotImplementedError
 
     @staticmethod
@@ -223,7 +223,7 @@ class CoreGraphGrammar(Graph):
         self,
         base_tree: str | nx.DiGraph,
         motif_trees: list[str] | list[nx.DiGraph],
-        base_to_motif_map: dict = None,
+        terminal_to_sublanguage_map: dict = None,
         node_label: str = "op_name",
     ) -> str | nx.DiGraph:
         """Assembles the base parse tree with the motif parse trees
@@ -240,17 +240,20 @@ class CoreGraphGrammar(Graph):
             raise ValueError("All trees must be of the same type!")
         if isinstance(base_tree, str):
             ensembled_tree_string = base_tree
-            if base_to_motif_map is None:
+            if terminal_to_sublanguage_map is None:
                 raise NotImplementedError
 
-            for motif, idx in base_to_motif_map.items():
+            for motif, replacement in zip(
+                terminal_to_sublanguage_map.keys(), motif_trees
+            ):
                 if motif in ensembled_tree_string:
-                    replacement = motif_trees[idx]
                     ensembled_tree_string = ensembled_tree_string.replace(
                         motif, replacement
                     )
             return ensembled_tree_string
         elif isinstance(base_tree, nx.DiGraph):
+            raise NotImplementedError
+            # pylint: disable=unreachable
             leafnodes = self._find_leafnodes(base_tree)
             root_nodes = [self._find_root(G) for G in motif_trees]
             root_op_names = np.array(
@@ -323,6 +326,7 @@ class CoreGraphGrammar(Graph):
                     leafnode
                 )
             return ensembled_tree
+            # pylint: enable=unreachable
         else:
             raise NotImplementedError(
                 f"Assembling of trees of type {type(base_tree)} is not supported!"

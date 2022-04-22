@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from collections import OrderedDict
 from copy import deepcopy
 from functools import partial
 
@@ -10,6 +11,7 @@ from nltk import Nonterminal
 
 from ..parameter import Parameter
 from .cfg import Grammar
+from .cfg_variants.constrained_cfg import ConstrainedGrammar
 from .core_graph_grammar import CoreGraphGrammar
 from .crossover import repetitive_search_space_crossover, simple_crossover
 from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_mutate
@@ -95,8 +97,8 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self._value = None
         self._function_id = ""
 
-    def compose_functions(self, descriptor: str, flatten_graph: bool = True):
-        return self._compose_functions(descriptor, self.grammars[0], flatten_graph)
+    def compose_functions(self, flatten_graph: bool = True):
+        return self._compose_functions(self.id, self.grammars[0], flatten_graph)
 
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
@@ -232,7 +234,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self,
         grammars: list[Grammar],
         terminal_to_op_names: dict,
-        base_to_motif_map: dict,
+        terminal_to_sublanguage_map: dict,
         number_of_repetitive_motifs: int,
         terminal_to_graph_edges: dict = None,
         edge_attr: bool = True,
@@ -261,7 +263,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self._value: nx.DiGraph = None
 
         self.full_grammar = self.get_full_grammar(self.grammars)
-        self.base_to_motif_map = base_to_motif_map
+        self.terminal_to_sublanguage_map = terminal_to_sublanguage_map
         self.number_of_repetitive_motifs = number_of_repetitive_motifs
 
     def __eq__(self, other):
@@ -309,7 +311,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree = self.assemble_trees(
             self.string_tree_list[0],
             self.string_tree_list[1:],
-            base_to_motif_map=self.base_to_motif_map,
+            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
         )
         self.id = "\n".join(self.string_tree_list)
         _ = self.value  # required for checking if graph is valid!
@@ -333,7 +335,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree = self.assemble_trees(
             self.string_tree_list[0],
             self.string_tree_list[1:],
-            base_to_motif_map=self.base_to_motif_map,
+            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
         )
         self.id = "\n".join(self.string_tree_list)
         _ = self.value  # required for checking if graph is valid!
@@ -344,6 +346,8 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         mutation_rate: float = 1.0,
         mutation_strategy: str = "bananas",
     ):
+        raise NotImplementedError
+        # pylint: disable=unreachable
         if parent is None:
             parent = self
 
@@ -355,7 +359,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
                 motif_parents=parent.string_tree_list[1:],
                 base_grammar=self.grammars[0],
                 motif_grammars=self.grammars[1:],
-                base_to_motif_map=self.base_to_motif_map,
+                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
                 inner_mutation_strategy=inner_mutation_strategy,
             )
         else:
@@ -364,7 +368,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
                 motif_parents=parent.string_tree_list[1:],
                 base_grammar=self.grammars[0],
                 motif_grammars=self.grammars[1:],
-                base_to_motif_map=self.base_to_motif_map,
+                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
                 inner_mutation_strategy=super().mutate,
             )
 
@@ -372,10 +376,13 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             raise ValueError("Parent is the same as child!")
 
         return self.create_graph_from_string(child_string_tree_list)
+        # pylint: enable=unreachable
 
     def crossover(
         self, parent1: GraphGrammarRepetitive, parent2: GraphGrammarRepetitive = None
     ):
+        raise NotImplementedError
+        # pylint: disable=unreachable
         if parent2 is None:
             parent2 = self
         children = repetitive_search_space_crossover(
@@ -383,12 +390,13 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             motif_parents=(parent1.string_tree_list[1:], parent2.string_tree_list[1:]),
             base_grammar=self.grammars[0],
             motif_grammars=self.grammars[1:],
-            base_to_motif_map=self.base_to_motif_map,
+            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
             inner_crossover_strategy=simple_crossover,
         )
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
+        # pylint: enable=unreachable
 
     @property
     def search_space_size(self) -> int:
@@ -433,11 +441,9 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
     def __init__(  # pylint: disable=W0102
         self,
-        macro_grammar: Grammar,
-        grammars: list[Grammar],
+        grammars: list[Grammar] | list[ConstrainedGrammar],
         terminal_to_op_names: dict,
-        base_to_motif_map: dict,
-        number_of_repetitive_motifs: list[int],
+        terminal_to_sublanguage_map: dict,
         terminal_to_graph_edges: dict = None,
         fixed_macro_grammar: bool = False,
         edge_attr: bool = True,
@@ -446,11 +452,65 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
+        **kwargs,
     ):
-        self.macro_grammar = macro_grammar
+        def _check_mapping(macro_grammar, motif_grammars, terminal_to_sublanguage_map):
+            for terminal, start_symbol in terminal_to_sublanguage_map.items():
+                if terminal not in macro_grammar.terminals:
+                    raise Exception(f"Terminal {terminal} not defined in macro grammar")
+                if not any(
+                    start_symbol == str(grammar.start()) for grammar in motif_grammars
+                ):
+                    raise Exception(
+                        f"Start symbol {start_symbol} not defined in motif grammar"
+                    )
+
+        # def _check_repititions(terminal_to_sublanguage_map, number_of_repetitive_motifs):
+        #     for terminal in terminal_to_sublanguage_map.keys():
+        #         if terminal not in number_of_repetitive_motifs:
+        #             raise Exception(f"Number of repititions of sublanguage with terminal {terminal} not given")
+
+        def _identify_macro_grammar(grammar, terminal_to_sublanguage_map):
+            grammars = deepcopy(grammar)
+            motif_grammars = []
+            for start_symbol in terminal_to_sublanguage_map.values():
+                motif_grammars += [
+                    grammar
+                    for grammar in grammars
+                    if start_symbol == str(grammar.start())
+                ]
+                grammars = [
+                    grammar
+                    for grammar in grammars
+                    if start_symbol != str(grammar.start())
+                ]
+            if len(grammars) != 1:
+                raise Exception("Cannot identify macro grammar")
+            return grammars[0], motif_grammars
+
+        self.macro_grammar, grammars = _identify_macro_grammar(
+            grammars, terminal_to_sublanguage_map
+        )
+        _check_mapping(self.macro_grammar, grammars, terminal_to_sublanguage_map)
+        # _check_repititions(terminal_to_sublanguage_map, number_of_repetitive_motifs)
+
         self.fixed_macro_grammar = fixed_macro_grammar
         if not self.fixed_macro_grammar:
-            grammars.insert(0, macro_grammar)
+            grammars.insert(0, self.macro_grammar)
+
+        self.terminal_to_sublanguage_map = OrderedDict(terminal_to_sublanguage_map)
+        self.number_of_repetitive_motifs_per_grammar = [
+            sum(
+                map(
+                    (str(grammars[0].start())).__eq__,
+                    self.terminal_to_sublanguage_map.values(),
+                )
+            )
+            if str(grammar.start()) in self.terminal_to_sublanguage_map.values()
+            else 1
+            for grammar in grammars
+        ]
+
         super().__init__(
             grammars=grammars,
             terminal_to_op_names=terminal_to_op_names,
@@ -461,24 +521,66 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             identity_op=identity_op,
             name=name,
             scope=scope,
+            **kwargs,
         )
 
-        self.id: str = ""
+        self._function_id: str = ""
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
         self.nxTree: nx.DiGraph = None
         self._value: nx.DiGraph = None
 
         if self.fixed_macro_grammar:
-            self.full_grammar = self.get_full_grammar([macro_grammar] + self.grammars)
+            self.fixed_macro_string_tree = self.macro_grammar.sampler(1)[0]
+
+        if self.fixed_macro_grammar:
+            self.full_grammar = self.get_full_grammar(
+                [self.macro_grammar] + self.grammars
+            )
         else:
             self.full_grammar = self.get_full_grammar(self.grammars)
 
-        if self.fixed_macro_grammar:
-            self.fixed_macro_string_tree = self.macro_grammar.sampler(1)[0]
+    @property
+    def id(self) -> str:
+        if self._function_id is None or self._function_id == "":
+            if len(self.string_tree_list) == 0:
+                raise ValueError("Cannot infer identifier")
+            self._function_id = self.string_tree_list_to_id(self.string_tree_list)
+        return self._function_id
 
-        self.base_to_motif_map = base_to_motif_map
-        self.number_of_repetitive_motifs = number_of_repetitive_motifs
+    @id.setter
+    def id(self, value: str):
+        self._function_id = value
+
+    @staticmethod
+    def id_to_string_tree_list(identifier: str) -> list[str]:
+        return identifier.split("\n")
+
+    def id_to_string_tree(self, identifier: str) -> str:
+        string_tree_list = self.id_to_string_tree_list(identifier)
+        return self.assemble_string_tree(string_tree_list)
+
+    @staticmethod
+    def string_tree_list_to_id(string_tree_list: list[str]) -> str:
+        return "\n".join(string_tree_list)
+
+    def string_tree_to_id(self, string_tree: str) -> str:
+        raise NotImplementedError
+
+    def assemble_string_tree(self, string_tree_list: list[str]) -> str:
+        if self.fixed_macro_grammar:
+            string_tree = self.assemble_trees(
+                self.fixed_macro_string_tree,
+                string_tree_list,
+                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+            )
+        else:
+            string_tree = self.assemble_trees(
+                string_tree_list[0],
+                string_tree_list[1:],
+                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+            )
+        return string_tree
 
     def __eq__(self, other):
         return self.id == other.id
@@ -489,7 +591,10 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         self.string_tree = ""
         self.nxTree = None
         self._value = None
-        self.id = ""
+        self._function_id = ""
+
+    def compose_functions(self, flatten_graph: bool = True):
+        return self._compose_functions(self.id, self.full_grammar, flatten_graph)
 
     @staticmethod
     def get_full_grammar(grammars):
@@ -510,11 +615,11 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         self.create_from_id(data)
 
     @abstractmethod
-    def create_graph_from_string(self, child: list[str]):
+    def create_new_instance_from_id(self, child: str):
         raise NotImplementedError
 
     def get_dictionary(self) -> dict:
-        return {"graph_grammar": "\n".join(self.string_tree_list)}
+        return {"graph_grammar": self.id}
 
     def get_graphs(self):
         return self.value
@@ -525,22 +630,16 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):
         self.reset()
-        self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
-        self.id = "\n".join(self.string_tree_list)
-        if self.fixed_macro_grammar:
-            self.string_tree = self.assemble_trees(
-                self.fixed_macro_string_tree,
-                self.string_tree_list,
-                base_to_motif_map=self.base_to_motif_map,
+        self.string_tree_list = [
+            grammar.sampler(1, user_priors=user_priors)[0]
+            for grammar, number_of_motifs in zip(
+                self.grammars, self.number_of_repetitive_motifs_per_grammar
             )
-        else:
-            self.string_tree = self.assemble_trees(
-                self.string_tree_list[0],
-                self.string_tree_list[1:],
-                base_to_motif_map=self.base_to_motif_map,
-            )
+            for _ in range(number_of_motifs)
+        ]
+        self.string_tree = self.assemble_string_tree(self.string_tree_list)
         _ = self.value  # required for checking if graph is valid!
 
     @property
@@ -548,15 +647,20 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         if self._value is None:
             if self.fixed_macro_grammar:
                 self._value = []
-                for g, st in zip(self.grammars, self.string_tree_list):
-                    self._value.append(
-                        self.from_stringTree_to_graph_repr(
-                            st,
-                            g,
-                            valid_terminals=self.terminal_to_op_names.keys(),
-                            edge_attr=self.edge_attr,
+                string_list_idx = 0
+                for grammar, number_of_motifs in zip(
+                    self.grammars, self.number_of_repetitive_motifs_per_grammar
+                ):
+                    for _ in range(number_of_motifs):
+                        self._value.append(
+                            self.from_stringTree_to_graph_repr(
+                                self.string_tree_list[string_list_idx],
+                                grammar,
+                                valid_terminals=self.terminal_to_op_names.keys(),
+                                edge_attr=self.edge_attr,
+                            )
                         )
-                    )
+                        string_list_idx += 1
             else:
                 self._value = self.from_stringTree_to_graph_repr(
                     self.string_tree,
@@ -566,24 +670,11 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 )
         return self._value
 
-    def create_from_id(self, identifier: str | list):
+    def create_from_id(self, identifier: str):
         self.reset()
-        self.string_tree_list = (
-            identifier.split("\n") if isinstance(identifier, str) else identifier
-        )
-        self.id = "\n".join(self.string_tree_list)
-        if self.fixed_macro_grammar:
-            self.string_tree = self.assemble_trees(
-                self.fixed_macro_string_tree,
-                self.string_tree_list,
-                base_to_motif_map=self.base_to_motif_map,
-            )
-        else:
-            self.string_tree = self.assemble_trees(
-                self.string_tree_list[0],
-                self.string_tree_list[1:],
-                base_to_motif_map=self.base_to_motif_map,
-            )
+        self.id = identifier
+        self.string_tree_list = self.id_to_string_tree_list(self.id)
+        self.string_tree = self.id_to_string_tree(self.id)
         _ = self.value  # required for checking if graph is valid!
 
     def mutate(
@@ -595,40 +686,25 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         if parent is None:
             parent = self
 
-        # bananas mutate
-        if mutation_strategy == "bananas":
-            inner_mutation_strategy = partial(bananas_mutate, mutation_rate=mutation_rate)
-            child_string_tree_list, is_same = repetitive_search_space_mutation(
-                base_parent=self.fixed_macro_string_tree
-                if self.fixed_macro_grammar
-                else parent.string_tree_list[0],
-                motif_parents=parent.string_tree_list
-                if self.fixed_macro_grammar
-                else parent.string_tree_list[1:],
-                base_grammar=self.macro_grammar,
-                motif_grammars=self.grammars
-                if self.fixed_macro_grammar
-                else self.grammars[1:],
-                base_to_motif_map=self.base_to_motif_map,
-                inner_mutation_strategy=inner_mutation_strategy,
-                fixed_macro_parent=self.fixed_macro_grammar,
-            )
-        else:
-            child_string_tree_list, is_same = repetitive_search_space_mutation(
-                base_parent=self.fixed_macro_string_tree
-                if self.fixed_macro_grammar
-                else parent.string_tree_list[0],
-                motif_parents=parent.string_tree_list
-                if self.fixed_macro_grammar
-                else parent.string_tree_list[1:],
-                base_grammar=self.macro_grammar,
-                motif_grammars=self.grammars
-                if self.fixed_macro_grammar
-                else self.grammars[1:],
-                base_to_motif_map=self.base_to_motif_map,
-                inner_mutation_strategy=super().mutate,
-                fixed_macro_parent=self.fixed_macro_grammar,
-            )
+        bananas_inner_mutation = partial(bananas_mutate, mutation_rate=mutation_rate)
+        child_string_tree_list, is_same = repetitive_search_space_mutation(
+            base_parent=self.fixed_macro_string_tree
+            if self.fixed_macro_grammar
+            else parent.string_tree_list[0],
+            motif_parents=parent.string_tree_list
+            if self.fixed_macro_grammar
+            else parent.string_tree_list[1:],
+            base_grammar=self.macro_grammar,
+            motif_grammars=self.grammars
+            if self.fixed_macro_grammar
+            else self.grammars[1:],
+            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+            number_of_repetitive_motifs_per_grammar=self.number_of_repetitive_motifs_per_grammar,
+            inner_mutation_strategy=bananas_inner_mutation
+            if mutation_strategy == "bananas"
+            else super().mutate,
+            fixed_macro_parent=self.fixed_macro_grammar,
+        )
 
         if all(is_same):
             raise ValueError("Parent is the same as child!")
@@ -636,7 +712,9 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         if self.fixed_macro_grammar:
             child_string_tree_list = child_string_tree_list[1:]
 
-        return self.create_graph_from_string(child_string_tree_list)
+        return self.create_new_instance_from_id(
+            self.string_tree_list_to_id(child_string_tree_list)
+        )
 
     def crossover(
         self,
@@ -656,7 +734,8 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             motif_grammars=self.grammars
             if self.fixed_macro_grammar
             else self.grammars[1:],
-            base_to_motif_map=self.base_to_motif_map,
+            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+            number_of_repetitive_motifs_per_grammar=self.number_of_repetitive_motifs_per_grammar,
             inner_crossover_strategy=simple_crossover,
             fixed_macro_parent=self.fixed_macro_grammar,
             multiple_repetitive=True,
@@ -664,8 +743,10 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [
-            parent2.create_graph_from_string(
-                child[1:] if self.fixed_macro_grammar else child
+            parent2.create_new_instance_from_id(
+                self.string_tree_list_to_id(
+                    child[1:] if self.fixed_macro_grammar else child
+                )
             )
             for child in children
         ]
@@ -708,7 +789,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         else:
             lower_level_motifs = {
                 k: recursive_worker(self.grammars[i + 1].start(), self.grammars[i + 1])
-                for i, k in enumerate(self.base_to_motif_map.keys())
+                for i, k in enumerate(self.terminal_to_sublanguage_map.keys())
             }
             macro_level_motifs = recursive_worker(
                 self.grammars[0].start(),

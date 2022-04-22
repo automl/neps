@@ -72,18 +72,21 @@ def repetitive_search_space_mutation(
     motif_parents: List[str],
     base_grammar: Grammar,
     motif_grammars: List[Grammar],
-    base_to_motif_map: dict,
+    terminal_to_sublanguage_map: dict,
+    number_of_repetitive_motifs_per_grammar: list,
     inner_mutation_strategy: Callable,
     mutation_rate: float = 1.0,
     mutation_prob: float = None,
     fixed_macro_parent: bool = False,
 ) -> Tuple[List[str], List[bool]]:
-    def _motifs_in_base_tree(base_parent, base_to_motif_map):
-        return [i for i, k in enumerate(base_to_motif_map.keys()) if k in base_parent]
+    def _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map):
+        return [
+            i
+            for i, k in enumerate(terminal_to_sublanguage_map.keys())
+            if k in base_parent
+        ]
 
-    assert len(motif_parents) == len(motif_grammars)
-
-    indices = _motifs_in_base_tree(base_parent, base_to_motif_map)
+    indices = _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map)
     if fixed_macro_parent:
         mutation_prob = (
             mutation_rate / len(indices) if mutation_prob is None else mutation_prob
@@ -96,22 +99,34 @@ def repetitive_search_space_mutation(
     child_string_trees = []
     if not fixed_macro_parent and random.random() < mutation_prob:
         child_string_trees.append(inner_mutation_strategy(base_parent, base_grammar))
-        indices = _motifs_in_base_tree(base_parent, base_to_motif_map)
+        indices = _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map)
         mutation_prob = (
             mutation_rate / (len(indices) + 1) if mutation_prob is None else mutation_prob
         )
     else:
         child_string_trees.append((base_parent, True))
 
-    child_string_trees.extend(
-        [
-            inner_mutation_strategy(parent_string_tree, grammar)
-            if i in indices and random.random() < mutation_prob
-            else (parent_string_tree, True)
-            for i, (parent_string_tree, grammar) in enumerate(
-                zip(motif_parents, motif_grammars)
-            )
-        ]
-    )
+    parent_string_idx = 0
+    for grammar, number_of_motifs in zip(
+        motif_grammars, number_of_repetitive_motifs_per_grammar
+    ):
+        for _ in range(number_of_motifs):
+            if parent_string_idx in indices and random.random() < mutation_prob:
+                child_string_trees.append(
+                    inner_mutation_strategy(motif_parents[parent_string_idx], grammar)
+                )
+            else:
+                child_string_trees.append((motif_parents[parent_string_idx], True))
+            parent_string_idx += 1
+    # child_string_trees.extend(
+    #     [
+    #         inner_mutation_strategy(parent_string_tree, grammar)
+    #         if i in indices and random.random() < mutation_prob
+    #         else (parent_string_tree, True)
+    #         for i, (parent_string_tree, grammar) in enumerate(
+    #             zip(motif_parents, motif_grammars)
+    #         )
+    #     ]
+    # )
 
     return [c[0] for c in child_string_trees], [c[1] for c in child_string_trees]

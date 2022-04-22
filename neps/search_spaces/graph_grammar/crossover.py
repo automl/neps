@@ -2,6 +2,8 @@ import random
 from copy import deepcopy
 from typing import Callable, List, Tuple
 
+import numpy as np
+
 from .cfg import Grammar
 
 
@@ -31,22 +33,27 @@ def repetitive_search_space_crossover(
     motif_parents: Tuple[List[str], List[str]],
     base_grammar: Grammar,  # pylint: disable=W0613
     motif_grammars: List[Grammar],
-    base_to_motif_map: dict,
+    terminal_to_sublanguage_map: dict,
+    number_of_repetitive_motifs_per_grammar: list,
     inner_crossover_strategy: Callable,
     motif_prefix: str = "M",
     fixed_macro_parent: bool = False,
     multiple_repetitive: bool = False,
 ):
-    def _motifs_in_base_tree(base_parent, base_to_motif_map):
-        return [i + 1 for i, k in enumerate(base_to_motif_map.keys()) if k in base_parent]
+    def _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map):
+        return [
+            i + 1
+            for i, k in enumerate(terminal_to_sublanguage_map.keys())
+            if k in base_parent
+        ]
 
     child1_string_trees = [base_parent[0]] + motif_parents[0]
     child2_string_trees = [base_parent[1]] + motif_parents[1]
     parent1_potential_motif_candidates = _motifs_in_base_tree(
-        base_parent[0], base_to_motif_map
+        base_parent[0], terminal_to_sublanguage_map
     )
     parent2_potential_motif_candidates = _motifs_in_base_tree(
-        base_parent[1], base_to_motif_map
+        base_parent[1], terminal_to_sublanguage_map
     )
 
     random_draw = random.randint(
@@ -57,8 +64,15 @@ def repetitive_search_space_crossover(
         ),
     )
     if random_draw == 0:  # crossover high level grammar
-        parent1_motifs = _motifs_in_base_tree(child1_string_trees[0], base_to_motif_map)
-        parent2_motifs = _motifs_in_base_tree(child2_string_trees[0], base_to_motif_map)
+        # TODO motif_prefix needs to be removed -> use keys of mapping instead
+        raise NotImplementedError
+        # pylint: disable=unreachable
+        parent1_motifs = _motifs_in_base_tree(
+            child1_string_trees[0], terminal_to_sublanguage_map
+        )
+        parent2_motifs = _motifs_in_base_tree(
+            child2_string_trees[0], terminal_to_sublanguage_map
+        )
         (_, _, subtrees_child1, subtrees_child2,) = inner_crossover_strategy(
             child1_string_trees[0],
             child2_string_trees[0],
@@ -67,8 +81,12 @@ def repetitive_search_space_crossover(
         )
         subtrees_child1 = list(subtrees_child1)
         subtrees_child2 = list(subtrees_child2)
-        new_child1_motifs = _motifs_in_base_tree(subtrees_child2[1], base_to_motif_map)
-        new_child2_motifs = _motifs_in_base_tree(subtrees_child1[1], base_to_motif_map)
+        new_child1_motifs = _motifs_in_base_tree(
+            subtrees_child2[1], terminal_to_sublanguage_map
+        )
+        new_child2_motifs = _motifs_in_base_tree(
+            subtrees_child1[1], terminal_to_sublanguage_map
+        )
 
         old_child1_string_trees = deepcopy(child1_string_trees)
         free_motifs = list(set(range(1, len(motif_grammars) + 1)) - set(parent1_motifs))
@@ -118,17 +136,23 @@ def repetitive_search_space_crossover(
         child2_string_trees[0] = (
             subtrees_child2[0] + subtrees_child1[1] + subtrees_child2[2]
         )
+        # pylint: enable=unreachable
     else:
         if multiple_repetitive:
             # TODO more general procedure
-            coin_toss = random.randint(0, len(motif_grammars) - 1)
+            coin_toss = random.randint(1, len(child1_string_trees) - 1)
+            motif_grammar_idx = next(
+                i
+                for i, x in enumerate(np.cumsum(number_of_repetitive_motifs_per_grammar))
+                if x >= coin_toss
+            )
             (
-                child1_string_trees[coin_toss + 1],
-                child2_string_trees[coin_toss + 1],
+                child1_string_trees[coin_toss],
+                child2_string_trees[coin_toss],
             ) = inner_crossover_strategy(
-                child1_string_trees[coin_toss + 1],
-                child2_string_trees[coin_toss + 1],
-                motif_grammars[coin_toss],
+                child1_string_trees[coin_toss],
+                child2_string_trees[coin_toss],
+                motif_grammars[motif_grammar_idx],
             )
         else:
             parent1_random_draw = random.randint(
