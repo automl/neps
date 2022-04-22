@@ -38,7 +38,7 @@ class BayesianOptimization(BaseOptimizer):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,
+        log_prior_weighted: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 100,
