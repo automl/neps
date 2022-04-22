@@ -61,11 +61,11 @@ class CategoricalParameter(NumericalParameter):
 
     def compute_prior(self, log: bool = False):
         probabilities = self._compute_user_prior_probabilities()
-        default_index = self.choices.index(self.default)  # type: ignore[arg-type]
+        own_value_index = self.choices.index(self.value)  # type: ignore[arg-type]
         return (
-            np.log(probabilities[default_index] + 1e-12)
+            np.log(probabilities[own_value_index] + 1e-12)
             if log
-            else probabilities[default_index]
+            else probabilities[own_value_index]
         )
 
     def sample(self, user_priors: bool = False):
