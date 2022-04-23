@@ -510,7 +510,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         model_file += "\t\tself.module_list=torch.nn.ModuleList()\n"
         model_file += "\n\tdef set_module_list(self,module_list):\n"
         model_file += "\t\tself.module_list=torch.nn.ModuleList(module_list)\n"
-        model_file += "\n\tdef forward(self,x0):\n"
+        model_file += "\n\tdef forward(self,x0,*args):\n"
         for forward_lines in forward_f:
             for forward_line in (
                 [forward_lines] if isinstance(forward_lines, str) else forward_lines
