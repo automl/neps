@@ -104,15 +104,17 @@ class BayesianOptimization(BaseOptimizer):
                 "surrogate_model_fit_args": surrogate_model_fit_args or {},
             },
         )
+
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
             name="acquisition function",
         )
-        # TODO: Do we want to apply this everytime?
-        self.acquisition = DecayingPriorWeightedAcquisition(
-            self.acquisition, log=log_prior_weighted
-        )
+        if self.pipeline_space.has_prior:
+            self.acquisition = DecayingPriorWeightedAcquisition(
+                self.acquisition, log=log_prior_weighted
+            )
+
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
