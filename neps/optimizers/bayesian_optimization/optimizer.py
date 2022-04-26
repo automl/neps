@@ -5,14 +5,7 @@ from typing import Any
 
 from metahyper.api import ConfigResult, instance_from_map
 
-from ...search_spaces import (
-    CategoricalParameter,
-    FloatParameter,
-    GraphGrammar,
-    IntegerParameter,
-)
 from ...search_spaces.search_space import SearchSpace
-from ...utils.common import has_instance
 from ...utils.result_utils import get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
@@ -20,7 +13,7 @@ from .acquisition_functions.base_acquisition import BaseAcquisition
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
 from .acquisition_samplers import AcquisitionSamplerMapping
 from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from .kernels import GraphKernelMapping, StationaryKernelMapping
+from .kernels.get_kernels import get_kernels
 from .models import SurrogateModelMapping
 
 
@@ -93,37 +86,13 @@ class BayesianOptimization(BaseOptimizer):
         self._pending_evaluations: list = []
         self._model_update_failed = False
 
-        if not graph_kernels:
-            graph_kernels = []
-            if has_instance(self.pipeline_space.values(), GraphGrammar):
-                graph_kernels.append("wl")
-
-        if not hp_kernels:
-            hp_kernels = []
-            if has_instance(
-                self.pipeline_space.values(), FloatParameter, IntegerParameter
-            ):
-                hp_kernels.append("m52")
-            if has_instance(self.pipeline_space.values(), CategoricalParameter):
-                hp_kernels.append("hm")
-
-        graph_kernels = [
-            instance_from_map(GraphKernelMapping, kernel, "kernel", as_class=True)(
-                oa=optimal_assignment,
-                se_kernel=instance_from_map(
-                    StationaryKernelMapping, domain_se_kernel, "se kernel"
-                ),
-            )
-            for kernel in graph_kernels
-        ]
-        hp_kernels = [
-            instance_from_map(StationaryKernelMapping, kernel, "kernel")
-            for kernel in hp_kernels
-        ]
-
-        if not graph_kernels and not hp_kernels:
-            raise ValueError("No kernels are provided!")
-
+        graph_kernels, hp_kernels = get_kernels(
+            self.pipeline_space,
+            domain_se_kernel,
+            graph_kernels,
+            hp_kernels,
+            optimal_assignment,
+        )
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
             surrogate_model,
@@ -135,15 +104,17 @@ class BayesianOptimization(BaseOptimizer):
                 "surrogate_model_fit_args": surrogate_model_fit_args or {},
             },
         )
+
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
             name="acquisition function",
         )
-        # TODO: Do we want to apply this everytime?
-        self.acquisition = DecayingPriorWeightedAcquisition(
-            self.acquisition, log=log_prior_weighted
-        )
+        if self.pipeline_space.has_prior:
+            self.acquisition = DecayingPriorWeightedAcquisition(
+                self.acquisition, log=log_prior_weighted
+            )
+
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
