@@ -90,14 +90,15 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             )
             + 1
         )
+        _max_budget = self.max_budget
         rung_map = dict()
-        for i in range(nrungs):
+        for i in reversed(range(nrungs)):
             rung_map[i] = (
-                int(new_min_budget)
+                int(_max_budget)
                 if isinstance(self.pipeline_space.fidelity, IntegerParameter)
-                else new_min_budget
+                else _max_budget
             )
-            new_min_budget *= self.eta
+            _max_budget /= self.eta
         return rung_map
 
     def load_results(
@@ -107,6 +108,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         super().load_results(previous_results, pending_evaluations)
+
+        if len(previous_results) > 0 and len(self.observed_configs) == 0:
+            # TODO: load saved results to populate `observed_configs`
+            #   required to restart optimization from a checkpoint
+            pass
 
         self.total_fevals = len(previous_results)
         # iterates over all previous results and updates the list of observed
