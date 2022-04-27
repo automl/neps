@@ -200,7 +200,10 @@ class SearchSpace(collections.abc.Mapping):
         # user defined dimensionality split not supported yet!
         cont_hps = []
         cat_hps = []
-        for hp in self._hps:
+
+        hps = deepcopy(self._hps)
+        for hp in hps:
+            hp._transform()  # pylint: disable=protected-access
             if isinstance(hp, CategoricalParameter):
                 cat_hps.append(hp.value)
             else:
