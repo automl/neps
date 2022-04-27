@@ -25,7 +25,7 @@ class BayesianOptimization(BaseOptimizer):
         pipeline_space: SearchSpace,
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
-        surrogate_model_fit_args: dict = None,
+        surrogate_model_args: dict = None,
         optimal_assignment: bool = False,
         domain_se_kernel: str = None,
         graph_kernels: list = None,
@@ -45,7 +45,7 @@ class BayesianOptimization(BaseOptimizer):
             initial_design_size: Number of 'x' samples that need to be evaluated before
                 selecting a sample using a strategy instead of randomly.
             surrogate_model: Surrogate model
-            surrogate_model_fit_args: Arguments that will be given to the surrogate model
+            surrogate_model_args: Arguments that will be given to the surrogate model
                 (the Gaussian processes model).
             optimal_assignment: whether the optimal assignment kernel should be used.
             domain_se_kernel: Stationary kernel name
@@ -82,10 +82,11 @@ class BayesianOptimization(BaseOptimizer):
 
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
-        self._num_train_x: int
+        self._num_train_x: int = 0
         self._pending_evaluations: list = []
-        self._model_update_failed = False
+        self._model_update_failed: bool = False
 
+        surrogate_model_args = surrogate_model_args or {}
         graph_kernels, hp_kernels = get_kernels(
             self.pipeline_space,
             domain_se_kernel,
@@ -93,16 +94,27 @@ class BayesianOptimization(BaseOptimizer):
             hp_kernels,
             optimal_assignment,
         )
+        if "graph_kernels" not in surrogate_model_args:
+            surrogate_model_args["graph_kernels"] = graph_kernels
+        if "hp_kernels" not in surrogate_model_args:
+            surrogate_model_args["hp_kernels"] = hp_kernels
+
+        if (
+            not surrogate_model_args["graph_kernels"]
+            and not surrogate_model_args["hp_kernels"]
+        ):
+            raise ValueError("No kernels are provided!")
+
+        if "vectorial_features" not in surrogate_model_args:
+            surrogate_model_args[
+                "vectorial_features"
+            ] = self.pipeline_space.get_vectorial_dim()
+
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
             surrogate_model,
             name="surrogate model",
-            kwargs={
-                "graph_kernels": graph_kernels,
-                "hp_kernels": hp_kernels,
-                "vectorial_features": self.pipeline_space.get_vectorial_dim(),
-                "surrogate_model_fit_args": surrogate_model_fit_args or {},
-            },
+            kwargs=surrogate_model_args,
         )
 
         self.acquisition = instance_from_map(

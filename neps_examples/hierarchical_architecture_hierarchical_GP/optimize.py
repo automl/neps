@@ -120,14 +120,15 @@ graph_kernels = [
     )
     for j, kernel in enumerate(graph_kernels)
 ]
-surrogate_model = ComprehensiveGPHierarchy(
-    graph_kernels=graph_kernels,
-    hp_kernels=[],
-    verbose=False,
-    hierarchy_consider=hierarchy_considered,
-    d_graph_features=0,  # set to 0 if not using additional graph topological features
-    vectorial_features=None,
-)
+surrogate_model = ComprehensiveGPHierarchy
+surrogate_model_args = {
+    "graph_kernels": graph_kernels,
+    "hp_kernels": [],
+    "verbose": False,
+    "hierarchy_consider": hierarchy_considered,
+    "d_graph_features": 0,
+    "vectorial_features": None,
+}
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
@@ -136,6 +137,7 @@ neps.run(
     working_directory="results/hierarchical_architecture_example_new",
     max_evaluations_total=15,
     surrogate_model=surrogate_model,
+    surrogate_model_args=surrogate_model_args,
 )
 
 previous_results, pending_configs = neps.status(
