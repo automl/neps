@@ -25,7 +25,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
            and empirically select the best position during optimisation
 
         Args:
-            surrogate_model: surrogate model, e.g., GP.
             augmented_ei: Using the Augmented EI heuristic modification to the standard
                 expected improvement algorithm according to Huang (2006).
             xi: manual exploration-exploitation trade-off parameter.
