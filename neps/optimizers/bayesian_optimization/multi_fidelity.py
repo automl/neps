@@ -10,8 +10,6 @@ from typing_extensions import Literal
 from ...search_spaces.numerical.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ...utils.result_utils import get_loss
-from .acquisition_functions.base_acquisition import BaseAcquisition
-from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .optimizer import BayesianOptimization
 
 
@@ -19,38 +17,14 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        initial_design_size: int = 10,
-        surrogate_model_fit_args: dict = None,
-        optimal_assignment: bool = False,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
-        acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = True,
-        acquisition_sampler: str | AcquisitionSampler = "mutation",
-        random_interleave_prob: float = 0.0,
-        patience: int = 50,
         eta: int = 4,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "unique_configs",
-        logger=None,
-        **kwargs,
+        **searcher_kwargs,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            initial_design_size=initial_design_size,
-            surrogate_model_fit_args=surrogate_model_fit_args,
-            optimal_assignment=optimal_assignment,
-            domain_se_kernel=domain_se_kernel,
-            graph_kernels=graph_kernels,
-            hp_kernels=hp_kernels,
-            acquisition=acquisition,
-            log_prior_weighted=log_prior_weighted,
-            acquisition_sampler=acquisition_sampler,
-            random_interleave_prob=random_interleave_prob,
-            patience=patience,
-            logger=logger,
-            **kwargs,
+            **searcher_kwargs,
         )
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper
