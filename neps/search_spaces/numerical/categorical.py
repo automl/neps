@@ -14,6 +14,7 @@ class CategoricalParameter(NumericalParameter):
     def __init__(
         self,
         choices: Iterable[float | int | str],
+        is_fidelity: bool = False,
         default: None | float | int | str = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
@@ -24,6 +25,8 @@ class CategoricalParameter(NumericalParameter):
             default_confidence
         ]
         self.has_prior = self.default is not None
+
+        self.is_fidelity = is_fidelity
 
         self.choices = list(choices)
         self.num_choices = len(self.choices)
@@ -83,6 +86,8 @@ class CategoricalParameter(NumericalParameter):
         mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
     ):
+        if self.is_fidelity:
+            raise ValueError("Trying to mutate fidelity param!")
 
         if parent is None:
             parent = self
@@ -125,7 +130,9 @@ class CategoricalParameter(NumericalParameter):
         return neighbours
 
     def _transform(self):
-        self.value = self.choices.index(self.value) / self.num_choices
+        if self.value is not None:
+            self.value = self.choices.index(self.value) / self.num_choices
 
     def _inv_transform(self):
-        self.value = self.choices[int(self.value * self.num_choices)]
+        if self.value is not None:
+            self.value = self.choices[int(self.value * self.num_choices)]

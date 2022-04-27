@@ -95,6 +95,11 @@ class SearchSpace(collections.abc.Mapping):
     def sample(self, user_priors: bool = False, patience: int = 1) -> SearchSpace:
         sample = self.copy()
         for hp_name, hyperparameter in sample.hyperparameters.items():
+            if (
+                isinstance(hyperparameter, NumericalParameter)
+                and hyperparameter.is_fidelity
+            ):
+                continue
             for _ in range(patience):
                 try:
                     hyperparameter.sample(user_priors=user_priors)
@@ -125,10 +130,12 @@ class SearchSpace(collections.abc.Mapping):
 
     def _smbo_mutation(self, patience=50):
         new_config = self.get_array()
-        idx = random.randint(0, self._num_hps - 1)
-        hp = new_config[idx]
 
         for _ in range(patience):
+            idx = random.randint(0, len(new_config) - 1)
+            hp = new_config[idx]
+            if isinstance(hp, NumericalParameter) and hp.is_fidelity:
+                continue
             try:
                 new_config[idx] = hp.mutate()
                 break

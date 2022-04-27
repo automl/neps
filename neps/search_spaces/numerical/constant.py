@@ -4,9 +4,10 @@ from .numerical import NumericalParameter
 
 
 class ConstantParameter(NumericalParameter):
-    def __init__(self, value: Union[float, int, str]):
+    def __init__(self, value: Union[float, int, str], is_fidelity: bool = False):
         super().__init__()
         self.value = value
+        self.is_fidelity = is_fidelity
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -31,7 +32,6 @@ class ConstantParameter(NumericalParameter):
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
     ):
-
         child = self.__copy__()
         child.sample()
 
