@@ -18,7 +18,7 @@ class IntegerParameter(FloatParameter):
         super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
-        # i.e. [x - 499999, x + 499999]
+        # i.e. [x - 0.499999, x + 0.499999]
         self.fp = FloatParameter(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
@@ -42,6 +42,8 @@ class IntegerParameter(FloatParameter):
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
     ):
+        if self.is_fidelity:
+            raise ValueError("Trying to mutate fidelity param!")
         mutant = self.fp.mutate(
             parent=parent,
             mutation_rate=mutation_rate,
@@ -61,10 +63,14 @@ class IntegerParameter(FloatParameter):
         return neighbours
 
     def _transform(self):
+        if self.fp.value is None:
+            self.fp.value = self.value
         self.fp._transform()  # pylint: disable=protected-access
         self.value = self.fp.value
 
     def _inv_transform(self):
+        if self.fp.value is None:
+            self.fp.value = self.value
         self.fp._inv_transform()  # pylint: disable=protected-access
         self.value = int(round(self.fp.value))
 

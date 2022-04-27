@@ -90,15 +90,38 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             )
             + 1
         )
+        _max_budget = self.max_budget
         rung_map = dict()
-        for i in range(nrungs):
+        for i in reversed(range(nrungs)):
             rung_map[i] = (
-                int(new_min_budget)
+                int(_max_budget)
                 if isinstance(self.pipeline_space.fidelity, IntegerParameter)
-                else new_min_budget
+                else _max_budget
             )
-            new_min_budget *= self.eta
+            _max_budget /= self.eta
         return rung_map
+
+    def _load_previous_observations(
+        self, previous_results: dict[str, ConfigResult]
+    ) -> None:
+        for config_id, config_val in previous_results.items():
+            _config, _rung = config_id.split("_")
+            if int(_config) in self.observed_configs.index:
+                # config already recorded in dataframe
+                if self.observed_configs.iloc[int(_config)].rung < int(_rung):
+                    # config recorded for a lower rung but higher rung eval available
+                    self.observed_configs.iloc[int(_config)].rung = int(_rung)
+                    self.observed_configs.iloc[int(_config)].perf = config_val.result
+            else:
+                _df = pd.DataFrame(
+                    [[config_val.config, int(_rung), get_loss(config_val.result)]],
+                    columns=self.observed_configs.columns,
+                    index=pd.Series(int(_config)),  # key for config_id
+                )
+                self.observed_configs = pd.concat(
+                    (self.observed_configs, _df)
+                ).sort_index()
+        return
 
     def load_results(
         self,
@@ -107,6 +130,10 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         super().load_results(previous_results, pending_evaluations)
+
+        if len(previous_results) > 0 and len(self.observed_configs) == 0:
+            # previous optimization run exists and needs to be loaded
+            self._load_previous_observations(previous_results)
 
         self.total_fevals = len(previous_results)
         # iterates over all previous results and updates the list of observed

@@ -108,7 +108,8 @@ class FloatParameter(NumericalParameter):
         mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
     ):
-
+        if self.is_fidelity:
+            raise ValueError("Trying to mutate fidelity param!")
         if parent is None:
             parent = self
 
@@ -125,6 +126,7 @@ class FloatParameter(NumericalParameter):
         if parent.value == child.value:
             raise ValueError("Parent is the same as child!")
 
+        # child.value = min(1.0, max(0.0, child.value))
         return child
 
     def crossover(self, parent1, parent2=None):
@@ -150,10 +152,12 @@ class FloatParameter(NumericalParameter):
         if self.value != self.value:
             raise ValueError("Float parameter value is NaN!")
 
-        self.value = (self.value - self.lower) / (self.upper - self.lower)
+        if self.value is not None:
+            self.value = (self.value - self.lower) / (self.upper - self.lower)
 
     def _inv_transform(self):
         if self.value != self.value:
             raise ValueError("Float parameter value is NaN!")
 
-        self.value = self.value * (self.upper - self.lower) + self.lower
+        if self.value is not None:
+            self.value = self.value * (self.upper - self.lower) + self.lower
