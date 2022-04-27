@@ -584,10 +584,9 @@ def normalize_y(y: torch.Tensor):
 def unnormalize_y(y, y_mean, y_std, scale_std=False):
     """Similar to the undoing of the pre-processing step above, but on the output predictions"""
     if not scale_std:
-        y = y * y_std + y_mean
+        return y * y_std + y_mean
     else:
-        y *= y_std
-    return y
+        return y * y_std
 
 
 def standardize_x(

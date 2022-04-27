@@ -22,6 +22,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         x: Iterable,
         **base_acquisition_kwargs,
     ) -> Union[np.ndarray, torch.Tensor, float]:
+        super().__init__()
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
         num_bo_iterations = len(self.base_acquisition.surrogate_model.x)
         if self.log:
