@@ -94,7 +94,7 @@ def run(
         "default",
         "bayesian_optimization",
         "random_search",
-        "CArBO",
+        "cost_cooling",
         "mf_bayesian_optimization",
     ]
     | BaseOptimizer = "default",
