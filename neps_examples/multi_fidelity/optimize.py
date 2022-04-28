@@ -1,25 +1,41 @@
 import logging
-import time
+
+import torch
 
 import neps
+from neps_examples.multi_fidelity.model_and_optimizer import get_model_and_optimizer
 
 
-def run_pipeline(working_directory, previous_working_directory, some_float, some_integer):
-    start = time.time()
-    y = -some_float + some_integer
-    end = time.time()
-    return {
-        "loss": y,
-        "info_dict": {
-            "test_score": y,
-            "train_time": end - start,
+def run_pipeline(working_directory, previous_working_directory, learning_rate, epoch):
+    model, optimizer = get_model_and_optimizer(learning_rate)
+    checkpoint_name = "checkpoint.pth"
+
+    # Read in state of the model after the previous fidelity rung
+    if previous_working_directory is not None:
+        checkpoint = torch.load(previous_working_directory / checkpoint_name)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        epoch_already_trained = checkpoint["epoch"]
+        print(f"Read in model trained for {epoch_already_trained} epochs")
+
+    # Train model here ...
+
+    # Save model to disk
+    torch.save(
+        {
+            "epoch": epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
         },
-    }
+        working_directory / checkpoint_name,
+    )
+
+    return learning_rate * epoch  # Replace with actual error
 
 
 pipeline_space = dict(
-    some_float=neps.FloatParameter(lower=0, upper=1),
-    some_integer=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
+    learning_rate=neps.FloatParameter(lower=0, upper=1),
+    epoch=neps.IntegerParameter(lower=1, upper=100, is_fidelity=True),
 )
 
 logging.basicConfig(level=logging.INFO)
