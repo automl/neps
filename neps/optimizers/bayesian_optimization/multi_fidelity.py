@@ -20,11 +20,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         eta: int = 4,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "unique_configs",
-        **searcher_kwargs,
+        **bo_kwargs,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            **searcher_kwargs,
+            **bo_kwargs,
         )
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper

@@ -413,7 +413,10 @@ class Graph(torch.nn.Module, nx.DiGraph):
         logger.debug(f"Graph {self.name} exiting. Output {log_formats(x)}.")
         return x
 
-    def to_pytorch(self, write_out: bool = False) -> nn.Module:
+    def to_pytorch(self, **kwargs) -> nn.Module:
+        return self._to_pytorch(**kwargs)
+
+    def _to_pytorch(self, write_out: bool = False) -> nn.Module:
         def _import_code(code: str, name: str):
             module = types.ModuleType(name)
             exec(code, module.__dict__)  # pylint: disable=exec-used
