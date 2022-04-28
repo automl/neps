@@ -1,4 +1,6 @@
+import itertools
 from collections import deque
+from copy import deepcopy
 from typing import Deque
 
 from nltk.grammar import Nonterminal
@@ -25,6 +27,7 @@ class ConstrainedGrammar(Grammar):
         n=1,
         start_symbol: str = None,
         not_allowed_productions=None,
+        user_priors: bool = False,
     ):
         if start_symbol is None:
             start_symbol = self.start()
@@ -35,6 +38,7 @@ class ConstrainedGrammar(Grammar):
             self._constrained_sampler(
                 symbol=start_symbol,
                 not_allowed_productions=not_allowed_productions,
+                user_priors=user_priors,
             )
             + ")"
             for _ in range(n)
@@ -57,6 +61,7 @@ class ConstrainedGrammar(Grammar):
         symbol=None,
         not_allowed_productions=None,
         current_derivation=None,
+        user_priors: bool = False,
     ):
         # simple sampler where each production is sampled uniformly from all possible productions
         # Tree choses if return tree or list of terminals
@@ -73,6 +78,10 @@ class ConstrainedGrammar(Grammar):
                     productions,
                 )
             )
+
+        if len(productions) == 0:
+            raise Exception(f"There is no production possible for {symbol}")
+
         # sample
         production = choice(productions)
         counter = 0
@@ -89,7 +98,9 @@ class ConstrainedGrammar(Grammar):
                 not_allowed_productions = self._get_not_allowed_productions(
                     self.productions(lhs=sym), context_information[counter]
                 )
-                ret_val = self._constrained_sampler(sym, not_allowed_productions)
+                ret_val = self._constrained_sampler(
+                    sym, not_allowed_productions, user_priors=user_priors
+                )
                 tree = tree + " " + ret_val + ")"
                 current_derivation[counter] = ret_val
                 counter += 1
@@ -330,4 +341,113 @@ class ConstrainedGrammar(Grammar):
                         )
                     return child1, child2
 
-        return False, False
+        raise Exception("Cannot do crossover")
+
+    @property
+    def compute_space_size(self) -> int:
+        """Computes the size of the space described by the grammar.
+
+        Args:
+            primitive_nonterminal (str, optional): The primitive nonterminal of the grammar. Defaults to "OPS".
+
+        Returns:
+            int: size of space described by grammar.
+        """
+
+        def recursive_worker(nonterminal: Nonterminal, memory_bank: dict = None) -> int:
+            def _get_all_variants(production):
+                variants = [production]
+                nonterminals = [
+                    i
+                    for i, sym in enumerate(production.rhs())
+                    if isinstance(sym, Nonterminal)
+                ]
+                max_zero_op = len(nonterminals)
+                for n_zero_op in range(1, max_zero_op):
+                    for zero_combination in itertools.combinations(
+                        nonterminals, n_zero_op
+                    ):
+                        current_derivation = self.constraints(production.rhs()[0])
+                        counter = 0
+                        valid_production = True
+                        for i, sym in enumerate(production.rhs()):
+                            if not isinstance(sym, str):
+                                context_information = self.constraints(
+                                    production.rhs()[0],
+                                    current_derivation,
+                                )
+                                not_allowed_productions = (
+                                    self._get_not_allowed_productions(
+                                        self.productions(lhs=sym),
+                                        context_information[counter],
+                                    )
+                                )
+                                if (
+                                    i in zero_combination
+                                    and len(not_allowed_productions) > 0
+                                ):
+                                    valid_production = False
+                                    break
+                                counter += 1
+                        if valid_production:
+                            new_production = deepcopy(production)
+                            rhs = list(new_production.rhs())
+                            # pylint: disable=protected-access
+                            new_production._rhs = tuple(
+                                self.none_operation if i in zero_combination else r
+                                for i, r in enumerate(rhs)
+                            )
+                            # pylint: enable=protected-access
+                            variants.append(new_production)
+                return variants
+
+            if memory_bank is None:
+                memory_bank = {}
+
+            _potential_productions = self.productions(lhs=nonterminal)
+            potential_productions = []
+            for potential_production in _potential_productions:
+                nonterminals = list(
+                    {
+                        sym
+                        for sym in potential_production.rhs()
+                        if isinstance(sym, Nonterminal)
+                    }
+                )
+                if any(
+                    production.rhs()[0] == self.none_operation
+                    for nonterminal in nonterminals
+                    for production in self.productions(nonterminal)
+                ):
+                    potential_productions += _get_all_variants(potential_production)
+                elif not (
+                    len(potential_production.rhs()) == 1
+                    and potential_production.rhs()[0] == self.none_operation
+                ):
+                    potential_productions.append(potential_production)
+            _possibilites = 0
+            for potential_production in potential_productions:
+                nonterminals = [
+                    rhs_sym
+                    for rhs_sym in potential_production.rhs()
+                    if isinstance(rhs_sym, Nonterminal)
+                ]
+                possibilities_per_edge = [
+                    memory_bank[str(e_nonterminal)]
+                    if str(e_nonterminal) in memory_bank.keys()
+                    else recursive_worker(e_nonterminal, memory_bank)
+                    for e_nonterminal in nonterminals
+                ]
+                memory_bank.update(
+                    {
+                        str(e_nonterminal): possibilities_per_edge[i]
+                        for i, e_nonterminal in enumerate(nonterminals)
+                    }
+                )
+                product = 1
+                for p in possibilities_per_edge:
+                    product *= p
+                _possibilites += product
+            return _possibilites
+
+        return recursive_worker(self.start())
