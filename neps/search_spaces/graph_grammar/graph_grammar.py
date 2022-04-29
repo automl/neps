@@ -502,7 +502,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         self.number_of_repetitive_motifs_per_grammar = [
             sum(
                 map(
-                    (str(grammars[0].start())).__eq__,
+                    (str(grammar.start())).__eq__,
                     self.terminal_to_sublanguage_map.values(),
                 )
             )
@@ -796,4 +796,10 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             )
         else:
             print("WARNING: check implementation for repetitive grammar no fixed grammar")
-            return sum(grammar.compute_space_size for grammar in self.grammars)
+            return sum(
+                grammar.compute_space_size
+                for grammar, n_grammar in zip(
+                    self.grammars, self.number_of_repetitive_motifs_per_grammar
+                )
+                for _ in range(n_grammar)
+            )
