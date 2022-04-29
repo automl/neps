@@ -202,7 +202,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             # updating observation tracker
             _df = pd.DataFrame(
-                [[config, 0, None]],
+                [[config, 0, np.inf]],
                 columns=self.observed_configs.columns,
                 index=pd.Series(len(self.observed_configs)),  # key for config_id
             )
