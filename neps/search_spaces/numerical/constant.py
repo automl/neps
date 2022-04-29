@@ -15,7 +15,7 @@ class ConstantParameter(NumericalParameter):
         return self.value == other.value
 
     def __repr__(self):
-        return f"Constant, value: {self.id}"
+        return f"<Constant, value: {self.id}>"
 
     def sample(self):
         pass

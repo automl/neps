@@ -30,7 +30,7 @@ class IntegerParameter(FloatParameter):
         self.value: None | int = None
 
     def __repr__(self):
-        return f"Integer, range: [{self.lower}, {self.upper}], value: {self.value}"
+        return f"<Integer, range: [{self.lower}, {self.upper}], value: {self.value}>"
 
     def sample(self, user_priors: bool = False):
         self.float_hp.sample(user_priors=user_priors)

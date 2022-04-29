@@ -212,6 +212,6 @@ class GraphDenseParameter(GraphGrammar):
         )
 
     def __repr__(self):
-        return "Graph, num_nodes: {}, edge_choices: {}".format(
+        return "<Graph, num_nodes: {}, edge_choices: {}>".format(
             self.num_nodes, self.edge_choices
         )

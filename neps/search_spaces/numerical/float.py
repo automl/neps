@@ -66,7 +66,7 @@ class FloatParameter(NumericalParameter):
 
     def __repr__(self):
         float_repr = f"{self.value:.07f}" if self.value is not None else "None"
-        return f"Float, range: [{self.lower}, {self.upper}], value: {float_repr}"
+        return f"<Float, range: [{self.lower}, {self.upper}], value: {float_repr}>"
 
     def _get_low_high_default(self):
         if self.log:

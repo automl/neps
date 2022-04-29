@@ -50,7 +50,7 @@ class CategoricalParameter(NumericalParameter):
         )
 
     def __repr__(self):
-        return f"Categorical, choices: {self.choices}, value: {self.value}"
+        return f"<Categorical, choices: {self.choices}, value: {self.value}>"
 
     def _compute_user_prior_probabilities(self):
         # The default value should have "default_confidence_score" more probability than
