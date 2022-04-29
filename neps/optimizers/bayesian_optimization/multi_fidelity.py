@@ -82,10 +82,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             _config, _rung = config_id.split("_")
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
-                if self.observed_configs.iloc[int(_config)].rung < int(_rung):
+                rung_recorded = self.observed_configs.at[int(_config), "rung"]
+                if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.iloc[int(_config)].rung = int(_rung)
-                    self.observed_configs.iloc[int(_config)].perf = config_val.result
+                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
+                    self.observed_configs.at[int(_config), "perf"] = get_loss(
+                        config_val.result
+                    )
             else:
                 _df = pd.DataFrame(
                     [[config_val.config, int(_rung), get_loss(config_val.result)]],
