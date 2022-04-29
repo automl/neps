@@ -465,11 +465,6 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                         f"Start symbol {start_symbol} not defined in motif grammar"
                     )
 
-        # def _check_repititions(terminal_to_sublanguage_map, number_of_repetitive_motifs):
-        #     for terminal in terminal_to_sublanguage_map.keys():
-        #         if terminal not in number_of_repetitive_motifs:
-        #             raise Exception(f"Number of repititions of sublanguage with terminal {terminal} not given")
-
         def _identify_macro_grammar(grammar, terminal_to_sublanguage_map):
             grammars = deepcopy(grammar)
             motif_grammars = []
@@ -492,13 +487,18 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             grammars, terminal_to_sublanguage_map
         )
         _check_mapping(self.macro_grammar, grammars, terminal_to_sublanguage_map)
-        # _check_repititions(terminal_to_sublanguage_map, number_of_repetitive_motifs)
 
         self.fixed_macro_grammar = fixed_macro_grammar
         if not self.fixed_macro_grammar:
             grammars.insert(0, self.macro_grammar)
 
         self.terminal_to_sublanguage_map = OrderedDict(terminal_to_sublanguage_map)
+        if any(
+            k in terminal_to_op_names for k in self.terminal_to_sublanguage_map.keys()
+        ):
+            raise Exception(
+                f"Terminals {[k for k in self.terminal_to_sublanguage_map.keys()]} already defined in primitives mapping and cannot be used for repetitive substitutions"
+            )
         self.number_of_repetitive_motifs_per_grammar = [
             sum(
                 map(
@@ -513,7 +513,10 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
         super().__init__(
             grammars=grammars,
-            terminal_to_op_names=terminal_to_op_names,
+            terminal_to_op_names={
+                **terminal_to_op_names,
+                **self.terminal_to_sublanguage_map,
+            },
             terminal_to_graph_edges=terminal_to_graph_edges,
             edge_attr=edge_attr,
             edge_label=edge_label,
@@ -783,17 +786,14 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
         if self.fixed_macro_grammar:
             return np.prod(
-                [grammar.compute_space_size for grammar in self.grammars]
-                # [recursive_worker(grammar.start(), grammar) for grammar in self.grammars]
+                [
+                    grammar.compute_space_size
+                    for grammar, n_grammar in zip(
+                        self.grammars, self.number_of_repetitive_motifs_per_grammar
+                    )
+                    for _ in range(n_grammar)
+                ]
             )
         else:
-            lower_level_motifs = {
-                k: recursive_worker(self.grammars[i + 1].start(), self.grammars[i + 1])
-                for i, k in enumerate(self.terminal_to_sublanguage_map.keys())
-            }
-            macro_level_motifs = recursive_worker(
-                self.grammars[0].start(),
-                self.grammars[0],
-                lower_level_motifs=lower_level_motifs,
-            )
-            return np.prod(list(lower_level_motifs.values()) + [macro_level_motifs])
+            print("WARNING: check implementation for repetitive grammar no fixed grammar")
+            return sum(grammar.compute_space_size for grammar in self.grammars)
