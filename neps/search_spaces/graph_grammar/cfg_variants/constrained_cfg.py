@@ -388,6 +388,10 @@ class ConstrainedGrammar(Grammar):
                                 ):
                                     valid_production = False
                                     break
+                                if i >= max(zero_combination):
+                                    break
+                                if i in zero_combination:
+                                    current_derivation[counter] = self.none_operation
                                 counter += 1
                         if valid_production:
                             new_production = deepcopy(production)
