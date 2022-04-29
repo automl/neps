@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import math
+from copy import deepcopy
 
 import numpy as np
 import scipy.stats
 from typing_extensions import Literal
 
 from .numerical import NumericalParameter
+
+FLOAT_CONFIDENCE_SCORES = {
+    "low": 0.5,
+    "medium": 0.25,
+    "high": 0.125,
+}
 
 
 class FloatParameter(NumericalParameter):
@@ -22,9 +29,7 @@ class FloatParameter(NumericalParameter):
         super().__init__()
 
         self.default = default
-        self.default_confidence_score = dict(low=0.5, medium=0.25, high=0.125)[
-            default_confidence
-        ]
+        self.default_confidence_score = FLOAT_CONFIDENCE_SCORES[default_confidence]
         self.has_prior = self.default is not None
 
         self.is_fidelity = is_fidelity
@@ -59,14 +64,9 @@ class FloatParameter(NumericalParameter):
             and self.value == other.value
         )
 
-    def __hash__(self):
-        return hash((self.lower, self.upper, self.log, self.value))
-
     def __repr__(self):
-        return f"Float, range: [{self.lower}, {self.upper}], value: {self.value:.07f}"
-
-    def __copy__(self):
-        return self.__class__(lower=self.lower, upper=self.upper, log=self.log)
+        float_repr = f"{self.value:.07f}" if self.value is not None else "None"
+        return f"<Float, range: [{self.lower}, {self.upper}], value: {float_repr}>"
 
     def _get_low_high_default(self):
         if self.log:
@@ -114,7 +114,7 @@ class FloatParameter(NumericalParameter):
             parent = self
 
         if mutation_strategy == "simple":
-            child = self.__copy__()
+            child = deepcopy(self)
             child.sample()
         elif mutation_strategy == "local_search":
             child = self._get_neighbours(num_neighbours=1)[
@@ -134,30 +134,42 @@ class FloatParameter(NumericalParameter):
 
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
         neighbours: list[FloatParameter] = []
-        self._transform()  # pylint: disable=protected-access
+        cur_value = self._normalize_value(self.value)
 
         while len(neighbours) < num_neighbours:
-            n_val = np.random.normal(self.value, std)
+            n_val = np.random.normal(cur_value, std)
             if n_val < 0 or n_val > 1:
                 continue
-            neighbour = self.__copy__()
-            neighbour.value = n_val
-            neighbour._inv_transform()  # pylint: disable=protected-access
+            neighbour = deepcopy(self)
+            # pylint: disable=protected-access
+            neighbour.value = neighbour._normalization_inv(n_val)
             neighbours.append(neighbour)
 
-        self._inv_transform()  # pylint: disable=protected-access
         return neighbours
 
-    def _transform(self):
-        if self.value != self.value:
+    def _normalize_value(self, value):
+        if value != value:
             raise ValueError("Float parameter value is NaN!")
 
-        if self.value is not None:
-            self.value = (self.value - self.lower) / (self.upper - self.lower)
+        if value is not None:
+            low, up, _ = self._get_low_high_default()
+            value = np.log(value) if self.log else value
+            return (value - low) / (up - low)
 
-    def _inv_transform(self):
-        if self.value != self.value:
+    def _normalization_inv(self, value):
+        if value != value:
             raise ValueError("Float parameter value is NaN!")
 
-        if self.value is not None:
-            self.value = self.value * (self.upper - self.lower) + self.lower
+        if value is not None:
+            low, up, _ = self._get_low_high_default()
+            value = value * (up - low) + low
+            return np.exp(value) if self.log else value
+
+    def normalized(self):
+        hp = super().normalized()
+        hp.value = self._normalize_value(self.value)
+        hp.default = self._normalize_value(self.default)
+        hp.low = 0
+        hp.high = 1
+        hp.log = False
+        return hp

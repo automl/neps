@@ -65,15 +65,17 @@ class MutationSampler(AcquisitionSampler):
         self.random_sampling.set_state(x, y)
 
     def sample(self, acquisition_function) -> tuple[list, list, np.ndarray]:
+        return first(self.sample_batch(acquisition_function, 1))
+
+    def sample_batch(self, acquisition_function, batch):
         pool = self.create_pool(acquisition_function, self.pool_size)
 
         samples, _, _ = _propose_location(
             acquisition_function=acquisition_function,
-            top_n=1,
+            top_n=batch,
             candidates=pool,
         )
-
-        return first(samples)
+        return samples
 
     def create_pool(self, acquisition_function, pool_size: int) -> list:
         if len(self.x) == 0:

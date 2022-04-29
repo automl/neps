@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from copy import copy, deepcopy
 from typing import Iterable
 
 import numpy as np
@@ -8,6 +9,12 @@ import numpy.typing as npt
 from typing_extensions import Literal
 
 from .numerical import NumericalParameter
+
+CATEGORICAL_CONFIDENCE_SCORES = {
+    "low": 1.1,
+    "medium": 1.75,
+    "high": 2.5,
+}
 
 
 class CategoricalParameter(NumericalParameter):
@@ -21,9 +28,7 @@ class CategoricalParameter(NumericalParameter):
         super().__init__()
 
         self.default = default
-        self.default_confidence_score = dict(low=1.1, medium=1.75, high=2.5)[
-            default_confidence
-        ]
+        self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]
         self.has_prior = self.default is not None
 
         self.is_fidelity = is_fidelity
@@ -44,14 +49,8 @@ class CategoricalParameter(NumericalParameter):
             and self.value == other.value
         )
 
-    def __hash__(self):
-        return hash((self.name, tuple(self.choices), self.value))
-
     def __repr__(self):
-        return f"Categorical, choices: {self.choices}, value: {self.value}"
-
-    def __copy__(self):
-        return self.__class__(choices=self.choices)
+        return f"<Categorical, choices: {self.choices}, value: {self.value}>"
 
     def _compute_user_prior_probabilities(self):
         # The default value should have "default_confidence_score" more probability than
@@ -93,7 +92,7 @@ class CategoricalParameter(NumericalParameter):
             parent = self
 
         if mutation_strategy == "simple":
-            child = self.__copy__()
+            child = copy(self)
             child.sample()
         elif mutation_strategy == "local_search":
             child = self._get_neighbours(num_neighbours=1)[0]
@@ -123,16 +122,17 @@ class CategoricalParameter(NumericalParameter):
                 idx += 1
             if choice == self.value and len(self.choices) > 1:
                 continue
-            neighbour = self.__copy__()
+            neighbour = deepcopy(self)
             neighbour.value = choice
             neighbours.append(neighbour)
 
         return neighbours
 
-    def _transform(self):
+    def normalized(self):
+        hp = CategoricalParameter(
+            choices=list(range(len(self.choices))),
+            is_fidelity=self.is_fidelity,
+        )
         if self.value is not None:
-            self.value = self.choices.index(self.value) / self.num_choices
-
-    def _inv_transform(self):
-        if self.value is not None:
-            self.value = self.choices[int(self.value * self.num_choices)]
+            hp.value = self.choices.index(self.value)
+        return hp

@@ -87,7 +87,7 @@ class Zero(AbstractPrimitive):
             return x[:, :, :: self.stride, :: self.stride].mul(0.0)
 
     def __repr__(self):
-        return f"Zero (stride={self.stride})"
+        return f"<Zero (stride={self.stride})>"
 
 
 class Zero1x1(AbstractPrimitive):
@@ -112,7 +112,7 @@ class Zero1x1(AbstractPrimitive):
             return torch.cat([x, x], dim=1)  # double the channels TODO: ugly as hell
 
     def __repr__(self):
-        return f"Zero1x1 (stride={self.stride})"
+        return f"<Zero1x1 (stride={self.stride})>"
 
 
 class SepConv(AbstractPrimitive):

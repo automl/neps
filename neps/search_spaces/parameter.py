@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from copy import deepcopy
 
 
 class Parameter:
@@ -24,6 +25,9 @@ class Parameter:
     @abstractmethod
     def load_from(self, data):
         raise NotImplementedError
+
+    def normalized(self):
+        return deepcopy(self)
 
     def compute_prior(self):  # pylint: disable=no-self-use
         return 1
