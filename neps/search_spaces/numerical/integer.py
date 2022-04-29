@@ -19,7 +19,7 @@ class IntegerParameter(FloatParameter):
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
         # i.e. [x - 0.499999, x + 0.499999]
-        self.fp = FloatParameter(
+        self.float_hp = FloatParameter(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,
@@ -33,8 +33,8 @@ class IntegerParameter(FloatParameter):
         return f"Integer, range: [{self.lower}, {self.upper}], value: {self.value}"
 
     def sample(self, user_priors: bool = False):
-        self.fp.sample(user_priors=user_priors)
-        self.value = int(round(self.fp.value))  # type: ignore[arg-type]
+        self.float_hp.sample(user_priors=user_priors)
+        self.value = int(round(self.float_hp.value))  # type: ignore[arg-type]
 
     def mutate(
         self,
@@ -44,7 +44,7 @@ class IntegerParameter(FloatParameter):
     ):
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
-        mutant = self.fp.mutate(
+        mutant = self.float_hp.mutate(
             parent=parent,
             mutation_rate=mutation_rate,
             mutation_strategy=mutation_strategy,
@@ -57,22 +57,21 @@ class IntegerParameter(FloatParameter):
 
     # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
-        neighbours = self.fp._get_neighbours(std, num_neighbours)
+        neighbours = self.float_hp._get_neighbours(std, num_neighbours)
         for idx, neighbour in enumerate(neighbours):
             neighbours[idx] = float_to_integer(neighbour)
         return neighbours
 
-    def _transform(self):
-        if self.fp.value is None:
-            self.fp.value = self.value
-        self.fp._transform()  # pylint: disable=protected-access
-        self.value = self.fp.value
-
-    def _inv_transform(self):
-        if self.fp.value is None:
-            self.fp.value = self.value
-        self.fp._inv_transform()  # pylint: disable=protected-access
-        self.value = int(round(self.fp.value))
+    def normalized(self):
+        hp = FloatParameter(
+            lower=self.lower,
+            upper=self.upper,
+            log=self.log,
+            is_fidelity=self.is_fidelity,
+            default=self.default,
+        )
+        hp.value = self.value
+        return hp.normalized()
 
 
 def float_to_integer(float_hp):

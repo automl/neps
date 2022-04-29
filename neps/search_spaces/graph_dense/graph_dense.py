@@ -211,13 +211,7 @@ class GraphDenseParameter(GraphGrammar):
             and self.graph_repr == other.graph_repr
         )
 
-    def __hash__(self):
-        return hash((self.num_nodes, tuple(self.edge_choices)))
-
     def __repr__(self):
         return "Graph, num_nodes: {}, edge_choices: {}".format(
             self.num_nodes, self.edge_choices
         )
-
-    def __copy__(self):
-        return self.__class__(num_nodes=self.num_nodes, edge_choices=self.edge_choices)

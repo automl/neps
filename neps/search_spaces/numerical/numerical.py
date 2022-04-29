@@ -16,14 +16,6 @@ class NumericalParameter(Parameter):
     def _get_neighbours(self):
         raise NotImplementedError
 
-    @abstractmethod
-    def _transform(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def _inv_transform(self):
-        raise NotImplementedError
-
     def serialize(self):
         return self.value
 
