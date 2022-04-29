@@ -143,9 +143,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 # cease promotions for the highest rung (configs at max budget)
                 continue
             top_k = len(self.rung_members_performance[_rung]) // self.eta
-            self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
-                np.argsort(self.rung_members_performance[_rung])[:top_k]
-            ].tolist()
+            self.rung_promotions[_rung] = []
+            if top_k > 0:
+                self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
+                    np.argsort(self.rung_members_performance[_rung])[:top_k]
+                ].tolist()
         return
 
     def is_promotable(self) -> int | None:
