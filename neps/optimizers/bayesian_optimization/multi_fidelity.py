@@ -128,7 +128,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # to account for incomplete evaluations from being promoted
         _observed_configs = self.observed_configs.copy()
         for config_id, _ in pending_evaluations.items():
-            _observed_configs = _observed_configs.drop(config_id)
+            _observed_configs = _observed_configs.dropna()
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.rung_members = {k: [] for k in range(self.max_rung)}
