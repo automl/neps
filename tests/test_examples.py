@@ -25,9 +25,12 @@ def no_logs_gte_error(caplog):
 
 
 # Collect python scripts in the examples folder
+disabled_examples = {"fault_tolerance"}
 examples_folder = Path(__file__, "..", "..", "neps_examples").resolve()
 example_files = [
-    example_folder / "optimize.py" for example_folder in examples_folder.iterdir()
+    example_folder / "optimize.py"
+    for example_folder in examples_folder.iterdir()
+    if example_folder.name not in disabled_examples
 ]
 example_files = [example_file for example_file in example_files if example_file.exists()]
 example_files_names = [example_file.parent.name for example_file in example_files]
