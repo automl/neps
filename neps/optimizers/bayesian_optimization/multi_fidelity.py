@@ -125,11 +125,15 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             self.observed_configs.at[int(_config), "rung"] = _rung
             perf = get_loss(previous_results[f"{int(_config)}_{_rung}"].result)
             self.observed_configs.at[int(_config), "perf"] = perf
+        # to account for incomplete evaluations from being promoted
+        _observed_configs = self.observed_configs.copy()
+        for config_id, _ in pending_evaluations.items():
+            _observed_configs = _observed_configs.drop(config_id)
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.rung_members = {k: [] for k in range(self.max_rung)}
         self.rung_members_performance = {k: [] for k in range(self.max_rung)}
-        for _rung in self.observed_configs.rung.unique():
+        for _rung in _observed_configs.rung.unique():
             self.rung_members[_rung] = self.observed_configs.index[
                 self.observed_configs.rung == _rung
             ].values
@@ -204,7 +208,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             # updating observation tracker
             _df = pd.DataFrame(
-                [[config, 0, np.inf]],
+                [[config, 0, None]],
                 columns=self.observed_configs.columns,
                 index=pd.Series(len(self.observed_configs)),  # key for config_id
             )
