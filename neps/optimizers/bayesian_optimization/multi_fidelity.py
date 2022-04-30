@@ -134,11 +134,17 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self.rung_members = {k: [] for k in range(self.max_rung)}
         self.rung_members_performance = {k: [] for k in range(self.max_rung)}
         for _rung in _observed_configs.rung.unique():
-            self.rung_members[_rung] = self.observed_configs.index[
-                self.observed_configs.rung == _rung
+            # self.rung_members[_rung] = self.observed_configs.index[
+            #     self.observed_configs.rung == _rung
+            # ].values
+            # self.rung_members_performance[_rung] = self.observed_configs.perf[
+            #     self.observed_configs.rung == _rung
+            # ].values
+            self.rung_members[_rung] = _observed_configs.index[
+                _observed_configs.rung == _rung
             ].values
-            self.rung_members_performance[_rung] = self.observed_configs.perf[
-                self.observed_configs.rung == _rung
+            self.rung_members_performance[_rung] = _observed_configs.perf[
+                _observed_configs.rung == _rung
             ].values
         # identifying promotion list per rung
         self.rung_promotions = dict()
