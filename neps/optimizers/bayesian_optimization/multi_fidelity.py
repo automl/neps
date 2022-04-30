@@ -82,10 +82,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             _config, _rung = config_id.split("_")
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
-                if self.observed_configs.iloc[int(_config)].rung < int(_rung):
+                rung_recorded = self.observed_configs.at[int(_config), "rung"]
+                if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.iloc[int(_config)].rung = int(_rung)
-                    self.observed_configs.iloc[int(_config)].perf = config_val.result
+                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
+                    self.observed_configs.at[int(_config), "perf"] = get_loss(
+                        config_val.result
+                    )
             else:
                 _df = pd.DataFrame(
                     [[config_val.config, int(_rung), get_loss(config_val.result)]],
@@ -122,11 +125,15 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             self.observed_configs.at[int(_config), "rung"] = _rung
             perf = get_loss(previous_results[f"{int(_config)}_{_rung}"].result)
             self.observed_configs.at[int(_config), "perf"] = perf
+        # to account for incomplete evaluations from being promoted
+        _observed_configs = self.observed_configs.copy()
+        for config_id, _ in pending_evaluations.items():
+            _observed_configs = _observed_configs.dropna()
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.rung_members = {k: [] for k in range(self.max_rung)}
         self.rung_members_performance = {k: [] for k in range(self.max_rung)}
-        for _rung in self.observed_configs.rung.unique():
+        for _rung in _observed_configs.rung.unique():
             self.rung_members[_rung] = self.observed_configs.index[
                 self.observed_configs.rung == _rung
             ].values
@@ -140,9 +147,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 # cease promotions for the highest rung (configs at max budget)
                 continue
             top_k = len(self.rung_members_performance[_rung]) // self.eta
-            self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
-                np.argsort(self.rung_members_performance[_rung])[:top_k]
-            ].tolist()
+            self.rung_promotions[_rung] = []
+            if top_k > 0:
+                self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
+                    np.argsort(self.rung_members_performance[_rung])[:top_k]
+                ].tolist()
         return
 
     def is_promotable(self) -> int | None:

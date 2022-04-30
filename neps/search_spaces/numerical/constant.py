@@ -14,14 +14,8 @@ class ConstantParameter(NumericalParameter):
             return False
         return self.value == other.value
 
-    def __hash__(self):
-        return hash(self.value)
-
     def __repr__(self):
-        return f"Constant, value: {self.id}"
-
-    def __copy__(self):
-        return self.__class__(value=self.value)
+        return f"<Constant, value: {self.id}>"
 
     def sample(self):
         pass
@@ -32,19 +26,10 @@ class ConstantParameter(NumericalParameter):
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
     ):
-        child = self.__copy__()
-        child.sample()
-
-        return child
+        return self
 
     def crossover(self, parent1, parent2=None):  # pylint: disable=unused-argument
-        return self.__copy__().sample(), self.__copy__().sample()
+        return self, self
 
     def _get_neighbours(self, **kwargs):
-        pass
-
-    def _transform(self):
-        pass
-
-    def _inv_transform(self):
         pass

@@ -209,13 +209,12 @@ class SearchSpace(collections.abc.Mapping):
         cont_hps = []
         cat_hps = []
 
-        hps = deepcopy(self._hps)
-        for hp in hps:
-            hp._transform()  # pylint: disable=protected-access
+        for hp in self._hps:
+            hp_value = hp.normalized().value
             if isinstance(hp, CategoricalParameter):
-                cat_hps.append(hp.value)
+                cat_hps.append(hp_value)
             else:
-                cont_hps.append(hp.value)
+                cont_hps.append(hp_value)
         return {
             "continuous": None if len(cont_hps) == 0 else cont_hps,
             "categorical": None if len(cat_hps) == 0 else cat_hps,
