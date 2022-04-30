@@ -115,12 +115,24 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self.total_fevals = len(previous_results)
         # iterates over all previous results and updates the list of observed
         # configs with the highest fidelity it was evaluated on and its performance
-        for config_id, _ in previous_results.items():
+        for config_id, config_val in previous_results.items():
             # any config occurring in `previous_results` should be in `observed_configs`
             _config, _rung = config_id.split("_")
+            if int(_config) not in self.observed_configs.index:
+                # this condition and check is important to handle async scenarios as
+                # the `previous_results` can provide configs that have not been
+                # encountered by this instantiation of the optimizer object
+                _df = pd.DataFrame(
+                    [[config_val.config, _rung, None]],
+                    columns=self.observed_configs.columns,
+                    index=pd.Series(len(self.observed_configs)),  # key for config_id
+                )
+                self.observed_configs = pd.concat(
+                    (self.observed_configs, _df)
+                ).sort_index()
             # `max` is important to keep track of the performance of a configuration on
             # the highest fidelity seen as `previous_results` contain all evaluations
-            _rung = max(int(_rung), self.observed_configs.iloc[int(_config)]["rung"])
+            _rung = max(int(_rung), self.observed_configs.at[int(_config), "rung"])
             # _config = int(_config)
             self.observed_configs.at[int(_config), "rung"] = _rung
             perf = get_loss(previous_results[f"{int(_config)}_{_rung}"].result)
@@ -218,7 +230,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 columns=self.observed_configs.columns,
                 index=pd.Series(len(self.observed_configs)),  # key for config_id
             )
-            self.observed_configs = pd.concat((self.observed_configs, _df))
+            self.observed_configs = pd.concat((self.observed_configs, _df)).sort_index()
             # updating config IDs
             config_id = f"{len(self.observed_configs) - 1}_{0}"
             previous_config_id = None
