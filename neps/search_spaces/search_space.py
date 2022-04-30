@@ -156,11 +156,12 @@ class SearchSpace(collections.abc.Mapping):
                 config2, crossover_probability_per_hyperparameter, patience
             )
         else:
-            raise NotImplementedError("No such mutation strategy!")
+            raise NotImplementedError("No such crossover strategy!")
 
+        if len(self.hyperparameters.keys()) != len(new_config1):
+            return False, False
         child1 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config1)))
         child2 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config2)))
-
         return child1, child2
 
     def _simple_crossover(

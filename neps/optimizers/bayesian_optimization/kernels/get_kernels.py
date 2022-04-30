@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from metahyper import instance_from_map
 
-from ....search_spaces.graph_grammar.graph_grammar import GraphGrammar
+from ....search_spaces.graph_grammar.core_graph_grammar import CoreGraphGrammar
 from ....search_spaces.numerical.categorical import CategoricalParameter
 from ....search_spaces.numerical.float import FloatParameter
 from ....search_spaces.numerical.integer import IntegerParameter
@@ -15,7 +15,7 @@ def get_kernels(
 ):
     if not graph_kernels:
         graph_kernels = []
-        if has_instance(pipeline_space.values(), GraphGrammar):
+        if has_instance(pipeline_space.values(), CoreGraphGrammar):
             graph_kernels.append("wl")
     if not hp_kernels:
         hp_kernels = []

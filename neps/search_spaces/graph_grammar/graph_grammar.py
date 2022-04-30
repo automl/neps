@@ -664,6 +664,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                             )
                         )
                         string_list_idx += 1
+                self._value = self._value[0]  # TODO trick
             else:
                 self._value = self.from_stringTree_to_graph_repr(
                     self.string_tree,
@@ -785,6 +786,10 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             return _possibilites
 
         if self.fixed_macro_grammar:
+            if len(self.grammars) > 1:
+                raise Exception(
+                    "Compute space size for fixed macro only works for one repetitive level"
+                )
             return np.prod(
                 [
                     grammar.compute_space_size
@@ -795,11 +800,14 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 ]
             )
         else:
-            print("WARNING: check implementation for repetitive grammar no fixed grammar")
-            return sum(
-                grammar.compute_space_size
-                for grammar, n_grammar in zip(
-                    self.grammars, self.number_of_repetitive_motifs_per_grammar
+            if len(self.grammars) > 2:
+                raise Exception(
+                    "Compute space size for no fixed macro only works for one repetitive level"
                 )
-                for _ in range(n_grammar)
+            macro_space_size = self.grammars[0].compute_space_size
+            motif_space_size = self.grammars[1].compute_space_size
+            return (
+                macro_space_size
+                // self.number_of_repetitive_motifs_per_grammar[1]
+                * motif_space_size
             )
