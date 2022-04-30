@@ -107,8 +107,13 @@ def repetitive_search_space_mutation(
         child_string_trees.append((base_parent, True))
 
     parent_string_idx = 0
+    _number_of_repetitive_motifs_per_grammar = (
+        number_of_repetitive_motifs_per_grammar[1:]
+        if not fixed_macro_parent
+        else number_of_repetitive_motifs_per_grammar
+    )
     for grammar, number_of_motifs in zip(
-        motif_grammars, number_of_repetitive_motifs_per_grammar
+        motif_grammars, _number_of_repetitive_motifs_per_grammar
     ):
         for _ in range(number_of_motifs):
             if parent_string_idx in indices and random.random() < mutation_prob:

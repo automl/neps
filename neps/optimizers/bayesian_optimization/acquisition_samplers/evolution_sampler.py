@@ -20,8 +20,8 @@ class EvolutionSampler(AcquisitionSampler):
         p_self_crossover: float = 0.5,
         dynamic: bool = True,
         max_iters: int = 50,
-        initial_history_last: int = 10,
-        initial_history_best: int = 0,
+        initial_history_best: int = 10,
+        initial_history_last: int = 0,
         initial_history_acq_best: int = 0,
         allow_isomorphism: bool = True,
         check_isomorphism_history: bool = False,
@@ -200,7 +200,10 @@ class EvolutionSampler(AcquisitionSampler):
         if self.initial_history_last > 0 and len(self.x) >= self.initial_history_last:
             population = self.x[-self.initial_history_last :]
         if self.initial_history_best > 0 and len(self.x) >= self.initial_history_best:
-            indices = np.argpartition(self.y, self.initial_history_best)
+            if len(self.y) > self.initial_history_best:
+                indices = np.argpartition(self.y, self.initial_history_best)
+            else:
+                indices = list(range(len(self.y)))
             for idx in indices[: self.initial_history_best]:
                 population.append(self.x[idx])
         if (
