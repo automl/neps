@@ -654,7 +654,10 @@ def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
         try:
             jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
             K_ = K + jitter_diag
-            Kc = torch.linalg.cholesky(K_)
+            try:
+                Kc = torch.linalg.cholesky(K_)
+            except AttributeError:  # For torch < 1.8.0
+                Kc = torch.cholesky(K_)
             is_successful = True
         except RuntimeError:
             fail_count += 1
