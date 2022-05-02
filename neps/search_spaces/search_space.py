@@ -78,7 +78,7 @@ class SearchSpace(collections.abc.Mapping):
             # Check if defaults exists to construct prior from
             if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
                 self.has_prior = True
-            elif hyperparameter.has_prior:
+            elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
 
     def compute_prior(self, log: bool = False):
