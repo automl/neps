@@ -3,8 +3,9 @@ from copy import deepcopy
 
 
 class Parameter:
-    def __init__(self):
+    def __init__(self, is_fidelity=False):
         self.value = None
+        self.is_fidelity = is_fidelity
 
     @abstractmethod
     def sample(self):
