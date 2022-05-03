@@ -105,7 +105,7 @@ class CategoricalParameter(NumericalParameter):
         return child
 
     def crossover(self, parent1, parent2=None):
-        pass
+        raise NotImplementedError
 
     def _get_neighbours(self, num_neighbours: int = 1):
         neighbours: list[CategoricalParameter] = []

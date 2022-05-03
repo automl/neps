@@ -53,7 +53,7 @@ class IntegerParameter(FloatParameter):
         return child
 
     def crossover(self, parent1, parent2=None):
-        pass
+        raise NotImplementedError
 
     # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
