@@ -1,8 +1,12 @@
 import itertools
+import math
 from collections import deque
 from copy import deepcopy
+from functools import partial
+from queue import LifoQueue
 from typing import Deque
 
+import numpy as np
 from nltk.grammar import Nonterminal
 
 from ..cfg import Grammar, choice
@@ -14,6 +18,8 @@ class ConstrainedGrammar(Grammar):
         self.constraints = None
         self.none_operation = None
 
+        self._prior: dict = None
+
     def set_constraints(self, constraints: dict, none_operation: str):
         self.constraints = constraints
         self.none_operation = none_operation
@@ -21,6 +27,33 @@ class ConstrainedGrammar(Grammar):
     @staticmethod
     def is_constrained():
         return True
+
+    @property
+    def prior(self):
+        return self._prior
+
+    @prior.setter
+    def prior(self, value: dict):
+        def _check_prior(value: dict):
+            for nonterminal in self.nonterminals:
+                if nonterminal not in value:
+                    raise Exception(
+                        f"Nonterminal {nonterminal} not defined in prior distribution!"
+                    )
+                if len(value[nonterminal]) != len(
+                    self.productions(lhs=Nonterminal(nonterminal))
+                ):
+                    raise Exception(
+                        f"Not all RHS of nonterminal {nonterminal} have a probability!"
+                    )
+                if not math.isclose(sum(value[nonterminal]), 1.0):
+                    raise Exception(
+                        f"Prior for {nonterminal} is no probablility distribution (=1)!"
+                    )
+
+        if value is not None:
+            _check_prior(value)
+        self._prior = value
 
     def sampler(
         self,
@@ -83,7 +116,23 @@ class ConstrainedGrammar(Grammar):
             raise Exception(f"There is no production possible for {symbol}")
 
         # sample
-        production = choice(productions)
+        if user_priors and self._prior is not None:
+            probs = self._prior[str(symbol)]
+            if not_allowed_productions:
+                # remove prior probs if rule is not allowed
+                not_allowed_indices = [
+                    self.productions(lhs=symbol).index(nap)
+                    for nap in not_allowed_productions
+                ]
+                probs = [p for i, p in enumerate(probs) if i not in not_allowed_indices]
+                # rescale s.t. probs sum up to one
+                cur_prob_sum = sum(probs)
+                probs = list(map(lambda x: x / cur_prob_sum, probs))
+            assert len(probs) == len(productions)
+
+            production = choice(productions, probs=probs)
+        else:
+            production = choice(productions)
         counter = 0
         current_derivation = self.constraints(production.rhs()[0])
         for sym in production.rhs():
@@ -105,6 +154,134 @@ class ConstrainedGrammar(Grammar):
                 current_derivation[counter] = ret_val
                 counter += 1
         return tree
+
+    def compute_prior(self, string_tree: str, log: bool = True) -> float:
+        def skip_char(char: str) -> bool:
+            if char in [" ", "\t", "\n"]:
+                return True
+            # special case: "(" is (part of) a terminal
+            if (
+                i != 0
+                and char == "("
+                and string_tree[i - 1] == " "
+                and string_tree[i + 1] == " "
+            ):
+                return False
+            if char == "(":
+                return True
+            return False
+
+        def find_longest_match(
+            i: int, string_tree: str, symbols: list, max_match: int
+        ) -> int:
+            # search for longest matching symbol and add it
+            # assumes that the longest match is the true match
+            j = min(i + max_match, len(string_tree) - 1)
+            while j > i and j < len(string_tree):
+                if string_tree[i:j] in symbols:
+                    break
+                j -= 1
+            if j == i:
+                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
+            return j
+
+        prior_prob = 1.0 if not log else 0.0
+
+        symbols = self.nonterminals + self.terminals
+        max_match = max(map(len, symbols))
+        find_longest_match_func = partial(
+            find_longest_match,
+            string_tree=string_tree,
+            symbols=symbols,
+            max_match=max_match,
+        )
+
+        q_production_rules: LifoQueue = LifoQueue()
+        current_derivations = {}
+
+        i = 0
+        while i < len(string_tree):
+            char = string_tree[i]
+            if skip_char(char):
+                pass
+            elif char == ")" and not string_tree[i - 1] == " ":
+                # closing symbol of production
+                production = q_production_rules.get(block=False)[0][0]
+                idx = self.productions(production.lhs()).index(production)
+                prior = self.prior[str(production.lhs())]
+                if any(
+                    prod.rhs()[0] == self.none_operation
+                    for prod in self.productions(production.lhs())
+                ):
+                    outer_production = q_production_rules.queue[-1][0][0]
+                    if len(q_production_rules.queue) not in current_derivations:
+                        current_derivations[
+                            len(q_production_rules.queue)
+                        ] = self.constraints(outer_production.rhs()[0])
+                    context_information = self.constraints(
+                        outer_production.rhs()[0],
+                        current_derivations[len(q_production_rules.queue)],
+                    )
+                    not_allowed_productions = self._get_not_allowed_productions(
+                        self.productions(lhs=production.lhs()),
+                        context_information[
+                            current_derivations[len(q_production_rules.queue)].index(None)
+                        ],
+                    )
+                    current_derivations[len(q_production_rules.queue)][
+                        current_derivations[len(q_production_rules.queue)].index(None)
+                    ] = production.rhs()[0]
+                    if None not in current_derivations[len(q_production_rules.queue)]:
+                        del current_derivations[len(q_production_rules.queue)]
+                    if len(not_allowed_productions) > 0:
+                        # remove prior prior if rule is not allowed
+                        not_allowed_indices = [
+                            self.productions(lhs=production.lhs()).index(nap)
+                            for nap in not_allowed_productions
+                        ]
+                        prior = [
+                            p for i, p in enumerate(prior) if i not in not_allowed_indices
+                        ]
+                        # rescale s.t. prior sum up to one
+                        cur_prob_sum = sum(prior)
+                        prior = list(map(lambda x: x / cur_prob_sum, prior))
+                        idx -= sum(idx > i for i in not_allowed_indices)
+
+                prior = prior[idx]
+                if log:
+                    prior_prob += np.log(prior + 1e-12)
+                else:
+                    prior_prob *= prior
+            else:
+                j = find_longest_match_func(i)
+                sym = string_tree[i:j]
+                i = j - 1
+
+                if sym in self.terminals:
+                    q_production_rules.queue[-1][0] = [
+                        production
+                        for production in q_production_rules.queue[-1][0]
+                        if production.rhs()[q_production_rules.queue[-1][1]] == sym
+                    ]
+                    q_production_rules.queue[-1][1] += 1
+                elif sym in self.nonterminals:
+                    if not q_production_rules.empty():
+                        q_production_rules.queue[-1][0] = [
+                            production
+                            for production in q_production_rules.queue[-1][0]
+                            if str(production.rhs()[q_production_rules.queue[-1][1]])
+                            == sym
+                        ]
+                        q_production_rules.queue[-1][1] += 1
+                    q_production_rules.put([self.productions(lhs=Nonterminal(sym)), 0])
+                else:
+                    raise Exception(f"Unknown symbol {sym}")
+            i += 1
+
+        if not q_production_rules.empty():
+            raise Exception(f"Error in prior computation for {string_tree}")
+
+        return prior_prob
 
     def _compute_current_context(self, pre_subtree: str, post_subtree: str):
         q_nonterminals: Deque = deque()

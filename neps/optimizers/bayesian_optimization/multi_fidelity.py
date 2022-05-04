@@ -20,6 +20,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         eta: int = 4,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "unique_configs",
+        model_search: bool = True,
         **bo_kwargs,
     ):
         super().__init__(
@@ -33,6 +34,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # `max_budget_init` checks for the number of configurations that have been
         # evaluated at the target budget
         self.initial_design_type = initial_design_type
+        self.model_search = model_search
 
         # check to ensure no rung ID is negative
         self.stopping_rate_limit = np.floor(
@@ -108,8 +110,10 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         super().load_results(previous_results, pending_evaluations)
-        print("Previous results: ", list(previous_results.keys())) ###########################
-        print("Previous losses: ", [get_loss(v.result) for v in previous_results.values()])
+        print("Previous results: ", list(previous_results.keys()))
+        print(
+            "Previous losses: ", [get_loss(v.result) for v in previous_results.values()]
+        )
         if len(previous_results) > 0 and len(self.observed_configs) == 0:
             # previous optimization run exists and needs to be loaded
             self._load_previous_observations(previous_results)
@@ -129,42 +133,21 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
-                print(_df.at[int(_config), "rung"], type(_df.at[int(_config), "rung"]))
                 self.observed_configs = pd.concat(
                     (self.observed_configs, _df)
                 ).sort_index()
-                print(self.observed_configs.at[int(_config), "rung"], type(self.observed_configs.at[int(_config), "rung"]))
-            # `max` is important to keep track of the performance of a configuration on
-            # the highest fidelity seen as `previous_results` contain all evaluations
-            # print("Previous results: ", list(previous_results.keys()))
-            print(_config, _rung, self.observed_configs.index)
-            # _rung = max(int(_rung), self.observed_configs.at[int(_config), "rung"])
-            print(self.observed_configs)
-            print(self.observed_configs.at[int(_config), "rung"], type(self.observed_configs.at[int(_config), "rung"]))
+            # updates the data frame only when new rung is higher than recorded rung
             if int(_rung) >= self.observed_configs.at[int(_config), "rung"]:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
                 perf = get_loss(config_val.result)
                 self.observed_configs.at[int(_config), "perf"] = perf
-            # _config = int(_config)
-            # self.observed_configs.at[int(_config), "rung"] = _rung
-            # perf = get_loss(previous_results[f"{int(_config)}_{_rung}"].result)
-            # perf = get_loss(config_val.result)
-            # self.observed_configs.at[int(_config), "perf"] = perf
         # to account for incomplete evaluations from being promoted
-        _observed_configs = self.observed_configs.copy().dropna()
-        # for config_id, _ in pending_evaluations.items():
-        # _observed_configs = _observed_configs.dropna()
+        _observed_configs = self.observed_configs.copy().dropna(inplace=False)
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.rung_members = {k: [] for k in range(self.max_rung)}
         self.rung_members_performance = {k: [] for k in range(self.max_rung)}
         for _rung in _observed_configs.rung.unique():
-            # self.rung_members[_rung] = self.observed_configs.index[
-            #     self.observed_configs.rung == _rung
-            # ].values
-            # self.rung_members_performance[_rung] = self.observed_configs.perf[
-            #     self.observed_configs.rung == _rung
-            # ].values
             self.rung_members[_rung] = _observed_configs.index[
                 _observed_configs.rung == _rung
             ].values
@@ -178,7 +161,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 # cease promotions for the highest rung (configs at max budget)
                 continue
             top_k = len(self.rung_members_performance[_rung]) // self.eta
-            print(f"{_rung}:{top_k}")
             self.rung_promotions[_rung] = []
             if top_k > 0:
                 self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
@@ -232,14 +214,14 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             # updating observation tracker
             self.observed_configs.at[row.name, "rung"] = rung
         else:
-            if self.is_init_phase():
+            if self.model_search and not self.is_init_phase():
+                # sampling from AF at base rung
+                config = self.acquisition_sampler.sample(self.acquisition)
+            else:
                 # random sampling a config at base rung
                 config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=True
                 )
-            else:
-                # sampling from AF at base rung
-                config = self.acquisition_sampler.sample(self.acquisition)
             # assigning the fidelity to evaluate the config at
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             # updating observation tracker
@@ -248,9 +230,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 columns=self.observed_configs.columns,
                 index=pd.Series(len(self.observed_configs)),  # key for config_id
             )
-            print(_df.at[len(self.observed_configs), "rung"], type(_df.at[len(self.observed_configs), "rung"]))
             self.observed_configs = pd.concat((self.observed_configs, _df)).sort_index()
-            print(self.observed_configs.at[len(self.observed_configs)-1, "rung"], type(self.observed_configs.at[len(self.observed_configs)-1, "rung"]))
             print(f"Observed_config:\n{self.observed_configs}\n{'-' * 20}")
             # updating config IDs
             config_id = f"{len(self.observed_configs) - 1}_{0}"

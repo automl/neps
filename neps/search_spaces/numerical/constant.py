@@ -29,7 +29,7 @@ class ConstantParameter(NumericalParameter):
         return self
 
     def crossover(self, parent1, parent2=None):  # pylint: disable=unused-argument
-        return self, self
+        raise NotImplementedError
 
     def _get_neighbours(self, **kwargs):
         pass

@@ -82,6 +82,8 @@ class SearchSpace(collections.abc.Mapping):
             # Check if defaults exists to construct prior from
             if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
                 self.has_prior = True
+            elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
+                self.has_prior = True
 
     def compute_prior(self, log: bool = False):
         density_value = 0.0 if log else 1.0
@@ -162,7 +164,7 @@ class SearchSpace(collections.abc.Mapping):
             raise NotImplementedError("No such crossover strategy!")
 
         if len(self.hyperparameters.keys()) != len(new_config1):
-            return False, False
+            raise Exception("Cannot crossover")
         child1 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config1)))
         child2 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config2)))
         return child1, child2
