@@ -37,7 +37,8 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         if isinstance(grammar, list) and len(grammar) != 1:
             raise NotImplementedError("Does not support multiple grammars")
 
-        super().__init__(
+        CoreGraphGrammar.__init__(
+            self,
             grammars=grammar,
             terminal_to_op_names=terminal_to_op_names,
             terminal_to_graph_edges=terminal_to_graph_edges,
@@ -49,6 +50,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             scope=scope,
             **kwargs,
         )
+        Parameter.__init__(self, set_default_value=False)
 
         self.string_tree: str = ""
         self._function_id: str = ""
@@ -244,7 +246,8 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         name: str = None,
         scope: str = None,
     ):
-        super().__init__(
+        CoreGraphGrammar.__init__(
+            self,
             grammars=grammars,
             terminal_to_op_names=terminal_to_op_names,
             terminal_to_graph_edges=terminal_to_graph_edges,
@@ -255,6 +258,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             name=name,
             scope=scope,
         )
+        Parameter.__init__(self, set_default_value=False)
 
         self.id: str = ""
         self.string_tree: str = ""
@@ -511,7 +515,8 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             for grammar in grammars
         ]
 
-        super().__init__(
+        CoreGraphGrammar.__init__(
+            self,
             grammars=grammars,
             terminal_to_op_names={
                 **terminal_to_op_names,
@@ -526,6 +531,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             scope=scope,
             **kwargs,
         )
+        Parameter.__init__(self, set_default_value=False)
 
         self._function_id: str = ""
         self.string_tree: str = ""
