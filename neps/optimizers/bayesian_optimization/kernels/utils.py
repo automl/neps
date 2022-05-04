@@ -36,6 +36,10 @@ def extract_configs(configs: list) -> Tuple[list, list]:
     else:
         graphs = [None] * N
 
+    # if isinstance(graphs[0], list):
+    #     if isinstance(graphs[0][0], list):
+    #         graphs = [g[0][0] for g in graphs]
+
     if N > 0 and "get_hps" in dir(configs[0]):
         hps = [c.get_hps() for c in configs]
     elif N > 0 and "hps" in dir(configs[0]):
@@ -92,7 +96,8 @@ def extract_configs_hierarchy(
                 list,
                 zip(
                     *[
-                        [g[0][0]] + [g[0][1][hierarchy_id] for hierarchy_id in hierarchy_consider]
+                        [g[0][0]]
+                        + [g[0][1][hierarchy_id] for hierarchy_id in hierarchy_consider]
                         for g in combined_graphs
                     ]
                 ),
@@ -107,10 +112,13 @@ def extract_configs_hierarchy(
         # e.g. {'op_name': '(Cell diamond (OPS id) (OPS avg_pool) (OPS id) (OPS avg_pool))'} -> {'op_name': 'Cell diamond '}
         for hg_list in graphs[1:]:
             for G in hg_list:
-                original_node_labels = nx.get_node_attributes(G, 'op_name')
-                new_node_labels = {k: v.split('(')[1] for k, v in original_node_labels.items() if
-                                   '(' in v and ')' in v}
-                nx.set_node_attributes(G, new_node_labels, name='op_name')
+                original_node_labels = nx.get_node_attributes(G, "op_name")
+                new_node_labels = {
+                    k: v.split("(")[1]
+                    for k, v in original_node_labels.items()
+                    if "(" in v and ")" in v
+                }
+                nx.set_node_attributes(G, new_node_labels, name="op_name")
     else:
         graphs = [g[0][0] for g in combined_graphs]
 
