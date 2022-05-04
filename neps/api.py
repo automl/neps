@@ -170,7 +170,7 @@ def run(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if searcher == "default":
+    if searcher == "default" or searcher is None:
         if pipeline_space.has_fidelity():
             searcher = "mf_bayesian_optimization"
         else:

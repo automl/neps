@@ -26,13 +26,11 @@ class FloatParameter(NumericalParameter):
         default: None | float | int = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
-        super().__init__()
+        super().__init__(is_fidelity=is_fidelity)
 
         self.default = default
         self.default_confidence_score = FLOAT_CONFIDENCE_SCORES[default_confidence]
         self.has_prior = self.default is not None
-
-        self.is_fidelity = is_fidelity
 
         self.lower = float(lower)
         self.upper = float(upper)

@@ -9,4 +9,4 @@ class RandomSampler(AcquisitionSampler):
         super().__init__(pipeline_space=pipeline_space, patience=patience)
 
     def sample(self, acquisition_function=None) -> list[SearchSpace]:
-        return self.pipeline_space.sample(patience=self.patience)
+        return self.pipeline_space.sample(patience=self.patience, ignore_fidelity=False)
