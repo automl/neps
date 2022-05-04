@@ -104,7 +104,7 @@ class ConstrainedGrammar(Grammar):
         tree = "(" + str(symbol)
         # collect possible productions from the starting symbol
         productions = self.productions(lhs=symbol)
-        if not_allowed_productions is not None:
+        if not_allowed_productions is not None and len(not_allowed_productions) > 0:
             productions = list(
                 filter(
                     lambda production: production not in not_allowed_productions,
@@ -144,14 +144,21 @@ class ConstrainedGrammar(Grammar):
                     production.rhs()[0],
                     current_derivation,
                 )
-                not_allowed_productions = self._get_not_allowed_productions(
-                    self.productions(lhs=sym), context_information[counter]
-                )
+                if isinstance(context_information, list):
+                    not_allowed_productions = self._get_not_allowed_productions(
+                        self.productions(lhs=sym), context_information[counter]
+                    )
+                elif isinstance(context_information, bool):
+                    not_allowed_productions = self._get_not_allowed_productions(
+                        self.productions(lhs=sym), context_information
+                    )
+                else:
+                    raise NotImplementedError
                 ret_val = self._constrained_sampler(
                     sym, not_allowed_productions, user_priors=user_priors
                 )
                 tree = tree + " " + ret_val + ")"
-                current_derivation[counter] = ret_val
+                current_derivation[counter] = ret_val + ")"
                 counter += 1
         return tree
 
@@ -405,12 +412,19 @@ class ConstrainedGrammar(Grammar):
                 rhs,
                 current_derivation,
             )
-            not_allowed_productions = self._get_not_allowed_productions(
-                self.productions(lhs=Nonterminal(subtree_node)),
-                context_information[
-                    [i for i, cd in enumerate(current_derivation) if cd is None][0]
-                ],
-            )
+            if isinstance(context_information, list):
+                not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=Nonterminal(subtree_node)),
+                    context_information[
+                        [i for i, cd in enumerate(current_derivation) if cd is None][0]
+                    ],
+                )
+            elif isinstance(context_information, bool):
+                not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=Nonterminal(subtree_node)), context_information
+                )
+            else:
+                raise NotImplementedError
         else:
             not_allowed_productions = []
         _patience = patience
@@ -445,12 +459,19 @@ class ConstrainedGrammar(Grammar):
                 rhs,
                 current_derivation,
             )
-            parent1_not_allowed_productions = self._get_not_allowed_productions(
-                self.productions(lhs=Nonterminal(subtree_node)),
-                context_information[
-                    [i for i, cd in enumerate(current_derivation) if cd is None][0]
-                ],
-            )
+            if isinstance(context_information, list):
+                parent1_not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=Nonterminal(subtree_node)),
+                    context_information[
+                        [i for i, cd in enumerate(current_derivation) if cd is None][0]
+                    ],
+                )
+            elif isinstance(context_information, bool):
+                parent1_not_allowed_productions = self._get_not_allowed_productions(
+                    self.productions(lhs=Nonterminal(subtree_node)), context_information
+                )
+            else:
+                raise NotImplementedError
             first_try = True
             while first_try or _patience % 10 != 0:
                 first_try = False
@@ -473,14 +494,28 @@ class ConstrainedGrammar(Grammar):
                         rhs,
                         current_derivation,
                     )
-                    parent2_not_allowed_productions = self._get_not_allowed_productions(
-                        self.productions(lhs=Nonterminal(subtree_node)),
-                        context_information[
-                            [i for i, cd in enumerate(current_derivation) if cd is None][
-                                0
-                            ]
-                        ],
-                    )
+                    if isinstance(context_information, list):
+                        parent2_not_allowed_productions = (
+                            self._get_not_allowed_productions(
+                                self.productions(lhs=Nonterminal(subtree_node)),
+                                context_information[
+                                    [
+                                        i
+                                        for i, cd in enumerate(current_derivation)
+                                        if cd is None
+                                    ][0]
+                                ],
+                            )
+                        )
+                    elif isinstance(context_information, bool):
+                        parent2_not_allowed_productions = (
+                            self._get_not_allowed_productions(
+                                self.productions(lhs=Nonterminal(subtree_node)),
+                                context_information,
+                            )
+                        )
+                    else:
+                        raise NotImplementedError
                     if (
                         any(
                             prod.rhs()[0] == "zero"
