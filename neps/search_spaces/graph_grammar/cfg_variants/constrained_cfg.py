@@ -229,12 +229,22 @@ class ConstrainedGrammar(Grammar):
                         outer_production.rhs()[0],
                         current_derivations[len(q_production_rules.queue)],
                     )
-                    not_allowed_productions = self._get_not_allowed_productions(
-                        self.productions(lhs=production.lhs()),
-                        context_information[
-                            current_derivations[len(q_production_rules.queue)].index(None)
-                        ],
-                    )
+                    if isinstance(context_information, list):
+                        not_allowed_productions = self._get_not_allowed_productions(
+                            self.productions(lhs=production.lhs()),
+                            context_information[
+                                current_derivations[len(q_production_rules.queue)].index(
+                                    None
+                                )
+                            ],
+                        )
+                    elif isinstance(context_information, bool):
+                        not_allowed_productions = self._get_not_allowed_productions(
+                            self.productions(lhs=production.lhs()),
+                            context_information,
+                        )
+                    else:
+                        raise NotImplementedError
                     current_derivations[len(q_production_rules.queue)][
                         current_derivations[len(q_production_rules.queue)].index(None)
                     ] = production.rhs()[0]
@@ -588,12 +598,22 @@ class ConstrainedGrammar(Grammar):
                                     production.rhs()[0],
                                     current_derivation,
                                 )
-                                not_allowed_productions = (
-                                    self._get_not_allowed_productions(
-                                        self.productions(lhs=sym),
-                                        context_information[counter],
+                                if isinstance(context_information, list):
+                                    not_allowed_productions = (
+                                        self._get_not_allowed_productions(
+                                            self.productions(lhs=sym),
+                                            context_information[counter],
+                                        )
                                     )
-                                )
+                                elif isinstance(context_information, bool):
+                                    not_allowed_productions = (
+                                        self._get_not_allowed_productions(
+                                            self.productions(lhs=sym),
+                                            context_information,
+                                        )
+                                    )
+                                else:
+                                    raise NotImplementedError
                                 if (
                                     i in zero_combination
                                     and len(not_allowed_productions) > 0
