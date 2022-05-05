@@ -253,6 +253,9 @@ class SearchSpace(collections.abc.Mapping):
             d[k] = 0 if v is None else len(v)
         return d
 
+    def set_to_max_fidelity(self):
+        self.fidelity.value = self.fidelity.upper
+
     def serialize(self):
         return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
 
