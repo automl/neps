@@ -46,7 +46,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
         self.max_rung = len(self.rung_map) - 1
         self.fidelities = list(self.rung_map.values())
-        print("Fidelities: ", self.fidelities)
         # stores the observations made and the corresponding fidelity explored
         # crucial data structure used for determining promotion candidates
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
@@ -110,10 +109,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         super().load_results(previous_results, pending_evaluations)
-        print("Previous results: ", list(previous_results.keys()))
-        print(
-            "Previous losses: ", [get_loss(v.result) for v in previous_results.values()]
-        )
+
         if len(previous_results) > 0 and len(self.observed_configs) == 0:
             # previous optimization run exists and needs to be loaded
             self._load_previous_observations(previous_results)
@@ -166,9 +162,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 self.rung_promotions[_rung] = np.array(self.rung_members[_rung])[
                     np.argsort(self.rung_members_performance[_rung])[:top_k]
                 ].tolist()
-        print("Promotions: ")
-        print(self.rung_promotions)
-        print("end of load_results")
         return
 
     def is_promotable(self) -> int | None:
@@ -231,7 +224,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 index=pd.Series(len(self.observed_configs)),  # key for config_id
             )
             self.observed_configs = pd.concat((self.observed_configs, _df)).sort_index()
-            print(f"Observed_config:\n{self.observed_configs}\n{'-' * 20}")
             # updating config IDs
             config_id = f"{len(self.observed_configs) - 1}_{0}"
             previous_config_id = None
