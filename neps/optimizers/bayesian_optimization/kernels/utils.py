@@ -36,9 +36,9 @@ def extract_configs(configs: list) -> Tuple[list, list]:
     else:
         graphs = [None] * N
 
-    # if isinstance(graphs[0], list):
-    #     if isinstance(graphs[0][0], list):
-    #         graphs = [g[0][0] for g in graphs]
+    _nested_graphs = np.array(graphs, dtype=object)
+    if _nested_graphs.ndim == 3:
+        graphs = _nested_graphs[:, :, 0].reshape(-1).tolist()
 
     if N > 0 and "get_hps" in dir(configs[0]):
         hps = [c.get_hps() for c in configs]
