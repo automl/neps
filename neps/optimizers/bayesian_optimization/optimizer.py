@@ -134,6 +134,12 @@ class BayesianOptimization(BaseOptimizer):
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
 
+    def is_init_phase(self) -> bool:
+        """Decides if optimization is still under the warmstart phase/model-based search."""
+        if self._num_train_x >= self._initial_design_size:
+            return False
+        return True
+
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
@@ -145,8 +151,7 @@ class BayesianOptimization(BaseOptimizer):
         train_y = [get_loss(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
         self._pending_evaluations = [el for el in pending_evaluations.values()]
-        # TODO: Unify initial design with MF-BO
-        if self._num_train_x >= self._initial_design_size:
+        if not self.is_init_phase():
             try:
                 if len(self._pending_evaluations) > 0:
                     # We want to use hallucinated results for the evaluations that have
@@ -179,7 +184,8 @@ class BayesianOptimization(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, ignore_fidelity=False
             )
-        elif self._num_train_x < self._initial_design_size or self._model_update_failed:
+        elif self.is_init_phase() or self._model_update_failed:
+            # initial design space
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
