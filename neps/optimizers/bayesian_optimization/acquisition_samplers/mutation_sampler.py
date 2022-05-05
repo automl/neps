@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Iterable
 
 import numpy as np
@@ -73,7 +74,7 @@ class MutationSampler(AcquisitionSampler):
         samples, _, _ = _propose_location(
             acquisition_function=acquisition_function,
             top_n=batch,
-            candidates=pool,
+            candidates=deepcopy(pool),
         )
         return samples
 

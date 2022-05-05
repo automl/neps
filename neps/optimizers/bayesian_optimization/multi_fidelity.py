@@ -19,7 +19,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         pipeline_space: SearchSpace,
         eta: int = 4,
         early_stopping_rate: int = 0,
-        initial_design_type: Literal["max_budget", "unique_configs"] = "unique_configs",
+        initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         model_search: bool = True,
         **bo_kwargs,
     ):
@@ -108,11 +108,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
-        super().load_results(previous_results, pending_evaluations)
-
         if len(previous_results) > 0 and len(self.observed_configs) == 0:
             # previous optimization run exists and needs to be loaded
             self._load_previous_observations(previous_results)
+
+        if not self.is_init_phase():
+            # to build surrogate only after initial design
+            super().load_results(previous_results, pending_evaluations)
 
         self.total_fevals = len(previous_results)
         # iterates over all previous results and updates the list of observed
@@ -187,7 +189,9 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 < self._initial_design_size
             )
         else:
-            val = len(_observed_configs) <= self._initial_design_size
+            # TODO: Fix clash with super()
+            raise NotImplementedError("Different initial designs not supported!")
+            # val = len(_observed_configs) <= self._initial_design_size
         return val
 
     def get_config_and_ids(  # pylint: disable=no-self-use

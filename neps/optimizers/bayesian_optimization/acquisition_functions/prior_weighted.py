@@ -24,7 +24,17 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
     ) -> Union[np.ndarray, torch.Tensor, float]:
         super().__init__()
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
-        num_bo_iterations = len(self.base_acquisition.surrogate_model.x)
+
+        if self.base_acquisition.surrogate_model.x[0].has_fidelity():
+            decay_t = np.sum(
+                [
+                    _x.fidelity.value == _x.fidelity.upper
+                    for _x in self.base_acquisition.surrogate_model.x
+                ]
+            )
+        else:
+            decay_t = len(self.base_acquisition.surrogate_model.x)
+
         if self.log:
             min_acq_val = abs(min(acquisition)) if min(acquisition) < 0 else 0
         for i, candidate in enumerate(x):
@@ -36,11 +46,11 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
                     # also shift acquisition values to avoid negativ values
                     acquisition[i] = (
                         np.log(acquisition[i] + min_acq_val + 1e-12)
-                        + (self.pibo_beta / num_bo_iterations) * prior_weight
+                        + (self.pibo_beta / decay_t) * prior_weight
                     )
                 else:
                     acquisition[i] *= np.power(
-                        prior_weight + 1e-12, self.pibo_beta / num_bo_iterations
+                        prior_weight + 1e-12, self.pibo_beta / decay_t
                     )
         return acquisition
 

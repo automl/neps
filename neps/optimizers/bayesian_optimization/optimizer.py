@@ -145,6 +145,7 @@ class BayesianOptimization(BaseOptimizer):
         train_y = [get_loss(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
         self._pending_evaluations = [el for el in pending_evaluations.values()]
+        # TODO: Unify initial design with MF-BO
         if self._num_train_x >= self._initial_design_size:
             try:
                 if len(self._pending_evaluations) > 0:
