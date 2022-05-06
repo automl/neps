@@ -91,13 +91,30 @@ def extract_configs_hierarchy(
         combined_graphs = [c["graph"] for c in configs]  # get the list of final graphs
 
     if N > 0 and hierarchy_consider is not None and isinstance(combined_graphs[0], list):
+        # graphs = list(
+        #     map(
+        #         list,
+        #         zip(
+        #             *[
+        #                 [g[0][0]]
+        #                 + [g[0][1][hierarchy_id] for hierarchy_id in hierarchy_consider]
+        #                 for g in combined_graphs
+        #             ]
+        #         ),
+        #     )
+        # )
         graphs = list(
             map(
                 list,
                 zip(
                     *[
                         [g[0][0]]
-                        + [g[0][1][hierarchy_id] for hierarchy_id in hierarchy_consider]
+                        + [
+                            g[0][1][hierarchy_id]
+                            if hierarchy_id in g[0][1]
+                            else g[0][1][max(g[0][1].keys())]
+                            for hierarchy_id in hierarchy_consider
+                        ]
                         for g in combined_graphs
                     ]
                 ),
