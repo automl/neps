@@ -189,9 +189,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 < self._initial_design_size
             )
         else:
-            # TODO: Fix clash with super()
-            raise NotImplementedError("Different initial designs not supported!")
-            # val = len(_observed_configs) <= self._initial_design_size
+            val = len(_observed_configs) <= self._initial_design_size
         return val
 
     def get_config_and_ids(  # pylint: disable=no-self-use
@@ -213,13 +211,21 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         else:
             if self.model_search and not self.is_init_phase():
                 # sampling from AF at base rung
-                config = self.acquisition_sampler.sample(self.acquisition)
+                for _ in range(self.patience):
+                    config = self.acquisition_sampler.sample(self.acquisition)
+                    if config not in self._pending_evaluations:
+                        break
+                else:
+                    # random sampling a config if failed to sample a new config from AF
+                    config = self.pipeline_space.sample(
+                        patience=self.patience, user_priors=True, ignore_fidelity=True
+                    )
             else:
-                # random sampling a config at base rung
+                # random sampling a config
                 config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True
+                    patience=self.patience, user_priors=True, ignore_fidelity=True
                 )
-            # assigning the fidelity to evaluate the config at
+            # assigning the fidelity to evaluate the config at the base rung
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             # updating observation tracker
             _df = pd.DataFrame(

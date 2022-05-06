@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Iterable
 
 import numpy as np
@@ -18,9 +17,6 @@ def _propose_location(
     return_distinct: bool = True,
 ) -> tuple[Iterable, np.ndarray, np.ndarray]:
     """top_n: return the top n candidates wrt the acquisition function."""
-    if candidates[0].has_fidelity():
-        for c in candidates:
-            c.fidelity.value = c.fidelity.upper
     if return_distinct:
         eis = acquisition_function(candidates, asscalar=True)  # faster
         eis_, unique_idx = np.unique(eis, return_index=True)
@@ -74,7 +70,7 @@ class MutationSampler(AcquisitionSampler):
         samples, _, _ = _propose_location(
             acquisition_function=acquisition_function,
             top_n=batch,
-            candidates=deepcopy(pool),
+            candidates=pool,
         )
         return samples
 
