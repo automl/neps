@@ -124,12 +124,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # configs with the highest fidelity it was evaluated on and its performance
         for config_id, config_val in previous_results.items():
             _config, _rung = config_id.split("_")
+            perf = get_loss(config_val.result)
             if int(_config) not in self.observed_configs.index:
                 # this condition and check is important to handle async scenarios as
                 # the `previous_results` can provide configs that have not been
                 # encountered by this instantiation of the optimizer object
                 _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), None]],
+                    [[config_val.config, int(_rung), perf]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
@@ -139,7 +140,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             else:
                 if int(_rung) >= self.observed_configs.at[int(_config), "rung"]:
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    perf = get_loss(config_val.result)
                     self.observed_configs.at[int(_config), "perf"] = perf
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
