@@ -181,6 +181,7 @@ class SearchSpace(collections.abc.Mapping):
             if (
                 hasattr(hyperparameter, "crossover")
                 and np.random.random() < crossover_probability_per_hyperparameter
+                and not hyperparameter.is_fidelity
             ):
                 while patience > 0:
                     try:

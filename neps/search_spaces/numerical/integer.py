@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from copy import deepcopy
+
 from typing_extensions import Literal
 
 from .float import FloatParameter
@@ -53,7 +55,20 @@ class IntegerParameter(FloatParameter):
         return child
 
     def crossover(self, parent1, parent2=None):
-        raise NotImplementedError
+        if self.is_fidelity:
+            raise ValueError("Trying to crossover fidelity param!")
+        if parent2 is None:
+            parent2 = self
+
+        proxy_self = deepcopy(self)
+        proxy_self.value = round((parent1.value + parent2.value) / 1)
+        # pylint: disable=protected-access
+        children = proxy_self._get_neighbours(num_neighbours=2)
+
+        if all(not c for c in children):
+            raise Exception("Cannot create crossover")
+        # expected len(children) == num_neighbours
+        return children
 
     # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
