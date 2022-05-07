@@ -63,7 +63,7 @@ class IntegerParameter(FloatParameter):
         proxy_self = deepcopy(self)
         proxy_self.value = round((parent1.value + parent2.value) / 1)
         # pylint: disable=protected-access
-        children = proxy_self._get_neighbours(num_neighbours=2)
+        children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)
 
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
