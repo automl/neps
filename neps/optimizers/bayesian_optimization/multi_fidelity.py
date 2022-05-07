@@ -77,6 +77,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             _max_budget /= self.eta
         return rung_map
 
+    # TODO: check pending
     def _load_previous_observations(
         self, previous_results: dict[str, ConfigResult]
     ) -> None:
@@ -108,6 +109,8 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
+        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+
         if len(previous_results) > 0 and len(self.observed_configs) == 0:
             # previous optimization run exists and needs to be loaded
             self._load_previous_observations(previous_results)
@@ -120,25 +123,41 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # iterates over all previous results and updates the list of observed
         # configs with the highest fidelity it was evaluated on and its performance
         for config_id, config_val in previous_results.items():
-            # any config occurring in `previous_results` should be in `observed_configs`
             _config, _rung = config_id.split("_")
             if int(_config) not in self.observed_configs.index:
                 # this condition and check is important to handle async scenarios as
                 # the `previous_results` can provide configs that have not been
                 # encountered by this instantiation of the optimizer object
                 _df = pd.DataFrame(
-                    [[config_val.config, 0, None]],
+                    [[config_val.config, int(_rung), None]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
                 self.observed_configs = pd.concat(
                     (self.observed_configs, _df)
                 ).sort_index()
-            # updates the data frame only when new rung is higher than recorded rung
-            if int(_rung) >= self.observed_configs.at[int(_config), "rung"]:
+            else:
+                if int(_rung) >= self.observed_configs.at[int(_config), "rung"]:
+                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
+                    perf = get_loss(config_val.result)
+                    self.observed_configs.at[int(_config), "perf"] = perf
+        # iterates over all pending evaluations and updates the list of observed
+        # configs with the rung and performance as None
+        for config_id, _ in pending_evaluations.items():
+            _config, _rung = config_id.split("_")
+            if int(_config) not in self.observed_configs.index:
+                _df = pd.DataFrame(
+                    [[None, int(_rung), None]],
+                    columns=self.observed_configs.columns,
+                    index=pd.Series(int(_config)),  # key for config_id
+                )
+                self.observed_configs = pd.concat(
+                    (self.observed_configs, _df)
+                ).sort_index()
+            else:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                perf = get_loss(config_val.result)
-                self.observed_configs.at[int(_config), "perf"] = perf
+                self.observed_configs.at[int(_config), "perf"] = None
+
         # to account for incomplete evaluations from being promoted
         _observed_configs = self.observed_configs.copy().dropna(inplace=False)
         # iterates over the list of explored configs and buckets them to respective
@@ -206,8 +225,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             # updating config IDs
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
-            # updating observation tracker
-            self.observed_configs.at[row.name, "rung"] = rung
         else:
             if self.model_search and not self.is_init_phase():
                 # sampling from AF at base rung
@@ -227,14 +244,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 )
             # assigning the fidelity to evaluate the config at the base rung
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
-            # updating observation tracker
-            _df = pd.DataFrame(
-                [[config, 0, None]],
-                columns=self.observed_configs.columns,
-                index=pd.Series(len(self.observed_configs)),  # key for config_id
-            )
-            self.observed_configs = pd.concat((self.observed_configs, _df)).sort_index()
-            # updating config IDs
-            config_id = f"{len(self.observed_configs) - 1}_{0}"
+            config_id = f"{len(self.observed_configs)}_{0}"
             previous_config_id = None
         return config, config_id, previous_config_id  # type: ignore
