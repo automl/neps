@@ -55,4 +55,4 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         return acquisition
 
     def set_state(self, surrogate_model, **kwargs):
-        self.base_acquisition.set_state(surrogate_model)
+        self.base_acquisition.set_state(surrogate_model, **kwargs)

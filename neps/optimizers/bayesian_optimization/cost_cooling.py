@@ -95,7 +95,7 @@ class CostCooling(BayesianOptimization):
         self._model_update_failed: bool = False
 
         surrogate_model_args = surrogate_model_args or {}
-        cost_model_args = surrogate_model_args or {}
+        cost_model_args = cost_model_args or {}
         graph_kernels, hp_kernels = get_kernels(
             self.pipeline_space,
             domain_se_kernel,
@@ -128,7 +128,7 @@ class CostCooling(BayesianOptimization):
 
         if "graph_kernels" not in cost_model_args:
             cost_model_args["graph_kernels"] = graph_kernels
-        if "hp_kernels" not in surrogate_model_args:
+        if "hp_kernels" not in cost_model_args:
             cost_model_args["hp_kernels"] = hp_kernels
 
         if not cost_model_args["graph_kernels"] and not cost_model_args["hp_kernels"]:
@@ -192,11 +192,11 @@ class CostCooling(BayesianOptimization):
                     train_cost += list(zs.detach().numpy())
 
                 self.surrogate_model.fit(train_x, train_y)
-                self.cost_model.fit(train_x, train_y)
+                self.cost_model.fit(train_x, train_cost)
                 # TODO: set acquisition state
                 self.acquisition.set_state(
                     self.surrogate_model,
-                    alpha=self.used_budget / self.budget,
+                    alpha=1 - (self.used_budget / self.budget),
                     cost_model=self.cost_model,
                 )
                 self.acquisition_sampler.set_state(x=train_x, y=train_y)

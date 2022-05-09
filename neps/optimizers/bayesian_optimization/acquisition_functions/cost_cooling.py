@@ -11,9 +11,8 @@ class CostCooler(BaseAcquisition):
     def __init__(
         self,
         base_acquisition: BaseAcquisition = ComprehensiveExpectedImprovement,
-        **base_acquisition_kwargs,
     ):  # pylint: disable=super-init-not-called
-        self.acquisition_function = base_acquisition(**base_acquisition_kwargs)
+        self.base_acquisition = base_acquisition
         self.cost_model = None
         self.alpha = None
 
@@ -22,11 +21,14 @@ class CostCooler(BaseAcquisition):
         x: Iterable,
         **base_acquisition_kwargs,
     ) -> Union[np.ndarray, torch.Tensor, float]:
-        base_acquisition_value = self.base_acquisition.eval(x, **base_acquisition_kwargs)
-        costs = self.cost_model.predict(x)
-        return base_acquisition_value / (costs ^ self.alpha)
+        base_acquisition_value = self.base_acquisition.eval(
+            x=x, **base_acquisition_kwargs
+        )
+        costs, _ = self.cost_model.predict(x)
+        return base_acquisition_value / (costs**self.alpha).detach().numpy()
 
-    def set_state(self, surrogate_model, **kwargs):
+    def set_state(self, surrogate_model, alpha, cost_model, **kwargs):
         super().set_state(surrogate_model=surrogate_model)
-        self.alpha = kwargs.alpha
-        self.cost_model = kwargs.cost_model
+        self.base_acquisition.set_state(surrogate_model=surrogate_model, **kwargs)
+        self.alpha = alpha
+        self.cost_model = cost_model
