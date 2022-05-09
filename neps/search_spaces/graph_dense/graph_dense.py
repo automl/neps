@@ -41,7 +41,7 @@ class GraphDenseParameter(GraphGrammar):
         "stage_3",
     ]
 
-    def __init__(self, num_nodes: int, edge_choices: List[str]):
+    def __init__(self, num_nodes: int, edge_choices: List[str], prior: dict = None):
 
         assert num_nodes > 1, "DAG has to have more than one node"
         self.num_nodes = num_nodes
@@ -65,6 +65,7 @@ class GraphDenseParameter(GraphGrammar):
             terminal_to_op_names=TERMINAL_2_OP_NAMES,
             terminal_to_graph_edges=TERMINAL_2_GRAPH_REPR,
             edge_attr=self.edge_attr,
+            prior=prior,
         )
 
         self.num_classes = self.NUM_CLASSES if hasattr(self, "NUM_CLASSES") else 10
@@ -206,7 +207,6 @@ class GraphDenseParameter(GraphGrammar):
             return False
         return (
             self.num_nodes == other.num_nodes
-            # and self.edge_list == other.edge_list # TODO: make this work ?
             and self.edge_choices == other.edge_choices
             and self.graph_repr == other.graph_repr
         )

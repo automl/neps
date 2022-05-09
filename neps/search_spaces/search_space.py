@@ -181,6 +181,7 @@ class SearchSpace(collections.abc.Mapping):
             if (
                 hasattr(hyperparameter, "crossover")
                 and np.random.random() < crossover_probability_per_hyperparameter
+                and not hyperparameter.is_fidelity
             ):
                 while patience > 0:
                     try:
@@ -252,6 +253,9 @@ class SearchSpace(collections.abc.Mapping):
         for k, v in hps.items():
             d[k] = 0 if v is None else len(v)
         return d
+
+    def set_to_max_fidelity(self):
+        self.fidelity.value = self.fidelity.upper
 
     def serialize(self):
         return {key: hp.serialize() for key, hp in self.hyperparameters.items()}

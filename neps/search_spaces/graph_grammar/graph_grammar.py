@@ -448,6 +448,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         grammars: list[Grammar] | list[ConstrainedGrammar],
         terminal_to_op_names: dict,
         terminal_to_sublanguage_map: dict,
+        prior: dict = None,
         terminal_to_graph_edges: dict = None,
         fixed_macro_grammar: bool = False,
         edge_attr: bool = True,
@@ -514,6 +515,12 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             else 1
             for grammar in grammars
         ]
+
+        if prior is not None:
+            print(
+                "Warning: Prior is not implemented for GraphGrammarMultipleRepetitive -> will be ignored"
+            )
+        self.has_prior = False
 
         CoreGraphGrammar.__init__(
             self,

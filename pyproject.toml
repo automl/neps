@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "neps"
-version = "0.4.5"
+version = "0.4.7"
 description = ""
 authors = ["Danny Stoll", "Maciej Janowski", "Simon Schrodi", "Théophane Vallaeys"]
 readme = "README.md"
@@ -19,7 +19,7 @@ numpy = "^1.21.1"
 pandas = "^1.3.1"
 networkx = "^2.6.3"
 nltk = "^3.6.4"
-metahyper = "^0.5.1"
+metahyper = "^0.5.3"
 path = "^16.2.0"
 termcolor = "^1.1.0"
 typing-extensions = "^4.0.1"

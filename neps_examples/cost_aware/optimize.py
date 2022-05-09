@@ -14,7 +14,7 @@ def run_pipeline(
     end = time.time()
     return {
         "loss": y,
-        "cost": end - start,
+        "cost": (end - start) + float1,
     }
 
 
@@ -33,6 +33,7 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     working_directory="results/cost_aware_example",
+    searcher="cost_cooling_bayesian_optimization",
     max_evaluations_total=12,  # TODO(Jan): remove
     initial_design_size=5,
     budget=100,  # TODO(Jan): something reasonable

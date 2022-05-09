@@ -105,7 +105,23 @@ class CategoricalParameter(NumericalParameter):
         return child
 
     def crossover(self, parent1, parent2=None):
-        raise NotImplementedError
+        if self.is_fidelity:
+            raise ValueError("Trying to crossover fidelity param!")
+        if parent2 is None:
+            parent2 = self
+
+        child1 = deepcopy(parent1)
+        child2 = deepcopy(parent2)
+
+        child1.value = parent2.value
+        child2.value = parent1.value
+
+        children = [child1, child2]
+
+        if all(not c for c in children):
+            raise Exception("Cannot create crossover")
+        # expected len(children) == num_neighbours
+        return children
 
     def _get_neighbours(self, num_neighbours: int = 1):
         neighbours: list[CategoricalParameter] = []

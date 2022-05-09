@@ -29,10 +29,12 @@ class RegularizedEvolution(BaseOptimizer):
         self.population_size = population_size
         self.sample_size = sample_size
         self.population: list = []
+        self.num_train_x: int = 0
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         train_x = [el.config for el in previous_results.values()]
         train_y = [get_loss(el.result) for el in previous_results.values()]
+        self.num_train_x = len(train_x)
         self.population = [
             (x, y)
             for x, y in zip(
@@ -55,7 +57,7 @@ class RegularizedEvolution(BaseOptimizer):
                 config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=True
                 )
-        config_id = str(len(self.population) + 1)
+        config_id = str(self.num_train_x + 1)
         return config, config_id, None
 
     def _mutate(self, parent):
