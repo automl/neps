@@ -58,7 +58,7 @@ class RegularizedEvolution(BaseOptimizer):
                     patience=self.patience, user_priors=True
                 )
         config_id = str(self.num_train_x + 1)
-        return config, config_id, None
+        return config.hp_values(), config_id, None
 
     def _mutate(self, parent):
         for _ in range(self.patience):

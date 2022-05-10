@@ -171,7 +171,7 @@ def run(
         raise TypeError(message) from e
 
     if searcher == "default" or searcher is None:
-        if pipeline_space.has_fidelity():
+        if pipeline_space.has_fidelity:
             searcher = "mf_bayesian_optimization"
         else:
             searcher = "bayesian_optimization"

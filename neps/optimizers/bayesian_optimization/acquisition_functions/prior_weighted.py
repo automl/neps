@@ -25,7 +25,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         super().__init__()
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
 
-        if self.base_acquisition.surrogate_model.x[0].has_fidelity():
+        if self.base_acquisition.surrogate_model.x[0].has_fidelity:
             decay_t = np.sum(
                 [
                     _x.fidelity.value == _x.fidelity.upper

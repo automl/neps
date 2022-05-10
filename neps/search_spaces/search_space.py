@@ -9,6 +9,7 @@ from copy import deepcopy
 import ConfigSpace as CS
 import numpy as np
 
+from ..utils.common import has_instance
 from . import (
     CategoricalParameter,
     ConstantParameter,
@@ -50,20 +51,12 @@ def pipeline_space_from_configspace(
 
 class SearchSpace(collections.abc.Mapping):
     def __init__(self, **hyperparameters):
-        self._num_hps = len(hyperparameters)
         self.hyperparameters = OrderedDict()
-        self._hps = []
-        self._graphs = []
 
         self.fidelity = None
         self.has_prior = False
         for key, hyperparameter in hyperparameters.items():
             self.hyperparameters[key] = hyperparameter
-
-            if isinstance(hyperparameter, NumericalParameter):
-                self._hps.append(hyperparameter)
-            else:
-                self._graphs.append(hyperparameter)
 
             # Only integer / float parameters can be fidelities, so check these
             if hyperparameter.is_fidelity:
@@ -85,6 +78,10 @@ class SearchSpace(collections.abc.Mapping):
             elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
 
+    @property
+    def has_fidelity(self):
+        return self.fidelity is not None
+
     def compute_prior(self, log: bool = False):
         density_value = 0.0 if log else 1.0
         for hyperparameter in self.hyperparameters.values():
@@ -94,9 +91,6 @@ class SearchSpace(collections.abc.Mapping):
                 else:
                     density_value *= hyperparameter.compute_prior(log=False)
         return density_value
-
-    def has_fidelity(self):
-        return self.fidelity is not None
 
     def sample(
         self, user_priors: bool = False, patience: int = 1, ignore_fidelity=True
@@ -134,15 +128,17 @@ class SearchSpace(collections.abc.Mapping):
         return child
 
     def _smbo_mutation(self, patience=50):
-        new_config = self.get_array()
+        new_config = deepcopy(self.hyperparameters)
+        config_hp_names = list(new_config)
 
         for _ in range(patience):
             idx = random.randint(0, len(new_config) - 1)
-            hp = new_config[idx]
+            hp_name = config_hp_names[idx]
+            hp = new_config[hp_name]
             if isinstance(hp, NumericalParameter) and hp.is_fidelity:
                 continue
             try:
-                new_config[idx] = hp.mutate()
+                new_config[hp_name] = hp.mutate()
                 break
             except Exception:
                 continue
@@ -204,30 +200,27 @@ class SearchSpace(collections.abc.Mapping):
 
         return new_config1, new_config2
 
-    def get_graphs(self):
-        return [graph.value for graph in self._graphs]
-
-    def get_hps(self):
-        # Numerical hyperparameters are split into:
-        # - categorical HPs
-        # - float/integer continuous HPs
-        # user defined dimensionality split not supported yet!
-        cont_hps = []
-        cat_hps = []
-
-        for hp in self._hps:
+    def get_normalized_hp_categories(self):
+        hps = {
+            "continuous": [],
+            "categorical": [],
+            "graphs": [],
+        }
+        for hp in self.values():
             hp_value = hp.normalized().value
             if isinstance(hp, CategoricalParameter):
-                cat_hps.append(hp_value)
+                hps["categorical"].append(hp_value)
+            elif isinstance(hp, NumericalParameter):
+                hps["continuous"].append(hp_value)
             else:
-                cont_hps.append(hp_value)
-        return {
-            "continuous": None if len(cont_hps) == 0 else cont_hps,
-            "categorical": None if len(cat_hps) == 0 else cat_hps,
-        }
+                hps["graphs"].append(hp_value)
+        return hps
 
-    def get_array(self):
-        return list(self.hyperparameters.values())
+    def hp_values(self):
+        return {
+            hp_name: hp if isinstance(hp, Graph) else hp.value
+            for hp_name, hp in self.hyperparameters.items()
+        }
 
     def add_constant_hyperparameter(self, value=None):
         if value is not None:
@@ -237,22 +230,21 @@ class SearchSpace(collections.abc.Mapping):
         self._add_hyperparameter(hp)
 
     def _add_hyperparameter(self, hp=None):
-        self.hyperparameters[str(self._num_hps)] = hp
-        if isinstance(hp, NumericalParameter):
-            self._hps.append(hp)
-        else:
-            self._graphs.append(hp)
-        self._num_hps += 1
+        id_new_hp = len(self.hyperparameters)
+        while str(id_new_hp) in self.hyperparameters:
+            id_new_hp += 1
+        self.hyperparameters[str(id_new_hp)] = hp
 
     def get_vectorial_dim(self):
-        # search space object may contain either continuous or categorical hps
-        d = {}
-        hps = self.get_hps()
-        if all(hp is None for hp in hps.values()):
+        if not has_instance(self.values(), NumericalParameter):
             return None
-        for k, v in hps.items():
-            d[k] = 0 if v is None else len(v)
-        return d
+        features = {"continuous": 0, "categorical": 0}
+        for hp in self.values():
+            if isinstance(hp, CategoricalParameter):
+                features["categorical"] += 1
+            elif isinstance(hp, NumericalParameter):
+                features["continuous"] += 1
+        return features
 
     def set_to_max_fidelity(self):
         self.fidelity.value = self.fidelity.upper
@@ -261,24 +253,14 @@ class SearchSpace(collections.abc.Mapping):
         return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
 
     def load_from(self, config: dict):
-        self._hps = []
-        self._graphs = []
         for name in config.keys():
             self.hyperparameters[name].load_from(config[name])
-            if isinstance(self.hyperparameters[name], NumericalParameter):
-                self._hps.append(self.hyperparameters[name])
-            else:
-                self._graphs.append(self.hyperparameters[name])
 
     def copy(self):
         return deepcopy(self)
 
     def __getitem__(self, key):
-        hp = self.hyperparameters[key]
-        if isinstance(hp, Graph) or hp.value is None:
-            return hp
-        else:
-            return hp.value
+        return self.hyperparameters[key]
 
     def __iter__(self):
         return iter(self.hyperparameters)

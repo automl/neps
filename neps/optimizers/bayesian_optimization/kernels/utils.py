@@ -26,28 +26,10 @@ def extract_configs(configs: list) -> Tuple[list, list]:
     Returns:
         Tuple[list, list]: list of graphs, list of HPs
     """
-    N = len(configs)
-    if N > 0 and "get_graphs" in dir(configs[0]):
-        graphs = [c.get_graphs() for c in configs]
-    elif N > 0 and "graph" in dir(configs[0]):
-        graphs = [c.graph for c in configs]
-    elif N > 0 and isinstance(configs, list):  # assumes that the list is meaningful!
-        graphs = configs
-    else:
-        graphs = [None] * N
+    config_hps = [conf.get_normalized_hp_categories() for conf in configs]
+    graphs = [hps["graphs"] for hps in config_hps]
 
-    _nested_graphs = np.array(graphs, dtype=object)
-    if _nested_graphs.ndim == 3:
-        graphs = _nested_graphs[:, :, 0].reshape(-1).tolist()
-
-    if N > 0 and "get_hps" in dir(configs[0]):
-        hps = [c.get_hps() for c in configs]
-    elif N > 0 and "hps" in dir(configs[0]):
-        hps = [c.hps for c in configs]
-    else:
-        hps = [None] * N
-
-    return graphs, hps
+    return graphs, config_hps
 
 
 def graph_metrics(graph, metric=None, directed=True):
@@ -84,13 +66,9 @@ def extract_configs_hierarchy(
     """
     N = len(configs)
 
-    if N > 0 and "get_graphs" in dir(configs[0]):
-        combined_graphs = [c.get_graphs() for c in configs]
-    # final architecture graph
-    elif N > 0 and "graph" in configs[0].keys():
-        combined_graphs = [c["graph"] for c in configs]  # get the list of final graphs
-
-    if N > 0 and hierarchy_consider is not None and isinstance(combined_graphs[0], list):
+    config_hps = [conf.get_normalized_hp_categories() for conf in configs]
+    combined_graphs = [hps["graphs"] for hps in config_hps]
+    if N > 0 and hierarchy_consider is not None and combined_graphs[0]:
         # graphs = list(
         #     map(
         #         list,

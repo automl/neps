@@ -200,4 +200,4 @@ class BayesianOptimization(BaseOptimizer):
                 )
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
-        return config, config_id, None
+        return config.hp_values(), config_id, None

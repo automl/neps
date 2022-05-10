@@ -23,4 +23,4 @@ class RandomSearch(BaseOptimizer):
             patience=self.patience, user_priors=True, ignore_fidelity=False
         )
         config_id = str(self._num_previous_configs + 1)
-        return config, config_id, None
+        return config.hp_values(), config_id, None

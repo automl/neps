@@ -10,6 +10,10 @@ def has_instance(collection, *types):
     return any([isinstance(el, typ) for el in collection for typ in types])
 
 
+def filter_instances(collection, *types):
+    return [el for el in collection if any([isinstance(el, typ) for typ in types])]
+
+
 def get_rnd_state() -> dict:
     np_state = list(np.random.get_state())
     np_state[1] = np_state[1].tolist()

@@ -55,7 +55,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         Return the negative expected improvement at the query point x2
         """
         assert self.incumbent is not None, "EI function not fitted on model"
-        if x[0].has_fidelity() and self.optimize_on_max_fidelity:
+        if x[0].has_fidelity and self.optimize_on_max_fidelity:
             _x = deepcopy(x)
             # pylint: disable=expression-not-assigned
             [elem.set_to_max_fidelity() for elem in _x]

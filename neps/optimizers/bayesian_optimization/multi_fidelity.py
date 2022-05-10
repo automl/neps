@@ -246,4 +246,4 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             config.fidelity.value = self.rung_map[0]  # base rung is always 0
             config_id = f"{len(self.observed_configs)}_{0}"
             previous_config_id = None
-        return config, config_id, previous_config_id  # type: ignore
+        return config.hp_values(), config_id, previous_config_id  # type: ignore
