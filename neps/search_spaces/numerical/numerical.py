@@ -1,6 +1,8 @@
 from abc import abstractmethod
 
-from ..parameter import Parameter
+import torch
+
+from ..parameter import HpTensorShape, Parameter
 
 
 class NumericalParameter(Parameter):
@@ -21,3 +23,10 @@ class NumericalParameter(Parameter):
 
     def load_from(self, value):
         self.value = value
+
+    @staticmethod
+    def get_tensor_shape(hp_instances):  # pylint: disable=unused-argument
+        return HpTensorShape(1)
+
+    def get_tensor_value(self, tensor_shape):  # pylint: disable=unused-argument
+        return torch.tensor(self.normalized().value)

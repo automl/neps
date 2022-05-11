@@ -1,5 +1,34 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 from copy import deepcopy
+
+import torch
+
+
+class HpTensorShape:
+    def __init__(self, length):
+        self.length = length
+        self.bounds = None  # First included, last excluded
+
+    def set_bounds(self, begin):
+        self.bounds = (begin, begin + self.length)
+
+    @property
+    def begin(self):
+        if self.bounds is None:
+            raise ValueError("Bounds not set")
+        return self.bounds[0]
+
+    @property
+    def end(self):
+        if self.bounds is None:
+            raise ValueError("Bounds not set")
+        return self.bounds[1]
+
+    @property
+    def active_dims(self):
+        return list(range(self.begin, self.end))
 
 
 class Parameter:
@@ -33,6 +62,15 @@ class Parameter:
 
     def compute_prior(self):  # pylint: disable=no-self-use
         return 1
+
+    @staticmethod
+    @abstractmethod
+    def get_tensor_shape(hp_instances: list[Parameter]) -> HpTensorShape:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_tensor_value(self, tensor_shape: HpTensorShape) -> torch.Tensor:
+        raise NotImplementedError
 
     def __eq__(self, other):
         # Assuming that two different classes should represent two different parameters
