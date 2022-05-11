@@ -39,6 +39,9 @@ class GptMeanComposer(gpytorch.means.Mean):
     def __init__(self, means_locations):
         super().__init__()
         self.means_locations = means_locations
+        # Store the means as attributes to be included in pytorch variables
+        for i, (_, mean) in enumerate(means_locations):
+            setattr(self, f"mean_{i}", mean)
 
     def forward(self, x):
         resulting_mean = torch.zeros(x.shape[0])

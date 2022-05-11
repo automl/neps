@@ -139,9 +139,7 @@ class GPModel:
 
         # Then build the GPyTorch model
         gpytorch_kernel = self.kernel.build(self.all_hp_shapes)
-        # gpytorch_mean = self.mean.build(self.all_hp_shapes)
-        gpytorch_mean = gpytorch.means.LinearMean(self.tensor_size)
-        # gpytorch_mean = gpytorch.means.ConstantMean()
+        gpytorch_mean = self.mean.build(self.all_hp_shapes)
         self.gp = GPTorchModel(x_tensor, y_tensor, gpytorch_mean, gpytorch_kernel)
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp.likelihood, self.gp)
