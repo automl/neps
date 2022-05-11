@@ -16,8 +16,11 @@ from ..kernels.graph_kernel import GraphKernels
 from ..kernels.utils import extract_configs
 from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
+from ..means import HpMean, MeanComposer
 
 DEFAULT_KERNELS = ["m52", "hm"]
+DEFAULT_MEAN = "constant"
+EPSILON = 1e-9
 
 
 class GPTorchModel(gpytorch.models.ExactGP):
@@ -48,6 +51,7 @@ class GPModel:
     def __init__(
         self,
         pipeline_space,
+        means: Iterable[HpMean] = None,
         kernels: Iterable[Kernel] = None,
         combine_kernel: str = "product",
         logger=None,
@@ -56,8 +60,15 @@ class GPModel:
         self.gp = None
         self.tensor_size = None
         self.all_hp_shapes = None
+        self.y_mean = None
+        self.y_std = None
 
-        # Build kernels
+        # Instantiate means
+        self.mean = MeanComposer(
+            pipeline_space, *(means or []), fallback_default_mean=DEFAULT_MEAN
+        )
+
+        # Instanciate kernels
         self.kernel = instance_from_map(
             CombineKernelMapping, combine_kernel, "combine kernel", as_class=True
         )(*(kernels or []))
@@ -96,6 +107,16 @@ class GPModel:
                 )
         return x_tensor
 
+    def _build_output_tensor(self, y_values, set_y_scale=False):
+        y_values = torch.tensor(y_values)
+        if set_y_scale:
+            self.y_mean = y_values.mean()
+            self.y_std = y_values.std()
+            if self.y_std.abs() < EPSILON:
+                self.y_std = EPSILON
+        y_values = (y_values - self.y_mean) / self.y_std
+        return y_values
+
     def fit(self, train_x, train_y):
         if not train_x:
             raise ValueError("Can't fit a GP on no data")
@@ -112,14 +133,15 @@ class GPModel:
             self.all_hp_shapes[hp_name] = hp_shape
 
         # Build the input tensors
+
         x_tensor = self._build_input_tensor(train_x)
-        y_tensor = torch.tensor(train_y)
+        y_tensor = self._build_output_tensor(train_y, set_y_scale=True)
 
         # Then build the GPyTorch model
         gpytorch_kernel = self.kernel.build(self.all_hp_shapes)
-        # TODO : allow selecting a better mean
-        # gpytorch_mean = gpytorch.means.ConstantMean()
+        # gpytorch_mean = self.mean.build(self.all_hp_shapes)
         gpytorch_mean = gpytorch.means.LinearMean(self.tensor_size)
+        # gpytorch_mean = gpytorch.means.ConstantMean()
         self.gp = GPTorchModel(x_tensor, y_tensor, gpytorch_mean, gpytorch_kernel)
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp.likelihood, self.gp)
@@ -134,6 +156,9 @@ class GPModel:
         x_tensor = self._build_input_tensor(x_configs)
         with torch.no_grad():
             mvn = self.gp(x_tensor)
+        mvn = gpytorch.distributions.MultivariateNormal(
+            mvn.mean * self.y_std + self.y_mean, mvn.covariance_matrix * self.y_std**2
+        )
         return mvn
 
     def predict(self, x_config):

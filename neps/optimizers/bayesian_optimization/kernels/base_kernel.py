@@ -69,7 +69,6 @@ class StationaryKernel(Kernel):
     def _kernel_builder(
         self, hp_shapes, kernel_class, kernel_kwargs=None, scale_kwargs=None
     ):
-        print(self, self.get_tensor_length(hp_shapes), self.get_active_dims(hp_shapes))
         return gpytorch.kernels.ScaleKernel(
             kernel_class(
                 **{
