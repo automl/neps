@@ -1,1 +1,7 @@
-from .means import MEANS_MAPPING, ConstantMean, GpMean, LinearMean, MeanComposer, ZeroMean
+from .means import ConstantMean, GpMean, LinearMean, MeanComposer, ZeroMean
+
+MEANS_MAPPING = {
+    "zero": ZeroMean,
+    "constant": ConstantMean,
+    "linear": LinearMean,
+}

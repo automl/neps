@@ -4,6 +4,8 @@ import gpytorch
 import torch
 from metahyper.utils import instance_from_map
 
+import neps
+
 
 class GpMean:
     def __init__(self, active_hps: list[str] = None):
@@ -53,7 +55,8 @@ class GptMeanComposer(gpytorch.means.Mean):
 class MeanComposer:
     def __init__(self, pipeline_space, *means, fallback_default_mean="constant"):
         available_hps = set(pipeline_space.keys())
-        self.means = [instance_from_map(MEANS_MAPPING, m, "mean") for m in means]
+        means_map = neps.optimizers.bayesian_optimization.means.MEANS_MAPPING
+        self.means = [instance_from_map(means_map, m, "mean") for m in means]
 
         # Ensure every hp is used only one time
         default_mean = None
@@ -77,7 +80,7 @@ class MeanComposer:
 
         # Assign default mean
         if default_mean is None:
-            default_mean = instance_from_map(MEANS_MAPPING, fallback_default_mean, "mean")
+            default_mean = instance_from_map(means_map, fallback_default_mean, "mean")
             self.means.append(default_mean)
         default_mean.active_hps = list(available_hps)
 
@@ -85,10 +88,3 @@ class MeanComposer:
         sub_means = [m.build(hp_shapes) for m in self.means]
         sub_locations = [m.active_dims for m in self.means]
         return GptMeanComposer(sub_locations, sub_means)
-
-
-MEANS_MAPPING = {
-    "zero": ZeroMean,
-    "constant": ConstantMean,
-    "linear": LinearMean,
-}
