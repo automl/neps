@@ -5,7 +5,7 @@ import torch
 from metahyper.utils import instance_from_map
 
 
-class HpMean:
+class GpMean:
     def __init__(self, active_hps: list[str] = None):
         self.active_hps = active_hps
         self.active_dims = None
@@ -17,35 +17,33 @@ class HpMean:
         self.active_dims = tuple(active_dims)
 
 
-class ZeroMean(HpMean):
+class ZeroMean(GpMean):
     def build(self, hp_shapes):
         super().build(hp_shapes)
         return gpytorch.means.ZeroMean()
 
 
-class ConstantMean(HpMean):
+class ConstantMean(GpMean):
     def build(self, hp_shapes):
         super().build(hp_shapes)
         return gpytorch.means.ConstantMean()
 
 
-class LinearMean(HpMean):
+class LinearMean(GpMean):
     def build(self, hp_shapes):
         super().build(hp_shapes)
         return gpytorch.means.LinearMean(len(self.active_dims))
 
 
 class GptMeanComposer(gpytorch.means.Mean):
-    def __init__(self, means_locations):
+    def __init__(self, locations, means):
         super().__init__()
-        self.means_locations = means_locations
-        # Store the means as attributes to be included in pytorch variables
-        for i, (_, mean) in enumerate(means_locations):
-            setattr(self, f"mean_{i}", mean)
+        self.means = torch.nn.ModuleList(means)
+        self.locations = locations
 
     def forward(self, x):
         resulting_mean = torch.zeros(x.shape[0])
-        for idx, mean in self.means_locations:
+        for idx, mean in zip(self.locations, self.means):
             columns = [x[:, i] for i in idx]
             columns = torch.stack(columns, axis=1)
             resulting_mean += mean(columns)
@@ -84,11 +82,9 @@ class MeanComposer:
         default_mean.active_hps = list(available_hps)
 
     def build(self, hp_shapes):
-        sub_means = []
-        for m in self.means:
-            gpt_mean = m.build(hp_shapes)
-            sub_means.append((m.active_dims, gpt_mean))
-        return GptMeanComposer(sub_means)
+        sub_means = [m.build(hp_shapes) for m in self.means]
+        sub_locations = [m.active_dims for m in self.means]
+        return GptMeanComposer(sub_locations, sub_means)
 
 
 MEANS_MAPPING = {

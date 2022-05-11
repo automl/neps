@@ -1,1 +1,1 @@
-from .means import MEANS_MAPPING, ConstantMean, HpMean, LinearMean, MeanComposer, ZeroMean
+from .means import MEANS_MAPPING, ConstantMean, GpMean, LinearMean, MeanComposer, ZeroMean

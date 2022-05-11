@@ -10,10 +10,7 @@ import numpy as np
 from scipy import stats
 from torch import nn
 
-from neps.optimizers.bayesian_optimization.kernels import (
-    GraphKernelMapping,
-    StationaryKernelMapping,
-)
+from neps.optimizers.bayesian_optimization.kernels import KernelMapping
 from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
     ComprehensiveGPHierarchy,
 )
@@ -196,7 +193,7 @@ if __name__ == "__main__":
     verbose = False
     # set to 2 to use graph meta features else 0
     d_graph_features = 0
-    print(f'd_graph_features={d_graph_features}')
+    print(f"d_graph_features={d_graph_features}")
     # set whether to use stationary kernels
     if d_graph_features == 0:
         hp_kernels = []

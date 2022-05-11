@@ -1,7 +1,7 @@
-from .gp import ComprehensiveGP
+from .gp import GPModel
 from .gp_hierarchy import ComprehensiveGPHierarchy
 
 SurrogateModelMapping = {
-    "gp": ComprehensiveGP,
+    "gp": GPModel,
     "gp_hierarchy": ComprehensiveGPHierarchy,
 }

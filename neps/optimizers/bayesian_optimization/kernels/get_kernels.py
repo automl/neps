@@ -7,7 +7,6 @@ from ....search_spaces.numerical.categorical import CategoricalParameter
 from ....search_spaces.numerical.float import FloatParameter
 from ....search_spaces.numerical.integer import IntegerParameter
 from ....utils.common import has_instance
-from . import GraphKernelMapping, StationaryKernelMapping
 
 
 def get_kernels(

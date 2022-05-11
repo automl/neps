@@ -1,20 +1,109 @@
-from copy import deepcopy
-from math import sqrt
-from typing import Tuple, Union
+from __future__ import annotations
 
+import botorch
+import gpytorch
 import numpy as np
 import torch
 
+from ....search_spaces import CategoricalParameter, NumericalParameter
+from .base_kernel import Kernel
 
-class Stationary:
+
+class StationaryKernel(Kernel):
+    # pylint: disable=abstract-method
+    def __init__(
+        self,
+        ard_num_dims: None | float = None,
+        scale_kwargs=None,
+        **kwargs,
+    ):
+        self.ard_num_dims = ard_num_dims
+        self.scale_kwargs = scale_kwargs or {}
+        super().__init__(**kwargs)
+
+    def _kernel_builder(
+        self, hp_shapes, kernel_class, kernel_kwargs=None, scale_kwargs=None
+    ):
+        return gpytorch.kernels.ScaleKernel(
+            kernel_class(
+                **{
+                    "ard_num_dims": self.get_tensor_length(hp_shapes),
+                    "active_dims": self.get_active_dims(hp_shapes),
+                    "lengthscale_prior": gpytorch.priors.GammaPrior(3.0, 6.0),
+                    **(kernel_kwargs or {}),
+                    **self.kernel_kwargs,
+                }
+            ),
+            **{
+                "outputscale_prior": gpytorch.priors.GammaPrior(2.0, 0.15),
+                **(scale_kwargs or {}),
+                **self.scale_kwargs,
+            },
+        )
+
+
+class BaseNumericalKernel(StationaryKernel):
+    # pylint: disable=abstract-method
+    def does_apply_on(self, hp):
+        return isinstance(hp, NumericalParameter) and not isinstance(
+            hp, CategoricalParameter
+        )
+
+
+class MaternKernel(BaseNumericalKernel):
+    def __init__(self, nu: float = 2.5, **kwargs):
+        self.nu = nu
+        super().__init__(**kwargs)
+
+    def build(self, hp_shapes):
+        return self._kernel_builder(
+            hp_shapes, gpytorch.kernels.MaternKernel, {"nu": self.nu}
+        )
+
+
+class BaseCategoricalKernel(StationaryKernel):
+    # pylint: disable=abstract-method
+    def does_apply_on(self, hp):
+        return isinstance(hp, CategoricalParameter)
+
+
+class CategoricalBotorchKernel(BaseCategoricalKernel):
+    def build(self, hp_shapes):
+        return self._kernel_builder(
+            hp_shapes,
+            botorch.models.kernels.CategoricalKernel,
+        )
+
+
+class GptHammingKernel(gpytorch.kernels.Kernel):
+    has_lengthscale = True
+    is_stationary = True
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs) -> torch.Tensor:
+        assert not kwargs["diag"] and not kwargs["last_dim_is_batch"]
+
+        indicator = x1.unsqueeze(1) != x2
+        K = (-1 / (2 * self.lengthscale**2) * indicator).mean(axis=-1)
+        return torch.exp(K)
+
+
+class HammingKernel(BaseCategoricalKernel):
+    def build(self, hp_shapes):
+        return self._kernel_builder(hp_shapes, GptHammingKernel)
+
+
+# TODO : convert kernels to GPyTorch kernels
+
+
+class Stationary:  # TODO: remove
     """Here we follow the structure of GPy to build a sub class of stationary kernel.
     All the classes (i.e. the class of stationary kernel_operators) derived from this
     class use the scaled distance to compute the Gram matrix."""
 
     def __init__(
         self,
-        lengthscale: Union[float, Tuple[float, ...]] = 1.0,
-        lengthscale_bounds: Tuple[float, float] = (
+        lengthscale=1.0,
+        lengthscale_bounds=(
             np.exp(-6.754111155189306),
             np.exp(0.0858637988771976),
         ),
@@ -45,7 +134,7 @@ class Stationary:
             return self._gram
         K = self.forward(x1, l=l)
         if save_gram_matrix:
-            self._train = deepcopy(x1)
+            self._train = x1
             assert isinstance(K, torch.Tensor), "it doesnt work with np arrays.."
             self._gram = K.clone()
         return K
@@ -112,66 +201,6 @@ class LayeredRBFKernel(RBFKernel):
         return super().forward(x1, x2, M, **kwargs)
 
 
-class Matern32Kernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
-        if l is None:
-            l = self.lengthscale
-        dist = _scaled_distance(l, x1, x2)
-        if isinstance(dist, torch.Tensor):
-            return (
-                self.outputscale * (1 + sqrt(3.0) * dist) * torch.exp(-sqrt(3.0) * dist)
-            )
-        return self.outputscale * (1 + sqrt(3.0) * dist) * np.exp(-sqrt(3.0) * dist)
-
-
-class Matern52Kernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
-        if l is None:
-            l = self.lengthscale
-        dist = _scaled_distance(l, x1, x2)
-        sq_dist = dist**2
-        if isinstance(dist, torch.Tensor):
-            return (
-                self.outputscale
-                * (1 + sqrt(5.0) * dist + 5.0 / 3.0 * sq_dist)
-                * torch.exp(-sqrt(5.0) * dist)
-            )
-        return (
-            self.outputscale
-            * (1 + sqrt(5.0) * dist + 5.0 / 3.0 * sq_dist)
-            * np.exp(-sqrt(5.0) * dist)
-        )
-
-    def update_hyperparameters(self, lengthscale):
-        if lengthscale is None or "continuous" not in lengthscale.keys():
-            return
-        lengthscale = lengthscale["continuous"]
-        super().update_hyperparameters(lengthscale=lengthscale)
-
-
-class HammingKernel(Stationary):
-    def forward(self, x1, x2=None, l=None, **kwargs):  # pylint: disable=W0613
-        if l is None:
-            dist = _hamming_distance(
-                self.lengthscale,
-                x1,
-                x2,
-            )
-        else:
-            dist = _hamming_distance(
-                l,
-                x1,
-                x2,
-            )
-        return self.outputscale * dist
-
-    def update_hyperparameters(self, lengthscale):
-        if lengthscale is None or "categorical" not in lengthscale.keys():
-            return
-        lengthscale = lengthscale["categorical"]
-        super().update_hyperparameters(lengthscale=lengthscale)
-
-
 class RationalQuadraticKernel(Stationary):
     def __init__(self, lengthscale, outputscale=1.0, power=2.0, **kwargs):
         super().__init__(lengthscale, outputscale, **kwargs)
@@ -235,37 +264,5 @@ def _scaled_distance(lengthscale, X, X2=None, sq_dist=False):
         )
     else:
         # ARD kernel - one lengthscale per dimension
-        _check_lengthscale(lengthscale, X)
         dist = _unscaled_distance(X / lengthscale, X2 / lengthscale)
         return dist if not sq_dist else dist**2
-
-
-def _hamming_distance(lengthscale, X, X2=None):
-    if X2 is None:
-        X2 = X
-
-    def _distance(X, X2, lengthscale=1.0):
-        if isinstance(lengthscale, torch.Tensor):
-            lengthscale = lengthscale.detach().numpy()
-        indicator = np.expand_dims(X, axis=1) != X2
-        K = (-1 / (2 * lengthscale**2) * indicator).sum(axis=2)
-        K = np.exp(K)
-        return torch.from_numpy(K)
-
-    if isinstance(lengthscale, float) or len(lengthscale) == 1:
-        return _distance(X, X2) / lengthscale
-    else:
-        _check_lengthscale(lengthscale, X)
-        return _distance(X, X2, lengthscale)
-
-
-def _check_lengthscale(lengthscale, X):
-    x_shape = len(X[0]) if isinstance(X, list) else X.shape[1]
-    assert len(lengthscale) == x_shape, (
-        "For a non-scaler theta, it needs to be of the same length as the dim"
-        "of the "
-        "input data, but got input dim of "
-        + str(x_shape)
-        + " and lengthscale dimension of "
-        + str(lengthscale.shape[0])
-    )

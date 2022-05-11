@@ -12,18 +12,17 @@ class HpTensorShape:
         self.bounds = None  # First included, last excluded
 
     def set_bounds(self, begin):
+        assert self.bounds is None
         self.bounds = (begin, begin + self.length)
 
     @property
     def begin(self):
-        if self.bounds is None:
-            raise ValueError("Bounds not set")
+        assert self.bounds is not None
         return self.bounds[0]
 
     @property
     def end(self):
-        if self.bounds is None:
-            raise ValueError("Bounds not set")
+        assert self.bounds is not None
         return self.bounds[1]
 
     @property
