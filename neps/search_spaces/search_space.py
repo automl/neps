@@ -207,6 +207,8 @@ class SearchSpace(collections.abc.Mapping):
             "graphs": [],
         }
         for hp in self.values():
+            if hp.is_fidelity:
+                continue
             hp_value = hp.normalized().value
             if isinstance(hp, CategoricalParameter):
                 hps["categorical"].append(hp_value)
@@ -240,6 +242,8 @@ class SearchSpace(collections.abc.Mapping):
             return None
         features = {"continuous": 0, "categorical": 0}
         for hp in self.values():
+            if hp.is_fidelity:
+                continue
             if isinstance(hp, CategoricalParameter):
                 features["categorical"] += 1
             elif isinstance(hp, NumericalParameter):

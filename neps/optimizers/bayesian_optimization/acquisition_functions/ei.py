@@ -1,4 +1,4 @@
-from copy import deepcopy
+# from copy import deepcopy
 from typing import Iterable, Union
 
 import numpy as np
@@ -55,14 +55,9 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         Return the negative expected improvement at the query point x2
         """
         assert self.incumbent is not None, "EI function not fitted on model"
-        if x[0].has_fidelity and self.optimize_on_max_fidelity:
-            _x = deepcopy(x)
-            # pylint: disable=expression-not-assigned
-            [elem.set_to_max_fidelity() for elem in _x]
-        else:
-            _x = x
+
         try:
-            mu, cov = self.surrogate_model.predict(_x)
+            mu, cov = self.surrogate_model.predict(x)
         except ValueError as e:
             raise e
             # return -1.0  # in case of error. return ei of -1
@@ -88,7 +83,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
                 sigma_n + torch.diag(cov)
             )
-        if isinstance(_x, list) and asscalar:
+        if isinstance(x, list) and asscalar:
             return ei.detach().numpy()
         if asscalar:
             ei = ei.detach().numpy().item()

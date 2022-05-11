@@ -31,6 +31,7 @@ class BayesianOptimization(BaseOptimizer):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: str | BaseAcquisition = "EI",
+        pibo_beta: int = 10,
         log_prior_weighted: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
@@ -52,6 +53,7 @@ class BayesianOptimization(BaseOptimizer):
             graph_kernels: Kernels for NAS
             hp_kernels: Kernels for HPO
             acquisition: Acquisition strategy
+            pibo_beta: pibo beta parameter
             log_prior_weighted: if to use log for prior
             acquisition_sampler: Acquisition function fetching strategy
             random_interleave_prob: Frequency at which random configurations are sampled
@@ -124,7 +126,7 @@ class BayesianOptimization(BaseOptimizer):
         )
         if self.pipeline_space.has_prior:
             self.acquisition = DecayingPriorWeightedAcquisition(
-                self.acquisition, log=log_prior_weighted
+                self.acquisition, log=log_prior_weighted, pibo_beta=pibo_beta
             )
 
         self.acquisition_sampler = instance_from_map(
@@ -147,10 +149,19 @@ class BayesianOptimization(BaseOptimizer):
     ) -> None:
         # TODO: filter out error configs as they can not be used for modeling?
         # TODO: read out cost if they exist
-        train_x = [el.config for el in previous_results.values()]
-        train_y = [get_loss(el.result) for el in previous_results.values()]
+
+        if hasattr(self, "is_multi_fidelity") and self.is_multi_fidelity:
+            train_x, train_y = self.filter_full_evaluations(previous_results)
+        else:
+            train_x = [el.config for el in previous_results.values()]
+            train_y = [get_loss(el.result) for el in previous_results.values()]
+        if hasattr(self, "is_multi_fidelity") and self.is_multi_fidelity:
+            self._pending_evaluations, _ = self.filter_full_evaluations(
+                pending_evaluations
+            )
+        else:
+            self._pending_evaluations = [el for el in pending_evaluations.values()]
         self._num_train_x = len(train_x)
-        self._pending_evaluations = [el for el in pending_evaluations.values()]
         if not self.is_init_phase():
             try:
                 if len(self._pending_evaluations) > 0:

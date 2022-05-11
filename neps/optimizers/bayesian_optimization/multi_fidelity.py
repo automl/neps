@@ -27,6 +27,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             pipeline_space=pipeline_space,
             **bo_kwargs,
         )
+        self.is_multi_fidelity = True  # required for MF-specific ablation
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper
         self.eta = eta
@@ -102,6 +103,18 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                     (self.observed_configs, _df)
                 ).sort_index()
         return
+
+    def filter_full_evaluations(self, eval_list):
+        """Only keep observations that were made on the full budget/fidelity"""
+        X = []
+        Y = []
+        for config_id, config_val in eval_list.items():
+            _config, _rung = config_id.split("_")
+            if int(_rung) != self.max_rung:
+                continue
+            X.append(config_val.config)
+            Y.append(get_loss(config_val.result))
+        return X, Y
 
     def load_results(
         self,
