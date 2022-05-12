@@ -60,7 +60,7 @@ class SearchSpace(collections.abc.Mapping):
             self.hyperparameters[key] = hyperparameter
 
             # Only integer / float parameters can be fidelities, so check these
-            if hyperparameter.is_fidelity:
+            if hasattr(hyperparameter, "is_fidelity") and hyperparameter.is_fidelity:
                 if self.fidelity is not None:
                     raise ValueError(
                         "neps only supports one fidelity parameter in the pipeline space,"
