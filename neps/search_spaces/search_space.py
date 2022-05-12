@@ -60,7 +60,7 @@ class SearchSpace(collections.abc.Mapping):
             self.hyperparameters[key] = hyperparameter
 
             # Only integer / float parameters can be fidelities, so check these
-            if hasattr(hyperparameter, "is_fidelity") and hyperparameter.is_fidelity:
+            if hyperparameter.is_fidelity:
                 if self.fidelity is not None:
                     raise ValueError(
                         "neps only supports one fidelity parameter in the pipeline space,"
@@ -124,7 +124,7 @@ class SearchSpace(collections.abc.Mapping):
         else:
             raise NotImplementedError("No such mutation strategy!")
 
-        child = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config)))
+        child = SearchSpace(**new_config)
 
         return child
 
