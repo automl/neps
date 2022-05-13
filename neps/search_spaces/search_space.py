@@ -5,6 +5,7 @@ import pprint
 import random
 from collections import OrderedDict
 from copy import deepcopy
+from itertools import product
 
 import ConfigSpace as CS
 import numpy as np
@@ -123,7 +124,7 @@ class SearchSpace(collections.abc.Mapping):
         else:
             raise NotImplementedError("No such mutation strategy!")
 
-        child = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config)))
+        child = SearchSpace(**new_config)
 
         return child
 
@@ -222,17 +223,20 @@ class SearchSpace(collections.abc.Mapping):
             for hp_name, hp in self.hyperparameters.items()
         }
 
-    def add_constant_hyperparameter(self, value=None):
+    def add_constant_hyperparameter(self, name=None, value=None):
         if value is not None:
             hp = ConstantParameter(value=value)
         else:
             raise NotImplementedError("Adding hps is supported only by value")
-        self._add_hyperparameter(hp)
+        self._add_hyperparameter(name, hp)
 
-    def _add_hyperparameter(self, hp=None):
-        id_new_hp = len(self.hyperparameters)
-        while str(id_new_hp) in self.hyperparameters:
-            id_new_hp += 1
+    def _add_hyperparameter(self, name=None, hp=None):
+        if name is None:
+            id_new_hp = len(self.hyperparameters)
+            while str(id_new_hp) in self.hyperparameters:
+                id_new_hp += 1
+        else:
+            id_new_hp = name
         self.hyperparameters[str(id_new_hp)] = hp
 
     def get_vectorial_dim(self):
@@ -248,6 +252,36 @@ class SearchSpace(collections.abc.Mapping):
 
     def set_to_max_fidelity(self):
         self.fidelity.value = self.fidelity.upper
+
+    def get_search_space_grid(self, grid_step_size: int = 10):
+        param_ranges = []
+        for hp in self.hyperparameters.values():
+            if isinstance(hp, Graph):
+                raise ValueError("Trying to create a grid for graphs!")
+            if isinstance(hp, CategoricalParameter):
+                param_ranges.append(hp.choices)
+            else:
+                if hp.log:
+                    grid = np.exp(
+                        np.linspace(np.log(hp.lower), np.log(hp.upper), grid_step_size)
+                    )
+                else:
+                    grid = np.linspace(hp.lower, hp.upper, grid_step_size)
+                grid = np.clip(grid, hp.lower, hp.upper).astype(np.float32)
+                grid = grid.astype(int) if isinstance(hp, IntegerParameter) else grid
+                grid = np.unique(grid).tolist()
+                param_ranges.append(grid)
+        full_grid = product(*param_ranges)
+
+        configs = []
+        for _config_dict in full_grid:
+            _config = self.copy()
+            for key, value in dict(
+                zip(self.hyperparameters.keys(), _config_dict)
+            ).items():
+                _config.add_constant_hyperparameter(name=key, value=value)
+            configs.append(_config)
+        return configs
 
     def serialize(self):
         return {key: hp.serialize() for key, hp in self.hyperparameters.items()}

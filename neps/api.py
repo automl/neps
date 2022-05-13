@@ -96,6 +96,7 @@ def run(
         "random_search",
         "cost_cooling",
         "mf_bayesian_optimization",
+        "grid_search",
     ]
     | BaseOptimizer = "default",
     serializer: Literal["yaml", "dill", "json"] = "yaml",

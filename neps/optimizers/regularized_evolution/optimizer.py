@@ -29,6 +29,7 @@ class RegularizedEvolution(BaseOptimizer):
         self.population_size = population_size
         self.sample_size = sample_size
         self.population: list = []
+        self.pending_evaluations: list = []
         self.num_train_x: int = 0
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
@@ -41,10 +42,7 @@ class RegularizedEvolution(BaseOptimizer):
                 train_x[-self.population_size :], train_y[-self.population_size :]
             )
         ]
-        if bool(pending_evaluations):
-            raise NotImplementedError(
-                "Pending evaluations are currently not supported for RegularizedEvolution"
-            )
+        self.pending_evaluations = [el for el in pending_evaluations.values()]
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
         if len(self.population) < self.population_size:
@@ -52,11 +50,16 @@ class RegularizedEvolution(BaseOptimizer):
         else:
             candidates = [random.choice(self.population) for _ in range(self.sample_size)]
             parent = min(candidates, key=lambda c: c[1])[0]
-            config = self._mutate(parent)
-            if config is False:
-                config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True
-                )
+            patience = self.patience
+            while patience > 0:
+                config = self._mutate(parent)
+                if config is False:
+                    config = self.pipeline_space.sample(
+                        patience=self.patience, user_priors=True
+                    )
+                if config not in self.pending_evaluations:
+                    break
+                patience -= 1
         config_id = str(self.num_train_x + 1)
         return config.hp_values(), config_id, None
 
