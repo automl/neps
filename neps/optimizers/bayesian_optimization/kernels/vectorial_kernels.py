@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import math
-
 import botorch
 import gpytorch
 import numpy as np
 import torch
 
 from ....search_spaces import CategoricalParameter, NumericalParameter
+from ..default_consts import LENGTHSCALE_MAX, LENGTHSCALE_MIN
 from .base_kernel import Kernel
 
 
@@ -33,8 +32,8 @@ class StationaryKernel(Kernel):
                     "active_dims": self.get_active_dims(hp_shapes),
                     "lengthscale_prior": gpytorch.priors.GammaPrior(3.0, 6.0),
                     "lengthscale_constraint": gpytorch.constraints.Interval(
-                        math.exp(-6.754111155189306),
-                        math.exp(0.0858637988771976),
+                        LENGTHSCALE_MIN,
+                        LENGTHSCALE_MAX,
                     ),
                     **(kernel_kwargs or {}),
                     **self.kernel_kwargs,

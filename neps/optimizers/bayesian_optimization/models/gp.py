@@ -7,21 +7,24 @@ import gpytorch
 import torch
 
 from ....search_spaces.search_space import SearchSpace
-from ..default_consts import DEFAULT_MEAN, EPSILON
+from ..default_consts import (
+    DEFAULT_COMBINE,
+    DEFAULT_MEAN,
+    EPSILON,
+    MIN_INFERRED_NOISE_LEVEL,
+)
 from ..kernels import Kernel, instantiate_kernel
 from ..means import GpMean, MeanComposer
 
 
 class GPTorchModel(gpytorch.models.ExactGP):
-    MIN_INFERRED_NOISE_LEVEL = 1e-4
-
     def __init__(self, train_x, train_y, mean, kernel):
         noise_prior = gpytorch.priors.GammaPrior(1.1, 0.05)
         noise_prior_mode = (noise_prior.concentration - 1) / noise_prior.rate
         likelihood = gpytorch.likelihoods.GaussianLikelihood(
             noise_prior=noise_prior,
             noise_constraint=gpytorch.constraints.GreaterThan(
-                self.MIN_INFERRED_NOISE_LEVEL,
+                MIN_INFERRED_NOISE_LEVEL,
                 initial_value=noise_prior_mode,
             ),
         )
@@ -42,7 +45,7 @@ class GPModel:
         pipeline_space,
         means: Iterable[GpMean] = None,
         kernels: Iterable[Kernel] = None,
-        combine_kernel: str = "product",
+        combine_kernel: str = DEFAULT_COMBINE,
         logger=None,
     ):
         self.logger = logger
