@@ -7,10 +7,25 @@ class Kernel:
     def __init__(
         self,
         active_hps: None | list = None,
+        use_as_default=False,
         kernel_kwargs=None,
     ):
+        """Base Kernel class
+
+        Args:
+            active_hps: Name of the hyperparameters on which the kernel will be applied.
+                If not specified, it will be applied on all hyperparameters with a matching type.
+            use_as_default: If True, the Kernel will be applied only to hyperparameters
+                not assigned to other kernels
+            kernel_kwargs: arguments given to the GPyTorch kernel
+        """
         self.active_hps = active_hps
         self.kernel_kwargs = kernel_kwargs or {}
+        self.use_as_default = use_as_default
+
+        if self.use_as_default:
+            if self.active_hps is None:
+                self.active_hps = []
 
     @abstractmethod
     def does_apply_on(self, hp):

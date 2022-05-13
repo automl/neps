@@ -13,7 +13,7 @@ from .acquisition_functions.base_acquisition import BaseAcquisition
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
 from .acquisition_samplers import AcquisitionSamplerMapping
 from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from .kernels.get_kernels import get_kernels
+from .kernels import Kernel
 from .models import SurrogateModelMapping
 
 
@@ -26,10 +26,11 @@ class BayesianOptimization(BaseOptimizer):
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
         surrogate_model_args: dict = None,
-        optimal_assignment: bool = False,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
+        kernels: list[str | Kernel] = None,
+        # optimal_assignment: bool = False,
+        # domain_se_kernel: str = None,
+        # graph_kernels: list = None,
+        # hp_kernels: list = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
@@ -47,10 +48,7 @@ class BayesianOptimization(BaseOptimizer):
             surrogate_model: Surrogate model
             surrogate_model_args: Arguments that will be given to the surrogate model
                 (the Gaussian processes model).
-            optimal_assignment: whether the optimal assignment kernel should be used.
-            domain_se_kernel: Stationary kernel name
-            graph_kernels: Kernels for NAS
-            hp_kernels: Kernels for HPO
+            kernels: Kernels for NAS-HPI
             acquisition: Acquisition strategy
             log_prior_weighted: if to use log for prior
             acquisition_sampler: Acquisition function fetching strategy
@@ -86,35 +84,15 @@ class BayesianOptimization(BaseOptimizer):
         self._pending_evaluations: list = []
         self._model_update_failed: bool = False
 
-        surrogate_model_args = surrogate_model_args or {}
-        graph_kernels, hp_kernels = get_kernels(
-            self.pipeline_space,
-            domain_se_kernel,
-            graph_kernels,
-            hp_kernels,
-            optimal_assignment,
-        )
-        if "graph_kernels" not in surrogate_model_args:
-            surrogate_model_args["graph_kernels"] = graph_kernels
-        if "hp_kernels" not in surrogate_model_args:
-            surrogate_model_args["hp_kernels"] = hp_kernels
-
-        if (
-            not surrogate_model_args["graph_kernels"]
-            and not surrogate_model_args["hp_kernels"]
-        ):
-            raise ValueError("No kernels are provided!")
-
-        if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = self.pipeline_space.get_vectorial_dim()
-
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
             surrogate_model,
             name="surrogate model",
-            kwargs=surrogate_model_args,
+            kwargs={
+                "pipeline_space": pipeline_space,
+                "kernels": kernels,
+                **(surrogate_model_args or {}),
+            },
         )
 
         self.acquisition = instance_from_map(
@@ -158,7 +136,7 @@ class BayesianOptimization(BaseOptimizer):
                     # not finished yet. For this we fit a model on the finished
                     # evaluations and add these to the other results to fit another model.
                     self.surrogate_model.fit(train_x, train_y)
-                    ys, _ = self.surrogate_model.predict(self._pending_evaluations)
+                    ys = self.surrogate_model.predict_mean(self._pending_evaluations)
                     train_x += self._pending_evaluations
                     train_y += list(ys.detach().numpy())
 

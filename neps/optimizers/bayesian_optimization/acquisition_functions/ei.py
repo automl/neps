@@ -55,18 +55,16 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         Return the negative expected improvement at the query point x2
         """
         assert self.incumbent is not None, "EI function not fitted on model"
+        assert x, "No configurations for evaluation"
+
         if x[0].has_fidelity and self.optimize_on_max_fidelity:
-            _x = deepcopy(x)
-            # pylint: disable=expression-not-assigned
-            [elem.set_to_max_fidelity() for elem in _x]
-        else:
-            _x = x
-        try:
-            mu, cov = self.surrogate_model.predict(_x)
-        except ValueError as e:
-            raise e
-            # return -1.0  # in case of error. return ei of -1
-        std = torch.sqrt(torch.diag(cov))
+            x = deepcopy(x)
+            for conf in x:
+                conf.set_to_max_fidelity()
+
+        mu, covariance_matrix = self.surrogate_model.predict(x)
+        cov = torch.diag(covariance_matrix)
+        std = torch.sqrt(cov)
         mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
         # u = (mu - mu_star - self.xi) / std
@@ -75,23 +73,21 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             # we expect that f_min is in log-space
             f_min = mu_star - self.xi
             v = (f_min - mu) / std
-            ei = torch.exp(f_min) * gauss.cdf(v) - torch.exp(
-                0.5 * torch.diag(cov) + mu
-            ) * gauss.cdf(v - std)
+            ei = torch.exp(f_min) * gauss.cdf(v) - torch.exp(0.5 * cov + mu) * gauss.cdf(
+                v - std
+            )
         else:
             u = (mu_star - mu - self.xi) / std
             ucdf = gauss.cdf(u)
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf
         if self.augmented_ei:
-            sigma_n = self.surrogate_model.likelihood
+            sigma_n = self.surrogate_model.gp.likelihood.noise
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
-                sigma_n + torch.diag(cov)
+                sigma_n + cov
             )
-        if isinstance(_x, list) and asscalar:
-            return ei.detach().numpy()
         if asscalar:
-            ei = ei.detach().numpy().item()
+            return ei.detach().numpy()
         return ei
 
     def set_state(self, surrogate_model):
@@ -99,11 +95,8 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
 
         # Compute incumbent
         if self.in_fill == "best":
-            # return torch.max(surrogate_model.y_)
-            self.incumbent = torch.min(self.surrogate_model.y_)
+            self.incumbent = torch.min(self.train_y_tensor)
         else:
-            x = self.surrogate_model.x
-            mu_train, _ = self.surrogate_model.predict(x)
-            # incumbent_idx = torch.argmax(mu_train)
+            mu_train = self.surrogate_model.predict_mean(self.train_x)
             incumbent_idx = torch.argmin(mu_train)
-            self.incumbent = self.surrogate_model.y_[incumbent_idx]
+            self.incumbent = self.train_y_tensor[incumbent_idx]

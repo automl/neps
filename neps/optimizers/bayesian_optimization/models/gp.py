@@ -5,14 +5,11 @@ from typing import Iterable
 import botorch
 import gpytorch
 import torch
-from metahyper.utils import instance_from_map
 
-from ..kernels import CombineKernelMapping, Kernel, KernelMapping
+from ....search_spaces.search_space import SearchSpace
+from ..default_consts import DEFAULT_MEAN, EPSILON
+from ..kernels import Kernel, instantiate_kernel
 from ..means import GpMean, MeanComposer
-
-DEFAULT_KERNELS = ["m52", "categorical"]
-DEFAULT_MEAN = "constant"
-EPSILON = 1e-9
 
 
 class GPTorchModel(gpytorch.models.ExactGP):
@@ -50,43 +47,17 @@ class GPModel:
     ):
         self.logger = logger
         self.gp = None
+        self.fitted_on = None
         self.tensor_size = None
         self.all_hp_shapes = None
         self.y_mean = None
         self.y_std = None
 
-        # Instantiate means
+        # Instantiate means & kernels
         self.mean = MeanComposer(
             pipeline_space, *(means or []), fallback_default_mean=DEFAULT_MEAN
         )
-
-        # Instanciate kernels
-        self.kernel = instance_from_map(
-            CombineKernelMapping, combine_kernel, "combine kernel", as_class=True
-        )(*(kernels or []))
-
-        active_hps = self.kernel.assign_hyperparameters(dict(pipeline_space))
-
-        # Assign default kernels to HP without ones
-        default_kernels = [
-            instance_from_map(KernelMapping, k, "kernel", kwargs={"active_hps": []})
-            for k in DEFAULT_KERNELS
-        ]
-
-        for hp_name, hp in pipeline_space.items():
-            if not hp_name in active_hps:
-                for def_kernel in default_kernels:
-                    if def_kernel.does_apply_on(hp):
-                        def_kernel.active_hps.append(hp_name)
-                        break
-                else:
-                    raise ValueError(
-                        f"Can't find any default kernel for hyerparameter {hp_name} : {hp}"
-                    )
-        for def_kernel in default_kernels:
-            if def_kernel.active_hps:
-                self.kernel.kernels.append(def_kernel)
-                self.kernel.active_hps.extend(def_kernel.active_hps)
+        self.kernel = instantiate_kernel(pipeline_space, kernels, combine_kernel)
 
     def _build_input_tensor(self, x_configs):
         assert isinstance(x_configs, list)
@@ -128,6 +99,7 @@ class GPModel:
 
         x_tensor = self._build_input_tensor(train_x)
         y_tensor = self._build_output_tensor(train_y, set_y_scale=True)
+        self.fitted_on = ((train_x, train_y), (x_tensor, y_tensor))
 
         # Then build the GPyTorch model
         gpytorch_kernel = self.kernel.build(self.all_hp_shapes)
@@ -151,6 +123,17 @@ class GPModel:
         )
         return mvn
 
-    def predict(self, x_config):
-        mvn = self.predict_distribution([x_config])
-        return mvn.mean.reshape(tuple()), mvn.covariance_matrix.reshape(tuple())
+    def predict(self, x_config: Iterable[SearchSpace] | SearchSpace):
+        x = [x_config] if isinstance(x_config, SearchSpace) else x_config
+        mvn = self.predict_distribution(x)
+        mean, cov = mvn.mean, mvn.covariance_matrix
+
+        if isinstance(x_config, SearchSpace):
+            mean, cov = mean.reshape(tuple()), cov.reshape(tuple())
+        return mean, cov
+
+    def predict_mean(self, x_config: Iterable[SearchSpace] | SearchSpace):
+        """For quicker predictions of only the mean"""
+        if isinstance(x_config, SearchSpace):
+            return self.predict(x_config)[0]
+        return torch.tensor([self.predict(x)[0] for x in x_config])

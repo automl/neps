@@ -5,6 +5,7 @@ from typing import Callable
 
 from .base_kernel import Kernel
 from .combine_kernels import CombineKernel, ProductKernel, SumKernel
+from .get_kernels import instantiate_kernel
 from .vectorial_kernels import CategoricalBotorchKernel, HammingKernel, MaternKernel
 
 # GraphKernelMapping: dict[str, Callable] = {

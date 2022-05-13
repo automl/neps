@@ -27,6 +27,7 @@ types-termcolor = "^1.1.2"
 scipy = "^1.7"
 torch = ">=1.7.0"
 matplotlib = "^3.4"
+botorch = ">=0.6.0"
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
