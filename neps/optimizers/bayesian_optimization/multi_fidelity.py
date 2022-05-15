@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from copy import deepcopy
 
 import numpy as np
@@ -18,9 +19,10 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self,
         pipeline_space: SearchSpace,
         eta: int = 4,
-        early_stopping_rate: int = 0,
+        early_stopping_rate: int | None = None,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         model_search: bool = True,
+        hb_type: str = "sample",
         **bo_kwargs,
     ):
         super().__init__(
@@ -29,7 +31,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         )
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper
-        self.eta = eta
+        self.eta = int(eta)
         self.early_stopping_rate = early_stopping_rate
         # `max_budget_init` checks for the number of configurations that have been
         # evaluated at the target budget
@@ -40,7 +42,19 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self.stopping_rate_limit = np.floor(
             np.log(self.max_budget / self.min_budget) / np.log(self.eta)
         ).astype(int)
-        assert self.early_stopping_rate <= self.stopping_rate_limit
+        if self.early_stopping_rate is not None:
+            assert (
+                self.early_stopping_rate <= self.stopping_rate_limit
+            ), f"s needs to be <= {self.stopping_rate_limit}"
+        assert hb_type in ["loop", "sample"]
+        self.hb_type = hb_type
+        if self.early_stopping_rate is None:
+            # consider all possible values like Hyperband
+            self.brackets = list(range(self.stopping_rate_limit + 1))
+            self.early_stopping_rate = None
+        else:
+            # Hyperband with one fixed early_stopping_rate is Successive Halving
+            self.brackets = [int(self.early_stopping_rate)]
 
         # maps rungs to a fidelity value
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
@@ -55,10 +69,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self.rung_members_performance: dict = {k: [] for k in self.rung_map.keys()}
         self.rung_promotions: dict = dict()
         self.total_fevals = 0
+        print(f"Brackets: {self.brackets}")
+        print(f"Rungs: {self.rung_map}")
 
-    def _get_rung_map(self, s: int = 0) -> dict:
+    def _get_rung_map(self, s: int = None) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
-        assert s <= self.stopping_rate_limit
+        if s is None:
+            s = 0
         new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
             np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
@@ -77,47 +94,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             _max_budget /= self.eta
         return rung_map
 
-    # TODO: check pending
-    def _load_previous_observations(
-        self, previous_results: dict[str, ConfigResult]
-    ) -> None:
-        for config_id, config_val in previous_results.items():
-            _config, _rung = config_id.split("_")
-            if int(_config) in self.observed_configs.index:
-                # config already recorded in dataframe
-                rung_recorded = self.observed_configs.at[int(_config), "rung"]
-                if rung_recorded < int(_rung):
-                    # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = get_loss(
-                        config_val.result
-                    )
-            else:
-                _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), get_loss(config_val.result)]],
-                    columns=self.observed_configs.columns,
-                    index=pd.Series(int(_config)),  # key for config_id
-                )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
-        return
-
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
-        # TODO: Read in rungs using the config id (alternatively, use get/load state)
+        # reading evaluation info to set optimizer state
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
-
-        if len(previous_results) > 0 and len(self.observed_configs) == 0:
-            # previous optimization run exists and needs to be loaded
-            self._load_previous_observations(previous_results)
-
-        if not self.is_init_phase():
-            # to build surrogate only after initial design
-            super().load_results(previous_results, pending_evaluations)
 
         self.total_fevals = len(previous_results)
         # iterates over all previous results and updates the list of observed
@@ -158,8 +141,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
                 self.observed_configs.at[int(_config), "perf"] = None
 
+        # to update surrogate and set acquisition function state
+        if not self.is_init_phase():
+            # to build surrogate only after initial design
+            super().load_results(previous_results, pending_evaluations)
+
         # to account for incomplete evaluations from being promoted
-        _observed_configs = self.observed_configs.copy().dropna(inplace=False)
+        _observed_configs = self.observed_configs.dropna(inplace=False)
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.rung_members = {k: [] for k in range(self.max_rung)}
@@ -168,9 +156,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             self.rung_members[_rung] = _observed_configs.index[
                 _observed_configs.rung == _rung
             ].values
-            self.rung_members_performance[_rung] = _observed_configs.perf[
-                _observed_configs.rung == _rung
-            ].values
+            self.rung_members_performance[_rung] = _observed_configs.loc[
+                self.rung_members[_rung]
+            ].perf.values
+            # self.rung_members_performance[_rung] = _observed_configs.perf[
+            #     _observed_configs.rung == _rung
+            # ].values
         # identifying promotion list per rung
         self.rung_promotions = dict()
         for _rung in self.rung_map.keys():
@@ -211,13 +202,40 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             val = len(_observed_configs) <= self._initial_design_size
         return val
 
+    def _get_bracket(self):
+        if len(self.brackets) == 1:
+            return self.brackets[0]
+        if self.hb_type == "sample":
+            # sample from a weighted distribution
+            K = self.stopping_rate_limit
+
+            def calc_p(s):
+                # puts a probability of selection on each rung as given in
+                # https://arxiv.org/abs/2003.10865
+                return ((K + 1) / (K - s + 1)) * (self.eta ** (K - s))
+
+            p_s = np.array([calc_p(s) for s in self.brackets])
+            p_s /= np.sum(p_s)
+            s = np.random.choice(self.brackets, p=p_s)
+        elif self.hb_type == "loop":
+            # TODO: make this smarter, makes no sense to have equal weight on all rungs
+            warnings.warn(
+                "hb_type=`loop` is an experimental option and is not recommended for use!"
+            )
+            # iterates over all rungs one by one
+            s = self.brackets[0]
+            self.brackets = np.roll(self.brackets, shift=-1)
+        else:
+            raise ValueError("self.hb_type not in ['loop', 'sample']}")
+        return s
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         rung_to_promote = self.is_promotable()
         if rung_to_promote is not None:
             # promote existing config
-            row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
+            row = self.observed_configs.loc[self.rung_promotions[rung_to_promote][0]]
             config = deepcopy(row["config"])
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
@@ -243,7 +261,9 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                     patience=self.patience, user_priors=True, ignore_fidelity=True
                 )
             # assigning the fidelity to evaluate the config at the base rung
-            config.fidelity.value = self.rung_map[0]  # base rung is always 0
-            config_id = f"{len(self.observed_configs)}_{0}"
+            base_rung_for_bracket = self._get_bracket()
+            config.fidelity.value = self.rung_map[base_rung_for_bracket]
+            config_id = f"{len(self.observed_configs)}_{base_rung_for_bracket}"
             previous_config_id = None
+            print(f"Config ID generated: {config_id}")
         return config.hp_values(), config_id, previous_config_id  # type: ignore
