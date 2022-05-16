@@ -21,6 +21,8 @@ class BaseOptimizer(metahyper.Sampler):
         patience: int = 50,
         logger=None,
         budget: None | int | float = None,
+        loss_value_on_error: float = float("inf"),
+        cost_value_on_error: float = float("inf"),
     ):
         super().__init__(budget=budget)
         if patience < 1:
@@ -29,6 +31,8 @@ class BaseOptimizer(metahyper.Sampler):
         self.pipeline_space = pipeline_space
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
+        self.loss_value_on_error = loss_value_on_error
+        self.cost_value_on_error = cost_value_on_error
 
     @abstractmethod
     def load_results(
