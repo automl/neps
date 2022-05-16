@@ -28,6 +28,8 @@ from .search_spaces.search_space import SearchSpace, pipeline_space_from_configs
 
 def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
     working_directory = Path(config_working_directory, "../../")
+    # TODO (Nils): Should loss_value_on_error be passed here as well or continue with
+    #  the default inf?
     loss = get_loss(result)
 
     # 1. write all configs and losses

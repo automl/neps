@@ -10,6 +10,7 @@ from metahyper.api import ConfigResult
 
 from ..search_spaces.search_space import SearchSpace
 from ..utils.common import get_rnd_state, set_rnd_state
+from ..utils.result_utils import get_cost, get_loss
 
 
 class BaseOptimizer(metahyper.Sampler):
@@ -60,3 +61,13 @@ class BaseOptimizer(metahyper.Sampler):
         config = deepcopy(self.pipeline_space)
         config.load_from(config_dict)
         return config
+
+    def get_loss(self, result: str | dict | float) -> float | Any:
+        """Calls result.utils.get_loss() and passes the error handling through.
+        Please use self.get_loss() instead of get_loss() in all optimizer classes."""
+        return get_loss(result, loss_value_on_error=self.loss_value_on_error)
+
+    def get_cost(self, result: str | dict | float) -> float | Any:
+        """Calls result.utils.get_cost() and passes the error handling through.
+        Please use self.get_cost() instead of get_cost() in all optimizer classes."""
+        return get_cost(result, cost_value_on_error=self.cost_value_on_error)

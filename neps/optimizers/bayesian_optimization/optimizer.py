@@ -6,7 +6,6 @@ from typing import Any
 from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces.search_space import SearchSpace
-from ...utils.result_utils import get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.base_acquisition import BaseAcquisition
@@ -148,7 +147,7 @@ class BayesianOptimization(BaseOptimizer):
         # TODO: filter out error configs as they can not be used for modeling?
         # TODO: read out cost if they exist
         train_x = [el.config for el in previous_results.values()]
-        train_y = [get_loss(el.result) for el in previous_results.values()]
+        train_y = [self.get_loss(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
         self._pending_evaluations = [el for el in pending_evaluations.values()]
         if not self.is_init_phase():

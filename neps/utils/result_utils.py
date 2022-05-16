@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-# TODO: (Nils) adapt API and different optimizers to let user set cost_value_on_error and
-# loss_value_on_error
-
 
 # loss_value_on_error defaults to inf in order not be break existing functionality.
 def get_loss(
