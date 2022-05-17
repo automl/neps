@@ -20,6 +20,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         model_search: bool = True,
+        switch_to_bo: bool = False,
         **bo_kwargs,
     ):
         super().__init__(
@@ -34,6 +35,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # evaluated at the target budget
         self.initial_design_type = initial_design_type
         self.model_search = model_search
+        self.switch_to_bo = switch_to_bo
 
         # check to ensure no rung ID is negative
         self.stopping_rate_limit = np.floor(
@@ -43,6 +45,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
 
         # maps rungs to a fidelity value
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
+        print(self.rung_map)
         self.max_rung = len(self.rung_map) - 1
         self.fidelities = list(self.rung_map.values())
         # stores the observations made and the corresponding fidelity explored
@@ -210,6 +213,18 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             val = len(_observed_configs) <= self._initial_design_size
         return val
 
+    def _switch_to_bo(self):
+        """Switches to BO when eta evaluations seen at the highest fidelity"""
+        max_fidelity_evals = np.sum(self.observed_configs.rung == self.max_rung)
+        if self.switch_to_bo and max_fidelity_evals >= self.eta:
+            print("\nSwitching to BO!\n")
+            fidelity_value = self.rung_map[self.max_rung]  # base rung is always 0
+            config_id = f"{len(self.observed_configs)}_{self.max_rung}"
+        else:
+            fidelity_value = self.rung_map[0]  # base rung is always 0
+            config_id = f"{len(self.observed_configs)}_{0}"
+        return fidelity_value, config_id
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -241,8 +256,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=True, ignore_fidelity=True
                 )
-            # assigning the fidelity to evaluate the config at the base rung
-            config.fidelity.value = self.rung_map[0]  # base rung is always 0
-            config_id = f"{len(self.observed_configs)}_{0}"
+            # assigning the fidelity to evaluate the config at
+            config.fidelity.value, config_id = self._switch_to_bo()
             previous_config_id = None
         return config.hp_values(), config_id, previous_config_id  # type: ignore
