@@ -29,6 +29,10 @@ def extract_configs(configs: list) -> Tuple[list, list]:
     config_hps = [conf.get_normalized_hp_categories() for conf in configs]
     graphs = [hps["graphs"] for hps in config_hps]
 
+    _nested_graphs = np.array(graphs, dtype=object)
+    if _nested_graphs.ndim == 3:
+        graphs = _nested_graphs[:, :, 0].reshape(-1).tolist()
+
     return graphs, config_hps
 
 

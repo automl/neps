@@ -50,6 +50,8 @@ def status(
     for config_id, evaluation in previous_results.items():
         if evaluation.result == "error":
             num_error += 1
+        # TODO (Nils): Should loss_value_on_error be passed here as well or continue with
+        #  the default inf?
         if get_loss(evaluation.result) < best_loss:
             best_loss = get_loss(evaluation.result)
             best_config = evaluation.config

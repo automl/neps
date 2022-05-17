@@ -9,7 +9,6 @@ from typing_extensions import Literal
 
 from ...search_spaces.numerical.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
-from ...utils.result_utils import get_loss
 from .optimizer import BayesianOptimization
 
 
@@ -89,12 +88,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = get_loss(
+                    self.observed_configs.at[int(_config), "perf"] = self.get_loss(
                         config_val.result
                     )
             else:
                 _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), get_loss(config_val.result)]],
+                    [[config_val.config, int(_rung), self.get_loss(config_val.result)]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
@@ -124,7 +123,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # configs with the highest fidelity it was evaluated on and its performance
         for config_id, config_val in previous_results.items():
             _config, _rung = config_id.split("_")
-            perf = get_loss(config_val.result)
+            perf = self.get_loss(config_val.result)
             if int(_config) not in self.observed_configs.index:
                 # this condition and check is important to handle async scenarios as
                 # the `previous_results` can provide configs that have not been
