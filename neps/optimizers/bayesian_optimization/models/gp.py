@@ -120,7 +120,8 @@ class GPModel:
 
         x_tensor = self._build_input_tensor(x_configs)
         with torch.no_grad():
-            mvn = self.gp(x_tensor)
+            with botorch.models.utils.gpt_posterior_settings():
+                mvn = self.gp(x_tensor)
         mvn = gpytorch.distributions.MultivariateNormal(
             mvn.mean * self.y_std + self.y_mean, mvn.covariance_matrix * self.y_std**2
         )
