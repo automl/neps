@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from copy import deepcopy
 
 import numpy as np
@@ -240,7 +241,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
-            if self.model_search and not self.is_init_phase():
+            if random.random() < self._random_interleave_prob:
+                config = self.pipeline_space.sample(
+                    patience=self.patience, ignore_fidelity=False
+                )
+            elif self.model_search and not self.is_init_phase():
                 # sampling from AF at base rung
                 for _ in range(self.patience):
                     config = self.acquisition_sampler.sample(self.acquisition)
