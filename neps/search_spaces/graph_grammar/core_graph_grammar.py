@@ -1409,36 +1409,6 @@ class CoreGraphGrammar(Graph):
         Returns:
             nx.DiGraph: (multi-variate) composition of functions
         """
-
-        def skip_char(char: str) -> bool:
-            if char in [" ", "\t", "\n"]:
-                return True
-            # special case: "(" is (part of) a terminal
-            if (
-                i != 0
-                and char == "("
-                and descriptor[i - 1] == " "
-                and descriptor[i + 1] == " "
-            ):
-                return False
-            if char == "(":
-                return True
-            return False
-
-        def find_longest_match(
-            i: int, descriptor: str, symbols: list[str], max_match: int
-        ) -> int:
-            # search for longest matching symbol and add it
-            # assumes that the longest match is the true match
-            j = min(i + max_match, len(descriptor) - 1)
-            while j > i and j < len(descriptor):
-                if descriptor[i:j] in symbols:
-                    break
-                j -= 1
-            if j == i:
-                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
-            return j
-
         descriptor = self.id_to_string_tree(identifier)
 
         symbols = grammar.nonterminals + grammar.terminals
@@ -1456,7 +1426,7 @@ class CoreGraphGrammar(Graph):
         i = 0
         while i < len(descriptor):
             char = descriptor[i]
-            if skip_char(char):
+            if skip_char(char, descriptor, i):
                 pass
             elif char == ")" and not descriptor[i - 1] == " ":
                 # closing symbol of production
@@ -1519,3 +1489,105 @@ class CoreGraphGrammar(Graph):
         for u, v, data in graph.edges(data=True):
             self.add_edge(u, v)  # type: ignore[union-attr]
             self.edges[u, v].update(data)  # type: ignore[union-attr]
+
+    def _unparse_tree(
+        self, identifier: str, grammar: Grammar, as_composition: bool = True
+    ):
+        descriptor = self.id_to_string_tree(identifier)
+
+        symbols = grammar.nonterminals + grammar.terminals
+        max_match = max(map(len, symbols))
+        find_longest_match_func = partial(
+            find_longest_match,
+            descriptor=descriptor,
+            symbols=symbols,
+            max_match=max_match,
+        )
+
+        q_nonterminals: queue.LifoQueue = queue.LifoQueue()
+        q_topologies: queue.LifoQueue = queue.LifoQueue()
+        q_primitives: queue.LifoQueue = queue.LifoQueue()
+        i = 0
+        while i < len(descriptor):
+            char = descriptor[i]
+            if skip_char(char, descriptor, i):
+                pass
+            elif char == ")" and not descriptor[i - 1] == " ":
+                # closing symbol of production
+                if q_nonterminals.qsize() == q_topologies.qsize():
+                    topology, number_of_primitives = q_topologies.get(block=False)
+                    primitives = [
+                        q_primitives.get(block=False) for _ in range(number_of_primitives)
+                    ][::-1]
+                    if as_composition:
+                        # if topology == "Linear1":
+                        #     composed_function = primitives[0]
+                        # else:
+                        #     composed_function = topology + "(" + ", ".join(primitives) + ")"
+                        composed_function = topology + "(" + ", ".join(primitives) + ")"
+                    else:
+                        composed_function = " ".join([topology] + primitives)
+                    if not q_topologies.empty():
+                        q_primitives.put(composed_function)
+                        q_topologies.queue[-1][1] += 1
+                _ = q_nonterminals.get(block=False)
+            else:
+                j = find_longest_match_func(i)
+                sym = descriptor[i:j]
+                i = j - 1
+
+                if sym in grammar.terminals:
+                    is_topology = False
+                    if inspect.isclass(self.terminal_to_op_names[sym]) and issubclass(
+                        self.terminal_to_op_names[sym], AbstractTopology
+                    ):
+                        is_topology = True
+                    elif isinstance(
+                        self.terminal_to_op_names[sym], partial
+                    ) and issubclass(
+                        self.terminal_to_op_names[sym].func, AbstractTopology
+                    ):
+                        is_topology = True
+
+                    if is_topology:
+                        q_topologies.put([sym, 0])
+                    else:  # is primitive operation
+                        q_primitives.put(sym)
+                        q_topologies.queue[-1][1] += 1  # count number of primitives
+                elif sym in grammar.nonterminals:
+                    q_nonterminals.put(sym)
+                else:
+                    raise Exception(f"Unknown symbol {sym}")
+
+            i += 1
+
+        if not q_topologies.empty():
+            raise Exception("Invalid descriptor")
+
+        return composed_function
+
+
+def skip_char(char: str, descriptor: str, i: int) -> bool:
+    if char in [" ", "\t", "\n"]:
+        return True
+    # special case: "(" is (part of) a terminal
+    if i != 0 and char == "(" and descriptor[i - 1] == " " and descriptor[i + 1] == " ":
+        return False
+    if char == "(":
+        return True
+    return False
+
+
+def find_longest_match(
+    i: int, descriptor: str, symbols: list[str], max_match: int
+) -> int:
+    # search for longest matching symbol and add it
+    # assumes that the longest match is the true match
+    j = min(i + max_match, len(descriptor) - 1)
+    while j > i and j < len(descriptor):
+        if descriptor[i:j] in symbols:
+            break
+        j -= 1
+    if j == i:
+        raise Exception(f"Terminal or nonterminal at position {i} does not exist")
+    return j

@@ -102,6 +102,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def compose_functions(self, flatten_graph: bool = True):
         return self._compose_functions(self.id, self.grammars[0], flatten_graph)
 
+    def unparse_tree(self, identifier: str, as_composition: bool = True):
+        return self._unparse_tree(identifier, self.grammars[0], as_composition)
+
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
 
@@ -613,6 +616,9 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
     def compose_functions(self, flatten_graph: bool = True):
         return self._compose_functions(self.id, self.full_grammar, flatten_graph)
+
+    def unparse_tree(self, identifier: str, as_composition: bool = True):
+        return self._unparse_tree(identifier, self.full_grammar, as_composition)
 
     @staticmethod
     def get_full_grammar(grammars):
