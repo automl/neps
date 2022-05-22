@@ -15,5 +15,5 @@ authors:
     given-names: Frank
 title: "Neural Pipeline Search (NEPS)"
 version: 0.4.8
-date-released: 2020-05-12
+date-released: 2022-05-12
 url: "https://github.com/automl/neps"
