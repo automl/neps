@@ -64,7 +64,9 @@ class GPModel:
 
     def _build_input_tensor(self, x_configs):
         assert isinstance(x_configs, list)
-        x_tensor = torch.zeros((len(x_configs), self.tensor_size))
+        x_tensor = torch.zeros(
+            (len(x_configs), self.tensor_size), dtype=torch.get_default_dtype()
+        )
         for i_sample, sample in enumerate(x_configs):
             for hp_name, hp in sample.items():
                 hp_shape = self.all_hp_shapes[hp_name]
@@ -74,7 +76,7 @@ class GPModel:
         return x_tensor
 
     def _build_output_tensor(self, y_values, set_y_scale=False):
-        y_values = torch.tensor(y_values)
+        y_values = torch.tensor(y_values, dtype=torch.get_default_dtype())
         if set_y_scale:
             self.y_mean = y_values.mean()
             self.y_std = y_values.std()
@@ -140,4 +142,6 @@ class GPModel:
         """For quicker predictions of only the mean"""
         if isinstance(x_config, SearchSpace):
             return self.predict(x_config)[0]
-        return torch.tensor([self.predict(x)[0] for x in x_config])
+        return torch.tensor(
+            [self.predict(x)[0] for x in x_config], dtype=torch.get_default_dtype()
+        )

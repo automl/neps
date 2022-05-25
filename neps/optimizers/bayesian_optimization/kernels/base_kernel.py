@@ -43,7 +43,9 @@ class Kernel:
                 if self.does_apply_on(hp)
             ]
         if not self.active_hps:
-            raise Exception("Can't build a kernel without hyperparameters to apply on")
+            raise Exception(
+                f"Can't build the {self.__class__.__name__} kernel without hyperparameters to apply on"
+            )
         return set(self.active_hps)
 
     @staticmethod

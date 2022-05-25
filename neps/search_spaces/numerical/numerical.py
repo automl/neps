@@ -29,4 +29,4 @@ class NumericalParameter(Parameter):
         return HpTensorShape(1)
 
     def get_tensor_value(self, tensor_shape):  # pylint: disable=unused-argument
-        return torch.tensor(self.normalized().value)
+        return torch.tensor(self.normalized().value, dtype=torch.get_default_dtype())
