@@ -18,16 +18,21 @@ from ..means import GpMean, MeanComposer
 
 
 class GPTorchModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, mean, kernel):
-        noise_prior = gpytorch.priors.GammaPrior(1.1, 0.05)
-        noise_prior_mode = (noise_prior.concentration - 1) / noise_prior.rate
-        likelihood = gpytorch.likelihoods.GaussianLikelihood(
-            noise_prior=noise_prior,
-            noise_constraint=gpytorch.constraints.GreaterThan(
-                MIN_INFERRED_NOISE_LEVEL,
-                initial_value=noise_prior_mode,
-            ),
-        )
+    def __init__(self, train_x, train_y, mean, kernel, use_noise=False):
+        if use_noise:
+            noise_prior = gpytorch.priors.GammaPrior(1.1, 0.05)
+            noise_prior_mode = (noise_prior.concentration - 1) / noise_prior.rate
+            likelihood = gpytorch.likelihoods.GaussianLikelihood(
+                noise_prior=noise_prior,
+                noise_constraint=gpytorch.constraints.GreaterThan(
+                    MIN_INFERRED_NOISE_LEVEL,
+                    initial_value=noise_prior_mode,
+                ),
+            )
+        else:
+            likelihood = gpytorch.likelihoods.GaussianLikelihood()
+            likelihood.noise = 1e-4
+            likelihood.noise_covar.raw_noise.requires_grad_(False)
 
         super().__init__(train_x, train_y, likelihood)
         self.mean_module = mean
@@ -47,6 +52,7 @@ class GPModel:
         kernels: Iterable[Kernel] = None,
         combine_kernel: str = DEFAULT_COMBINE,
         logger=None,
+        use_noise=False,
     ):
         self.logger = logger
         self.gp = None
@@ -55,6 +61,7 @@ class GPModel:
         self.all_hp_shapes = None
         self.y_mean = None
         self.y_std = None
+        self.use_noise = use_noise
 
         # Instantiate means & kernels
         self.mean = MeanComposer(
@@ -109,7 +116,9 @@ class GPModel:
         # Then build the GPyTorch model
         gpytorch_kernel = self.kernel.build(self.all_hp_shapes)
         gpytorch_mean = self.mean.build(self.all_hp_shapes)
-        self.gp = GPTorchModel(x_tensor, y_tensor, gpytorch_mean, gpytorch_kernel)
+        self.gp = GPTorchModel(
+            x_tensor, y_tensor, gpytorch_mean, gpytorch_kernel, use_noise=self.use_noise
+        )
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp.likelihood, self.gp)
         self.gp.train()
