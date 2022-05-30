@@ -30,7 +30,9 @@ class GPTorchModel(gpytorch.models.ExactGP):
                 ),
             )
         else:
-            likelihood = gpytorch.likelihoods.GaussianLikelihood()
+            likelihood = gpytorch.likelihoods.GaussianLikelihood(
+                noise_constraint=gpytorch.constraints.GreaterThan(1e-6)
+            )
             likelihood.noise = 1e-4
             likelihood.noise_covar.raw_noise.requires_grad_(False)
 
