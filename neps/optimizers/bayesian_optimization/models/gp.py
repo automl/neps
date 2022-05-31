@@ -135,15 +135,13 @@ class GPModel:
         with torch.no_grad():
             with botorch.models.utils.gpt_posterior_settings():
                 mvn = self.gp(x_tensor)
-        mvn = gpytorch.distributions.MultivariateNormal(
-            mvn.mean * self.y_std + self.y_mean, mvn.covariance_matrix * self.y_std**2
-        )
-        return mvn
+        mean = mvn.mean * self.y_std + self.y_mean
+        covariance_matrix = mvn.covariance_matrix * self.y_std**2
+        return mean, covariance_matrix
 
     def predict(self, x_config: Iterable[SearchSpace] | SearchSpace):
         x = [x_config] if isinstance(x_config, SearchSpace) else x_config
-        mvn = self.predict_distribution(x)
-        mean, cov = mvn.mean, mvn.covariance_matrix
+        mean, cov = self.predict_distribution(x)
 
         if isinstance(x_config, SearchSpace):
             mean, cov = mean.reshape(tuple()), cov.reshape(tuple())
