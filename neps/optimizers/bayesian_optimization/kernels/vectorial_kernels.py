@@ -30,7 +30,11 @@ class StationaryKernel(Kernel):
                 **{
                     "ard_num_dims": self.get_tensor_length(hp_shapes),
                     "active_dims": self.get_active_dims(hp_shapes),
-                    "lengthscale_prior": gpytorch.priors.GammaPrior(3.0, 6.0),
+                    # "lengthscale_prior": gpytorch.priors.GammaPrior(3.0, 6.0),
+                    # Change this prior to encourage a more or less explorative approach
+                    # (TODO: allow as an argument for the kernel)
+                    # "lengthscale_prior": gpytorch.priors.NormalPrior(0.09, 0.1),
+                    "lengthscale_prior": gpytorch.priors.NormalPrior(0.1, 0.1),
                     "lengthscale_constraint": gpytorch.constraints.Interval(
                         LENGTHSCALE_MIN,
                         LENGTHSCALE_MAX,
