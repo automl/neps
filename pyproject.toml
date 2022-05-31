@@ -1,10 +1,31 @@
 [tool.poetry]
 name = "neps"
-version = "0.4.8"
-description = ""
-authors = ["Danny Stoll", "Maciej Janowski", "Simon Schrodi", "Théophane Vallaeys"]
+version = "0.4.9"
+description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
+authors = [
+    "Danny Stoll <stolld@cs.uni-freiburg.de>",
+    "Simon Schrodi <schrodi@cs.uni-freiburg.de>",
+    "Maciej Janowski <janowski@cs.uni-freiburg.de>",
+    "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
+    "Binxin Ru <robin@robots.ox.ac.uk>",
+    "Théophane Vallaeys <theophane.vallaeys@ens.psl.eu>",
+    "Frank Hutter <fh@cs.uni-freiburg.de>",
+]
 readme = "README.md"
-license = "MIT"
+license = "Apache License 2.0"
+homepage = "https://github.com/automl/neps"
+repository = "https://github.com/automl/neps"
+keywords = ["Neural Pipeline Search", "Neural Architecture Search", "Hyperparameter Optimization", "AutoML"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Operating System :: Unix",
+  "Programming Language :: Python :: 3.7",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: System :: Distributed Computing",
+]
 packages = [
     { include = "neps" },
     { include = "neps_examples" },
