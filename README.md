@@ -28,7 +28,7 @@ Soon-to-come Features:
 Using pip
 
 ```bash
-pip install neps
+pip install neural-pipeline-search
 ```
 
 ### Optional: Specific torch versions
