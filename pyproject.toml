@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "neps"
+name = "neural-pipeline-search"
 version = "0.4.9"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
