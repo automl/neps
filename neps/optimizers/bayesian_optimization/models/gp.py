@@ -5,6 +5,7 @@ from typing import Iterable
 import botorch
 import gpytorch
 import torch
+from typing_extensions import Literal
 
 from ....search_spaces.search_space import SearchSpace
 from ..default_consts import (
@@ -18,9 +19,28 @@ from ..means import GpMean, MeanComposer
 
 
 class GPTorchModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, mean, kernel, use_noise=False):
-        if use_noise:
-            noise_prior = gpytorch.priors.GammaPrior(1.1, 0.05)
+    def __init__(
+        self,
+        train_x,
+        train_y,
+        mean,
+        kernel,
+        noise: Literal["no", "low", "high"] | float = "low",
+    ):
+        if noise == "no":
+            likelihood = gpytorch.likelihoods.GaussianLikelihood(
+                noise_constraint=gpytorch.constraints.GreaterThan(1e-6)
+            )
+            likelihood.noise = 1e-4
+            likelihood.noise_covar.raw_noise.requires_grad_(False)
+        else:
+            if noise == "low":
+                noise_level = 1e-3
+            elif noise == "high":
+                noise_level = 1e-2
+            elif isinstance(noise, float):
+                noise_level = noise
+            noise_prior = gpytorch.priors.GammaPrior(1 + noise_level, noise_level / 2)
             noise_prior_mode = (noise_prior.concentration - 1) / noise_prior.rate
             likelihood = gpytorch.likelihoods.GaussianLikelihood(
                 noise_prior=noise_prior,
@@ -29,12 +49,6 @@ class GPTorchModel(gpytorch.models.ExactGP):
                     initial_value=noise_prior_mode,
                 ),
             )
-        else:
-            likelihood = gpytorch.likelihoods.GaussianLikelihood(
-                noise_constraint=gpytorch.constraints.GreaterThan(1e-6)
-            )
-            likelihood.noise = 1e-4
-            likelihood.noise_covar.raw_noise.requires_grad_(False)
 
         super().__init__(train_x, train_y, likelihood)
         self.mean_module = mean
@@ -54,7 +68,7 @@ class GPModel:
         kernels: Iterable[Kernel] = None,
         combine_kernel: str = DEFAULT_COMBINE,
         logger=None,
-        use_noise=False,
+        noise="low",
     ):
         self.logger = logger
         self.gp = None
@@ -63,7 +77,7 @@ class GPModel:
         self.all_hp_shapes = None
         self.y_mean = None
         self.y_std = None
-        self.use_noise = use_noise
+        self.noise = noise
 
         # Instantiate means & kernels
         self.mean = MeanComposer(
@@ -119,7 +133,7 @@ class GPModel:
         gpytorch_kernel = self.kernel.build(self.all_hp_shapes)
         gpytorch_mean = self.mean.build(self.all_hp_shapes)
         self.gp = GPTorchModel(
-            x_tensor, y_tensor, gpytorch_mean, gpytorch_kernel, use_noise=self.use_noise
+            x_tensor, y_tensor, gpytorch_mean, gpytorch_kernel, noise=self.noise
         )
 
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.gp.likelihood, self.gp)
@@ -127,7 +141,7 @@ class GPModel:
         botorch.fit.fit_gpytorch_model(mll)
         self.gp.eval()
 
-    def predict_distribution(self, x_configs):
+    def predict_distribution(self, x_configs, normalized=False):
         if self.gp is None:
             raise Exception("Can't use predict before fitting the GP model")
 
@@ -135,22 +149,27 @@ class GPModel:
         with torch.no_grad():
             with botorch.models.utils.gpt_posterior_settings():
                 mvn = self.gp(x_tensor)
-        mean = mvn.mean * self.y_std + self.y_mean
-        covariance_matrix = mvn.covariance_matrix * self.y_std**2
+        mean, covariance_matrix = mvn.mean, mvn.covariance_matrix
+        if not normalized:
+            mean = mean * self.y_std + self.y_mean
+            covariance_matrix = covariance_matrix * self.y_std**2
         return mean, covariance_matrix
 
-    def predict(self, x_config: Iterable[SearchSpace] | SearchSpace):
+    def predict(self, x_config: Iterable[SearchSpace] | SearchSpace, normalized=False):
         x = [x_config] if isinstance(x_config, SearchSpace) else x_config
-        mean, cov = self.predict_distribution(x)
+        mean, cov = self.predict_distribution(x, normalized=normalized)
 
         if isinstance(x_config, SearchSpace):
             mean, cov = mean.reshape(tuple()), cov.reshape(tuple())
         return mean, cov
 
-    def predict_mean(self, x_config: Iterable[SearchSpace] | SearchSpace):
+    def predict_mean(
+        self, x_config: Iterable[SearchSpace] | SearchSpace, normalized=False
+    ):
         """For quicker predictions of only the mean"""
         if isinstance(x_config, SearchSpace):
-            return self.predict(x_config)[0]
+            return self.predict(x_config, normalized=normalized)[0]
         return torch.tensor(
-            [self.predict(x)[0] for x in x_config], dtype=torch.get_default_dtype()
+            [self.predict(x, normalized=normalized)[0] for x in x_config],
+            dtype=torch.get_default_dtype(),
         )

@@ -62,7 +62,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             for conf in x:
                 conf.set_to_max_fidelity()
 
-        mu, covariance_matrix = self.surrogate_model.predict(x)
+        mu, covariance_matrix = self.surrogate_model.predict(x, normalized=True)
         cov = torch.diag(covariance_matrix)
         std = torch.sqrt(cov)
         mu_star = self.incumbent
@@ -97,6 +97,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         if self.in_fill == "best":
             self.incumbent = torch.min(self.train_y_tensor)
         else:
-            mu_train = self.surrogate_model.predict_mean(self.train_x)
+            mu_train = self.surrogate_model.predict_mean(self.train_x, normalized=True)
             incumbent_idx = torch.argmin(mu_train)
             self.incumbent = self.train_y_tensor[incumbent_idx]

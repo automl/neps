@@ -24,7 +24,7 @@ class CostCooler(BaseAcquisition):
         base_acquisition_value = self.base_acquisition.eval(
             x=x, **base_acquisition_kwargs
         )
-        costs, _ = self.cost_model.predict(x)
+        costs, _ = self.cost_model.predict(x, normalized=True)
         return base_acquisition_value / (costs**self.alpha).detach().numpy()
 
     def set_state(self, surrogate_model, alpha, cost_model, **kwargs):

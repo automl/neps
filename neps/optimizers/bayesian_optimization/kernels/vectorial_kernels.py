@@ -33,8 +33,9 @@ class StationaryKernel(Kernel):
                     # "lengthscale_prior": gpytorch.priors.GammaPrior(3.0, 6.0),
                     # Change this prior to encourage a more or less explorative approach
                     # (TODO: allow as an argument for the kernel)
-                    # "lengthscale_prior": gpytorch.priors.NormalPrior(0.09, 0.1),
-                    "lengthscale_prior": gpytorch.priors.NormalPrior(0.1, 0.1),
+                    # "lengthscale_prior": gpytorch.priors.NormalPrior(0.09, 0.1), # alt 1
+                    # "lengthscale_prior": gpytorch.priors.NormalPrior(0.1, 0.1), # alt 2
+                    "lengthscale_prior": gpytorch.priors.NormalPrior(0.04, 0.05),  # alt 3
                     "lengthscale_constraint": gpytorch.constraints.Interval(
                         LENGTHSCALE_MIN,
                         LENGTHSCALE_MAX,
