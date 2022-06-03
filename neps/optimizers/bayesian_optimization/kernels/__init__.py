@@ -3,10 +3,19 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
-from .base_kernel import Kernel
+from .base_kernel import CustomKernel, Kernel
 from .combine_kernels import CombineKernel, ProductKernel, SumKernel
 from .get_kernels import instantiate_kernel
-from .vectorial_kernels import CategoricalBotorchKernel, HammingKernel, MaternKernel
+from .vectorial_kernels import (
+    BaseCategoricalKernel,
+    BaseNumericalKernel,
+    CategoricalBotorchKernel,
+    HammingKernel,
+    LayeredRBFKernel,
+    MaternKernel,
+    RationalQuadraticKernel,
+    RBFKernel,
+)
 
 # GraphKernelMapping: dict[str, Callable] = {
 #     "wl": partial(
@@ -29,7 +38,7 @@ CombineKernelMapping: dict[str, Callable] = {
 KernelMapping: dict[str, Callable] = {
     "m32": partial(MaternKernel, nu=3 / 2),
     "m52": partial(MaternKernel, nu=5 / 2),
-    # "rbf": RBFKernel,
+    "rbf": RBFKernel,
     "categorical": CategoricalBotorchKernel,
     "hm": HammingKernel,
     **CombineKernelMapping,

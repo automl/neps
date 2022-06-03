@@ -35,9 +35,9 @@ class GPTorchModel(gpytorch.models.ExactGP):
             likelihood.noise_covar.raw_noise.requires_grad_(False)
         else:
             if noise == "low":
-                noise_level = 1e-3
-            elif noise == "high":
                 noise_level = 1e-2
+            elif noise == "high":
+                noise_level = 1e-1
             elif isinstance(noise, float):
                 noise_level = noise
             noise_prior = gpytorch.priors.GammaPrior(1 + noise_level, noise_level / 2)
