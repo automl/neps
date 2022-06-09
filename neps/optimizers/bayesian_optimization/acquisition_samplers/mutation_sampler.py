@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 from more_itertools import first
-from search_spaces.search_space import SearchSpace
 
+from ....search_spaces.search_space import SearchSpace
 from .base_acq_sampler import AcquisitionSampler
 from .random_sampler import RandomSampler
 

@@ -1,19 +1,199 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from copy import deepcopy
+from dataclasses import dataclass
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
-from metahyper.api import ConfigResult
+import torch
+from metahyper.api import ConfigResult, instance_from_map
 from typing_extensions import Literal
 
 from ...search_spaces.numerical.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
-from ...utils.result_utils import get_loss
+from ...utils.result_utils import get_cost, get_loss
+from .kernels import Kernel
+from .models import SurrogateModelMapping
 from .optimizer import BayesianOptimization
 
 
+class BaseMultiFidelityOptimization(BayesianOptimization):
+    """Base optimizer for multi-fidelity optimization"""
+
+    USES_COST_MODEL = False
+    USES_CONTINUATION = False
+
+    @dataclass
+    class ObservedRecord:
+        base_id: int
+        fidelity_step: int
+        config: SearchSpace
+        loss: float
+        cost: float
+        trace: dict
+
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        surrogate_model: str | Any = "gp",
+        kernels: list[str | Kernel] | None = None,
+        cost_model: str | Literal["same"] | Any = "same",
+        cost_model_kernels: list[str | Kernel] | None | Literal["same"] = "same",
+        cost_model_args: dict | None = None,
+        num_fidelity_steps: int = 10,
+        aggregate_continuation_costs: Callable | Literal["sum", "max"] | None = None,
+        **kwargs,
+    ):
+        if num_fidelity_steps < 1 or not isinstance(num_fidelity_steps, int):
+            raise ValueError(
+                "num_fidelity_steps should be at an integer with a value of least 1"
+            )
+        if not self.USES_COST_MODEL:
+            if cost_model not in ["same", None]:
+                raise ValueError("This optimizer don't use a cost model")
+            cost_model = None
+
+        if aggregate_continuation_costs is None:
+            # Choose a good default value if not given
+            aggregate_continuation_costs = "sum" if self.USES_CONTINUATION else "max"
+        aggregate_continuation_costs = instance_from_map(
+            {"sum": sum, "max": max},
+            aggregate_continuation_costs,
+            "aggregate_continuation_costs",
+        )
+
+        super().__init__(
+            pipeline_space=pipeline_space,
+            surrogate_model=surrogate_model,
+            kernels=kernels,
+            **kwargs,
+        )
+
+        self.observed_configs: pd.DataFrame = None
+        self.fantasized_remaining_budget = self.budget
+        self.max_seen_fid_step: int = 0
+        self.num_fidelity_steps: int = num_fidelity_steps
+        self.cost_model: Any = None
+        self.aggregate_continuation_costs = aggregate_continuation_costs
+
+        if self.USES_COST_MODEL:
+            if cost_model_kernels == "same":
+                cost_model_kernels = kernels
+            self.cost_model = instance_from_map(
+                SurrogateModelMapping,
+                surrogate_model if cost_model == "same" else cost_model,
+                name="cost surrogate model",
+                kwargs={
+                    "pipeline_space": pipeline_space,
+                    "kernels": kernels,
+                    **(cost_model_args or {}),
+                },
+            )
+
+        # maintain incumbent across 3 dimensions:
+        #  cost - the configuration with the maximum cumulative cost incurred
+        #  fidelity_step - the configuration with the highest fidelity seen
+        #  loss - the configuration scoring the lowest loss
+        self.incumbent = dict(cost=None, fidelity_step=None, score=None)
+
+    def _update_incumbents(self):
+        if len(self.observed_configs) == 0:
+            return
+        self.incumbent.update(
+            cost=self.observed_configs.index.values[
+                np.argmax(self.observed_configs.cost.values)
+            ],
+            fidelity_step=self.observed_configs.index.values[
+                np.argmax(self.observed_configs.fidelity_step.values)
+            ],
+            loss=self.observed_configs.index.values[
+                np.argmin(self.observed_configs.loss.values)
+            ],
+        )
+        fidelity_max_row = self.observed_configs.loc[self.incumbent["fidelity_step"]]
+        self.max_seen_fid_step = fidelity_max_row.fidelity_step
+
+    def _update_observations(self):
+        """Reads recorded successful evaluations to build observation data structure"""
+        results_by_base_id = defaultdict(lambda: [])
+        records: list[self.ObservedRecord] = []
+
+        for config_id, result in self._previous_results.items():
+            base_cfg_id, fidelity_step = map(int, config_id.split("_"))
+            results_by_base_id[base_cfg_id].append((fidelity_step, result))
+
+        for base_cfg_id, all_config_vals in results_by_base_id.items():
+            all_config_vals.sort(key=lambda fid_cfg: fid_cfg[0])
+            last_fidelity_step, last_config = all_config_vals[-1]
+
+            costs_list = [get_cost(config.result) for _, config in all_config_vals]
+            cost = self.aggregate_continuation_costs(costs_list)
+            trace = {
+                fidelity_step: config_val for fidelity_step, config_val in all_config_vals
+            }
+
+            records.append(
+                self.ObservedRecord(
+                    base_id=base_cfg_id,
+                    fidelity_step=last_fidelity_step,
+                    config=last_config.config,
+                    loss=get_loss(last_config.result),
+                    cost=cost,
+                    trace=trace,
+                )
+            )
+
+        self.observed_configs = pd.DataFrame(records)
+        self.observed_configs.set_index("base_id", inplace=True)
+        self.observed_configs.sort_index(inplace=True)
+
+    def _fantasize_evaluations(self, new_x):
+        """Returns x, y_loss, y_cost"""
+        new_x, new_losses, new_costs = super()._fantasize_evaluations(new_x)
+        if self.USES_COST_MODEL:
+            self.cost_model.fit(self.train_x, self.train_costs)
+            with torch.no_grad():
+                new_costs = self.cost_model.predict_mean(new_x)
+            new_costs = new_costs.detach().tolist()
+        return new_x, new_losses, new_costs
+
+    def _update_optimizer_training_state(self) -> None:
+        super()._update_optimizer_training_state()
+        self._update_observations()
+        self._update_incumbents()
+
+        # TODO: subtract optimizer overhead too? -> parameterize this behaviour
+        if self.USES_COST_MODEL:
+            self.fantasized_remaining_budget = self.budget - sum(self.train_costs)
+        else:
+            self.fantasized_remaining_budget = self.remaining_budget
+
+        if self.USES_COST_MODEL:
+            self.cost_model.fit(self.train_x, self.train_costs)
+
+    def get_new_config_id(self, config, base_id=None, fidelity_step=None):
+        """An id should be of the form [base_id]_[fidelity_step], with the same
+        base_id beeing shared by configuration with the same parameter values,
+        except for the fidelity value."""
+        if base_id is None:
+            base_id = super().get_new_config_id(config)
+        if fidelity_step is None:
+            fidelity_step = config.fidelity.step_on_scale(self.num_fidelity_steps)
+        return f"{base_id}_{fidelity_step}"
+
+    def sample_configuration_randomly(self, **sampler_kwargs):
+        # We want the configurations for the initialization to have the lowest fidelity
+        config, config_id, previous_id = super().sample_configuration_randomly(
+            **sampler_kwargs
+        )
+        config.fidelity.value = config.fidelity.lower
+        return config, config_id, previous_id
+
+
 class BayesianOptimizationMultiFidelity(BayesianOptimization):
+    # TODO: inherit BaseMultiFidelityOptimization? Clean the code
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -48,7 +228,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         self.fidelities = list(self.rung_map.values())
         # stores the observations made and the corresponding fidelity explored
         # crucial data structure used for determining promotion candidates
-        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "loss"))
         # stores which configs occupy each rung at any time
         self.rung_members: dict = {k: [] for k in self.rung_map.keys()}
         # one-to-one with self.rung_members, storing corresponding performance
@@ -89,7 +269,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = get_loss(
+                    self.observed_configs.at[int(_config), "loss"] = get_loss(
                         config_val.result
                     )
             else:
@@ -109,7 +289,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
-        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "loss"))
 
         if len(previous_results) > 0 and len(self.observed_configs) == 0:
             # previous optimization run exists and needs to be loaded
@@ -124,13 +304,13 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # configs with the highest fidelity it was evaluated on and its performance
         for config_id, config_val in previous_results.items():
             _config, _rung = config_id.split("_")
-            perf = get_loss(config_val.result)
+            loss = get_loss(config_val.result)
             if int(_config) not in self.observed_configs.index:
                 # this condition and check is important to handle async scenarios as
                 # the `previous_results` can provide configs that have not been
                 # encountered by this instantiation of the optimizer object
                 _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), perf]],
+                    [[config_val.config, int(_rung), loss]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
@@ -140,7 +320,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             else:
                 if int(_rung) >= self.observed_configs.at[int(_config), "rung"]:
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = perf
+                    self.observed_configs.at[int(_config), "loss"] = loss
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
         for config_id, _ in pending_evaluations.items():
@@ -156,7 +336,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 ).sort_index()
             else:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                self.observed_configs.at[int(_config), "perf"] = None
+                self.observed_configs.at[int(_config), "loss"] = None
 
         # to account for incomplete evaluations from being promoted
         _observed_configs = self.observed_configs.copy().dropna(inplace=False)
@@ -168,7 +348,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             self.rung_members[_rung] = _observed_configs.index[
                 _observed_configs.rung == _rung
             ].values
-            self.rung_members_performance[_rung] = _observed_configs.perf[
+            self.rung_members_performance[_rung] = _observed_configs.loss[
                 _observed_configs.rung == _rung
             ].values
         # identifying promotion list per rung
@@ -203,13 +383,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         """
         _observed_configs = self.observed_configs.copy().dropna()
         if self.initial_design_type == "max_budget":
-            val = (
+            return (
                 np.sum(_observed_configs.rung == self.max_rung)
                 < self._initial_design_size
             )
         else:
-            val = len(_observed_configs) <= self._initial_design_size
-        return val
+            return super().is_init_phase()
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,

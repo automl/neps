@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
+import torch
 from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces.search_space import SearchSpace
@@ -142,8 +143,9 @@ class BayesianOptimization(BaseOptimizer):
     def _fantasize_evaluations(self, new_x):
         """Returns x, y_loss, y_cost"""
         self.surrogate_model.fit(self.train_x, self.train_losses)
-        ys = self.surrogate_model.predict_mean(new_x)
-        return new_x, list(ys.detach().numpy()), []
+        with torch.no_grad():
+            ys = self.surrogate_model.predict_mean(new_x)
+        return new_x, ys.detach().tolist(), []
 
     def _update_optimizer_training_state(self):
         """Can be overloaded to set training state, only outside of init phase"""

@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
+from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
 
 AcquisitionMapping: dict[str, Callable] = {
