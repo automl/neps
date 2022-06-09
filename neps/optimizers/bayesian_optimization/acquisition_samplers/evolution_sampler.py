@@ -123,7 +123,7 @@ class EvolutionSampler(AcquisitionSampler):
                 fitness_standardized = 1 / len(fitness)
             population = self._evolve(population, fitness_standardized)
             # recalc fitness by also evaluating previous best configs
-            fitness = acquisition_function(X_max + population, asscalar=True)
+            fitness = acquisition_function(X_max + population)
             # update best config & score
             indices = nlargest(
                 batch_size, range(len(fitness)), key=lambda idx: fitness[idx]
@@ -169,7 +169,7 @@ class EvolutionSampler(AcquisitionSampler):
                 population_size - len(previous_samples) - len(population)
             )
         population.extend(previous_samples)
-        fitness = acquisition_function(population, asscalar=True)
+        fitness = acquisition_function(population).detach().numpy()
 
         # initialize best config & score
         indices = nlargest(batch_size, range(len(fitness)), key=lambda idx: fitness[idx])
@@ -212,7 +212,7 @@ class EvolutionSampler(AcquisitionSampler):
             self.initial_history_acq_best > 0
             and len(self.x) >= self.initial_history_acq_best
         ):
-            acq_vals = acquisition_function(self.x, asscalar=True)
+            acq_vals = acquisition_function(self.x).detach().numpy()
             indices = np.argpartition(acq_vals, -self.initial_history_acq_best)
             for idx in indices[-self.initial_history_acq_best :]:
                 population.append(self.x[idx])

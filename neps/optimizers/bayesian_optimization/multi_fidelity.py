@@ -30,9 +30,12 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         base_id: int
         fidelity_step: int
         config: SearchSpace
-        loss: float
-        cost: float
+        loss: float  # loss of the configuration with the max fidelity
+        cost: float  # cost of the configuration with the max fidelity
         trace: dict
+        min_loss: float
+        step_min_loss: int
+        config_min_loss: SearchSpace
 
     def __init__(
         self,
@@ -134,11 +137,19 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
                 fidelity_step: config_val for fidelity_step, config_val in all_config_vals
             }
 
+            all_config_vals.sort(key=lambda fid_cfg: get_loss(fid_cfg[1].result))
+            min_loss = get_loss(all_config_vals[-1][1].result)
+            step_min_loss = all_config_vals[-1][0]
+            config_min_loss = all_config_vals[-1][1].config
+
             records.append(
                 self.ObservedRecord(
                     base_id=base_cfg_id,
                     fidelity_step=last_fidelity_step,
                     config=last_config.config,
+                    min_loss=min_loss,
+                    step_min_loss=step_min_loss,
+                    config_min_loss=config_min_loss,
                     loss=get_loss(last_config.result),
                     cost=cost,
                     trace=trace,
@@ -414,12 +425,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 else:
                     # random sampling a config if failed to sample a new config from AF
                     config = self.pipeline_space.sample(
-                        patience=self.patience, user_priors=True, ignore_fidelity=True
+                        patience=self.patience, user_priors=True
                     )
             else:
                 # random sampling a config
                 config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True, ignore_fidelity=True
+                    patience=self.patience, user_priors=True
                 )
             # assigning the fidelity to evaluate the config at the base rung
             config.fidelity.value = self.rung_map[0]  # base rung is always 0

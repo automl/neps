@@ -93,13 +93,9 @@ class SearchSpace(collections.abc.Mapping):
                     density_value *= hyperparameter.compute_prior(log=False)
         return density_value
 
-    def sample(
-        self, user_priors: bool = False, patience: int = 1, ignore_fidelity=True
-    ) -> SearchSpace:
+    def sample(self, user_priors: bool = False, patience: int = 1) -> SearchSpace:
         sample = self.copy()
         for hp_name, hyperparameter in sample.hyperparameters.items():
-            if hyperparameter.is_fidelity and ignore_fidelity:
-                continue
             for _ in range(patience):
                 try:
                     hyperparameter.sample(user_priors=user_priors)

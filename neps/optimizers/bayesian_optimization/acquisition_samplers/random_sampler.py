@@ -12,9 +12,7 @@ class RandomSampler(AcquisitionSampler):
         constraint = constraint or (lambda _: True)
         assert self.patience >= 0
         for _ in range(self.patience + 1):
-            config = self.pipeline_space.sample(
-                patience=self.patience, ignore_fidelity=False
-            )
+            config = self.pipeline_space.sample(patience=self.patience)
             if constraint(config):
                 return config
         return config

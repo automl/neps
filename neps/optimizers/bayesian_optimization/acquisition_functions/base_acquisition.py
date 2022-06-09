@@ -10,7 +10,7 @@ class BaseAcquisition(ABC):
         self.train_y_tensor = None
 
     @abstractmethod
-    def eval(self, x, asscalar: bool = False):
+    def eval(self, x):
         """Evaluate the acquisition function at point x2."""
         raise NotImplementedError
 

@@ -48,9 +48,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.incumbent = None
         self.optimize_on_max_fidelity = optimize_on_max_fidelity
 
-    def eval(
-        self, x: List, asscalar: bool = False
-    ) -> Union[np.ndarray, torch.Tensor, float]:
+    def eval(self, x: List) -> Union[np.ndarray, torch.Tensor, float]:
         """
         Return the negative expected improvement at the query point x2
         """
@@ -86,8 +84,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
                 sigma_n + cov
             )
-        if asscalar:
-            return ei.detach().numpy()
         return ei
 
     def set_state(self, surrogate_model):

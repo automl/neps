@@ -207,16 +207,16 @@ class BayesianOptimization(BaseOptimizer):
         if len(self._previous_results) == 0 and self._initial_design_size >= 1:
             # TODO: if default config sample it
             config, config_id, previous_id = self.sample_configuration_randomly(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
+                patience=self.patience, user_priors=True
             )
         elif random.random() < self._random_interleave_prob:
             config, config_id, previous_id = self.sample_configuration_randomly(
-                patience=self.patience, ignore_fidelity=False
+                patience=self.patience
             )
         elif self.is_init_phase() or self._model_update_failed:
             # initial design space
             config, config_id, previous_id = self.sample_configuration_randomly(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
+                patience=self.patience, user_priors=True
             )
         else:
             for _ in range(self.patience):
@@ -225,7 +225,7 @@ class BayesianOptimization(BaseOptimizer):
                     break
             else:
                 config, config_id, previous_id = self.sample_configuration_randomly(
-                    patience=self.patience, user_priors=True, ignore_fidelity=False
+                    patience=self.patience, user_priors=True
                 )
         if config_id is None:
             config_id = self.get_new_config_id(config)
