@@ -19,11 +19,15 @@ class AcquisitionSampler:
         self.patience = patience
 
     @abstractmethod
-    def sample(self, acquisition_function) -> SearchSpace:
+    def sample(self, acquisition_function, constraint=None) -> SearchSpace:
         raise NotImplementedError
 
-    def sample_batch(self, acquisition_function, batch) -> list[SearchSpace]:
-        return [self.sample(acquisition_function) for _ in range(batch)]
+    def sample_batch(
+        self, acquisition_function, batch, constraint=None
+    ) -> list[SearchSpace]:
+        return [
+            self.sample(acquisition_function, constraint=constraint) for _ in range(batch)
+        ]
 
     def set_state(self, x: list, y: list | torch.Tensor) -> None:
         self.x = x

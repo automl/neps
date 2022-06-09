@@ -38,6 +38,10 @@ class IntegerParameter(FloatParameter):
         self.float_hp.sample(user_priors=user_priors)
         self.value = int(round(self.float_hp.value))  # type: ignore[arg-type]
 
+    def from_step(self, step, scale):
+        super().value_from_step(step, scale)
+        self.value = int(round(self.value))
+
     def mutate(
         self,
         parent=None,

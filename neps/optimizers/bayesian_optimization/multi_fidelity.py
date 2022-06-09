@@ -106,7 +106,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         # TODO: Read in rungs using the config id (alternatively, use get/load state)
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
@@ -230,7 +230,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 # sampling from AF at base rung
                 for _ in range(self.patience):
                     config = self.acquisition_sampler.sample(self.acquisition)
-                    if config not in self._pending_evaluations:
+                    if config not in self._pending_evaluations.values():
                         break
                 else:
                     # random sampling a config if failed to sample a new config from AF

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Iterable
-
 import numpy as np
-import torch
 from more_itertools import first
+from search_spaces.search_space import SearchSpace
 
 from .base_acq_sampler import AcquisitionSampler
 from .random_sampler import RandomSampler
@@ -13,24 +11,20 @@ from .random_sampler import RandomSampler
 def _propose_location(
     acquisition_function,
     candidates: list,
-    top_n: int = 5,
+    top_n: int,
     return_distinct: bool = True,
-) -> tuple[Iterable, np.ndarray, np.ndarray]:
+) -> tuple[list[SearchSpace], np.ndarray]:
     """top_n: return the top n candidates wrt the acquisition function."""
+    eis = acquisition_function(candidates, asscalar=True)  # faster
     if return_distinct:
-        eis = acquisition_function(candidates, asscalar=True)  # faster
-        eis_, unique_idx = np.unique(eis, return_index=True)
-        try:
-            i = np.argpartition(eis_, -top_n)[-top_n:]
-            indices = np.array([unique_idx[j] for j in i])
-        except ValueError:
-            eis = torch.tensor([acquisition_function(c) for c in candidates])
-            _, indices = eis.topk(top_n)
-    else:
-        eis = torch.tensor([acquisition_function(c) for c in candidates])
-        _, indices = eis.topk(top_n)
-    xs = [candidates[int(i)] for i in indices]
-    return xs, eis, indices
+        unique_eis, unique_idx = np.unique(eis, return_index=True)
+        if len(unique_eis) >= top_n:
+            eis = unique_eis
+            candidates = [candidates[i] for i in unique_idx]
+
+    indices = np.argpartition(eis, -top_n)[-top_n:]
+    xs = [candidates[i] for i in indices]
+    return xs, eis[indices]
 
 
 class MutationSampler(AcquisitionSampler):
@@ -61,22 +55,26 @@ class MutationSampler(AcquisitionSampler):
         super().set_state(x, y)
         self.random_sampling.set_state(x, y)
 
-    def sample(self, acquisition_function) -> tuple[list, list, np.ndarray]:
-        return first(self.sample_batch(acquisition_function, 1))
+    def sample(self, acquisition_function, constraint=None) -> SearchSpace:
+        return first(self.sample_batch(acquisition_function, 1, constraint=constraint))
 
-    def sample_batch(self, acquisition_function, batch):
-        pool = self.create_pool(acquisition_function, self.pool_size)
+    def sample_batch(
+        self, acquisition_function, batch, constraint=None
+    ) -> list[SearchSpace]:
+        pool = self.create_pool(acquisition_function, self.pool_size, constraint)
 
-        samples, _, _ = _propose_location(
+        samples, _ = _propose_location(
             acquisition_function=acquisition_function,
             top_n=batch,
             candidates=pool,
         )
         return samples
 
-    def create_pool(self, acquisition_function, pool_size: int) -> list:
+    def create_pool(self, acquisition_function, pool_size: int, constraint=None) -> list:
         if len(self.x) == 0:
-            return self.random_sampling.sample_batch(acquisition_function, pool_size)
+            return self.random_sampling.sample_batch(
+                acquisition_function, pool_size, constraint=constraint
+            )
 
         mutate_size = (
             int(0.5 * pool_size) if self.mutate_size is None else self.mutate_size
@@ -116,7 +114,7 @@ class MutationSampler(AcquisitionSampler):
         nrandom_archs = max(pool_size - len(evaluation_pool), 0)
         if nrandom_archs:
             random_evaluation_pool = self.random_sampling.sample_batch(
-                acquisition_function, nrandom_archs
+                acquisition_function, nrandom_archs, constraint=constraint
             )
             evaluation_pool += random_evaluation_pool
 

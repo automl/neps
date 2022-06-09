@@ -85,8 +85,7 @@ class GPModel:
         )
         self.kernel = instantiate_kernel(pipeline_space, kernels, combine_kernel)
 
-    def _build_input_tensor(self, x_configs):
-        assert isinstance(x_configs, list)
+    def _build_input_tensor(self, x_configs: list[SearchSpace]):
         x_tensor = torch.zeros(
             (len(x_configs), self.tensor_size), dtype=torch.get_default_dtype()
         )

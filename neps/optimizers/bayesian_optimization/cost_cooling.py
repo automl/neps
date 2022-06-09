@@ -91,7 +91,6 @@ class CostCooling(BayesianOptimization):
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
         self._num_train_x: int = 0
-        self._pending_evaluations: list = []
         self._model_update_failed: bool = False
 
         surrogate_model_args = surrogate_model_args or {}
@@ -169,14 +168,14 @@ class CostCooling(BayesianOptimization):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         # TODO(Jan): read out cost and fit cost model
         train_x = [el.config for el in previous_results.values()]
         train_y = [get_loss(el.result) for el in previous_results.values()]
         train_cost = [get_cost(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
-        self._pending_evaluations = [el for el in pending_evaluations.values()]
+        self._pending_evaluations = pending_evaluations
         if self._num_train_x >= self._initial_design_size:
             try:
                 if len(self._pending_evaluations) > 0:
@@ -185,9 +184,13 @@ class CostCooling(BayesianOptimization):
                     # evaluations and add these to the other results to fit another model.
                     self.surrogate_model.fit(train_x, train_y)
                     self.cost_model.fit(train_x, train_cost)
-                    ys, _ = self.surrogate_model.predict(self._pending_evaluations)
-                    zs, _ = self.cost_model.predict(self._pending_evaluations)
-                    train_x += self._pending_evaluations
+                    ys, _ = self.surrogate_model.predict(
+                        list(self._pending_evaluations.values())
+                    )
+                    zs, _ = self.cost_model.predict(
+                        list(self._pending_evaluations.values())
+                    )
+                    train_x.extend(self._pending_evaluations.values())
                     train_y += list(ys.detach().numpy())
                     train_cost += list(zs.detach().numpy())
 

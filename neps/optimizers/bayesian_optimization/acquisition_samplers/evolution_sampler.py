@@ -1,6 +1,6 @@
 import random
 from heapq import nlargest
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 
@@ -114,6 +114,7 @@ class EvolutionSampler(AcquisitionSampler):
         previous_samples: list,
         population_size: int,
         batch_size: int = None,
+        constraint=None,
     ):
         def inner_loop(population, fitness, X_max, acq_max):
             try:
@@ -154,6 +155,7 @@ class EvolutionSampler(AcquisitionSampler):
                     for p_member in self.random_sampling.sample_batch(
                         acquisition_function,
                         population_size - len(previous_samples) - len(population),
+                        constraint=constraint,
                     )
                     if p_member not in new_pop
                 ]
@@ -195,7 +197,7 @@ class EvolutionSampler(AcquisitionSampler):
 
         return X_max, population, acq_max
 
-    def sample(self, acquisition_function) -> Tuple[list, list, list]:
+    def sample(self, acquisition_function, constraint=None) -> SearchSpace:
         population: List[SearchSpace] = []
         if self.initial_history_last > 0 and len(self.x) >= self.initial_history_last:
             population = self.x[-self.initial_history_last :]
@@ -232,5 +234,7 @@ class EvolutionSampler(AcquisitionSampler):
                     ),
                 )
             )
-        X_max, _, _ = self.evolution(acquisition_function, population, self.pool_size, 1)
+        X_max, _, _ = self.evolution(
+            acquisition_function, population, self.pool_size, 1, constraint=constraint
+        )
         return X_max[0]

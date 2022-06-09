@@ -30,13 +30,21 @@ class BaseOptimizer(metahyper.Sampler):
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
 
+        self._previous_results: dict[str, ConfigResult] = {}
+        self._pending_evaluations: dict[str, SearchSpace] = {}
+
+    @property
+    def remaining_budget(self):
+        return self.budget - self.used_budget
+
     @abstractmethod
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
-        raise NotImplementedError
+        self._previous_results = previous_results
+        self._pending_evaluations = pending_evaluations
 
     @abstractmethod
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:

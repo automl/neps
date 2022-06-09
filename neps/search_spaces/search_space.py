@@ -223,6 +223,15 @@ class SearchSpace(collections.abc.Mapping):
             for hp_name, hp in self.hyperparameters.items()
         }
 
+    def split_hps_fidelities(self):
+        hps, fidelities = {}, {}
+        for hp_name, hp in self.items():
+            if hp.is_fidelity:
+                fidelities[hp_name] = deepcopy(hp)
+            else:
+                hps[hp_name] = deepcopy(hp)
+        return SearchSpace(**hps), SearchSpace(**fidelities)
+
     def add_constant_hyperparameter(self, name=None, value=None):
         if value is not None:
             hp = ConstantParameter(value=value)

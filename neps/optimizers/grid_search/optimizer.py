@@ -22,7 +22,7 @@ class GridSearch(BaseOptimizer):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 

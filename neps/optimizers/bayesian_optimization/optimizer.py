@@ -6,7 +6,7 @@ from typing import Any
 from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces.search_space import SearchSpace
-from ...utils.result_utils import get_loss
+from ...utils.result_utils import get_cost, get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.base_acquisition import BaseAcquisition
@@ -25,12 +25,12 @@ class BayesianOptimization(BaseOptimizer):
         pipeline_space: SearchSpace,
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
-        surrogate_model_args: dict = None,
+        surrogate_model_args: dict = None,  # TODO: remove
         kernels: list[str | Kernel] = None,
-        # optimal_assignment: bool = False,
-        # domain_se_kernel: str = None,
-        # graph_kernels: list = None,
-        # hp_kernels: list = None,
+        # optimal_assignment: bool = False, # TODO: remove
+        # domain_se_kernel: str = None, # TODO: remove
+        graph_kernels: list = None,  # TODO: remove
+        hp_kernels: list = None,  # TODO: remove
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
@@ -48,7 +48,9 @@ class BayesianOptimization(BaseOptimizer):
             surrogate_model: Surrogate model
             surrogate_model_args: Arguments that will be given to the surrogate model
                 (the Gaussian processes model).
-            kernels: Kernels for NAS-HPI
+            kernels: Kernels for NAS-HPO
+            hp_kernels: Kernels for HPO (deprecated, should use 'kernels')
+            graph_kernels: Kernels for NAS (deprecated, should use 'kernels')
             acquisition: Acquisition strategy
             log_prior_weighted: if to use log for prior
             acquisition_sampler: Acquisition function fetching strategy
@@ -80,9 +82,24 @@ class BayesianOptimization(BaseOptimizer):
 
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
-        self._num_train_x: int = 0
-        self._pending_evaluations: list = []
         self._model_update_failed: bool = False
+
+        if graph_kernels:
+            kernels = (kernels or []) + graph_kernels
+            logger.warn(
+                "Using 'graph_kernels' is deprecated and you should directly use the 'kernels' argument"
+            )
+
+        if hp_kernels:
+            kernels = (kernels or []) + hp_kernels
+            logger.warn(
+                "Using 'hp_kernels' is deprecated and you should directly use the 'kernels' argument"
+            )
+
+        if surrogate_model_args:
+            logger.warn(
+                "Using 'surrogate_model_args' is deprecated. You can use a partial for the surrogate model instead: ('model_name', {args...})"
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
@@ -112,70 +129,102 @@ class BayesianOptimization(BaseOptimizer):
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
 
+        self.train_x: list[SearchSpace] = []
+        self.train_losses: list[float] = []
+        self.train_costs: list[float] = []
+
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search."""
-        if self._num_train_x >= self._initial_design_size:
+        if len(self._previous_results) >= self._initial_design_size:
             return False
         return True
+
+    def _fantasize_evaluations(self, new_x):
+        """Returns x, y_loss, y_cost"""
+        self.surrogate_model.fit(self.train_x, self.train_losses)
+        ys = self.surrogate_model.predict_mean(new_x)
+        return new_x, list(ys.detach().numpy()), []
+
+    def _update_optimizer_training_state(self):
+        """Can be overloaded to set training state, only outside of init phase"""
+        self.surrogate_model.fit(self.train_x, self.train_losses)
+        self.acquisition.set_state(self.surrogate_model)
+        self.acquisition_sampler.set_state(x=self.train_x, y=self.train_losses)
 
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         # TODO: filter out error configs as they can not be used for modeling?
         # TODO: read out cost if they exist
-        train_x = [el.config for el in previous_results.values()]
-        train_y = [get_loss(el.result) for el in previous_results.values()]
-        self._num_train_x = len(train_x)
-        self._pending_evaluations = [el for el in pending_evaluations.values()]
+        super().load_results(previous_results, pending_evaluations)
+        self.train_x = [el.config for el in previous_results.values()]
+        self.train_losses = [get_loss(el.result) for el in previous_results.values()]
+        self.train_costs = [get_cost(el.result) for el in previous_results.values()]
+
+        self._model_update_failed = False
         if not self.is_init_phase():
             try:
                 if len(self._pending_evaluations) > 0:
                     # We want to use hallucinated results for the evaluations that have
                     # not finished yet. For this we fit a model on the finished
                     # evaluations and add these to the other results to fit another model.
-                    self.surrogate_model.fit(train_x, train_y)
-                    ys = self.surrogate_model.predict_mean(self._pending_evaluations)
-                    train_x += self._pending_evaluations
-                    train_y += list(ys.detach().numpy())
-
-                self.surrogate_model.fit(train_x, train_y)
-                self.acquisition.set_state(self.surrogate_model)
-                self.acquisition_sampler.set_state(x=train_x, y=train_y)
-
-                self._model_update_failed = False
-            except RuntimeError:
+                    new_x, new_losses, new_costs = self._fantasize_evaluations(
+                        list(self._pending_evaluations.values())
+                    )
+                    self.train_x.extend(new_x)
+                    self.train_losses.extend(new_losses)
+                    self.train_costs.extend(new_costs)
+                self._update_optimizer_training_state()
+            except RuntimeError as e:
                 self.logger.exception(
                     "Model could not be updated due to below error. Sampling will not use"
-                    " the model."
+                    " the model.\n"
+                    f"Error : {e}"
                 )
                 self._model_update_failed = True
 
+    def get_new_config_id(self, config):  # pylint: disable=unused-argument
+        return str(len(self._previous_results) + len(self._pending_evaluations) + 1)
+
+    def sample_configuration_from_model(
+        self,
+    ) -> tuple[SearchSpace, str | None, str | None]:
+        """Should return (config, config_id, previous_id) with config sampled from"""
+        return self.acquisition_sampler.sample(self.acquisition), None, None
+
+    def sample_configuration_randomly(
+        self, **sampler_kwargs
+    ) -> tuple[SearchSpace, str | None, str | None]:
+        """Should return config, config_id, previous_id"""
+        return self.pipeline_space.sample(**sampler_kwargs), None, None
+
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        if self._num_train_x == 0 and self._initial_design_size >= 1:
+        config, config_id, previous_id = None, None, None
+        if len(self._previous_results) == 0 and self._initial_design_size >= 1:
             # TODO: if default config sample it
-            config = self.pipeline_space.sample(
+            config, config_id, previous_id = self.sample_configuration_randomly(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
         elif random.random() < self._random_interleave_prob:
-            config = self.pipeline_space.sample(
+            config, config_id, previous_id = self.sample_configuration_randomly(
                 patience=self.patience, ignore_fidelity=False
             )
         elif self.is_init_phase() or self._model_update_failed:
             # initial design space
-            config = self.pipeline_space.sample(
+            config, config_id, previous_id = self.sample_configuration_randomly(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
         else:
             for _ in range(self.patience):
-                config = self.acquisition_sampler.sample(self.acquisition)
-                if config not in self._pending_evaluations:
+                config, config_id, previous_id = self.sample_configuration_from_model()
+                if config not in self._pending_evaluations.values():
                     break
             else:
-                config = self.pipeline_space.sample(
+                config, config_id, previous_id = self.sample_configuration_randomly(
                     patience=self.patience, user_priors=True, ignore_fidelity=False
                 )
-
-        config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
-        return config.hp_values(), config_id, None
+        if config_id is None:
+            config_id = self.get_new_config_id(config)
+        return config.hp_values(), config_id, previous_id

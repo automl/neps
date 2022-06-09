@@ -100,6 +100,18 @@ class FloatParameter(NumericalParameter):
 
         self.value = min(self.upper, max(self.lower, value))
 
+    def step_on_scale(self, scale):
+        """Returns the corresponding step on a scale from 1 to 'scale'"""
+        assert scale >= 1
+        float_fraction = (self.value - self.lower) / self.upper
+        return 1 + int(round(float_fraction * (scale - 1)))
+
+    def from_step(self, step, scale):
+        """Sets the value corresponding to a step on a scale from 1 to 'scale'"""
+        assert scale >= 1 and step >= 1 and step <= scale
+        fract = (step - 1) / (scale - 1) if scale > 1 else 1
+        self.value = self.lower + (self.upper - self.lower) * fract
+
     def mutate(
         self,
         parent=None,

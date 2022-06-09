@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Iterable, Union
+from typing import List, Union
 
 import numpy as np
 import torch
@@ -49,7 +49,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.optimize_on_max_fidelity = optimize_on_max_fidelity
 
     def eval(
-        self, x: Iterable, asscalar: bool = False
+        self, x: List, asscalar: bool = False
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """
         Return the negative expected improvement at the query point x2
