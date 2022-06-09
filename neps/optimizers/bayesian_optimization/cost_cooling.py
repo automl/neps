@@ -8,7 +8,6 @@ from ...optimizers.bayesian_optimization.acquisition_functions.cost_cooling impo
     CostCooler,
 )
 from ...search_spaces.search_space import SearchSpace
-from ...utils.result_utils import get_cost, get_loss
 from .acquisition_functions import AcquisitionMapping
 from .acquisition_functions.base_acquisition import BaseAcquisition
 from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
@@ -172,8 +171,8 @@ class CostCooling(BayesianOptimization):
     ) -> None:
         # TODO(Jan): read out cost and fit cost model
         train_x = [el.config for el in previous_results.values()]
-        train_y = [get_loss(el.result) for el in previous_results.values()]
-        train_cost = [get_cost(el.result) for el in previous_results.values()]
+        train_y = [self.get_loss(el.result) for el in previous_results.values()]
+        train_cost = [self.get_cost(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
         self._pending_evaluations = pending_evaluations
         if self._num_train_x >= self._initial_design_size:

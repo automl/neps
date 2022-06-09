@@ -334,7 +334,7 @@ class Grammar(CFG):
                 production = q_production_rules.get(block=False)[0][0]
                 idx = self.productions(production.lhs()).index(production)
                 if log:
-                    prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-12)
+                    prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-1000)
                 else:
                     prior_prob *= self.prior[str(production.lhs())][idx]
             else:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
@@ -212,6 +213,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         model_search: bool = True,
+        switch_to_bo: bool = False,
         **bo_kwargs,
     ):
         super().__init__(
@@ -226,6 +228,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # evaluated at the target budget
         self.initial_design_type = initial_design_type
         self.model_search = model_search
+        self.switch_to_bo = switch_to_bo
 
         # check to ensure no rung ID is negative
         self.stopping_rate_limit = np.floor(
@@ -235,6 +238,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
 
         # maps rungs to a fidelity value
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
+        print(self.rung_map)
         self.max_rung = len(self.rung_map) - 1
         self.fidelities = list(self.rung_map.values())
         # stores the observations made and the corresponding fidelity explored
@@ -280,12 +284,12 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "loss"] = get_loss(
+                    self.observed_configs.at[int(_config), "loss"] = self.get_loss(
                         config_val.result
                     )
             else:
                 _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), get_loss(config_val.result)]],
+                    [[config_val.config, int(_rung), self.get_loss(config_val.result)]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
@@ -315,7 +319,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         # configs with the highest fidelity it was evaluated on and its performance
         for config_id, config_val in previous_results.items():
             _config, _rung = config_id.split("_")
-            loss = get_loss(config_val.result)
+            loss = self.get_loss(config_val.result)
             if int(_config) not in self.observed_configs.index:
                 # this condition and check is important to handle async scenarios as
                 # the `previous_results` can provide configs that have not been
@@ -401,6 +405,18 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
         else:
             return super().is_init_phase()
 
+    def _switch_to_bo(self):
+        """Switches to BO when eta evaluations seen at the highest fidelity"""
+        max_fidelity_evals = np.sum(self.observed_configs.rung == self.max_rung)
+        if self.switch_to_bo and max_fidelity_evals >= self.eta:
+            print("\nSwitching to BO!\n")
+            fidelity_value = self.rung_map[self.max_rung]  # base rung is always 0
+            config_id = f"{len(self.observed_configs)}_{self.max_rung}"
+        else:
+            fidelity_value = self.rung_map[0]  # base rung is always 0
+            config_id = f"{len(self.observed_configs)}_{0}"
+        return fidelity_value, config_id
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -416,7 +432,11 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
-            if self.model_search and not self.is_init_phase():
+            if random.random() < self._random_interleave_prob:
+                config = self.pipeline_space.sample(
+                    patience=self.patience, ignore_fidelity=False
+                )
+            elif self.model_search and not self.is_init_phase():
                 # sampling from AF at base rung
                 for _ in range(self.patience):
                     config = self.acquisition_sampler.sample(self.acquisition)
@@ -432,8 +452,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
                 config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=True
                 )
-            # assigning the fidelity to evaluate the config at the base rung
-            config.fidelity.value = self.rung_map[0]  # base rung is always 0
-            config_id = f"{len(self.observed_configs)}_{0}"
+            # assigning the fidelity to evaluate the config at
+            config.fidelity.value, config_id = self._switch_to_bo()
             previous_config_id = None
         return config.hp_values(), config_id, previous_config_id  # type: ignore

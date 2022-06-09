@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 
 from ...search_spaces.search_space import SearchSpace
-from ...utils.result_utils import get_loss
 from ..base_optimizer import BaseOptimizer
 
 
@@ -34,7 +33,7 @@ class RegularizedEvolution(BaseOptimizer):
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         train_x = [el.config for el in previous_results.values()]
-        train_y = [get_loss(el.result) for el in previous_results.values()]
+        train_y = [self.get_loss(el.result) for el in previous_results.values()]
         self.num_train_x = len(train_x)
         self.population = [
             (x, y)
@@ -60,7 +59,7 @@ class RegularizedEvolution(BaseOptimizer):
                 if config not in self.pending_evaluations:
                     break
                 patience -= 1
-        config_id = str(self.num_train_x + 1)
+        config_id = str(self.num_train_x + len(self.pending_evaluations) + 1)
         return config.hp_values(), config_id, None
 
     def _mutate(self, parent):

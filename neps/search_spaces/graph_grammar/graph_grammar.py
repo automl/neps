@@ -102,6 +102,9 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def compose_functions(self, flatten_graph: bool = True):
         return self._compose_functions(self.id, self.grammars[0], flatten_graph)
 
+    def unparse_tree(self, identifier: str, as_composition: bool = True):
+        return self._unparse_tree(identifier, self.grammars[0], as_composition)
+
     def get_dictionary(self) -> dict:
         return {"graph_grammar": self.id}
 
@@ -448,7 +451,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         grammars: list[Grammar] | list[ConstrainedGrammar],
         terminal_to_op_names: dict,
         terminal_to_sublanguage_map: dict,
-        prior: dict = None,
+        prior: list[dict] = None,
         terminal_to_graph_edges: dict = None,
         fixed_macro_grammar: bool = False,
         edge_attr: bool = True,
@@ -488,6 +491,14 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 raise Exception("Cannot identify macro grammar")
             return grammars[0], motif_grammars
 
+        if prior is not None:
+            assert len(grammars) == len(
+                prior
+            ), "At least one of the grammars has no prior defined!"
+            for g, p in zip(grammars, prior):
+                g.prior = p
+        self.has_prior = prior is not None
+
         self.macro_grammar, grammars = _identify_macro_grammar(
             grammars, terminal_to_sublanguage_map
         )
@@ -515,12 +526,6 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             else 1
             for grammar in grammars
         ]
-
-        if prior is not None:
-            print(
-                "Warning: Prior is not implemented for GraphGrammarMultipleRepetitive -> will be ignored"
-            )
-        self.has_prior = False
 
         CoreGraphGrammar.__init__(
             self,
@@ -611,6 +616,9 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
     def compose_functions(self, flatten_graph: bool = True):
         return self._compose_functions(self.id, self.full_grammar, flatten_graph)
+
+    def unparse_tree(self, identifier: str, as_composition: bool = True):
+        return self._unparse_tree(identifier, self.full_grammar, as_composition)
 
     @staticmethod
     def get_full_grammar(grammars):
@@ -824,3 +832,13 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 // self.number_of_repetitive_motifs_per_grammar[1]
                 * motif_space_size
             )
+
+    def compute_prior(self, log: bool = True) -> float:
+        prior_probs = [
+            g.compute_prior(st, log=log)
+            for g, st in zip(self.grammars, self.string_tree_list)
+        ]
+        if log:
+            return sum(prior_probs)
+        else:
+            return np.prod(prior_probs)
