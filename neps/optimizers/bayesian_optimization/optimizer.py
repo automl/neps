@@ -5,6 +5,7 @@ from typing import Any
 
 import torch
 from metahyper.api import ConfigResult, instance_from_map
+from typing_extensions import Literal
 
 from ...search_spaces.search_space import SearchSpace
 from ...utils.result_utils import get_cost, get_loss
@@ -21,6 +22,8 @@ from .models import SurrogateModelMapping
 class BayesianOptimization(BaseOptimizer):
     """Implements the basic BO loop."""
 
+    USES_COST_MODEL = False
+
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -32,6 +35,8 @@ class BayesianOptimization(BaseOptimizer):
         # domain_se_kernel: str = None, # TODO: remove
         graph_kernels: list = None,  # TODO: remove
         hp_kernels: list = None,  # TODO: remove
+        cost_model: str | Literal["same"] | Any = "same",
+        cost_model_kernels: list[str | Kernel] | None | Literal["same"] = "same",
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
@@ -52,6 +57,10 @@ class BayesianOptimization(BaseOptimizer):
             kernels: Kernels for NAS-HPO
             hp_kernels: Kernels for HPO (deprecated, should use 'kernels')
             graph_kernels: Kernels for NAS (deprecated, should use 'kernels')
+            cost_model: if USES_COST_MODEL, the surrogate model used to model the cost,
+                or "same" to use the value of the surrogate_model argument.
+            cost_model_kernels: kernels for the cost model, or "same" to use the value
+                of the kernel argument.
             acquisition: Acquisition strategy
             log_prior_weighted: if to use log for prior
             acquisition_sampler: Acquisition function fetching strategy
@@ -81,9 +90,15 @@ class BayesianOptimization(BaseOptimizer):
         if not 0 <= random_interleave_prob <= 1:
             raise ValueError("random_interleave_prob should be between 0.0 and 1.0")
 
+        if not self.USES_COST_MODEL:
+            if cost_model not in ["same", None]:
+                raise ValueError("This optimizer don't use a cost model")
+            cost_model = None
+
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
         self._model_update_failed: bool = False
+        self.cost_model: Any = None
 
         if graph_kernels:
             kernels = (kernels or []) + graph_kernels
@@ -112,6 +127,19 @@ class BayesianOptimization(BaseOptimizer):
                 **(surrogate_model_args or {}),
             },
         )
+
+        if self.USES_COST_MODEL:
+            if cost_model_kernels == "same":
+                cost_model_kernels = kernels
+            self.cost_model = instance_from_map(
+                SurrogateModelMapping,
+                surrogate_model if cost_model == "same" else cost_model,
+                name="cost surrogate model",
+                kwargs={
+                    "pipeline_space": pipeline_space,
+                    "kernels": kernels,
+                },
+            )
 
         self.acquisition = instance_from_map(
             AcquisitionMapping,
@@ -144,13 +172,25 @@ class BayesianOptimization(BaseOptimizer):
         """Returns x, y_loss, y_cost"""
         self.surrogate_model.fit(self.train_x, self.train_losses)
         with torch.no_grad():
-            ys = self.surrogate_model.predict_mean(new_x)
-        return new_x, ys.detach().tolist(), []
+            predicted_losses = self.surrogate_model.predict_mean(new_x)
+            predicted_losses = predicted_losses.detach().tolist()
+
+        predicted_costs = None
+        if self.USES_COST_MODEL:
+            self.cost_model.fit(self.train_x, self.train_costs)
+            with torch.no_grad():
+                predicted_costs = self.cost_model.predict_mean(new_x)
+            predicted_costs = predicted_costs.detach().tolist()
+
+        return new_x, predicted_losses, predicted_costs
 
     def _update_optimizer_training_state(self):
         """Can be overloaded to set training state, only outside of init phase"""
         self.surrogate_model.fit(self.train_x, self.train_losses)
-        self.acquisition.set_state(self.surrogate_model)
+        if self.USES_COST_MODEL:
+            self.cost_model.fit(self.train_x, self.train_costs)
+
+        self.acquisition.set_state(self.surrogate_model, cost_model=self.cost_model)
         self.acquisition_sampler.set_state(x=self.train_x, y=self.train_losses)
 
     def load_results(
@@ -186,9 +226,6 @@ class BayesianOptimization(BaseOptimizer):
                     f"Error : {e}"
                 )
                 self._model_update_failed = True
-
-    def get_new_config_id(self, config):  # pylint: disable=unused-argument
-        return str(len(self._previous_results) + len(self._pending_evaluations) + 1)
 
     def sample_configuration_from_model(
         self,
@@ -229,4 +266,4 @@ class BayesianOptimization(BaseOptimizer):
                 )
         if config_id is None:
             config_id = self.get_new_config_id(config)
-        return config.hp_values(), config_id, previous_id
+        return config, config_id, previous_id

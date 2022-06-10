@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from abc import abstractmethod
 from copy import deepcopy
 from typing import Any
 
@@ -42,7 +41,6 @@ class BaseOptimizer(metahyper.Sampler):
     def remaining_budget(self):
         return self.budget - self.used_budget
 
-    @abstractmethod
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
@@ -51,9 +49,8 @@ class BaseOptimizer(metahyper.Sampler):
         self._previous_results = previous_results
         self._pending_evaluations = pending_evaluations
 
-    @abstractmethod
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        raise NotImplementedError
+    def get_new_config_id(self, config) -> str:  # pylint: disable=unused-argument
+        return str(len(self._previous_results) + len(self._pending_evaluations) + 1)
 
     def get_state(self) -> Any:  # pylint: disable=no-self-use
         return {

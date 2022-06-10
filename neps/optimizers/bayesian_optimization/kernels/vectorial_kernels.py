@@ -18,7 +18,7 @@ class BaseNumericalKernel(Kernel):
 
 class MaternKernel(BaseNumericalKernel):
     def __init__(self, nu: float = 2.5, **kwargs):
-        """Mattern kernel
+        """Matern kernel
 
         Args:
             nu: The smoothness parameter. Should be 0.5, 1.5, or 2.5.

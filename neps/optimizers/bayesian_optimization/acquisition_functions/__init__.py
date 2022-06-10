@@ -4,7 +4,9 @@ from functools import partial
 from typing import Callable
 
 from .base_acquisition import BaseAcquisition
+from .cost_cooling import CostCooler
 from .ei import ComprehensiveExpectedImprovement
+from .prior_weighted import DecayingPriorWeightedAcquisition
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
@@ -25,4 +27,5 @@ AcquisitionMapping: dict[str, Callable] = {
         in_fill="posterior",
         augmented_ei=True,
     ),
+    "cost_cooler": CostCooler,
 }

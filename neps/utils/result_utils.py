@@ -17,11 +17,13 @@ def get_loss(
 
 # cost_value_on_error defaults to inf in order not be break existing functionality.
 def get_cost(
-    result: str | dict | float, cost_value_on_error: float = float("inf")
+    result: str | dict | float,
+    cost_value_on_error: float = float("inf"),
+    default_cost: float = 0,
 ) -> float | Any:
     if result == "error":
         return cost_value_on_error
     elif isinstance(result, dict):
-        return float(result["cost"])
+        return float(result.get("cost", default_cost))
     else:
         return float(result)

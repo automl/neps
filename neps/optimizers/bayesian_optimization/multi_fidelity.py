@@ -8,15 +8,12 @@ from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
-import torch
 from metahyper.api import ConfigResult, instance_from_map
 from typing_extensions import Literal
 
 from ...search_spaces.numerical.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ...utils.result_utils import get_cost, get_loss
-from .kernels import Kernel
-from .models import SurrogateModelMapping
 from .optimizer import BayesianOptimization
 
 
@@ -42,10 +39,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self,
         pipeline_space: SearchSpace,
         surrogate_model: str | Any = "gp",
-        kernels: list[str | Kernel] | None = None,
-        cost_model: str | Literal["same"] | Any = "same",
-        cost_model_kernels: list[str | Kernel] | None | Literal["same"] = "same",
-        cost_model_args: dict | None = None,
         num_fidelity_steps: int = 10,
         aggregate_continuation_costs: Callable | Literal["sum", "max"] | None = None,
         **kwargs,
@@ -54,14 +47,11 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
             raise ValueError(
                 "num_fidelity_steps should be at an integer with a value of least 1"
             )
-        if not self.USES_COST_MODEL:
-            if cost_model not in ["same", None]:
-                raise ValueError("This optimizer don't use a cost model")
-            cost_model = None
 
         if aggregate_continuation_costs is None:
             # Choose a good default value if not given
             aggregate_continuation_costs = "sum" if self.USES_CONTINUATION else "max"
+
         aggregate_continuation_costs = instance_from_map(
             {"sum": sum, "max": max},
             aggregate_continuation_costs,
@@ -71,7 +61,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         super().__init__(
             pipeline_space=pipeline_space,
             surrogate_model=surrogate_model,
-            kernels=kernels,
             **kwargs,
         )
 
@@ -79,22 +68,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self.fantasized_remaining_budget = self.budget
         self.max_seen_fid_step: int = 0
         self.num_fidelity_steps: int = num_fidelity_steps
-        self.cost_model: Any = None
         self.aggregate_continuation_costs = aggregate_continuation_costs
-
-        if self.USES_COST_MODEL:
-            if cost_model_kernels == "same":
-                cost_model_kernels = kernels
-            self.cost_model = instance_from_map(
-                SurrogateModelMapping,
-                surrogate_model if cost_model == "same" else cost_model,
-                name="cost surrogate model",
-                kwargs={
-                    "pipeline_space": pipeline_space,
-                    "kernels": kernels,
-                    **(cost_model_args or {}),
-                },
-            )
 
         # maintain incumbent across 3 dimensions:
         #  cost - the configuration with the maximum cumulative cost incurred
@@ -161,16 +135,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self.observed_configs.set_index("base_id", inplace=True)
         self.observed_configs.sort_index(inplace=True)
 
-    def _fantasize_evaluations(self, new_x):
-        """Returns x, y_loss, y_cost"""
-        new_x, new_losses, new_costs = super()._fantasize_evaluations(new_x)
-        if self.USES_COST_MODEL:
-            self.cost_model.fit(self.train_x, self.train_costs)
-            with torch.no_grad():
-                new_costs = self.cost_model.predict_mean(new_x)
-            new_costs = new_costs.detach().tolist()
-        return new_x, new_losses, new_costs
-
     def _update_optimizer_training_state(self) -> None:
         super()._update_optimizer_training_state()
         self._update_observations()
@@ -181,9 +145,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
             self.fantasized_remaining_budget = self.budget - sum(self.train_costs)
         else:
             self.fantasized_remaining_budget = self.remaining_budget
-
-        if self.USES_COST_MODEL:
-            self.cost_model.fit(self.train_x, self.train_costs)
 
     def get_new_config_id(self, config, base_id=None, fidelity_step=None):
         """An id should be of the form [base_id]_[fidelity_step], with the same
@@ -433,9 +394,7 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             config_id = f"{row.name}_{rung}"
         else:
             if random.random() < self._random_interleave_prob:
-                config = self.pipeline_space.sample(
-                    patience=self.patience, ignore_fidelity=False
-                )
+                config = self.pipeline_space.sample(patience=self.patience)
             elif self.model_search and not self.is_init_phase():
                 # sampling from AF at base rung
                 for _ in range(self.patience):
@@ -455,4 +414,4 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             # assigning the fidelity to evaluate the config at
             config.fidelity.value, config_id = self._switch_to_bo()
             previous_config_id = None
-        return config.hp_values(), config_id, previous_config_id  # type: ignore
+        return config, config_id, previous_config_id  # type: ignore

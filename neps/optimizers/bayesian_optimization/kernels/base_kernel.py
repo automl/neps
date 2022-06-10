@@ -7,6 +7,7 @@ import gpytorch
 import torch
 
 from ..default_consts import LENGTHSCALE_MAX, LENGTHSCALE_MIN
+from ..utils import SafeInterval
 
 
 class Kernel:
@@ -82,7 +83,7 @@ class Kernel:
                 "ard_num_dims": self.get_tensor_length(hp_shapes),
                 "active_dims": self.get_active_dims(hp_shapes),
                 "lengthscale_prior": gpytorch.priors.NormalPrior(0.09, 0.1),
-                "lengthscale_constraint": gpytorch.constraints.Interval(
+                "lengthscale_constraint": SafeInterval(
                     LENGTHSCALE_MIN,
                     LENGTHSCALE_MAX,
                 ),

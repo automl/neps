@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 
 from typing_extensions import Literal
@@ -18,6 +19,8 @@ class IntegerParameter(FloatParameter):
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
+        self.lower = int(math.ceil(self.lower))
+        self.upper = int(math.floor(self.upper))
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
         # i.e. [x - 0.499999, x + 0.499999]
@@ -38,9 +41,12 @@ class IntegerParameter(FloatParameter):
         self.float_hp.sample(user_priors=user_priors)
         self.value = int(round(self.float_hp.value))  # type: ignore[arg-type]
 
-    def from_step(self, step, scale):
-        super().value_from_step(step, scale)
-        self.value = int(round(self.value))
+    def from_step(self, step, scale, in_place=True):
+        value = super().from_step(step, scale)
+        value = int(round(value))
+        if in_place:
+            self.value = value
+        return value
 
     def mutate(
         self,

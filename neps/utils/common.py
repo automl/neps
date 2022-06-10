@@ -43,3 +43,11 @@ def set_rnd_state(state: dict):
         torch.cuda.set_rng_state_all(
             [torch.ByteTensor(dev) for dev in state["torch_cuda_seed_state"]]
         )
+
+
+def manual_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)

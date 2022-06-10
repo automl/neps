@@ -62,6 +62,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
 
         mu, covariance_matrix = self.surrogate_model.predict(x, normalized=True)
         cov = torch.diag(covariance_matrix)
+        # print('cov', cov)
         std = torch.sqrt(cov)
         mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
@@ -76,6 +77,9 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             )
         else:
             u = (mu_star - mu - self.xi) / std
+            # print('(mu_star - mu - self.xi)', (mu_star - mu - self.xi))
+            # print('std', std)
+            # print('u', u)
             ucdf = gauss.cdf(u)
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf
@@ -86,8 +90,8 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             )
         return ei
 
-    def set_state(self, surrogate_model):
-        super().set_state(surrogate_model)
+    def set_state(self, surrogate_model, **kwargs):
+        super().set_state(surrogate_model, **kwargs)
 
         # Compute incumbent
         if self.in_fill == "best":

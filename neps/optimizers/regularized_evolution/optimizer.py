@@ -28,20 +28,14 @@ class RegularizedEvolution(BaseOptimizer):
         self.population_size = population_size
         self.sample_size = sample_size
         self.population: list = []
-        self.pending_evaluations: list = []
-        self.num_train_x: int = 0
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+        super().load_results(previous_results, pending_evaluations)
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
-        self.num_train_x = len(train_x)
-        self.population = [
-            (x, y)
-            for x, y in zip(
-                train_x[-self.population_size :], train_y[-self.population_size :]
-            )
-        ]
-        self.pending_evaluations = [el for el in pending_evaluations.values()]
+        self.population = list(
+            zip(train_x[-self.population_size :], train_y[-self.population_size :])
+        )
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
         if len(self.population) < self.population_size:
@@ -56,11 +50,10 @@ class RegularizedEvolution(BaseOptimizer):
                     config = self.pipeline_space.sample(
                         patience=self.patience, user_priors=True
                     )
-                if config not in self.pending_evaluations:
+                if config not in self.pending_evaluations.values():
                     break
                 patience -= 1
-        config_id = str(self.num_train_x + len(self.pending_evaluations) + 1)
-        return config.hp_values(), config_id, None
+        return config, self.get_new_config_id(config), None
 
     def _mutate(self, parent):
         for _ in range(self.patience):

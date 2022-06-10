@@ -16,7 +16,6 @@ from .regularized_evolution.optimizer import RegularizedEvolution
 SearcherMapping: dict[str, Callable] = {
     "bayesian_optimization": BayesianOptimization,
     "mf_bayesian_optimization": BayesianOptimizationMultiFidelity,
-    "cost_cooling_bayesian_optimization": CostCooling,
     "random_search": RandomSearch,
     "cost_cooling": CostCooling,
     "regularized_evolution": RegularizedEvolution,
