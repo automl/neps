@@ -88,6 +88,8 @@ def run(
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     working_directory: str | Path,
     overwrite_working_directory: bool = False,
+    development_stage_id=None,
+    task_id=None,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     budget: int | float | None = None,
@@ -119,6 +121,10 @@ def run(
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run.
+        development_stage_id: ID for the current development stage. Only needed if
+            you work with multiple development stages.
+        task_id: ID for the current task. Only needed if you work with multiple
+            tasks.
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
@@ -189,6 +195,8 @@ def run(
         run_pipeline,
         searcher,
         working_directory,
+        development_stage_id=development_stage_id,
+        task_id=task_id,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
