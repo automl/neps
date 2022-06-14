@@ -149,7 +149,7 @@ class GPModel:
             with botorch.models.utils.gpt_posterior_settings():
                 mvn = self.gp(x_tensor)
         mean, covariance_matrix = mvn.mean, mvn.covariance_matrix
-        covariance_matrix = torch.minimum(covariance_matrix, torch.tensor(0))
+        covariance_matrix = torch.maximum(covariance_matrix, torch.tensor(0))
         if not normalized:
             mean = mean * self.y_std + self.y_mean
             covariance_matrix = covariance_matrix * self.y_std**2

@@ -30,9 +30,9 @@ class BayesianOptimization(BaseOptimizer):
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
         surrogate_model_args: dict = None,  # TODO: remove
-        kernels: list[str | Kernel] = None,
         # optimal_assignment: bool = False, # TODO: remove
         # domain_se_kernel: str = None, # TODO: remove
+        kernels: list[str | Kernel] = None,
         graph_kernels: list = None,  # TODO: remove
         hp_kernels: list = None,  # TODO: remove
         cost_model: str | Literal["same"] | Any = "same",

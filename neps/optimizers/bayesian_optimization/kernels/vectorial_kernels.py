@@ -118,7 +118,7 @@ def _scaled_distance(lengthscale, X, X2=None, sq_dist=False):
     problem."""
     if X2 is None:
         X2 = X
-    if len(lengthscale) == 1:
+    if lengthscale.nelement() == 1:
         dist = _unscaled_distance(X, X2, sq_dist)
         dist /= lengthscale**2 if sq_dist else lengthscale
     else:

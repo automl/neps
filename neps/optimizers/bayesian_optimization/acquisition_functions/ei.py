@@ -15,7 +15,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         xi: float = 0.0,
         in_fill: str = "best",
         log_ei: bool = False,
-        optimize_on_max_fidelity: bool = True,
+        optimize_on_max_fidelity: bool = False,
     ):
         """This is the graph BO version of the expected improvement
         key differences are:
@@ -62,7 +62,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
 
         mu, covariance_matrix = self.surrogate_model.predict(x, normalized=True)
         cov = torch.diag(covariance_matrix)
-        # print('cov', cov)
+        assert all(cov >= 0)
         std = torch.sqrt(cov)
         mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
@@ -77,9 +77,6 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             )
         else:
             u = (mu_star - mu - self.xi) / std
-            # print('(mu_star - mu - self.xi)', (mu_star - mu - self.xi))
-            # print('std', std)
-            # print('u', u)
             ucdf = gauss.cdf(u)
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf

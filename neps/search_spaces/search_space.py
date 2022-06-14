@@ -10,7 +10,6 @@ import ConfigSpace as CS
 import metahyper
 import numpy as np
 
-from ..utils.common import has_instance
 from . import (
     CategoricalParameter,
     ConstantParameter,
@@ -243,17 +242,6 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
         else:
             id_new_hp = name
         self.hyperparameters[str(id_new_hp)] = hp
-
-    def get_vectorial_dim(self):
-        if not has_instance(self.values(), NumericalParameter):
-            return None
-        features = {"continuous": 0, "categorical": 0}
-        for hp in self.values():
-            if isinstance(hp, CategoricalParameter):
-                features["categorical"] += 1
-            elif isinstance(hp, NumericalParameter):
-                features["continuous"] += 1
-        return features
 
     def set_to_max_fidelity(self):
         self.fidelity.value = self.fidelity.upper
