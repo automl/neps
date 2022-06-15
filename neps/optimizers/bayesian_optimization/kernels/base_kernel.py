@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import Mapping
+from typing import Any, Mapping
 
 import gpytorch
 import torch
 
+from ....search_spaces.parameter import HpTensorShape
 from ..default_consts import LENGTHSCALE_MAX, LENGTHSCALE_MIN
 from ..utils import SafeInterval
 
@@ -26,13 +27,14 @@ class Kernel:
             active_hps: name of the hyperparameters on which the kernel will be applied.
                 If not specified, it will be applied on all hyperparameters with a matching type.
             use_as_default: if True, the Kernel will be applied only to hyperparameters
-                not assigned to other kernels
+                not assigned to other kernels. It will be used as a fallback kernel by the GP.
             kernel_kwargs: arguments given to the GPyTorch kernel class constructor.
                 Can overwrite arguments like the lengthscale_prior value.
             scaling_kernel_kwargs: arguments given to the GPyTorch ScaleKernel constructor.
                 Can overwrite arguments like the outputscale_prior value.
         """
         self.active_hps = active_hps
+        self.active_hps_shapes: HpTensorShape | None = None
         self.use_as_default = use_as_default
         self.kernel_kwargs = kernel_kwargs or {}
         self.scaling_kernel_kwargs = scaling_kernel_kwargs or {}
@@ -43,15 +45,24 @@ class Kernel:
 
     @abstractmethod
     def does_apply_on(self, hp):
-        """Should return true when the kernel can be used on the given hyperparameter"""
+        """Should return true when the kernel can be used on the given hyperparameter.
+        Must be redefined by any child class."""
         raise NotImplementedError
 
     @abstractmethod
-    def build(self, hp_shapes):
-        """Implementation of the kernel, should return a GPyTorch kernel."""
+    def build(self, hp_shapes: dict[str, HpTensorShape]):
+        """Implementation of the kernel, should return a GPyTorch kernel.
+        Must be redefined by any child class.
+
+        Args:
+            hp_shapes: for each hyperparemeter of the SearchSapce, an HpTensorShape
+                object that can be used to store the size of the tensor representation
+                of the HP for this iteration. It might change between iterations."""
         raise Exception()
 
     def assign_hyperparameters(self, hyperparameters):
+        """Assign each HP to one or more kernel. Uses every HP in self.active_hps,
+        or every compatible HP if self.active_hps is None."""
         if self.active_hps is None:
             self.active_hps = [
                 hp_name
@@ -66,6 +77,8 @@ class Kernel:
 
     @staticmethod
     def get_active_dims(hp_shapes):
+        """Returns the dimensions of the main configuration tensor this kernel
+        will be applied on."""
         active_dims = []
         for shape in hp_shapes.values():
             active_dims.extend(shape.active_dims)
@@ -73,11 +86,31 @@ class Kernel:
 
     @staticmethod
     def get_tensor_length(hp_shapes):
+        """Returns the number of dimensions of the main configuration tensor this
+        kernel will be applied on."""
         return sum(shape.length for shape in hp_shapes.values())
 
     def _kernel_builder(
-        self, hp_shapes, kernel_class, kernel_kwargs=None, scaling_kernel_kwargs=None
+        self,
+        hp_shapes: dict[str, HpTensorShape],
+        kernel_class: gpytorch.kernels.Kernel,
+        kernel_kwargs: dict[str, Any] | None = None,
+        scaling_kernel_kwargs: dict[str, Any] | None = None,
     ):
+        """Build a GPyTorch kernel for one optimizer loop iteration, can be
+        called by child instances in the build method. Instanciate a gpytorch kernel
+        object with good lengthscale priors and a scale kernel.
+
+        Args:
+            hp_shapes: for each hyperparemeter of the SearchSapce, an HpTensorShape
+                object that can be used to store the size of the tensor representation
+                of the HP for this iteration. It might change between iterations.
+            kernel_class: the gpytorch kernel class that will be instanciated.
+            kernel_kwargs: to change or add argument for the gpytorch kernel class constructor.
+            scaling_kernel_kwargs: to change or add argument for the gpytorch
+                ScaleKernel class constructor.
+        """
+        self.active_hps_shapes = hp_shapes
         kernel = kernel_class(
             **{
                 "ard_num_dims": self.get_tensor_length(hp_shapes),
@@ -104,7 +137,12 @@ class Kernel:
 
 
 class CustomKernel(Kernel):
-    """Provides a simple way to define a new kernel by overloading the forward function only"""
+    """Provides a simple way to define a new kernel by overloading the forward
+    function only.
+
+    If you inherit from this class, you should only overload the build and
+    does_apply_on methods, and you may overload the __init__ method, but not build.
+    """
 
     class GenericGPyTorchStationaryKernel(gpytorch.kernels.Kernel):
         has_lengthscale = True
@@ -117,7 +155,7 @@ class CustomKernel(Kernel):
         def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs) -> torch.Tensor:
             return self.neps_kernel.forward(x1, x2, gpytorch_kernel=self, **kwargs)
 
-    def build(self, hp_shapes):
+    def build(self, hp_shapes: dict[str, HpTensorShape]):
         return self._kernel_builder(
             hp_shapes, self.GenericGPyTorchStationaryKernel, {"neps_kernel": self}
         )
@@ -125,5 +163,13 @@ class CustomKernel(Kernel):
     def forward(
         self, x1: torch.Tensor, x2: torch.Tensor, gpytorch_kernel, **kwargs
     ) -> torch.Tensor:
-        """Should be defined by subclasses"""
+        """Should be defined by subclasses as the main kernel function.
+
+        Args:
+            x1: tensor representation of one or multiple hyperparameters. The bounds
+                between each hyperparameter can be accessed using self.active_hps_shapes.
+            x2: tensor representation of the same hyperparameters, with different values.
+            kwargs: arguments from GPyTorch
+                (see gpytorch documentation for the forward method of a Kernel).
+        """
         raise NotImplementedError

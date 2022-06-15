@@ -50,6 +50,7 @@ class BaseOptimizer(metahyper.Sampler):
         self._pending_evaluations = pending_evaluations
 
     def get_new_config_id(self, config) -> str:  # pylint: disable=unused-argument
+        """Used to generate the id of a new configuration when the returned id is None."""
         return str(len(self._previous_results) + len(self._pending_evaluations) + 1)
 
     def get_state(self) -> Any:  # pylint: disable=no-self-use

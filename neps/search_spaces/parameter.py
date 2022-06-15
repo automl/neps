@@ -7,9 +7,22 @@ import torch
 
 
 class HpTensorShape:
-    def __init__(self, length):
-        self.length = length
-        self.bounds = None  # First included, last excluded
+    """Used to describe the tensor representation of a group of values for a given
+    hyerparameter. Can be inherited to allow to store values needed to exploit
+    this tensor representation using a kernel.
+
+    Attributes:
+        length: size of the tensor
+        bounds: bounds of the part of the tensor for the whole configuration that
+            will be used to represent values from this group only.
+        hp_instances: instanced of the hyperparameters that will be represented
+            using this shape.
+    """
+
+    def __init__(self, length, hp_instances):
+        self.length: int = length
+        self.bounds: tuple[int, int] | None = None  # First included, last excluded
+        self.hp_instances: list[Parameter] = hp_instances
 
     def set_bounds(self, begin):
         assert self.bounds is None
@@ -38,6 +51,7 @@ class Parameter:
 
     @abstractmethod
     def sample(self):
+        """Should sample a new value in-place."""
         raise NotImplementedError
 
     @abstractmethod
@@ -50,13 +64,23 @@ class Parameter:
 
     @abstractmethod
     def serialize(self):
+        """Should return a representation of the hyperparameter value as
+        a JSON-serializable object."""
         raise NotImplementedError
 
     @abstractmethod
     def load_from(self, data):
+        """Should load a value from a serialized representation.
+
+        Args:
+            data: a representation of the hyperparameter value as defined in
+                the serialize method
+        """
         raise NotImplementedError
 
     def normalized(self):
+        """Should send a copy of the hyperparameter in a normalized value, that
+        can be exploited directly by a GP kernel or another method."""
         return deepcopy(self)
 
     def compute_prior(self):  # pylint: disable=no-self-use
@@ -65,10 +89,23 @@ class Parameter:
     @staticmethod
     @abstractmethod
     def get_tensor_shape(hp_instances: list[Parameter]) -> HpTensorShape:
+        """Should return an HpTensorShape object representing the shape of a
+        group of values for this hyperparameter.
+
+        Args:
+            hp_instances: the list of the hyperparameter instances that should
+                be represented by the return value."""
         raise NotImplementedError
 
     @abstractmethod
     def get_tensor_value(self, tensor_shape: HpTensorShape) -> torch.Tensor:
+        """Should return a tensor representation of the normalized
+            hyperparameter value.
+
+        Args:
+            tensor_shape: describes the shape of the tensor. May contain other
+                informations as defined in get_tensor_shape.
+        """
         raise NotImplementedError
 
     def __eq__(self, other):

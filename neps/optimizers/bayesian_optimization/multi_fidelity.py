@@ -156,10 +156,10 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
             fidelity_step = config.fidelity.step_on_scale(self.num_fidelity_steps)
         return f"{base_id}_{fidelity_step}"
 
-    def sample_configuration_randomly(self, **sampler_kwargs):
+    def sample_configuration_randomly(self, *args, **kwargs):
         # We want the configurations for the initialization to have the lowest fidelity
         config, config_id, previous_id = super().sample_configuration_randomly(
-            **sampler_kwargs
+            *args, **kwargs
         )
         config.fidelity.value = config.fidelity.lower
         return config, config_id, previous_id

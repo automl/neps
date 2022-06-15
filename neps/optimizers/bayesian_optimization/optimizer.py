@@ -22,7 +22,7 @@ from .models import SurrogateModelMapping
 class BayesianOptimization(BaseOptimizer):
     """Implements the basic BO loop."""
 
-    USES_COST_MODEL = False
+    USES_COST_MODEL = False  # Set to True in a child class to use a cost model
 
     def __init__(
         self,
@@ -162,12 +162,6 @@ class BayesianOptimization(BaseOptimizer):
         self.train_losses: list[float] = []
         self.train_costs: list[float] = []
 
-    def is_init_phase(self) -> bool:
-        """Decides if optimization is still under the warmstart phase/model-based search."""
-        if len(self._previous_results) >= self._initial_design_size:
-            return False
-        return True
-
     def _fantasize_evaluations(self, new_x):
         """Returns x, y_loss, y_cost"""
         self.surrogate_model.fit(self.train_x, self.train_losses)
@@ -185,7 +179,7 @@ class BayesianOptimization(BaseOptimizer):
         return new_x, predicted_losses, predicted_costs
 
     def _update_optimizer_training_state(self):
-        """Can be overloaded to set training state, only outside of init phase"""
+        """Can be overloaded to set training state, called only outside of init phase."""
         self.surrogate_model.fit(self.train_x, self.train_losses)
         if self.USES_COST_MODEL:
             self.cost_model.fit(self.train_x, self.train_costs)
@@ -198,6 +192,10 @@ class BayesianOptimization(BaseOptimizer):
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
     ) -> None:
+        """Interface with the neps library to load the results.
+
+        To redefine in an child class without changing the expected behavior,
+        you can overload _fantasize_evaluations and _update_optimizer_training_state."""
         # TODO: filter out error configs as they can not be used for modeling?
         # TODO: read out cost if they exist
         super().load_results(previous_results, pending_evaluations)
@@ -227,33 +225,63 @@ class BayesianOptimization(BaseOptimizer):
                 )
                 self._model_update_failed = True
 
+    def is_init_phase(self) -> bool:
+        """Decides if optimization is still under the warmstart phase/model-based search."""
+        if len(self._previous_results) >= self._initial_design_size:
+            return False
+        return True
+
     def sample_configuration_from_model(
         self,
     ) -> tuple[SearchSpace, str | None, str | None]:
-        """Should return (config, config_id, previous_id) with config sampled from"""
+        """Called when a configuration should be sampled using the model,
+        after the initialization phase.
+
+        Returns:
+            config: the new configuration
+            config_id: a unique id, or None to use the id given by get_new_config_id
+            previous_id: the id of the previous configuration if this is a continuation"""
         return self.acquisition_sampler.sample(self.acquisition), None, None
 
     def sample_configuration_randomly(
-        self, **sampler_kwargs
+        self,
+        user_priors=True,
     ) -> tuple[SearchSpace, str | None, str | None]:
-        """Should return config, config_id, previous_id"""
-        return self.pipeline_space.sample(**sampler_kwargs), None, None
+        """Called when a configuration should be sampled without using the model,
+        mainly for initialization phase.
+
+        Args:
+            user_priors: if we are in a case where the user_priors should be used
+
+        Returns:
+            config: the new configuration
+            config_id: a unique id, or None to use the id given by get_new_config_id
+            previous_id: the id of the previous configuration if this is a continuation
+        """
+        return (
+            self.pipeline_space.sample(patience=self.patience, user_priors=user_priors),
+            None,
+            None,
+        )
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+        """Interface with the neps library to sample a new configuration.
+
+        To redefine in an child class without changing the expected behavior, you can overload
+        sample_configuration_from_model, sample_configuration_randomly
+        and is_init_phase."""
         config, config_id, previous_id = None, None, None
         if len(self._previous_results) == 0 and self._initial_design_size >= 1:
             # TODO: if default config sample it
             config, config_id, previous_id = self.sample_configuration_randomly(
-                patience=self.patience, user_priors=True
+                user_priors=True
             )
         elif random.random() < self._random_interleave_prob:
-            config, config_id, previous_id = self.sample_configuration_randomly(
-                patience=self.patience
-            )
+            config, config_id, previous_id = self.sample_configuration_randomly()
         elif self.is_init_phase() or self._model_update_failed:
             # initial design space
             config, config_id, previous_id = self.sample_configuration_randomly(
-                patience=self.patience, user_priors=True
+                user_priors=True
             )
         else:
             for _ in range(self.patience):
@@ -262,7 +290,7 @@ class BayesianOptimization(BaseOptimizer):
                     break
             else:
                 config, config_id, previous_id = self.sample_configuration_randomly(
-                    patience=self.patience, user_priors=True
+                    user_priors=True
                 )
         if config_id is None:
             config_id = self.get_new_config_id(config)
