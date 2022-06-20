@@ -4,7 +4,7 @@ import collections.abc
 import pprint
 import random
 from collections import OrderedDict
-from copy import deepcopy
+from copy import copy
 
 import ConfigSpace as CS
 import metahyper
@@ -119,12 +119,13 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
         else:
             raise NotImplementedError("No such mutation strategy!")
 
-        child = SearchSpace(**new_config)
+        child = self.copy()
+        child.hyperparameters.update(new_config)
 
         return child
 
     def _smbo_mutation(self, patience=50):
-        new_config = deepcopy(self.hyperparameters)
+        new_config = self.copy().hyperparameters
         config_hp_names = list(new_config)
 
         for _ in range(patience):
@@ -157,8 +158,13 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
 
         if len(self.hyperparameters.keys()) != len(new_config1):
             raise Exception("Cannot crossover")
-        child1 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config1)))
-        child2 = SearchSpace(**dict(zip(self.hyperparameters.keys(), new_config2)))
+        child1, child2 = self.copy(), self.copy()
+        child1.hyperparameters.update(
+            **dict(zip(self.hyperparameters.keys(), new_config1))
+        )
+        child2.hyperparameters.update(
+            **dict(zip(self.hyperparameters.keys(), new_config2))
+        )
         return child1, child2
 
     def _simple_crossover(
@@ -222,10 +228,10 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
         hps, fidelities = {}, {}
         for hp_name, hp in self.items():
             if hp.is_fidelity:
-                fidelities[hp_name] = deepcopy(hp)
+                fidelities[hp_name] = hp.copy()
             else:
-                hps[hp_name] = deepcopy(hp)
-        return SearchSpace(**hps), SearchSpace(**fidelities)
+                hps[hp_name] = hp.copy()
+        return hps, fidelities
 
     def add_constant_hyperparameter(self, name=None, value=None):
         if value is not None:
@@ -254,7 +260,12 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
             self.hyperparameters[name].load_from(config[name])
 
     def copy(self):
-        return deepcopy(self)
+        """Returns the shallowest copy of the same space, creating a new space
+        without copying the objects referenced by the space or the hyperparameters."""
+        new_space = copy(self)
+        for hp_name, hp in new_space.items():
+            new_space.hyperparameters[hp_name] = hp.copy()
+        return new_space
 
     def __getitem__(self, key):
         return self.hyperparameters[key]

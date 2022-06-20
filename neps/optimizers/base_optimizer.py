@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from copy import deepcopy
 from typing import Any
 
 import metahyper
@@ -64,7 +63,7 @@ class BaseOptimizer(metahyper.Sampler):
         super().load_state(state)
 
     def load_config(self, config_dict):
-        config = deepcopy(self.pipeline_space)
+        config = self.pipeline_space.copy()
         config.load_from(config_dict)
         return config
 

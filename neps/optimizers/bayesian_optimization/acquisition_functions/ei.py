@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import List, Union
 
 import numpy as np
@@ -56,7 +55,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         assert x, "No configurations for evaluation"
 
         if x[0].has_fidelity and self.optimize_on_max_fidelity:
-            x = deepcopy(x)
+            x = x.copy()
             for conf in x:
                 conf.set_to_max_fidelity()
 

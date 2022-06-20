@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from copy import deepcopy
 
 import numpy as np
 import scipy.stats
@@ -132,7 +131,7 @@ class FloatParameter(NumericalParameter):
             parent = self
 
         if mutation_strategy == "simple":
-            child = deepcopy(self)
+            child = self.copy()
             child.sample()
         elif mutation_strategy == "local_search":
             child = self._get_neighbours(num_neighbours=1)[
@@ -153,7 +152,7 @@ class FloatParameter(NumericalParameter):
         if parent2 is None:
             parent2 = self
 
-        proxy_self = deepcopy(self)
+        proxy_self = self.copy()
         proxy_self.value = (parent1.value + parent2.value) / 2
         # pylint: disable=protected-access
         children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)
@@ -171,7 +170,7 @@ class FloatParameter(NumericalParameter):
             n_val = np.random.normal(cur_value, std)
             if n_val < 0 or n_val > 1:
                 continue
-            neighbour = deepcopy(self)
+            neighbour = self.copy()
             # pylint: disable=protected-access
             neighbour.value = neighbour._normalization_inv(n_val)
             neighbours.append(neighbour)

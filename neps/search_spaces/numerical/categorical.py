@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-from copy import copy, deepcopy
 from typing import Iterable
 
 import numpy as np
@@ -88,7 +87,7 @@ class CategoricalParameter(NumericalParameter):
             parent = self
 
         if mutation_strategy == "simple":
-            child = copy(self)
+            child = self.copy()
             child.sample()
         elif mutation_strategy == "local_search":
             child = self._get_neighbours(num_neighbours=1)[0]
@@ -106,8 +105,8 @@ class CategoricalParameter(NumericalParameter):
         if parent2 is None:
             parent2 = self
 
-        child1 = deepcopy(parent1)
-        child2 = deepcopy(parent2)
+        child1 = parent1.copy()
+        child2 = parent2.copy()
 
         child1.value = parent2.value
         child2.value = parent1.value
@@ -134,7 +133,7 @@ class CategoricalParameter(NumericalParameter):
                 idx += 1
             if choice == self.value and len(self.choices) > 1:
                 continue
-            neighbour = deepcopy(self)
+            neighbour = self.copy()
             neighbour.value = choice
             neighbours.append(neighbour)
 

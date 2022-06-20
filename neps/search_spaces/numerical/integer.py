@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from copy import deepcopy
 
 from typing_extensions import Literal
 
@@ -70,7 +69,7 @@ class IntegerParameter(FloatParameter):
         if parent2 is None:
             parent2 = self
 
-        proxy_self = deepcopy(self)
+        proxy_self = self.copy()
         proxy_self.value = round((parent1.value + parent2.value) / 1)
         # pylint: disable=protected-access
         children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)

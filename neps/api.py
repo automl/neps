@@ -85,7 +85,9 @@ def _post_evaluation_hook(config, config_id, config_working_directory, result, l
 
 def run(
     run_pipeline: Callable,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
+    | CS.ConfigurationSpace
+    | SearchSpace,
     working_directory: str | Path,
     overwrite_working_directory: bool = False,
     max_evaluations_total: int | None = None,
@@ -155,23 +157,24 @@ def run(
     """
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {working_directory}")
-    try:
-        # Support pipeline space as ConfigurationSpace definition
-        if isinstance(pipeline_space, CS.ConfigurationSpace):
-            pipeline_space = pipeline_space_from_configspace(pipeline_space)
+    if not isinstance(pipeline_space, SearchSpace):
+        try:
+            # Support pipeline space as ConfigurationSpace definition
+            if isinstance(pipeline_space, CS.ConfigurationSpace):
+                pipeline_space = pipeline_space_from_configspace(pipeline_space)
 
-        # Support pipeline space as mix of ConfigurationSpace and neps parameters
-        for key, value in pipeline_space.items():
-            if isinstance(value, CS.ConfigurationSpace):
-                pipeline_space.pop(key)
-                config_space_parameters = pipeline_space_from_configspace(value)
-                pipeline_space = {**pipeline_space, **config_space_parameters}
+            # Support pipeline space as mix of ConfigurationSpace and neps parameters
+            for key, value in pipeline_space.items():
+                if isinstance(value, CS.ConfigurationSpace):
+                    pipeline_space.pop(key)
+                    config_space_parameters = pipeline_space_from_configspace(value)
+                    pipeline_space = {**pipeline_space, **config_space_parameters}
 
-        # Transform to neps internal representation of the pipeline space
-        pipeline_space = SearchSpace(**pipeline_space)
-    except TypeError as e:
-        message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
-        raise TypeError(message) from e
+            # Transform to neps internal representation of the pipeline space
+            pipeline_space = SearchSpace(**pipeline_space)
+        except TypeError as e:
+            message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
+            raise TypeError(message) from e
 
     if searcher == "default" or searcher is None:
         if pipeline_space.has_fidelity:

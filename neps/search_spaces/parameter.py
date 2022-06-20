@@ -81,7 +81,7 @@ class Parameter:
     def normalized(self):
         """Should send a copy of the hyperparameter in a normalized value, that
         can be exploited directly by a GP kernel or another method."""
-        return deepcopy(self)
+        return self.copy()
 
     def compute_prior(self):  # pylint: disable=no-self-use
         return 1
@@ -107,6 +107,11 @@ class Parameter:
                 informations as defined in get_tensor_shape.
         """
         raise NotImplementedError
+
+    def copy(self):
+        """Should return the shallowest copy of the same space, creating a new
+        HP without copying the objects referenced by it."""
+        return deepcopy(self)
 
     def __eq__(self, other):
         # Assuming that two different classes should represent two different parameters
