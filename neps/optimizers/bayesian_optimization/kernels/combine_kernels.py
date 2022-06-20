@@ -5,7 +5,7 @@ from metahyper.utils import instance_from_map
 
 import neps
 
-from .base_kernel import Kernel
+from .base_kernel import Kernel, NoOpKernel
 
 
 class CombineKernel(Kernel):
@@ -40,7 +40,9 @@ class CombineKernel(Kernel):
                 for hp_name, hp in hp_shapes.items()
                 if hp_name in child_kernel.active_hps
             }
-            sub_kernels.append(child_kernel.build(child_shapes))
+            child_built_kernel = child_kernel.build(child_shapes)
+            if child_built_kernel is not NoOpKernel.NoResult:
+                sub_kernels.append(child_built_kernel)
         return sub_kernels
 
 

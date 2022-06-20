@@ -4,15 +4,8 @@ from .numerical import NumericalParameter
 
 
 class ConstantParameter(NumericalParameter):
-    def __init__(self, value: Union[float, int, str], is_fidelity: bool = False):
-        super().__init__()
-        self.value = value
-        self.is_fidelity = is_fidelity
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.value == other.value
+    def __init__(self, value: Union[float, int, str], **kwargs):
+        super().__init__(value=value, **kwargs)
 
     def __repr__(self):
         return f"<Constant, value: {self.id}>"

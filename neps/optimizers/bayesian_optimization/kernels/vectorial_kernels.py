@@ -4,16 +4,14 @@ import botorch
 import gpytorch
 import torch
 
-from ....search_spaces import CategoricalParameter, NumericalParameter
+from ....search_spaces import CategoricalParameter, FloatParameter
 from .base_kernel import CustomKernel, Kernel
 
 
 class BaseNumericalKernel(Kernel):
     # pylint: disable=abstract-method
     def does_apply_on(self, hp):
-        return isinstance(hp, NumericalParameter) and not isinstance(
-            hp, CategoricalParameter
-        )
+        return isinstance(hp, FloatParameter)
 
 
 class MaternKernel(BaseNumericalKernel):

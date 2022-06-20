@@ -173,3 +173,27 @@ class CustomKernel(Kernel):
                 (see gpytorch documentation for the forward method of a Kernel).
         """
         raise NotImplementedError
+
+
+class NoOpKernel(Kernel):
+    class NoResult:
+        pass
+
+    def __init__(self, *args, restrict_to: list = None, **kwargs):
+        """Build a Kernel that does nothing. If 'restrict_to' is not None,
+        it should be a list of types this kernel will be applied on. Usefull
+        for default kernels.
+        """
+        super().__init__(*args, **kwargs)
+        self.restrict_to = restrict_to
+
+    def does_apply_on(self, hp):
+        if self.restrict_to is None:
+            return True
+        for kernel_cls in self.restrict_to:
+            if isinstance(hp, kernel_cls):
+                return True
+        return False
+
+    def build(self, hp_shapes):  # pylint: disable=unused-argument
+        return self.NoResult

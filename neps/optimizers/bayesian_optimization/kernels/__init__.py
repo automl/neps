@@ -3,7 +3,8 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
-from .base_kernel import CustomKernel, Kernel
+from ....search_spaces.numerical.constant import ConstantParameter as _ConstantParameter
+from .base_kernel import CustomKernel, Kernel, NoOpKernel
 from .combine_kernels import CombineKernel, ProductKernel, SumKernel
 from .get_kernels import instantiate_kernel
 from .vectorial_kernels import (
@@ -41,5 +42,7 @@ KernelMapping: dict[str, Callable] = {
     "rbf": RBFKernel,
     "categorical": CategoricalBotorchKernel,
     "hm": HammingKernel,
+    "no_op": NoOpKernel,
+    "no_op_const": partial(NoOpKernel, restrict_to=[_ConstantParameter]),
     **CombineKernelMapping,
 }

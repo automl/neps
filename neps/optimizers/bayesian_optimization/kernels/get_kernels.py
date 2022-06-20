@@ -39,7 +39,7 @@ def instantiate_kernel(pipeline_space, kernels, combine_kernel_type):
                     break
             else:
                 raise ValueError(
-                    f"Can't find any default kernel for hyerparameter {hp_name} : {hp}"
+                    f"Can't find any default kernel for hyperparameter {hp_name} : {hp}"
                 )
     for def_kernel in default_kernels:
         if def_kernel.active_hps:

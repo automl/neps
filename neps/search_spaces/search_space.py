@@ -9,6 +9,7 @@ from copy import copy
 import ConfigSpace as CS
 import metahyper
 import numpy as np
+from search_spaces.graph_grammar.graph_grammar import GraphGrammar
 
 from . import (
     CategoricalParameter,
@@ -207,15 +208,20 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
             "continuous": [],
             "categorical": [],
             "graphs": [],
+            "constants": [],
         }
         for hp in self.values():
             hp_value = hp.normalized().value
             if isinstance(hp, CategoricalParameter):
                 hps["categorical"].append(hp_value)
-            elif isinstance(hp, NumericalParameter):
+            elif isinstance(hp, FloatParameter):
                 hps["continuous"].append(hp_value)
-            else:
+            elif isinstance(hp, GraphGrammar):
                 hps["graphs"].append(hp_value)
+            elif isinstance(hp, ConstantParameter):
+                hps["constants"].append(hp)
+            else:
+                raise ValueError(f"Unknown category for {hp} ({hp.__class__})")
         return hps
 
     def hp_values(self):

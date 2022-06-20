@@ -8,7 +8,7 @@ import torch
 
 class HpTensorShape:
     """Used to describe the tensor representation of a group of values for a given
-    hyerparameter. Can be inherited to allow to store values needed to exploit
+    hyperparameter. Can be inherited to allow to store values needed to exploit
     this tensor representation using a kernel.
 
     Attributes:
