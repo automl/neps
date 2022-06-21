@@ -51,3 +51,11 @@ def manual_seed(seed: int):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
+
+
+class DisabledFunctionError(Exception):
+    pass
+
+
+def disabled(*args, **kwargs):  # pylint: disable=unused-argument
+    raise DisabledFunctionError("This function has been disabled or is not applicable")

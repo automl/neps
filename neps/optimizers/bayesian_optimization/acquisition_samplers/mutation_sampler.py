@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import traceback
+
 import numpy as np
 import torch
 from more_itertools import first
@@ -7,6 +10,8 @@ from more_itertools import first
 from ....search_spaces.search_space import SearchSpace
 from .base_acq_sampler import AcquisitionSampler
 from .random_sampler import RandomSampler
+
+logger = logging.getLogger(__name__)
 
 
 def _propose_location(
@@ -98,8 +103,12 @@ class MutationSampler(AcquisitionSampler):
                     try:
                         # needs to throw an Exception if config is not valid, e.g., empty graph etc.!
                         child = config.mutate()
-                    except Exception:
+                    except Exception as e:
                         remaining_patience -= 1
+                        if remaining_patience == 0:
+                            logger.error(
+                                f'Despite {self.patience} tries, can\'t mutate the configuration. End up with the exception "{e}". Stack trace:\n {traceback.format_exc()}'
+                            )
                         continue
 
                     if not self.allow_isomorphism:

@@ -10,3 +10,5 @@ from .numerical.constant import ConstantParameter
 from .numerical.float import FloatParameter
 from .numerical.integer import IntegerParameter
 from .numerical.numerical import NumericalParameter
+from .parameter import HpTensorShape, Parameter
+from .search_space import SearchSpace, SparseSearchSpace, pipeline_space_from_configspace

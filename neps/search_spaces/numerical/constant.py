@@ -1,5 +1,8 @@
 from typing import Union
 
+import torch
+
+from ..parameter import HpTensorShape
 from .numerical import NumericalParameter
 
 
@@ -26,3 +29,12 @@ class ConstantParameter(NumericalParameter):
 
     def _get_neighbours(self, **kwargs):
         pass
+
+    @staticmethod
+    def get_tensor_shape(hp_instances):
+        return HpTensorShape(0, hp_instances)
+
+    def get_tensor_value(
+        self, tensor_shape
+    ):  # pylint: disable=unused-argument,no-self-use
+        return torch.tensor([])

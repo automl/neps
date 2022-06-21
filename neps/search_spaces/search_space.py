@@ -5,20 +5,20 @@ import pprint
 import random
 from collections import OrderedDict
 from copy import copy
+from typing import Any
 
 import ConfigSpace as CS
 import metahyper
 import numpy as np
-from search_spaces.graph_grammar.graph_grammar import GraphGrammar
 
-from . import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    NumericalParameter,
-)
+from ..utils.common import disabled
 from .graph_grammar.graph import Graph
+from .graph_grammar.graph_grammar import GraphGrammar
+from .numerical.categorical import CategoricalParameter
+from .numerical.constant import ConstantParameter
+from .numerical.float import FloatParameter
+from .numerical.integer import IntegerParameter
+from .numerical.numerical import NumericalParameter
 from .parameter import Parameter
 
 
@@ -284,3 +284,42 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
 
     def __str__(self):
         return pprint.pformat(self.hyperparameters)
+
+
+class SparseSearchSpace(SearchSpace):
+    """Represents a search space where the values that can actually be evaluated
+    are sparse points across the space."""
+
+    def __init__(self, **hyperparameters):
+        super().__init__(**hyperparameters)
+        self.allowed_configs: list[dict[str, Any]] = []
+
+    def sample_configs_from(self, allowed_configs: list[dict[str, Any]]):
+        """Set the set of allowed configurations. For each hyperparameter,
+        the value should be a Parameter, or a serialized value.
+        """
+        for cfg in allowed_configs:
+            if set(cfg.keys()) != set(self.keys()):
+                raise ValueError(
+                    f"The configuration {cfg} doesn't match"
+                    f"the set of hyperparameters of this SearchSpace {list(self.keys())}"
+                )
+        self.allowed_configs = allowed_configs
+
+    def sample(self, user_priors: bool = False, patience: int = 1) -> SearchSpace:
+        if not self.allowed_configs:
+            raise ValueError(
+                "The SparseSearchSpace hasn't been initialized by"
+                "calling sample_configs_from"
+            )
+        sample = self.copy()
+        choosen_cfg = random.choice(self.allowed_configs)
+        for hp_name in sample:
+            if isinstance(choosen_cfg[hp_name], Parameter):
+                sample.hyperparameters[hp_name] = choosen_cfg[hp_name].copy()
+            else:
+                sample[hp_name].load_from(choosen_cfg[hp_name])
+        return sample
+
+    mutate = disabled
+    crossover = disabled

@@ -8,6 +8,7 @@ from metahyper.api import ConfigResult, instance_from_map
 from typing_extensions import Literal
 
 from ...search_spaces.search_space import SearchSpace
+from ...utils.common import disabled
 from ...utils.result_utils import get_cost, get_loss
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
@@ -39,7 +40,7 @@ class BayesianOptimization(BaseOptimizer):
         cost_model_kernels: list[str | Kernel] | None | Literal["same"] = "same",
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = True,
-        acquisition_sampler: str | AcquisitionSampler = "mutation",
+        acquisition_sampler: str | AcquisitionSampler = None,
         random_interleave_prob: float = 0.0,
         patience: int = 100,
         budget: None | int | float = None,
@@ -63,7 +64,8 @@ class BayesianOptimization(BaseOptimizer):
                 of the kernel argument.
             acquisition: Acquisition strategy
             log_prior_weighted: if to use log for prior
-            acquisition_sampler: Acquisition function fetching strategy
+            acquisition_sampler: Acquisition function fetching strategy.
+                Default is "mutation" if allowed on the search space, and "random" otherwise.
             random_interleave_prob: Frequency at which random configurations are sampled
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
@@ -151,6 +153,11 @@ class BayesianOptimization(BaseOptimizer):
                 self.acquisition, log=log_prior_weighted
             )
 
+        if acquisition_sampler is None:
+            if pipeline_space.mutate.__func__ is disabled:  # type: ignore
+                acquisition_sampler = "random"
+            else:
+                acquisition_sampler = "mutation"
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
