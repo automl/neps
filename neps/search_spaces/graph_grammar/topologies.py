@@ -17,7 +17,7 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
     def mutate(self):
         pass
 
-    def sample(self):
+    def sample(self, user_priors: bool = False):
         pass
 
     def create_graph(self, vals: dict):

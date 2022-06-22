@@ -5,11 +5,13 @@ import pprint
 import random
 from collections import OrderedDict
 from copy import copy
+from itertools import accumulate
 from typing import Any
 
 import ConfigSpace as CS
 import metahyper
 import numpy as np
+from more_itertools import last
 
 from ..utils.common import disabled
 from .graph_grammar.graph import Graph
@@ -293,18 +295,43 @@ class SparseSearchSpace(SearchSpace):
     def __init__(self, **hyperparameters):
         super().__init__(**hyperparameters)
         self.allowed_configs: list[dict[str, Any]] = []
+        self.allowed_config_probas = []
 
     def sample_configs_from(self, allowed_configs: list[dict[str, Any]]):
         """Set the set of allowed configurations. For each hyperparameter,
         the value should be a Parameter, or a serialized value.
         """
+        allowed_config_spaces = []
+        allowed_config_probas = []
+        print("Looping over cfgs")
+        hp_copies = {hp_name: hp.copy() for hp_name, hp in self.items()}
         for cfg in allowed_configs:
             if set(cfg.keys()) != set(self.keys()):
                 raise ValueError(
                     f"The configuration {cfg} doesn't match"
                     f"the set of hyperparameters of this SearchSpace {list(self.keys())}"
                 )
-        self.allowed_configs = allowed_configs
+
+            cfg, cfg_proba = {**cfg}, 1.0
+            for hp_name, hp in cfg.items():
+                if isinstance(hp, Parameter):
+                    assert type(hp) is type(self[hp_name])
+                    cfg[hp_name] = hp.copy()
+                    cfg_proba *= hp.prior_probability()
+                else:
+                    hp_copies[hp_name].load_from(hp)
+                    cfg_proba *= hp_copies[hp_name].prior_probability()
+                assert cfg_proba >= 0, "Can't have a prior probability of 0"
+
+            allowed_config_spaces.append(cfg)
+            allowed_config_probas.append(cfg_proba)
+
+        print("done")
+        proba_sum = sum(allowed_config_probas)
+        self.allowed_config_probas = [0.0] + list(
+            map(lambda p: p / proba_sum, accumulate(allowed_config_probas))
+        )[:-1]
+        self.allowed_configs = allowed_config_spaces
 
     def sample(self, user_priors: bool = False, patience: int = 1) -> SearchSpace:
         if not self.allowed_configs:
@@ -312,8 +339,18 @@ class SparseSearchSpace(SearchSpace):
                 "The SparseSearchSpace hasn't been initialized by"
                 "calling sample_configs_from"
             )
+        cfg_cursor = random.random()
+        if user_priors:
+            choosen_cfg, _ = last(
+                filter(
+                    lambda cfg_p: cfg_p[1] <= cfg_cursor,
+                    zip(self.allowed_configs, self.allowed_config_probas),
+                )
+            )
+        else:
+            choosen_cfg = random.choice(self.allowed_configs)
+
         sample = self.copy()
-        choosen_cfg = random.choice(self.allowed_configs)
         for hp_name in sample:
             if isinstance(choosen_cfg[hp_name], Parameter):
                 sample.hyperparameters[hp_name] = choosen_cfg[hp_name].copy()

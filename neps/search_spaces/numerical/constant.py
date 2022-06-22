@@ -13,8 +13,11 @@ class ConstantParameter(NumericalParameter):
     def __repr__(self):
         return f"<Constant, value: {self.id}>"
 
-    def sample(self):
+    def sample(self, user_priors: bool = False):
         pass
+
+    def prior_probability(self):  # pylint: disable=no-self-use
+        return 1.0
 
     def mutate(  # pylint: disable=unused-argument
         self,

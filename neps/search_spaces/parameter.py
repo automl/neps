@@ -50,8 +50,14 @@ class Parameter:
             self.value = None
 
     @abstractmethod
-    def sample(self):
+    def sample(self, user_priors: bool = False):
         """Should sample a new value in-place."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def prior_probability(self) -> float:
+        """Should return a value proportional to the prior probability of the value.
+        The scale of the values doesn't matter."""
         raise NotImplementedError
 
     @abstractmethod

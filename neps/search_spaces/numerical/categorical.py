@@ -74,6 +74,12 @@ class CategoricalParameter(NumericalParameter):
         idx = np.random.choice(a=self.num_choices, replace=True, p=probabilities)
         self.value = self.choices[int(idx)]
 
+    def prior_probability(self):
+        if self.default is not None:
+            i_value = self.choices.index(self.value)
+            return self._compute_user_prior_probabilities()[i_value]
+        return 1
+
     def mutate(
         self,
         parent=None,

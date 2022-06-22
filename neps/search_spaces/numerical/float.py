@@ -99,6 +99,12 @@ class FloatParameter(NumericalParameter):
 
         self.value = min(self.upper, max(self.lower, value))
 
+    def prior_probability(self):
+        if self.has_prior:
+            _, std = self._get_truncnorm_prior_and_std()
+            return scipy.stats.norm.pdf(self.value, loc=self.default, scale=std)
+        return 1
+
     def step_on_scale(self, scale, use_value=None):
         """Returns the corresponding step on a scale from 0 to scale-1"""
         assert scale >= 1
