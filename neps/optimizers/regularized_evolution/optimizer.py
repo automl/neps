@@ -15,12 +15,14 @@ class RegularizedEvolution(BaseOptimizer):
         patience: int = 100,
         budget: None | int | float = None,
         logger=None,
+        **optimizer_kwargs,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
             patience=patience,
             logger=logger,
             budget=budget,
+            **optimizer_kwargs,
         )
 
         if population_size < 1:

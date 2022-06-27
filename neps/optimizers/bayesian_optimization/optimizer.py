@@ -35,6 +35,8 @@ class BayesianOptimization(BaseOptimizer):
         random_interleave_prob: float = 0.0,
         patience: int = 100,
         budget: None | int | float = None,
+        loss_value_on_error: None | float = None,
+        cost_value_on_error: None | float = None,
         logger=None,
     ):
         """Initialise the BO loop.
@@ -57,6 +59,12 @@ class BayesianOptimization(BaseOptimizer):
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
             budget: Maximum budget
+            loss_value_on_error: Setting this and cost_value_on_error to any float will
+                supress any error during bayesian optimization and will use given loss
+                value instead. default: None
+            cost_value_on_error: Setting this and loss_value_on_error to any float will
+                supress any error during bayesian optimization and will use given cost
+                value instead. default: None
             logger: logger object, or None to use the neps logger
 
         Raises:
@@ -84,6 +92,8 @@ class BayesianOptimization(BaseOptimizer):
         self._num_train_x: int = 0
         self._pending_evaluations: list = []
         self._model_update_failed: bool = False
+        self.loss_value_on_error: None | float = loss_value_on_error
+        self.cost_value_on_error: None | float = cost_value_on_error
 
         surrogate_model_args = surrogate_model_args or {}
         graph_kernels, hp_kernels = get_kernels(
@@ -166,11 +176,19 @@ class BayesianOptimization(BaseOptimizer):
                 self.acquisition_sampler.set_state(x=train_x, y=train_y)
 
                 self._model_update_failed = False
-            except RuntimeError:
+            except RuntimeError as runtime_error:
                 self.logger.exception(
                     "Model could not be updated due to below error. Sampling will not use"
                     " the model."
                 )
+                if self.loss_value_on_error is None or self.cost_value_on_error is None:
+                    raise ValueError(
+                        "A RuntimeError happened and "
+                        "loss_value_on_error or cost_value_on_error "
+                        "value is not provided, please fix the error or "
+                        "provide the values to continue without "
+                        "updating the model"
+                    ) from runtime_error
                 self._model_update_failed = True
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
