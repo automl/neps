@@ -10,11 +10,11 @@ Features:
 - Expert priors to guide the search
 - Asynchronous parallelization and distribution
 - Fault tolerance for crashes and job time limits
+- Multi-fidelity
+- Cost-aware
 
 Soon-to-come Features:
 
-- Multi-fidelity
-- Cost-aware
 - Across code version transfer
 - Python 3.8+ support
 - Multi-objective
@@ -22,6 +22,8 @@ Soon-to-come Features:
 ![Python versions](https://img.shields.io/badge/python-3.7-informational)
 [![License](https://img.shields.io/badge/license-Apache%202.0-informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
+
+Please have a look at our [documentation](https://automl.github.io/neps/).
 
 ## Installation
 
