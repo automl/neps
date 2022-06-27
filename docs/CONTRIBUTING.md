@@ -144,6 +144,20 @@ or also updating dependencies alongside via
 poetry update
 ```
 
+### Poetry: Publish on PyPI
+
+To publish to PyPI:
+
+1. Get publishing rights by asking Danny
+1. Think carefully about what you are doing, once on PyPI we can not change things.
+1. Run
+
+```bash
+poetry publish --build
+```
+
+This will ask for your PyPI credentials.
+
 ### Pre-commit: Do not run hooks
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.

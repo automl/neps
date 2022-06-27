@@ -15,6 +15,7 @@ readme = "README.md"
 license = "Apache License 2.0"
 homepage = "https://github.com/automl/neps"
 repository = "https://github.com/automl/neps"
+documentation = "https://automl.github.io/neps/"
 keywords = ["Neural Pipeline Search", "Neural Architecture Search", "Hyperparameter Optimization", "AutoML"]
 classifiers = [
   "Development Status :: 4 - Beta",
