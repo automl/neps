@@ -82,15 +82,13 @@ conda activate neps
 First, install poetry, e.g., via
 
 ```bash
-wget https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py -O get-poetry.py
-python get-poetry.py
-rm get-poetry.py
+curl -sSL https://install.python-poetry.org | python3 -
 ```
 
 Then consider appending
 
 ```bash
-export PATH="$HOME/.poetry/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 to your `.zshrc` / `.bashrc` or alternatively simply running the export manually.
