@@ -23,11 +23,22 @@ class AcquisitionSampler:
         raise NotImplementedError
 
     def sample_batch(
-        self, acquisition_function, batch, constraint=None
+        self,
+        acquisition_function,
+        batch,
+        constraint=None,
+        distinct=True,
     ) -> list[SearchSpace]:
-        return [
-            self.sample(acquisition_function, constraint=constraint) for _ in range(batch)
-        ]
+        batch_list = []
+        for _ in range(batch):
+            if distinct:
+                new_constraint = lambda cfg: cfg not in batch_list and constraint(cfg)
+            else:
+                new_constraint = constraint
+            batch_list.append(
+                self.sample(acquisition_function, constraint=new_constraint)
+            )
+        return batch_list
 
     def set_state(self, x: list, y: list | torch.Tensor) -> None:
         self.x = x

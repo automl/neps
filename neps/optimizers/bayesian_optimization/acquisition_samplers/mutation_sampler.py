@@ -66,9 +66,11 @@ class MutationSampler(AcquisitionSampler):
         return first(self.sample_batch(acquisition_function, 1, constraint=constraint))
 
     def sample_batch(
-        self, acquisition_function, batch, constraint=None
+        self, acquisition_function, batch, constraint=None, distinct=True
     ) -> list[SearchSpace]:
-        pool = self.create_pool(acquisition_function, self.pool_size, constraint)
+        pool = self.create_pool(
+            acquisition_function, self.pool_size, constraint, distinct
+        )
 
         samples, _ = _propose_location(
             acquisition_function=acquisition_function,
@@ -77,7 +79,9 @@ class MutationSampler(AcquisitionSampler):
         )
         return samples
 
-    def create_pool(self, acquisition_function, pool_size: int, constraint=None) -> list:
+    def create_pool(
+        self, acquisition_function, pool_size: int, constraint=None, distinct=True
+    ) -> list:
         if len(self.x) == 0:
             return self.random_sampling.sample_batch(
                 acquisition_function, pool_size, constraint=constraint
@@ -114,7 +118,7 @@ class MutationSampler(AcquisitionSampler):
                     if not self.allow_isomorphism:
                         # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs.
                         # For now we do not check the isomorphism in all of the previous graphs though
-                        if child == config or child in evaluation_pool:
+                        if child == config or (distinct and child in evaluation_pool):
                             remaining_patience -= 1
                             continue
 

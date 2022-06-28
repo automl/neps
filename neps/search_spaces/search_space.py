@@ -4,7 +4,6 @@ import collections.abc
 import pprint
 import random
 from collections import OrderedDict
-from copy import copy
 from itertools import accumulate
 from typing import Any
 
@@ -270,10 +269,7 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
     def copy(self):
         """Returns the shallowest copy of the same space, creating a new space
         without copying the objects referenced by the space or the hyperparameters."""
-        new_space = copy(self)
-        for hp_name, hp in new_space.items():
-            new_space.hyperparameters[hp_name] = hp.copy()
-        return new_space
+        return self.__class__(**{hp_name: hp.copy() for hp_name, hp in self.items()})
 
     def __getitem__(self, key):
         return self.hyperparameters[key]
@@ -286,6 +282,11 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
 
     def __str__(self):
         return pprint.pformat(self.hyperparameters)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and all(
+            [hp == other[hp_name] for hp_name, hp in self.items()]
+        )
 
 
 class SparseSearchSpace(SearchSpace):
@@ -303,7 +304,6 @@ class SparseSearchSpace(SearchSpace):
         """
         allowed_config_spaces = []
         allowed_config_probas = []
-        print("Looping over cfgs")
         hp_copies = {hp_name: hp.copy() for hp_name, hp in self.items()}
         for cfg in allowed_configs:
             if set(cfg.keys()) != set(self.keys()):
@@ -326,7 +326,6 @@ class SparseSearchSpace(SearchSpace):
             allowed_config_spaces.append(cfg)
             allowed_config_probas.append(cfg_proba)
 
-        print("done")
         proba_sum = sum(allowed_config_probas)
         self.allowed_config_probas = [0.0] + list(
             map(lambda p: p / proba_sum, accumulate(allowed_config_probas))
@@ -357,6 +356,12 @@ class SparseSearchSpace(SearchSpace):
             else:
                 sample[hp_name].load_from(choosen_cfg[hp_name])
         return sample
+
+    def copy(self):
+        new_space = super().copy()
+        new_space.allowed_configs = self.allowed_configs
+        new_space.allowed_config_probas = self.allowed_config_probas
+        return new_space
 
     mutate = disabled
     crossover = disabled
