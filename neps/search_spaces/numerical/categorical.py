@@ -23,8 +23,16 @@ class CategoricalParameter(NumericalParameter):
         is_fidelity: bool = False,
         default: None | float | int | str = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
+        **kwargs,
     ):
-        super().__init__()
+        self.choices: list[float | int | str]
+
+        super().__init__(
+            choices=list(choices),
+            **kwargs,
+        )
+        if len(self.choices) == 0:
+            raise ValueError("Can't create a categorical parameter without choices")
 
         self.default = default
         self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]
@@ -32,7 +40,6 @@ class CategoricalParameter(NumericalParameter):
 
         self.is_fidelity = is_fidelity
 
-        self.choices = list(choices)
         self.num_choices = len(self.choices)
         self.probabilities: list[npt.NDArray] = list(
             np.ones(self.num_choices) * (1.0 / self.num_choices)
@@ -71,7 +78,7 @@ class CategoricalParameter(NumericalParameter):
         else:
             probabilities = self.probabilities
 
-        idx = np.random.choice(a=self.num_choices, replace=True, p=probabilities)
+        idx = np.random.choice(a=self.num_choices, p=probabilities)
         self.value = self.choices[int(idx)]
 
     def prior_probability(self):

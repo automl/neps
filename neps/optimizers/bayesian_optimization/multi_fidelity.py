@@ -58,6 +58,16 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
             "aggregate_continuation_costs",
         )
 
+        # Set the choices for the pipeline_space fidelity values
+        fid_choices = [
+            pipeline_space.fidelity.from_step(step, num_fidelity_steps, in_place=False)
+            for step in range(num_fidelity_steps)
+        ]
+        if pipeline_space.fidelity.choices is None:
+            pipeline_space.fidelity.choices = fid_choices
+        elif pipeline_space.fidelity.choices != fid_choices:
+            raise Exception("Can't use a fidelity with choices different from the rungs")
+
         super().__init__(
             pipeline_space=pipeline_space,
             surrogate_model=surrogate_model,

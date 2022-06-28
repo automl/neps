@@ -21,11 +21,11 @@ class FloatParameter(NumericalParameter):
         lower: float | int,
         upper: float | int,
         log: bool = False,
-        is_fidelity: bool = False,
         default: None | float | int = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
+        **kwargs,
     ):
-        super().__init__(is_fidelity=is_fidelity)
+        super().__init__(**kwargs)
 
         self.default = default
         self.default_confidence_score = FLOAT_CONFIDENCE_SCORES[default_confidence]
@@ -77,27 +77,36 @@ class FloatParameter(NumericalParameter):
         a, b = (low - default) / std, (high - default) / std
         return scipy.stats.truncnorm(a, b), std
 
-    def compute_prior(self, log: bool = False):
+    def compute_prior(self, log: bool = False, with_value=None):
         _, _, default = self._get_low_high_default()
-        value = np.log(self.value) if self.log else self.value
+        value = self.value if with_value is None else with_value
+        value = np.log(value) if self.log else value
         value -= default
         dist, std = self._get_truncnorm_prior_and_std()
         value /= std
         return np.log(dist.pdf(value) + 1e-12) if log else dist.pdf(value)
 
     def sample(self, user_priors: bool = False):
-        low, high, default = self._get_low_high_default()
-
-        if user_priors and self.has_prior:
-            dist, std = self._get_truncnorm_prior_and_std()
-            value = dist.rvs() * std + default
+        if self.choices is not None:
+            assert len(self.choices), "no choices"
+            probabilities = None
+            if self.has_prior:
+                probabilities = [self.compute_prior(with_value=c) for c in self.choices]
+            idx = np.random.choice(a=len(self.choices), p=probabilities)
+            self.value = self.choices[int(idx)]
         else:
-            value = np.random.uniform(low=low, high=high)
+            low, high, default = self._get_low_high_default()
 
-        if self.log:
-            value = math.exp(value)
+            if user_priors and self.has_prior:
+                dist, std = self._get_truncnorm_prior_and_std()
+                value = dist.rvs() * std + default
+            else:
+                value = np.random.uniform(low=low, high=high)
 
-        self.value = min(self.upper, max(self.lower, value))
+            if self.log:
+                value = math.exp(value)
+
+            self.value = min(self.upper, max(self.lower, value))
 
     def prior_probability(self):
         if self.has_prior:

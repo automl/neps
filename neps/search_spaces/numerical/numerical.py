@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import List
 
 import torch
 
@@ -6,8 +7,9 @@ from ..parameter import HpTensorShape, Parameter
 
 
 class NumericalParameter(Parameter):
-    def __init__(self, value=None, **kwargs):
+    def __init__(self, value=None, choices: List = None, **kwargs):
         super().__init__(**kwargs)
+        self.choices = choices
         self.value = value
 
     @property

@@ -13,11 +13,18 @@ class IntegerParameter(FloatParameter):
         lower: float | int,
         upper: float | int,
         log: bool = False,
-        is_fidelity: bool = False,
         default: None | float | int = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
+        **kwargs,
     ):
-        super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
+        super().__init__(
+            lower=lower,
+            upper=upper,
+            log=log,
+            default=default,
+            default_confidence=default_confidence,
+            **kwargs,
+        )
         self.lower = int(math.ceil(self.lower))
         self.upper = int(math.floor(self.upper))
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
@@ -27,7 +34,7 @@ class IntegerParameter(FloatParameter):
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,
-            is_fidelity=is_fidelity,
+            is_fidelity=self.is_fidelity,
             default=default,
             default_confidence=default_confidence,
         )
