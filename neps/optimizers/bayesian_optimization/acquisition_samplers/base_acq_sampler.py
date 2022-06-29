@@ -30,6 +30,7 @@ class AcquisitionSampler:
         distinct=True,
     ) -> list[SearchSpace]:
         batch_list = []
+        constraint = constraint or (lambda _: True)
         for _ in range(batch):
             if distinct:
                 new_constraint = lambda cfg: cfg not in batch_list and constraint(cfg)
