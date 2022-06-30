@@ -22,6 +22,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
 
     USES_COST_MODEL = False
     USES_CONTINUATION = False
+    # TODO: add param to allow non-discrete fidelity space
 
     @dataclass
     class ObservedRecord:
@@ -158,9 +159,11 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
 
     def get_new_config_id(self, config, base_id=None, fidelity_step=None):
         """An id should be of the form [base_id]_[fidelity_step], with the same
-        base_id beeing shared by configuration with the same parameter values,
-        except for the fidelity value."""
+        base_id being shared by configuration with the same parameter values,
+        except for the fidelity value.
+        """
         if base_id is None:
+            # TODO: generate base_id based on `observed_configs` and `pending_evaluations`
             base_id = super().get_new_config_id(config)
         if fidelity_step is None:
             fidelity_step = config.fidelity.step_on_scale(self.num_fidelity_steps)
