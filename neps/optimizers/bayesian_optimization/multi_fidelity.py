@@ -88,7 +88,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self.incumbent = dict(cost=None, fidelity_step=None, score=None)
 
     def _update_incumbents(self):
-        if len(self.observed_configs) == 0:
+        if self.observed_configs is None or len(self.observed_configs) == 0:
             return
         self.incumbent.update(
             cost=self.observed_configs.index.values[
@@ -141,12 +141,13 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
                     trace=trace,
                 )
             )
-
-        self.observed_configs = pd.DataFrame(records)
-        self.observed_configs.set_index("base_id", inplace=True)
-        self.observed_configs.sort_index(inplace=True)
+        if records:
+            self.observed_configs = pd.DataFrame(records)
+            self.observed_configs.set_index("base_id", inplace=True)
+            self.observed_configs.sort_index(inplace=True)
 
     def _update_optimizer_training_state(self) -> None:
+        """Called inside load_results()."""
         super()._update_optimizer_training_state()
         self._update_observations()
         self._update_incumbents()
@@ -157,6 +158,30 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         else:
             self.fantasized_remaining_budget = self.remaining_budget
 
+    def _retrieve_base_id(self, config):
+        # extracting base ids from the submitted configurations that are pending
+        max_pending_evaluation_id = max(
+            [int(k.split("_")[0]) for k in self._pending_evaluations.keys()] + [0]
+        )
+        if self.observed_configs is None or len(self.observed_configs) == 0:
+            # handling the very first iteration
+            base_id = 1
+            return base_id
+        # finding a match for config in the configurations seen so far
+        df = self.observed_configs[
+            self.observed_configs.config.apply(
+                _check_config_equality_without_fidelity, config2=config
+            )
+        ]
+        if df.shape[0]:
+            # find index of configuration already recorded
+            idx = np.where(self.observed_configs.config.values == config)[0][0]
+            base_id = self.observed_configs.iloc[idx].base_id
+        else:
+            # adding a new configuration
+            base_id = max(self.observed_configs.shape[0], max_pending_evaluation_id) + 1
+        return base_id
+
     def get_new_config_id(self, config, base_id=None, fidelity_step=None):
         """An id should be of the form [base_id]_[fidelity_step], with the same
         base_id being shared by configuration with the same parameter values,
@@ -164,7 +189,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         """
         if base_id is None:
             # TODO: generate base_id based on `observed_configs` and `pending_evaluations`
-            base_id = super().get_new_config_id(config)
+            base_id = self._retrieve_base_id(config)  # super().get_new_config_id(config)
         if fidelity_step is None:
             fidelity_step = config.fidelity.step_on_scale(self.num_fidelity_steps)
         return f"{base_id}_{fidelity_step}"
@@ -428,3 +453,10 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             config.fidelity.value, config_id = self._switch_to_bo()
             previous_config_id = None
         return config, config_id, previous_config_id  # type: ignore
+
+
+def _check_config_equality_without_fidelity(config1, config2):
+    """Check all parameter values expect fidelity parameters for equality."""
+    return all(
+        [hp == config1[hp_name] for hp_name, hp in config2.items() if not hp.is_fidelity]
+    )

@@ -186,13 +186,14 @@ class BayesianOptimization(BaseOptimizer):
         return new_x, predicted_losses, predicted_costs
 
     def _update_optimizer_training_state(self):
-        """Can be overloaded to set training state, called only outside of init phase."""
-        self.surrogate_model.fit(self.train_x, self.train_losses)
-        if self.USES_COST_MODEL:
-            self.cost_model.fit(self.train_x, self.train_costs)
+        """Can be overloaded to set training state"""
+        if not self.is_init_phase():
+            self.surrogate_model.fit(self.train_x, self.train_losses)
+            if self.USES_COST_MODEL:
+                self.cost_model.fit(self.train_x, self.train_costs)
 
-        self.acquisition.set_state(self.surrogate_model, cost_model=self.cost_model)
-        self.acquisition_sampler.set_state(x=self.train_x, y=self.train_losses)
+            self.acquisition.set_state(self.surrogate_model, cost_model=self.cost_model)
+            self.acquisition_sampler.set_state(x=self.train_x, y=self.train_losses)
 
     def load_results(
         self,
@@ -223,7 +224,6 @@ class BayesianOptimization(BaseOptimizer):
                     self.train_x.extend(new_x)
                     self.train_losses.extend(new_losses)
                     self.train_costs.extend(new_costs)
-                self._update_optimizer_training_state()
             except RuntimeError as e:
                 self.logger.exception(
                     "Model could not be updated due to below error. Sampling will not use"
@@ -231,6 +231,8 @@ class BayesianOptimization(BaseOptimizer):
                     f"Error : {e}"
                 )
                 self._model_update_failed = True
+        # update optimizer state at every call
+        self._update_optimizer_training_state()
 
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search."""
