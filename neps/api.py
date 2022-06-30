@@ -137,6 +137,7 @@ def run(
 
     Raises:
         TypeError: If pipeline_space has invalid type.
+        ValueError: wrong argument values (see the exception message)
 
     Example:
         >>> import neps
@@ -182,11 +183,29 @@ def run(
         else:
             searcher = "bayesian_optimization"
 
-    searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
-        pipeline_space=pipeline_space,
-        budget=budget,
-        **searcher_kwargs,
-    )
+    if isinstance(searcher, BaseOptimizer):
+        if searcher.budget != budget:
+            raise ValueError(
+                "Manually initialized searcher with a budget of "
+                f"{searcher.budget} instead of {budget}"
+            )
+        if searcher.pipeline_space is not pipeline_space:
+            raise ValueError(
+                "Manually initialized searcher with a different pipeline space: "
+                f"{searcher.pipeline_space} instead of {pipeline_space}"
+            )
+        if searcher_kwargs:
+            raise ValueError(
+                f"Can't pass the args {searcher_kwargs} to an already initialized searcher"
+            )
+    else:
+        searcher = instance_from_map(
+            SearcherMapping, searcher, "searcher", as_class=True
+        )(
+            pipeline_space=pipeline_space,
+            budget=budget,
+            **searcher_kwargs,
+        )
 
     metahyper.run(
         run_pipeline,

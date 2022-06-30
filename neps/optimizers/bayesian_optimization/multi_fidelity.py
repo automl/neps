@@ -189,7 +189,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         """
         if base_id is None:
             # TODO: generate base_id based on `observed_configs` and `pending_evaluations`
-            base_id = self._retrieve_base_id(config)  # super().get_new_config_id(config)
+            base_id = self._retrieve_base_id(config)
         if fidelity_step is None:
             fidelity_step = config.fidelity.step_on_scale(self.num_fidelity_steps)
         return f"{base_id}_{fidelity_step}"
@@ -456,7 +456,6 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
 
 
 def _check_config_equality_without_fidelity(config1, config2):
-    """Check all parameter values expect fidelity parameters for equality."""
     return all(
         [hp == config1[hp_name] for hp_name, hp in config2.items() if not hp.is_fidelity]
     )
