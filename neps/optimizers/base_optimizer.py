@@ -14,6 +14,8 @@ from ..utils.result_utils import get_cost, get_loss
 class BaseOptimizer(metahyper.Sampler):
     """Base sampler class. Implements all the low-level work."""
 
+    USES_CONTINUATION = False
+
     def __init__(
         self,
         pipeline_space: SearchSpace,

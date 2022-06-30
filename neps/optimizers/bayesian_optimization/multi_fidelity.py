@@ -21,7 +21,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
     """Base optimizer for multi-fidelity optimization"""
 
     USES_COST_MODEL = False
-    USES_CONTINUATION = False
 
     @dataclass
     class ObservedRecord:
