@@ -4,6 +4,7 @@ import random
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
+from itertools import chain
 from typing import Any, Callable
 
 import numpy as np
@@ -160,7 +161,15 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         base_id beeing shared by configuration with the same parameter values,
         except for the fidelity value."""
         if base_id is None:
-            base_id = super().get_new_config_id(config)
+            base_id = 1 + max(
+                (
+                    int(prev_id.split("_")[0])
+                    for prev_id in chain(
+                        self._previous_results.keys(), self._pending_evaluations.keys()
+                    )
+                ),
+                default=0,
+            )
         if fidelity_step is None:
             fidelity_step = config.fidelity.step_on_scale(self.num_fidelity_steps)
         return f"{base_id}_{fidelity_step}"
