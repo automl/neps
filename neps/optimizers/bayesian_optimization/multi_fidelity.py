@@ -22,6 +22,8 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
     """Base optimizer for multi-fidelity optimization"""
 
     USES_COST_MODEL = False
+    USES_CONTINUATION = False
+    # TODO: add param to allow non-discrete fidelity space
 
     @dataclass
     class ObservedRecord:
@@ -87,7 +89,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self.incumbent = dict(cost=None, fidelity_step=None, score=None)
 
     def _update_incumbents(self):
-        if len(self.observed_configs) == 0:
+        if self.observed_configs is None or len(self.observed_configs) == 0:
             return
         self.incumbent.update(
             cost=self.observed_configs.index.values[
@@ -140,12 +142,13 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
                     trace=trace,
                 )
             )
-
-        self.observed_configs = pd.DataFrame(records)
-        self.observed_configs.set_index("base_id", inplace=True)
-        self.observed_configs.sort_index(inplace=True)
+        if records:
+            self.observed_configs = pd.DataFrame(records)
+            self.observed_configs.set_index("base_id", inplace=True)
+            self.observed_configs.sort_index(inplace=True)
 
     def _update_optimizer_training_state(self) -> None:
+        """Called inside load_results()."""
         super()._update_optimizer_training_state()
         self._update_observations()
         self._update_incumbents()
@@ -158,8 +161,9 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
 
     def get_new_config_id(self, config, base_id=None, fidelity_step=None):
         """An id should be of the form [base_id]_[fidelity_step], with the same
-        base_id beeing shared by configuration with the same parameter values,
-        except for the fidelity value."""
+        base_id being shared by configuration with the same parameter values,
+        except for the fidelity value.
+        """
         if base_id is None:
             base_id = 1 + max(
                 (

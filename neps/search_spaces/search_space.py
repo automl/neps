@@ -283,10 +283,19 @@ class SearchSpace(collections.abc.Mapping, metahyper.api.Configuration):
     def __str__(self):
         return pprint.pformat(self.hyperparameters)
 
-    def __eq__(self, other):
+    def is_equal_too(
+        self, other, ignore_hps: list[str] = None, ignore_fidelity: bool = False
+    ):
+        ignore_hps = ignore_hps or []
+        if ignore_fidelity:
+            ignore_hps.extend([hp_name for hp_name, hp in self.items() if hp.is_fidelity])
+        compare_hps = set(self.keys()) - set(ignore_hps)
         return isinstance(other, self.__class__) and all(
-            [hp == other[hp_name] for hp_name, hp in self.items()]
+            [self[hp_name] == other[hp_name] for hp_name in compare_hps]
         )
+
+    def __eq__(self, other):
+        return self.is_equal_too(other)
 
 
 class SparseSearchSpace(SearchSpace):

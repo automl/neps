@@ -187,12 +187,13 @@ class BayesianOptimization(BaseOptimizer):
 
     def _update_optimizer_training_state(self):
         """Can be overloaded to set training state, called only outside of init phase."""
-        self.surrogate_model.fit(self.train_x, self.train_losses)
-        if self.USES_COST_MODEL:
-            self.cost_model.fit(self.train_x, self.train_costs)
+        if not self.is_init_phase():
+            self.surrogate_model.fit(self.train_x, self.train_losses)
+            if self.USES_COST_MODEL:
+                self.cost_model.fit(self.train_x, self.train_costs)
 
-        self.acquisition.set_state(self.surrogate_model, cost_model=self.cost_model)
-        self.acquisition_sampler.set_state(x=self.train_x, y=self.train_losses)
+            self.acquisition.set_state(self.surrogate_model, cost_model=self.cost_model)
+            self.acquisition_sampler.set_state(x=self.train_x, y=self.train_losses)
 
     def load_results(
         self,
