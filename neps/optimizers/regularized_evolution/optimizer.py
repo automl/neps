@@ -39,7 +39,9 @@ class RegularizedEvolution(BaseOptimizer):
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
         if len(self.population) < self.population_size:
-            config = self.pipeline_space.sample(patience=self.patience, user_priors=True)
+            config = self.random_sampler.sample(
+                user_priors=True, constraint=self.sampling_constraint
+            )
         else:
             candidates = [random.choice(self.population) for _ in range(self.sample_size)]
             parent = min(candidates, key=lambda c: c[1])[0]
@@ -47,8 +49,9 @@ class RegularizedEvolution(BaseOptimizer):
             while patience > 0:
                 config = self._mutate(parent)
                 if config is False:
-                    config = self.pipeline_space.sample(
-                        patience=self.patience, user_priors=True
+                    config = self.random_sampler.sample(
+                        user_priors=True,
+                        constraint=self.sampling_constraint,
                     )
                 if config not in self.pending_evaluations.values():
                     break

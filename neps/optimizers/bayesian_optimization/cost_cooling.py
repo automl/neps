@@ -28,7 +28,10 @@ class CostCooling(BayesianOptimization):
         )
 
     def sample_configuration_from_model(self) -> tuple[SearchSpace, None, None]:
-        return self.acquisition_sampler.sample(self.cost_cooling_acquisition), None, None
+        config = self.acquisition_sampler.sample(
+            self.cost_cooling_acquisition, constraint=self.sampling_constraint
+        )
+        return config, None, None
 
     def _update_optimizer_training_state(self):
         super()._update_optimizer_training_state()

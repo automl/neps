@@ -17,7 +17,7 @@ SearcherMapping: dict[str, Callable] = {
     "bayesian_optimization": BayesianOptimization,
     "mf_bayesian_optimization": BayesianOptimizationMultiFidelity,
     "random_search": RandomSearch,
-    "cost_cooling": CostCooling,
+    "cost_cooling_bayesian_optimization": CostCooling,
     "regularized_evolution": RegularizedEvolution,
     "grid_search": GridSearch,
 }

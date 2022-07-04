@@ -416,22 +416,26 @@ class BayesianOptimizationMultiFidelity(BayesianOptimization):
             config_id = f"{row.name}_{rung}"
         else:
             if random.random() < self._random_interleave_prob:
-                config = self.pipeline_space.sample(patience=self.patience)
+                config = self.random_sampler.sample(
+                    constraint=self.sampling_constraint, user_priors=False
+                )
             elif self.model_search and not self.is_init_phase():
                 # sampling from AF at base rung
                 for _ in range(self.patience):
-                    config = self.acquisition_sampler.sample(self.acquisition)
+                    config = self.acquisition_sampler.sample(
+                        self.acquisition, constraint=self.sampling_constraint
+                    )
                     if config not in self._pending_evaluations.values():
                         break
                 else:
                     # random sampling a config if failed to sample a new config from AF
-                    config = self.pipeline_space.sample(
-                        patience=self.patience, user_priors=True
+                    config = self.random_sampler.sample(
+                        user_priors=True, constraint=self.sampling_constraint
                     )
             else:
                 # random sampling a config
-                config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True
+                config = self.random_sampler.sample(
+                    user_priors=True, constraint=self.sampling_constraint
                 )
             # assigning the fidelity to evaluate the config at
             config.fidelity.value, config_id = self._switch_to_bo()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from itertools import chain
 from typing import Any
 
 import metahyper
@@ -9,6 +10,7 @@ from metahyper.api import ConfigResult
 from ..search_spaces.search_space import SearchSpace
 from ..utils.common import get_rnd_state, set_rnd_state
 from ..utils.result_utils import get_cost, get_loss
+from .bayesian_optimization.acquisition_samplers import RandomSampler
 
 
 class BaseOptimizer(metahyper.Sampler):
@@ -37,6 +39,7 @@ class BaseOptimizer(metahyper.Sampler):
 
         self._previous_results: dict[str, ConfigResult] = {}
         self._pending_evaluations: dict[str, SearchSpace] = {}
+        self.random_sampler = RandomSampler(self.pipeline_space, self.patience)
 
     @property
     def remaining_budget(self):
@@ -78,3 +81,11 @@ class BaseOptimizer(metahyper.Sampler):
         """Calls result.utils.get_cost() and passes the error handling through.
         Please use self.get_cost() instead of get_cost() in all optimizer classes."""
         return get_cost(result, cost_value_on_error=self.cost_value_on_error)
+
+    def sampling_constraint(self, new_config: SearchSpace) -> bool:
+        """Returns true if the new configuration can be sampled. The default behavior
+        it to check previous configurations to not sample the same configuration two times."""
+        return new_config not in chain(
+            (result.config for result in self._previous_results.values()),
+            self._pending_evaluations.values(),
+        )

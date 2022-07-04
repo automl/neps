@@ -166,7 +166,8 @@ class EvolutionSampler(AcquisitionSampler):
             and (population_size - len(previous_samples)) - len(population) > 0
         ):
             population += self.random_sampling.sample(
-                population_size - len(previous_samples) - len(population)
+                population_size - len(previous_samples) - len(population),
+                constraint=constraint,
             )
         population.extend(previous_samples)
         fitness = acquisition_function(population).detach().numpy()

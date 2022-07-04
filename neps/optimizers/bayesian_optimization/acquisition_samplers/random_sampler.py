@@ -8,11 +8,15 @@ class RandomSampler(AcquisitionSampler):
     def __init__(self, pipeline_space: SearchSpace, patience: int = 100):
         super().__init__(pipeline_space=pipeline_space, patience=patience)
 
-    def sample(self, acquisition_function=None, constraint=None) -> SearchSpace:
+    def sample(
+        self, acquisition_function=None, constraint=None, user_priors=True
+    ) -> SearchSpace:
         constraint = constraint or (lambda _: True)
         assert self.patience >= 0
         for _ in range(self.patience + 1):
-            config = self.pipeline_space.sample(patience=self.patience)
+            config = self.pipeline_space.sample(
+                patience=self.patience, user_priors=user_priors
+            )
             if constraint(config):
                 return config
         return config

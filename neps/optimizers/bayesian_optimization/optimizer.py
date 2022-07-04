@@ -249,7 +249,10 @@ class BayesianOptimization(BaseOptimizer):
             config: the new configuration
             config_id: a unique id, or None to use the id given by get_new_config_id
             previous_id: the id of the previous configuration if this is a continuation"""
-        return self.acquisition_sampler.sample(self.acquisition), None, None
+        config = self.acquisition_sampler.sample(
+            self.acquisition, constraint=self.sampling_constraint
+        )
+        return config, None, None
 
     def sample_configuration_randomly(
         self,
@@ -267,7 +270,9 @@ class BayesianOptimization(BaseOptimizer):
             previous_id: the id of the previous configuration if this is a continuation
         """
         return (
-            self.pipeline_space.sample(patience=self.patience, user_priors=user_priors),
+            self.random_sampler.sample(
+                user_priors=user_priors, constraint=self.sampling_constraint
+            ),
             None,
             None,
         )
