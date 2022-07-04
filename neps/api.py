@@ -22,8 +22,12 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message) from None
 
+import warnings
+
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+
+warnings.simplefilter("always", DeprecationWarning)
 
 
 def _post_evaluation_hook_function(_loss_value_on_error: None | float):
@@ -96,7 +100,7 @@ def _post_evaluation_hook_function(_loss_value_on_error: None | float):
 def run(
     run_pipeline: Callable,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
-    working_directory: str | Path,
+    root_directory: None | str | Path = None,
     overwrite_working_directory: bool = False,
     development_stage_id=None,
     task_id=None,
@@ -116,6 +120,7 @@ def run(
     serializer: Literal["yaml", "dill", "json"] = "yaml",
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
+    working_directory: None | str | Path = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -129,7 +134,7 @@ def run(
     Args:
         run_pipeline: The objective function to minimize.
         pipeline_space: The search space to minimize over.
-        working_directory: The directory to save progress to. This is also used to
+        root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run.
@@ -152,6 +157,7 @@ def run(
             supress any error and will use given loss value instead. default: None
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
+        working_directory: The same as root_directory, kept for backwards compatability
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -175,8 +181,25 @@ def run(
         >>>    max_evaluations_total=5,
         >>> )
     """
+    if working_directory:
+        warnings.warn(
+            "the argument 'working_directory' is deprecated, "
+            "please use 'root_directory' instead version==0.4.9",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if root_directory is None:
+            root_directory = working_directory
+
+        assert root_directory == working_directory, ValueError(
+            "'working_directory' can not be used together with 'root_directory'. "
+            "Please, only use 'root_directory' version==0.4.9"
+        )
+
+    assert root_directory is not None, ValueError("'root_directory' can't be None")
+
     logger = logging.getLogger("neps")
-    logger.info(f"Starting neps.run using working directory {working_directory}")
+    logger.info(f"Starting neps.run using working directory {root_directory}")
     try:
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
@@ -216,7 +239,7 @@ def run(
     metahyper.run(
         run_pipeline,
         searcher,
-        working_directory,
+        root_directory,
         development_stage_id=development_stage_id,
         task_id=task_id,
         max_evaluations_total=max_evaluations_total,
