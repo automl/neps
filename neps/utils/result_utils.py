@@ -26,4 +26,6 @@ def get_cost(
     elif isinstance(result, dict):
         return float(result.get("cost", default_cost))
     else:
-        return float(result)
+        return (
+            default_cost  # If there is only a float value, it is the loss, not the cost
+        )

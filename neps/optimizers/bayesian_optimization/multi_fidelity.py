@@ -4,7 +4,7 @@ import random
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass
-from itertools import chain
+from itertools import accumulate, chain
 from typing import Any, Callable
 
 import numpy as np
@@ -22,7 +22,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
     """Base optimizer for multi-fidelity optimization"""
 
     USES_COST_MODEL = False
-    USES_CONTINUATION = False
+    USES_CONTINUATION = True
     # TODO: add param to allow non-discrete fidelity space
 
     @dataclass
@@ -54,12 +54,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
             # Choose a good default value if not given
             aggregate_continuation_costs = "sum" if self.USES_CONTINUATION else "max"
 
-        aggregate_continuation_costs = instance_from_map(
-            {"sum": sum, "max": max},
-            aggregate_continuation_costs,
-            "aggregate_continuation_costs",
-        )
-
         # Set the choices for the pipeline_space fidelity values
         fid_choices = [
             pipeline_space.fidelity.from_step(step, num_fidelity_steps, in_place=False)
@@ -80,7 +74,11 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self.fantasized_remaining_budget = self.budget
         self.max_seen_fid_step: int = 0
         self.num_fidelity_steps: int = num_fidelity_steps
-        self.aggregate_continuation_costs = aggregate_continuation_costs
+        self.aggregate_continuation_costs: Callable = instance_from_map(
+            {"sum": lambda a, b: a + b, "max": max},
+            aggregate_continuation_costs,
+            "aggregate_continuation_costs",
+        )
 
         # maintain incumbent across 3 dimensions:
         #  cost - the configuration with the maximum cumulative cost incurred
@@ -105,21 +103,33 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         fidelity_max_row = self.observed_configs.loc[self.incumbent["fidelity_step"]]
         self.max_seen_fid_step = fidelity_max_row.fidelity_step
 
-    def _update_observations(self):
-        """Reads recorded successful evaluations to build observation data structure"""
+    def load_results(
+        self,
+        previous_results: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
+    ) -> None:
+        """Load the results, and ensure the results cost are the total cost and not
+        only the continuation cost if continuation is used."""
         results_by_base_id = defaultdict(lambda: [])
-        records: list[self.ObservedRecord] = []
+        records: list[BaseMultiFidelityOptimization.ObservedRecord] = []
 
-        for config_id, result in self._previous_results.items():
+        for config_id, result in previous_results.items():
             base_cfg_id, fidelity_step = map(int, config_id.split("_"))
-            results_by_base_id[base_cfg_id].append((fidelity_step, result))
+            if result.result != "error":
+                results_by_base_id[base_cfg_id].append((fidelity_step, result))
 
         for base_cfg_id, all_config_vals in results_by_base_id.items():
             all_config_vals.sort(key=lambda fid_cfg: fid_cfg[0])
             last_fidelity_step, last_config = all_config_vals[-1]
 
             costs_list = [get_cost(config.result) for _, config in all_config_vals]
-            cost = self.aggregate_continuation_costs(costs_list)
+            costs_list = list(accumulate(costs_list, self.aggregate_continuation_costs))
+
+            # Setting the real aggregated cost for configuratioons
+            for (_, config), real_cost in zip(all_config_vals, costs_list):
+                config.result["cost"] = real_cost
+
+            cost = costs_list[-1]
             trace = {
                 fidelity_step: config_val for fidelity_step, config_val in all_config_vals
             }
@@ -147,10 +157,11 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
             self.observed_configs.set_index("base_id", inplace=True)
             self.observed_configs.sort_index(inplace=True)
 
+        super().load_results(previous_results, pending_evaluations)
+
     def _update_optimizer_training_state(self) -> None:
         """Called inside load_results()."""
         super()._update_optimizer_training_state()
-        self._update_observations()
         self._update_incumbents()
 
         # TODO: subtract optimizer overhead too? -> parameterize this behaviour
