@@ -72,7 +72,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
 
         self.observed_configs: pd.DataFrame = None
         self.fantasized_remaining_budget = self.budget
-        self.max_seen_fid_step: int = 0
         self.num_fidelity_steps: int = num_fidelity_steps
         self.aggregate_continuation_costs: Callable = instance_from_map(
             {"sum": lambda a, b: a + b, "max": max},
@@ -89,6 +88,7 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
     def _update_incumbents(self):
         if self.observed_configs is None or len(self.observed_configs) == 0:
             return
+        # stores the IDs of the entry in the data structure `observed_configs`
         self.incumbent.update(
             cost=self.observed_configs.index.values[
                 np.argmax(self.observed_configs.cost.values)
@@ -100,8 +100,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
                 np.argmin(self.observed_configs.loss.values)
             ],
         )
-        fidelity_max_row = self.observed_configs.loc[self.incumbent["fidelity_step"]]
-        self.max_seen_fid_step = fidelity_max_row.fidelity_step
 
     def load_results(
         self,
