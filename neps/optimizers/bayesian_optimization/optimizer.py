@@ -168,6 +168,8 @@ class BayesianOptimization(BaseOptimizer):
         self.train_x: list[SearchSpace] = []
         self.train_losses: list[float] = []
         self.train_costs: list[float] = []
+        self.fantasized_losses: list[float] | None = None
+        self.fantasized_costs: list[float] | None = None
 
     def _fantasize_evaluations(self, new_x):
         """Returns x, y_loss, y_cost"""
@@ -224,6 +226,7 @@ class BayesianOptimization(BaseOptimizer):
                     self.train_x.extend(new_x)
                     self.train_losses.extend(new_losses)
                     self.train_costs.extend(new_costs)
+                    self.fantasized_losses, self.fantasized_costs = new_losses, new_costs
                 self._update_optimizer_training_state()
             except RuntimeError as e:
                 self.logger.exception(

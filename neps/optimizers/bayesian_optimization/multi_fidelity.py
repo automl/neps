@@ -163,10 +163,10 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         self._update_incumbents()
 
         # TODO: subtract optimizer overhead too? -> parameterize this behaviour
+        self.fantasized_remaining_budget = self.remaining_budget
         if self.USES_COST_MODEL:
-            self.fantasized_remaining_budget = self.budget - sum(self.train_costs)
-        else:
-            self.fantasized_remaining_budget = self.remaining_budget
+            assert self.fantasized_costs is not None
+            self.fantasized_remaining_budget -= sum(self.fantasized_costs)
 
     def get_new_config_id(self, config, base_id=None, fidelity_step=None):
         """An id should be of the form [base_id]_[fidelity_step], with the same
