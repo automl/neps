@@ -168,8 +168,8 @@ class BayesianOptimization(BaseOptimizer):
         self.train_x: list[SearchSpace] = []
         self.train_losses: list[float] = []
         self.train_costs: list[float] = []
-        self.fantasized_losses: list[float] | None = None
-        self.fantasized_costs: list[float] | None = None
+        self.fantasized_losses: list[float] = []
+        self.fantasized_costs: list[float] = []
 
     def _fantasize_evaluations(self, new_x):
         """Returns x, y_loss, y_cost"""
@@ -212,6 +212,7 @@ class BayesianOptimization(BaseOptimizer):
         self.train_x = [el.config for el in previous_results.values()]
         self.train_losses = [get_loss(el.result) for el in previous_results.values()]
         self.train_costs = [get_cost(el.result) for el in previous_results.values()]
+        self.fantasized_losses, self.fantasized_costs = [], []
 
         self._model_update_failed = False
         if not self.is_init_phase():

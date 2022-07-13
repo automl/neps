@@ -165,7 +165,6 @@ class BaseMultiFidelityOptimization(BayesianOptimization):
         # TODO: subtract optimizer overhead too? -> parameterize this behaviour
         self.fantasized_remaining_budget = self.remaining_budget
         if self.USES_COST_MODEL:
-            assert self.fantasized_costs is not None
             self.fantasized_remaining_budget -= sum(self.fantasized_costs)
 
     def get_new_config_id(self, config, base_id=None, fidelity_step=None):
