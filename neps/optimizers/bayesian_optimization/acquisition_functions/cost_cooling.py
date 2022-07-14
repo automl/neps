@@ -1,6 +1,5 @@
-from typing import Iterable, Union
+from typing import Iterable
 
-import numpy as np
 import torch
 
 from ..default_consts import EPSILON
@@ -17,13 +16,12 @@ class CostCooler(BaseAcquisition):
         self.cost_model = None
         self.alpha = None
 
-    def eval(self, x: Iterable) -> Union[np.ndarray, torch.Tensor, float]:
+    def eval(self, x: Iterable) -> torch.Tensor:
         base_acquisition_value = self.base_acquisition.eval(x)
-        with torch.no_grad():
-            costs, _ = self.cost_model.predict(x)
-            costs = costs.detach().numpy()
-        return base_acquisition_value / np.maximum(costs**self.alpha, EPSILON)
-        # return base_acquisition_value / np.maximum(costs**self.alpha, EPSILON)
+        costs, _ = self.cost_model.predict(x)
+        return base_acquisition_value / torch.maximum(
+            costs**self.alpha, torch.tensor(EPSILON)
+        )
 
     def set_state(
         self, surrogate_model, alpha, cost_model, update_base_model=True, **kwargs

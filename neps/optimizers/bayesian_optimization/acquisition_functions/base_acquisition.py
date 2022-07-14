@@ -1,6 +1,8 @@
 import logging
 from abc import ABC, abstractmethod
 
+import torch
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,12 +16,16 @@ class BaseAcquisition(ABC):
         self.cost_model = None
 
     @abstractmethod
-    def eval(self, x):
+    def eval(self, x) -> torch.Tensor:
         """Evaluate the acquisition function at point x2."""
         raise NotImplementedError
 
-    def __call__(self, *args, **kwargs):
-        return self.eval(*args, **kwargs)
+    def __call__(self, *args, grad=True, **kwargs):
+        if not grad:
+            with torch.no_grad():
+                return self.eval(*args, **kwargs)
+        else:
+            return self.eval(*args, **kwargs)
 
     def set_state(
         self, surrogate_model, cost_model=None, **kwargs

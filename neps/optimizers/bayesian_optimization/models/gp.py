@@ -123,7 +123,6 @@ class GPModel:
             self.all_hp_shapes[hp_name] = hp_shape
 
         # Build the input tensors
-
         x_tensor = self._build_input_tensor(train_x)
         y_tensor = self._build_output_tensor(train_y, set_y_scale=True)
         self.fitted_on = ((train_x, train_y), (x_tensor, y_tensor))
@@ -148,11 +147,12 @@ class GPModel:
         with torch.no_grad():
             with botorch.models.utils.gpt_posterior_settings():
                 mvn = self.gp(x_tensor)
-        mean, covariance_matrix = mvn.mean, mvn.covariance_matrix
-        covariance_matrix = torch.maximum(covariance_matrix, torch.tensor(0))
-        if not normalized:
-            mean = mean * self.y_std + self.y_mean
-            covariance_matrix = covariance_matrix * self.y_std**2
+
+                mean, covariance_matrix = mvn.mean, mvn.covariance_matrix
+                covariance_matrix = torch.maximum(covariance_matrix, torch.tensor(0))
+                if not normalized:
+                    mean = mean * self.y_std + self.y_mean
+                    covariance_matrix = covariance_matrix * self.y_std**2
         return mean, covariance_matrix
 
     def predict(self, x_config: Iterable[SearchSpace] | SearchSpace, normalized=False):

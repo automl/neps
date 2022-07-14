@@ -1,6 +1,5 @@
-from typing import List, Union
+from typing import List
 
-import numpy as np
 import torch
 from torch.distributions import Normal
 
@@ -47,7 +46,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.incumbent = None
         self.optimize_on_max_fidelity = optimize_on_max_fidelity
 
-    def eval(self, x: List) -> Union[np.ndarray, torch.Tensor, float]:
+    def eval(self, x: List) -> torch.Tensor:
         """
         Return the negative expected improvement at the query point x2
         """

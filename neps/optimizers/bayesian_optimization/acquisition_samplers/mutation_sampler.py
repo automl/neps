@@ -4,7 +4,6 @@ import logging
 import traceback
 
 import numpy as np
-import torch
 from more_itertools import first
 
 from ....search_spaces.search_space import SearchSpace
@@ -21,8 +20,7 @@ def _propose_location(
     return_distinct: bool = True,
 ) -> tuple[list[SearchSpace], np.ndarray]:
     """top_n: return the top n candidates wrt the acquisition function."""
-    with torch.no_grad():
-        eis = acquisition_function(candidates).detach().numpy()
+    eis = acquisition_function(candidates, grad=False).numpy()
     if return_distinct:
         unique_eis, unique_idx = np.unique(eis, return_index=True)
         if len(unique_eis) >= top_n:
