@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from typing_extensions import Literal
 
-from .numerical import NumericalParameter
+from ..parameter import Parameter
 
 CATEGORICAL_CONFIDENCE_SCORES = {
     "low": 1.1,
@@ -17,7 +17,7 @@ CATEGORICAL_CONFIDENCE_SCORES = {
 }
 
 
-class CategoricalParameter(NumericalParameter):
+class CategoricalParameter(Parameter):
     def __init__(
         self,
         choices: Iterable[float | int | str],
@@ -39,6 +39,10 @@ class CategoricalParameter(NumericalParameter):
             np.ones(self.num_choices) * (1.0 / self.num_choices)
         )
         self.value: None | float | int | str = None
+
+    @property
+    def id(self):
+        return self.value
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -148,3 +152,9 @@ class CategoricalParameter(NumericalParameter):
         if self.value is not None:
             hp.value = self.choices.index(self.value)
         return hp
+
+    def serialize(self):
+        return self.value
+
+    def load_from(self, value):
+        self.value = value
