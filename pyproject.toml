@@ -50,6 +50,7 @@ types-termcolor = "^1.1.2"
 scipy = "^1.7"
 torch = ">=1.7.0"
 matplotlib = "^3.4"
+jahs-bench = {git = "https://github.com/automl/jahs_bench_201.git", rev = "dependency_upgrade"}
 
 [tool.poetry.dev-dependencies]
 jupyter = "^1.0"
