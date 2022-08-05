@@ -111,4 +111,4 @@ All calls to `neps.run` need to use the same `working_directory` on the same fil
 
 ## Contributing
 
-Please see our guidelines and guides for contributors at [CONTRIBUTING.md](CONTRIBUTING.md).
+Please see the [documentation for contributors](https://automl.github.io/neps/contributing/).
