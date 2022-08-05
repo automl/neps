@@ -1,5 +1,10 @@
 # Neural Pipeline Search
 
+[![PyPI version](https://img.shields.io/pypi/v/neural-pipeline-search?color=informational)](https://pypi.org/project/neural-pipeline-search/)
+[![Python versions](https://img.shields.io/pypi/pyversions/neural-pipeline-search)](https://pypi.org/project/neural-pipeline-search/)
+[![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
+[![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
+
 Neural Pipeline Search helps deep learning experts find the best neural pipeline.
 
 Features:
@@ -18,10 +23,6 @@ Soon-to-come Features:
 - Across code version transfer
 - Python 3.8+ support
 - Multi-objective
-
-![Python versions](https://img.shields.io/badge/python-3.7-informational)
-[![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
-[![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
 Please have a look at our [documentation](https://automl.github.io/neps/).
 
