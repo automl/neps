@@ -13,7 +13,7 @@
     
     
       
-        <title>Getting started - Neural Pipeline Search</title>
+        <title>Todo - Neural Pipeline Search</title>
       
     
     
@@ -88,7 +88,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Getting started
+              Todo
             
           </span>
         </div>
@@ -211,19 +211,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../getting_started/" class="md-nav__link">
         Getting started
       </a>
-      
     </li>
   
 
@@ -451,9 +443,48 @@
                 
 
 
-  <h1>Getting started</h1>
+  <h1>Todo</h1>
 
-
+<p>Features
+* Seamless ddp via cli launcher (fix from Fabio / Sam)
+* Collect data optionally via phone-home to webserver
+* Utility neps.clean to manage existing run results
+* Utility to get best HPs and (built) architecture
+* Utility to get incumbent losses over time
+* Finegrained control over HP user prior
+* Tensorboard visualizations
+* Incumbent plot
+* Integrate neps analyze repo
+* Add Info dict to status
+* Python 3.8+ support
+* Print search space upon run?</p>
+<p>Fixes
+* Metahyper Refine crash scenarios and jobtimelimit feature
+* Printing architecture search spaces / search spaces in general
+* meassure cost correctly in a crashing scenario</p>
+<p>Refactoring
+* run_pipeline = evaluate_pipeline
+* loss = evaluation_error
+* remove constant parameter
+* remove Maciej API
+* categorical is not a numerical parameter
+* clean up search spaces classes, unused methods
+* break up search space and config aspect</p>
+<p>Tests
+* Clean up examples, create experimental examples and/or move examples for test-purposes to test dir
+* Add simple regression tests to run on each push
+* Add comprehensive regression tests to run manually on the cluster on each version release</p>
+<p>Documentation:
+* Trunk based development techniques
+* Link to individual examples in README (for core features)
+* Point to smac for multi-objective problems and classic ML / have "alternatives" section in readme
+* Data reading example
+* Working directory example
+* Fill up the core documentation pages
+* Metahyper create docs and ghpage
+* Metahyper contrib update</p>
+<p>Miscellaneous
+* MIT License</p>
 
               
             </article>
@@ -464,42 +495,6 @@
       </main>
       
         <footer class="md-footer">
-  
-    
-    <nav class="md-footer__inner md-grid" aria-label="Footer" >
-      
-        
-        <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Introduction and Installation" rel="prev">
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
-          </div>
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              Introduction and Installation
-            </div>
-          </div>
-        </a>
-      
-      
-        
-        <a href="../run_pipeline/" class="md-footer__link md-footer__link--next" aria-label="Next: The run_pipeline function" rel="next">
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              The run_pipeline function
-            </div>
-          </div>
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
-          </div>
-        </a>
-      
-    </nav>
   
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
