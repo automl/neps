@@ -20,7 +20,7 @@ Soon-to-come Features:
 - Multi-objective
 
 ![Python versions](https://img.shields.io/badge/python-3.7-informational)
-[![License](https://img.shields.io/badge/license-Apache%202.0-informational)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
 Please have a look at our [documentation](https://automl.github.io/neps/).
