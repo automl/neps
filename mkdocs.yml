@@ -25,4 +25,10 @@ nav:
   - The neps.run function: 'neps_run.md'
   - Analysing runs: 'status.md'
   - Parallelization: 'parallelization.md'
-  - Contributing: 'CONTRIBUTING.md'
+  - Contributing:
+      - Introduction: "contributing/README.md"
+      - Installation for Contributors: "contributing/installation.md"
+      - Managing Dependencies: "contributing/dependencies.md"
+      - Releasing a New Version: "contributing/releasing.md"
+      - Documentation: "contributing/documentation.md"
+      - FAQ: "contributing/faq.md"
