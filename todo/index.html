@@ -273,7 +273,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../status/" class="md-nav__link">
+      <a href="../status.md" class="md-nav__link">
         Analysing runs
       </a>
     </li>
@@ -445,46 +445,58 @@
 
   <h1>Todo</h1>
 
-<p>Features
-* Seamless ddp via cli launcher (fix from Fabio / Sam)
-* Collect data optionally via phone-home to webserver
-* Utility neps.clean to manage existing run results
-* Utility to get best HPs and (built) architecture
-* Utility to get incumbent losses over time
-* Finegrained control over HP user prior
-* Tensorboard visualizations
-* Incumbent plot
-* Integrate neps analyze repo
-* Add Info dict to status
-* Python 3.8+ support
-* Print search space upon run?</p>
-<p>Fixes
-* Metahyper Refine crash scenarios and jobtimelimit feature
-* Printing architecture search spaces / search spaces in general
-* meassure cost correctly in a crashing scenario</p>
-<p>Refactoring
-* run_pipeline = evaluate_pipeline
-* loss = evaluation_error
-* remove constant parameter
-* remove Maciej API
-* categorical is not a numerical parameter
-* clean up search spaces classes, unused methods
-* break up search space and config aspect</p>
-<p>Tests
-* Clean up examples, create experimental examples and/or move examples for test-purposes to test dir
-* Add simple regression tests to run on each push
-* Add comprehensive regression tests to run manually on the cluster on each version release</p>
-<p>Documentation:
-* Trunk based development techniques
-* Link to individual examples in README (for core features)
-* Point to smac for multi-objective problems and classic ML / have "alternatives" section in readme
-* Data reading example
-* Working directory example
-* Fill up the core documentation pages
-* Metahyper create docs and ghpage
-* Metahyper contrib update</p>
-<p>Miscellaneous
-* MIT License</p>
+<p>Features</p>
+<ul>
+<li>Seamless ddp via cli launcher (fix from Fabio / Sam)</li>
+<li>Collect data optionally via phone-home to webserver</li>
+<li>Utility neps.clean to manage existing run results</li>
+<li>Utility to get best HPs and (built) architecture</li>
+<li>Utility to get incumbent losses over time</li>
+<li>Finegrained control over HP user prior</li>
+<li>Tensorboard visualizations</li>
+<li>Incumbent plot</li>
+<li>Integrate neps analyze repo</li>
+<li>Add Info dict to status</li>
+<li>Python 3.8+ support</li>
+<li>Print search space upon run?</li>
+<li>Optional argparse adder like pytorch lightning</li>
+</ul>
+<p>Fixes</p>
+<ul>
+<li>Metahyper Refine crash scenarios and jobtimelimit feature</li>
+<li>Printing architecture search spaces / search spaces in general</li>
+<li>meassure cost correctly in a crashing scenario</li>
+</ul>
+<p>Refactoring</p>
+<ul>
+<li>run_pipeline = evaluate_pipeline</li>
+<li>loss = validation_error</li>
+<li>remove constant parameter</li>
+<li>remove graph_dense API</li>
+<li>categorical is not a numerical parameter</li>
+<li>clean up search spaces classes, unused methods</li>
+<li>break up search space and config aspect</li>
+<li>merge GP and hierarchical GP etc.</li>
+</ul>
+<p>Tests</p>
+<ul>
+<li>Clean up examples, create experimental examples and/or move examples for test-purposes to test dir</li>
+<li>Add simple regression tests to run on each push</li>
+<li>Add comprehensive regression tests to run manually on the cluster on each version release</li>
+</ul>
+<p>Documentation:</p>
+<ul>
+<li>Trunk based development techniques</li>
+<li>Link to individual examples in README (for core features)</li>
+<li>Point to smac for multi-objective problems and classic ML / have "alternatives" section in readme</li>
+<li>Data reading example</li>
+<li>Working directory example</li>
+<li>Fill up the core documentation pages</li>
+<li>Metahyper create docs and ghpage</li>
+<li>Metahyper contrib update</li>
+<li>Roadmap</li>
+<li>Changelog</li>
+</ul>
 
               
             </article>

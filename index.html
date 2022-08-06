@@ -212,9 +212,47 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Introduction and Installation
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="." class="md-nav__link md-nav__link--active">
         Introduction and Installation
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-specific-torch-versions" class="md-nav__link">
+    Optional: Specific torch versions
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -288,7 +326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="status/" class="md-nav__link">
+      <a href="status.md" class="md-nav__link">
         Analysing runs
       </a>
     </li>
@@ -448,6 +486,28 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-specific-torch-versions" class="md-nav__link">
+    Optional: Specific torch versions
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -461,6 +521,16 @@
 
 
 <h1 id="introduction-and-installation">Introduction and Installation</h1>
+<h2 id="installation">Installation</h2>
+<p>Using pip</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip install neural-pipeline-search
+</code></pre></div>
+<h2 id="optional-specific-torch-versions">Optional: Specific torch versions</h2>
+<p>If you run into any issues regarding versions of the torch ecosystem (like needing cuda enabled versions), you might want to use our utility</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python -m neps.utils.install_torch
+</code></pre></div>
+<p>This script asks for the torch version you want and installs all the torch libraries needed for the neps package with
+that version. For the installation <code>pip</code> of the active python environment is used.</p>
 
               
             </article>
