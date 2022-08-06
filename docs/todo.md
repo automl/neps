@@ -16,14 +16,14 @@ Features
 
 Fixes
 
-- Metahyper Refine crash scenarios and jobtimelimit feature
+- Metahyper Refine jobtimelimit feature
 - Printing architecture search spaces / search spaces in general
-- meassure cost correctly in a crashing scenario
+- measure cost correctly in a crashing scenario
 
 Refactoring
 
 - run_pipeline = evaluate_pipeline
-- loss = evaluation_error
+- loss = validation_error
 - remove constant parameter
 - remove graph_dense API
 - categorical is not a numerical parameter
@@ -45,9 +45,5 @@ Documentation:
 - Data reading example
 - Working directory example
 - Fill up the core documentation pages
-- Metahyper create docs and ghpage
-- Metahyper contrib update
 - Roadmap
 - Changelog
-- Mention somewhere the "beta" status indicated by v0.x.x
-- Readme improvements

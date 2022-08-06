@@ -19,11 +19,11 @@ markdown_extensions:
 
 nav:
   - Introduction and Installation: 'README.md'
-  - Getting started: 'getting_started.md'
-  - The run_pipeline function: 'run_pipeline.md'
+  - Getting Started: 'getting_started.md'
+  - The run_pipeline Function: 'run_pipeline.md'
   - The pipeline_space: 'pipeline_space.md'
-  - The neps.run function: 'neps_run.md'
-  - Analysing runs: 'status.md'
+  - The neps.run Function: 'neps_run.md'
+  - Analysing Runs: 'analyse.md'
   - Parallelization: 'parallelization.md'
   - Contributing:
       - Introduction: "contributing/README.md"
