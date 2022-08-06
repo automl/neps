@@ -31,4 +31,5 @@ nav:
       - Managing Dependencies: "contributing/dependencies.md"
       - Releasing a New Version: "contributing/releasing.md"
       - Documentation: "contributing/documentation.md"
+      - Roadmap: "contributing/roadmap.md"
       - FAQ: "contributing/faq.md"
