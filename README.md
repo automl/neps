@@ -17,7 +17,7 @@ As indicated with the `v0.x.x` version number, NePS is early stage code and APIs
 
 NePS helps you by performing:
 
-- Hyperparameter optimization (HPO) ([example](<>))
+- Hyperparameter optimization (HPO) ([example](neps_examples/hyperparameters))
 - (Hierarchical) Neural architecture search (NAS) ([example](neps_examples/hierarchical_architecture))
 - Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/hyperparameters_architecture))
 
