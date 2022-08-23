@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from metahyper import instance_from_map
 
+from ....search_spaces.categorical.categorical import CategoricalParameter
 from ....search_spaces.graph_grammar.core_graph_grammar import CoreGraphGrammar
-from ....search_spaces.numerical.categorical import CategoricalParameter
 from ....search_spaces.numerical.float import FloatParameter
 from ....search_spaces.numerical.integer import IntegerParameter
 from ....utils.common import has_instance

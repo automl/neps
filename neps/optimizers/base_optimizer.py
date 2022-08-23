@@ -22,8 +22,8 @@ class BaseOptimizer(metahyper.Sampler):
         patience: int = 50,
         logger=None,
         budget: None | int | float = None,
-        loss_value_on_error: float = float("inf"),
-        cost_value_on_error: float = float("inf"),
+        loss_value_on_error: None | float = None,
+        cost_value_on_error: None | float = None,
     ):
         super().__init__(budget=budget)
         if patience < 1:

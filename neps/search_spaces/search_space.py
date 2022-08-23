@@ -293,6 +293,24 @@ class SearchSpace(collections.abc.Mapping):
     def copy(self):
         return deepcopy(self)
 
+    def set_defaults_to_current_values(self):
+        for hp in self.hyperparameters.values():
+            if hasattr(hp, "default"):
+                hp.default = hp.value
+
+    def set_hyperparameters_from_dict(self, hyperparameters, defaults=True, values=True):
+        for hp_key, hp in self.hyperparameters.items():
+            # First check if there is a new value for the hp and that its value is valid
+            if hp_key not in hyperparameters:
+                continue
+            new_hp_value = hyperparameters[hp_key]
+            if not hp.lower <= new_hp_value <= hp.upper:
+                continue
+            if defaults and hasattr(hp, "default"):
+                hp.default = new_hp_value
+            if values:
+                hp.value = new_hp_value
+
     def __getitem__(self, key):
         return self.hyperparameters[key]
 

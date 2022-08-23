@@ -1,46 +1,41 @@
-# Neural Pipeline Search
+# Neural Pipeline Search (NePS)
 
-Neural Pipeline Search helps deep learning experts find the best neural pipeline.
-
-Features:
-
-- Hyperparameter optimization (HPO)
-- Neural architecture search (NAS): cell-based and hierarchical
-- Joint NAS and HPO
-- Expert priors to guide the search
-- Asynchronous parallelization and distribution
-- Fault tolerance for crashes and job time limits
-
-Soon-to-come Features:
-
-- Multi-fidelity
-- Cost-aware
-- Across code version transfer
-- Python 3.8+ support
-- Multi-objective
-
-![Python versions](https://img.shields.io/badge/python-3.7-informational)
-[![License](https://img.shields.io/badge/license-Apache%202.0-informational)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/neural-pipeline-search?color=informational)](https://pypi.org/project/neural-pipeline-search/)
+[![Python versions](https://img.shields.io/pypi/pyversions/neural-pipeline-search)](https://pypi.org/project/neural-pipeline-search/)
+[![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
+
+NePS helps deep learning experts find the best neural pipeline by helping with setting hyperparameters and designing neural architectures.
+
+Please have a look at our **[documentation](https://automl.github.io/neps/)** and **[examples](neps_examples)**.
+
+## Note
+
+As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
+
+## Overview
+
+NePS helps you by performing:
+
+- Hyperparameter optimization (HPO) ([example](neps_examples/hyperparameters))
+- (Hierarchical) Neural architecture search (NAS) ([example](neps_examples/hierarchical_architecture))
+- Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/hyperparameters_architecture))
+
+For efficiency and convenience NePS allows you to
+
+- Leverage DL expert intuition to speed-up HPO, NAS, and JAHS ([example HPO](neps_examples/user_priors), [example JAHS](neps_examples/user_priors_also_architecture), [paper](https://openreview.net/forum?id=MMAeCXIa89))
+- Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/parallelization/))
+- Continue runs across job time limits
 
 ## Installation
 
 Using pip
 
 ```bash
-pip install git+https://github.com/automl/neps.git
+pip install neural-pipeline-search
 ```
 
-### Optional: Specific torch versions
-
-If you run into any issues regarding versions of the torch ecosystem (like needing cuda enabled versions), you might want to use our utility
-
-```bash
-python -m neps.utils.install_torch
-```
-
-This script asks for the torch version you want and installs all the torch libraries needed for the neps package with
-that version. For the installation `pip` of the active python environment is used.
+for more details see [the documentation](https://automl.github.io/neps/).
 
 ## Usage
 
@@ -78,35 +73,12 @@ neps.run(
 )
 ```
 
-### More examples
+For more details and features please have a look at our [documentation](https://automl.github.io/neps/) and [examples](neps_examples).
 
-For more usage examples for features of neps have a look at [neps_examples](neps_examples).
+## Analysing runs
 
-### Status information
-
-To show status information about a neural pipeline search use
-
-```bash
-python -m neps.status WORKING_DIRECTORY
-```
-
-If you need more status information than is printed per default (e.g., the best config over time), please have a look at
-
-```bash
-python -m neps.status --help
-```
-
-To show the status repeatedly, on unix systems you can use
-
-```bash
-watch --interval 30 python -m neps.status WORKING_DIRECTORY
-```
-
-### Parallelization
-
-In order to run a neural pipeline search with multiple processes or multiple machines, simply call `neps.run` multiple times.
-All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synchronization between the `neps.run`'s.
+See our [documentation on analysing runs](https://automl.github.io/neps/analyse).
 
 ## Contributing
 
-Please see our guidelines and guides for contributors at [CONTRIBUTING.md](CONTRIBUTING.md).
+Please see the [documentation for contributors](https://automl.github.io/neps/contributing/).
