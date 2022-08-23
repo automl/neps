@@ -1374,6 +1374,7 @@ class CoreGraphGrammar(Graph):
                 nodes[u] = _u
                 if _u not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
                     flattened_graph.add_node(_u)  # type: ignore[union-attr]
+                    flattened_graph.nodes[_u].update(graph.nodes[u])
 
             if v in nodes.keys():
                 _v = nodes[v]
@@ -1383,6 +1384,9 @@ class CoreGraphGrammar(Graph):
                 nodes[v] = _v
                 if _v not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
                     flattened_graph.add_node(_v)  # type: ignore[union-attr]
+                flattened_graph.nodes[_v].update(
+                    graph.nodes[v]
+                )  # last time node is called combo op is used
 
             if isinstance(data["op"], Graph):
                 # TODO Debug this too
@@ -1520,11 +1524,13 @@ class CoreGraphGrammar(Graph):
                         q_primitives.get(block=False) for _ in range(number_of_primitives)
                     ][::-1]
                     if as_composition:
-                        # if topology == "Linear1":
-                        #     composed_function = primitives[0]
-                        # else:
-                        #     composed_function = topology + "(" + ", ".join(primitives) + ")"
-                        composed_function = topology + "(" + ", ".join(primitives) + ")"
+                        if topology == "Linear1":
+                            composed_function = primitives[0]
+                        else:
+                            composed_function = (
+                                topology + "(" + ", ".join(primitives) + ")"
+                            )
+                        # composed_function = topology + "(" + ", ".join(primitives) + ")"
                     else:
                         composed_function = " ".join([topology] + primitives)
                     if not q_topologies.empty():

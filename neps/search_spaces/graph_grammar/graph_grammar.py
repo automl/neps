@@ -208,6 +208,7 @@ class GraphGrammarCell(GraphGrammar):
         identity_op: list = ["Identity", "id"],
         name: str = None,
         scope: str = None,
+        **kwargs,
     ):
         super().__init__(
             grammar,
@@ -219,6 +220,7 @@ class GraphGrammarCell(GraphGrammar):
             identity_op=identity_op,
             name=name,
             scope=scope,
+            **kwargs,
         )
 
         self.cell = None
