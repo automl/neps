@@ -19,12 +19,6 @@ For more advanced dependency management see examples in `pyproject.toml` or have
 When other contributors added dependencies to `pyproject.toml`, you can install them via
 
 ```bash
-rm poetry.lock
+poetry lock
 poetry install
-```
-
-or also updating dependencies alongside via
-
-```bash
-poetry update
 ```
