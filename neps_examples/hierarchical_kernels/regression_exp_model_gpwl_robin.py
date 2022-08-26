@@ -196,7 +196,7 @@ if __name__ == "__main__":
     verbose = False
     # set to 2 to use graph meta features else 0
     d_graph_features = 0
-    print(f'd_graph_features={d_graph_features}')
+    print(f"d_graph_features={d_graph_features}")
     # set whether to use stationary kernels
     if d_graph_features == 0:
         hp_kernels = []

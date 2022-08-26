@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 from pathlib import Path
 from typing import Callable
@@ -120,7 +121,6 @@ def run(
     serializer: Literal["yaml", "dill", "json"] = "yaml",
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
-    working_directory: None | str | Path = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -157,12 +157,14 @@ def run(
             supress any error and will use given loss value instead. default: None
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
-        working_directory: The same as root_directory, kept for backwards compatability
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
     Raises:
+        ValueError: If deprecated argument working_directory is used.
+        ValueError: If root_directory is None.
         TypeError: If pipeline_space has invalid type.
+
 
     Example:
         >>> import neps
@@ -182,7 +184,9 @@ def run(
         >>> )
     """
     if "working_directory" in searcher_kwargs:
-        raise ValueError("The argument 'working_directory' is deprecated, please use 'root_directory' instead")
+        raise ValueError(
+            "The argument 'working_directory' is deprecated, please use 'root_directory' instead"
+        )
 
     if root_directory is None:
         raise ValueError("'root_directory' can not be None")
@@ -195,7 +199,7 @@ def run(
             pipeline_space = pipeline_space_from_configspace(pipeline_space)
 
         # Support pipeline space as mix of ConfigurationSpace and neps parameters
-        for key, value in pipeline_space.items():
+        for key, value in copy.copy(pipeline_space).items():
             if isinstance(value, CS.ConfigurationSpace):
                 pipeline_space.pop(key)
                 config_space_parameters = pipeline_space_from_configspace(value)
