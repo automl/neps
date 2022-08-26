@@ -12,11 +12,13 @@ There are four steps to releasing a new version of neps:
 
 We follow the [semantic versioning](https://semver.org) scheme.
 
-## 1. Update the Package Version
+## 1. Update the Package Version and CITATION.cff
 
 ```bash
 poetry version v0.4.10
 ```
+
+and manually change the version specified in `CITATION.cff`.
 
 ## 2. Commit with a Version Tag
 
