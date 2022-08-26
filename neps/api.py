@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import copy
 import logging
 from pathlib import Path
 from typing import Callable
@@ -23,12 +22,8 @@ except ModuleNotFoundError:
 
     raise ModuleNotFoundError(error_message) from None
 
-import warnings
-
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
-
-warnings.simplefilter("always", DeprecationWarning)
 
 
 def _post_evaluation_hook_function(_loss_value_on_error: None | float):
@@ -199,11 +194,14 @@ def run(
             pipeline_space = pipeline_space_from_configspace(pipeline_space)
 
         # Support pipeline space as mix of ConfigurationSpace and neps parameters
-        for key, value in copy.copy(pipeline_space).items():
+        new_pipeline_space: dict[str, Parameter] = dict()
+        for key, value in pipeline_space.items():
             if isinstance(value, CS.ConfigurationSpace):
-                pipeline_space.pop(key)
                 config_space_parameters = pipeline_space_from_configspace(value)
-                pipeline_space = {**pipeline_space, **config_space_parameters}
+                new_pipeline_space = {**new_pipeline_space, **config_space_parameters}
+            else:
+                new_pipeline_space[key] = value
+        pipeline_space = new_pipeline_space
 
         # Transform to neps internal representation of the pipeline space
         pipeline_space = SearchSpace(**pipeline_space)
