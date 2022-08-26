@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "neural-pipeline-search"
-version = "0.4.9"
+version = "0.4.10"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     "Danny Stoll <stolld@cs.uni-freiburg.de>",
