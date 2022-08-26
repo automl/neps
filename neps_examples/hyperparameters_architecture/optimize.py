@@ -48,7 +48,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/hyperparameters_architecture_example",
+    root_directory="results/hyperparameters_architecture_example",
     max_evaluations_total=15,
 )
 previous_results, pending_configs = neps.status(

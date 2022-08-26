@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/hyperparameters_example",
+    root_directory="results/hyperparameters_example",
     max_evaluations_total=15,
 )
 

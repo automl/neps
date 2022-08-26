@@ -132,7 +132,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/user_priors_with_graphs",
+    root_directory="results/user_priors_with_graphs",
     max_evaluations_total=15,
     acquisition=acquisition_function,
     log_prior_weighted=True,

@@ -55,7 +55,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/fault_tolerance_example",
+    root_directory="results/fault_tolerance_example",
     max_evaluations_total=15,
 )
 previous_results, pending_configs = neps.status("results/fault_tolerance_example")

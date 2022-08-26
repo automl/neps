@@ -177,26 +177,15 @@ def run(
         >>> neps.run(
         >>>    run_pipeline=run_pipeline,
         >>>    pipeline_space=pipeline_space,
-        >>>    working_directory="usage_example",
+        >>>    root_directory="usage_example",
         >>>    max_evaluations_total=5,
         >>> )
     """
-    if working_directory:
-        warnings.warn(
-            "the argument 'working_directory' is deprecated, "
-            "please use 'root_directory' instead version==0.4.9",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if root_directory is None:
-            root_directory = working_directory
+    if "working_directory" in searcher_kwargs:
+        raise ValueError("The argument 'working_directory' is deprecated, please use 'root_directory' instead")
 
-        assert root_directory == working_directory, ValueError(
-            "'working_directory' can not be used together with 'root_directory'. "
-            "Please, only use 'root_directory' version==0.4.9"
-        )
-
-    assert root_directory is not None, ValueError("'root_directory' can't be None")
+    if root_directory is None:
+        raise ValueError("'root_directory' can not be None")
 
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {root_directory}")

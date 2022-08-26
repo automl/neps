@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/user_priors_example",
+    root_directory="results/user_priors_example",
     max_evaluations_total=15,
 )
 previous_results, pending_configs = neps.status("results/user_priors_example")

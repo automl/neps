@@ -134,7 +134,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="results/hierarchical_architecture_example_new",
+    root_directory="results/hierarchical_architecture_example_new",
     max_evaluations_total=15,
     surrogate_model=surrogate_model,
     surrogate_model_args=surrogate_model_args,

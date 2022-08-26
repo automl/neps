@@ -68,7 +68,7 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="usage_example",
+    root_directory="usage_example",
     max_evaluations_total=5,
 )
 ```
