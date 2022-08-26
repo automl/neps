@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from copy import deepcopy
 
 import numpy as np
@@ -25,8 +26,8 @@ class SuccessiveHalving(BaseOptimizer):
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: SamplingPolicy = RandomUniformPolicy,
-        promotion_policy: PromotionPolicy = SyncPromotionPolicy,
+        sampling_policy: typing.Any = RandomUniformPolicy,
+        promotion_policy: typing.Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -227,8 +228,8 @@ class SuccessiveHalving(BaseOptimizer):
 
         # identifying promotion list per rung
         self.promotion_policy.set_state(
-            self.rung_members,
-            self.rung_members_performance,
+            members=self.rung_members,
+            performances=self.rung_members_performance,
             **self.promotion_policy_kwargs,
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
@@ -312,8 +313,8 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: SamplingPolicy = FixedPriorPolicy,
-        promotion_policy: PromotionPolicy = SyncPromotionPolicy,
+        sampling_policy: typing.Any = FixedPriorPolicy,
+        promotion_policy: typing.Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -344,8 +345,8 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: SamplingPolicy = RandomUniformPolicy,
-        promotion_policy: PromotionPolicy = AsyncPromotionPolicy,
+        sampling_policy: typing.Any = RandomUniformPolicy,
+        promotion_policy: typing.Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -390,8 +391,8 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: SamplingPolicy = RandomUniformPolicy,
-        promotion_policy: PromotionPolicy = AsyncPromotionPolicy,
+        sampling_policy: typing.Any = RandomUniformPolicy,
+        promotion_policy: typing.Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,

@@ -16,6 +16,7 @@ class PromotionPolicy(ABC):
 
     def set_state(
         self,
+        *,  # allows only keyword args
         members: dict,
         performances: dict,
         **kwargs,  # pylint: disable=unused-argument
@@ -39,9 +40,14 @@ class SyncPromotionPolicy(PromotionPolicy):
         self.config_map: dict = None
 
     def set_state(
-        self, members: dict, performances: dict, config_map: dict, **kwargs
+        self,
+        *,  # allows only keyword args
+        members: dict,
+        performances: dict,
+        config_map: dict,
+        **kwargs,  # pylint: disable=unused-argument
     ) -> None:  # pylint: disable=unused-argument
-        super().set_state(members, performances)
+        super().set_state(members=members, performances=performances)
         self.config_map = config_map
 
     def retrieve_promotions(self) -> dict:
@@ -88,12 +94,13 @@ class AsyncPromotionPolicy(PromotionPolicy):
 
     def set_state(
         self,
+        *,  # allows only keyword args
         members: dict,
         performances: dict,
         max_rung: int,
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:
-        super().set_state(members, performances)
+        super().set_state(members=members, performances=performances)
         self.max_rung = max_rung
 
     def retrieve_promotions(self) -> dict:
