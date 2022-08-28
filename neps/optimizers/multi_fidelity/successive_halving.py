@@ -11,8 +11,8 @@ from typing_extensions import Literal
 from ...search_spaces.numerical.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
-from .promotion_policy import AsyncPromotionPolicy, PromotionPolicy, SyncPromotionPolicy
-from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy, SamplingPolicy
+from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
+from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
 
 
 class SuccessiveHalving(BaseOptimizer):
