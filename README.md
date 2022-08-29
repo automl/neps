@@ -17,15 +17,14 @@ As indicated with the `v0.x.x` version number, NePS is early stage code and APIs
 
 NePS helps you by performing:
 
-- Hyperparameter optimization (HPO) ([example](neps_examples/hyperparameters))
-- (Hierarchical) Neural architecture search (NAS) ([example](neps_examples/hierarchical_architecture))
-- Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/hyperparameters_architecture))
+- Hyperparameter optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
+- (Hierarchical) Neural architecture search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py))
+- Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/basic_usage/architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=_HLcjaVlqJ))
 
 For efficiency and convenience NePS allows you to
 
-- Leverage DL expert intuition to speed-up HPO, NAS, and JAHS ([example HPO](neps_examples/user_priors), [example JAHS](neps_examples/user_priors_also_architecture), [paper](https://openreview.net/forum?id=MMAeCXIa89))
+- Input expert intuition to speed-up HPO, NAS, or JAHS ([examples](neps_examples/expert_priors), [paper](https://openreview.net/forum?id=MMAeCXIa89))
 - Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/parallelization/))
-- Continue runs across job time limits
 
 ## Installation
 
