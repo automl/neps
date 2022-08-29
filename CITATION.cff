@@ -11,11 +11,13 @@ authors:
     given-names: Neeratyoy
   - family-names: Binxin
     given-names: Ru
+  - family-names: Garibov
+    given-names: Samir
   - family-names: Théophane
     given-names: Vallaeys
   - family-names: Hutter
     given-names: Frank
 title: "Neural Pipeline Search (NEPS)"
-version: 0.5.0
+version: 0.5.1
 date-released: 2022-08-26
 url: "https://github.com/automl/neps"
