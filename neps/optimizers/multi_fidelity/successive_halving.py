@@ -64,12 +64,14 @@ class SuccessiveHalving(BaseOptimizer):
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
         self.config_map = self._get_config_map(self.early_stopping_rate)
 
+        self.min_rung = min(list(self.rung_map.keys()))
+        self.max_rung = max(list(self.rung_map.keys()))
+
         # placeholder args for varying promotion and sampling policies
         self.promotion_policy_kwargs: dict = {}
         self.promotion_policy_kwargs.update({"config_map": self.config_map})
         self.sampling_args: dict = {}
 
-        self.max_rung = len(self.rung_map) - 1
         self.fidelities = list(self.rung_map.values())
         # stores the observations made and the corresponding fidelity explored
         # crucial data structure used for determining promotion candidates
@@ -82,16 +84,16 @@ class SuccessiveHalving(BaseOptimizer):
 
         # setup SH state counter
         self._counter = 0
-        self.full_rung_trace = self._get_rung_trace()
+        self.full_rung_trace = SuccessiveHalving._get_rung_trace(
+            self.rung_map, self.config_map
+        )
 
-    def _get_rung_trace(self) -> list[int]:
+    @classmethod
+    def _get_rung_trace(cls, rung_map: dict, config_map: dict) -> list[int]:
         """Lists the rung IDs in sequence of the flattened SH tree."""
         rung_trace = []
-        # TODO --- @NEERATYOY --- @NEERATYOY --- @NEERATYOY ---
-        # this doesn't work as intended (or other stuff doesn't. We only have 4 fidelities 0-3 in the example, but this
-        # one has 4 as the lowest fidelity and goes down to zero. So one more than intended, and possibly backwards, too)
-        for rung in sorted(self.rung_map.keys()):
-            rung_trace.extend([rung] * self.config_map[rung])
+        for rung in sorted(rung_map.keys()):
+            rung_trace.extend([rung] * config_map[rung])
         return rung_trace
 
     def _update_state_counter(self) -> None:
@@ -117,7 +119,8 @@ class SuccessiveHalving(BaseOptimizer):
         _max_budget = self.max_budget
         rung_map = dict()
         for i in reversed(range(nrungs)):
-            rung_map[i] = (
+            # TODO: add +s to keys and TEST
+            rung_map[i + s] = (
                 int(_max_budget)
                 if isinstance(self.pipeline_space.fidelity, IntegerParameter)
                 else _max_budget
@@ -141,7 +144,8 @@ class SuccessiveHalving(BaseOptimizer):
         _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
         config_map = dict()
         for i in range(nrungs):
-            config_map[i] = int(_n_config)
+            # TODO: add +s to keys and TEST
+            config_map[i + s] = int(_n_config)
             _n_config //= self.eta
         return config_map
 
@@ -216,8 +220,8 @@ class SuccessiveHalving(BaseOptimizer):
         _observed_configs = self.observed_configs.copy().dropna(inplace=False)
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
-        self.rung_members = {k: [] for k in range(self.max_rung)}
-        self.rung_members_performance = {k: [] for k in range(self.max_rung)}
+        self.rung_members = {k: [] for k in self.rung_map.keys()}
+        self.rung_members_performance = {k: [] for k in self.rung_map.keys()}
         for _rung in _observed_configs.rung.unique():
             self.rung_members[_rung] = _observed_configs.index[
                 _observed_configs.rung == _rung
@@ -239,7 +243,10 @@ class SuccessiveHalving(BaseOptimizer):
         """Returns an int if a rung can be promoted, else a None."""
         rung_next = self._get_rung_to_run()
         rung_to_promote = rung_next - 1
-        if rung_to_promote >= 0 and len(self.rung_promotions[rung_to_promote]) > 0:
+        if (
+            rung_to_promote >= self.min_rung
+            and len(self.rung_promotions[rung_to_promote]) > 0
+        ):
             return rung_to_promote
         return None
 
@@ -271,7 +278,7 @@ class SuccessiveHalving(BaseOptimizer):
         """
         rung_to_promote = self.is_promotable()
         if rung_to_promote is not None:
-            # promotes the first recorded promotanle config in the argsort-ed rung
+            # promotes the first recorded promotable config in the argsort-ed rung
             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
             config = deepcopy(row["config"])
             rung = rung_to_promote + 1
@@ -290,13 +297,15 @@ class SuccessiveHalving(BaseOptimizer):
 
             else:
                 config = self.sampling_policy.sample(**self.sampling_args)
-            fidelity_value = self.rung_map[0]  # base rung is always 0
+            # TODO: make base rung depend on rung_map
+            rung_id = self.min_rung
+            fidelity_value = self.rung_map[rung_id]
             config.fidelity.value = fidelity_value
 
             previous_config_id = None
-            config_id = f"{len(self.observed_configs)}_0"
+            config_id = f"{len(self.observed_configs)}_{rung_id}"
 
-        # important to tell SH to query the next allocation
+        # IMPORTANT to tell SH to query the next allocation
         self._update_state_counter()
         return config.hp_values(), config_id, previous_config_id  # type: ignore
 
@@ -370,7 +379,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
         """Returns an int if a rung can be promoted, else a None."""
         rung_to_promote = None
         # iterates starting from the highest fidelity promotable to the lowest fidelity
-        for rung in reversed(range(self.max_rung)):
+        for rung in reversed(range(self.min_rung, self.max_rung)):
             if len(self.rung_promotions[rung]) > 0:
                 rung_to_promote = rung
                 # stop checking when a promotable config found

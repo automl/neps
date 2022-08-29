@@ -66,6 +66,9 @@ class SyncPromotionPolicy(PromotionPolicy):
                 : self.config_map[rung]
             ]
 
+            # case 1: more configs seen than the specified num. configs at that rung
+            # case 2: a lower rung is eligible for promotion as num. configs already
+            #   seen but when a config is promoted, the lower rung count decrements
             promotion_criteria = len(_ordered_idx) >= self.config_map[rung] or (
                 rung + 1 in self.rung_members
                 and (len(_ordered_idx) + len(self.rung_members[rung + 1]))
