@@ -232,6 +232,7 @@ class SuccessiveHalving(BaseOptimizer):
 
         # identifying promotion list per rung
         self.promotion_policy.set_state(
+            max_rung=self.max_rung,
             members=self.rung_members,
             performances=self.rung_members_performance,
             **self.promotion_policy_kwargs,
@@ -305,7 +306,7 @@ class SuccessiveHalving(BaseOptimizer):
             previous_config_id = None
             config_id = f"{len(self.observed_configs)}_{rung_id}"
 
-        # IMPORTANT to tell SH to query the next allocation
+        # IMPORTANT to tell synchronous SH to query the next allocation
         self._update_state_counter()
         return config.hp_values(), config_id, previous_config_id  # type: ignore
 
@@ -373,7 +374,6 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
         )
-        self.promotion_policy_kwargs.update({"max_rung": self.max_rung})
 
     def is_promotable(self) -> int | None:
         """Returns an int if a rung can be promoted, else a None."""

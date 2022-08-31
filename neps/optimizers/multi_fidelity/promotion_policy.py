@@ -17,10 +17,12 @@ class PromotionPolicy(ABC):
     def set_state(
         self,
         *,  # allows only keyword args
+        max_rung: int,
         members: dict,
         performances: dict,
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:
+        self.max_rung = max_rung
         self.rung_members = members
         self.rung_members_performance = performances
 
@@ -42,21 +44,21 @@ class SyncPromotionPolicy(PromotionPolicy):
     def set_state(
         self,
         *,  # allows only keyword args
+        max_rung: int,
         members: dict,
         performances: dict,
         config_map: dict,
         **kwargs,  # pylint: disable=unused-argument
     ) -> None:  # pylint: disable=unused-argument
-        super().set_state(members=members, performances=performances)
+        super().set_state(max_rung=max_rung, members=members, performances=performances)
         self.config_map = config_map
 
     def retrieve_promotions(self) -> dict:
         """Returns the top 1/eta configurations per rung if enough configurations seen"""
         assert self.config_map is not None
-        max_rung = int(max(list(self.config_map.keys())))
 
         for rung in sorted(self.config_map.keys()):
-            if rung == max_rung:
+            if rung == self.max_rung:
                 # cease promotions for the highest rung (configs at max budget)
                 continue
             top_k = len(self.rung_members_performance[rung]) // self.eta
@@ -93,18 +95,6 @@ class AsyncPromotionPolicy(PromotionPolicy):
 
     def __init__(self, eta, **kwargs):
         super().__init__(eta, **kwargs)
-        self.max_rung = None
-
-    def set_state(
-        self,
-        *,  # allows only keyword args
-        members: dict,
-        performances: dict,
-        max_rung: int,
-        **kwargs,  # pylint: disable=unused-argument
-    ) -> None:
-        super().set_state(members=members, performances=performances)
-        self.max_rung = max_rung
 
     def retrieve_promotions(self) -> dict:
         """Returns the top 1/eta configurations per rung if enough configurations seen"""

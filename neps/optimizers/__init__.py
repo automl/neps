@@ -7,7 +7,12 @@ from .bayesian_optimization.cost_cooling import CostCooling
 from .bayesian_optimization.multi_fidelity import BayesianOptimizationMultiFidelity
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .multi_fidelity.hyperband import Hyperband, HyperbandWithPriors
+from .multi_fidelity.hyperband import (
+    AsynchronousHyperband,
+    AsynchronousHyperbandWithPriors,
+    Hyperband,
+    HyperbandWithPriors,
+)
 from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
@@ -31,4 +36,6 @@ SearcherMapping: dict[str, Callable] = {
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
     "hyperband": Hyperband,
     "hyperband_prior": HyperbandWithPriors,
+    "asha_hyperband": AsynchronousHyperband,
+    "asha_hyperband_prior": AsynchronousHyperbandWithPriors,
 }
