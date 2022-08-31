@@ -24,38 +24,32 @@ def no_logs_gte_error(caplog):
     assert not errors
 
 
-# Collect python scripts in the examples folder
-disabled_examples = {"fault_tolerance"}
-examples_folder = Path(__file__, "..", "..", "neps_examples").resolve()
-example_files = [
-    example_folder / "optimize.py"
-    for example_folder in examples_folder.iterdir()
-    if example_folder.name not in disabled_examples
+core_examples = [  # Run locally and on github actions
+    "basic_usage/hyperparameters",
+    "expert_priors/architecture_and_hyperparameters",
+    "multi_fidelity/optimize",
+    "experimental/cost_aware",
 ]
-example_files = [example_file for example_file in example_files if example_file.exists()]
-example_files_names = [example_file.parent.name for example_file in example_files]
+all_examples = core_examples + [  # Run on github actions
+    "basic_usage/architecture_and_hyperparameters",
+    "basic_usage/hierarchical_architecture",
+    "expert_priors/hyperparameters",
+    "experimental/hierarchical_architecture_hierarchical_GP",
+]
+
+
+examples_folder = Path(__file__, "..", "..", "neps_examples").resolve()
+core_examples_scripts = [examples_folder / f"{example}.py" for example in core_examples]
+all_examples_scripts = [examples_folder / f"{example}.py" for example in all_examples]
 
 
 @pytest.mark.all_examples
-@pytest.mark.parametrize("example", example_files, ids=example_files_names)
+@pytest.mark.parametrize("example", all_examples_scripts, ids=all_examples)
 def test_all_examples(example):
     runpy.run_path(example, run_name="__main__")
 
 
-core_example_names = [
-    "user_priors_also_architecture",
-    "cost_aware",
-    "hyperparameters",
-    "multi_fidelity",
-]
-core_example_files = [
-    example_file
-    for example_file in example_files
-    if example_file.parent.name in core_example_names
-]
-
-
 @pytest.mark.core_examples
-@pytest.mark.parametrize("example", core_example_files, ids=core_example_names)
+@pytest.mark.parametrize("example", core_examples_scripts, ids=core_examples)
 def test_core_examples(example):
     runpy.run_path(example, run_name="__main__")

@@ -6,7 +6,9 @@ import logging
 import torch
 
 import neps
-from neps_examples.fault_tolerance.model_and_optimizer import get_model_and_optimizer
+from neps_examples.experimental.fault_tolerance_model_and_optimizer import (
+    get_model_and_optimizer,
+)
 
 
 def run_pipeline(working_directory, learning_rate):
