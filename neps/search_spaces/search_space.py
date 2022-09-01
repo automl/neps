@@ -28,7 +28,9 @@ def pipeline_space_from_configspace(
     pipeline_space = dict()
     parameter: Parameter
     for hyperparameter in configspace.get_hyperparameters():
-        if isinstance(hyperparameter, CS.CategoricalHyperparameter):
+        if isinstance(hyperparameter, CS.Constant):
+            parameter = ConstantParameter(value=hyperparameter.value)
+        elif isinstance(hyperparameter, CS.CategoricalHyperparameter):
             parameter = CategoricalParameter(hyperparameter.choices)
         elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
             parameter = CategoricalParameter(hyperparameter.sequence)

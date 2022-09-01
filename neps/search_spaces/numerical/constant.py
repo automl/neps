@@ -17,7 +17,7 @@ class ConstantParameter(NumericalParameter):
     def __repr__(self):
         return f"<Constant, value: {self.id}>"
 
-    def sample(self):
+    def sample(self, user_priors: bool = False):
         pass
 
     def mutate(  # pylint: disable=unused-argument
