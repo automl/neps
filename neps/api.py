@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 from typing import Callable
 
@@ -24,6 +25,16 @@ except ModuleNotFoundError:
 
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+
+
+def _debugger_is_active() -> bool:
+    """Check if debug mode is active
+
+    Returns:
+        bool: is debug mode active
+    """
+    gettrace = getattr(sys, "gettrace", lambda: None)
+    return gettrace() is not None
 
 
 def _post_evaluation_hook(config, config_id, config_working_directory, result, logger):
@@ -218,4 +229,5 @@ def run(
         serializer=serializer,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook,
+        filesystem_grace_period_for_crashed_configs=0 if _debugger_is_active() else 45,
     )

@@ -12,6 +12,7 @@ class BaseAcquisition(ABC):
         self.train_x = None
         self.train_y = None
         self.train_x_tensor = None
+        self.train_x_graphs = None
         self.train_y_tensor = None
         self.cost_model = None
 
@@ -42,4 +43,4 @@ class BaseAcquisition(ABC):
         # Configurations and list of outputs
         self.train_x, self.train_y = train_configs
         # Normalized train input and output tensors
-        self.train_x_tensor, self.train_y_tensor = normalized_input
+        self.train_x_tensor, self.train_x_graphs, self.train_y_tensor = normalized_input

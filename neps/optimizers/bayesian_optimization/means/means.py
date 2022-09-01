@@ -7,31 +7,32 @@ from metahyper.utils import instance_from_map
 import neps
 
 
-class GpMean:
+class GPMean:
     def __init__(self, active_hps: list[str] = None):
         self.active_hps = active_hps
-        self.active_dims = None
+        self.active_dims: tuple | None = None
 
-    def build(self, hp_shapes):
+    def build(self, hp_shapes: dict) -> None:
+        assert self.active_hps is not None
         active_dims = []
         for hp_name in self.active_hps:
             active_dims.extend(hp_shapes[hp_name].active_dims)
-        self.active_dims = tuple(active_dims)
+        self.active_dims = tuple(active_dims)  # type: ignore[assignment]
 
 
-class ZeroMean(GpMean):
+class ZeroMean(GPMean):
     def build(self, hp_shapes):
         super().build(hp_shapes)
         return gpytorch.means.ZeroMean()
 
 
-class ConstantMean(GpMean):
+class ConstantMean(GPMean):
     def build(self, hp_shapes):
         super().build(hp_shapes)
         return gpytorch.means.ConstantMean()
 
 
-class LinearMean(GpMean):
+class LinearMean(GPMean):
     def build(self, hp_shapes):
         super().build(hp_shapes)
         return gpytorch.means.LinearMean(len(self.active_dims))

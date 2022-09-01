@@ -136,6 +136,19 @@ class Kernel:
         return kernel
 
 
+class GenericGPyTorchStationaryKernel(gpytorch.kernels.Kernel):
+    has_lengthscale = True
+    is_stationary = True
+
+    def __init__(self, neps_kernel, **kwargs):
+        super().__init__(**kwargs)
+        self.neps_kernel = neps_kernel
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs) -> torch.Tensor:
+        kwargs["training"] = self.training
+        return self.neps_kernel.forward(x1, x2, gpytorch_kernel=self, **kwargs)
+
+
 class CustomKernel(Kernel):
     """Provides a simple way to define a new kernel by overloading the forward
     function only.
@@ -144,16 +157,7 @@ class CustomKernel(Kernel):
     does_apply_on methods, and you may overload the __init__ method, but not build.
     """
 
-    class GenericGPyTorchStationaryKernel(gpytorch.kernels.Kernel):
-        has_lengthscale = True
-        is_stationary = True
-
-        def __init__(self, neps_kernel, **kwargs):
-            super().__init__(**kwargs)
-            self.neps_kernel = neps_kernel
-
-        def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs) -> torch.Tensor:
-            return self.neps_kernel.forward(x1, x2, gpytorch_kernel=self, **kwargs)
+    GenericGPyTorchStationaryKernel = GenericGPyTorchStationaryKernel
 
     def build(self, hp_shapes: dict[str, HpTensorShape]):
         return self._kernel_builder(

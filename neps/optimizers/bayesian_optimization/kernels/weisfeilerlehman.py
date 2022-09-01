@@ -1,27 +1,29 @@
 import logging
+from typing import Tuple
 
 import numpy as np
 import torch
 from grakel.kernels import ShortestPathAttr
 from grakel.utils import graph_from_networkx
 
+from .base_kernel import CustomKernel
 from .grakel_replace.edge_histogram import EdgeHistogram
 from .grakel_replace.utils import calculate_kernel_matrix_as_tensor
 from .grakel_replace.vertex_histogram import VertexHistogram
 from .grakel_replace.weisfeiler_lehman import WeisfeilerLehman as _WL
-from .graph_kernel import GraphKernels
+from .graph_kernel import GraphKernel
 from .utils import transform_to_undirected
-from .vectorial_kernels import Stationary
+from .vectorial_kernels import BaseNumericalKernel  # TODO: not defined anymore...
 
 
-class WeisfilerLehman(GraphKernels):
-    """Weisfiler Lehman kernel using grakel functions"""
+class WeisfeilerLehman(GraphKernel, CustomKernel):
+    """Weisfeiler Lehman kernel using grakel functions"""
 
     def __init__(
         self,
         h: int = 0,
         base_type: str = "subtree",
-        se_kernel: Stationary = None,
+        se_kernel: BaseNumericalKernel = None,
         layer_weights=None,
         node_weights=None,
         oa: bool = False,
@@ -120,6 +122,56 @@ class WeisfilerLehman(GraphKernels):
         self._train, self._train_transformed = None, None
         self.__name__ = "WeisfeilerLehman"
 
+    def _optimize_wl_kernel(
+        self,
+        y: torch.Tensor,
+        likelihood: float = 1e-3,
+        h_: Tuple[int] = tuple(range(5)),
+        lengthscale_: Tuple[float] = tuple(np.e**i for i in range(-2, 3)),
+    ):
+        _grid_search_wl_kernel(
+            self,
+            h_,
+            self.train_graphs[0],
+            y,
+            likelihood,
+            lengthscales=lengthscale_,
+        )
+        self._pretrained = True
+
+    def prefit_graph_kernel(
+        self, y: torch.Tensor, likelihood: float = 1e-3, **opt_kwargs
+    ) -> None:
+        self._optimize_wl_kernel(y=y, likelihood=likelihood, **opt_kwargs)
+
+    def forward(
+        self, x1: torch.Tensor, x2: torch.Tensor, gpytorch_kernel, **kwargs
+    ) -> torch.Tensor:
+        if not self._pretrained:
+            raise Exception(
+                "WL kernel needs to be fitted before (-> call prefit_graph_kernel before)"
+            )
+
+        assert "training" in kwargs
+        gp_fit = kwargs["training"]
+        if gp_fit or len(self.train_graphs[0]) == x1.shape[0] == x2.shape[0]:
+            gr = self.train_graphs[0]
+        else:
+            gr = self.train_graphs[0] + self.eval_graphs[0]
+
+        K = self.fit_transform(
+            gr=gr, rebuild_model=True, save_gram_matrix=not gp_fit, gp_fit=gp_fit
+        )
+
+        assert K.shape[0] >= x1.shape[0]
+        if not gp_fit and K.shape[0] != x1.shape[0]:
+            K = K[len(self.train_graphs[0]) :, :]
+        assert K.shape[1] >= x2.shape[0]
+        if not gp_fit and K.shape[1] != x2.shape[0]:
+            K = K[:, len(self.train_graphs[0]) :]
+        assert K.shape == (x1.shape[0], x2.shape[0])
+        return K
+
     def change_se_params(self, params: dict):
         """Change the kernel parameter of the successive embedding kernel."""
         if self.se is None:
@@ -199,7 +251,7 @@ class WeisfilerLehman(GraphKernels):
         if save_gram_matrix:
             self._gram = K.clone()
             self.layer_weights = self.kern.layer_weights
-        return K
+        return K.type(torch.float32)
 
     def transform(
         self,
@@ -333,3 +385,116 @@ class WeisfilerLehman(GraphKernels):
         # Generate the final embedding
         embedding = torch.tensor(np.concatenate(embedding, axis=1))
         return embedding, list(self.feature_map(flatten=True).values())
+
+
+def _grid_search_wl_kernel(
+    k: WeisfeilerLehman,
+    subtree_candidates,
+    train_x: list,
+    train_y: torch.Tensor,
+    lik: float,
+    subtree_prior=None,  # pylint: disable=unused-argument
+    lengthscales=None,
+    lengthscales_prior=None,  # pylint: disable=unused-argument
+):
+    """Optimize the *discrete hyperparameters* of Weisfeiler Lehman kernel.
+    k: a Weisfeiler-Lehman kernel instance
+    hyperparameter_candidate: list of candidate hyperparameter to try
+    train_x: the train data
+    train_y: the train label
+    lik: likelihood
+    lengthscale: if using RBF kernel for successive embedding, the list of lengthscale to be grid searched over
+    """
+    # lik = 1e-6
+    assert len(train_x) == len(train_y)
+    best_nlml = torch.tensor(np.inf)
+    best_subtree_depth = None
+    best_lengthscale = None
+    best_K = None
+    if lengthscales is not None and k.se is not None:
+        candidates = [(h_, l_) for h_ in subtree_candidates for l_ in lengthscales]
+    else:
+        candidates = [(h_, None) for h_ in subtree_candidates]
+
+    for i in candidates:
+        if k.se is not None:
+            k.change_se_params({"lengthscale": i[1]})
+        k.change_kernel_params({"h": i[0]})
+        K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
+        # self.logger.debug(K)
+        K_i, logDetK = compute_pd_inverse(K, lik)
+        # self.logger.debug(train_y)
+        nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
+        # self.logger.debug(f"{i} {nlml}")
+        if nlml < best_nlml:
+            best_nlml = nlml
+            best_subtree_depth, best_lengthscale = i
+            best_K = torch.clone(K)
+    # self.logger.debug(f"h: {best_subtree_depth} theta: {best_lengthscale}")
+    # self.logger.debug(best_subtree_depth)
+    k.change_kernel_params({"h": best_subtree_depth})
+    if k.se is not None:
+        k.change_se_params({"lengthscale": best_lengthscale})
+    k._gram = best_K  # pylint: disable=protected-access
+
+
+# TODO replace below functions with GPyTorch
+
+
+def compute_log_marginal_likelihood(
+    K_i: torch.Tensor,
+    logDetK: torch.Tensor,
+    y: torch.Tensor,
+    normalize: bool = True,
+    log_prior_dist=None,
+):
+    """Compute the zero mean Gaussian process log marginal likelihood given the inverse of Gram matrix K(x2,x2), its
+    log determinant, and the training label vector y.
+    Option:
+    normalize: normalize the log marginal likelihood by the length of the label vector, as per the gpytorch
+    routine.
+    prior: A pytorch distribution object. If specified, the hyperparameter prior will be taken into consideration and
+    we use Type-II MAP instead of Type-II MLE (compute log_posterior instead of log_evidence)
+    """
+    lml = (
+        -0.5 * y.t() @ K_i @ y
+        + 0.5 * logDetK
+        - y.shape[0]
+        / 2.0
+        * torch.log(
+            2
+            * torch.tensor(
+                np.pi,
+            )
+        )
+    )
+    if log_prior_dist is not None:
+        lml -= log_prior_dist
+    return lml / y.shape[0] if normalize else lml
+
+
+def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
+    """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
+    n = K.shape[0]
+    assert (
+        isinstance(jitter, float) or jitter.ndim == 0
+    ), "only homoscedastic noise variance is allowed here!"
+    is_successful = False
+    fail_count = 0
+    max_fail = 3
+    while fail_count < max_fail and not is_successful:
+        try:
+            jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
+            K_ = K + jitter_diag
+            try:
+                Kc = torch.linalg.cholesky(K_)
+            except AttributeError:  # For torch < 1.8.0
+                Kc = torch.cholesky(K_)
+            is_successful = True
+        except RuntimeError:
+            fail_count += 1
+    if not is_successful:
+        raise RuntimeError(f"Gram matrix not positive definite despite of jitter:\n{K}")
+    logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
+    K_i = torch.cholesky_inverse(Kc)
+    return K_i.to(torch.get_default_dtype()), logDetK.to(torch.get_default_dtype())

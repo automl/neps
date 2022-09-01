@@ -97,6 +97,9 @@ class CoreGraphGrammar(Graph):
     def get_graphs(self):
         raise NotImplementedError
 
+    def get_tensor_value(self):
+        return self.copy().value
+
     def prune_tree(
         self,
         tree: nx.DiGraph,
@@ -748,14 +751,6 @@ class CoreGraphGrammar(Graph):
             return ""
 
         return dfs(set(), nxTree, node=self._find_root(nxTree))
-
-    def update_op_names(self):
-        # update op names
-        for u, v in self.edges():
-            try:
-                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].get_op_name})
-            except Exception:
-                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].name})
 
     def from_stringTree_to_graph_repr(
         self,

@@ -1,6 +1,6 @@
 import math
 
-DEFAULT_KERNELS = ["m52", "hm", "no_op_const"]  # TODO : add 'wl'
+DEFAULT_KERNELS = ["m52", "hm", "no_op_const", "wl"]  # TODO : add 'wl'
 DEFAULT_MEAN = "constant"
 DEFAULT_COMBINE = "sum"
 EPSILON = 1e-9

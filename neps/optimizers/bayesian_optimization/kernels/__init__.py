@@ -7,6 +7,7 @@ from ....search_spaces.numerical.constant import ConstantParameter as _ConstantP
 from .base_kernel import CustomKernel, Kernel, NoOpKernel
 from .combine_kernels import CombineKernel, ProductKernel, SumKernel
 from .get_kernels import instantiate_kernel
+from .graph_kernel import GraphKernel
 from .vectorial_kernels import (
     BaseCategoricalKernel,
     BaseNumericalKernel,
@@ -17,19 +18,20 @@ from .vectorial_kernels import (
     RationalQuadraticKernel,
     RBFKernel,
 )
+from .weisfeilerlehman import WeisfeilerLehman
 
-# GraphKernelMapping: dict[str, Callable] = {
-#     "wl": partial(
-#         WeisfilerLehman,
-#         h=2,
-#         oa=False,
-#     ),
-#     "vh": partial(
-#         WeisfilerLehman,
-#         h=0,
-#         oa=False,
-#     ),
-# }
+GraphKernelMapping: dict[str, Callable] = {
+    "wl": partial(
+        WeisfeilerLehman,
+        h=2,
+        oa=False,
+    ),
+    "vh": partial(
+        WeisfeilerLehman,
+        h=0,
+        oa=False,
+    ),
+}
 
 CombineKernelMapping: dict[str, Callable] = {
     "sum": SumKernel,
@@ -44,5 +46,6 @@ KernelMapping: dict[str, Callable] = {
     "hm": HammingKernel,
     "no_op": NoOpKernel,
     "no_op_const": partial(NoOpKernel, restrict_to=[_ConstantParameter]),
+    **GraphKernelMapping,
     **CombineKernelMapping,
 }

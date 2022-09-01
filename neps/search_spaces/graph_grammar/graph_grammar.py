@@ -88,6 +88,12 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     def search_space_size(self) -> int:
         return self.grammars[0].compute_space_size
 
+    @staticmethod
+    def get_tensor_shape(
+        graph_instances: list,  # pylint: disable=unused-argument
+    ) -> None:
+        return None
+
     @abstractmethod
     def create_new_instance_from_id(self, identifier: str):
         raise NotImplementedError
@@ -275,6 +281,12 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
 
     def __eq__(self, other):
         return self.id == other.id
+
+    @staticmethod
+    def get_tensor_shape(
+        graph_instances: list,  # pylint: disable=unused-argument
+    ) -> None:
+        return None
 
     def reset(self):
         self.clear_graph()
@@ -605,6 +617,12 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
 
     def __eq__(self, other):
         return self.id == other.id
+
+    @staticmethod
+    def get_tensor_shape(
+        graph_instances: list,  # pylint: disable=unused-argument
+    ) -> None:
+        return None
 
     def reset(self):
         self.clear_graph()

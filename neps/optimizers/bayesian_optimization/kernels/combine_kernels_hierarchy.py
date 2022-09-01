@@ -1,11 +1,12 @@
 import logging
 
+import numpy as np
 import torch
 
 from .utils import extract_configs_hierarchy
 from .vectorial_kernels import HammingKernel, Stationary
-from .weisfilerlehman import GraphKernels
-import numpy as np
+from .weisfeilerlehman import GraphKernels
+
 
 # normalise weights in front of additive kernels
 def transform_weights(weights):
@@ -30,8 +31,8 @@ class CombineKernel:
 
         self.has_graph_kernels = False
         self.has_vector_kernels = False
-        self.hierarchy_consider = kwargs['hierarchy_consider']
-        self.d_graph_features = kwargs['d_graph_features']
+        self.hierarchy_consider = kwargs["hierarchy_consider"]
+        self.d_graph_features = kwargs["d_graph_features"]
         # if use global graph features of the final architecture graph, prepare for normalising
         # them based on training data
         if self.d_graph_features > 0:
@@ -67,9 +68,11 @@ class CombineKernel:
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1, x1 = extract_configs_hierarchy(configs,
-                                            d_graph_features = self.d_graph_features,
-                                            hierarchy_consider=self.hierarchy_consider)
+        gr1, x1 = extract_configs_hierarchy(
+            configs,
+            d_graph_features=self.d_graph_features,
+            hierarchy_consider=self.hierarchy_consider,
+        )
 
         # normalise the global graph features if we plan to use them
         if self.d_graph_features > 0:
@@ -77,7 +80,7 @@ class CombineKernel:
                 # compute the mean and std based on training data
                 self.train_graph_feature_mean = np.mean(x1, 0)
                 self.train_graph_feature_std = np.std(x1, 0)
-            x1 = (x1 - self.train_graph_feature_mean)/self.train_graph_feature_std
+            x1 = (x1 - self.train_graph_feature_mean) / self.train_graph_feature_std
         # k_values = [] # for debug
         # k_features = [] # for debug
         for i, k in enumerate(self.kernels):
@@ -163,15 +166,17 @@ class CombineKernel:
         # N = len(configs)
         # K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 
-        gr1, _ = extract_configs_hierarchy(configs,
-                                           d_graph_features=self.d_graph_features,
-                                           hierarchy_consider=self.hierarchy_consider)
+        gr1, _ = extract_configs_hierarchy(
+            configs,
+            d_graph_features=self.d_graph_features,
+            hierarchy_consider=self.hierarchy_consider,
+        )
         # get the corresponding graph kernel and hierarchy graph data
         graph_kernel_list = [k for k in self.kernels if isinstance(k, GraphKernels)]
         # first graph kernel is on the final architecture graph
-        k_single_hierarchy = graph_kernel_list[int(hierarchy_id+1)]
-        gr1_single_hierarchy = gr1[int(hierarchy_id+1)]
-        weight_single_hierarchy = weights[int(hierarchy_id+1)]
+        k_single_hierarchy = graph_kernel_list[int(hierarchy_id + 1)]
+        gr1_single_hierarchy = gr1[int(hierarchy_id + 1)]
+        weight_single_hierarchy = weights[int(hierarchy_id + 1)]
         k_raw = k_single_hierarchy.fit_transform(
             gr1_single_hierarchy,
             rebuild_model=rebuild_model,
@@ -186,6 +191,7 @@ class CombineKernel:
         K = weight_single_hierarchy * k_raw
 
         return K
+
 
 class SumKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):

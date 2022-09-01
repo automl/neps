@@ -32,7 +32,7 @@ class CombineKernel(Kernel):
         self.active_hps = list(children_hps)
         return children_hps
 
-    def _build_sub_kernels(self, hp_shapes):
+    def _build_sub_kernels(self, hp_shapes: dict) -> list:
         sub_kernels = []
         for child_kernel in self.kernels:
             child_shapes = {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from copy import deepcopy
 from typing import Callable
 
 import networkx as nx
@@ -8,6 +9,7 @@ from torch import nn
 
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
+from .graph import Graph
 from .graph_grammar import GraphGrammar, GraphGrammarMultipleRepetitive
 
 
@@ -21,7 +23,7 @@ def _dict_structure_to_str(structure: dict, primitives: dict) -> str:
     return grammar
 
 
-def _build(graph, set_recursive_attribute):
+def _build(graph, set_recursive_attribute) -> Graph:
     in_node = [n for n in graph.nodes if graph.in_degree(n) == 0][0]
     for n in nx.topological_sort(graph):
         for pred in graph.predecessors(n):
@@ -33,6 +35,7 @@ def _build(graph, set_recursive_attribute):
                 pred_pred = list(graph.predecessors(pred))[0]
                 predecessor_values = graph.edges[(pred_pred, pred)]
             graph.edges[e].update(set_recursive_attribute(op_name, predecessor_values))
+    return graph
 
 
 def FunctionParameter(**kwargs):
@@ -124,13 +127,13 @@ def FunctionParameter(**kwargs):
                 self.prune_graph()
 
                 if self._old_build_api:
-                    self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
+                    arch = self._set_recursive_attribute(deepcopy(self))  # type: ignore[misc] # This is the full build_fn
                 elif self._set_recursive_attribute:
-                    _build(self, self._set_recursive_attribute)
+                    arch = _build(deepcopy(self), self._set_recursive_attribute)
 
-                self.compile()
-                self.update_op_names()
-            return super().to_pytorch()  # create PyTorch model
+                arch.compile()
+                arch.update_op_names()
+            return arch.to_pytorch()  # create PyTorch model
 
         def to_tensorflow(self, inputs):
             composed_function = self.compose_functions(flatten_graph=False)
@@ -140,5 +143,8 @@ def FunctionParameter(**kwargs):
             g = FunctionParameter(**self.input_kwargs)  # type: ignore[arg-type]
             g.load_from(identifier)
             return g
+
+        def copy(self):
+            return deepcopy(self)
 
     return _FunctionParameter(**kwargs)

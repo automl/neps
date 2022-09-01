@@ -4,10 +4,10 @@ import time
 import neps
 
 
-def run_pipeline(working_directory, **config):
+def run_pipeline(working_directory, **config):  # pylint: disable=unused-argument
     optimizer = config["optimizer"]
     learning_rate = config["learning_rate"]
-    model = config["graph"].get_model_for_evaluation(trainable=True)
+    model = config["graph"].to_pytorch()
 
     start = time.time()
 

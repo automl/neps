@@ -1,3 +1,7 @@
+import inspect
+from collections import OrderedDict
+from typing import Callable
+
 import gpytorch
 import torch
 
@@ -18,6 +22,21 @@ class SafeInterval(gpytorch.constraints.Interval):
         return super().inverse_transform(transformed_tensor)
 
 
+def get_default_args(func: Callable) -> dict:
+    signature = inspect.signature(func)
+    out_dict = OrderedDict()
+    for k, v in signature.parameters.items():
+        if v.default is not inspect.Parameter.empty:
+            out_dict[k] = v.default
+    return out_dict
+
+
 # Change the value of max_tries in cholesky
-assert gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__ == (False, None, None, 3)
-gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__ = (False, None, None, 6)
+# assert gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__ == (False, None, None, None)
+_func_args_with_defaults = get_default_args(gpytorch.utils.cholesky.psd_safe_cholesky)
+assert "max_tries" in _func_args_with_defaults
+idx = list(_func_args_with_defaults.keys()).index("max_tries")
+gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__ = tuple(
+    6 if idx == i else default
+    for i, default in enumerate(gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__)
+)

@@ -803,6 +803,14 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 "shared edge data."
             )
 
+    def update_op_names(self):
+        # update op names
+        for u, v in self.edges():
+            try:
+                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].get_op_name})
+            except Exception:
+                self.edges[u, v].update({"op_name": self.edges[u, v]["op"].name})
+
     def update_edges(
         self, update_func: Callable, scope="all", private_edge_data: bool = False
     ):

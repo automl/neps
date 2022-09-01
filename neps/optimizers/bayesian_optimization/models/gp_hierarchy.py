@@ -12,9 +12,10 @@ from ..kernels.combine_kernels_hierarchy import ProductKernel, SumKernel
 from ..kernels.graph_kernel import GraphKernels
 from ..kernels.utils import extract_configs_hierarchy
 from ..kernels.vectorial_kernels import Stationary
-from ..kernels.weisfilerlehman import WeisfilerLehman
+from ..kernels.weisfeilerlehman import WeisfeilerLehman
 
 
+# TODO needs to be merged with gp.py later!
 class ComprehensiveGPHierarchy:
     def __init__(
         self,
@@ -120,7 +121,7 @@ class ComprehensiveGPHierarchy:
             for i, k in enumerate(self.combined_kernel.kernels):
                 if not isinstance(k, GraphKernels):
                     continue
-                elif isinstance(k, WeisfilerLehman):
+                elif isinstance(k, WeisfeilerLehman):
                     _grid_search_wl_kernel(
                         k,
                         h_,
@@ -251,7 +252,7 @@ class ComprehensiveGPHierarchy:
         layer_weights = None
         if optimize_wl_layer_weights:
             for k in self.domain_kernels:
-                if isinstance(k, WeisfilerLehman):
+                if isinstance(k, WeisfeilerLehman):
                     layer_weights = torch.ones(k.h + 1).requires_grad_(True)
                     if layer_weights.shape[0] <= 1:
                         layer_weights = None
@@ -670,7 +671,7 @@ def getBack(var_grad_fn, logger):
 
 
 def _grid_search_wl_kernel(
-    k: WeisfilerLehman,
+    k: WeisfeilerLehman,
     subtree_candidates,
     train_x: list,
     train_y: torch.Tensor,

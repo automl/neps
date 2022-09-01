@@ -7,16 +7,16 @@ from warnings import warn
 import numpy as np
 import torch
 from grakel.graph import Graph
-from grakel.kernels import Kernel
+from grakel.kernels import Kernel as GK_Kernel
 from numpy import array, einsum, squeeze, zeros
 from scipy.sparse import csr_matrix
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
-from ..vectorial_kernels import Stationary
+from ..vectorial_kernels import BaseNumericalKernel
 
 
-class VertexHistogram(Kernel):
+class VertexHistogram(GK_Kernel):
     """Vertex Histogram kernel as found in :cite:`sugiyama2015halting`.
 
     Parameters
@@ -54,7 +54,7 @@ class VertexHistogram(Kernel):
         sparse="auto",
         oa=False,
         mahalanobis_precision=None,
-        se_kernel: Stationary = None,
+        se_kernel: BaseNumericalKernel = None,
         requires_ordered_features: bool = False,
         as_tensor: bool = True,
     ):
