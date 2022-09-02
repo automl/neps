@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-
-import matplotlib.pyplot as plt
 from metahyper.api import ConfigResult
 from statsmodels.nonparametric._kernel_base import (
     EstimatorSettings,
@@ -61,14 +60,12 @@ def weighted_generalized_kernel_prod(
                 k\\left( \frac{X_{i2}-x_{2}}{h_{2}}\right)\times...\times
                 k\\left(\frac{X_{iq}-x_{q}}{h_{q}}\right)
     """
-    kernel_types = dict(c=cont_kerneltype,
-                        o=ordered_kerneltype, u=unordered_kerneltype)
+    kernel_types = dict(c=cont_kerneltype, o=ordered_kerneltype, u=unordered_kerneltype)
 
     K_val = np.empty(data.shape)
     for dim, vtype in enumerate(var_type):
         func = kernel_func[kernel_types[vtype]]
-        K_val[:, dim] = func(bw[dim], data[:, dim],
-                             data_predict[dim]) * data_weights
+        K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim]) * data_weights
 
     iscontinuous = np.array([c == "c" for c in var_type])
 
@@ -80,7 +77,7 @@ def weighted_generalized_kernel_prod(
         return dens
 
 
-class MultiFidelityPriorWeightedKDE(GenericKDE):
+class KernelDensityEstimator(GenericKDE):
     def __init__(
         self,
         param_types,
@@ -92,7 +89,7 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         min_bw: float = 1e-3,
         prior=None,
         prior_weight: float = 0.0,
-        prior_as_samples: bool = False,
+        prior_as_samples: bool | list = False,
         min_density: float = 1e-12,
         **estimator_kwargs: dict,
     ):
@@ -127,27 +124,26 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         # TODO consider the logged parameters when fitting the KDE
         self.logged_params = logged_params
 
-    def fit(self, configs: list[ConfigResult], config_weights: list[float] = None, fixed_bw: list[float] = None) -> None:    
+    def fit(
+        self,
+        configs: list[ConfigResult],
+        config_weights: list[float] = None,
+        fixed_bw: list[float] = None,
+    ) -> None:
         if config_weights is None:
             data_weights = np.ones(len(configs))
         else:
             data_weights = np.asarray(config_weights)
 
-        if self.prior_as_samples:
-            # Now, we resample from the prior each time we fit - not sure if it's a good idea or not
-            # May want to have these samples static
-            configs, data_weights = self._prior_enhance_data(
-                configs, data_weights)
-
         self.data = self._convert_configs_to_numpy(configs)
         # TODO compute EI weights
-        self.data_weights = data_weights / np.mean(data_weights)
+        self.data_weights = np.sqrt(data_weights) / np.sum(np.sqrt(data_weights))
         self.nobs, self.k_vars = np.shape(self.data)
-        
+
         if fixed_bw is not None:
             self.bw = np.array(fixed_bw)
             return
-        
+
         # These are attributes to fit within the statsmodels KDE framework
         # https://github.com/statsmodels/statsmodels/blob/b79d71862dd9ca30ed173c9ad9b96a18e48d8dbb/statsmodels/nonparametric/_kernel_base.py#L99
         # TODO build own KDE if we see the need
@@ -174,8 +170,7 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
             np.ndarray: N x D normalized numpy array of configs
         """
         configs_np = np.array(
-            [[x_.normalized().value for x_ in list(x.values())]
-             for x in configs]
+            [[x_.normalized().value for x_ in list(x.values())] for x in configs]
         )
         if drop_fidelity:
             return configs_np[:, ~self.fid_array]
@@ -226,13 +221,7 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         pdf_est = np.squeeze(pdf_est)
         return np.maximum(pdf_est, self.min_density)
 
-    def _prior_enhance_data(self, configs):
-        if self.prior_as_samples:
-            pass
-        # TODO implement this properly
-        return configs
-
-    def visualize_2d(self, ax, grid_points: int = 101, color: str = 'k'):
+    def visualize_2d(self, ax, grid_points: int = 101, color: str = "k"):
         assert len(self.param_types) == 2
         X1 = np.linspace(0, 1, grid_points)
         X2 = np.linspace(0, 1, grid_points)
@@ -244,8 +233,6 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         Z = Z.reshape(grid_points, grid_points)
 
         c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
-        ax.set_title('pcolormesh')
-        # set the limits of the plot to the limits of the data
+        ax.set_title("pcolormesh")
         ax.axis([0, 1, 0, 1])
-        ax.scatter(self.data[:, 0], self.data[:, 1], s=100)
         return ax

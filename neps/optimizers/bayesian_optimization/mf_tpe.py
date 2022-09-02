@@ -3,10 +3,9 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
-import matplotlib.pyplot as plt
 from metahyper.api import ConfigResult, instance_from_map
 
 from ...search_spaces import CategoricalParameter, FloatParameter, IntegerParameter
@@ -26,10 +25,11 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         good_fraction: float = 0.15,
         random_interleave_prob: float = 0.333,
         initial_design_size: int = 0,
-        prior_as_samples: bool = False,
+        prior_as_samples: bool = True,
         pending_as_bad: bool = True,
         surrogate_model: str = "kde",
         acquisition_sampler: str | AcquisitionSampler = "mutation",
+        prior_draws: int = 1000,
         surrogate_model_args: dict = None,
         patience: int = 50,
         logger=None,
@@ -53,6 +53,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             Should be True if the prior happens to be unnormalized.
             pending_as_bad: Whether to treat pending observations as bad, assigning them to
             the bad KDE to encourage diversity among samples queried in parallel
+            prior_draws: The number of samples drawn from the prior if there is one. This
+            # does not affect the strength of the prior, just how accurately it
+            # is reconstructed by the KDE.
             patience: How many times we try something that fails before giving up.
             budget: Maximum budget
             loss_value_on_error: Setting this and cost_value_on_error to any float will
@@ -81,6 +84,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._random_interleave_prob = random_interleave_prob
         self._initial_design_size = initial_design_size
         self._pending_as_bad = pending_as_bad
+        self.prior_draws = prior_draws
 
         if surrogate_model != "kde":
             raise NotImplementedError(
@@ -101,6 +105,20 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         surrogate_model_args["logged_params"] = logged_params
 
         # TODO consider the logged versions of parameters
+        if self.pipeline_space.has_prior and use_priors:
+            if prior_as_samples:
+                self.prior_samples = [
+                    self.pipeline_space.sample(
+                        patience=self.patience, user_priors=True, ignore_fidelity=False
+                    )
+                    for idx in range(self.prior_draws)
+                ]
+            else:
+                pass
+                # TODO work out affine combination
+        else:
+            self.prior_samples = []
+
         self.surrogate_models = {
             "good": instance_from_map(
                 SurrogateModelMapping,
@@ -128,13 +146,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
-        if self.pipeline_space.has_prior and use_priors:
-            if prior_as_samples:
-                # TODO sample from prior and use that in the KDE
-                pass
-            else:
-                # TODO use a linear combination of prior and KDE
-                pass
 
     def _get_types(self):
         """extracts the needed types from the configspace for faster retrival later
@@ -227,18 +238,28 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._pending_evaluations = pending_x_configs
         if not self.is_init_phase():
             # This is to extract the configurations as numpy arrays on the format num_data x num_dim
-            good_configs, bad_configs = self._split_configs(train_x_configs, train_y)
+            good_configs, bad_configs = self._split_configs(
+                train_x_configs, train_y, round_up=True
+            )
 
+            num_good_configs = len(good_configs)
+            num_prior_configs = len(self.prior_samples)
+            good_configs.extend(self.prior_samples)
+            good_config_weights = np.ones(len(good_configs))
+            good_config_weights[num_good_configs:] = (
+                self.prior_num_evals / num_prior_configs
+            )
             # TODO drop the fidelity!
             self.surrogate_models["all"].fit(train_x_configs)
             fixed_bw = self.surrogate_models["all"].bw
-            self.surrogate_models["good"].fit(good_configs, fixed_bw=fixed_bw)
+            self.surrogate_models["good"].fit(
+                good_configs, fixed_bw=fixed_bw, config_weights=good_config_weights
+            )  # [num_good_configs:])
             if self._pending_as_bad:
                 bad_configs.extend(pending_x_configs)
-            self.surrogate_models["bad"].fit(bad_configs, fixed_bw=fixed_bw )
-            
+            self.surrogate_models["bad"].fit(bad_configs, fixed_bw=fixed_bw)
 
-            #self.visualize_acq(previous_results)
+            self.visualize_acq(previous_results)
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -253,7 +274,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, ignore_fidelity=False
             )
-            print('RANDOM')
         elif self.is_init_phase():
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
@@ -267,8 +287,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None
 
-
-    def visualize_2d(self, ax, previous_results, grid_points: int = 101, color: str = 'k'):
+    def visualize_2d(
+        self, ax, previous_results, grid_points: int = 101, color: str = "k"
+    ):
         X1 = np.linspace(0, 1, grid_points)
         X2 = np.linspace(0, 1, grid_points)
         X1, X2 = np.meshgrid(X1, X2)
@@ -279,19 +300,38 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         Z = Z.reshape(grid_points, grid_points)
 
         c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
-        ax.set_title('pcolormesh')
+        ax.set_title("pcolormesh")
         # set the limits of the plot to the limits of the data
         ax.axis([0, 1, 0, 1])
         train_x_configs = [el.config for el in previous_results.values()]
-        np_X = self.surrogate_models['good']._convert_configs_to_numpy(train_x_configs)
+        np_X = self.surrogate_models["good"]._convert_configs_to_numpy(train_x_configs)
         ax.scatter(np_X[:, 0], np_X[:, 1], s=100)
-        #ax.scatter(np_X[-1, 0], np_X[-1, 1], s=100, c='yellow')
-        
+        # ax.scatter(np_X[-1, 0], np_X[-1, 1], s=100, c='yellow')
+
         return ax
 
     def visualize_acq(self, previous_results):
+        train_x_configs = [el.config for el in previous_results.values()]
+        train_y = [self.get_loss(el.result) for el in previous_results.values()]
+
+        good_configs, bad_configs = self._split_configs(
+            train_x_configs, train_y, round_up=True
+        )
+        good_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
+            good_configs
+        )
+        bad_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
+            bad_configs
+        )
+
         fig, axes = plt.subplots(1, 3, figsize=(16, 9))
-        axes[0] = self.surrogate_models['good'].visualize_2d(axes[0], color='RdBu')
-        axes[1] = self.surrogate_models['bad'].visualize_2d(axes[1], color='RdBu_r')
-        axes[2] = self.visualize_2d(axes[2], previous_results, color='BrBG')
+        axes[0] = self.surrogate_models["good"].visualize_2d(axes[0], color="RdBu")
+        axes[0].scatter(
+            good_configs_np[:, 0], good_configs_np[:, 1], c="orange", s=50, marker="x"
+        )
+        axes[1] = self.surrogate_models["bad"].visualize_2d(axes[1], color="RdBu_r")
+        axes[1].scatter(
+            bad_configs_np[:, 0], bad_configs_np[:, 1], c="orange", s=50, marker="x"
+        )
+        axes[2] = self.visualize_2d(axes[2], previous_results, color="BrBG")
         plt.show()
