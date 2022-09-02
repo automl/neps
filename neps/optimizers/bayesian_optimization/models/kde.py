@@ -104,13 +104,13 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         """
         # filter away the fitelity
         self.fixed_bw = fixed_bw
+        self.is_fidelity = is_fidelity or [False] * len(param_types)
 
-        if any(is_fidelity):
-            self.fid_array = np.array(is_fidelity)
-            self.param_types = np.array(param_types)[~self.fid_array]
-            self.num_values = np.array(num_values)[~self.fid_array]
-            if fixed_bw is not None:
-                self.fixed_bw = np.array(fixed_bw)[~self.fid_array]
+        self.fid_array = np.array(is_fidelity)
+        self.param_types = np.array(param_types)[~self.fid_array]
+        self.num_values = np.array(num_values)[~self.fid_array]
+        if fixed_bw is not None:
+            self.fixed_bw = np.array(fixed_bw)[~self.fid_array]
 
         self.prior = prior
         self.prior_weight = prior_weight
