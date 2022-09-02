@@ -10,7 +10,7 @@ from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
-from .successive_halving.successive_halving import (
+from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
     SuccessiveHalving,

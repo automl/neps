@@ -75,8 +75,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             cost_value_on_error=cost_value_on_error,
         )
         self.pipeline_space = pipeline_space
-        self.min_fideity = pipeline_space.fidelity.lower
-        self.max_fidelity = pipeline_space.fidelity.upper
+        if self.pipeline_space.has_fidelity:
+            self.min_fideity = pipeline_space.fidelity.lower
+            self.max_fidelity = pipeline_space.fidelity.upper
+
         self.prior_num_evals = prior_num_evals
         self.good_fraction = good_fraction
         self._random_interleave_prob = random_interleave_prob
@@ -91,7 +93,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
+            kwargs={"patience": self.patience,
+                    "pipeline_space": self.pipeline_space},
         )
         surrogate_model_args = surrogate_model_args or {}
 
@@ -122,7 +125,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
+            kwargs={"patience": self.patience,
+                    "pipeline_space": self.pipeline_space},
         )
         if self.pipeline_space.has_prior and use_priors:
             if prior_as_samples:
@@ -192,7 +196,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             [type]: [description]
         """
 
-        num_good_configs = np.ceil(self._num_train_x * self.good_fraction).astype(int)
+        num_good_configs = np.ceil(
+            self._num_train_x * self.good_fraction).astype(int)
         if not round_up:
             num_good_configs -= 1
 
@@ -215,7 +220,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         train_x_configs = [el.config for el in previous_results.values()]
-        train_y = [self.get_loss(el.result) for el in previous_results.values()]
+        train_y = [self.get_loss(el.result)
+                   for el in previous_results.values()]
 
         train_x_configs = [el.config for el in previous_results.values()]
         pending_x_configs = [el.config for el in pending_evaluations.values()]
@@ -223,7 +229,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._pending_evaluations = pending_x_configs
         if not self.is_init_phase():
             # This is to extract the configurations as numpy arrays on the format num_data x num_dim
-            good_configs, bad_configs = self._split_configs(train_x_configs, train_y)
+            good_configs, bad_configs = self._split_configs(
+                train_x_configs, train_y)
 
             # TODO drop the fidelity!
             self.surrogate_models["good"].fit(good_configs)
