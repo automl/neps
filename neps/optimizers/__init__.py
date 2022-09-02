@@ -8,14 +8,14 @@ from .bayesian_optimization.mf_tpe import MultiFidelityPriorWeightedTreeParzenEs
 from .bayesian_optimization.multi_fidelity import BayesianOptimizationMultiFidelity
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .random_search.optimizer import RandomSearch
-from .regularized_evolution.optimizer import RegularizedEvolution
 from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
+from .random_search.optimizer import RandomSearch
+from .regularized_evolution.optimizer import RegularizedEvolution
 
 SearcherMapping: dict[str, Callable] = {
     "bayesian_optimization": BayesianOptimization,
