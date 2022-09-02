@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
+
+import matplotlib.pyplot as plt
 from metahyper.api import ConfigResult
 from statsmodels.nonparametric._kernel_base import (
     EstimatorSettings,
@@ -59,12 +61,14 @@ def weighted_generalized_kernel_prod(
                 k\\left( \frac{X_{i2}-x_{2}}{h_{2}}\right)\times...\times
                 k\\left(\frac{X_{iq}-x_{q}}{h_{q}}\right)
     """
-    kernel_types = dict(c=cont_kerneltype, o=ordered_kerneltype, u=unordered_kerneltype)
+    kernel_types = dict(c=cont_kerneltype,
+                        o=ordered_kerneltype, u=unordered_kerneltype)
 
     K_val = np.empty(data.shape)
     for dim, vtype in enumerate(var_type):
         func = kernel_func[kernel_types[vtype]]
-        K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim]) * data_weights
+        K_val[:, dim] = func(bw[dim], data[:, dim],
+                             data_predict[dim]) * data_weights
 
     iscontinuous = np.array([c == "c" for c in var_type])
 
@@ -84,6 +88,8 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         logged_params: list | None = None,
         is_fidelity: list | None = None,
         fixed_bw: list | None = None,
+        bandwidth_factor: float = 1,
+        min_bw: float = 1e-3,
         prior=None,
         prior_weight: float = 0.0,
         prior_as_samples: bool = False,
@@ -111,7 +117,8 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         self.num_values = np.array(num_values)[~self.fid_array]
         if fixed_bw is not None:
             self.fixed_bw = np.array(fixed_bw)[~self.fid_array]
-
+        self.bandwidth_factor = bandwidth_factor
+        self.min_bw = min_bw
         self.prior = prior
         self.prior_weight = prior_weight
         self.prior_as_samples = prior_as_samples
@@ -120,8 +127,7 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         # TODO consider the logged parameters when fitting the KDE
         self.logged_params = logged_params
 
-    def fit(self, configs: list[ConfigResult], config_weights: list[float] = None):
-
+    def fit(self, configs: list[ConfigResult], config_weights: list[float] = None, fixed_bw: list[float] = None) -> None:    
         if config_weights is None:
             data_weights = np.ones(len(configs))
         else:
@@ -130,11 +136,18 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         if self.prior_as_samples:
             # Now, we resample from the prior each time we fit - not sure if it's a good idea or not
             # May want to have these samples static
-            configs, data_weights = self._prior_enhance_data(configs, data_weights)
+            configs, data_weights = self._prior_enhance_data(
+                configs, data_weights)
 
         self.data = self._convert_configs_to_numpy(configs)
+        # TODO compute EI weights
         self.data_weights = data_weights / np.mean(data_weights)
-
+        self.nobs, self.k_vars = np.shape(self.data)
+        
+        if fixed_bw is not None:
+            self.bw = np.array(fixed_bw)
+            return
+        
         # These are attributes to fit within the statsmodels KDE framework
         # https://github.com/statsmodels/statsmodels/blob/b79d71862dd9ca30ed173c9ad9b96a18e48d8dbb/statsmodels/nonparametric/_kernel_base.py#L99
         # TODO build own KDE if we see the need
@@ -143,11 +156,12 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
         defaults = EstimatorSettings(**self.estimator_kwargs)
         self._set_defaults(defaults)
 
-        self.nobs, self.k_vars = np.shape(self.data)
         if not self.efficient:
             self.bw = self._compute_bw(self.fixed_bw)
         else:
             self.bw = self._compute_efficient(self.fixed_bw)
+        self.bw = np.clip(self.bw, a_min=self.min_bw, a_max=np.inf)
+        self.bw = self.bw * self.bandwidth_factor
 
     def _convert_configs_to_numpy(self, configs, drop_fidelity=True):
         """Creates a N x D normalized numpy array for N configurations of dimensionality D. Does not
@@ -160,7 +174,8 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
             np.ndarray: N x D normalized numpy array of configs
         """
         configs_np = np.array(
-            [[x_.normalized().value for x_ in list(x.values())] for x in configs]
+            [[x_.normalized().value for x_ in list(x.values())]
+             for x in configs]
         )
         if drop_fidelity:
             return configs_np[:, ~self.fid_array]
@@ -216,3 +231,21 @@ class MultiFidelityPriorWeightedKDE(GenericKDE):
             pass
         # TODO implement this properly
         return configs
+
+    def visualize_2d(self, ax, grid_points: int = 101, color: str = 'k'):
+        assert len(self.param_types) == 2
+        X1 = np.linspace(0, 1, grid_points)
+        X2 = np.linspace(0, 1, grid_points)
+        X1, X2 = np.meshgrid(X1, X2)
+        X = np.append(X1.reshape(-1, 1), X2.reshape(-1, 1), axis=1)
+        Z = self._pdf(X)
+        Z_min, Z_max = -np.abs(Z).max(), np.abs(Z).max()
+
+        Z = Z.reshape(grid_points, grid_points)
+
+        c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
+        ax.set_title('pcolormesh')
+        # set the limits of the plot to the limits of the data
+        ax.axis([0, 1, 0, 1])
+        ax.scatter(self.data[:, 0], self.data[:, 1], s=100)
+        return ax
