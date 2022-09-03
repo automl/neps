@@ -1,16 +1,17 @@
 [tool.poetry]
 name = "neural-pipeline-search"
-version = "0.4.9"
+version = "0.5.1"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     "Danny Stoll <stolld@cs.uni-freiburg.de>",
     "Simon Schrodi <schrodi@cs.uni-freiburg.de>",
     "Maciej Janowski <janowski@cs.uni-freiburg.de>",
     "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-    "Binxin Ru <robin@robots.ox.ac.uk>",
-    "Samir Garibov <garibovs@cs.uni-freiburg.de>",
-    "Théophane Vallaeys <theophane.vallaeys@ens.psl.eu>",
-    "Frank Hutter <fh@cs.uni-freiburg.de>",
+    "Binxin Ru",
+    "Carl Hvarfner",
+    "Samir Garibov",
+    "Théophane Vallaeys",
+    "Frank Hutter",
 ]
 readme = "README.md"
 license = "MIT"
@@ -50,7 +51,6 @@ types-termcolor = "^1.1.2"
 scipy = "^1.7"
 torch = ">=1.7.0"
 matplotlib = "^3.4"
-jahs-bench = {git = "https://github.com/automl/jahs_bench_201.git", rev = "dependency_upgrade"}
 statsmodels = "^0.13.2"
 
 [tool.poetry.dev-dependencies]
@@ -59,6 +59,7 @@ pre-commit = "^2.10"
 pytest = "^6.2.5"
 mypy = "^0.930"
 mkdocs-material = "^8.1.3"
+jahs-bench = {git = "https://github.com/automl/jahs_bench_201.git", rev = "dependency_upgrade"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
