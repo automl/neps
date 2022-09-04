@@ -18,7 +18,7 @@ from . import (
     IntegerParameter,
     NumericalParameter,
 )
-from .graph_grammar.graph import Graph
+from .architecture.graph import Graph
 from .parameter import Parameter
 
 

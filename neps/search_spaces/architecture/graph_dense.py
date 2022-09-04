@@ -5,11 +5,11 @@ from typing import List
 import networkx as nx
 import torch.nn as nn
 
-from ..graph_grammar import primitives as ops
-from ..graph_grammar.cfg import Grammar
-from ..graph_grammar.graph_grammar import GraphGrammar
-from ..graph_grammar.topologies import DenseNNodeDAG
+from . import primitives as ops
+from .cfg import Grammar
+from .graph_grammar import GraphGrammar
 from .primitives import ResNetBasicblock
+from .topologies import DenseNNodeDAG
 
 TERMINAL_2_OP_NAMES = {
     "Identity": ops.Identity(),

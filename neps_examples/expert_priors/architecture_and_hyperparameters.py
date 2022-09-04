@@ -5,8 +5,8 @@ from torch import nn
 
 import neps
 from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
-from neps.search_spaces.graph_grammar import primitives as ops
-from neps.search_spaces.graph_grammar import topologies as topos
+from neps.search_spaces.architecture import primitives as ops
+from neps.search_spaces.architecture import topologies as topos
 
 primitives = {
     "id": ops.Identity(),

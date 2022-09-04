@@ -92,7 +92,7 @@ module = [
   "neps.optimizers.bayesian_optimization.kernels.*",
   "neps.optimizers.bayesian_optimization.acquisition_functions.*",
   "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
-  "neps.search_spaces.graph_dense.*",
+  "neps.search_spaces.architecture.*",
 ]
 ignore_errors = true
 

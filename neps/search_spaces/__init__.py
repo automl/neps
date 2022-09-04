@@ -1,12 +1,12 @@
-from .categorical.categorical import CategoricalParameter
-from .graph_dense.graph_dense import GraphDenseParameter
-from .graph_grammar.api import FunctionParameter
-from .graph_grammar.graph_grammar import (
+from .architecture.api import FunctionParameter
+from .architecture.graph_dense import GraphDenseParameter
+from .architecture.graph_grammar import (
     GraphGrammar,
     GraphGrammarCell,
     GraphGrammarRepetitive,
 )
-from .numerical.constant import ConstantParameter
-from .numerical.float import FloatParameter
-from .numerical.integer import IntegerParameter
-from .numerical.numerical import NumericalParameter
+from .hyperparameters.categorical import CategoricalParameter
+from .hyperparameters.constant import ConstantParameter
+from .hyperparameters.float import FloatParameter
+from .hyperparameters.integer import IntegerParameter
+from .hyperparameters.numerical import NumericalParameter

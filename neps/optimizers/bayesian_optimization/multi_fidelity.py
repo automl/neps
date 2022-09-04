@@ -8,7 +8,7 @@ import pandas as pd
 from metahyper.api import ConfigResult
 from typing_extensions import Literal
 
-from ...search_spaces.numerical.integer import IntegerParameter
+from ...search_spaces.hyperparameters.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from .optimizer import BayesianOptimization
 
