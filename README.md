@@ -76,7 +76,7 @@ See our [documentation on analysing runs](https://automl.github.io/neps/analyse)
 
 ## Alternatives
 
-NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/alternatives)
+NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/alternatives).
 
 ## Contributing
 
