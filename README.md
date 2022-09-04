@@ -16,6 +16,8 @@ For efficiency and convenience NePS allows you to
 - Input expert intuition to speed-up HPO, NAS, or JAHS ([examples](neps_examples/expert_priors), [paper](https://openreview.net/forum?id=MMAeCXIa89))
 - Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/parallelization/))
 
+## Note
+
 As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
 
 ## Documentation
