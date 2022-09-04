@@ -2,7 +2,7 @@
 
 ## Getting Help
 
-Ask in the neps developer chat on mattermost or any contributor directly.
+Ask in the neps contributor chat on mattermost or any contributor directly.
 If you are not in the mattermost chat yet, ask to get access.
 
 ## Development Workflow
@@ -16,8 +16,8 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 ## Examples and Tests
 
-We document major features with an example (see [neps_examples](neps_examples)).
-When adding a new example also include it in the [example README](neps_examples/README.md).
+We document major features with an example (see [neps_examples](https://github.com/automl/neps/tree/master/neps_examples).
+When adding a new example also include it in the [example README](https://github.com/automl/neps/tree/master/neps_examples/README.md).
 
 These examples also serve as integration tests, which we run from the main directory via
 
