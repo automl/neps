@@ -7,10 +7,12 @@
 - Python 3.8+ support
 - Utility to get best HPs and (built) architecture
 - Utility to get incumbent losses over time
+- Ignore error configurations
 
 ### Fixes
 
 - Metahyper Refine jobtimelimit feature
+- Optimize dependencies
 
 ### Refactoring
 
@@ -26,6 +28,7 @@
 - Data reading example
 - Working directory example
 - Fill up the core documentation pages
+- Testing protocol
 
 ## Before 1.0.0 version
 
@@ -46,25 +49,26 @@
 
 - run_pipeline = evaluate_pipeline
 - loss = validation_error
-- remove constant parameter
 - remove graph_dense API
 - clean up search spaces classes, unused methods
 - break up search space and config aspect
-
-### Tests
-
-- Clean up examples, create experimental examples and/or move examples for test-purposes to test dir
+- Improve error message printed by Loss value on error
 
 ### Documentation
 
-- Trunk based development techniques
 - Changelog
 
 ## Later version
 
 ### Features
 
+- Rework metahyper
 - Optional argparse adder like pytorch lightning
 - Utility neps.clean to manage existing run results
 - Collect data optionally via phone-home to webserver
 - Add Info dict to status
+
+### Documentation
+
+- Doing research with NePS
+- Trunk based development techniques
