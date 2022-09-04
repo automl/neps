@@ -22,7 +22,7 @@ As indicated with the `v0.x.x` version number, NePS is early stage code and APIs
 
 ## Documentation
 
-Please have a look at our **[documentation](https://automl.github.io/neps/)** and **[examples](neps_examples)**.
+Please have a look at our [documentation](https://automl.github.io/neps/) and [examples](neps_examples).
 
 ## Installation
 
