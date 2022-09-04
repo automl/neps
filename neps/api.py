@@ -12,18 +12,10 @@ import metahyper
 from metahyper.api import instance_from_map
 from typing_extensions import Literal
 
-from .search_spaces.parameter import Parameter
-from .utils.result_utils import get_loss
-
-try:
-    import torch as _  # Not needed in api.py, but test if torch can be imported
-except ModuleNotFoundError:
-    from .utils.torch_error_message import error_message
-
-    raise ModuleNotFoundError(error_message) from None
-
 from .optimizers import BaseOptimizer, SearcherMapping
+from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .utils.result_utils import get_loss
 
 
 def _post_evaluation_hook_function(_loss_value_on_error: None | float):

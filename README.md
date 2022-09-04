@@ -34,8 +34,6 @@ Using pip
 pip install neural-pipeline-search
 ```
 
-for more details see [the documentation](https://automl.github.io/neps/).
-
 ## Usage
 
 Using `neps` always follows the same pattern:
