@@ -5,26 +5,22 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-NePS helps deep learning experts find the best neural pipeline by helping with setting hyperparameters and designing neural architectures.
+NePS helps deep learning experts find the best neural pipeline with
 
-Please have a look at our **[documentation](https://automl.github.io/neps/)** and **[examples](neps_examples)**.
-
-## Note
-
-As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
-
-## Overview
-
-NePS helps you by performing:
-
-- Hyperparameter optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
-- (Hierarchical) Neural architecture search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py))
+- Hyperparameter Optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
+- (Hierarchical) Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py))
 - Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/basic_usage/architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=_HLcjaVlqJ))
 
 For efficiency and convenience NePS allows you to
 
 - Input expert intuition to speed-up HPO, NAS, or JAHS ([examples](neps_examples/expert_priors), [paper](https://openreview.net/forum?id=MMAeCXIa89))
 - Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/parallelization/))
+
+As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
+
+## Documentation
+
+Please have a look at our **[documentation](https://automl.github.io/neps/)** and **[examples](neps_examples)**.
 
 ## Installation
 
