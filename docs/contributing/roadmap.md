@@ -16,7 +16,6 @@
 
 - merge GP and hierarchical GP etc.
 
-
 ### Tests
 
 - Add simple regression tests to run on each push
@@ -28,9 +27,6 @@
 - Working directory example
 - Fill up the core documentation pages
 
-
-
-
 ## Before 1.0.0 version
 
 ### Features
@@ -41,7 +37,6 @@
 - Top vs all vs bottom distribution plots
 - Tensorboard visualizations (incumbent plot, ..)
 - Print search space upon run
-
 
 ### Fixes
 
@@ -63,10 +58,7 @@
 ### Documentation
 
 - Trunk based development techniques
-- Point to smac for multi-objective problems and classic ML / have "alternatives" section in readme
 - Changelog
-
-
 
 ## Later version
 

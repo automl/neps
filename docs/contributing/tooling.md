@@ -1,4 +1,4 @@
-# Frequently Asked Questions
+# Tooling
 
 ## Pre-commit: How to not run hooks?
 
