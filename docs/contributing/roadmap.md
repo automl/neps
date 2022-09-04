@@ -29,6 +29,7 @@
 - Working directory example
 - Fill up the core documentation pages
 - Testing protocol
+- version tied documentation
 
 ## Before 1.0.0 version
 
