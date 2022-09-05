@@ -14,29 +14,10 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 - We automatically run code quality checks before every commit (using [pre-commit](https://pre-commit.com/))
 - We manually run tests (using `pytest`) before every critical push and automatically afterwards (using [github actions](https://github.com/automl/neps/actions))
 
-## Examples and Tests
+## Installation
 
-We document major features with an example (see [neps_examples](https://github.com/automl/neps/tree/master/neps_examples).
-When adding a new example also include it in the [example README](https://github.com/automl/neps/tree/master/neps_examples/README.md).
+For the contributor installation process see [Installation](https://automl.github.io/neps/contributing/installation/).
 
-These examples also serve as integration tests, which we run from the main directory via
+## Checks and tests
 
-```bash
-pytest
-```
-
-before every critical push.
-Running the tests will create a temporary directory `tests_tmpdir` that includes the output of the last three test executions.
-
-To speedup testing for developers, we only run a core set of tests per default. To run all tests use
-
-```bash
-pytest -m all_examples
-```
-
-On github, we always run all examples.
-
-If tests fail for you on the master:
-
-1. Try running the tests with a fresh environment install.
-1. If issues persist, notify others in the neps developers chat on mattermost.
+The documentation also includes [an overview](https://automl.github.io/neps/contributing/tests/) on the protocols and tools we use for code quality checks and tests.

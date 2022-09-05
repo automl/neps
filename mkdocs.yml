@@ -29,8 +29,8 @@ nav:
   - Contributing:
       - Introduction: "contributing/README.md"
       - Installation for Contributors: "contributing/installation.md"
+      - Checks and Tests: "contributing/tests.md"
       - Managing Dependencies: "contributing/dependencies.md"
       - Releasing a New Version: "contributing/releasing.md"
       - Documentation: "contributing/documentation.md"
       - Roadmap: "contributing/roadmap.md"
-      - Tooling: "contributing/tooling.md"
