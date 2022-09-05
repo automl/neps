@@ -52,12 +52,6 @@ Inside the main directory of neps run
 poetry install
 ```
 
-To install specific versions of torch (e.g., cuda enabled versions) you might want to use our utility
-
-```bash
-python -m neps.utils.install_torch
-```
-
 ## 4. Activate pre-commit for the repository
 
 With the python environment used to install the neps package run in the main directory of neps
