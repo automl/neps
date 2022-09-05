@@ -500,12 +500,12 @@
 Source files for the documentation are at <a href="docs">docs</a> and configuration at  <a href="https://github.com/automl/neps/tree/master/mkdocs.yml">mkdocs.yml</a>.</p>
 <p>To support documentation for multiple versions, we use the plugin <a href="https://github.com/jimporter/mike">mike</a>.</p>
 <p>To build and view the documentation run</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mike deploy <span class="m">0</span>.5.1 latest -p
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mkdocs serve
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mike deploy <span class="m">0</span>.5.1 latest
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mike serve
 </code></pre></div>
-<p>and open the URL shown by the <code>mkdocs serve</code> command.</p>
-<p>To publish the documenation, use mike and run</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mkdocs gh-deploy
+<p>and open the URL shown by the <code>mike serve</code> command.</p>
+<p>To publish the documentation run</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mike deploy <span class="m">0</span>.5.1 latest -p
 </code></pre></div>
 
 
