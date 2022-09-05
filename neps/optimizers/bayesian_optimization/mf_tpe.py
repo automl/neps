@@ -206,8 +206,17 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pass
 
     def _split_by_fidelity(self, configs, losses):
+        min_fid, max_fid = int(self.min_fidelity), int(self.max_fidelity)            
         if self.pipeline_space.has_fidelity:
-            raise NotImplementedError("Nah.")
+
+            configs_per_fidelity = [[] for i in range(min_fid, max_fid + 1)]
+            losses_per_fidelity = [[] for i in range(min_fid, max_fid + 1)]
+            # per fidelity, add a list to make it a nested list of lists
+            # [[config_A at fid1, config_B at fid1], [config_C at fid2], ...]
+            for config, loss in zip(configs, losses):
+                configs_per_fidelity[config.fidelity.value - min_fid].append(config)
+                losses_per_fidelity[config.fidelity.value - min_fid].append(loss)
+            return configs_per_fidelity, losses_per_fidelity
         else:
             return [configs], [losses]
 
@@ -223,6 +232,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             [type]: [description]
         """
         # TODO split by fidelity
+        print([c.fidelity.value for c in configs])
         good_configs, bad_configs = [], []
         good_configs_weights, bad_configs_weights = [], []
         configs_per_fid, losses_per_fid = self._split_by_fidelity(configs, losses)
@@ -248,7 +258,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             bad_configs_weights.extend(
                 [self.cost_per_fidelity[fid]] * len(bad_configs_fid)
             )
-
+            print('good_configs', good_configs)
+            print('bad_configs', bad_configs)
+            print('good_configs_weights', good_configs_weights)
+            print('bad_configs_weights', bad_configs_weights)
         return good_configs, bad_configs, good_configs_weights, bad_configs_weights
 
     def is_init_phase(self) -> bool:
