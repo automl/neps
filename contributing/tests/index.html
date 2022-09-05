@@ -700,9 +700,11 @@
 </code></pre></div>
 <p>before every critical push.</p>
 <h3 id="creating-an-integration-test">Creating an Integration Test</h3>
-<p>If you want an implementation to be included in the above testing procedure:
-1. Create an example in <a href="https://github.com/automl/neps/tree/master/neps_examples">neps_examples</a>.
-2. Add the example to <a href="https://github.com/automl/neps/blob/377049fe57ba46d061790933baf35214fab6f11e/tests/test_examples.py#L33">test_examples.py</a>.</p>
+<p>If you want an implementation to be included in the above testing procedure:</p>
+<ol>
+<li>Create an example in <a href="https://github.com/automl/neps/tree/master/neps_examples">neps_examples</a>.</li>
+<li>Add the example to <a href="https://github.com/automl/neps/blob/377049fe57ba46d061790933baf35214fab6f11e/tests/test_examples.py#L33">test_examples.py</a>.</li>
+</ol>
 <h3 id="running-all-integration-tests-locally">Running all integration tests locally</h3>
 <p>To speedup testing for developers, we only run a core set of tests per default. To run all tests use</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pytest -m all_examples
