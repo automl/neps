@@ -43,8 +43,8 @@ git push
 First check if the documentation has any issues via
 
 ```bash
-mkdocs build
-mkdocs serve
+mike deploy 0.4.10 latest
+mike serve
 ```
 
 and then looking at it.
@@ -52,7 +52,7 @@ and then looking at it.
 Afterwards, publish it via
 
 ```bash
-mkdocs gh-deploy
+mike deploy 0.4.10 latest -p
 ```
 
 ## 4. Publish on PyPI
