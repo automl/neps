@@ -96,6 +96,12 @@ class SuccessiveHalving(BaseOptimizer):
             rung_trace.extend([rung] * config_map[rung])
         return rung_trace
 
+    def get_incumbent_score(self):
+        y_star = np.inf  # minimizing optimizer
+        if len(self.observed_configs):
+            y_star = self.observed_configs.perf.values.min()
+        return y_star
+
     def _update_state_counter(self) -> None:
         """Updates a counter to map where in the rung trace the current SH is."""
         self._counter += 1
