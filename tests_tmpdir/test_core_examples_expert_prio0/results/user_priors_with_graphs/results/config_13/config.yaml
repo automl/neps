@@ -1,0 +1,9 @@
+some_architecture: (S linear (D1 linear (Cell residual (OPS conv3x3) (OPS avg_pool)
+  (OPS id)) (D1Helper down1 (Cell linear (OPS conv3x3) (OPS id)) downsample)) (D2
+  linear (D1 linear (D1Helper down1 (Cell residual (OPS conv1x1) (OPS conv1x1) (OPS
+  id)) downsample) (Cell linear (OPS avg_pool) (OPS conv3x3))) (D1 linear (D1Helper
+  down1 (Cell linear (OPS conv3x3) (OPS conv1x1)) downsample) (Cell linear (OPS avg_pool)
+  (OPS conv3x3)))))
+some_cat: c
+some_float: 968.458843197243
+some_integer: 43

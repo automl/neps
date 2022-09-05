@@ -1,0 +1,11 @@
+some_architecture: (S linear (D1 linear (D1Helper down1 (Cell diamond_mid (OPS id)
+  (OPS conv3x3) (OPS conv3x3) (OPS conv3x3) (OPS id)) downsample) (Cell linear (OPS
+  id) (OPS conv3x3))) (D2 linear (D1 diamond (Cell linear (OPS conv3x3) (OPS conv3x3))
+  (Cell linear (OPS avg_pool) (OPS id)) (D1Helper down1 (Cell residual (OPS conv1x1)
+  (OPS avg_pool) (OPS id)) downsample) (D1Helper down1 (Cell residual (OPS avg_pool)
+  (OPS conv3x3) (OPS conv3x3)) downsample)) (D1 linear (D1Helper down1 (Cell diamond
+  (OPS id) (OPS conv3x3) (OPS conv1x1) (OPS conv3x3)) downsample) (Cell residual (OPS
+  id) (OPS conv3x3) (OPS conv3x3)))))
+some_cat: a
+some_float: 151.76977787525874
+some_integer: 40

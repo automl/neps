@@ -1,0 +1,60 @@
+Loss: 2920777733.2468457
+Config ID: 1
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 145.914880574056, 'some_integer': 48, 'some_cat': 'b'}
+-------------------------------------------------------------------------------
+Loss: 2281514570.990479
+Config ID: 2
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 95.79162361466273, 'some_integer': 42, 'some_cat': 'b'}
+-------------------------------------------------------------------------------
+Loss: -5507366507.10635
+Config ID: 3
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 368.70365302449557, 'some_integer': 22, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: 1752559822.0024204
+Config ID: 4
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 420.9304181535338, 'some_integer': 46, 'some_cat': 'b'}
+-------------------------------------------------------------------------------
+Loss: 1595308336.7580764
+Config ID: 5
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 97.45914791964339, 'some_integer': 42, 'some_cat': 'c'}
+-------------------------------------------------------------------------------
+Loss: -14605713658.512846
+Config ID: 6
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 480.58190507175874, 'some_integer': 44, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: -4367170172.455815
+Config ID: 7
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 231.34647685499317, 'some_integer': 16, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: -5467121697.895061
+Config ID: 8
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 350.37361603629364, 'some_integer': 11, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: 2640245790.669227
+Config ID: 9
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 66.56207502132843, 'some_integer': 44, 'some_cat': 'b'}
+-------------------------------------------------------------------------------
+Loss: 2646734445.172035
+Config ID: 10
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 336.92546801420383, 'some_integer': 11, 'some_cat': 'c'}
+-------------------------------------------------------------------------------
+Loss: -462747377.7250028
+Config ID: 11
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 151.76977787525874, 'some_integer': 40, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: -143815259.1731391
+Config ID: 12
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 2.6593611019556973, 'some_integer': 13, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: 6525232526.78912
+Config ID: 13
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 968.458843197243, 'some_integer': 43, 'some_cat': 'c'}
+-------------------------------------------------------------------------------
+Loss: -309074647.4317458
+Config ID: 14
+Config: {'some_architecture': Graph pibo-0.0379417, scope None, 0 nodes, 'some_float': 20.65367165779388, 'some_integer': 13, 'some_cat': 'a'}
+-------------------------------------------------------------------------------
+Loss: -328799468.2344387
+Config ID: 15
+Config: {'some_architecture': Graph pibo-0.3851108, scope None, 0 nodes, 'some_float': 20.65367165779388, 'some_integer': 13, 'some_cat': 'a'}
+-------------------------------------------------------------------------------

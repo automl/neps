@@ -1,0 +1,41 @@
+some_architecture: (S diamond (D1 linear (D1Helper down1 (Cell residual (OPS id) (OPS
+  conv1x1) (OPS conv1x1)) downsample) (Cell diamond_mid (OPS conv3x3) (OPS conv3x3)
+  (OPS id) (OPS id) (OPS avg_pool))) (D2 diamond (D1 diamond_mid (D1Helper down1 (Cell
+  linear (OPS id) (OPS avg_pool)) downsample) (D1Helper down1 (Cell diamond_mid (OPS
+  avg_pool) (OPS conv1x1) (OPS id) (OPS id) (OPS id)) downsample) (Cell diamond (OPS
+  id) (OPS conv1x1) (OPS conv3x3) (OPS id)) (Cell residual (OPS conv3x3) (OPS avg_pool)
+  (OPS conv1x1)) (Cell diamond (OPS conv1x1) (OPS conv3x3) (OPS avg_pool) (OPS id)))
+  (D1 diamond (D1Helper down1 (Cell diamond_mid (OPS conv3x3) (OPS conv3x3) (OPS id)
+  (OPS avg_pool) (OPS conv1x1)) downsample) (Cell diamond_mid (OPS conv1x1) (OPS conv1x1)
+  (OPS id) (OPS conv1x1) (OPS conv3x3)) (Cell diamond (OPS conv3x3) (OPS avg_pool)
+  (OPS conv3x3) (OPS conv3x3)) (D1Helper down1 (Cell residual (OPS conv3x3) (OPS id)
+  (OPS id)) downsample)) (D1 diamond (D1Helper down1 (Cell residual (OPS avg_pool)
+  (OPS avg_pool) (OPS avg_pool)) downsample) (Cell diamond (OPS id) (OPS conv1x1)
+  (OPS conv3x3) (OPS conv3x3)) (Cell diamond_mid (OPS avg_pool) (OPS avg_pool) (OPS
+  id) (OPS conv3x3) (OPS conv1x1)) (D1Helper down1 (Cell diamond (OPS avg_pool) (OPS
+  id) (OPS avg_pool) (OPS id)) downsample)) (D1 diamond (D1Helper down1 (Cell diamond
+  (OPS id) (OPS id) (OPS id) (OPS conv1x1)) downsample) (Cell diamond_mid (OPS conv1x1)
+  (OPS id) (OPS conv1x1) (OPS conv3x3) (OPS conv1x1)) (Cell diamond_mid (OPS id) (OPS
+  avg_pool) (OPS id) (OPS conv3x3) (OPS id)) (D1Helper down1 (Cell linear (OPS avg_pool)
+  (OPS avg_pool)) downsample))) (D2 diamond (D1 diamond (Cell residual (OPS id) (OPS
+  avg_pool) (OPS conv1x1)) (Cell diamond (OPS conv1x1) (OPS id) (OPS avg_pool) (OPS
+  conv1x1)) (D1Helper down1 (Cell linear (OPS id) (OPS conv1x1)) downsample) (D1Helper
+  down1 (Cell diamond_mid (OPS id) (OPS conv1x1) (OPS id) (OPS avg_pool) (OPS id))
+  downsample)) (D1 diamond_mid (D1Helper down1 (Cell diamond (OPS conv3x3) (OPS avg_pool)
+  (OPS avg_pool) (OPS avg_pool)) downsample) (D1Helper down1 (Cell linear (OPS conv3x3)
+  (OPS id)) downsample) (Cell diamond_mid (OPS conv3x3) (OPS avg_pool) (OPS conv3x3)
+  (OPS conv3x3) (OPS id)) (Cell linear (OPS avg_pool) (OPS id)) (Cell diamond_mid
+  (OPS conv1x1) (OPS id) (OPS avg_pool) (OPS id) (OPS conv3x3))) (D1 linear (Cell
+  residual (OPS conv1x1) (OPS conv3x3) (OPS id)) (D1Helper down1 (Cell linear (OPS
+  avg_pool) (OPS id)) downsample)) (D1 diamond (D1Helper down1 (Cell diamond (OPS
+  conv3x3) (OPS id) (OPS conv1x1) (OPS conv3x3)) downsample) (D1Helper down1 (Cell
+  linear (OPS avg_pool) (OPS conv1x1)) downsample) (Cell diamond (OPS id) (OPS conv3x3)
+  (OPS id) (OPS conv1x1)) (Cell linear (OPS avg_pool) (OPS avg_pool)))) (D1 diamond_mid
+  (Cell linear (OPS id) (OPS id)) (D1Helper down1 (Cell linear (OPS conv1x1) (OPS
+  id)) downsample) (D1Helper down1 (Cell linear (OPS avg_pool) (OPS conv3x3)) downsample)
+  (D1Helper down1 (Cell diamond_mid (OPS conv3x3) (OPS conv1x1) (OPS conv1x1) (OPS
+  conv1x1) (OPS avg_pool)) downsample) (Cell diamond (OPS id) (OPS conv1x1) (OPS id)
+  (OPS avg_pool))))
+some_cat: a
+some_float: 480.58190507175874
+some_integer: 44

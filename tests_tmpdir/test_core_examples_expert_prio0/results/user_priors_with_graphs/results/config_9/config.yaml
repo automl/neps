@@ -1,0 +1,28 @@
+some_architecture: (S diamond (D1 diamond (Cell diamond_mid (OPS conv1x1) (OPS avg_pool)
+  (OPS conv1x1) (OPS conv1x1) (OPS conv1x1)) (Cell diamond (OPS id) (OPS id) (OPS
+  id) (OPS id)) (D1Helper down1 (Cell residual (OPS id) (OPS id) (OPS id)) downsample)
+  (D1Helper down1 (Cell diamond (OPS conv1x1) (OPS id) (OPS id) (OPS avg_pool)) downsample))
+  (D1 linear (Cell residual (OPS conv3x3) (OPS avg_pool) (OPS avg_pool)) (D1Helper
+  down1 (Cell diamond (OPS avg_pool) (OPS avg_pool) (OPS id) (OPS conv1x1)) downsample))
+  (D2 linear (D1 diamond (D1Helper down1 (Cell residual (OPS id) (OPS id) (OPS avg_pool))
+  downsample) (D1Helper down1 (Cell linear (OPS avg_pool) (OPS conv3x3)) downsample)
+  (Cell residual (OPS conv1x1) (OPS conv3x3) (OPS avg_pool)) (Cell linear (OPS id)
+  (OPS conv3x3))) (D1 diamond_mid (Cell diamond (OPS avg_pool) (OPS conv1x1) (OPS
+  id) (OPS conv1x1)) (D1Helper down1 (Cell diamond_mid (OPS id) (OPS id) (OPS conv3x3)
+  (OPS conv3x3) (OPS conv1x1)) downsample) (D1Helper down1 (Cell diamond (OPS conv3x3)
+  (OPS id) (OPS conv3x3) (OPS conv3x3)) downsample) (D1Helper down1 (Cell diamond
+  (OPS conv1x1) (OPS conv3x3) (OPS id) (OPS avg_pool)) downsample) (Cell linear (OPS
+  id) (OPS avg_pool)))) (D2 linear (D1 diamond (D1Helper down1 (Cell residual (OPS
+  conv3x3) (OPS conv3x3) (OPS id)) downsample) (D1Helper down1 (Cell diamond_mid (OPS
+  id) (OPS avg_pool) (OPS conv1x1) (OPS id) (OPS id)) downsample) (Cell diamond_mid
+  (OPS avg_pool) (OPS id) (OPS id) (OPS avg_pool) (OPS id)) (Cell diamond_mid (OPS
+  conv3x3) (OPS conv1x1) (OPS id) (OPS avg_pool) (OPS conv3x3))) (D1 diamond_mid (D1Helper
+  down1 (Cell diamond (OPS avg_pool) (OPS id) (OPS avg_pool) (OPS id)) downsample)
+  (D1Helper down1 (Cell diamond_mid (OPS id) (OPS avg_pool) (OPS conv3x3) (OPS id)
+  (OPS conv3x3)) downsample) (Cell diamond_mid (OPS conv3x3) (OPS conv1x1) (OPS conv1x1)
+  (OPS conv3x3) (OPS id)) (Cell diamond_mid (OPS conv1x1) (OPS id) (OPS id) (OPS id)
+  (OPS id)) (Cell diamond_mid (OPS avg_pool) (OPS avg_pool) (OPS conv3x3) (OPS avg_pool)
+  (OPS conv1x1)))))
+some_cat: b
+some_float: 66.56207502132843
+some_integer: 44
