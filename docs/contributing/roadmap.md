@@ -27,6 +27,7 @@
 
 - Data reading example
 - Working directory example
+- Parallelization example
 - Fill up the core documentation pages
 - Testing protocol
 - version tied documentation
