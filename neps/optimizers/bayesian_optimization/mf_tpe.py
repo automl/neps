@@ -22,7 +22,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pipeline_space: SearchSpace,
         use_priors: bool = False,
         prior_num_evals: float = 1.0,
-        good_fraction: float = 0.15,
+        good_fraction: float = 0.333,
         random_interleave_prob: float = 0.333,
         initial_design_size: int = 0,
         prior_as_samples: bool = True,
@@ -93,6 +93,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._initial_design_size = initial_design_size
         self._pending_as_bad = pending_as_bad
         self.prior_draws = prior_draws
+
+        # if we use priors, we don't add conigurations as good until is is within the top fraction
+        # This heuristic has not been tried further, but makes sense in the context when we have priors
+        self.round_up = not use_priors
 
         # We assume that the information conveyed per fidelity (and the cost) is linear in the
         # fidelity levels if nothing else is specified
@@ -206,7 +210,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pass
 
     def _split_by_fidelity(self, configs, losses):
-        min_fid, max_fid = int(self.min_fidelity), int(self.max_fidelity)            
+        min_fid, max_fid = int(self.min_fidelity), int(self.max_fidelity)
         if self.pipeline_space.has_fidelity:
 
             configs_per_fidelity = [[] for i in range(min_fid, max_fid + 1)]
@@ -220,7 +224,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         else:
             return [configs], [losses]
 
-    def _split_configs(self, configs, losses, round_up=True):
+    def _split_configs(self, configs, losses):
         """Splits configs into good and bad for the KDEs.
 
         Args:
@@ -232,7 +236,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             [type]: [description]
         """
         # TODO split by fidelity
-        print([c.fidelity.value for c in configs])
         good_configs, bad_configs = [], []
         good_configs_weights, bad_configs_weights = [], []
         configs_per_fid, losses_per_fid = self._split_by_fidelity(configs, losses)
@@ -240,10 +243,14 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         for fid, (configs_fid, losses_fid) in enumerate(
             zip(configs_per_fid, losses_per_fid)
         ):
-            # TODO map to cost if available
-            num_good_configs = np.ceil(len(configs_fid) * self.good_fraction).astype(int)
-            if not round_up:
-                num_good_configs -= 1
+            if self.round_up:
+                num_good_configs = np.ceil(len(configs_fid) * self.good_fraction).astype(
+                    int
+                )
+            else:
+                num_good_configs = np.floor(len(configs_fid) * self.good_fraction).astype(
+                    int
+                )
 
             ordered_losses = np.argsort(losses_fid)
             good_indices = ordered_losses[0:num_good_configs]
@@ -258,10 +265,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             bad_configs_weights.extend(
                 [self.cost_per_fidelity[fid]] * len(bad_configs_fid)
             )
-            print('good_configs', good_configs)
-            print('bad_configs', bad_configs)
-            print('good_configs_weights', good_configs_weights)
-            print('bad_configs_weights', bad_configs_weights)
+
         return good_configs, bad_configs, good_configs_weights, bad_configs_weights
 
     def is_init_phase(self) -> bool:
@@ -285,7 +289,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         if not self.is_init_phase():
             # This is to extract the configurations as numpy arrays on the format num_data x num_dim
             good_configs, bad_configs, good_weights, bad_weights = self._split_configs(
-                train_x_configs, train_y, round_up=True
+                train_x_configs, train_y
             )
 
             num_good_configs = len(good_configs)
@@ -352,7 +356,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         train_x_configs = [el.config for el in previous_results.values()]
         np_X = self.surrogate_models["good"]._convert_configs_to_numpy(train_x_configs)
         ax.scatter(np_X[:, 0], np_X[:, 1], s=100)
-        # ax.scatter(np_X[-1, 0], np_X[-1, 1], s=100, c='yellow')
+        ax.set_title("Acquisition Function", fontsize=20)
 
         return ax
 
@@ -365,22 +369,30 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             bad_configs,
             good_configs_weights,
             bad_configs_weights,
-        ) = self._split_configs(train_x_configs, train_y, round_up=True)
-        good_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
-            good_configs
-        )
+        ) = self._split_configs(train_x_configs, train_y)
+
         bad_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
             bad_configs
         )
 
         fig, axes = plt.subplots(1, 3, figsize=(16, 9))
         axes[0] = self.surrogate_models["good"].visualize_2d(axes[0], color="RdBu")
-        axes[0].scatter(
-            good_configs_np[:, 0], good_configs_np[:, 1], c="orange", s=50, marker="x"
-        )
+        try:
+            good_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
+                good_configs
+            )
+            axes[0].scatter(
+                good_configs_np[:, 0], good_configs_np[:, 1], c="orange", s=50, marker="x"
+            )
+        except IndexError:
+            # If there are no good points yet
+            pass
+
+        axes[0].set_title("Distribution over good", fontsize=20)
         axes[1] = self.surrogate_models["bad"].visualize_2d(axes[1], color="RdBu_r")
         axes[1].scatter(
             bad_configs_np[:, 0], bad_configs_np[:, 1], c="orange", s=50, marker="x"
         )
+        axes[1].set_title("Distribution over bad", fontsize=20)
         axes[2] = self.visualize_2d(axes[2], previous_results, color="BrBG")
         plt.show()

@@ -172,6 +172,7 @@ class KernelDensityEstimator(GenericKDE):
         configs_np = np.array(
             [[x_.normalized().value for x_ in list(x.values())] for x in configs]
         )
+        print("configs_np", configs_np, configs_np.shape)
         if drop_fidelity:
             return configs_np[:, ~self.fid_array]
         return configs_np
