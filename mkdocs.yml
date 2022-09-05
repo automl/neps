@@ -17,6 +17,10 @@ markdown_extensions:
   - pymdownx.superfences
   - attr_list
 
+extra:
+  version:
+    provider: mike
+
 nav:
   - Introduction and Installation: 'README.md'
   - Getting Started: 'getting_started.md'
