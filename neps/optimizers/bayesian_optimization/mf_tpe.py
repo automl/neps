@@ -30,6 +30,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         surrogate_model: str = "kde",
         acquisition_sampler: str | AcquisitionSampler = "mutation",
         prior_draws: int = 1000,
+        cost_per_fidelity: list = None,
         surrogate_model_args: dict = None,
         patience: int = 50,
         logger=None,
@@ -76,8 +77,15 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         )
         self.pipeline_space = pipeline_space
         if self.pipeline_space.has_fidelity:
-            self.min_fideity = pipeline_space.fidelity.lower
+            self.min_fidelity = pipeline_space.fidelity.lower
             self.max_fidelity = pipeline_space.fidelity.upper
+            self.cost_per_fidelity = (
+                cost_per_fidelity
+                or np.arange(self.min_fidelity, self.max_fidelity + 1) / self.max_fidelity
+            )
+
+        else:
+            self.cost_per_fidelity = [1]
 
         self.prior_num_evals = prior_num_evals
         self.good_fraction = good_fraction
@@ -86,6 +94,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._pending_as_bad = pending_as_bad
         self.prior_draws = prior_draws
 
+        # We assume that the information conveyed per fidelity (and the cost) is linear in the
+        # fidelity levels if nothing else is specified
         if surrogate_model != "kde":
             raise NotImplementedError(
                 "Only supports KDEs for now. Could (maybe?) support binary classification in the future."
@@ -195,6 +205,12 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
     def _convert_to_logscale(self):
         pass
 
+    def _split_by_fidelity(self, configs, losses):
+        if self.pipeline_space.has_fidelity:
+            raise NotImplementedError("Nah.")
+        else:
+            return [configs], [losses]
+
     def _split_configs(self, configs, losses, round_up=True):
         """Splits configs into good and bad for the KDEs.
 
@@ -206,17 +222,34 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         Returns:
             [type]: [description]
         """
+        # TODO split by fidelity
+        good_configs, bad_configs = [], []
+        good_configs_weights, bad_configs_weights = [], []
+        configs_per_fid, losses_per_fid = self._split_by_fidelity(configs, losses)
 
-        num_good_configs = np.ceil(self._num_train_x * self.good_fraction).astype(int)
-        if not round_up:
-            num_good_configs -= 1
+        for fid, (configs_fid, losses_fid) in enumerate(
+            zip(configs_per_fid, losses_per_fid)
+        ):
+            # TODO map to cost if available
+            num_good_configs = np.ceil(len(configs_fid) * self.good_fraction).astype(int)
+            if not round_up:
+                num_good_configs -= 1
 
-        ordered_losses = np.argsort(losses)
-        good_indices = ordered_losses[0:num_good_configs]
-        bad_indices = ordered_losses[num_good_configs:]
-        good_configs = [configs[idx] for idx in good_indices]
-        bad_configs = [configs[idx] for idx in bad_indices]
-        return good_configs, bad_configs
+            ordered_losses = np.argsort(losses_fid)
+            good_indices = ordered_losses[0:num_good_configs]
+            bad_indices = ordered_losses[num_good_configs:]
+            good_configs_fid = [configs_fid[idx] for idx in good_indices]
+            bad_configs_fid = [configs_fid[idx] for idx in bad_indices]
+            good_configs.extend(good_configs_fid)
+            bad_configs.extend(bad_configs_fid)
+            good_configs_weights.extend(
+                [self.cost_per_fidelity[fid]] * len(good_configs_fid)
+            )
+            bad_configs_weights.extend(
+                [self.cost_per_fidelity[fid]] * len(bad_configs_fid)
+            )
+
+        return good_configs, bad_configs, good_configs_weights, bad_configs_weights
 
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search."""
@@ -238,7 +271,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._pending_evaluations = pending_x_configs
         if not self.is_init_phase():
             # This is to extract the configurations as numpy arrays on the format num_data x num_dim
-            good_configs, bad_configs = self._split_configs(
+            good_configs, bad_configs, good_weights, bad_weights = self._split_configs(
                 train_x_configs, train_y, round_up=True
             )
 
@@ -314,9 +347,12 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         train_x_configs = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
 
-        good_configs, bad_configs = self._split_configs(
-            train_x_configs, train_y, round_up=True
-        )
+        (
+            good_configs,
+            bad_configs,
+            good_configs_weights,
+            bad_configs_weights,
+        ) = self._split_configs(train_x_configs, train_y, round_up=True)
         good_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
             good_configs
         )
