@@ -399,8 +399,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#examples-and-tests" class="md-nav__link">
-    Examples and Tests
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checks-and-tests" class="md-nav__link">
+    Checks and tests
   </a>
   
 </li>
@@ -422,6 +429,20 @@
     <li class="md-nav__item">
       <a href="installation/" class="md-nav__link">
         Installation for Contributors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tests/" class="md-nav__link">
+        Checks and Tests
       </a>
     </li>
   
@@ -484,20 +505,6 @@
 
             
           
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="tooling/" class="md-nav__link">
-        Tooling
-      </a>
-    </li>
-  
-
-            
-          
         </ul>
       </nav>
     </li>
@@ -545,8 +552,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#examples-and-tests" class="md-nav__link">
-    Examples and Tests
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checks-and-tests" class="md-nav__link">
+    Checks and tests
   </a>
   
 </li>
@@ -577,23 +591,10 @@ If you are not in the mattermost chat yet, ask to get access.</p>
 <li>We automatically run code quality checks before every commit (using <a href="https://pre-commit.com/">pre-commit</a>)</li>
 <li>We manually run tests (using <code>pytest</code>) before every critical push and automatically afterwards (using <a href="https://github.com/automl/neps/actions">github actions</a>)</li>
 </ul>
-<h2 id="examples-and-tests">Examples and Tests</h2>
-<p>We document major features with an example (see <a href="https://github.com/automl/neps/tree/master/neps_examples">neps_examples</a>.
-When adding a new example also include it in the <a href="https://github.com/automl/neps/tree/master/neps_examples/README.md">example README</a>.</p>
-<p>These examples also serve as integration tests, which we run from the main directory via</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pytest
-</code></pre></div>
-<p>before every critical push.
-Running the tests will create a temporary directory <code>tests_tmpdir</code> that includes the output of the last three test executions.</p>
-<p>To speedup testing for developers, we only run a core set of tests per default. To run all tests use</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pytest -m all_examples
-</code></pre></div>
-<p>On github, we always run all examples.</p>
-<p>If tests fail for you on the master:</p>
-<ol>
-<li>Try running the tests with a fresh environment install.</li>
-<li>If issues persist, notify others in the neps developers chat on mattermost.</li>
-</ol>
+<h2 id="installation">Installation</h2>
+<p>For the contributor installation process see <a href="https://automl.github.io/neps/contributing/installation/">Installation</a>.</p>
+<h2 id="checks-and-tests">Checks and tests</h2>
+<p>The documentation also includes <a href="https://automl.github.io/neps/contributing/tests/">an overview</a> on the protocols and tools we use for code quality checks and tests.</p>
 
 
 

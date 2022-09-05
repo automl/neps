@@ -13,7 +13,7 @@
     
     
       
-        <title>Tooling - Neural Pipeline Search</title>
+        <title>Checks and Tests - Neural Pipeline Search</title>
       
     
     
@@ -60,7 +60,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tooling" class="md-skip">
+        <a href="#checks-and-tests" class="md-skip">
           Skip to content
         </a>
       
@@ -93,7 +93,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tooling
+              Checks and Tests
             
           </span>
         </div>
@@ -377,6 +377,136 @@
               
   
   
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Checks and Tests
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Checks and Tests
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#examples-and-integration-tests" class="md-nav__link">
+    Examples and Integration Tests
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples and Integration Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-an-integration-test" class="md-nav__link">
+    Creating an Integration Test
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-all-integration-tests-locally" class="md-nav__link">
+    Running all integration tests locally
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-do-if-tests-fail" class="md-nav__link">
+    What to do if tests fail
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#regression-tests" class="md-nav__link">
+    Regression Tests
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disabling-and-skipping-checks-etc" class="md-nav__link">
+    Disabling and Skipping Checks etc.
+  </a>
+  
+    <nav class="md-nav" aria-label="Disabling and Skipping Checks etc.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pre-commit-how-to-not-run-hooks" class="md-nav__link">
+    Pre-commit: How to not run hooks?
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pylint-how-to-ignore-warnings" class="md-nav__link">
+    Pylint: How to ignore warnings?
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mypy-how-to-ignore-warnings" class="md-nav__link">
+    Mypy: How to ignore warnings?
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#black-how-to-not-format-code-parts" class="md-nav__link">
+    Black: How to not format code parts?
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
   
     <li class="md-nav__item">
       <a href="../dependencies/" class="md-nav__link">
@@ -429,89 +559,6 @@
 
             
           
-            
-              
-  
-  
-    
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Tooling
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        Tooling
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#pre-commit-how-to-not-run-hooks" class="md-nav__link">
-    Pre-commit: How to not run hooks?
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pylint-how-to-ignore-warnings" class="md-nav__link">
-    Pylint: How to ignore warnings?
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mypy-how-to-ignore-warnings" class="md-nav__link">
-    Mypy: How to ignore warnings?
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#black-how-to-not-format-code-parts" class="md-nav__link">
-    Black: How to not format code parts?
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-editorconfig-about" class="md-nav__link">
-    What is Editorconfig about?
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-            
-          
         </ul>
       </nav>
     </li>
@@ -545,37 +592,84 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#examples-and-integration-tests" class="md-nav__link">
+    Examples and Integration Tests
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples and Integration Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-an-integration-test" class="md-nav__link">
+    Creating an Integration Test
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-all-integration-tests-locally" class="md-nav__link">
+    Running all integration tests locally
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-do-if-tests-fail" class="md-nav__link">
+    What to do if tests fail
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#regression-tests" class="md-nav__link">
+    Regression Tests
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disabling-and-skipping-checks-etc" class="md-nav__link">
+    Disabling and Skipping Checks etc.
+  </a>
+  
+    <nav class="md-nav" aria-label="Disabling and Skipping Checks etc.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#pre-commit-how-to-not-run-hooks" class="md-nav__link">
     Pre-commit: How to not run hooks?
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#pylint-how-to-ignore-warnings" class="md-nav__link">
     Pylint: How to ignore warnings?
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#mypy-how-to-ignore-warnings" class="md-nav__link">
     Mypy: How to ignore warnings?
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#black-how-to-not-format-code-parts" class="md-nav__link">
     Black: How to not format code parts?
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-editorconfig-about" class="md-nav__link">
-    What is Editorconfig about?
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -593,44 +687,68 @@
                 
 
 
-<h1 id="tooling">Tooling</h1>
-<h2 id="pre-commit-how-to-not-run-hooks">Pre-commit: How to not run hooks?</h2>
+<h1 id="checks-and-tests">Checks and Tests</h1>
+<p>We have setup checks and tests at several points in the development flow:</p>
+<ul>
+<li>At every commit we automatically run a suite of <a href="https://pre-commit.com/">pre-commit</a> hooks that perform static code analysis, autoformating, and sanity checks. This is setup during our <a href="https://automl.github.io/neps/contributing/installation/">installation process</a>.</li>
+<li>At every commit / push locally running a minimal suite of integration tests is encouraged. The tests correspond directly to examples in <a href="https://github.com/automl/neps/tree/master/neps_examples">neps_examples</a> and only check for crash-causing errors.</li>
+<li>At every push all integration tests and regression tests are run automatically using <a href="https://github.com/automl/neps/actions">github actions</a>.</li>
+</ul>
+<h2 id="examples-and-integration-tests">Examples and Integration Tests</h2>
+<p>We use examples in <a href="https://github.com/automl/neps/tree/master/neps_examples">neps_examples</a> as integration tests, which we run from the main directory via</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pytest
+</code></pre></div>
+<p>before every critical push.</p>
+<h3 id="creating-an-integration-test">Creating an Integration Test</h3>
+<p>If you want an implementation to be included in the above testing procedure:
+1. Create an example in <a href="https://github.com/automl/neps/tree/master/neps_examples">neps_examples</a>.
+2. Add the example to <a href="https://github.com/automl/neps/blob/377049fe57ba46d061790933baf35214fab6f11e/tests/test_examples.py#L33">test_examples.py</a>.</p>
+<h3 id="running-all-integration-tests-locally">Running all integration tests locally</h3>
+<p>To speedup testing for developers, we only run a core set of tests per default. To run all tests use</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pytest -m all_examples
+</code></pre></div>
+<p>On github, we always run all examples.</p>
+<h3 id="what-to-do-if-tests-fail">What to do if tests fail</h3>
+<p>If tests fail for you on the master:</p>
+<ol>
+<li>Try running the tests with a fresh environment install.</li>
+<li>If issues persist, notify others in the neps developers chat on mattermost.</li>
+</ol>
+<h2 id="regression-tests">Regression Tests</h2>
+<h2 id="disabling-and-skipping-checks-etc">Disabling and Skipping Checks etc.</h2>
+<h3 id="pre-commit-how-to-not-run-hooks">Pre-commit: How to not run hooks?</h3>
 <p>To commit without running <code>pre-commit</code> use <code>git commit --no-verify -m &lt;COMMIT MESSAGE&gt;</code>.</p>
-<h2 id="pylint-how-to-ignore-warnings">Pylint: How to ignore warnings?</h2>
+<h3 id="pylint-how-to-ignore-warnings">Pylint: How to ignore warnings?</h3>
 <p>There are two options:</p>
 <ul>
 <li>Disable the warning locally:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">code</span> <span class="o">=</span> <span class="s2">&quot;foo&quot;</span>  <span class="c1"># pylint: disable=ERROR_CODE</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">code</span> <span class="o">=</span> <span class="s2">&quot;foo&quot;</span>  <span class="c1"># pylint: disable=ERROR_CODE</span>
 </code></pre></div>
 <p>Make sure to use the named version of the error (e.g., <code>unspecified-encoding</code>, not <code>W1514</code>).</p>
 <ul>
 <li>Remove warning in <code>pyproject.toml</code> that we do not consider useful (do not catch bugs, do not increase code quality).</li>
 </ul>
-<h2 id="mypy-how-to-ignore-warnings">Mypy: How to ignore warnings?</h2>
+<h3 id="mypy-how-to-ignore-warnings">Mypy: How to ignore warnings?</h3>
 <p>There are two options:</p>
 <ul>
 <li>Disable the warning locally:</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">code</span> <span class="o">=</span> <span class="s2">&quot;foo&quot;</span>  <span class="c1"># type: ignore[ERROR_CODE]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">code</span> <span class="o">=</span> <span class="s2">&quot;foo&quot;</span>  <span class="c1"># type: ignore[ERROR_CODE]</span>
 </code></pre></div>
 <ul>
 <li>If you know what you are doing, you can add the whole module to the <code>[[tool.mypy.overrides]]</code> section.
   This is useful e.g., when adding new files that are in early stage development.</li>
 </ul>
-<h2 id="black-how-to-not-format-code-parts">Black: How to not format code parts?</h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># fmt: off</span>
+<h3 id="black-how-to-not-format-code-parts">Black: How to not format code parts?</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># fmt: off</span>
 </code></pre></div>
 <p>or for blocks</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># fmt: off</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># fmt: on</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># fmt: off</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">x</span> <span class="o">=</span> <span class="mi">2</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">y</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># fmt: on</span>
 </code></pre></div>
-<h2 id="what-is-editorconfig-about">What is Editorconfig about?</h2>
-<p><a href="https://editorconfig.org/">Editorconfig</a> allows to set line lengths and other display parameters automatically based on a <code>.editorconfig</code> file.
-Many editors have <a href="https://editorconfig.org/#pre-installed">native support</a> (e.g., PyCharm) so you do not need to do anything.
-For other editors (e.g., VSCode), you need to install a <a href="https://editorconfig.org/#download">plugin</a>.</p>
 
 
 
@@ -649,7 +767,7 @@ For other editors (e.g., VSCode), you need to install a <a href="https://editorc
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../roadmap/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Roadmap" rel="prev">
+        <a href="../installation/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Installation for Contributors" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -658,11 +776,26 @@ For other editors (e.g., VSCode), you need to install a <a href="https://editorc
               <span class="md-footer__direction">
                 Previous
               </span>
-              Roadmap
+              Installation for Contributors
             </div>
           </div>
         </a>
       
+      
+        
+        <a href="../dependencies/" class="md-footer__link md-footer__link--next" aria-label="Next: Managing Dependencies" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Managing Dependencies
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
       
     </nav>
   
