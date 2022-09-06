@@ -16,8 +16,8 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 ## Installation
 
-For the contributor installation process see [Installation](https://automl.github.io/neps/contributing/installation/).
+For the contributor installation process see [Installation](contributing/installation/).
 
 ## Checks and tests
 
-The documentation also includes [an overview](https://automl.github.io/neps/contributing/tests/) on the protocols and tools we use for code quality checks and tests.
+The documentation also includes [an overview](contributing/tests/) on the protocols and tools we use for code quality checks and tests.
