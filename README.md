@@ -14,7 +14,7 @@ NePS helps deep learning experts find the best neural pipeline with
 For efficiency and convenience NePS allows you to
 
 - Input expert intuition to speed-up HPO, NAS, or JAHS ([examples](neps_examples/expert_priors), [paper](https://openreview.net/forum?id=MMAeCXIa89))
-- Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/parallelization/))
+- Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/latest/parallelization/))
 
 ## Note
 
@@ -22,7 +22,7 @@ As indicated with the `v0.x.x` version number, NePS is early stage code and APIs
 
 ## Documentation
 
-Please have a look at our [documentation](https://automl.github.io/neps/) and [examples](neps_examples).
+Please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
 
 ## Installation
 
@@ -68,16 +68,16 @@ neps.run(
 )
 ```
 
-For more details and features please have a look at our [documentation](https://automl.github.io/neps/) and [examples](neps_examples).
+For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
 
 ## Analysing runs
 
-See our [documentation on analysing runs](https://automl.github.io/neps/analyse).
+See our [documentation on analysing runs](https://automl.github.io/neps/latest/analyse).
 
 ## Alternatives
 
-NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/alternatives).
+NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/latest/alternatives).
 
 ## Contributing
 
-Please see the [documentation for contributors](https://automl.github.io/neps/contributing/).
+Please see the [documentation for contributors](https://automl.github.io/neps/latest/contributing/).
