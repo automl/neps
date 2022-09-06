@@ -88,7 +88,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             self.max_fidelity = 1
             self.cost_per_fidelity = [1]
         self.num_fidelities = int(self.max_fidelity) + 1 - int(self.min_fidelity)
-
+        self.use_priors = use_priors
         self.prior_num_evals = prior_num_evals
         self.good_fraction = good_fraction
         self._random_interleave_prob = random_interleave_prob
@@ -312,10 +312,11 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             good_configs, bad_configs, good_weights, bad_weights = self._split_configs(
                 train_x_configs, train_y
             )
-            num_prior_configs = len(self.prior_samples)
-            good_configs.extend(self.prior_samples)
-            prior_sample_constant = self.prior_num_evals / num_prior_configs
-            good_weights.extend([prior_sample_constant] * num_prior_configs)
+            if self.use_priors:
+                num_prior_configs = len(self.prior_samples)
+                good_configs.extend(self.prior_samples)
+                prior_sample_constant = self.prior_num_evals / num_prior_configs
+                good_weights.extend([prior_sample_constant] * num_prior_configs)
             # TODO drop the fidelity!
             self.surrogate_models["all"].fit(train_x_configs)
             fixed_bw = self.surrogate_models["all"].bw
