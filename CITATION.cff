@@ -15,8 +15,10 @@ authors:
     given-names: Carl
   - family-names: Garibov
     given-names: Samir
-  - family-names: Théophane
-    given-names: Vallaeys
+  - family-names: Vallaeys
+    given-names: Théophane
+  - family-names: Kober
+    given-names: Nils
   - family-names: Hutter
     given-names: Frank
 title: "Neural Pipeline Search (NePS)"
