@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from metahyper.api import ConfigResult
@@ -136,7 +135,6 @@ class KernelDensityEstimator(GenericKDE):
             data_weights = np.asarray(config_weights)
 
         self.data = self._convert_configs_to_numpy(configs)
-        # TODO compute EI weights
         self.data_weights = np.sqrt(data_weights) / np.sum(np.sqrt(data_weights))
         self.nobs, self.k_vars = np.shape(self.data)
 
@@ -172,7 +170,6 @@ class KernelDensityEstimator(GenericKDE):
         configs_np = np.array(
             [[x_.normalized().value for x_ in list(x.values())] for x in configs]
         )
-        print("configs_np", configs_np, configs_np.shape)
         if drop_fidelity:
             return configs_np[:, ~self.fid_array]
         return configs_np
@@ -221,19 +218,3 @@ class KernelDensityEstimator(GenericKDE):
 
         pdf_est = np.squeeze(pdf_est)
         return np.maximum(pdf_est, self.min_density)
-
-    def visualize_2d(self, ax, grid_points: int = 101, color: str = "k"):
-        assert len(self.param_types) == 2
-        X1 = np.linspace(0, 1, grid_points)
-        X2 = np.linspace(0, 1, grid_points)
-        X1, X2 = np.meshgrid(X1, X2)
-        X = np.append(X1.reshape(-1, 1), X2.reshape(-1, 1), axis=1)
-        Z = self._pdf(X)
-        Z_min, Z_max = -np.abs(Z).max(), np.abs(Z).max()
-
-        Z = Z.reshape(grid_points, grid_points)
-
-        c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
-        ax.set_title("pcolormesh")
-        ax.axis([0, 1, 0, 1])
-        return ax

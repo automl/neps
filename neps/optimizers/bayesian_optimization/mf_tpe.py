@@ -21,9 +21,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self,
         pipeline_space: SearchSpace,
         use_priors: bool = False,
-        prior_num_evals: float = 1.0,
-        good_fraction: float = 0.333,
-        random_interleave_prob: float = 0.333,
+        prior_num_evals: float = 2.0,
+        good_fraction: float = 0.3334,
+        random_interleave_prob: float = 0.3334,
         initial_design_size: int = 0,
         prior_as_samples: bool = True,
         pending_as_bad: bool = True,
@@ -83,9 +83,11 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 cost_per_fidelity
                 or np.arange(self.min_fidelity, self.max_fidelity + 1) / self.max_fidelity
             )
-
         else:
+            self.min_fidelity = 1
+            self.max_fidelity = 1
             self.cost_per_fidelity = [1]
+        self.num_fidelities = int(self.max_fidelity) + 1 - int(self.min_fidelity)
 
         self.prior_num_evals = prior_num_evals
         self.good_fraction = good_fraction
@@ -93,6 +95,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._initial_design_size = initial_design_size
         self._pending_as_bad = pending_as_bad
         self.prior_draws = prior_draws
+        self._has_promotable_configs = False
 
         # if we use priors, we don't add conigurations as good until is is within the top fraction
         # This heuristic has not been tried further, but makes sense in the context when we have priors
@@ -198,14 +201,29 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         return types, num_values, logs, is_fidelity
 
     def __call__(
-        self, x: Iterable, asscalar: bool = False
+        self, x: Iterable, asscalar: bool = False, only_lowest_fidelity=True
     ) -> np.ndarray | torch.Tensor | float:
         """
         Return the negative probability of / expected improvement at the query point
         """
-        return self.surrogate_models["good"].pdf(x) / self.surrogate_models["bad"].pdf(x)
+        # this is to only make the lowest fidelity viable
+        # TODO have this as a setting in the acq_sampler instead
+        if only_lowest_fidelity:
+            is_lowest_fidelity = (
+                np.array([x_.fidelity.value for x_ in x]) == self.min_fidelity
+            )
+            return (
+                is_lowest_fidelity
+                * self.surrogate_models["good"].pdf(x)
+                / self.surrogate_models["bad"].pdf(x)
+            )
+        else:
+            return self.surrogate_models["good"].pdf(x) / self.surrogate_models[
+                "bad"
+            ].pdf(x)
 
     # TODO allow this for integers as well - now only supports floats
+
     def _convert_to_logscale(self):
         pass
 
@@ -218,8 +236,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             # per fidelity, add a list to make it a nested list of lists
             # [[config_A at fid1, config_B at fid1], [config_C at fid2], ...]
             for config, loss in zip(configs, losses):
-                configs_per_fidelity[config.fidelity.value - min_fid].append(config)
-                losses_per_fidelity[config.fidelity.value - min_fid].append(loss)
+                configs_per_fidelity[int(config.fidelity.value - min_fid)].append(config)
+                losses_per_fidelity[int(config.fidelity.value - min_fid)].append(loss)
             return configs_per_fidelity, losses_per_fidelity
         else:
             return [configs], [losses]
@@ -283,6 +301,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
 
         train_x_configs = [el.config for el in previous_results.values()]
+        # this flags that some config is ready to be promoted (Succesive Halv-like)
+        self._check_for_promotable(train_x_configs)
+
         pending_x_configs = [el.config for el in pending_evaluations.values()]
         self._num_train_x = len(train_x_configs)
         self._pending_evaluations = pending_x_configs
@@ -291,25 +312,57 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             good_configs, bad_configs, good_weights, bad_weights = self._split_configs(
                 train_x_configs, train_y
             )
-
-            num_good_configs = len(good_configs)
             num_prior_configs = len(self.prior_samples)
             good_configs.extend(self.prior_samples)
-            good_config_weights = np.ones(len(good_configs))
-            good_config_weights[num_good_configs:] = (
-                self.prior_num_evals / num_prior_configs
-            )
+            prior_sample_constant = self.prior_num_evals / num_prior_configs
+            good_weights.extend([prior_sample_constant] * num_prior_configs)
             # TODO drop the fidelity!
             self.surrogate_models["all"].fit(train_x_configs)
             fixed_bw = self.surrogate_models["all"].bw
+
             self.surrogate_models["good"].fit(
-                good_configs, fixed_bw=fixed_bw, config_weights=good_config_weights
-            )  # [num_good_configs:])
+                good_configs, fixed_bw=fixed_bw, config_weights=good_weights
+            )
             if self._pending_as_bad:
                 bad_configs.extend(pending_x_configs)
-            self.surrogate_models["bad"].fit(bad_configs, fixed_bw=fixed_bw)
+                # bad_configs_weights.extend([])
+            self.surrogate_models["bad"].fit(
+                bad_configs, fixed_bw=fixed_bw, config_weights=bad_weights
+            )
 
-            self.visualize_acq(previous_results)
+    def _check_for_promotable(self, configs):
+
+        # count the number of configs that are at or above any given rung
+        configs_per_rung = np.zeros(self.num_fidelities)
+        # check the number of configs per fidelity level
+        for config in configs:
+            configs_per_rung[int(config.fidelity.value - self.min_fidelity)] += 1
+
+        cumulative_per_rung = np.flip(np.cumsum(np.flip(configs_per_rung)))
+        cumulative_above = np.append(np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0)
+        # then check which one can make the most informed decision on promotions
+        self.rungs_to_promote = (
+            cumulative_per_rung * self.good_fraction - cumulative_above
+        )
+        self._has_promotable_configs = np.any(self.rungs_to_promote[:-1] > 1)
+
+        # this defaults to max_fidelity if there is no promotable config (cannot promote from)
+        # the top fidelity anyway
+        fid_to_promote = self.num_fidelities - np.argmax(
+            np.flip(self.rungs_to_promote) > 1
+        )
+        self.configs_for_promotion = [
+            config for config in configs if config.fidelity.value == (fid_to_promote)
+        ]
+
+    def _promote_existing(self):
+        # TODO we still need to REMOVE the observation at the lower fidelity
+        # i.e. give it zero weight in the KDE, and ensure the count is correct
+        assert len(self.configs_for_promotion) > 0, "No promotable configurations"
+        acq_values = self.__call__(self.configs_for_promotion, only_lowest_fidelity=False)
+        next_config = self.configs_for_promotion[np.argmax(acq_values)]
+        next_config.fidelity.value += 1
+        return next_config
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -322,12 +375,15 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         elif random.random() < self._random_interleave_prob:
             # TODO only at lowest fidelity
             config = self.pipeline_space.sample(
-                patience=self.patience, ignore_fidelity=False
+                patience=self.patience, ignore_fidelity=False, user_priors=False
             )
+            config.fidelity.value = self.min_fidelity
         elif self.is_init_phase():
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
+        elif self._has_promotable_configs:
+            config = self._promote_existing()
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
             if config not in self._pending_evaluations:
@@ -336,63 +392,3 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None
-
-    def visualize_2d(
-        self, ax, previous_results, grid_points: int = 101, color: str = "k"
-    ):
-        X1 = np.linspace(0, 1, grid_points)
-        X2 = np.linspace(0, 1, grid_points)
-        X1, X2 = np.meshgrid(X1, X2)
-        X = np.append(X1.reshape(-1, 1), X2.reshape(-1, 1), axis=1)
-        Z = self.surrogate_models["good"]._pdf(X) / self.surrogate_models["bad"]._pdf(X)
-        Z_min, Z_max = -np.abs(Z).max(), np.abs(Z).max()
-
-        Z = Z.reshape(grid_points, grid_points)
-
-        c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
-        ax.set_title("pcolormesh")
-        # set the limits of the plot to the limits of the data
-        ax.axis([0, 1, 0, 1])
-        train_x_configs = [el.config for el in previous_results.values()]
-        np_X = self.surrogate_models["good"]._convert_configs_to_numpy(train_x_configs)
-        ax.scatter(np_X[:, 0], np_X[:, 1], s=100)
-        ax.set_title("Acquisition Function", fontsize=20)
-
-        return ax
-
-    def visualize_acq(self, previous_results):
-        train_x_configs = [el.config for el in previous_results.values()]
-        train_y = [self.get_loss(el.result) for el in previous_results.values()]
-
-        (
-            good_configs,
-            bad_configs,
-            good_configs_weights,
-            bad_configs_weights,
-        ) = self._split_configs(train_x_configs, train_y)
-
-        bad_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
-            bad_configs
-        )
-
-        fig, axes = plt.subplots(1, 3, figsize=(16, 9))
-        axes[0] = self.surrogate_models["good"].visualize_2d(axes[0], color="RdBu")
-        try:
-            good_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
-                good_configs
-            )
-            axes[0].scatter(
-                good_configs_np[:, 0], good_configs_np[:, 1], c="orange", s=50, marker="x"
-            )
-        except IndexError:
-            # If there are no good points yet
-            pass
-
-        axes[0].set_title("Distribution over good", fontsize=20)
-        axes[1] = self.surrogate_models["bad"].visualize_2d(axes[1], color="RdBu_r")
-        axes[1].scatter(
-            bad_configs_np[:, 0], bad_configs_np[:, 1], c="orange", s=50, marker="x"
-        )
-        axes[1].set_title("Distribution over bad", fontsize=20)
-        axes[2] = self.visualize_2d(axes[2], previous_results, color="BrBG")
-        plt.show()
