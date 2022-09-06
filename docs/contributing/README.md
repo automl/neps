@@ -16,7 +16,7 @@ We loosely practice [trunk-based-development](https://trunkbaseddevelopment.com/
 
 ## Installation
 
-For the contributor installation process see [Installation](../installation/).
+For the contributor installation process see [Installation](installation/).
 
 ## Checks and tests
 
