@@ -25,7 +25,19 @@ class CostCooler(BaseAcquisition):
             x=x, **base_acquisition_kwargs
         )
         costs, _ = self.cost_model.predict(x)
-        return base_acquisition_value / (costs**self.alpha).detach().numpy()
+        # if costs < 0.001:
+        #     costs = 1
+        if torch.is_tensor(costs):
+            cost_cooled = torch.zeros_like(costs)
+            index = 0
+            for _, y in enumerate(costs.detach().numpy()):
+                if y < 0.0001:
+                    cost_cooled[index] = base_acquisition_value[index]
+                else:
+                    cost_cooled[index] = base_acquisition_value[index] / (y**self.alpha)
+                index += 1
+        # return base_acquisition_value # / (costs**self.alpha).detach().numpy()
+        return cost_cooled
 
     def set_state(self, surrogate_model, alpha, cost_model, **kwargs):
         super().set_state(surrogate_model=surrogate_model)

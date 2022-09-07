@@ -6,9 +6,9 @@ import numpy as np
 import neps
 
 
-def run_pipeline(working_directory, float1, float2, categorical, integer1, fidelity):
+def run_pipeline(working_directory, float1, float2, integer1, fidelity):
     start = time.time()
-    loss = -float(np.sum([float1, float2, int(categorical), integer1])) / fidelity
+    loss = -float(np.sum([float1, float2, integer1])) / fidelity
     end = time.time()
     return {
         "loss": loss,
@@ -24,7 +24,6 @@ pipeline_space = dict(
         lower=1, upper=1000, log=False, default=600, default_confidence="medium"
     ),
     float2=neps.FloatParameter(lower=-10, upper=10),
-    categorical=neps.CategoricalParameter(choices=[0, 1]),
     integer1=neps.IntegerParameter(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
