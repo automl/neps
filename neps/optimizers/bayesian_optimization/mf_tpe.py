@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from metahyper.api import ConfigResult, instance_from_map
@@ -32,6 +31,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         prior_draws: int = 1000,
         cost_per_fidelity: list = None,
         surrogate_model_args: dict = None,
+        soft_promotion: bool = False,
         patience: int = 50,
         logger=None,
         budget: None | int | float = None,
@@ -96,7 +96,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self._pending_as_bad = pending_as_bad
         self.prior_draws = prior_draws
         self._has_promotable_configs = False
-
+        self.soft_promotion = soft_promotion
         # if we use priors, we don't add conigurations as good until is is within the top fraction
         # This heuristic has not been tried further, but makes sense in the context when we have priors
         self.round_up = not use_priors
@@ -242,7 +242,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         else:
             return [configs], [losses]
 
-    def _split_configs(self, configs, losses):
+    def _split_configs(self, configs, losses, good_fraction=None):
         """Splits configs into good and bad for the KDEs.
 
         Args:
@@ -253,7 +253,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         Returns:
             [type]: [description]
         """
-        # TODO split by fidelity
+        if good_fraction is None:
+            good_fraction = self.good_fraction
+
         good_configs, bad_configs = [], []
         good_configs_weights, bad_configs_weights = [], []
         configs_per_fid, losses_per_fid = self._split_by_fidelity(configs, losses)
@@ -262,13 +264,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             zip(configs_per_fid, losses_per_fid)
         ):
             if self.round_up:
-                num_good_configs = np.ceil(len(configs_fid) * self.good_fraction).astype(
-                    int
-                )
+                num_good_configs = np.ceil(len(configs_fid) * good_fraction).astype(int)
             else:
-                num_good_configs = np.floor(len(configs_fid) * self.good_fraction).astype(
-                    int
-                )
+                num_good_configs = np.floor(len(configs_fid) * good_fraction).astype(int)
 
             ordered_losses = np.argsort(losses_fid)
             good_indices = ordered_losses[0:num_good_configs]
@@ -297,20 +295,17 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
-        train_x_configs = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
 
-        train_x_configs = [el.config for el in previous_results.values()]
+        self.train_x_configs = [el.config for el in previous_results.values()]
         # this flags that some config is ready to be promoted (Succesive Halv-like)
-        self._check_for_promotable(train_x_configs)
 
-        pending_x_configs = [el.config for el in pending_evaluations.values()]
-        self._num_train_x = len(train_x_configs)
-        self._pending_evaluations = pending_x_configs
+        self._num_train_x = len(self.train_x_configs)
+        self._pending_evaluations = pending_evaluations
         if not self.is_init_phase():
             # This is to extract the configurations as numpy arrays on the format num_data x num_dim
             good_configs, bad_configs, good_weights, bad_weights = self._split_configs(
-                train_x_configs, train_y
+                self.train_x_configs, train_y
             )
             if self.use_priors:
                 num_prior_configs = len(self.prior_samples)
@@ -318,20 +313,36 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 prior_sample_constant = self.prior_num_evals / num_prior_configs
                 good_weights.extend([prior_sample_constant] * num_prior_configs)
             # TODO drop the fidelity!
-            self.surrogate_models["all"].fit(train_x_configs)
+            self.surrogate_models["all"].fit(self.train_x_configs)
             fixed_bw = self.surrogate_models["all"].bw
 
             self.surrogate_models["good"].fit(
                 good_configs, fixed_bw=fixed_bw, config_weights=good_weights
             )
             if self._pending_as_bad:
-                bad_configs.extend(pending_x_configs)
-                # bad_configs_weights.extend([])
+                pending_configs = list(self._pending_evaluations.values())
+
+                # This is only to compute the weights of the pending configs
+                _, pending_configs, _, pending_weights = self._split_configs(
+                    pending_configs, [0] * len(pending_configs), good_fraction=0.0
+                )
+                bad_configs.extend(pending_configs)
+                bad_weights.extend(pending_weights)
+
             self.surrogate_models["bad"].fit(
                 bad_configs, fixed_bw=fixed_bw, config_weights=bad_weights
             )
 
-    def _check_for_promotable(self, configs):
+            # self.visualize_acq(previous_results)
+
+    def _get_promotable_configs(self, configs):
+        if self.soft_promotion:
+            configs_for_promotion = self._get_soft_promotable(configs)
+        else:
+            configs_for_promotion = self._get_hard_promotable(configs)
+        return configs_for_promotion
+
+    def _get_hard_promotable(self, configs):
 
         # count the number of configs that are at or above any given rung
         configs_per_rung = np.zeros(self.num_fidelities)
@@ -342,26 +353,27 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         cumulative_per_rung = np.flip(np.cumsum(np.flip(configs_per_rung)))
         cumulative_above = np.append(np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0)
         # then check which one can make the most informed decision on promotions
-        self.rungs_to_promote = (
-            cumulative_per_rung * self.good_fraction - cumulative_above
-        )
-        self._has_promotable_configs = np.any(self.rungs_to_promote[:-1] > 1)
+        rungs_to_promote = cumulative_per_rung * self.good_fraction - cumulative_above
 
         # this defaults to max_fidelity if there is no promotable config (cannot promote from)
         # the top fidelity anyway
-        fid_to_promote = self.num_fidelities - np.argmax(
-            np.flip(self.rungs_to_promote) > 1
-        )
-        self.configs_for_promotion = [
-            config for config in configs if config.fidelity.value == (fid_to_promote)
-        ]
+        fid_to_promote = self.num_fidelities - np.argmax(np.flip(rungs_to_promote) > 1)
 
-    def _promote_existing(self):
+        # TODO check if this returns empty when it needs to
+        if fid_to_promote == self.max_fidelity:
+            return []
+        return [cfg for cfg in configs if cfg.fidelity.value == (fid_to_promote)]
+
+    def _get_soft_promotable(self, configs):
+        # TODO implement
+        return []
+
+    def _promote_existing(self, configs_for_promotion):
         # TODO we still need to REMOVE the observation at the lower fidelity
         # i.e. give it zero weight in the KDE, and ensure the count is correct
-        assert len(self.configs_for_promotion) > 0, "No promotable configurations"
-        acq_values = self.__call__(self.configs_for_promotion, only_lowest_fidelity=False)
-        next_config = self.configs_for_promotion[np.argmax(acq_values)]
+        assert len(configs_for_promotion) > 0, "No promotable configurations"
+        acq_values = self.__call__(configs_for_promotion, only_lowest_fidelity=False)
+        next_config = configs_for_promotion[np.argmax(acq_values)]
         next_config.fidelity.value += 1
         return next_config
 
@@ -383,13 +395,11 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-        elif self._has_promotable_configs:
-            config = self._promote_existing()
+        elif len(self._get_promotable_configs(self.train_x_configs)) > 0:
+            configs_for_promotion = self._get_promotable_configs(self.train_x_configs)
+            config = self._promote_existing(configs_for_promotion)
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
-            if config not in self._pending_evaluations:
-                # TODO fix this, so that it works properly
-                pass
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None
