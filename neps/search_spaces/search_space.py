@@ -325,14 +325,29 @@ class SearchSpace(collections.abc.Mapping):
     def __str__(self):
         return pprint.pformat(self.hyperparameters)
 
-    def is_equal_value(self, other):
+    def is_equal_value(self, other, include_fidelity=True, on_decimal=8):
         # This does NOT check that the entire SearchSpace is equal (and thus it is not a dunder method),
         # but only checks the configuration
         if self.hyperparameters.keys() != other.hyperparameters.keys():
             return False
-        return all(
-            [
-                self.hyperparameters[hp].value == other.hyperparameters[hp].value
-                for hp in self.hyperparameters.keys()
-            ]
-        )
+
+        equal_values = [True] * len(self.hyperparameters)
+        for hp_idx, hp in enumerate(self.hyperparameters.keys()):
+            if self.hyperparameters[hp].is_fidelity and (not include_fidelity):
+                continue
+            else:
+                equal_values[hp_idx] = (
+                    self.hyperparameters[hp] == other.hyperparameters[hp]
+                )
+
+            if isinstance(self.hyperparameters[hp].value, float):
+                equal_values[hp_idx] = (
+                    np.round(
+                        self.hyperparameters[hp].normalized().value
+                        - other.hyperparameters[hp].normalized().value,
+                        on_decimal,
+                    )
+                    == 0
+                )
+        # print(equal_values)
+        return all(equal_values)
