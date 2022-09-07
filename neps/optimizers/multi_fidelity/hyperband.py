@@ -29,6 +29,7 @@ class Hyperband(SuccessiveHalving):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = None,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -42,6 +43,7 @@ class Hyperband(SuccessiveHalving):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
@@ -119,6 +121,7 @@ class HyperbandWithPriors(Hyperband):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = "high",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -131,6 +134,7 @@ class HyperbandWithPriors(Hyperband):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )
 
 
@@ -152,6 +156,7 @@ class AsynchronousHyperband(Hyperband):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = None,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -164,6 +169,7 @@ class AsynchronousHyperband(Hyperband):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
@@ -198,11 +204,12 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = RandomUniformPolicy,
+        sampling_policy: typing.Any = FixedPriorPolicy,
         promotion_policy: typing.Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = "high",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -215,4 +222,5 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )

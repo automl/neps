@@ -8,6 +8,11 @@ import pandas as pd
 from metahyper.api import ConfigResult
 from typing_extensions import Literal
 
+from ...search_spaces.hyperparameters.categorical import (
+    CATEGORICAL_CONFIDENCE_SCORES,
+    CategoricalParameter,
+)
+from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES, FloatParameter
 from ...search_spaces.hyperparameters.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
@@ -31,6 +36,7 @@ class SuccessiveHalving(BaseOptimizer):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = None,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -87,6 +93,10 @@ class SuccessiveHalving(BaseOptimizer):
         self.full_rung_trace = SuccessiveHalving._get_rung_trace(
             self.rung_map, self.config_map
         )
+
+        # prior setups
+        self.prior_confidence = prior_confidence
+        self._enhance_priors()
 
     @classmethod
     def _get_rung_trace(cls, rung_map: dict, config_map: dict) -> list[int]:
@@ -316,6 +326,20 @@ class SuccessiveHalving(BaseOptimizer):
         self._update_state_counter()
         return config.hp_values(), config_id, previous_config_id  # type: ignore
 
+    def _enhance_priors(self):
+        """Only applicable when priors are given along with a confidence."""
+        if not self.use_priors and self.prior_confidence is None:
+            return
+        for k in self.pipeline_space.keys():
+            if self.pipeline_space[k].is_fidelity:
+                continue
+            elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
+                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                self.pipeline_space[k].default_confidence_score = confidence
+            elif isinstance(self.pipeline_space[k], CategoricalParameter):
+                confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
+                self.pipeline_space[k].default_confidence_score = confidence
+
 
 class SuccessiveHalvingWithPriors(SuccessiveHalving):
     """Implements a SuccessiveHalving procedure with a sampling and promotion policy."""
@@ -334,6 +358,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = "high",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -341,17 +366,18 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
-            use_priors=self.use_priors,  # key change to the base SH class
+            use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )
 
 
 class AsynchronousSuccessiveHalving(SuccessiveHalving):
-    """Implements a SuccessiveHalving procedure with a sampling and promotion policy."""
+    """Implements ASHA with a sampling and asynchronous promotion policy."""
 
     def __init__(
         self,
@@ -362,10 +388,11 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
         sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = None,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -379,6 +406,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )
 
     def is_promotable(self) -> int | None:
@@ -395,7 +423,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
 
 
 class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
-    """Implements a SuccessiveHalving procedure with a sampling and promotion policy."""
+    """Implements ASHA with a sampling and asynchronous promotion policy."""
 
     use_priors = True
 
@@ -406,11 +434,12 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        sampling_policy: typing.Any = FixedPriorPolicy,
+        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = "high",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -418,12 +447,13 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
-            use_priors=self.use_priors,  # key change from ASHA
+            use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
+            prior_confidence=prior_confidence,
         )
 
 
