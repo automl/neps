@@ -88,7 +88,7 @@ class SearchSpace(collections.abc.Mapping):
     def compute_prior(self, log: bool = False):
         density_value = 0.0 if log else 1.0
         for hyperparameter in self.hyperparameters.values():
-            if hyperparameter.has_prior:
+            if hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 if log:
                     density_value += hyperparameter.compute_prior(log=True)
                 else:
