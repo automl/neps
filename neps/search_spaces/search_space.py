@@ -349,5 +349,4 @@ class SearchSpace(collections.abc.Mapping):
                     )
                     == 0
                 )
-        # print(equal_values)
         return all(equal_values)

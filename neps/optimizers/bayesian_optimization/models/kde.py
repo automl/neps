@@ -4,11 +4,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from metahyper.api import ConfigResult
+from statsmodels.nonparametric import kernels
 from statsmodels.nonparametric._kernel_base import (
     EstimatorSettings,
     GenericKDE,
     _adjust_shape,
-    kernel_func,
+)
+
+KERNEL_MAP = dict(
+    wangryzin=kernels.wang_ryzin,
+    aitchisonaitken=kernels.aitchison_aitken,
+    gaussian=kernels.gaussian,
 )
 
 
@@ -16,7 +22,8 @@ def weighted_generalized_kernel_prod(
     bw: npt.ArrayLike,
     data: npt.ArrayLike,
     data_predict: npt.ArrayLike,
-    var_type: list[str],
+    var_types: list[str],
+    num_options: list[int],
     data_weights: npt.ArrayLike = None,
     cont_kerneltype: str = "gaussian",
     ordered_kerneltype: str = "wangryzin",
@@ -36,6 +43,8 @@ def weighted_generalized_kernel_prod(
         The evaluation points at which the kernel estimation is performed.
     var_type : str, optional
         The variable type (continuous, ordered, unordered).
+    num_options: list[int]:
+        The number of options for integer and categorical variables
     cont_kerneltype : str, optional
         The kernel used for the continuous variables.
     ordered_kerneltype : str, optional
@@ -60,14 +69,26 @@ def weighted_generalized_kernel_prod(
                 k\\left( \frac{X_{i2}-x_{2}}{h_{2}}\right)\times...\times
                 k\\left(\frac{X_{iq}-x_{q}}{h_{q}}\right)
     """
+    # TODO clean up this mess of a function - I blame statsmodels even though
+    # I basically stole their code / Carl
     kernel_types = dict(c=cont_kerneltype, o=ordered_kerneltype, u=unordered_kerneltype)
 
     K_val = np.empty(data.shape)
-    for dim, vtype in enumerate(var_type):
-        func = kernel_func[kernel_types[vtype]]
-        K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim]) * data_weights
+    for dim, var_type in enumerate(var_types):
+        # Go from the variable type (cont.) --> kernel type (gaussian)
+        kernel_type = kernel_types[var_type]
+        func = KERNEL_MAP[kernel_type]
+        if var_type == "u":
+            K_val[:, dim] = (
+                func(
+                    bw[dim], data[:, dim], data_predict[dim], num_levels=num_options[dim]
+                )
+                * data_weights
+            )
+        else:
+            K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim]) * data_weights
 
-    iscontinuous = np.array([c == "c" for c in var_type])
+    iscontinuous = np.array([c == "c" for c in var_types])
 
     # pseudo-normalization of the density, seems to work so-so
     dens = K_val.prod(axis=1) / np.prod(bw[iscontinuous])
@@ -81,7 +102,7 @@ class KernelDensityEstimator(GenericKDE):
     def __init__(
         self,
         param_types,
-        num_values,
+        num_options: list | None = None,
         logged_params: list | None = None,
         is_fidelity: list | None = None,
         fixed_bw: list | None = None,
@@ -99,6 +120,7 @@ class KernelDensityEstimator(GenericKDE):
 
         Args:
             var_type ([type]): [description]
+            num_options (list optional): The number of options for integer and categorical variables
             bw ([type], optional): [description]. Defaults to None.
             defaults ([type], optional): [description]. Defaults to None.
             data_weights ([type], optional): [description]. Defaults to None.
@@ -108,10 +130,12 @@ class KernelDensityEstimator(GenericKDE):
         # filter away the fitelity
         self.fixed_bw = fixed_bw
         self.is_fidelity = is_fidelity or [False] * len(param_types)
-
         self.fid_array = np.array(is_fidelity)
         self.param_types = np.array(param_types)[~self.fid_array]
-        self.num_values = np.array(num_values)[~self.fid_array]
+        if num_options is None:
+            num_options = [np.inf] * len(param_types)
+
+        self.num_options = np.array(num_options)[~self.fid_array]
         if fixed_bw is not None:
             self.fixed_bw = np.array(fixed_bw)[~self.fid_array]
         self.bandwidth_factor = bandwidth_factor
@@ -212,26 +236,11 @@ class KernelDensityEstimator(GenericKDE):
                     data=self.data,
                     data_predict=X[i, :],
                     data_weights=self.data_weights,
-                    var_type=self.param_types,
+                    var_types=self.param_types,
+                    num_options=self.num_options,
                 )
                 / self.nobs
             )
 
         pdf_est = np.squeeze(pdf_est)
         return np.maximum(pdf_est, self.min_density)
-
-    def visualize_2d(self, ax, grid_points: int = 101, color: str = "k"):
-        assert len(self.param_types) == 2
-        X1 = np.linspace(0, 1, grid_points)
-        X2 = np.linspace(0, 1, grid_points)
-        X1, X2 = np.meshgrid(X1, X2)
-        X = np.append(X1.reshape(-1, 1), X2.reshape(-1, 1), axis=1)
-        Z = self._pdf(X)
-        Z_min, Z_max = -np.abs(Z).max(), np.abs(Z).max()
-
-        Z = Z.reshape(grid_points, grid_points)
-
-        c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
-        ax.set_title("pcolormesh")
-        ax.axis([0, 1, 0, 1])
-        return ax
