@@ -197,24 +197,9 @@ class SuccessiveHalving(BaseOptimizer):
                 ).sort_index()
         return
 
-    def load_results(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+    def _handle_pending_evaluations(
+        self, pending_evaluations: dict[str, ConfigResult]
     ) -> None:
-        """This is basically the fit method.
-
-        Args:
-            previous_results (dict[str, ConfigResult]): [description]
-            pending_evaluations (dict[str, ConfigResult]): [description]
-        """
-        # TODO: Read in rungs using the config id (alternatively, use get/load state)
-        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
-
-        # previous optimization run exists and needs to be loaded
-        self._load_previous_observations(previous_results)
-        self.total_fevals = len(previous_results)
-
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
         for config_id, _ in pending_evaluations.items():
@@ -231,8 +216,10 @@ class SuccessiveHalving(BaseOptimizer):
             else:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
                 self.observed_configs.at[int(_config), "perf"] = None
+        return
 
-        # to account for incomplete evaluations from being promoted --- working on a copy
+    def _get_rungs_state(self):
+        # to account for incomplete evaluations from being promoted --> working on a copy
         _observed_configs = self.observed_configs.copy().dropna(inplace=False)
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
@@ -245,8 +232,9 @@ class SuccessiveHalving(BaseOptimizer):
             self.rung_members_performance[_rung] = _observed_configs.perf[
                 _observed_configs.rung == _rung
             ].values
+        return
 
-        # identifying promotion list per rung
+    def _handle_promotions(self):
         self.promotion_policy.set_state(
             max_rung=self.max_rung,
             members=self.rung_members,
@@ -254,6 +242,32 @@ class SuccessiveHalving(BaseOptimizer):
             **self.promotion_policy_kwargs,
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
+
+    def load_results(
+        self,
+        previous_results: dict[str, ConfigResult],
+        pending_evaluations: dict[str, ConfigResult],
+    ) -> None:
+        """This is basically the fit method.
+
+        Args:
+            previous_results (dict[str, ConfigResult]): [description]
+            pending_evaluations (dict[str, ConfigResult]): [description]
+        """
+        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+
+        # previous optimization run exists and needs to be loaded
+        self._load_previous_observations(previous_results)
+        self.total_fevals = len(previous_results)
+
+        # account for pending evaluations
+        self._handle_pending_evaluations(pending_evaluations)
+
+        # process optimization state and bucket observations per rung
+        self._get_rungs_state()
+
+        # identifying promotion list per rung
+        self._handle_promotions()
         return
 
     def is_promotable(self) -> int | None:
@@ -311,7 +325,6 @@ class SuccessiveHalving(BaseOptimizer):
                     user_priors=self.use_priors,
                     ignore_fidelity=True,
                 )
-
             else:
                 config = self.sampling_policy.sample(**self.sampling_args)
             # TODO: make base rung depend on rung_map

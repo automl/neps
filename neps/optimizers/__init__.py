@@ -14,6 +14,7 @@ from .multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
+from .multi_fidelity_prior.v1 import OurOptimizerV1, OurOptimizerV1_2, OurOptimizerV1_3
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
 
@@ -30,4 +31,8 @@ SearcherMapping: dict[str, Callable] = {
     "asha": AsynchronousSuccessiveHalving,
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
     "multifidelity_tpe": MultiFidelityPriorWeightedTreeParzenEstimator,
+    # custom algorithms
+    "ours_v1": OurOptimizerV1,
+    "ours_v1_2": OurOptimizerV1_2,
+    "ours_v1_3": OurOptimizerV1_3,
 }
