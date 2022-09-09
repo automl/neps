@@ -42,6 +42,49 @@ If tests fail for you on the master:
 
 ## Regression Tests
 
+Regression tests are run on each push to the repository to assure the performance of the optimizers don't degrade.
+
+Currently, regression runs are recorded on JAHS-Bench-201 data for 2 tasks: `cifar10` and `fashion_mnist` and only for optimizers: `random_search`, `bayesian_optimization`, `mf_bayesian_optimization`, `regularized_evolution`.
+This information is stored in the `tests/regression_runner.py` as two lists: `TASKS`, `OPTIMIZERS`.
+The recorded results are stored as a json dictionary in the `tests/losses.json` file.
+
+### Adding new optimizer algorithms
+
+Once a new algorithm is added to NEPS library, we need to first record the performance of the algorithm for 100 optimization runs.
+
+- If the algorithm expects standard loss function (pipeline) and accepts fidelity hyperparameters in pipeline space, then recording results only requires adding the optimizer name into `OPTIMIZERS` list in `tests/regression_runner.py` and running `tests/regression_runner.py`
+
+- In case your algorithm requires custom pipeline and/or pipeline space you can modify the `runner.run_pipeline` and `runner.pipeline_space` attributes of the `RegressionRunner` after initialization (around line `#322` in `tests/regression_runner.py`)
+
+You can verify the optimizer is recorded by rerunning the `regression_runner.py`.
+Now regression test will be run on your new optimizer as well on every push.
+
+### Regression test metrics
+
+For each regression test the algorithm is run 10 times to sample its performance, then they are statistically compared to the 100 recorded runs. We use these 3 boolean metrics to define the performance of the algorithm on any task:
+
+1. [Kolmogorov-Smirnov test for goodness of fit](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kstest.html) - `pvalue` >= 10%
+1. Absolute median distance - bounded within 92.5% confidence range of the expected median distance
+1. Median improvement - Median improvement over the recorded median
+
+Test metrics are run for each `(optimizer, task)` combination separately and then collected.
+The collected metrics are then further combined into 2 metrics
+
+1. Task pass - either both `Kolmogorov-Smirnov test` and `Absolute median distance` test passes or just `Median improvement`
+1. Test aggregate - Sum_over_tasks(`Kolmogorov-Smirnov test` + `Absolute median distance` + 2 * `Median improvement`)
+
+Finally, a test for an optimizer only passes when at least for one of the tasks `Task pass` is true, and `Test aggregate` is higher than 1 + `number of tasks`
+
+### On regression test failures
+
+Regression tests are stochastic by nature, so they might fail occasionally even the algorithm performance didn't degrade.
+In the case of regression test failure, try running it again first, if the problem still persists, then you can contact [Danny Stoll](mailto:stolld@cs.uni-freiburg.de) or [Samir](mailto:garibovs@cs.uni-freiburg.de).
+You can also run tests locally by running:
+
+```
+poetry run pytest -m regression_all
+```
+
 ## Disabling and Skipping Checks etc.
 
 ### Pre-commit: How to not run hooks?

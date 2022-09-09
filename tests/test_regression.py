@@ -2,7 +2,7 @@ import logging
 import os
 
 import pytest
-from regression_runner import SEARCHERS, TASKS, RegressionRunner
+from regression_runner import OPTIMIZERS, TASKS, RegressionRunner
 
 
 @pytest.fixture(autouse=True)
@@ -24,14 +24,14 @@ def no_logs_gte_error(caplog):
 
 
 @pytest.mark.regression_all
-@pytest.mark.parametrize("searcher", SEARCHERS, ids=SEARCHERS)
-def test_regression_all(searcher):
+@pytest.mark.parametrize("optimizer", OPTIMIZERS, ids=OPTIMIZERS)
+def test_regression_all(optimizer):
     test_results = {}
     test_results["test_agg"] = 0
     test_results["task_agg"] = 0
     for task in TASKS:
         ks_test, median_test, median_improvement = RegressionRunner(
-            searcher=searcher, task=task
+            optimizer=optimizer, task=task
         ).test()
 
         test_results[task] = [ks_test, median_test, median_improvement]
@@ -48,6 +48,6 @@ def test_regression_all(searcher):
         if test_results["task_agg"] >= 1 and test_results["test_agg"] >= len(TASKS) + 1
         else 0
     )
-    assert result == 1, f"Test for {searcher} didn't pass: {test_results}"
+    assert result == 1, f"Test for {optimizer} didn't pass: {test_results}"
 
-    logging.info(f"Regression test for {searcher} passed successfully!")
+    logging.info(f"Regression test for {optimizer} passed successfully!")

@@ -14,7 +14,7 @@ import neps
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.search_space import pipeline_space_from_configspace
 
-SEARCHERS = [
+OPTIMIZERS = [
     "random_search",
     "mf_bayesian_optimization",
     "bayesian_optimization",
@@ -50,7 +50,7 @@ class RegressionRunner:
 
     def evaluation_func(self):
         """
-        If the searcher is cost aware, return the evaluation function with cost
+        If the optimizer is cost aware, return the evaluation function with cost
         """
 
         self.benchmark = jahs_bench.Benchmark(
@@ -78,14 +78,14 @@ class RegressionRunner:
             results = self.benchmark(joint_configuration, nepochs=epoch)
             return 100 - results[epoch]["valid-acc"]
 
-        if "cost" in self.searcher:
+        if "cost" in self.optimizer:
             return cost_evaluation
         else:
             return loss_evaluation
 
     def __init__(
         self,
-        searcher: Literal[
+        optimizer: Literal[
             "default",
             "bayesian_optimization",
             "random_search",
@@ -108,7 +108,7 @@ class RegressionRunner:
         Download benchmark, initialize Pipeline space, evaluation function and set paths,
 
         Args:
-            searcher: Choose an optimizer to run, this will also be the name of the run
+            optimizer: Choose an optimizer to run, this will also be the name of the run
             iterations: For how many repetitions to run the optimizations
             task: the dataset name for jahs_bench
             max_evaluations: maximum number of total evaluations
@@ -117,23 +117,23 @@ class RegressionRunner:
         """
 
         self.task = task
-        self.searcher = searcher
+        self.optimizer = optimizer
         if experiment_name:
             experiment_name += "_"
-        self.name = f"{searcher}_{task}_{experiment_name}runs"
+        self.name = f"{optimizer}_{task}_{experiment_name}runs"
         self.iterations = iterations
         self.benchmark = None
         self.run_pipeline = None
         # TODO: convert string paths to Path objects
         self.root_directory = f"./{self.name}"
 
-        # Cost cooling searcher expects budget but none of the others does
-        self.budget = budget if "cost" in searcher else None
+        # Cost cooling optimizer expects budget but none of the others does
+        self.budget = budget if "cost" in optimizer else None
         self.max_evaluations = max_evaluations
 
-        if searcher not in SEARCHERS:
+        if optimizer not in OPTIMIZERS:
             ValueError(
-                f"Regression hasn't been run for {searcher} searcher, "
+                f"Regression hasn't been run for {optimizer} optimizer, "
                 f"please update the SEARCHERS first"
             )
 
@@ -146,11 +146,11 @@ class RegressionRunner:
         self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
 
         # Sample size for tests
-        self.sample_size = 1
+        self.sample_size = 10
 
         # For Regularized evolution sampler ignores fidelity hyperparameters
         # by sampling None for them
-        is_fidelity = self.searcher != "regularized_evolution"
+        is_fidelity = self.optimizer != "regularized_evolution"
         self.pipeline_space["epoch"] = neps.IntegerParameter(
             lower=1, upper=200, is_fidelity=is_fidelity
         )
@@ -180,7 +180,7 @@ class RegressionRunner:
             neps.run(
                 run_pipeline=self.run_pipeline,
                 pipeline_space=self.pipeline_space,
-                searcher=self.searcher,
+                searcher=self.optimizer,
                 budget=self.budget,
                 root_directory=working_directory,
                 max_evaluations_total=self.max_evaluations,
@@ -229,7 +229,7 @@ class RegressionRunner:
                 if LOSS_FILE.exists():
                     with LOSS_FILE.open(mode="r", encoding="utf-8") as f:
                         loss_dict = json.load(f)
-                    self.final_losses = loss_dict[self.searcher][self.task]
+                    self.final_losses = loss_dict[self.optimizer][self.task]
                 else:
                     raise FileNotFoundError(
                         f"Results from the previous runs are not "
@@ -256,7 +256,7 @@ class RegressionRunner:
             neps.run(
                 run_pipeline=self.run_pipeline,
                 pipeline_space=self.pipeline_space,
-                searcher=self.searcher,
+                searcher=self.optimizer,
                 budget=self.budget,
                 root_directory=working_directory,
                 max_evaluations_total=max_evaluations,
@@ -307,34 +307,36 @@ if __name__ == "__main__":
 
     n = 100
     max_evaluations = 150
-    print(losses_dict.keys())
-    for searcher in SEARCHERS:
-        # test_regression_all(searcher)
-        print(losses_dict[searcher].keys())
+    print(f"Optimizers the results are already recorded for: {losses_dict.keys()}")
+    for optimizer in OPTIMIZERS:
+        if optimizer in losses_dict:
+            print(f"For {optimizer} recorded tasks are: {losses_dict[optimizer].keys()}")
         for task in TASKS:
             if (
-                isinstance(losses_dict.get(searcher, None), dict)
-                and len(losses_dict[searcher].get(task, [])) == n
+                isinstance(losses_dict.get(optimizer, None), dict)
+                and len(losses_dict[optimizer].get(task, [])) == n
             ):
                 continue
             else:
-                tester = RegressionRunner(searcher, n, task, max_evaluations=150)
-                tester.run_neps(save=True)
-                best_results = tester.read_results().tolist()
+                runner = RegressionRunner(optimizer, n, task, max_evaluations=150)
+                # runner.pipeline_space = can be customized here...
+                # runner.run_pipeline = can be customized here...
+                runner.run_neps(save=True)
+                best_results = runner.read_results().tolist()
                 minv, maxv = min(best_results), max(best_results)
                 print(
-                    f"For searcher {searcher} on {task}:\n "
+                    f"For optimizer {optimizer} on {task}:\n "
                     f"\tMin of best results: {minv}\n\tMax of best results: {maxv}"
                 )
-                if isinstance(losses_dict.get(searcher, None), dict) and isinstance(
-                    losses_dict[searcher].get(task, None), list
+                if isinstance(losses_dict.get(optimizer, None), dict) and isinstance(
+                    losses_dict[optimizer].get(task, None), list
                 ):
-                    losses_dict[searcher][task] = best_results
-                elif isinstance(losses_dict.get(searcher, None), dict):
+                    losses_dict[optimizer][task] = best_results
+                elif isinstance(losses_dict.get(optimizer, None), dict):
                     update_dict = {task: best_results}
-                    losses_dict[searcher].update(update_dict)
+                    losses_dict[optimizer].update(update_dict)
                 else:
-                    update_dict = {searcher: {task: best_results}}
+                    update_dict = {optimizer: {task: best_results}}
                     losses_dict.update(update_dict)
 
     # print(losses_dict)
