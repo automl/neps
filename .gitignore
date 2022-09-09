@@ -32,3 +32,11 @@ results
 neps_examples/results
 tests_tmpdir
 usage_example
+
+# Regression tests
+!losses.json
+jahs_bench_data/
+*_runs/
+
+# Jupyter
+.ipynb_checkpoints/
