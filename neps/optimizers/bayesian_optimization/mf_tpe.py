@@ -24,7 +24,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         use_priors: bool = False,
         prior_num_evals: float = 1.0,
         good_fraction: float = 0.3334,
-        random_interleave_prob: float = 0.3334,
+        random_interleave_prob: float = 0.1,
         initial_design_size: int = 0,
         prior_as_samples: bool = True,
         pending_as_bad: bool = True,
@@ -78,22 +78,29 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             cost_value_on_error=cost_value_on_error,
         )
         self.pipeline_space = pipeline_space
+        self.good_fraction = good_fraction
         if self.pipeline_space.has_fidelity:
             self.min_fidelity = pipeline_space.fidelity.lower
             self.max_fidelity = pipeline_space.fidelity.upper
+            self.rung_map, self.inverse_rung_map = self._get_rung_maps()
+            self.min_rung = 0
+            self.max_rung = len(self.rung_map) - 1
 
         else:
+            self.min_rung = 0
+            self.max_rung = 0
             self.min_fidelity = 1
             self.max_fidelity = 1
+            self.rung_map, self.inverse_rung_map = self._get_rung_maps()
+
         if initial_design_size == 0:
             self._initial_design_size = len(self.pipeline_space) + 1
         else:
             self._initial_design_size = initial_design_size
 
-        self.num_fidelities = int(self.max_fidelity) + 1 - int(self.min_fidelity)
+        self.num_rungs = len(self.rung_map)
         self.use_priors = use_priors
         self.prior_num_evals = prior_num_evals
-        self.good_fraction = good_fraction
         self._random_interleave_prob = random_interleave_prob
         self._pending_as_bad = pending_as_bad
         self.prior_draws = prior_draws
@@ -106,7 +113,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         # TODO have this read in as part of load_results - it cannot be saved as an attribute when
         # running parallel instances of the algorithm (since the old configs are shared, not instance-specific)
-        self.old_configs_per_fid = [[] for i in range(self.num_fidelities)]
+        self.old_configs_per_fid = [[] for i in range(self.num_rungs)]
         # We assume that the information conveyed per fidelity (and the cost) is linear in the
         # fidelity levels if nothing else is specified
         if surrogate_model != "kde":
@@ -169,6 +176,30 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
+
+    def _get_rung_maps(self, s: int = 0) -> dict:
+        """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
+        eta = round(1 / self.good_fraction)
+        new_min_budget = self.min_fidelity * (1 / eta**s)
+        nrungs = (
+            np.floor(np.log(self.max_fidelity / new_min_budget) / np.log(eta)).astype(int)
+            + 1
+        )
+        _max_budget = self.max_fidelity
+        rung_map = dict()
+        inverse_rung_map = dict()
+        for i in reversed(range(nrungs)):
+            # TODO: add +s to keys and TEST
+            rung_value = (
+                int(_max_budget)
+                if isinstance(self.pipeline_space.fidelity, IntegerParameter)
+                else _max_budget
+            )
+
+            rung_map[i + s] = rung_value
+            inverse_rung_map[rung_value] = i + s
+            _max_budget /= eta
+        return rung_map, inverse_rung_map
 
     def _get_types(self):
         """extracts the needed types from the configspace for faster retrival later
@@ -234,16 +265,15 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pass
 
     def _split_by_fidelity(self, configs, losses):
-        min_fid, max_fid = int(self.min_fidelity), int(self.max_fidelity)
         if self.pipeline_space.has_fidelity:
-
-            configs_per_fidelity = [[] for i in range(min_fid, max_fid + 1)]
-            losses_per_fidelity = [[] for i in range(min_fid, max_fid + 1)]
+            configs_per_fidelity = [[] for i in range(self.num_rungs)]
+            losses_per_fidelity = [[] for i in range(self.num_rungs)]
             # per fidelity, add a list to make it a nested list of lists
             # [[config_A at fid1, config_B at fid1], [config_C at fid2], ...]
             for config, loss in zip(configs, losses):
-                configs_per_fidelity[int(config.fidelity.value - min_fid)].append(config)
-                losses_per_fidelity[int(config.fidelity.value - min_fid)].append(loss)
+                rung = self.inverse_rung_map[int(config.fidelity.value)]
+                configs_per_fidelity[rung].append(config)
+                losses_per_fidelity[rung].append(loss)
             return configs_per_fidelity, losses_per_fidelity
         else:
             return [configs], [losses]
@@ -304,15 +334,13 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         return weight_per_fidelity
 
     def _compute_linear_weights(self):
-        return np.arange(self.min_fidelity, self.max_fidelity + 1) / self.max_fidelity
+        return np.arange(self.min_rung, self.max_rung + 1) / self.num_rungs
 
     def _compute_spearman_weights(self, configs_per_fid, losses_per_fid) -> list:
         min_number_samples = np.round(1 / self.good_fraction).astype(int)
         samples_per_fid = np.array([len(cfgs_fid) for cfgs_fid in configs_per_fid])
         max_comparable_fid = (
-            self.max_fidelity
-            - 1
-            - np.argmax(np.flip(samples_per_fid) >= min_number_samples)
+            self.max_rung - 1 - np.argmax(np.flip(samples_per_fid) >= min_number_samples)
         ).astype(int)
         if max_comparable_fid == 0:
             # if we cannot compare to any otḧer fidelity, return default
@@ -326,7 +354,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
             # compare the rankings of the existing configurations to the ranking
             # of the same configurations at lower rungs
-            spearman = np.ones(self.num_fidelities)
+            spearman = np.ones(self.num_rungs)
             for fid_idx, (cfgs, losses) in enumerate(
                 zip(configs_per_fid, losses_per_fid)
             ):
@@ -344,10 +372,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                         equal_index = np.argmax(is_equal_config)
                         lower_fid_configs[equal_index] = cfg
                         lower_fid_losses[equal_index] = loss
-                # THose fidelities
-                # print('fid', fid_idx)
-                # print('lower_fid_losses', lower_fid_losses)
-                # print('comp_losses', comp_losses)
+
                 spearman[fid_idx] = spearmanr(lower_fid_losses, comp_losses).correlation
                 if fid_idx == max_comparable_fid:
                     break
@@ -355,7 +380,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             spearman = np.clip(spearman, a_min=0, a_max=1)
             # The correlation with Z_max at fidelity Z-k cannot be larger than at Z-k+1
             spearman = np.flip(np.minimum.accumulate(np.flip(spearman)))
-            fidelity_weights = spearman * max_comparable_fid / self.max_fidelity
+            fidelity_weights = spearman * max_comparable_fid / self.max_rung
         return fidelity_weights
 
     def is_init_phase(self) -> bool:
@@ -450,10 +475,11 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
     def _get_hard_promotable(self, configs):
         # count the number of configs that are at or above any given rung
-        configs_per_rung = np.zeros(self.num_fidelities)
+        configs_per_rung = np.zeros(self.num_rungs)
         # check the number of configs per fidelity level
         for config in configs:
-            configs_per_rung[int(config.fidelity.value - self.min_fidelity)] += 1
+            rung = self.inverse_rung_map[int(config.fidelity.value)]
+            configs_per_rung[rung] += 1
 
         cumulative_per_rung = np.flip(np.cumsum(np.flip(configs_per_rung)))
         cumulative_above = np.append(np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0)
@@ -462,10 +488,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         # this defaults to max_fidelity if there is no promotable config (cannot promote from)
         # the top fidelity anyway
-        fid_to_promote = self.num_fidelities - np.argmax(np.flip(rungs_to_promote) > 1)
+        fid_to_promote = self.num_rungs - np.argmax(np.flip(rungs_to_promote) > 1)
 
         # TODO check if this returns empty when it needs to
-        if fid_to_promote == self.max_fidelity:
+        if fid_to_promote == self.max_rung:
             return []
         return [cfg for cfg in configs if cfg.fidelity.value == fid_to_promote]
 
@@ -473,24 +499,25 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         # TODO implement
         # count the number of configs that are at or above any given rung
         new_configs, _ = self._filter_old_configs(configs)
-        configs_per_rung = np.zeros(self.num_fidelities)
+        configs_per_rung = np.zeros(self.num_rungs)
 
         # check the number of configs per fidelity level
         for config in new_configs:
-            configs_per_rung[int(config.fidelity.value - self.min_fidelity)] += 1
-        rungs_to_promote = configs_per_rung * np.power(
-            self.good_fraction, np.flip(np.sqrt(np.arange(self.num_fidelities)))
-        )
-        # import time
-        # time.sleep(1)
-        rungs_to_promote[-1] = 0
-        fids_to_promote = (
-            np.arange(self.num_fidelities)[rungs_to_promote > 1] + self.min_fidelity
-        )
+            rung = self.inverse_rung_map[int(config.fidelity.value)]
+            configs_per_rung[rung] += 1
 
-        if len(fids_to_promote) == 0:
+        # The square root means that we keep the approximate distribution between
+        # rungs as HyperBand
+        rungs_to_promote = configs_per_rung * np.power(
+            self.good_fraction, np.flip(np.sqrt(np.arange(self.num_rungs)))
+        )
+        rungs_to_promote[-1] = 0
+        next_rung_to_promote = np.arange(self.num_rungs)[rungs_to_promote > 1]
+        if len(next_rung_to_promote) == 0:
             return []
-        return [cfg for cfg in new_configs if cfg.fidelity.value in fids_to_promote]
+
+        next_fid_to_promote = self.rung_map[next_rung_to_promote[0]]
+        return [cfg for cfg in new_configs if cfg.fidelity.value == next_fid_to_promote]
 
     def _promote_existing(self, configs_for_promotion):
         # TODO we still need to REMOVE the observation at the lower fidelity
@@ -498,10 +525,11 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         assert len(configs_for_promotion) > 0, "No promotable configurations"
         acq_values = self.__call__(configs_for_promotion, only_lowest_fidelity=False)
         next_config = configs_for_promotion[np.argmax(acq_values)]
-        self.old_configs_per_fid[int(next_config.fidelity.value)].append(
-            next_config.copy()
-        )
-        next_config.fidelity.value += 1
+
+        current_rung = self.inverse_rung_map[next_config.fidelity.value]
+        self.old_configs_per_fid[current_rung].append(next_config.copy())
+        new_fidelity = self.rung_map[current_rung + 1]
+        next_config.fidelity.value = new_fidelity
         return next_config
 
     def get_config_and_ids(  # pylint: disable=no-self-use
@@ -529,12 +557,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config = self._promote_existing(configs_for_promotion)
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
+            config.fidelity.value = self.min_fidelity
 
-            # if an existing config gets proposed again (which is not uncommon towards the end)
-            new_config, _ = self._filter_old_configs([config])
-            if len(new_config) == 0:
-                config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=False, ignore_fidelity=False
-                )
+        # print([hp.value for hp in config.hyperparameters.values()])
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None
