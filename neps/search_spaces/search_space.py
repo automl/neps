@@ -31,20 +31,28 @@ def pipeline_space_from_configspace(
         if isinstance(hyperparameter, CS.Constant):
             parameter = ConstantParameter(value=hyperparameter.value)
         elif isinstance(hyperparameter, CS.CategoricalHyperparameter):
-            parameter = CategoricalParameter(hyperparameter.choices)
+            parameter = CategoricalParameter(
+                hyperparameter.choices,
+                default=hyperparameter.default_value,
+            )
         elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
-            parameter = CategoricalParameter(hyperparameter.sequence)
+            parameter = CategoricalParameter(
+                hyperparameter.sequence,
+                default=hyperparameter.default_value,
+            )
         elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
             parameter = IntegerParameter(
                 lower=hyperparameter.lower,
                 upper=hyperparameter.upper,
                 log=hyperparameter.log,
+                default=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.UniformFloatHyperparameter):
             parameter = FloatParameter(
                 lower=hyperparameter.lower,
                 upper=hyperparameter.upper,
                 log=hyperparameter.log,
+                default=hyperparameter.default_value,
             )
         else:
             raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
