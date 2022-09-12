@@ -8,25 +8,16 @@ import pandas as pd
 from metahyper.api import ConfigResult
 from typing_extensions import Literal
 
-from ...search_spaces.hyperparameters.categorical import CategoricalParameter
-from ...search_spaces.hyperparameters.float import FloatParameter
+from ...search_spaces.hyperparameters.categorical import (
+    CATEGORICAL_CONFIDENCE_SCORES,
+    CategoricalParameter,
+)
+from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES, FloatParameter
 from ...search_spaces.hyperparameters.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
 from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
-
-CUSTOM_FLOAT_CONFIDENCE_SCORES = {
-    "low": 0.5,
-    "medium": 0.25,
-    "high": 0.125,
-}
-
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = {
-    "high": 4,
-    "medium": 1.75,
-    "low": 1.1,
-}
 
 
 class SuccessiveHalving(BaseOptimizer):
@@ -356,10 +347,10 @@ class SuccessiveHalving(BaseOptimizer):
             if self.pipeline_space[k].is_fidelity:
                 continue
             elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
-                confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
-                confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
 
 
