@@ -21,8 +21,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        use_priors: bool = False,
-        prior_num_evals: float = 1.0,
+        use_priors: bool = True,
+        prior_num_evals: float = 3,
         good_fraction: float = 0.3334,
         random_interleave_prob: float = 0.1,
         initial_design_size: int = 0,
@@ -543,7 +543,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config.fidelity.value = self.min_fidelity
         elif self.is_init_phase():
             config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
+                patience=self.patience, user_priors=True, ignore_fidelity=True
             )
             config.fidelity.value = self.min_fidelity
         elif random.random() < self._random_interleave_prob:
@@ -559,6 +559,5 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config = self.acquisition_sampler.sample(self.acquisition)
             config.fidelity.value = self.min_fidelity
 
-        # print([hp.value for hp in config.hyperparameters.values()])
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None

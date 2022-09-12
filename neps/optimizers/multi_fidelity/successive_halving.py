@@ -17,9 +17,9 @@ from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
 from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
 
 CUSTOM_FLOAT_CONFIDENCE_SCORES = {
-    "high": 0.05,
-    "medium": 0.5,
-    "low": 0.9,
+    "low": 0.5,
+    "medium": 0.25,
+    "high": 0.125,
 }
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = {
@@ -380,7 +380,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = "high",
+        prior_confidence: Literal["low", "medium", "high"] = "medium",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -461,7 +461,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = "high",
+        prior_confidence: Literal["low", "medium", "high"] = "medium",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
