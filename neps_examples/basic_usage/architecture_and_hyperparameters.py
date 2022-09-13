@@ -7,7 +7,7 @@ import neps
 def run_pipeline(working_directory, **config):
     optimizer = config["optimizer"]
     learning_rate = config["learning_rate"]
-    model = config["graph"].get_model_for_evaluation(trainable=True)
+    model = config["graph"].to_pytorch()
 
     start = time.time()
 
@@ -39,7 +39,9 @@ nb201_choices = [
 ]
 
 pipeline_space = dict(
-    graph=neps.GraphDenseParameter(num_nodes=4, edge_choices=nb201_choices),
+    graph=neps.GraphDenseParameter(
+        num_nodes=4, edge_choices=nb201_choices, in_channels=3, num_classes=10
+    ),
     optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
     learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
 )
