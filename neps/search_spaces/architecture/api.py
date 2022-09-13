@@ -8,6 +8,7 @@ from torch import nn
 
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
+from .graph import Graph
 from .graph_grammar import GraphGrammar, GraphGrammarMultipleRepetitive
 
 
@@ -124,9 +125,14 @@ def FunctionParameter(**kwargs):
                 self.prune_graph()
 
                 if self._old_build_api:
-                    self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
+                    m = self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
                 elif self._set_recursive_attribute:
-                    _build(self, self._set_recursive_attribute)
+                    m = _build(self, self._set_recursive_attribute)
+
+                if m is not None and isinstance(m, Graph):
+                    self.graph_to_self(m, clear_self=True)
+                elif m is not None and isinstance(m, nn.Module):
+                    return m
 
                 self.compile()
                 self.update_op_names()
