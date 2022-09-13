@@ -121,7 +121,7 @@ class HyperbandWithPriors(Hyperband):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = "high",
+        prior_confidence: Literal["low", "medium", "high"] = "medium",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -179,15 +179,12 @@ class AsynchronousHyperband(Hyperband):
             self.sh_brackets[s] = AsynchronousSuccessiveHalving(**args)
 
     def _get_bracket_to_run(self):
-        """Samples the Async SH bracket to run"""
+        """Samples the ASHA bracket to run"""
         # Sampling distribution from Appendix A in https://arxiv.org/abs/2003.10865
-        # TODO: consider if we need a parameter or option to choose b/w:
-        #  1) loop over the SH brackets
-        #  2) sample an SH bracket (currently)
         K = 5
-        bracket_probs = []
-        for s in range(self.max_rung + 1):
-            bracket_probs.append(self.eta ** (K - s) * (K + 1) / (K - s + 1))
+        bracket_probs = [
+            self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
+        ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
         bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
         return bracket_next
@@ -209,7 +206,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = "high",
+        prior_confidence: Literal["low", "medium", "high"] = "medium",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
