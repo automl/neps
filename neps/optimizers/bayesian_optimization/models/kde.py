@@ -25,7 +25,7 @@ def weighted_generalized_kernel_prod(
     var_types: list[str],
     num_options: list[int],
     data_weights: npt.ArrayLike = None,
-    cont_kerneltype: str = "gaussian",
+    float_kerneltype: str = "gaussian",
     ordered_kerneltype: str = "wangryzin",
     unordered_kerneltype: str = "aitchisonaitken",
     to_sum: bool = True,
@@ -45,7 +45,7 @@ def weighted_generalized_kernel_prod(
         The variable type (continuous, ordered, unordered).
     num_options: list[int]:
         The number of options for integer and categorical variables
-    cont_kerneltype : str, optional
+    float_kerneltype : str, optional
         The kernel used for the continuous variables.
     ordered_kerneltype : str, optional
         The kernel used for the ordered discrete variables.
@@ -71,10 +71,16 @@ def weighted_generalized_kernel_prod(
     """
     # TODO clean up this mess of a function - I blame statsmodels even though
     # I basically stole their code / Carl
-    kernel_types = dict(c=cont_kerneltype, o=ordered_kerneltype, u=unordered_kerneltype)
+    kernel_types = dict(f=float_kerneltype,
+                        o=ordered_kerneltype, u=unordered_kerneltype)
 
     K_val = np.empty(data.shape)
     for dim, var_type in enumerate(var_types):
+        if var_type == 'c':
+            # constants do not affect the density at all
+            K_val[:, dim] = 1
+            continue
+
         # Go from the variable type (cont.) --> kernel type (gaussian)
         kernel_type = kernel_types[var_type]
         func = KERNEL_MAP[kernel_type]
@@ -86,12 +92,19 @@ def weighted_generalized_kernel_prod(
                 * data_weights
             )
         else:
-            K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim]) * data_weights
+            test_data = K_val[:, dim] = func(
+                bw[dim], data[:, dim], data_predict[dim])
+            if np.isnan(test_data).sum() > 0:
+                raise SystemError('Test data is NaN')
+            if np.isnan(data_weights).sum() > 0:
+                raise SystemError('data_weights is NaN', data_weights)
+            K_val[:, dim] = func(bw[dim], data[:, dim],
+                                 data_predict[dim]) * data_weights
 
-    iscontinuous = np.array([c == "c" for c in var_types])
+    isfloat = np.array([f == "f" for f in var_types])
 
     # pseudo-normalization of the density, seems to work so-so
-    dens = K_val.prod(axis=1) / np.prod(bw[iscontinuous])
+    dens = K_val.prod(axis=1) / np.prod(bw[isfloat])
     if to_sum:
         return dens.sum(axis=0)
     else:
@@ -106,7 +119,7 @@ class KernelDensityEstimator(GenericKDE):
         logged_params: list | None = None,
         is_fidelity: list | None = None,
         fixed_bw: list | None = None,
-        bandwidth_factor: float = 1,
+        bandwidth_factor: float = 3,
         min_bw: float = 1e-3,
         prior=None,
         prior_weight: float = 0.0,
@@ -147,6 +160,7 @@ class KernelDensityEstimator(GenericKDE):
         self.estimator_kwargs = estimator_kwargs or {}
         # TODO consider the logged parameters when fitting the KDE
         self.logged_params = logged_params
+        self.num_constant_dims = np.sum(np.array(param_types) == 'c')
 
     def fit(
         self,
@@ -160,9 +174,13 @@ class KernelDensityEstimator(GenericKDE):
             data_weights = np.asarray(config_weights)
 
         self.data = self._convert_configs_to_numpy(configs)
-        self.data_weights = np.sqrt(data_weights) / np.sum(np.sqrt(data_weights))
+        self.data_weights = np.sqrt(
+            data_weights) / np.sum(np.sqrt(data_weights))
         self.nobs, self.k_vars = np.shape(self.data)
 
+        # remove the dimensions from the data that are just constant
+        # which means that the KDE bandwith is decided without considering said dimension
+        self.k_vars -= self.num_constant_dims
         if fixed_bw is not None:
             self.bw = np.array(fixed_bw)
             return
@@ -193,7 +211,8 @@ class KernelDensityEstimator(GenericKDE):
             np.ndarray: N x D normalized numpy array of configs
         """
         configs_np = np.array(
-            [[x_.normalized().value for x_ in list(x.values())] for x in configs]
+            [[x_.normalized().value for x_ in list(x.values())]
+             for x in configs]
         )
         if drop_fidelity:
             return configs_np[:, ~self.fid_array]
@@ -225,7 +244,7 @@ class KernelDensityEstimator(GenericKDE):
         .. math:: K_{h}(X_{i},X_{j}) =
             \\prod_{s=1}^{q}h_{s}^{-1}k\\left(\frac{X_{is}-X_{js}}{h_{s}}\right)
         """
-        X = _adjust_shape(X, self.k_vars)
+        X = _adjust_shape(X, self.k_vars + self.num_constant_dims)
 
         pdf_est = []
         for i in range(np.shape(X)[0]):
