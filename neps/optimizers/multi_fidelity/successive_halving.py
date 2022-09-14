@@ -299,6 +299,20 @@ class SuccessiveHalving(BaseOptimizer):
             val = len(_observed_configs) <= self._initial_design_size
         return val
 
+    def sample_new_config(
+        self,
+        **kwargs,  # pylint: disable=unused-argument
+    ):
+        if self.sampling_policy is None:
+            config = self.pipeline_space.sample(
+                patience=self.patience,
+                user_priors=self.use_priors,
+                ignore_fidelity=True,
+            )
+        else:
+            config = self.sampling_policy.sample(**self.sampling_args)
+        return config
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -319,16 +333,9 @@ class SuccessiveHalving(BaseOptimizer):
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
-            if self.sampling_policy is None:
-                config = self.pipeline_space.sample(
-                    patience=self.patience,
-                    user_priors=self.use_priors,
-                    ignore_fidelity=True,
-                )
-            else:
-                config = self.sampling_policy.sample(**self.sampling_args)
             # TODO: make base rung depend on rung_map
             rung_id = self.min_rung
+            config = self.sample_new_config(rung=rung_id)
             fidelity_value = self.rung_map[rung_id]
             config.fidelity.value = fidelity_value
 

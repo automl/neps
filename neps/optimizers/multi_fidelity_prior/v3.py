@@ -84,8 +84,9 @@ class OurOptimizerV3(AsynchronousSuccessiveHalving):
         ):
             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
             config = deepcopy(row["config"])
-            if rung == 0:
-                rung += 1
+            # if promotion check passes AND rung is 0 then a config from rung 0 is
+            # being promoted to rung 1 --> handles rung = rung_to_promote
+            rung = rung + 1 if rung == 0 else rung
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
