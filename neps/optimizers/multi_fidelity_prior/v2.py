@@ -10,9 +10,9 @@ from ..multi_fidelity.sampling_policy import FixedPriorPolicy, RandomUniformPoli
 
 
 class OurOptimizerV2(AsynchronousHyperband):
-    """Implements a Prior Weighted Promotion Policy over Asynchronous Hyperband.
+    """Implements a modified Asynchronous Hyperband.
 
-    Performs promotions by ranking configs by their performances weighted by prior-score.
+    Adapts the sampling distribution from which ASHA brackets to run are sampled.
     """
 
     def __init__(
@@ -82,8 +82,8 @@ class OurOptimizerV2(AsynchronousHyperband):
             avg_mass_gain = mass_to_redistribute / (
                 len(bracket_probs) - num_inactive_brackets
             )
-            for i in range(len(bracket_probs)):
-                if bracket_probs[i] == 0:
+            for i, prob in enumerate(bracket_probs):  # range(len(bracket_probs)):
+                if prob == 0:
                     # if rung i has not seen promotions, rung i+1 shouldn't too
                     continue
                 bracket_probs[i] += avg_mass_gain
@@ -151,8 +151,8 @@ class OurOptimizerV2_3(OurOptimizerV2_2):
             avg_mass_gain = mass_to_redistribute / (
                 len(bracket_probs) - num_inactive_brackets
             )
-            for i in range(len(bracket_probs)):
-                if bracket_probs[i] == 0:
+            for i, prob in enumerate(bracket_probs):  # range(len(bracket_probs)):
+                if prob == 0:
                     # if rung i has not seen promotions, rung i+1 shouldn't too
                     continue
                 bracket_probs[i] += avg_mass_gain
