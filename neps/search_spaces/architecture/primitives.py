@@ -462,8 +462,8 @@ class ResNetBasicblock(AbstractPrimitive):
             self.downsample = None
 
     def forward(self, x):
-        basicblock = self.conv_a(x, None)
-        basicblock = self.conv_b(basicblock, None)
+        basicblock = self.conv_a(x)
+        basicblock = self.conv_b(basicblock)
         residual = self.downsample(x) if self.downsample is not None else x
         return residual + basicblock
 

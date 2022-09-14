@@ -1484,12 +1484,14 @@ class CoreGraphGrammar(Graph):
 
         return composed_function
 
-    def graph_to_self(self, graph: nx.DiGraph):
+    def graph_to_self(self, graph: nx.DiGraph, clear_self: bool = True):
         """Copies graph to self
 
         Args:
             graph (nx.DiGraph): graph
         """
+        if clear_self:
+            self.clear()
         for u, v, data in graph.edges(data=True):
             self.add_edge(u, v)  # type: ignore[union-attr]
             self.edges[u, v].update(data)  # type: ignore[union-attr]
