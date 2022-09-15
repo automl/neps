@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import typing
 from copy import deepcopy
 
@@ -37,7 +38,34 @@ class SuccessiveHalving(BaseOptimizer):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
+        random_interleave_prob: float = 0.0,
     ):
+        """Initialise an SH bracket.
+
+        Args:
+            pipeline_space: Space in which to search
+            budget: Maximum budget
+            eta: The reduction factor used by SH
+            early_stopping_rate: Determines the number of rungs in an SH bracket
+                Choosing 0 creates maximal rungs given the fidelity bounds
+            initial_design_type: Type of initial design to switch to BO
+                Legacy parameter from NePS BO design. Could be used to extend to MF-BO.
+            use_priors: Allows random samples to be generated from a default
+                Samples generated from a Gaussian centered around the default value
+            sampling_policy: The type of sampling procedure to use
+            promotion_policy: The type of promotion procedure to use
+            loss_value_on_error: Setting this and cost_value_on_error to any float will
+                supress any error during bayesian optimization and will use given loss
+                value instead. default: None
+            cost_value_on_error: Setting this and loss_value_on_error to any float will
+                supress any error during bayesian optimization and will use given cost
+                value instead. default: None
+            logger: logger object, or None to use the neps logger
+            prior_confidence: The range of confidence to have on the prior
+                The higher the confidence, the smaller is the standard deviation of the
+                prior distribution centered around the default
+            random_interleave_prob: Chooses the fraction of samples from random vs prior
+        """
         super().__init__(
             pipeline_space=pipeline_space,
             budget=budget,
@@ -45,6 +73,10 @@ class SuccessiveHalving(BaseOptimizer):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
         )
+        if random_interleave_prob < 0 or random_interleave_prob > 1:
+            raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
+        self.random_interleave_prob = random_interleave_prob
+
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper
         self.eta = eta
@@ -333,9 +365,16 @@ class SuccessiveHalving(BaseOptimizer):
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
-            # TODO: make base rung depend on rung_map
             rung_id = self.min_rung
-            config = self.sample_new_config(rung=rung_id)
+            # using random instead of np.random to be consistent with NePS BO
+            if random.random() < self.random_interleave_prob:
+                config = self.pipeline_space.sample(
+                    patience=self.patience,
+                    user_priors=False,  # sample uniformly random
+                    ignore_fidelity=True,
+                )
+            else:
+                config = self.sample_new_config(rung=rung_id)
             fidelity_value = self.rung_map[rung_id]
             config.fidelity.value = fidelity_value
 
@@ -379,6 +418,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -393,6 +433,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
 
@@ -413,6 +454,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -427,6 +469,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
     def is_promotable(self) -> int | None:
@@ -460,6 +503,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -474,6 +518,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
 

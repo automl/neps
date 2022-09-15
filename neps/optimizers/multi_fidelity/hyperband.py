@@ -30,6 +30,7 @@ class Hyperband(SuccessiveHalving):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
+        random_interleave_prob: float = 0.0,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -44,6 +45,7 @@ class Hyperband(SuccessiveHalving):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
@@ -122,6 +124,7 @@ class HyperbandWithPriors(Hyperband):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -135,6 +138,7 @@ class HyperbandWithPriors(Hyperband):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
 
@@ -157,6 +161,7 @@ class AsynchronousHyperband(Hyperband):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
+        random_interleave_prob: float = 0.0,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -170,6 +175,7 @@ class AsynchronousHyperband(Hyperband):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
@@ -207,6 +213,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -220,4 +227,5 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
