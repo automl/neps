@@ -90,14 +90,7 @@ class OurOptimizerV3(AsynchronousSuccessiveHalving):
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
-            if self.sampling_policy is None:
-                config = self.pipeline_space.sample(
-                    patience=self.patience,
-                    user_priors=self.use_priors,
-                    ignore_fidelity=True,
-                )
-            else:
-                config = self.sampling_policy.sample(**self.sampling_args)
+            config = self.sample_new_config(rung=rung)
             previous_config_id = None
             config_id = f"{len(self.observed_configs)}_{rung}"
 
