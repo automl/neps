@@ -141,8 +141,12 @@ class OurOptimizerV4_SH(SuccessiveHalvingWithPriors):
             for _ in range(self.rung_visits[rung] - 1):
                 p_x = polyak(p_x, u_x, self.alpha)
             scores.append(p_x)
-        idx = np.argmax(scores)
-        config = configs[idx]
+
+        # sampling as a discrete distribution where the probability mass is given by the
+        # normalized score of the polyak average prior score
+        scores = np.array(scores) / np.sum(scores)
+        config = configs[np.random.choice(range(len(configs)), p=scores)]
+
         return config
 
 
@@ -314,8 +318,12 @@ class OurOptimizerV4_ASHA_HB(OurOptimizerV4_HB):
 
     def _get_bracket_to_run(self):
         """Samples the ASHA bracket to run"""
-        # Sampling distribution from Appendix A in https://arxiv.org/abs/2003.10865
-        K = 5
+        # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
+        # Adapting the distribution based on the current optimization state
+        # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
+        # and thus K \in [1, ..., max_rung, ...]
+        # Since in this version, we see the full SH rung, we fix the K to max_rung
+        K = self.max_rung
         bracket_probs = [
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
@@ -426,7 +434,7 @@ class OurOptimizerV4_V3_2(OurOptimizerV3_2):
             scores.append(p_x)
 
         # sampling as a discrete distribution where the probability mass is given by the
-        # normalized score of the polak average prior score
+        # normalized score of the polyak average prior score
         scores = np.array(scores) / np.sum(scores)
         config = configs[np.random.choice(range(len(configs)), p=scores)]
 

@@ -55,8 +55,8 @@ class OurOptimizerV3(AsynchronousSuccessiveHalving):
         # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
         # Adapting the distribution based on the current optimization state
         # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
-        # and thus K \in [1, max_rung]
-        # Since in this version, we see the full SH rung, we fix the K to the upper limit
+        # and thus K \in [1, ..., max_rung, ...]
+        # Since in this version, we see the full SH rung, we fix the K to max_rung
         K = self.max_rung
         rung_probs = [
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
