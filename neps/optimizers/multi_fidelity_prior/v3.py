@@ -54,7 +54,10 @@ class OurOptimizerV3(AsynchronousSuccessiveHalving):
         """Samples the rung to run"""
         # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
         # Adapting the distribution based on the current optimization state
-        K = 5
+        # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
+        # and thus K \in [1, max_rung]
+        # Since in this version, we see the full SH rung, we fix the K to the upper limit
+        K = self.max_rung
         rung_probs = [
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
@@ -74,19 +77,15 @@ class OurOptimizerV3(AsynchronousSuccessiveHalving):
             # call ASHA till every rung has seen at least one promoted configuration
             return super().get_config_and_ids()
         rung = self._get_rung_to_run()
-        # becomes negative only when `rung` is 0
-        # safe to assume 0 here as this class deals only with a full SH bracket
-        rung_to_promote = max(0, rung - 1)
+        # becomes negative only when sampled `rung` is 0
+        rung_to_promote = rung - 1
 
         if (
-            rung_to_promote in self.rung_promotions
+            rung_to_promote in self.rung_promotions  # when rung=0 and rung_to_promote=-1
             and self.rung_promotions[rung_to_promote]
         ):
             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
             config = deepcopy(row["config"])
-            # if promotion check passes AND rung is 0 then a config from rung 0 is
-            # being promoted to rung 1 --> handles rung = rung_to_promote
-            rung = rung + 1 if rung == 0 else rung
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
