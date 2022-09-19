@@ -28,6 +28,7 @@ class OurOptimizerV2(AsynchronousHyperband):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -41,6 +42,7 @@ class OurOptimizerV2(AsynchronousHyperband):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
     def _get_bracket_to_run(self):
@@ -108,6 +110,7 @@ class OurOptimizerV2_2(OurOptimizerV2):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -121,6 +124,7 @@ class OurOptimizerV2_2(OurOptimizerV2):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
 

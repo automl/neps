@@ -65,6 +65,7 @@ class OurOptimizerV4_SH(SuccessiveHalvingWithPriors):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -78,6 +79,7 @@ class OurOptimizerV4_SH(SuccessiveHalvingWithPriors):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
         # keeps a count of number of function evaluations made at each rung level
         self.rung_visits: Dict[int, int] = dict()
@@ -164,6 +166,7 @@ class OurOptimizerV4_ASHA(OurOptimizerV4_SH):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -177,6 +180,7 @@ class OurOptimizerV4_ASHA(OurOptimizerV4_SH):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
 
     def is_promotable(self) -> Union[int, None]:
@@ -207,6 +211,7 @@ class OurOptimizerV4_HB(OurOptimizerV4_SH):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -220,6 +225,7 @@ class OurOptimizerV4_HB(OurOptimizerV4_SH):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
@@ -296,6 +302,7 @@ class OurOptimizerV4_ASHA_HB(OurOptimizerV4_HB):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -308,6 +315,7 @@ class OurOptimizerV4_ASHA_HB(OurOptimizerV4_HB):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
@@ -355,6 +363,7 @@ class OurOptimizerV4_V3_2(OurOptimizerV3_2):
         cost_value_on_error: float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -367,6 +376,7 @@ class OurOptimizerV4_V3_2(OurOptimizerV3_2):
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
         )
         # need to put stuff from OurOptimizerV4_SH for sampling and polyak decay
         # the asynchronous scheduling comes from OurOptimizerV3_2
