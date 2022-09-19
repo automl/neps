@@ -133,7 +133,7 @@ class OurOptimizerV4_SH(SuccessiveHalvingWithPriors):
             ]
         )
 
-        rung = kwargs["rung"] if "rung" in kwargs else 0
+        rung = kwargs["rung"] if "rung" in kwargs else self.min_rung
         # polyak averaging --- slowly going towards uniform distribution
         polyak = lambda p_x, u_x, alpha: alpha * p_x + (1 - alpha) * u_x
         scores = []
@@ -431,7 +431,7 @@ class OurOptimizerV4_V3_2(OurOptimizerV3_2):
             ]
         )
 
-        rung = kwargs["rung"] if "rung" in kwargs else 0
+        rung = kwargs["rung"] if "rung" in kwargs else self.min_rung
 
         # polyak averaging --- slowly going towards uniform distribution
         polyak = lambda p_x, u_x, alpha: alpha * p_x + (1 - alpha) * u_x
