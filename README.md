@@ -40,7 +40,7 @@ Using `neps` always follows the same pattern:
 1. Define a search space `pipeline_space` of architectures/hyperparameters
 1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
-In code the usage pattern can look like this:
+In code, the usage pattern can look like this:
 
 ```python
 import neps
