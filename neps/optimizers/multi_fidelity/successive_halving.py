@@ -335,6 +335,7 @@ class SuccessiveHalving(BaseOptimizer):
         self,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        # Samples configuration from policy or random
         if self.sampling_policy is None:
             config = self.pipeline_space.sample(
                 patience=self.patience,
