@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from typing import Iterable
+from copy import deepcopy
 
 import numpy as np
 import torch
@@ -32,7 +33,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self,
         pipeline_space: SearchSpace,
         use_priors: bool = True,
-        prior_num_evals: float = 5,
+        prior_num_evals: float = 2.5,
         good_fraction: float = 0.3334,
         random_interleave_prob: float = 0.1,
         initial_design_size: int = 0,
@@ -40,6 +41,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pending_as_bad: bool = True,
         fidelity_weighting: Literal["linear", "spearman"] = "spearman",
         surrogate_model: str = "kde",
+        good_model_bw_factor: int = 1,
         joint_kde_modelling: bool = False,
         threshold_improvement: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
@@ -57,7 +59,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         Args:
             pipeline_space: Space in which to search
-            prior_num_evals (float, optional): [description]. Defaults to 1.0.
+            prior_num_evals (float, optional): [description]. Defaults to 2.5.
             good_fraction (float, optional): [description]. Defaults to 0.333.
             random_interleave_prob: Frequency at which random configurations are sampled
                 instead of configurations from the acquisition strategy.
@@ -150,7 +152,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         surrogate_model_args["num_options"] = num_options
         surrogate_model_args["is_fidelity"] = is_fidelity
         surrogate_model_args["logged_params"] = logged_params
-
+        good_model_args = deepcopy(surrogate_model_args)
+        good_model_args["bandwidth_factor"] = good_model_bw_factor
         if self.pipeline_space.has_prior and use_priors:
             if prior_as_samples:
                 self.prior_samples = [
@@ -170,7 +173,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 SurrogateModelMapping,
                 surrogate_model,
                 name="surrogate model",
-                kwargs=surrogate_model_args,
+                kwargs=good_model_args,
             ),
             "bad": instance_from_map(
                 SurrogateModelMapping,
@@ -277,7 +280,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         self, x: Iterable, asscalar: bool = False, only_lowest_fidelity=True
     ) -> np.ndarray | torch.Tensor | float:
         """
-        Return the negative probability of / expected improvement at the query point
+        Return the negative expected improvement at the query point
         """
         # this is to only make the lowest fidelity viable
         if only_lowest_fidelity:
@@ -398,44 +401,42 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             # if we cannot compare to any otḧer fidelity, return default
             return self._compute_linear_weights()
         else:
-            # get the ranking of the configurations at the top fidelity
-            comp_configs = configs_per_fid[max_comparable_fid]
-
-            # ranks the configs at the top comparable fidelity 1 to N
-            comp_losses = losses_per_fid[max_comparable_fid]
-
             # compare the rankings of the existing configurations to the ranking
             # of the same configurations at lower rungs
             spearman = np.ones(self.num_rungs)
             for fid_idx, (cfgs, losses) in enumerate(
                 zip(configs_per_fid, losses_per_fid)
             ):
-                lower_fid_configs = [None] * len(comp_configs)
-                lower_fid_losses = [None] * len(comp_configs)
-                for cfg, loss in zip(cfgs, losses):
-                    # check if the config at the lower fidelity level is in the comparison set
-                    # TODO make this more efficient - probably embarrasingly slof for now
-                    # with the triple-nested loop (although number of configs per level is pretty low)
-                    is_equal_config = [
-                        cfg.is_equal_value(comp_cfg, include_fidelity=False)
-                        for comp_cfg in comp_configs
-                    ]
-                    if any(is_equal_config):
-                        equal_index = np.argmax(is_equal_config)
-                        lower_fid_configs[equal_index] = cfg
-                        lower_fid_losses[equal_index] = loss
+                if fid_idx >= max_comparable_fid:
+                    spearman[fid_idx] = 1
+                
+                else:
+                    comp_losses = losses_per_fid[fid_idx + 1]
+                    comp_configs = configs_per_fid[fid_idx + 1]
 
-                spearman[fid_idx] = spearmanr(
-                    lower_fid_losses, comp_losses).correlation
-                if fid_idx == max_comparable_fid:
-                    break
-
+                    lower_fid_configs = [None] * len(comp_configs)
+                    lower_fid_losses = [None] * len(comp_configs)
+                    for cfg, loss in zip(cfgs, losses):
+                        # check if the config at the lower fidelity level is in the comparison set
+                        # TODO make this more efficient - probably embarrasingly slof for now
+                        # with the triple-nested loop (although number of configs per level is pretty low)
+                        is_equal_config = [
+                            cfg.is_equal_value(comp_cfg, include_fidelity=False)
+                            for comp_cfg in comp_configs
+                        ]
+                        if any(is_equal_config):
+                            equal_index = np.argmax(is_equal_config)
+                            lower_fid_configs[equal_index] = cfg
+                            lower_fid_losses[equal_index] = loss
+                    
+                    spearman[fid_idx] = spearmanr(
+                        lower_fid_losses, comp_losses).correlation
+                    
             spearman = np.clip(spearman, a_min=0, a_max=1)
             # The correlation with Z_max at fidelity Z-k cannot be larger than at Z-k+1
-            spearman = np.flip(np.minimum.accumulate(np.flip(spearman)))
+            spearman = np.flip(np.multiply.accumulate(np.flip(spearman)))
             fidelity_weights = spearman * \
                 (max_comparable_fid + 1) / (self.max_rung + 1)
-
         return fidelity_weights
 
     def is_init_phase(self) -> bool:
@@ -589,7 +590,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         acq_values = self.__call__(
             configs_for_promotion, only_lowest_fidelity=False)
         next_config = configs_for_promotion[np.argmax(acq_values)]
-
         current_rung = self.inverse_rung_map[next_config.fidelity.value]
         self.old_configs_per_fid[current_rung].append(next_config.copy())
         new_fidelity = self.rung_map[current_rung + 1]
