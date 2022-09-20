@@ -26,6 +26,7 @@ from .multi_fidelity_prior.v4 import (
     OurOptimizerV4_SH,
     OurOptimizerV4_V3_2,
 )
+from .multi_fidelity_prior.v5 import OurOptimizerV5
 
 ###
 from .random_search.optimizer import RandomSearch
@@ -57,4 +58,5 @@ SearcherMapping: dict[str, Callable] = {
     "ours_v4_asha": OurOptimizerV4_ASHA,
     "ours_v4_asha_hb": OurOptimizerV4_ASHA_HB,
     "ours_v4_v3_2": OurOptimizerV4_V3_2,
+    "ours_v5": OurOptimizerV5,
 }
