@@ -119,12 +119,12 @@ class KernelDensityEstimator(GenericKDE):
         logged_params: list | None = None,
         is_fidelity: list | None = None,
         fixed_bw: list | None = None,
-        bandwidth_factor: float = 3,
+        bandwidth_factor: float = 0.5,
         min_bw: float = 1e-3,
         prior=None,
         prior_weight: float = 0.0,
         prior_as_samples: bool | list = False,
-        min_density: float = 1e-12,
+        min_density: float = 1e-8,
         **estimator_kwargs: dict,
     ):
         """
@@ -263,3 +263,19 @@ class KernelDensityEstimator(GenericKDE):
 
         pdf_est = np.squeeze(pdf_est)
         return np.maximum(pdf_est, self.min_density)
+
+    def visualize_2d(self, ax, grid_points: int = 101, color: str = "k"):
+        assert len(self.param_types) == 2
+        X1 = np.linspace(0, 1, grid_points)
+        X2 = np.linspace(0, 1, grid_points)
+        X1, X2 = np.meshgrid(X1, X2)
+        X = np.append(X1.reshape(-1, 1), X2.reshape(-1, 1), axis=1)
+        Z = self._pdf(X)
+        Z_min, Z_max = -np.abs(Z).max(), np.abs(Z).max()
+
+        Z = Z.reshape(grid_points, grid_points)
+
+        c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
+        ax.set_title("pcolormesh")
+        ax.axis([0, 1, 0, 1])
+        return ax
