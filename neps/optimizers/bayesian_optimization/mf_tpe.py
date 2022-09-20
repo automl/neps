@@ -35,15 +35,16 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         use_priors: bool = True,
         prior_num_evals: float = 2.5,
         good_fraction: float = 0.3334,
-        random_interleave_prob: float = 0.1,
+        random_interleave_prob: float = 0.0,
         initial_design_size: int = 0,
         prior_as_samples: bool = True,
         pending_as_bad: bool = True,
         fidelity_weighting: Literal["linear", "spearman"] = "spearman",
         surrogate_model: str = "kde",
-        good_model_bw_factor: int = 1,
+        good_model_bw_factor: int = 1.5,
         joint_kde_modelling: bool = False,
         threshold_improvement: bool = True,
+        promote_from_acq: bool = True,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
         prior_draws: int = 1000,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
@@ -109,9 +110,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             self.rung_map, self.inverse_rung_map = self._get_rung_maps()
 
         if initial_design_size == 0:
-            self._initial_design_size = len(self.pipeline_space) + 1
+            self._initial_design_size = len(self.pipeline_space) * np.round(1 / self.good_fraction).astype(int)
         else:
             self._initial_design_size = initial_design_size
+        self.promote_from_acq = promote_from_acq
 
         self.num_rungs = len(self.rung_map)
         self.use_priors = use_priors
@@ -277,7 +279,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         return types, num_values, logs, is_fidelity
 
     def __call__(
-        self, x: Iterable, asscalar: bool = False, only_lowest_fidelity=True
+        self, x: Iterable, asscalar: bool = False, only_lowest_fidelity=True, only_good=False
     ) -> np.ndarray | torch.Tensor | float:
         """
         Return the negative expected improvement at the query point
@@ -289,11 +291,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                          ) == self.rung_map[self.min_rung]
             )
             return (
-                is_lowest_fidelity
-                * (np.log(self.surrogate_models["good"].pdf(x))
-                   - np.log(self.surrogate_models["bad"].pdf(x)))
+                ((np.log(self.surrogate_models["good"].pdf(x))
+                   - np.log(self.surrogate_models["bad"].pdf(x))))
             )
-        else:
+        else:    
             return np.log(self.surrogate_models["good"].pdf(x))\
                 - np.log(self.surrogate_models["bad"].pdf(x))
 
@@ -462,6 +463,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         filtered_y = np.array(train_y)[filtered_indices].tolist()
 
         self.train_x_configs = train_x_configs
+        self.train_y = train_y
+        
         self._pending_evaluations = pending_evaluations
         self._num_train_x = len(self.train_x_configs)
         if not self.is_init_phase():
@@ -511,6 +514,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             self.surrogate_models["bad"].fit(
                 bad_configs, fixed_bw=fixed_bw, config_weights=bad_weights
             )
+            #self.visualize_acq(previous_results, weight_per_fidelity)
 
     def _filter_old_configs(self, configs):
         new_configs = []
@@ -587,8 +591,13 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         # TODO we still need to REMOVE the observation at the lower fidelity
         # i.e. give it zero weight in the KDE, and ensure the count is correct
         assert len(configs_for_promotion) > 0, "No promotable configurations"
-        acq_values = self.__call__(
-            configs_for_promotion, only_lowest_fidelity=False)
+        if self.promote_from_acq:
+            acq_values = self.__call__(
+                configs_for_promotion, only_lowest_fidelity=False)
+        else:
+            acq_values = self.__call__(
+                configs_for_promotion, only_lowest_fidelity=False, only_good=True)
+
         next_config = configs_for_promotion[np.argmax(acq_values)]
         current_rung = self.inverse_rung_map[next_config.fidelity.value]
         self.old_configs_per_fid[current_rung].append(next_config.copy())
@@ -629,3 +638,65 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None
+
+    def visualize_2d(
+        self, ax, previous_results, grid_points: int = 101, color: str = "k"
+    ):
+        X1 = np.linspace(0, 1, grid_points)
+        X2 = np.linspace(0, 1, grid_points)
+        X1, X2 = np.meshgrid(X1, X2)
+        X = np.append(X1.reshape(-1, 1), X2.reshape(-1, 1), axis=1)
+        Z = self.surrogate_models["good"]._pdf(X) / self.surrogate_models["bad"]._pdf(X)
+        Z_min, Z_max = -np.abs(Z).max(), np.abs(Z).max()
+
+        Z = Z.reshape(grid_points, grid_points)
+
+        c = ax.pcolormesh(X1, X2, Z, cmap=color, vmin=Z_min, vmax=Z_max)
+        ax.set_title("pcolormesh")
+        # set the limits of the plot to the limits of the data
+        ax.axis([0, 1, 0, 1])
+        train_x_configs = [el.config for el in previous_results.values()]
+        np_X = self.surrogate_models["good"]._convert_configs_to_numpy(train_x_configs)
+        ax.scatter(np_X[:, 0], np_X[:, 1], s=100)
+        # ax.scatter(np_X[-1, 0], np_X[-1, 1], s=100, c='yellow')
+
+        return ax
+
+    def visualize_acq(self, previous_results, weights_per_fidelity):
+        import matplotlib.pyplot as plt
+        train_x_configs = [el.config for el in previous_results.values()]
+        train_y = [self.get_loss(el.result) for el in previous_results.values()]
+
+        filtered_configs, filtered_indices = self._filter_old_configs(
+            train_x_configs)
+        configs_per_fid, losses_per_fid = self._split_by_fidelity(
+                train_x_configs, train_y
+            )
+        filtered_y = np.array(train_y)[filtered_indices].tolist()
+        filtered_configs_per_fid, filtered_losses_per_fid = self._split_by_fidelity(
+            filtered_configs, filtered_y
+        )
+        weight_per_fidelity = self.compute_fidelity_weights(
+            configs_per_fid, losses_per_fid
+        )
+        good_configs, bad_configs, good_weights, bad_weights = self._split_configs(
+            filtered_configs_per_fid, filtered_losses_per_fid, weight_per_fidelity
+        )
+        good_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
+            good_configs
+        )
+        bad_configs_np = self.surrogate_models["all"]._convert_configs_to_numpy(
+            bad_configs
+        )
+
+        fig, axes = plt.subplots(1, 3, figsize=(16, 9))
+        axes[0] = self.surrogate_models["good"].visualize_2d(axes[0], color="RdBu")
+        axes[0].scatter(
+            good_configs_np[:, 0], good_configs_np[:, 1], c=good_weights, cmap='spring', s=50, marker="x"
+        )
+        axes[1] = self.surrogate_models["bad"].visualize_2d(axes[1], color="RdBu_r")
+        axes[1].scatter(
+            bad_configs_np[:, 0], bad_configs_np[:, 1], c=bad_weights, s=50, cmap='spring', marker="x"
+        )
+        axes[2] = self.visualize_2d(axes[2], previous_results, color="BrBG")
+        plt.show()
