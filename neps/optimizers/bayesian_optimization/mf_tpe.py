@@ -11,20 +11,23 @@ from typing_extensions import Literal
 
 from ...search_spaces import (
     CategoricalParameter,
+    ConstantParameter,
     FloatParameter,
     IntegerParameter,
-    ConstantParameter
 )
-
-from ...search_spaces.hyperparameters.categorical import (
-    CATEGORICAL_CONFIDENCE_SCORES
-)
+from ...search_spaces.hyperparameters.categorical import CATEGORICAL_CONFIDENCE_SCORES
 from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES
 from ...search_spaces.search_space import SearchSpace
 from .. import BaseOptimizer
 from .acquisition_samplers import AcquisitionSamplerMapping
 from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .models import SurrogateModelMapping
+
+CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
+
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 5})
 
 
 class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
@@ -137,8 +140,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience,
-                    "pipeline_space": self.pipeline_space},
+            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
         self.prior_confidence = prior_confidence
         self._enhance_priors()
@@ -190,8 +192,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience,
-                    "pipeline_space": self.pipeline_space},
+            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
 
     def _enhance_priors(self):
@@ -202,10 +203,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             if self.pipeline_space[k].is_fidelity:
                 continue
             elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
-                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
-                confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
 
     def _get_rung_maps(self, s: int = 0) -> dict:
@@ -213,8 +214,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         eta = round(1 / self.good_fraction)
         new_min_budget = self.min_fidelity * (1 / eta**s)
         nrungs = (
-            np.floor(np.log(self.max_fidelity / new_min_budget) /
-                     np.log(eta)).astype(int)
+            np.floor(np.log(self.max_fidelity / new_min_budget) / np.log(eta)).astype(int)
             + 1
         )
         _max_budget = self.max_fidelity
@@ -284,17 +284,16 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         # TODO have this as a setting in the acq_sampler instead
         if only_lowest_fidelity:
             is_lowest_fidelity = (
-                np.array([x_.fidelity.value for x_ in x]
-                         ) == self.rung_map[self.min_rung]
+                np.array([x_.fidelity.value for x_ in x]) == self.rung_map[self.min_rung]
             )
-            return (
-                is_lowest_fidelity
-                * (np.log(self.surrogate_models["good"].pdf(x))
-                   - np.log(self.surrogate_models["bad"].pdf(x)))
+            return is_lowest_fidelity * (
+                np.log(self.surrogate_models["good"].pdf(x))
+                - np.log(self.surrogate_models["bad"].pdf(x))
             )
         else:
-            return np.log(self.surrogate_models["good"].pdf(x))\
-                - np.log(self.surrogate_models["bad"].pdf(x))
+            return np.log(self.surrogate_models["good"].pdf(x)) - np.log(
+                self.surrogate_models["bad"].pdf(x)
+            )
 
     def _split_by_fidelity(self, configs, losses):
         if self.pipeline_space.has_fidelity:
@@ -333,11 +332,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             zip(configs_per_fid, losses_per_fid)
         ):
             if self.round_up:
-                num_good_configs = np.ceil(
-                    len(configs_fid) * good_fraction).astype(int)
+                num_good_configs = np.ceil(len(configs_fid) * good_fraction).astype(int)
             else:
-                num_good_configs = np.floor(
-                    len(configs_fid) * good_fraction).astype(int)
+                num_good_configs = np.floor(len(configs_fid) * good_fraction).astype(int)
 
             ordered_losses = np.argsort(losses_fid)
             good_indices = ordered_losses[0:num_good_configs]
@@ -349,8 +346,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             good_configs_weights.extend(
                 [weight_per_fidelity[fid]] * len(good_configs_fid)
             )
-            bad_configs_weights.extend(
-                [weight_per_fidelity[fid]] * len(bad_configs_fid))
+            bad_configs_weights.extend([weight_per_fidelity[fid]] * len(bad_configs_fid))
         return good_configs, bad_configs, good_configs_weights, bad_configs_weights
 
     def compute_fidelity_weights(self, configs_per_fid, losses_per_fid) -> list:
@@ -373,11 +369,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
     def _compute_spearman_weights(self, configs_per_fid, losses_per_fid) -> list:
         min_number_samples = np.round(1 / self.good_fraction).astype(int)
-        samples_per_fid = np.array([len(cfgs_fid)
-                                   for cfgs_fid in configs_per_fid])
+        samples_per_fid = np.array([len(cfgs_fid) for cfgs_fid in configs_per_fid])
         max_comparable_fid = (
-            self.max_rung -
-            np.argmax(np.flip(samples_per_fid) >= min_number_samples)
+            self.max_rung - np.argmax(np.flip(samples_per_fid) >= min_number_samples)
         ).astype(int)
         if max_comparable_fid == 0:
             # if we cannot compare to any otḧer fidelity, return default
@@ -410,8 +404,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                         lower_fid_configs[equal_index] = cfg
                         lower_fid_losses[equal_index] = loss
 
-                spearman[fid_idx] = spearmanr(
-                    lower_fid_losses, comp_losses).correlation
+                spearman[fid_idx] = spearmanr(lower_fid_losses, comp_losses).correlation
                 if fid_idx == max_comparable_fid:
                     break
 
@@ -420,7 +413,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             spearman = np.flip(np.minimum.accumulate(np.flip(spearman)))
             fidelity_weights = spearman * (max_comparable_fid + 1) / (self.max_rung + 1)
             import time
-            print('fidelity_weights', fidelity_weights)
+
+            print("fidelity_weights", fidelity_weights)
             time.sleep(1)
         return fidelity_weights
 
@@ -436,14 +430,12 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         # TODO remove doubles from previous results
-        train_y = [self.get_loss(el.result)
-                   for el in previous_results.values()]
+        train_y = [self.get_loss(el.result) for el in previous_results.values()]
 
         train_x_configs = [el.config for el in previous_results.values()]
         pending_configs = list(pending_evaluations.values())
 
-        filtered_configs, filtered_indices = self._filter_old_configs(
-            train_x_configs)
+        filtered_configs, filtered_indices = self._filter_old_configs(train_x_configs)
         filtered_y = np.array(train_y)[filtered_indices].tolist()
 
         self.train_x_configs = train_x_configs
@@ -471,14 +463,13 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 num_prior_configs = len(self.prior_samples)
                 good_configs.extend(self.prior_samples)
                 prior_sample_constant = self.prior_num_evals / num_prior_configs
-                good_weights.extend([prior_sample_constant]
-                                    * num_prior_configs)
+                good_weights.extend([prior_sample_constant] * num_prior_configs)
 
             fixed_bw = None
             self.surrogate_models["all"].fit(filtered_configs)
             if self.joint_kde_modelling:
                 fixed_bw = self.surrogate_models["all"].bw
-            
+
             self.surrogate_models["good"].fit(
                 good_configs, fixed_bw=fixed_bw, config_weights=good_weights
             )
@@ -529,15 +520,13 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             configs_per_rung[rung] += 1
 
         cumulative_per_rung = np.flip(np.cumsum(np.flip(configs_per_rung)))
-        cumulative_above = np.append(
-            np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0)
+        cumulative_above = np.append(np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0)
         # then check which one can make the most informed decision on promotions
         rungs_to_promote = cumulative_per_rung * self.good_fraction - cumulative_above
 
         # this defaults to max_fidelity if there is no promotable config (cannot promote from)
         # the top fidelity anyway
-        fid_to_promote = self.num_rungs - \
-            np.argmax(np.flip(rungs_to_promote) > 1)
+        fid_to_promote = self.num_rungs - np.argmax(np.flip(rungs_to_promote) > 1)
 
         # TODO check if this returns empty when it needs to
         if fid_to_promote == self.max_rung:
@@ -572,8 +561,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         # TODO we still need to REMOVE the observation at the lower fidelity
         # i.e. give it zero weight in the KDE, and ensure the count is correct
         assert len(configs_for_promotion) > 0, "No promotable configurations"
-        acq_values = self.__call__(
-            configs_for_promotion, only_lowest_fidelity=False)
+        acq_values = self.__call__(configs_for_promotion, only_lowest_fidelity=False)
         next_config = configs_for_promotion[np.argmax(acq_values)]
 
         current_rung = self.inverse_rung_map[next_config.fidelity.value]
@@ -605,8 +593,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             )
             config.fidelity.value = self.rung_map[self.min_rung]
         elif len(self._get_promotable_configs(self.train_x_configs)) > 0:
-            configs_for_promotion = self._get_promotable_configs(
-                self.train_x_configs)
+            configs_for_promotion = self._get_promotable_configs(self.train_x_configs)
             config = self._promote_existing(configs_for_promotion)
 
         else:
