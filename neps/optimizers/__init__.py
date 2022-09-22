@@ -14,6 +14,7 @@ from .multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
+from .multi_fidelity.hyperband import Hyperband
 
 ## custom algorithms
 from .multi_fidelity_prior.v1 import OurOptimizerV1, OurOptimizerV1_2, OurOptimizerV1_3
@@ -27,7 +28,7 @@ from .multi_fidelity_prior.v4 import (
     OurOptimizerV4_V3_2,
 )
 from .multi_fidelity_prior.v5 import OurOptimizerV5
-
+from .multi_fidelity_prior.raceband import RaceBand
 ###
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
@@ -43,6 +44,7 @@ SearcherMapping: dict[str, Callable] = {
     "successive_halving": SuccessiveHalving,
     "successive_halving_prior": SuccessiveHalvingWithPriors,
     "asha": AsynchronousSuccessiveHalving,
+    "hyperband": Hyperband,
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
     "multifidelity_tpe": MultiFidelityPriorWeightedTreeParzenEstimator,
     # custom algorithms
@@ -59,4 +61,5 @@ SearcherMapping: dict[str, Callable] = {
     "ours_v4_asha_hb": OurOptimizerV4_ASHA_HB,
     "ours_v4_v3_2": OurOptimizerV4_V3_2,
     "ours_v5": OurOptimizerV5,
+    "raceband": RaceBand,
 }
