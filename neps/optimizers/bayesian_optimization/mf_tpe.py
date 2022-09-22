@@ -16,16 +16,19 @@ from ...search_spaces import (
     IntegerParameter,
     ConstantParameter
 )
-
-from ...search_spaces.hyperparameters.categorical import (
-    CATEGORICAL_CONFIDENCE_SCORES
-)
+from ...search_spaces.hyperparameters.categorical import CATEGORICAL_CONFIDENCE_SCORES
 from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES
 from ...search_spaces.search_space import SearchSpace
 from .. import BaseOptimizer
 from .acquisition_samplers import AcquisitionSamplerMapping
 from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .models import SurrogateModelMapping
+
+CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
+
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 5})
 
 
 class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
@@ -195,8 +198,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience,
-                    "pipeline_space": self.pipeline_space},
+            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
 
     def _enhance_priors(self):
@@ -207,10 +209,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             if self.pipeline_space[k].is_fidelity:
                 continue
             elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
-                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
-                confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
 
     def _get_rung_maps(self, s: int = 0) -> dict:
@@ -218,8 +220,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         eta = round(1 / self.good_fraction)
         new_min_budget = self.min_fidelity * (1 / eta**s)
         nrungs = (
-            np.floor(np.log(self.max_fidelity / new_min_budget) /
-                     np.log(eta)).astype(int)
+            np.floor(np.log(self.max_fidelity / new_min_budget) / np.log(eta)).astype(int)
             + 1
         )
         _max_budget = self.max_fidelity
@@ -244,6 +245,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         type = 0 - numerical (continuous or integer) parameter
         type >=1 - categorical parameter
 
+        TODO: figure out a way to properly handle ordinal parameters
 
         """
         types = []
@@ -285,6 +287,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         Return the negative expected improvement at the query point
         """
         # this is to only make the lowest fidelity viable
+        # TODO have this as a setting in the acq_sampler instead
         if only_lowest_fidelity:
             is_lowest_fidelity = (
                 np.array([x_.fidelity.value for x_ in x]
@@ -634,6 +637,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
+            print([hp.value for hp in config.hyperparameters.values()])
             config.fidelity.value = self.rung_map[self.min_rung]
         
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)

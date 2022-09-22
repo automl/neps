@@ -29,7 +29,12 @@ from .multi_fidelity_prior.v4 import (
 )
 from .multi_fidelity_prior.v5 import OurOptimizerV5
 from .multi_fidelity_prior.raceband import RaceBand
-###
+from .multi_fidelity_prior.v5 import (
+    OurOptimizerV5,
+    OurOptimizerV5_2,
+    OurOptimizerV5_2_V4,
+    OurOptimizerV5_V4,
+)
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
 
@@ -62,4 +67,7 @@ SearcherMapping: dict[str, Callable] = {
     "ours_v4_v3_2": OurOptimizerV4_V3_2,
     "ours_v5": OurOptimizerV5,
     "raceband": RaceBand,
+    "ours_v5_2": OurOptimizerV5_2,
+    "ours_v5_v4": OurOptimizerV5_V4,
+    "ours_v5_2_v4": OurOptimizerV5_2_V4
 }

@@ -20,6 +20,12 @@ from ..base_optimizer import BaseOptimizer
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
 from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
 
+CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
+
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 5})
+
 
 class SuccessiveHalving(BaseOptimizer):
     """Implements a SuccessiveHalving procedure with a sampling and promotion policy."""
@@ -394,10 +400,10 @@ class SuccessiveHalving(BaseOptimizer):
             if self.pipeline_space[k].is_fidelity:
                 continue
             elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
-                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
-                confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
 
 

@@ -15,6 +15,7 @@ from ..multi_fidelity.sampling_policy import FixedPriorPolicy
 from ..multi_fidelity.successive_halving import SuccessiveHalvingWithPriors
 from ..multi_fidelity_prior.v3 import OurOptimizerV3_2
 
+# TODO: change/update/ablate
 NPRIORS = 10
 NRANDOM = 10
 ALPHA = 0.95
