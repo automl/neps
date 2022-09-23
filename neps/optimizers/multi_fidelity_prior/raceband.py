@@ -7,7 +7,6 @@ from copy import deepcopy
 import numpy as np
 from scipy.stats.qmc import LatinHypercube
 import pandas as pd
-from scipy.linalg import norm as eucl
 from metahyper.api import ConfigResult
 from typing_extensions import Literal
 
@@ -26,14 +25,16 @@ from ..multi_fidelity.promotion_policy import PromotionPolicy
 from ..multi_fidelity.sampling_policy import SamplingPolicy
 
 
-def compute_config_dist(config_array, other_configs_array, pipeline_space):
+def compute_config_dist(config_array, other_configs_array, pipeline_space, filter_zero=True):
+    is_fidelity = np.array([hp.is_fidelity for hp in pipeline_space.values()])
     num_categorical_options = np.array([len(hp.choices) if isinstance(
         hp, CategoricalParameter) else 1 for hp in pipeline_space.values()])[np.newaxis, :]
-
-    # TODO - consider doing num_categorical_options - 1
-    distances = eucl((config_array - other_configs_array) /
-                     np.sqrt(num_categorical_options), axis=1)
-    return distances
+    distances = np.linalg.norm((config_array - other_configs_array)[:, ~is_fidelity] /
+                               np.sqrt(num_categorical_options)[:, ~is_fidelity], axis=1)
+    if filter_zero:
+        return distances[distances > 0]
+    else:
+        return distances
 
 
 def unnormalize_sample(array, pipeline_space):
@@ -83,30 +84,41 @@ class RacebandSamplingPolicy(SamplingPolicy):
         self.sampled_configs = []
         self.sobol_samples = None
 
-    def sample(self, num_total) -> SearchSpace:
+    def sample(self, num_total, previous_configs=None, previous_values=None) -> SearchSpace:
         num_sampled = len(self.sampled_configs)
         num_neighborhoods = int(num_total / self.eta)
-            
-        if num_sampled < np.floor(num_total / (self.eta ** 2)):
+        num_prior = np.floor(num_total / (self.eta ** 2))
+        if num_sampled < num_prior:
             sample = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True)
+
+        elif len(previous_configs) > 0 and (num_sampled % num_neighborhoods == num_prior):
+            print('num_sampled', num_sampled, 'sampling from prev best')
+            # ensure that this samples and competes against exactly the right thing!
+            # (go with eta configs per rung - one neighborhood?)
+            best_previous_index = np.argmin(previous_values)
+            prev_configs_np = np.array(
+                [[x_.normalized().value for x_ in list(x.values())]
+                 for x in previous_configs]
+            )
+            best_config = prev_configs_np[best_previous_index]
+            sample = self._sample_neighbors(
+                best_config, prev_configs_np)
 
         elif num_sampled < np.floor(num_total / (self.eta)) or num_neighborhoods == 1:
             # do not sample the fidelity
             if self.sobol_samples is None:
                 self.sobol_samples = SobolEngine(dimension=len(
-                    self.pipeline_space) - 1, scramble=True).draw(num_total ).detach().numpy()
+                    self.pipeline_space) - 1, scramble=True).draw(num_total).detach().numpy()
             # get the next sample index from the list
             normalized_sample = self.sobol_samples[(
                 num_sampled - np.floor(num_total / (self.eta ** 2))).astype(int), :][np.newaxis, :]
             sample = unnormalize_sample(normalized_sample, self.pipeline_space)
 
-        else:
+        elif num_sampled >= num_neighborhoods:
             self.sobol_samples = None
             # get configs 1-9 in order for eta = 3 and generate 2 neighbors for each
             center_index = num_sampled % num_neighborhoods
-            #
-            fidelity = self.sampled_configs[center_index].fidelity.value
             all_center_configs = deepcopy(
                 self.sampled_configs[:num_neighborhoods])
             # The distance in fidelity space should be zero
@@ -117,30 +129,37 @@ class RacebandSamplingPolicy(SamplingPolicy):
             center_config = configs_np[center_index][np.newaxis, :]
             other_center_configs = np.delete(configs_np, center_index, axis=0)
             sample = self._sample_neighbors(
-                center_config, other_center_configs, fidelity)
+                center_config, other_center_configs)
 
+        else:
+            raise ValueError('This case is unaccounted for'
+                             ' - something has gone wrong in the logic')
         self.sampled_configs.append(sample)
         return sample
 
-    def _sample_neighbors(self, config, initial_config_set, fidelity):
+    def _sample_neighbors(self, config, initial_config_set):
         distance_to_others = compute_config_dist(
             config, initial_config_set, self.pipeline_space)
-        max_neighbor_dist = np.min(distance_to_others)
+        max_neighbor_dist = max(np.min(distance_to_others), 1e-2)
         close_neighbor = False
 
         while_ctr = 0
         while not close_neighbor:
             while_ctr += 1
             neighbor = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=True)
-            neighbor.fidelity.value = fidelity
+                patience=self.patience, user_priors=False, ignore_fidelity=False)
+
             neighbor_np = np.array(
-                [hp.normalized().value for hp in list(neighbor.values())])
+                [hp.normalized().value for hp in list(neighbor.values())])[np.newaxis, :]
+            dists = compute_config_dist(
+                config, neighbor_np, self.pipeline_space)
             close_neighbor = (compute_config_dist(
                 config, neighbor_np, self.pipeline_space) < max_neighbor_dist)[0]
 
-            if while_ctr % 1000 == 0:
-                print('WHILE COUNTER', while_ctr)
+            #if while_ctr % 1000 == 0:
+            #    pass
+            #    print(max_neighbor_dist)
+            #    print('WHILE COUNTER', while_ctr)
 
         return neighbor
 
@@ -158,6 +177,8 @@ class RacebandPromotionPolicy(PromotionPolicy):
     def clear(self):
         self.already_promoted: dict = {}
         self.sampled_configs = []
+        self.rung_promotions = {rung: []
+                                for rung in list(self.config_map.keys())[:-1]}
 
     def set_state(
         self,
@@ -173,7 +194,8 @@ class RacebandPromotionPolicy(PromotionPolicy):
         self.config_map = config_map
         self.sampled_configs = configs
         if self.rung_promotions is None:
-            self.rung_promotions = {rung: [] for rung in list(self.config_map.keys())[:-1]}
+            self.rung_promotions = {rung: []
+                                    for rung in list(self.config_map.keys())[:-1]}
 
     def retrieve_promotions(self):
         assert self.config_map is not None
@@ -190,7 +212,8 @@ class RacebandPromotionPolicy(PromotionPolicy):
             if self.already_promoted.get(rung, False) and len(self.rung_promotions[rung]) > 0:
                 self.rung_promotions[rung].pop(0)
 
-            promotion_criteria = len(self.rung_members_performance[rung]) == self.config_map[rung]
+            promotion_criteria = len(
+                self.rung_members_performance[rung]) == self.config_map[rung]
             if promotion_criteria:
                 self.already_promoted[rung] = True
 
@@ -211,7 +234,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                         )
                         best_config_np = remaining_configs_np[best_idx]
                         dist = compute_config_dist(
-                            best_config_np, remaining_configs_np, self.pipeline_space)
+                            best_config_np, remaining_configs_np, self.pipeline_space, filter_zero=False)
                         too_close_indices = np.argsort(dist)[:self.eta]
                         self.rung_promotions[rung].append(
                             remaining_rung_members[best_idx])
@@ -229,10 +252,9 @@ class RacebandPromotionPolicy(PromotionPolicy):
                     indices_to_promote = performances.reshape(self.eta, -1).T.argmin(
                         axis=1) * best_k + np.arange(best_k)
                     self.rung_promotions[rung] = indices_to_promote.tolist()
-        
+
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
-        
         return self.rung_promotions
 
 
@@ -292,7 +314,7 @@ class RaceHalving(BaseOptimizer):
         # maps rungs to a fidelity value for an SH bracket with `early_stopping_rate`
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
         self.config_map = self._get_config_map(self.early_stopping_rate)
-        
+
         self.min_rung = min(list(self.rung_map.keys()))
         self.max_rung = max(list(self.rung_map.keys()))
 
@@ -320,6 +342,7 @@ class RaceHalving(BaseOptimizer):
         # prior setups
         self.prior_confidence = prior_confidence
         self._enhance_priors()
+        self.old_configs = None
         self.done = False
 
     def clear(self):
@@ -329,6 +352,9 @@ class RaceHalving(BaseOptimizer):
         self.rung_members = {k: [] for k in self.rung_map.keys()}
         self.rung_members_performance = {k: [] for k in self.rung_map.keys()}
         self.rung_promotions = {}
+
+    def transfer_results(self, results):
+        self.old_results = results
 
     @ classmethod
     def _get_rung_trace(cls, rung_map: dict, config_map: dict) -> list[int]:
@@ -496,7 +522,7 @@ class RaceHalving(BaseOptimizer):
         self._load_previous_observations(previous_results)
         self.total_fevals = len(previous_results)
         self.done = self.total_fevals == sum(list(self.config_map.values()))
-        
+
         if self.done:
             return
         # account for pending evaluations
@@ -504,7 +530,7 @@ class RaceHalving(BaseOptimizer):
 
         # process optimization state and bucket observations per rung
         self._get_rungs_state()
-       
+
         # identifying promotion list per rung
         self._handle_promotions()
 
@@ -548,7 +574,16 @@ class RaceHalving(BaseOptimizer):
         # Samples configuration from policy or random
         rung_next = self._get_rung_to_run()
         num_total = self.config_map[rung_next]
-        self.sampling_args = {'num_total': num_total}
+        if self.old_results is not None:
+            prev_results = [self.get_loss(el.result)
+                            for el in self.old_results.values()]
+            prev_configs = [el.config for el in self.old_results.values()]
+        else:
+            prev_configs = None
+            prev_results = None
+
+        self.sampling_args = {'num_total': num_total,
+                              'previous_configs': prev_configs, 'previous_values': prev_results}
         if self.sampling_policy is None:
             config = self.pipeline_space.sample(
                 patience=self.patience,
@@ -655,7 +690,7 @@ class RaceBand(RaceHalving):
         # for (n,r) pairing, i.e., (num. configs, fidelity)
         self.sh_brackets = {}
         self.old_bracket = 0
-        self.old_configs = []   
+        self.old_configs = []
         self.full_runs = 0
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
@@ -669,24 +704,28 @@ class RaceBand(RaceHalving):
     ) -> None:
         filtered_previous_results = {
             key: result for key, result in previous_results.items() if key not in self.old_configs}
+        old_results = {
+            key: result for key, result in previous_results.items() if key in self.old_configs}
+
         self.sh_brackets[self.current_sh_bracket].load_results(
             filtered_previous_results, pending_evaluations)
-        
+        self.sh_brackets[self.current_sh_bracket].transfer_results(
+            old_results)
         if self.sh_brackets[self.current_sh_bracket].done:
             self.current_sh_bracket += 1
             self.old_configs.extend(list(previous_results.keys()))
-            
+
             # if the old one is done, we need to re-load results for the new bracket
             if self.current_sh_bracket == len(self.sh_brackets):
-                self.full_runs +=1
+                self.full_runs += 1
                 for bracket in self.sh_brackets.values():
                     bracket.clear()
                     self.current_sh_bracket = 0
+
             self.load_results(previous_results, pending_evaluations)
-        
-        
+
             # learned_configs = self.sampling_policy.get_learned_configs()
-        
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -702,7 +741,8 @@ class RaceBand(RaceHalving):
         ].get_config_and_ids()
         idx, fid = config_id.split('_')
         # IMPORTANT to tell synchronous SH to query the next allocation
-        idx = int(idx) % 1000 + (self.current_sh_bracket + 1) * 1000 + self.full_runs * 10000
+        idx = int(idx) % 1000 + (self.current_sh_bracket + 1) * \
+            1000 + self.full_runs * 10000
         config_id = f'{idx}_{fid}'
         self._update_state_counter()
         return config, config_id, previous_config_id  # type: ignore
