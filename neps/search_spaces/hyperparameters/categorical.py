@@ -11,9 +11,9 @@ from typing_extensions import Literal
 from ..parameter import Parameter
 
 CATEGORICAL_CONFIDENCE_SCORES = {
-    "low": 1.1,
-    "medium": 1.75,
-    "high": 2.5,
+    "low": 2,
+    "medium": 4,
+    "high": 6,
 }
 
 
