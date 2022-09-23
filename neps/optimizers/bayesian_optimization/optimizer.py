@@ -38,6 +38,7 @@ class BayesianOptimization(BaseOptimizer):
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
+        disable_priors: bool = False,
     ):
         """Initialise the BO loop.
 
@@ -66,6 +67,8 @@ class BayesianOptimization(BaseOptimizer):
                 supress any error during bayesian optimization and will use given cost
                 value instead. default: None
             logger: logger object, or None to use the neps logger
+            disable_priors: allows to choose between BO and piBO regardless the search
+                space definition
 
         Raises:
             ValueError: if patience < 1
@@ -73,6 +76,9 @@ class BayesianOptimization(BaseOptimizer):
             ValueError: if random_interleave_prob is not between 0.0 and 1.0
             ValueError: if no kernel is provided
         """
+        if disable_priors:
+            pipeline_space.has_prior = False
+
         super().__init__(
             pipeline_space=pipeline_space,
             patience=patience,
