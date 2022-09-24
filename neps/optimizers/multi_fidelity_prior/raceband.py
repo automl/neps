@@ -79,6 +79,7 @@ class RacebandSamplingPolicy(SamplingPolicy):
         self.num_categorical_options = np.array([len(hp.choices) if isinstance(
             hp, CategoricalParameter) else 1 for hp in pipeline_space.values()])[np.newaxis, :]
         self.sobol_samples = None
+        self.num_previous = 0
 
     def clear(self):
         self.sampled_configs = []
@@ -87,12 +88,13 @@ class RacebandSamplingPolicy(SamplingPolicy):
     def sample(self, num_total, previous_configs=None, previous_values=None) -> SearchSpace:
         num_sampled = len(self.sampled_configs)
         num_neighborhoods = int(num_total / self.eta)
-        num_prior = np.floor(num_total / (self.eta ** 2))
+        num_prior = np.floor(num_total / self.eta)
         if num_sampled < num_prior:
             sample = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True)
 
-        elif len(previous_configs) > 0 and (num_sampled % num_neighborhoods == num_prior):
+        elif len(previous_configs) > 0 and self.num_previous < self.eta:
+            self.num_previous += 1
             best_previous_index = np.argmin(previous_values)
             prev_configs_np = np.array(
                 [[x_.normalized().value for x_ in list(x.values())]
@@ -102,35 +104,17 @@ class RacebandSamplingPolicy(SamplingPolicy):
             sample = self._sample_neighbors(
                 best_config, prev_configs_np)
 
-        elif num_sampled < np.floor(num_total / (self.eta)) or num_neighborhoods == 1:
-            # do not sample the fidelity
+        else:
+            # do not sample the fidelity (assumed 1 fidelity type for now)
             if self.sobol_samples is None:
                 self.sobol_samples = SobolEngine(dimension=len(
-                    self.pipeline_space) - 1, scramble=True).draw(num_total).detach().numpy()
+                    self.pipeline_space) - 1, scramble=True).draw(num_total - num_sampled).detach().numpy()
+            
             # get the next sample index from the list
-            normalized_sample = self.sobol_samples[(
-                num_sampled - np.floor(num_total / (self.eta ** 2))).astype(int), :][np.newaxis, :]
+            normalized_sample = self.sobol_samples[0][np.newaxis, :]
+            self.sobol_samples = np.delete(self.sobol_samples, 0, axis=0)
             sample = unnormalize_sample(normalized_sample, self.pipeline_space)
 
-        elif num_sampled >= num_neighborhoods:
-            self.sobol_samples = None
-            # get configs 1-9 in order for eta = 3 and generate 2 neighbors for each
-            center_index = num_sampled % num_neighborhoods
-            all_center_configs = deepcopy(
-                self.sampled_configs[:num_neighborhoods])
-            # The distance in fidelity space should be zero
-            configs_np = np.array(
-                [[x_.normalized().value for x_ in list(x.values())]
-                 for x in all_center_configs]
-            )
-            center_config = configs_np[center_index][np.newaxis, :]
-            other_center_configs = np.delete(configs_np, center_index, axis=0)
-            sample = self._sample_neighbors(
-                center_config, other_center_configs)
-
-        else:
-            raise ValueError('This case is unaccounted for'
-                             ' - something has gone wrong in the logic')
         self.sampled_configs.append(sample)
         return sample
 
@@ -208,42 +192,32 @@ class RacebandPromotionPolicy(PromotionPolicy):
                 self.rung_members_performance[rung]) == self.config_map[rung]
             if promotion_criteria:
                 self.already_promoted[rung] = True
-
-                if rung > min_rung:
-                    top_k = len(
-                        self.rung_members_performance[rung]) // self.eta
-                    remaining_configs = [self.sampled_configs[i] for i in range(
-                        len(self.sampled_configs)) if i in self.rung_members[rung]]
-                    remaining_rung_members = deepcopy(
-                        self.rung_members[rung].tolist())
-                    remaining_peformances = deepcopy(
-                        self.rung_members_performance[rung].tolist())
-                    while len(self.rung_promotions[rung]) < top_k:
-                        best_idx = np.argmin(remaining_peformances)
-                        remaining_configs_np = np.array(
-                            [[x_.normalized().value for x_ in list(x.values())]
-                             for x in remaining_configs]
-                        )
-                        best_config_np = remaining_configs_np[best_idx]
-                        dist = compute_config_dist(
-                            best_config_np, remaining_configs_np, self.pipeline_space, filter_zero=False)
-                        too_close_indices = np.argsort(dist)[:self.eta]
-                        self.rung_promotions[rung].append(
-                            remaining_rung_members[best_idx])
-                        for idx in np.sort(too_close_indices)[::-1]:
-                            # pops the best and the two closest from the list
-                            remaining_configs.pop(idx)
-                            remaining_rung_members.pop(idx)
-                            remaining_peformances.pop(idx)
-                else:
-                    # stores the index of the top 1/eta configurations in the rung
-                    best_k = len(
-                        self.rung_members_performance[rung]) // self.eta
-                    performances = np.array(
-                        self.rung_members_performance[rung])
-                    indices_to_promote = performances.reshape(self.eta, -1).T.argmin(
-                        axis=1) * best_k + np.arange(best_k)
-                    self.rung_promotions[rung] = indices_to_promote.tolist()
+            
+                top_k = len(
+                    self.rung_members_performance[rung]) // self.eta
+                remaining_configs = [self.sampled_configs[i] for i in range(
+                    len(self.sampled_configs)) if i in self.rung_members[rung]]
+                remaining_rung_members = deepcopy(
+                    self.rung_members[rung].tolist())
+                remaining_peformances = deepcopy(
+                    self.rung_members_performance[rung].tolist())
+                while len(self.rung_promotions[rung]) < top_k:
+                    best_idx = np.argmin(remaining_peformances)
+                    remaining_configs_np = np.array(
+                        [[x_.normalized().value for x_ in list(x.values())]
+                            for x in remaining_configs]
+                    )
+                    best_config_np = remaining_configs_np[best_idx]
+                    dist = compute_config_dist(
+                        best_config_np, remaining_configs_np, self.pipeline_space, filter_zero=False)
+                    too_close_indices = np.argsort(dist)[:self.eta]
+                    self.rung_promotions[rung].append(
+                        remaining_rung_members[best_idx])
+                    for idx in np.sort(too_close_indices)[::-1]:
+                        # pops the best and the two closest from the list
+                        remaining_configs.pop(idx)
+                        remaining_rung_members.pop(idx)
+                        remaining_peformances.pop(idx)
 
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
