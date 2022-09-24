@@ -219,7 +219,9 @@ class SearchSpace(collections.abc.Mapping):
         }
         for hp in self.values():
             hp_value = hp.normalized().value
-            if isinstance(hp, CategoricalParameter):
+            if isinstance(hp, ConstantParameter):
+                continue
+            elif isinstance(hp, CategoricalParameter):
                 hps["categorical"].append(hp_value)
             elif isinstance(hp, NumericalParameter):
                 hps["continuous"].append(hp_value)
@@ -254,7 +256,9 @@ class SearchSpace(collections.abc.Mapping):
             return None
         features = {"continuous": 0, "categorical": 0}
         for hp in self.values():
-            if isinstance(hp, CategoricalParameter):
+            if isinstance(hp, ConstantParameter):
+                continue
+            elif isinstance(hp, CategoricalParameter):
                 features["categorical"] += 1
             elif isinstance(hp, NumericalParameter):
                 features["continuous"] += 1
