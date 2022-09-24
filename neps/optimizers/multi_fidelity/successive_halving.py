@@ -27,7 +27,7 @@ CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 5})
 
 
-class SuccessiveHalving(BaseOptimizer):
+class SuccessiveHalvingBase(BaseOptimizer):
     """Implements a SuccessiveHalving procedure with a sampling and promotion policy."""
 
     def __init__(
@@ -150,16 +150,6 @@ class SuccessiveHalving(BaseOptimizer):
             y_star = self.observed_configs.perf.values.min()
         return y_star
 
-    def _update_state_counter(self) -> None:
-        """Updates a counter to map where in the rung trace the current SH is."""
-        self._counter += 1
-        self._counter %= len(self.full_rung_trace)
-
-    def _get_rung_to_run(self) -> int:
-        """Retrieves the exact rung ID that is being scheduled by SH in the next call."""
-        rung = self.full_rung_trace[self._counter]
-        return rung
-
     def _get_rung_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
         assert s <= self.stopping_rate_limit
@@ -256,20 +246,22 @@ class SuccessiveHalving(BaseOptimizer):
                 self.observed_configs.at[int(_config), "perf"] = None
         return
 
-    def _get_rungs_state(self):
+    def _get_rungs_state(self, observed_configs=None):
+        """Collects info on configs at a rung and their performance there."""
         # to account for incomplete evaluations from being promoted --> working on a copy
-        _observed_configs = self.observed_configs.copy().dropna(inplace=False)
+        observed_configs = (
+            self.observed_configs.copy().dropna(inplace=False)
+            if observed_configs is None
+            else observed_configs
+        )
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.rung_members = {k: [] for k in self.rung_map.keys()}
         self.rung_members_performance = {k: [] for k in self.rung_map.keys()}
-        for _rung in _observed_configs.rung.unique():
-            self.rung_members[_rung] = _observed_configs.index[
-                _observed_configs.rung == _rung
-            ].values
-            self.rung_members_performance[_rung] = _observed_configs.perf[
-                _observed_configs.rung == _rung
-            ].values
+        for _rung in observed_configs.rung.unique():
+            idxs = observed_configs.rung == _rung
+            self.rung_members[_rung] = observed_configs.index[idxs].values
+            self.rung_members_performance[_rung] = observed_configs.perf[idxs].values
         return
 
     def _handle_promotions(self):
@@ -280,6 +272,9 @@ class SuccessiveHalving(BaseOptimizer):
             **self.promotion_policy_kwargs,
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
+
+    def clear_old_brackets(self):
+        return
 
     def load_results(
         self,
@@ -304,20 +299,24 @@ class SuccessiveHalving(BaseOptimizer):
         # process optimization state and bucket observations per rung
         self._get_rungs_state()
 
+        # filter/reset old SH brackets
+        self.clear_old_brackets()
+
         # identifying promotion list per rung
         self._handle_promotions()
         return
 
     def is_promotable(self) -> int | None:
         """Returns an int if a rung can be promoted, else a None."""
-        rung_next = self._get_rung_to_run()
-        rung_to_promote = rung_next - 1
-        if (
-            rung_to_promote >= self.min_rung
-            and len(self.rung_promotions[rung_to_promote]) > 0
-        ):
-            return rung_to_promote
-        return None
+        rung_to_promote = None
+        # iterates starting from the highest fidelity promotable to the lowest fidelity
+        for rung in reversed(range(self.min_rung, self.max_rung)):
+            if len(self.rung_promotions[rung]) > 0:
+                rung_to_promote = rung
+                # stop checking when a promotable config found
+                # no need to search at lower fidelities
+                break
+        return rung_to_promote
 
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search.
@@ -351,6 +350,9 @@ class SuccessiveHalving(BaseOptimizer):
         else:
             config = self.sampling_policy.sample(**self.sampling_args)
         return config
+
+    def _generate_new_config_id(self):
+        return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -386,10 +388,8 @@ class SuccessiveHalving(BaseOptimizer):
             config.fidelity.value = fidelity_value
 
             previous_config_id = None
-            config_id = f"{len(self.observed_configs)}_{rung_id}"
+            config_id = f"{self._generate_new_config_id()}_{rung_id}"
 
-        # IMPORTANT to tell synchronous SH to query the next allocation
-        self._update_state_counter()
         return config.hp_values(), config_id, previous_config_id  # type: ignore
 
     def _enhance_priors(self):
@@ -405,6 +405,21 @@ class SuccessiveHalving(BaseOptimizer):
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
                 confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
+
+
+class SuccessiveHalving(SuccessiveHalvingBase):
+    def clear_old_brackets(self):
+        "Enforces reset at each new bracket"
+        feval_counts = (
+            (self.observed_configs.rung + 1).values.cumsum()[-1]
+            if len(self.observed_configs)
+            else 0
+        )
+        nbrackets = feval_counts // len(self.full_rung_trace)
+        old_history_len = nbrackets * self.config_map[self.min_rung]
+        if old_history_len > 0:
+            self._get_rungs_state(self.observed_configs.loc[old_history_len:])
+        return
 
 
 class SuccessiveHalvingWithPriors(SuccessiveHalving):
@@ -444,7 +459,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         )
 
 
-class AsynchronousSuccessiveHalving(SuccessiveHalving):
+class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
     """Implements ASHA with a sampling and asynchronous promotion policy."""
 
     def __init__(
@@ -479,17 +494,12 @@ class AsynchronousSuccessiveHalving(SuccessiveHalving):
             random_interleave_prob=random_interleave_prob,
         )
 
-    def is_promotable(self) -> int | None:
-        """Returns an int if a rung can be promoted, else a None."""
-        rung_to_promote = None
-        # iterates starting from the highest fidelity promotable to the lowest fidelity
-        for rung in reversed(range(self.min_rung, self.max_rung)):
-            if len(self.rung_promotions[rung]) > 0:
-                rung_to_promote = rung
-                # stop checking when a promotable config found
-                # no need to search at lower fidelities
-                break
-        return rung_to_promote
+    def clear_old_brackets(self):
+        "Enforces reset at each new bracket"
+        # unlike synchronous SH, the state is not reset at each rung and a configuration
+        # is promoted if the rung has eta configs if it is the top performing
+        # base class allows for retaining the whole optimization state
+        return
 
 
 class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):

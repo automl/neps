@@ -13,6 +13,7 @@ class PromotionPolicy(ABC):
         self.rung_members_performance: dict = {}
         self.rung_promotions: dict = {}
         self.eta = eta
+        self.max_rung = None
 
     def set_state(
         self,
@@ -57,33 +58,17 @@ class SyncPromotionPolicy(PromotionPolicy):
         """Returns the top 1/eta configurations per rung if enough configurations seen"""
         assert self.config_map is not None
 
-        for rung in sorted(self.config_map.keys()):
+        total_rung_evals = 0
+        for rung in reversed(sorted(self.config_map.keys())):
+            total_rung_evals += len(self.rung_members[rung])
             if rung == self.max_rung:
                 # cease promotions for the highest rung (configs at max budget)
                 continue
-            top_k = len(self.rung_members_performance[rung]) // self.eta
 
-            # subsetting the top configurations in the rung that have not been promoted
-            _ordered_idx = np.argsort(self.rung_members_performance[rung])[
-                : self.config_map[rung]
-            ]
-
-            # case 1: more configs seen than the specified num. configs at that rung
-            # case 2: a lower rung is eligible for promotion as num. configs already
-            #   seen but when a config is promoted, the lower rung count decrements
-            promotion_criteria = len(_ordered_idx) >= self.config_map[rung] or (
-                rung + 1 in self.rung_members
-                and (len(_ordered_idx) + len(self.rung_members[rung + 1]))
-                >= self.config_map[rung]
-            )
-            if promotion_criteria:
-                # stores the index of the top 1/eta configurations in the rung
-                self.rung_promotions[rung] = np.array(self.rung_members[rung])[
-                    _ordered_idx
-                ][:top_k].tolist()
-            else:
-                # synchronous SH waits if each rung has not seen the budgeted configs
-                self.rung_promotions[rung] = []
+            self.rung_promotions[rung] = []
+            if total_rung_evals >= self.config_map[rung]:
+                selected_idx = np.argsort(self.rung_members_performance[rung])[:1]
+                self.rung_promotions[rung] = self.rung_members[rung][selected_idx]
         return self.rung_promotions
 
 
