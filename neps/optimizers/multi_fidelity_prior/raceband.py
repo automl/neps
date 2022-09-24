@@ -50,15 +50,14 @@ def unnormalize_sample(array, pipeline_space):
         array = array * num_categorical_options
         array[num_categorical_options != 1] = np.floor(
             array[num_categorical_options != 1])
-
     for dim, hp in enumerate(config.values()):
         if hp.is_fidelity:
             continue
-        elif isinstance(hp, CategoricalParameter):
+        elif type(hp) is CategoricalParameter:
             hp.value = hp.choices[array[:, dim].astype(int)[0]]
-        elif isinstance(hp, FloatParameter):
+        elif type(hp) is FloatParameter:
             hp.value = hp._normalization_inv(array[:, dim][0])
-        elif isinstance(hp, IntegerParameter):
+        elif type(hp) is IntegerParameter:
             hp.value = int(
                 round(hp.float_hp._normalization_inv(array[:, dim][0])))
         else:
@@ -93,9 +92,6 @@ class RacebandSamplingPolicy(SamplingPolicy):
                 patience=self.patience, user_priors=True, ignore_fidelity=True)
 
         elif len(previous_configs) > 0 and (num_sampled % num_neighborhoods == num_prior):
-            print('num_sampled', num_sampled, 'sampling from prev best')
-            # ensure that this samples and competes against exactly the right thing!
-            # (go with eta configs per rung - one neighborhood?)
             best_previous_index = np.argmin(previous_values)
             prev_configs_np = np.array(
                 [[x_.normalized().value for x_ in list(x.values())]
