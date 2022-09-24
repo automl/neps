@@ -24,6 +24,7 @@ from ..multi_fidelity.successive_halving import SuccessiveHalving
 from ..multi_fidelity.promotion_policy import PromotionPolicy
 from ..multi_fidelity.sampling_policy import SamplingPolicy
 
+SAMPLING_TOL = 1e-2
 
 def compute_config_dist(config_array, other_configs_array, pipeline_space, filter_zero=True):
     is_fidelity = np.array([hp.is_fidelity for hp in pipeline_space.values()])
@@ -136,7 +137,7 @@ class RacebandSamplingPolicy(SamplingPolicy):
     def _sample_neighbors(self, config, initial_config_set):
         distance_to_others = compute_config_dist(
             config, initial_config_set, self.pipeline_space)
-        max_neighbor_dist = max(np.min(distance_to_others), 1e-2)
+        max_neighbor_dist = max(np.min(distance_to_others), np.sqrt(len(config)) * SAMPLING_TOL)
         close_neighbor = False
 
         while_ctr = 0
@@ -151,11 +152,6 @@ class RacebandSamplingPolicy(SamplingPolicy):
                 config, neighbor_np, self.pipeline_space)
             close_neighbor = (compute_config_dist(
                 config, neighbor_np, self.pipeline_space) < max_neighbor_dist)[0]
-
-            #if while_ctr % 1000 == 0:
-            #    pass
-            #    print(max_neighbor_dist)
-            #    print('WHILE COUNTER', while_ctr)
 
         return neighbor
 
