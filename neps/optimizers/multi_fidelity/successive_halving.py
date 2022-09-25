@@ -494,13 +494,6 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
             random_interleave_prob=random_interleave_prob,
         )
 
-    def clear_old_brackets(self):
-        "Enforces reset at each new bracket"
-        # unlike synchronous SH, the state is not reset at each rung and a configuration
-        # is promoted if the rung has eta configs if it is the top performing
-        # base class allows for retaining the whole optimization state
-        return
-
 
 class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
     """Implements ASHA with a sampling and asynchronous promotion policy."""
