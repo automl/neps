@@ -204,15 +204,9 @@ class RacebandPromotionPolicy(PromotionPolicy):
             if promotion_criteria:
                 self.already_promoted[rung] = True
                 top_k = len(self.rung_members_performance[rung]) // self.eta
-                #print('self.rung_members_performance', self.rung_members_performance)
-                #print('rung', rung)
-                #print('self.rung_members_performance[rung]', self.rung_members_performance[rung])
-                #print('top_k', top_k)
-                #print('np.argmin(self.rung_members_performance[rung])', np.argmin(self.rung_members_performance[rung]))
-                #print('self.rung_members_performance[rung])[0:top_k]', np.argmin(self.rung_members_performance[rung])[0:top_k])
                 best_performing_indices = np.argsort(self.rung_members_performance[rung])[0:top_k]
                 self.rung_promotions[rung] = self.rung_members[rung][best_performing_indices].tolist()
-                print(self.rung_promotions[rung])
+       
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
         
