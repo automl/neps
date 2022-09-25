@@ -124,9 +124,12 @@ def FunctionParameter(**kwargs):
                 self.prune_graph()
 
                 if self._old_build_api:
-                    self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
+                    m = self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
                 elif self._set_recursive_attribute:
                     _build(self, self._set_recursive_attribute)
+
+                if m is not None and isinstance(m, nn.Module):
+                    return m
 
                 self.compile()
                 self.update_op_names()
