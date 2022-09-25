@@ -110,7 +110,6 @@ class RacebandSamplingPolicy(SamplingPolicy):
                 best_config, prev_configs_np)
 
         else:
-            # do not sample the fidelity (assumed 1 fidelity type for now)
             if self.sobol_samples is None:
                 self.sobol_samples = SobolEngine(dimension=len(
                     self.pipeline_space) - 1, scramble=True).draw(num_total - num_sampled).detach().numpy()
@@ -188,7 +187,36 @@ class RacebandPromotionPolicy(PromotionPolicy):
         return promotions
 
     def _retrieve_global_promotions(self):
-        pass
+        assert self.config_map is not None
+        min_rung = sorted(self.config_map.keys())[0]
+        if min_rung == self.max_rung:
+            return self.rung_promotions
+        for rung in sorted(self.config_map.keys()):
+            if rung == self.max_rung:
+                # cease promotions for the highest rung (configs at max budget)
+                continue
+
+            if self.already_promoted.get(rung, False) and len(self.rung_promotions[rung]) > 0:
+                self.rung_promotions[rung].pop(0)
+
+            promotion_criteria = len(
+                self.rung_members_performance[rung]) == self.config_map[rung]
+            if promotion_criteria:
+                self.already_promoted[rung] = True
+                top_k = len(self.rung_members_performance[rung]) // self.eta
+                #print('self.rung_members_performance', self.rung_members_performance)
+                #print('rung', rung)
+                #print('self.rung_members_performance[rung]', self.rung_members_performance[rung])
+                #print('top_k', top_k)
+                #print('np.argmin(self.rung_members_performance[rung])', np.argmin(self.rung_members_performance[rung]))
+                #print('self.rung_members_performance[rung])[0:top_k]', np.argmin(self.rung_members_performance[rung])[0:top_k])
+                best_performing_indices = np.argsort(self.rung_members_performance[rung])[0:top_k]
+                self.rung_promotions[rung] = self.rung_members[rung][best_performing_indices].tolist()
+                print(self.rung_promotions[rung])
+        if len(self.rung_promotions[self.max_rung-1]) == 1:
+            self.done = True
+        
+        return self.rung_promotions
 
     def _retrieve_local_promotions(self):
         assert self.config_map is not None
@@ -235,7 +263,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                         remaining_configs.pop(idx)
                         remaining_rung_members.pop(idx)
                         remaining_peformances.pop(idx)
-
+                
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
         return self.rung_promotions
@@ -644,6 +672,8 @@ class RaceBand(RaceHalving):
         use_priors: bool = True,
         sampling_policy: typing.Any = RacebandSamplingPolicy,
         promotion_policy: typing.Any = RacebandPromotionPolicy,
+        sample_local: bool = True,
+        promote_local: bool = True,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -659,11 +689,14 @@ class RaceBand(RaceHalving):
             use_priors=use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
+            sample_local=sample_local,
+            promote_local=promote_local,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+
         )
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
