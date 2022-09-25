@@ -5,6 +5,7 @@ from typing import Iterable, Union
 
 import numpy as np
 import torch
+from gpytorch.utils.cholesky import psd_safe_cholesky
 
 from ..kernels.combine_kernels_hierarchy import ProductKernel, SumKernel
 
@@ -12,10 +13,9 @@ from ..kernels.combine_kernels_hierarchy import ProductKernel, SumKernel
 from ..kernels.graph_kernel import GraphKernels
 from ..kernels.utils import extract_configs_hierarchy
 from ..kernels.vectorial_kernels import Stationary
-from ..kernels.weisfeilerlehman import WeisfeilerLehman
+from ..kernels.weisfilerlehman import WeisfilerLehman
 
 
-# TODO needs to be merged with gp.py later!
 class ComprehensiveGPHierarchy:
     def __init__(
         self,
@@ -32,6 +32,7 @@ class ComprehensiveGPHierarchy:
         combined_kernel: str = "sum",
         verbose: bool = False,
         surrogate_model_fit_args: dict = None,
+        gpytorch_kinv: bool = False,
     ):
         self.likelihood = likelihood
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}
@@ -55,6 +56,7 @@ class ComprehensiveGPHierarchy:
         self.graph_feature_ard = graph_feature_ard
         self.vectorial_features = vectorial_features
         self.d_graph_features = d_graph_features
+        self.gpytorch_kinv = gpytorch_kinv
 
         if weights is not None:
             self.fixed_weights = True
@@ -121,7 +123,7 @@ class ComprehensiveGPHierarchy:
             for i, k in enumerate(self.combined_kernel.kernels):
                 if not isinstance(k, GraphKernels):
                     continue
-                elif isinstance(k, WeisfeilerLehman):
+                elif isinstance(k, WeisfilerLehman):
                     _grid_search_wl_kernel(
                         k,
                         h_,
@@ -131,6 +133,7 @@ class ComprehensiveGPHierarchy:
                         self.y,
                         self.likelihood,
                         lengthscales=lengthscale_,
+                        gpytorch_kinv=self.gpytorch_kinv,
                     )
                 else:
                     logging.warning(
@@ -157,7 +160,9 @@ class ComprehensiveGPHierarchy:
                         rebuild_model=True,
                         save_gram_matrix=True,
                     )
-                    K_i, logDetK = compute_pd_inverse(K, self.likelihood)
+                    K_i, logDetK = compute_pd_inverse(
+                        K, self.likelihood, gpytorch_kinv=self.gpytorch_kinv
+                    )
                     nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
                     if nlml < best_nlml:
                         best_nlml = nlml
@@ -183,7 +188,9 @@ class ComprehensiveGPHierarchy:
                         rebuild_model=True,
                         save_gram_matrix=True,
                     )
-                    K_i, logDetK = compute_pd_inverse(K, self.likelihood)
+                    K_i, logDetK = compute_pd_inverse(
+                        K, self.likelihood, gpytorch_kinv=self.gpytorch_kinv
+                    )
                     nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
                     # print(i, nlml)
                     if nlml < best_nlml:
@@ -252,7 +259,7 @@ class ComprehensiveGPHierarchy:
         layer_weights = None
         if optimize_wl_layer_weights:
             for k in self.domain_kernels:
-                if isinstance(k, WeisfeilerLehman):
+                if isinstance(k, WeisfilerLehman):
                     layer_weights = torch.ones(k.h + 1).requires_grad_(True)
                     if layer_weights.shape[0] <= 1:
                         layer_weights = None
@@ -283,7 +290,9 @@ class ComprehensiveGPHierarchy:
                 layer_weights=layer_weights,
                 rebuild_model=True,
             )
-            K_i, logDetK = compute_pd_inverse(K, likelihood)
+            K_i, logDetK = compute_pd_inverse(
+                K, likelihood, gpytorch_kinv=self.gpytorch_kinv
+            )
         else:
             # Select the optimizer
             assert optimizer.lower() in ["adam", "sgd"]
@@ -306,7 +315,9 @@ class ComprehensiveGPHierarchy:
                     rebuild_model=True,
                     save_gram_matrix=True,
                 )
-                K_i, logDetK = compute_pd_inverse(K, likelihood)
+                K_i, logDetK = compute_pd_inverse(
+                    K, likelihood, gpytorch_kinv=self.gpytorch_kinv
+                )
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
                 nlml.backward(create_graph=True)
                 if self.verbose and i % 10 == 0:
@@ -340,7 +351,9 @@ class ComprehensiveGPHierarchy:
                 optim.zero_grad(set_to_none=True)
 
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
-            K_i, logDetK = compute_pd_inverse(K, likelihood)
+            K_i, logDetK = compute_pd_inverse(
+                K, likelihood, gpytorch_kinv=self.gpytorch_kinv
+            )
 
         # Apply the optimal hyperparameters
         # transform the weights in the combine_kernel function
@@ -671,7 +684,7 @@ def getBack(var_grad_fn, logger):
 
 
 def _grid_search_wl_kernel(
-    k: WeisfeilerLehman,
+    k: WeisfilerLehman,
     subtree_candidates,
     train_x: list,
     train_y: torch.Tensor,
@@ -679,6 +692,7 @@ def _grid_search_wl_kernel(
     subtree_prior=None,  # pylint: disable=unused-argument
     lengthscales=None,
     lengthscales_prior=None,  # pylint: disable=unused-argument
+    gpytorch_kinv: bool = False,
 ):
     """Optimize the *discrete hyperparameters* of Weisfeiler Lehman kernel.
     k: a Weisfeiler-Lehman kernel instance
@@ -705,7 +719,7 @@ def _grid_search_wl_kernel(
         k.change_kernel_params({"h": i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
         # print(K)
-        K_i, logDetK = compute_pd_inverse(K, lik)
+        K_i, logDetK = compute_pd_inverse(K, lik, gpytorch_kinv=gpytorch_kinv)
         # print(train_y)
         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
         # print(i, nlml)
@@ -815,25 +829,32 @@ def generate_h_combo_candidates(hierarchy_consider):
     return h_combo_sub
 
 
-def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
+def compute_pd_inverse(
+    K: torch.tensor, jitter: float = 1e-5, gpytorch_kinv: bool = False
+):
     """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
-    n = K.shape[0]
-    assert (
-        isinstance(jitter, float) or jitter.ndim == 0
-    ), "only homoscedastic noise variance is allowed here!"
-    is_successful = False
-    fail_count = 0
-    max_fail = 3
-    while fail_count < max_fail and not is_successful:
-        try:
-            jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
-            K_ = K + jitter_diag
-            Kc = torch.linalg.cholesky(K_)
-            is_successful = True
-        except RuntimeError:
-            fail_count += 1
-    if not is_successful:
-        raise RuntimeError(f"Gram matrix not positive definite despite of jitter:\n{K}")
+    if gpytorch_kinv:
+        Kc = psd_safe_cholesky(K)
+    else:
+        n = K.shape[0]
+        assert (
+            isinstance(jitter, float) or jitter.ndim == 0
+        ), "only homoscedastic noise variance is allowed here!"
+        is_successful = False
+        fail_count = 0
+        max_fail = 3
+        while fail_count < max_fail and not is_successful:
+            try:
+                jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
+                K_ = K + jitter_diag
+                Kc = torch.linalg.cholesky(K_)
+                is_successful = True
+            except RuntimeError:
+                fail_count += 1
+        if not is_successful:
+            raise RuntimeError(
+                f"Gram matrix not positive definite despite of jitter:\n{K}"
+            )
     logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
     K_i = torch.cholesky_inverse(Kc)
     return K_i.to(torch.get_default_dtype()), logDetK.to(torch.get_default_dtype())
