@@ -26,6 +26,7 @@ from ..multi_fidelity.sampling_policy import SamplingPolicy
 
 SAMPLING_TOL = 1e-2
 
+
 def compute_config_dist(config_array, other_configs_array, pipeline_space, filter_zero=True):
     is_fidelity = np.array([hp.is_fidelity for hp in pipeline_space.values()])
     num_categorical_options = np.array([len(hp.choices) if isinstance(
@@ -71,7 +72,9 @@ class RacebandSamplingPolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space,
-        eta
+        eta,
+        use_priors=True,
+        sample_local=True
     ):
         super().__init__(pipeline_space=pipeline_space)
         self.eta = eta
@@ -80,6 +83,8 @@ class RacebandSamplingPolicy(SamplingPolicy):
             hp, CategoricalParameter) else 1 for hp in pipeline_space.values()])[np.newaxis, :]
         self.sobol_samples = None
         self.num_previous = 0
+        self.use_priors = use_priors
+        self.sample_local = sample_local
 
     def clear(self):
         self.sampled_configs = []
@@ -89,11 +94,11 @@ class RacebandSamplingPolicy(SamplingPolicy):
         num_sampled = len(self.sampled_configs)
         num_neighborhoods = int(num_total / self.eta)
         num_prior = np.floor(num_total / self.eta)
-        if num_sampled < num_prior:
+        if num_sampled < num_prior and self.use_priors:
             sample = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True)
 
-        elif len(previous_configs) > 0 and self.num_previous < self.eta:
+        elif len(previous_configs) > 0 and self.num_previous < self.eta and self.sample_local:
             self.num_previous += 1
             best_previous_index = np.argmin(previous_values)
             prev_configs_np = np.array(
@@ -109,7 +114,7 @@ class RacebandSamplingPolicy(SamplingPolicy):
             if self.sobol_samples is None:
                 self.sobol_samples = SobolEngine(dimension=len(
                     self.pipeline_space) - 1, scramble=True).draw(num_total - num_sampled).detach().numpy()
-            
+
             # get the next sample index from the list
             normalized_sample = self.sobol_samples[0][np.newaxis, :]
             self.sobol_samples = np.delete(self.sobol_samples, 0, axis=0)
@@ -121,7 +126,8 @@ class RacebandSamplingPolicy(SamplingPolicy):
     def _sample_neighbors(self, config, initial_config_set):
         distance_to_others = compute_config_dist(
             config, initial_config_set, self.pipeline_space)
-        max_neighbor_dist = max(np.min(distance_to_others), np.sqrt(len(config)) * SAMPLING_TOL)
+        max_neighbor_dist = max(
+            np.min(distance_to_others), np.sqrt(len(config)) * SAMPLING_TOL)
         close_neighbor = False
 
         while_ctr = 0
@@ -142,13 +148,14 @@ class RacebandSamplingPolicy(SamplingPolicy):
 
 class RacebandPromotionPolicy(PromotionPolicy):
 
-    def __init__(self, eta, pipeline_space, **kwargs):
+    def __init__(self, eta, pipeline_space, promote_local=True, **kwargs):
         super().__init__(eta, **kwargs)
         self.config_map: dict = None
         self.pipeline_space = pipeline_space
         self.already_promoted: dict = {}
         self.done = False
         self.rung_promotions = None
+        self.promote_local = promote_local
 
     def clear(self):
         self.already_promoted: dict = {}
@@ -174,6 +181,16 @@ class RacebandPromotionPolicy(PromotionPolicy):
                                     for rung in list(self.config_map.keys())[:-1]}
 
     def retrieve_promotions(self):
+        if self.promote_local:
+            promotions = self._retrieve_local_promotions()
+        else:
+            promotions = self._retrieve_global_promotions()
+        return promotions
+
+    def _retrieve_global_promotions(self):
+        pass
+
+    def _retrieve_local_promotions(self):
         assert self.config_map is not None
         min_rung = sorted(self.config_map.keys())[0]
         if min_rung == self.max_rung:
@@ -192,7 +209,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                 self.rung_members_performance[rung]) == self.config_map[rung]
             if promotion_criteria:
                 self.already_promoted[rung] = True
-            
+
                 top_k = len(
                     self.rung_members_performance[rung]) // self.eta
                 remaining_configs = [self.sampled_configs[i] for i in range(
@@ -240,6 +257,8 @@ class RaceHalving(BaseOptimizer):
         use_priors: bool = False,
         sampling_policy: typing.Any = RacebandSamplingPolicy,
         promotion_policy: typing.Any = RacebandPromotionPolicy,
+        sample_local: bool = True,
+        promote_local: bool = True,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -263,8 +282,10 @@ class RaceHalving(BaseOptimizer):
         # SH implicitly sets early_stopping_rate to 0
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
-        self.sampling_policy = sampling_policy(pipeline_space, self.eta)
-        self.promotion_policy = promotion_policy(self.eta, pipeline_space)
+        self.sampling_policy = sampling_policy(
+            pipeline_space, self.eta, use_priors=use_priors, sample_local=sample_local)
+        self.promotion_policy = promotion_policy(
+            self.eta, pipeline_space, promote_local=promote_local)
 
         # `max_budget_init` checks for the number of configurations that have been
         # evaluated at the target budget
@@ -550,14 +571,7 @@ class RaceHalving(BaseOptimizer):
 
         self.sampling_args = {'num_total': num_total,
                               'previous_configs': prev_configs, 'previous_values': prev_results}
-        if self.sampling_policy is None:
-            config = self.pipeline_space.sample(
-                patience=self.patience,
-                user_priors=self.use_priors,
-                ignore_fidelity=True,
-            )
-        else:
-            config = self.sampling_policy.sample(**self.sampling_args)
+        config = self.sampling_policy.sample(**self.sampling_args)
         return config
 
     def get_config_and_ids(  # pylint: disable=no-self-use
