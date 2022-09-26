@@ -57,6 +57,7 @@ class FixedPriorPolicy(SamplingPolicy):
         user_priors = False
         if np.random.uniform() < self.fraction_from_prior:
             user_priors = True
-        return self.pipeline_space.sample(
+        config = self.pipeline_space.sample(
             patience=self.patience, user_priors=user_priors, ignore_fidelity=True
         )
+        return config

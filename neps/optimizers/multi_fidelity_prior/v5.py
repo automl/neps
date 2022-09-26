@@ -91,9 +91,11 @@ class OurOptimizerV5(OurOptimizerV3_2):
     def _sample_from_config_as_prior(self, config_id: List[int]) -> SearchSpace:
         """Sets the prior default to be the new config and samples from new prior."""
         assert len(config_id) > 0
-        assert len(config_id) <= self.top_n
-        # hard-coding to 0 as this class takes the top-1 as the incumbent prior
-        config = deepcopy(self.observed_configs.iloc[config_id[0]].config)
+        # assert len(config_id) <= self.top_n
+        # sampling a config from the config list
+        config = deepcopy(
+            np.random.choice(self.observed_configs.iloc[config_id].config.values)
+        )
         # KEY STEP to set the prior by setting the default values for the NePS config
         config.set_defaults_to_current_values()
         new_config = config.sample(
@@ -139,6 +141,24 @@ class OurOptimizerV5_2(OurOptimizerV5):
         # higher rung, with max_rung selecting the prior at itself
         rung_for_prior = min(rung + 1, self.max_rung)
         return self.rung_ranks[rung_for_prior][: self.top_n]
+
+
+class OurOptimizerV5_3(OurOptimizerV5):
+    """Modifies V5 such that incumbent at rung+1 is the prior at rung."""
+
+    def select_incumbent(self, rung):
+        # TODO: use inc from rung and rung + 1
+        # setting the rung's incumbent as the best ever recorded performance at the next
+        # higher rung, with max_rung selecting the prior at itself
+        current_rung_inc = self.rung_ranks[rung][: self.top_n]
+
+        higher_rung_for_prior = min(rung + 1, self.max_rung)
+        higher_rung_inc = []
+        if len(self.rung_ranks[higher_rung_for_prior]) >= self.eta:
+            higher_rung_inc = self.rung_ranks[higher_rung_for_prior][: self.top_n]
+
+        rung_incs = current_rung_inc + higher_rung_inc
+        return rung_incs
 
 
 class OurOptimizerV5_V4(OurOptimizerV5):
