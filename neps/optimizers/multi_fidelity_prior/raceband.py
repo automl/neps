@@ -18,6 +18,8 @@ from ...search_spaces.hyperparameters.categorical import (
 
 from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES, FloatParameter
 from ...search_spaces.hyperparameters.integer import IntegerParameter, float_to_integer
+from ...search_spaces.hyperparameters.constant import ConstantParameter
+
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 from ..multi_fidelity.successive_halving import SuccessiveHalving
@@ -29,10 +31,18 @@ SAMPLING_TOL = 1e-2
 
 def compute_config_dist(config_array, other_configs_array, pipeline_space, filter_zero=True):
     is_fidelity = np.array([hp.is_fidelity for hp in pipeline_space.values()])
+    is_constant = np.array(
+        [type(hp) is ConstantParameter for hp in pipeline_space.values()])
+    is_categorical = np.array(
+        [type(hp) is CategoricalParameter for hp in pipeline_space.values()])
+    distance_mask = is_fidelity | is_constant
     num_categorical_options = np.array([len(hp.choices) if isinstance(
         hp, CategoricalParameter) else 1 for hp in pipeline_space.values()])[np.newaxis, :]
-    distances = np.linalg.norm((config_array - other_configs_array)[:, ~is_fidelity] /
-                               np.sqrt(num_categorical_options)[:, ~is_fidelity], axis=1)
+
+    diff = (config_array - other_configs_array)
+    diff[:, is_categorical] = (diff[:, is_categorical] != 0).astype(float)
+    distances = np.linalg.norm((diff)[:, ~distance_mask] /
+                               np.sqrt(num_categorical_options)[:, ~distance_mask], axis=1)
     if filter_zero:
         return distances[distances > 0]
     else:
@@ -45,8 +55,8 @@ def unnormalize_sample(array, pipeline_space):
 
     config = pipeline_space.copy()
     for dim, hp in enumerate(config.values()):
-        if hp.is_fidelity:
-            array = np.insert(array, dim, -1, axis=1)
+        if hp.is_fidelity or type(hp) is ConstantParameter:
+            array = np.insert(array, dim, -1.0, axis=1)
 
     if np.any(array[num_categorical_options != 1]):
         array = array * num_categorical_options
@@ -54,6 +64,9 @@ def unnormalize_sample(array, pipeline_space):
             array[num_categorical_options != 1])
     for dim, hp in enumerate(config.values()):
         if hp.is_fidelity:
+            continue
+        elif type(hp) is ConstantParameter:
+            # constant parameter support
             continue
         elif type(hp) is CategoricalParameter:
             hp.value = hp.choices[array[:, dim].astype(int)[0]]
@@ -69,6 +82,8 @@ def unnormalize_sample(array, pipeline_space):
 
 class RacebandSamplingPolicy(SamplingPolicy):
 
+    num_fidelity_parameters = 1
+
     def __init__(
         self,
         pipeline_space,
@@ -81,6 +96,8 @@ class RacebandSamplingPolicy(SamplingPolicy):
         self.sampled_configs = []
         self.num_categorical_options = np.array([len(hp.choices) if isinstance(
             hp, CategoricalParameter) else 1 for hp in pipeline_space.values()])[np.newaxis, :]
+        self.num_constants = np.sum(np.array(
+            [type(hp) is ConstantParameter for hp in pipeline_space.values()])).astype(int)
         self.sobol_samples = None
         self.num_previous = 0
         self.use_priors = use_priors
@@ -102,8 +119,8 @@ class RacebandSamplingPolicy(SamplingPolicy):
             self.num_previous += 1
             best_previous_index = np.argmin(previous_values)
             prev_configs_np = np.array(
-                [[x_.normalized().value for x_ in list(x.values())]
-                 for x in previous_configs]
+                [[x_.normalized().value if type(x_) is not ConstantParameter
+                          else 0.0 for x_ in list(x.values())] for x in previous_configs]
             )
             best_config = prev_configs_np[best_previous_index]
             sample = self._sample_neighbors(
@@ -112,7 +129,7 @@ class RacebandSamplingPolicy(SamplingPolicy):
         else:
             if self.sobol_samples is None:
                 self.sobol_samples = SobolEngine(dimension=len(
-                    self.pipeline_space) - 1, scramble=True).draw(num_total - num_sampled).detach().numpy()
+                    self.pipeline_space) - self.num_fidelity_parameters - self.num_constants, scramble=True).draw(num_total - num_sampled).detach().numpy()
 
             # get the next sample index from the list
             normalized_sample = self.sobol_samples[0][np.newaxis, :]
@@ -136,7 +153,8 @@ class RacebandSamplingPolicy(SamplingPolicy):
                 patience=self.patience, user_priors=False, ignore_fidelity=False)
 
             neighbor_np = np.array(
-                [hp.normalized().value for hp in list(neighbor.values())])[np.newaxis, :]
+                [hp.normalized().value if type(hp) is not ConstantParameter
+                          else 0.0 for hp in list(neighbor.values())])[np.newaxis, :]
             dists = compute_config_dist(
                 config, neighbor_np, self.pipeline_space)
             close_neighbor = (compute_config_dist(
@@ -204,12 +222,14 @@ class RacebandPromotionPolicy(PromotionPolicy):
             if promotion_criteria:
                 self.already_promoted[rung] = True
                 top_k = len(self.rung_members_performance[rung]) // self.eta
-                best_performing_indices = np.argsort(self.rung_members_performance[rung])[0:top_k]
-                self.rung_promotions[rung] = self.rung_members[rung][best_performing_indices].tolist()
-       
+                best_performing_indices = np.argsort(
+                    self.rung_members_performance[rung])[0:top_k]
+                self.rung_promotions[rung] = self.rung_members[rung][best_performing_indices].tolist(
+                )
+
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
-        
+
         return self.rung_promotions
 
     def _retrieve_local_promotions(self):
@@ -243,9 +263,10 @@ class RacebandPromotionPolicy(PromotionPolicy):
                 while len(self.rung_promotions[rung]) < top_k:
                     best_idx = np.argmin(remaining_peformances)
                     remaining_configs_np = np.array(
-                        [[x_.normalized().value for x_ in list(x.values())]
-                            for x in remaining_configs]
+                        [[x_.normalized().value if type(x_) is not ConstantParameter
+                          else 0.0 for x_ in list(x.values())] for x in remaining_configs]
                     )
+
                     best_config_np = remaining_configs_np[best_idx]
                     dist = compute_config_dist(
                         best_config_np, remaining_configs_np, self.pipeline_space, filter_zero=False)
@@ -257,7 +278,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                         remaining_configs.pop(idx)
                         remaining_rung_members.pop(idx)
                         remaining_peformances.pop(idx)
-                
+
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
         return self.rung_promotions
