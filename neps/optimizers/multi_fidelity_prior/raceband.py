@@ -201,16 +201,16 @@ class RacebandSamplingPolicy(SamplingPolicy):
 
 class RacebandPromotionPolicy(PromotionPolicy):
 
-    def __init__(self, eta, pipeline_space, promote_local=True, **kwargs):
+    def __init__(self, eta, pipeline_space, promotion_type='local', **kwargs):
         super().__init__(eta, **kwargs)
         self.config_map: dict = None
         self.pipeline_space = pipeline_space
         self.already_promoted: dict = {}
         self.done = False
         self.rung_promotions = None
-        self.promote_local = promote_local
+        # can be local, global, sparse (random)
+        self.promotion_type = promotion_type
        
-        print('promote_local', promote_local)
     def clear(self):
         self.already_promoted: dict = {}
         self.sampled_configs = []
@@ -235,10 +235,12 @@ class RacebandPromotionPolicy(PromotionPolicy):
                                     for rung in list(self.config_map.keys())[:-1]}
 
     def retrieve_promotions(self):
-        if self.promote_local:
+        if self.promotion_type == 'local':
             promotions = self._retrieve_local_promotions()
-        else:
+        elif self.promotion_type == 'global':
             promotions = self._retrieve_global_promotions()
+        elif self.promotion_type == 'sparse':
+            promotions = self._retrieve_sparse_promotions()
         return promotions
 
     def _retrieve_global_promotions(self):
@@ -269,6 +271,48 @@ class RacebandPromotionPolicy(PromotionPolicy):
 
         return self.rung_promotions
 
+    def _retrieve_sparse_promotions(self):
+        assert self.config_map is not None
+        min_rung = sorted(self.config_map.keys())[0]
+        if min_rung == self.max_rung:
+            return self.rung_promotions
+        for rung in sorted(self.config_map.keys()):
+            if rung == self.max_rung:
+                # cease promotions for the highest rung (configs at max budget)
+                continue
+            # case 1: more configs seen than the specified num. configs at that rung
+            # case 2: a lower rung is eligible for promotion as num. configs already
+            #   seen but when a config is promoted, the lower rung count decrements
+            if self.already_promoted.get(rung, False) and len(self.rung_promotions[rung]) > 0:
+                self.rung_promotions[rung].pop(0)
+
+            promotion_criteria = len(
+                self.rung_members_performance[rung]) == self.config_map[rung]
+            if promotion_criteria:
+                self.already_promoted[rung] = True
+                top_k = len(
+                    self.rung_members_performance[rung]) // self.eta
+                
+                remaining_rung_members = self.rung_members[rung].tolist()
+                remaining_performances = self.rung_members_performance[rung].tolist()
+                while len(self.rung_promotions[rung]) < top_k:
+                    competitor_indices = np.random.choice(len(remaining_rung_members), size=self.eta, replace=False)
+                    competing_performances = np.array(remaining_performances)[competitor_indices]
+                    comp_ranking = np.argsort(competing_performances)
+                    best_idx = competitor_indices[comp_ranking[0]]
+                    removed_indices = competitor_indices[comp_ranking[1:]]
+                    
+                    self.rung_promotions[rung].append(
+                        remaining_rung_members[best_idx])
+                    for idx in np.sort(competitor_indices)[::-1]:
+                        # pops the best and the two closest from the list
+                        remaining_rung_members.pop(idx)
+                        remaining_performances.pop(idx)
+                        
+        if len(self.rung_promotions[self.max_rung-1]) == 1:
+            self.done = True
+        return self.rung_promotions
+
     def _retrieve_local_promotions(self):
         assert self.config_map is not None
         min_rung = sorted(self.config_map.keys())[0]
@@ -294,10 +338,10 @@ class RacebandPromotionPolicy(PromotionPolicy):
                     len(self.sampled_configs)) if i in self.rung_members[rung]]
                 remaining_rung_members = deepcopy(
                     self.rung_members[rung].tolist())
-                remaining_peformances = deepcopy(
+                remaining_performances = deepcopy(
                     self.rung_members_performance[rung].tolist())
                 while len(self.rung_promotions[rung]) < top_k:
-                    best_idx = np.argmin(remaining_peformances)
+                    best_idx = np.argmin(remaining_performances)
                     remaining_configs_np = np.array(
                         [[x_.normalized().value if type(x_) is not ConstantParameter
                           else 0.0 for x_ in list(x.values())] for x in remaining_configs]
@@ -313,7 +357,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                         # pops the best and the two closest from the list
                         remaining_configs.pop(idx)
                         remaining_rung_members.pop(idx)
-                        remaining_peformances.pop(idx)
+                        remaining_performances.pop(idx)
 
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
