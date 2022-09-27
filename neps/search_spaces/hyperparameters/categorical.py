@@ -28,6 +28,8 @@ class CategoricalParameter(Parameter):
         super().__init__()
 
         self.default = default
+        self.lower = default
+        self.upper = default
         self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]
         self.has_prior = self.default is not None
 

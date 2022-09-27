@@ -8,7 +8,10 @@ class ConstantParameter(NumericalParameter):
         super().__init__()
         self.value = value
         self.is_fidelity = is_fidelity
-
+        self.default = value
+        self.lower = value
+        self.upper = value
+        
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
