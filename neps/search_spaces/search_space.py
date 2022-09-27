@@ -307,6 +307,17 @@ class SearchSpace(collections.abc.Mapping):
     def copy(self):
         return deepcopy(self)
 
+    def sample_default_configuration(self):
+        config = self.sample()
+        for hp_name, hp in self.hyperparameters.items():
+            if hp.is_fidelity or isinstance(hp, ConstantParameter):
+                continue
+            elif hasattr(hp, "default") and hp.default is not None:
+                config[hp_name].value = hp.default
+            else:
+                raise ValueError(f"No defaults specified for {hp} in the space.")
+        return config
+
     def set_defaults_to_current_values(self):
         for hp in self.hyperparameters.values():
             if hasattr(hp, "default"):

@@ -31,6 +31,7 @@ class HyperbandBase(SuccessiveHalving):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -46,6 +47,7 @@ class HyperbandBase(SuccessiveHalving):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
@@ -190,6 +192,7 @@ class HyperbandWithPriors(Hyperband):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -204,6 +207,7 @@ class HyperbandWithPriors(Hyperband):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
 
 
@@ -227,6 +231,7 @@ class AsynchronousHyperband(HyperbandBase):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -241,6 +246,7 @@ class AsynchronousHyperband(HyperbandBase):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
@@ -300,6 +306,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -314,4 +321,5 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
