@@ -122,12 +122,12 @@ class RacebandSamplingPolicy(SamplingPolicy):
         num_prior = np.floor(num_total / self.eta)
         
         num_sharp_prior = np.floor(num_total / self.eta ** 2) if self.use_sharp_prior else 0
-        if num_sampled < num_sharp_prior:
+        if num_sampled < num_sharp_prior and self.use_priors:
             self._enhance_priors(self.eta - num_sampled)
             sample = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True)
         elif num_sampled < num_prior and self.use_priors:
-            if num_sampled == 0:
+            if num_sampled == 0 and num_total > self.eta:
                 sample = self.pipeline_space
             else:
                 sample = self.pipeline_space.sample(
@@ -308,7 +308,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                         # pops the best and the two closest from the list
                         remaining_rung_members.pop(idx)
                         remaining_performances.pop(idx)
-                        
+
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
         return self.rung_promotions
