@@ -46,6 +46,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         """Initialise an SH bracket.
 
@@ -83,6 +84,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         if random_interleave_prob < 0 or random_interleave_prob > 1:
             raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
         self.random_interleave_prob = random_interleave_prob
+        self.sample_default_first = sample_default_first
 
         self.min_budget = pipeline_space.fidelity.lower
         self.max_budget = pipeline_space.fidelity.upper
@@ -277,6 +279,11 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def clear_old_brackets(self):
         return
 
+    def _fit_models(self):
+        # define any model or surrogate training and acquisition function state setting
+        # if adding model-based search to the basic multi-fidelity algorithm
+        return
+
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
@@ -305,6 +312,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
         # identifying promotion list per rung
         self._handle_promotions()
+
+        # fit any model/surrogates
+        self._fit_models()
+
         return
 
     def is_promotable(self) -> int | None:
@@ -355,6 +366,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def _generate_new_config_id(self):
         return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
 
+    def get_default_configuration(self):
+        pass
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -384,7 +398,14 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     ignore_fidelity=True,
                 )
             else:
-                config = self.sample_new_config(rung=rung_id)
+                if (
+                    self.use_priors
+                    and self.sample_default_first
+                    and len(self.observed_configs) == 0
+                ):
+                    config = self.pipeline_space.sample_default_configuration()
+                else:
+                    config = self.sample_new_config(rung=rung_id)
             fidelity_value = self.rung_map[rung_id]
             config.fidelity.value = fidelity_value
 
@@ -456,6 +477,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -471,6 +493,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
 
 
@@ -492,6 +515,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -507,6 +531,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
 
 
@@ -529,6 +554,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -544,6 +570,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
         )
 
 
