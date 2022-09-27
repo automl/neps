@@ -94,7 +94,6 @@ class RacebandSamplingPolicy(SamplingPolicy):
         use_sobol=True,
         use_sharp_prior=False
     ):
-        print('Sample local', sample_local)
         super().__init__(pipeline_space=pipeline_space)
         self.eta = eta
         self.sampled_configs = []
@@ -130,7 +129,6 @@ class RacebandSamplingPolicy(SamplingPolicy):
         elif num_sampled < num_prior and self.use_priors:
             if num_sampled == 0:
                 sample = self.pipeline_space
-                print('DEFAULT')
             else:
                 sample = self.pipeline_space.sample(
                     patience=self.patience, user_priors=True, ignore_fidelity=True)
