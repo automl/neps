@@ -27,7 +27,7 @@ from ..multi_fidelity.promotion_policy import PromotionPolicy
 from ..multi_fidelity.sampling_policy import SamplingPolicy
 
 SAMPLING_TOL = 1e-2
-
+INCREASE_SAMPLE_DIST = 1 + 1e-2
 
 def compute_config_dist(config_array, other_configs_array, pipeline_space, filter_zero=True):
     is_fidelity = np.array([hp.is_fidelity for hp in pipeline_space.values()])
@@ -89,7 +89,10 @@ class RacebandSamplingPolicy(SamplingPolicy):
         pipeline_space,
         eta,
         use_priors=True,
-        sample_local=True
+        sample_local=True,
+        prior_confidence=None,
+        use_sobol=True,
+        use_sharp_prior=False
     ):
         super().__init__(pipeline_space=pipeline_space)
         self.eta = eta
@@ -101,8 +104,14 @@ class RacebandSamplingPolicy(SamplingPolicy):
         self.sobol_samples = None
         self.num_previous = 0
         self.use_priors = use_priors
+        self.use_sharp_prior = use_sharp_prior
         self.sample_local = sample_local
-
+        self.use_sobol = use_sobol  
+        self.prior_confidence = prior_confidence
+        default_values = {hp: val.default if val.default is not None else val.lower 
+            for hp, val in self.pipeline_space.hyperparameters.items()}
+        self.pipeline_space.set_hyperparameters_from_dict(default_values)
+        
     def clear(self):
         self.sampled_configs = []
         self.sobol_samples = None
@@ -111,50 +120,63 @@ class RacebandSamplingPolicy(SamplingPolicy):
         num_sampled = len(self.sampled_configs)
         num_neighborhoods = int(num_total / self.eta)
         num_prior = np.floor(num_total / self.eta)
-        if num_sampled < num_prior and self.use_priors:
+        
+        num_sharp_prior = np.floor(num_total / self.eta ** 2) if self.use_sharp_prior else 0
+        if num_sampled < num_sharp_prior and self.use_priors:
+            self._enhance_priors(self.eta - num_sampled)
             sample = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True)
-
+        elif num_sampled < num_prior and self.use_priors:
+            if num_sampled == 0 and num_total > self.eta:
+                sample = self.pipeline_space
+            else:
+                sample = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=True, ignore_fidelity=True)
         elif len(previous_configs) > 0 and self.num_previous < self.eta and self.sample_local:
             self.num_previous += 1
             best_previous_index = np.argmin(previous_values)
             prev_configs_np = np.array(
                 [[x_.normalized().value if type(x_) is not ConstantParameter
-                          else 0.0 for x_ in list(x.values())] for x in previous_configs]
+                  else 0.0 for x_ in list(x.values())] for x in previous_configs]
             )
             best_config = prev_configs_np[best_previous_index]
             sample = self._sample_neighbors(
                 best_config, prev_configs_np)
 
         else:
-            if self.sobol_samples is None:
-                self.sobol_samples = SobolEngine(dimension=len(
-                    self.pipeline_space) - self.num_fidelity_parameters - self.num_constants, scramble=True).draw(num_total - num_sampled).detach().numpy()
-
-            # get the next sample index from the list
-            normalized_sample = self.sobol_samples[0][np.newaxis, :]
-            self.sobol_samples = np.delete(self.sobol_samples, 0, axis=0)
-            sample = unnormalize_sample(normalized_sample, self.pipeline_space)
-
+            if self.use_sobol:
+                if self.sobol_samples is None:
+                    self.sobol_samples = SobolEngine(dimension=len(
+                        self.pipeline_space) - self.num_fidelity_parameters - self.num_constants, scramble=True).draw(num_total - num_sampled).detach().numpy()
+                # get the next sample index from the list
+                normalized_sample = self.sobol_samples[0][np.newaxis, :]
+                self.sobol_samples = np.delete(self.sobol_samples, 0, axis=0)
+                sample = unnormalize_sample(normalized_sample, self.pipeline_space)
+            else:
+                sample = self.pipeline_space.sample(
+                patience=self.patience, user_priors=False, ignore_fidelity=True)
         self.sampled_configs.append(sample)
         return sample
+
 
     def _sample_neighbors(self, config, initial_config_set):
         distance_to_others = compute_config_dist(
             config, initial_config_set, self.pipeline_space)
         max_neighbor_dist = max(
-            np.min(distance_to_others), np.sqrt(len(config)) * SAMPLING_TOL)
+            np.min(distance_to_others), SAMPLING_TOL)
         close_neighbor = False
 
         while_ctr = 0
         while not close_neighbor:
-            while_ctr += 1
+            if while_ctr % 1000 == 0:
+                max_neighbor_dist *= INCREASE_SAMPLE_DIST
+        
             neighbor = self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=False)
 
             neighbor_np = np.array(
                 [hp.normalized().value if type(hp) is not ConstantParameter
-                          else 0.0 for hp in list(neighbor.values())])[np.newaxis, :]
+                 else 0.0 for hp in list(neighbor.values())])[np.newaxis, :]
             dists = compute_config_dist(
                 config, neighbor_np, self.pipeline_space)
             close_neighbor = (compute_config_dist(
@@ -162,18 +184,33 @@ class RacebandSamplingPolicy(SamplingPolicy):
 
         return neighbor
 
+    def _enhance_priors(self, enhance_factor=1):
+        """Only applicable when priors are given along with a confidence."""
+        if not self.use_priors:
+            return
+        for k in self.pipeline_space.keys():
+            if self.pipeline_space[k].is_fidelity:
+                continue
+            elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
+                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence] ** enhance_factor
+                self.pipeline_space[k].default_confidence_score = confidence
+            elif isinstance(self.pipeline_space[k], CategoricalParameter):
+                confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
+                self.pipeline_space[k].default_confidence_score = confidence ** enhance_factor
+
 
 class RacebandPromotionPolicy(PromotionPolicy):
 
-    def __init__(self, eta, pipeline_space, promote_local=True, **kwargs):
+    def __init__(self, eta, pipeline_space, promotion_type='local', **kwargs):
         super().__init__(eta, **kwargs)
         self.config_map: dict = None
         self.pipeline_space = pipeline_space
         self.already_promoted: dict = {}
         self.done = False
         self.rung_promotions = None
-        self.promote_local = promote_local
-
+        # can be local, global, sparse (random)
+        self.promotion_type = promotion_type
+       
     def clear(self):
         self.already_promoted: dict = {}
         self.sampled_configs = []
@@ -198,10 +235,12 @@ class RacebandPromotionPolicy(PromotionPolicy):
                                     for rung in list(self.config_map.keys())[:-1]}
 
     def retrieve_promotions(self):
-        if self.promote_local:
+        if self.promotion_type == 'local':
             promotions = self._retrieve_local_promotions()
-        else:
+        elif self.promotion_type == 'global':
             promotions = self._retrieve_global_promotions()
+        elif self.promotion_type == 'sparse':
+            promotions = self._retrieve_sparse_promotions()
         return promotions
 
     def _retrieve_global_promotions(self):
@@ -232,6 +271,48 @@ class RacebandPromotionPolicy(PromotionPolicy):
 
         return self.rung_promotions
 
+    def _retrieve_sparse_promotions(self):
+        assert self.config_map is not None
+        min_rung = sorted(self.config_map.keys())[0]
+        if min_rung == self.max_rung:
+            return self.rung_promotions
+        for rung in sorted(self.config_map.keys()):
+            if rung == self.max_rung:
+                # cease promotions for the highest rung (configs at max budget)
+                continue
+            # case 1: more configs seen than the specified num. configs at that rung
+            # case 2: a lower rung is eligible for promotion as num. configs already
+            #   seen but when a config is promoted, the lower rung count decrements
+            if self.already_promoted.get(rung, False) and len(self.rung_promotions[rung]) > 0:
+                self.rung_promotions[rung].pop(0)
+
+            promotion_criteria = len(
+                self.rung_members_performance[rung]) == self.config_map[rung]
+            if promotion_criteria:
+                self.already_promoted[rung] = True
+                top_k = len(
+                    self.rung_members_performance[rung]) // self.eta
+                
+                remaining_rung_members = self.rung_members[rung].tolist()
+                remaining_performances = self.rung_members_performance[rung].tolist()
+                while len(self.rung_promotions[rung]) < top_k:
+                    competitor_indices = np.random.choice(len(remaining_rung_members), size=self.eta, replace=False)
+                    competing_performances = np.array(remaining_performances)[competitor_indices]
+                    comp_ranking = np.argsort(competing_performances)
+                    best_idx = competitor_indices[comp_ranking[0]]
+                    removed_indices = competitor_indices[comp_ranking[1:]]
+                    
+                    self.rung_promotions[rung].append(
+                        remaining_rung_members[best_idx])
+                    for idx in np.sort(competitor_indices)[::-1]:
+                        # pops the best and the two closest from the list
+                        remaining_rung_members.pop(idx)
+                        remaining_performances.pop(idx)
+
+        if len(self.rung_promotions[self.max_rung-1]) == 1:
+            self.done = True
+        return self.rung_promotions
+
     def _retrieve_local_promotions(self):
         assert self.config_map is not None
         min_rung = sorted(self.config_map.keys())[0]
@@ -251,17 +332,16 @@ class RacebandPromotionPolicy(PromotionPolicy):
                 self.rung_members_performance[rung]) == self.config_map[rung]
             if promotion_criteria:
                 self.already_promoted[rung] = True
-
                 top_k = len(
                     self.rung_members_performance[rung]) // self.eta
                 remaining_configs = [self.sampled_configs[i] for i in range(
                     len(self.sampled_configs)) if i in self.rung_members[rung]]
                 remaining_rung_members = deepcopy(
                     self.rung_members[rung].tolist())
-                remaining_peformances = deepcopy(
+                remaining_performances = deepcopy(
                     self.rung_members_performance[rung].tolist())
                 while len(self.rung_promotions[rung]) < top_k:
-                    best_idx = np.argmin(remaining_peformances)
+                    best_idx = np.argmin(remaining_performances)
                     remaining_configs_np = np.array(
                         [[x_.normalized().value if type(x_) is not ConstantParameter
                           else 0.0 for x_ in list(x.values())] for x in remaining_configs]
@@ -277,7 +357,7 @@ class RacebandPromotionPolicy(PromotionPolicy):
                         # pops the best and the two closest from the list
                         remaining_configs.pop(idx)
                         remaining_rung_members.pop(idx)
-                        remaining_peformances.pop(idx)
+                        remaining_performances.pop(idx)
 
         if len(self.rung_promotions[self.max_rung-1]) == 1:
             self.done = True
@@ -300,13 +380,13 @@ class RaceHalving(BaseOptimizer):
         use_priors: bool = False,
         sampling_policy: typing.Any = RacebandSamplingPolicy,
         promotion_policy: typing.Any = RacebandPromotionPolicy,
-        sample_local: bool = True,
-        promote_local: bool = True,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
+        sampling_kwargs = None,
+        promotion_kwargs = None
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -326,9 +406,9 @@ class RaceHalving(BaseOptimizer):
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
         self.sampling_policy = sampling_policy(
-            pipeline_space, self.eta, use_priors=use_priors, sample_local=sample_local)
+            pipeline_space, self.eta, use_priors=use_priors, **sampling_kwargs)
         self.promotion_policy = promotion_policy(
-            self.eta, pipeline_space, promote_local=promote_local)
+            self.eta, pipeline_space, **promotion_kwargs)
 
         # `max_budget_init` checks for the number of configurations that have been
         # evaluated at the target budget
@@ -340,16 +420,14 @@ class RaceHalving(BaseOptimizer):
             np.log(self.max_budget / self.min_budget) / np.log(self.eta)
         ).astype(int)
         assert self.early_stopping_rate <= self.stopping_rate_limit
-
         # maps rungs to a fidelity value for an SH bracket with `early_stopping_rate`
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
         self.config_map = self._get_config_map(self.early_stopping_rate)
-
         self.min_rung = min(list(self.rung_map.keys()))
         self.max_rung = max(list(self.rung_map.keys()))
 
         # placeholder args for varying promotion and sampling policies
-        self.promotion_policy_kwargs: dict = {}
+        self.promotion_policy_kwargs = {}
         self.promotion_policy_kwargs.update({"config_map": self.config_map})
         self.sampling_args: dict = {'num_total': 0}
 
@@ -368,7 +446,6 @@ class RaceHalving(BaseOptimizer):
         self._counter = 0
         self.full_rung_trace = SuccessiveHalving._get_rung_trace(
             self.rung_map, self.config_map)
-
         # prior setups
         self.prior_confidence = prior_confidence
         self._enhance_priors()
@@ -445,7 +522,8 @@ class RaceHalving(BaseOptimizer):
         s_max = self.stopping_rate_limit + 1
         _s = self.stopping_rate_limit - s
         # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
-        _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
+        #_n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
+        _n_config = self.eta ** _s
         config_map = dict()
         for i in range(nrungs):
             # TODO: add +s to keys and TEST
@@ -657,7 +735,7 @@ class RaceHalving(BaseOptimizer):
         self._update_state_counter()
         return config.hp_values(), config_id, previous_config_id  # type: ignore
 
-    def _enhance_priors(self):
+    def _enhance_priors(self, enhance_factor=1):
         """Only applicable when priors are given along with a confidence."""
         if not self.use_priors and self.prior_confidence is None:
             return
@@ -665,17 +743,18 @@ class RaceHalving(BaseOptimizer):
             if self.pipeline_space[k].is_fidelity:
                 continue
             elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
-                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                confidence = FLOAT_CONFIDENCE_SCORES[self.prior_confidence] ** enhance_factor
                 self.pipeline_space[k].default_confidence_score = confidence
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
                 confidence = CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
-                self.pipeline_space[k].default_confidence_score = confidence
+                self.pipeline_space[k].default_confidence_score = confidence ** enhance_factor
 
 
 class RaceBand(RaceHalving):
     """Implements a Hyperband procedure with a sampling and promotion policy."""
 
     early_stopping_rate = 0
+    max_possible_rung = 4
 
     def __init__(
         self,
@@ -687,13 +766,14 @@ class RaceBand(RaceHalving):
         use_priors: bool = True,
         sampling_policy: typing.Any = RacebandSamplingPolicy,
         promotion_policy: typing.Any = RacebandPromotionPolicy,
-        sample_local: bool = True,
-        promote_local: bool = True,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
+        total_budget = 10,
+        sampling_kwargs = {},
+        promotion_kwargs = {}
     ):
         args = dict(
             pipeline_space=pipeline_space,
@@ -704,14 +784,13 @@ class RaceBand(RaceHalving):
             use_priors=use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            sample_local=sample_local,
-            promote_local=promote_local,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-
+            sampling_kwargs=sampling_kwargs,
+            promotion_kwargs=promotion_kwargs
         )
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
@@ -720,10 +799,28 @@ class RaceBand(RaceHalving):
         self.old_bracket = 0
         self.old_configs = []
         self.full_runs = 0
-        for s in range(self.max_rung + 1):
-            args.update({"early_stopping_rate": s})
-            self.sh_brackets[s] = RaceHalving(**args)
+        self.stopping_rate_limit = np.floor(
+            np.log(self.max_budget / self.min_budget) / np.log(self.eta)
+        ).astype(int)   
+        self.max_possible_rung = min(self.max_possible_rung, self.stopping_rate_limit + 1)
+        self.budget_per_rung = self._compute_rung_budget(total_budget)
+        for i, s in enumerate(self.budget_per_rung):
+            args.update({"early_stopping_rate": self.max_possible_rung - s})
+            self.sh_brackets[i] = RaceHalving(**args)
         self.current_sh_bracket = 0
+
+    def _compute_rung_budget(self, max_budget):
+        consumed_budget = 0
+        rung_ctr = self.max_possible_rung
+        rung_budgets = []
+        while consumed_budget < max_budget:
+            diff = max_budget - consumed_budget 
+            rung_budgets.append(min(rung_ctr, diff))
+            consumed_budget = sum(rung_budgets)
+            rung_ctr -= 1
+            if rung_ctr == 0:
+                rung_ctr = self.max_possible_rung
+        return rung_budgets
 
     def load_results(
         self,
