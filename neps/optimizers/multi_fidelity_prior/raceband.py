@@ -361,7 +361,6 @@ class RaceHalving(BaseOptimizer):
             np.log(self.max_budget / self.min_budget) / np.log(self.eta)
         ).astype(int)
         assert self.early_stopping_rate <= self.stopping_rate_limit
-
         # maps rungs to a fidelity value for an SH bracket with `early_stopping_rate`
         self.rung_map = self._get_rung_map(self.early_stopping_rate)
         self.config_map = self._get_config_map(self.early_stopping_rate)
@@ -742,6 +741,10 @@ class RaceBand(RaceHalving):
         self.old_bracket = 0
         self.old_configs = []
         self.full_runs = 0
+        self.stopping_rate_limit = np.floor(
+            np.log(self.max_budget / self.min_budget) / np.log(self.eta)
+        ).astype(int)   
+        self.max_possible_rung = min(self.max_possible_rung, self.stopping_rate_limit + 1)
         self.budget_per_rung = self._compute_rung_budget(total_budget)
         for i, s in enumerate(self.budget_per_rung):
             args.update({"early_stopping_rate": self.max_possible_rung - s})
