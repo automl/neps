@@ -39,6 +39,7 @@ class BayesianOptimization(BaseOptimizer):
         cost_value_on_error: None | float = None,
         logger=None,
         disable_priors: bool = False,
+        sample_default_first: bool = False,
     ):
         """Initialise the BO loop.
 
@@ -69,6 +70,8 @@ class BayesianOptimization(BaseOptimizer):
             logger: logger object, or None to use the neps logger
             disable_priors: allows to choose between BO and piBO regardless the search
                 space definition
+            sample_default_first: if True and a default prior exists, the first sampel is
+                the default configuration
 
         Raises:
             ValueError: if patience < 1
@@ -100,6 +103,7 @@ class BayesianOptimization(BaseOptimizer):
         self._model_update_failed: bool = False
         self.loss_value_on_error: None | float = loss_value_on_error
         self.cost_value_on_error: None | float = cost_value_on_error
+        self.sample_default_first = sample_default_first
 
         surrogate_model_args = surrogate_model_args or {}
         graph_kernels, hp_kernels = get_kernels(
@@ -198,8 +202,15 @@ class BayesianOptimization(BaseOptimizer):
                 self._model_update_failed = True
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        if self._num_train_x == 0 and self._initial_design_size >= 1:
-            # TODO: if default config sample it
+        if (
+            self._num_train_x == 0
+            and self.sample_default_first
+            and self.pipeline_space.has_prior
+        ):
+            config = self.pipeline_space.sample_default_configuration(
+                patience=self.patience, ignore_fidelity=False
+            )
+        elif self._num_train_x == 0 and self._initial_design_size >= 1:
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )

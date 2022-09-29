@@ -307,8 +307,8 @@ class SearchSpace(collections.abc.Mapping):
     def copy(self):
         return deepcopy(self)
 
-    def sample_default_configuration(self):
-        config = self.sample()
+    def sample_default_configuration(self, patience: int = 1, ignore_fidelity=True):
+        config = self.sample(patience=patience, ignore_fidelity=ignore_fidelity)
         for hp_name, hp in self.hyperparameters.items():
             if hp.is_fidelity or isinstance(hp, ConstantParameter):
                 continue
