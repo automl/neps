@@ -299,7 +299,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(previous_results)
-        self.total_fevals = len(previous_results)
+        self.total_fevals = len(previous_results) + len(pending_evaluations)
 
         # account for pending evaluations
         self._handle_pending_evaluations(pending_evaluations)
@@ -317,18 +317,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self._fit_models()
 
         return
-
-    def is_promotable(self) -> int | None:
-        """Returns an int if a rung can be promoted, else a None."""
-        rung_to_promote = None
-        # iterates starting from the highest fidelity promotable to the lowest fidelity
-        for rung in reversed(range(self.min_rung, self.max_rung)):
-            if len(self.rung_promotions[rung]) > 0:
-                rung_to_promote = rung
-                # stop checking when a promotable config found
-                # no need to search at lower fidelities
-                break
-        return rung_to_promote
 
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search.
@@ -368,6 +356,19 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
     def get_default_configuration(self):
         pass
+
+    def is_promotable(self) -> int | None:
+        """Returns an int if a rung can be promoted, else a None."""
+        rung_to_promote = None
+
+        # # iterates starting from the highest fidelity promotable to the lowest fidelity
+        for rung in reversed(range(self.min_rung, self.max_rung)):
+            if len(self.rung_promotions[rung]) > 0:
+                rung_to_promote = rung
+                # stop checking when a promotable config found
+                # no need to search at lower fidelities
+                break
+        return rung_to_promote
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -444,17 +445,48 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):
+
+    def _calc_budget_used_in_bracket(self, config_history):
+        budget = 0
+        for rung in self.config_map.keys():
+            count = sum(config_history == rung)
+            # counting in the continuation cost cumulatively to map with SH budgets
+            budget += count * (rung * (rung + 1) / 2)
+        return budget
+
     def clear_old_brackets(self):
-        "Enforces reset at each new bracket"
-        feval_counts = (
-            (self.observed_configs.rung + 1).values.cumsum()[-1]
-            if len(self.observed_configs)
-            else 0
-        )
-        nbrackets = feval_counts // len(self.full_rung_trace)
-        old_history_len = nbrackets * self.config_map[self.min_rung]
-        if old_history_len > 0:
-            self._get_rungs_state(self.observed_configs.loc[old_history_len:])
+        """Enforces reset at each new bracket."""
+        start = 0
+        end = self.config_map[self.min_rung]
+        # iterates over the different SH brackets which span start-end by index
+        while end <= len(self.observed_configs):
+            # for the SH bracket in start-end, calculate total SH budget used
+            bracket_budget_used = self._calc_budget_used_in_bracket(
+                deepcopy(self.observed_configs.rung.values[start:end])
+            )
+            # if budget used is less than the total SH budget then still an active bracket
+            if bracket_budget_used < sum(self.full_rung_trace):
+                # subsetting only this SH bracket from the history
+                self._get_rungs_state(self.observed_configs.iloc[start:end])
+                # extra call to use the updated rung member info to find promotions
+                # SyncPromotion signals a wait if a rung is full but with
+                # incomplete/pending evaluations, and signals to starts a new SH bracket
+                self._handle_promotions()
+                promotion_count = 0
+                for _, promotions in self.rung_promotions.items():
+                    promotion_count += len(promotions)
+                # if no promotion candidates are returned, then the current bracket
+                # is active and waiting
+                if promotion_count:
+                    # returns the oldest active bracket if a promotion found
+                    return
+            start = end
+            end = start + self.config_map[self.min_rung]
+        # reaches here if all old brackets are either waiting or finished
+
+        # updates rung info with the latest active, incomplete bracket
+        self._get_rungs_state(self.observed_configs.iloc[start:end])
+        # _handle_promotion() need not be called as it is called by load_results()
         return
 
 
