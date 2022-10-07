@@ -123,6 +123,7 @@ def FunctionParameter(**kwargs):
                 self.graph_to_self(composed_function)
                 self.prune_graph()
 
+                m = None
                 if self._old_build_api:
                     m = self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
                 elif self._set_recursive_attribute:
