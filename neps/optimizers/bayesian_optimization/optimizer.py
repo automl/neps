@@ -35,6 +35,7 @@ class BayesianOptimization(BaseOptimizer):
         random_interleave_prob: float = 0.0,
         patience: int = 100,
         budget: None | int | float = None,
+        ignore_errors: bool = False,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -61,6 +62,8 @@ class BayesianOptimization(BaseOptimizer):
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
             budget: Maximum budget
+            ignore_errors: Ignore hyperparameter settings that threw an error and do not
+                raise an error. Error configs still count towards max_evaluations_total.
             loss_value_on_error: Setting this and cost_value_on_error to any float will
                 supress any error during bayesian optimization and will use given loss
                 value instead. default: None
@@ -87,6 +90,9 @@ class BayesianOptimization(BaseOptimizer):
             patience=patience,
             logger=logger,
             budget=budget,
+            loss_value_on_error=loss_value_on_error,
+            cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
         )
 
         if initial_design_size < 1:
@@ -99,10 +105,9 @@ class BayesianOptimization(BaseOptimizer):
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
         self._num_train_x: int = 0
+        self._num_error_evaluations: int = 0
         self._pending_evaluations: list = []
         self._model_update_failed: bool = False
-        self.loss_value_on_error: None | float = loss_value_on_error
-        self.cost_value_on_error: None | float = cost_value_on_error
         self.sample_default_first = sample_default_first
 
         surrogate_model_args = surrogate_model_args or {}
@@ -164,10 +169,13 @@ class BayesianOptimization(BaseOptimizer):
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
-        # TODO: filter out error configs as they can not be used for modeling?
-        # TODO: read out cost if they exist
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
+        if self.ignore_errors:
+            train_x = [x for x, y in zip(train_x, train_y) if y != "error"]
+            train_y_no_error = [y for y in train_y if y != "error"]
+            self._num_error_evaluations = len(train_y) - len(train_y_no_error)
+            train_y = train_y_no_error
         self._num_train_x = len(train_x)
         self._pending_evaluations = [el for el in pending_evaluations.values()]
         if not self.is_init_phase():
@@ -233,5 +241,10 @@ class BayesianOptimization(BaseOptimizer):
                     patience=self.patience, user_priors=True, ignore_fidelity=False
                 )
 
-        config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
+        config_id = str(
+            self._num_train_x
+            + self._num_error_evaluations
+            + len(self._pending_evaluations)
+            + 1
+        )
         return config.hp_values(), config_id, None
