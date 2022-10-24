@@ -24,6 +24,7 @@ class BaseOptimizer(metahyper.Sampler):
         budget: None | int | float = None,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
+        ignore_errors=False,
     ):
         super().__init__(budget=budget)
         if patience < 1:
@@ -34,6 +35,7 @@ class BaseOptimizer(metahyper.Sampler):
         self.logger = logger or logging.getLogger("neps")
         self.loss_value_on_error = loss_value_on_error
         self.cost_value_on_error = cost_value_on_error
+        self.ignore_errors = ignore_errors
 
     @abstractmethod
     def load_results(
@@ -65,9 +67,17 @@ class BaseOptimizer(metahyper.Sampler):
     def get_loss(self, result: str | dict | float) -> float | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes."""
-        return get_loss(result, loss_value_on_error=self.loss_value_on_error)
+        return get_loss(
+            result,
+            loss_value_on_error=self.loss_value_on_error,
+            ignore_errors=self.ignore_errors,
+        )
 
     def get_cost(self, result: str | dict | float) -> float | Any:
         """Calls result.utils.get_cost() and passes the error handling through.
         Please use self.get_cost() instead of get_cost() in all optimizer classes."""
-        return get_cost(result, cost_value_on_error=self.cost_value_on_error)
+        return get_cost(
+            result,
+            cost_value_on_error=self.cost_value_on_error,
+            ignore_errors=self.ignore_errors,
+        )

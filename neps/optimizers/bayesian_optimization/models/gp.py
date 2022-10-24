@@ -641,7 +641,7 @@ def compute_log_marginal_likelihood(
     return lml / y.shape[0] if normalize else lml
 
 
-def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
+def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-6):
     """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
     n = K.shape[0]
     assert (

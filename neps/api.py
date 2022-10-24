@@ -18,7 +18,9 @@ from .search_spaces.search_space import SearchSpace, pipeline_space_from_configs
 from .utils.result_utils import get_loss
 
 
-def _post_evaluation_hook_function(_loss_value_on_error: None | float):
+def _post_evaluation_hook_function(
+    _loss_value_on_error: None | float, _ignore_errors: bool
+):
     def _post_evaluation_hook(
         config,
         config_id,
@@ -26,11 +28,10 @@ def _post_evaluation_hook_function(_loss_value_on_error: None | float):
         result,
         logger,
         loss_value_on_error=_loss_value_on_error,
+        ignore_errors=_ignore_errors,
     ):
         working_directory = Path(config_working_directory, "../../")
-        # TODO (Nils): Should loss_value_on_error be passed here as well or continue with
-        #  the default inf?
-        loss = get_loss(result, loss_value_on_error)
+        loss = get_loss(result, loss_value_on_error, ignore_errors)
 
         # 1. write all configs and losses
         all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
@@ -106,6 +107,7 @@ def run(
     ]
     | BaseOptimizer = "default",
     serializer: Literal["yaml", "dill", "json"] = "yaml",
+    ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
     **searcher_kwargs,
@@ -140,6 +142,8 @@ def run(
         searcher: Which optimizer to use.
         serializer: Serializer to store hyperparameters configurations. Can be an object,
             or a value in 'json', 'yaml' or 'dill' (see metahyper).
+        ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
+            an error. Error configs still count towards max_evaluations_total.
         loss_value_on_error: Setting this and cost_value_on_error to any float will
             supress any error and will use given loss value instead. default: None
         cost_value_on_error: Setting this and loss_value_on_error to any float will
@@ -211,6 +215,7 @@ def run(
         {
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
+            "ignore_errors": ignore_errors,
         }
     )
     searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
@@ -231,5 +236,7 @@ def run(
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         serializer=serializer,
         logger=logger,
-        post_evaluation_hook=_post_evaluation_hook_function(loss_value_on_error),
+        post_evaluation_hook=_post_evaluation_hook_function(
+            loss_value_on_error, ignore_errors
+        ),
     )

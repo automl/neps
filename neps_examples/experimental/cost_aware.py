@@ -36,7 +36,6 @@ neps.run(
     searcher="cost_cooling",
     max_evaluations_total=12,  # TODO(Jan): remove
     initial_design_size=5,
-    budget=100,  # TODO(Jan): something reasonable
-    # searcher="cost_cooling",  TODO(Jan)
+    budget=100,
 )
 previous_results, pending_configs = neps.status("results/cost_aware_example")

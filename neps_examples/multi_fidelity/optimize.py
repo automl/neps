@@ -1,4 +1,3 @@
-import argparse
 import logging
 
 import numpy as np
@@ -44,15 +43,10 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 
-searcher = "successive_halving_prior"
-searcher_kwargs = dict(use_priors=False) if "prior" not in searcher else dict()
-searcher_output = f"{searcher}_example"
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory=f"results/{searcher_output}",
-    max_evaluations_total=50,
-    searcher=searcher,
-    **searcher_kwargs,
+    root_directory="results/multi_fidelity",
+    max_evaluations_total=20,
 )
-previous_results, pending_configs = neps.status(f"results/{searcher_output}")
+previous_results, pending_configs = neps.status("results/multi_fidelity")

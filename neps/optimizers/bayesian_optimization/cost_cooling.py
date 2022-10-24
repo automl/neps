@@ -40,6 +40,7 @@ class CostCooling(BayesianOptimization):
         random_interleave_prob: float = 0.0,
         patience: int = 100,
         budget: None | int | float = None,
+        ignore_errors: bool = False,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         logger=None,
@@ -67,6 +68,8 @@ class CostCooling(BayesianOptimization):
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
             budget: Maximum budget
+            ignore_errors: Ignore hyperparameter settings that threw an error and do not
+                raise an error. Error configs still count towards max_evaluations_total.
             loss_value_on_error: Setting this and cost_value_on_error to any float will
                 supress any error during bayesian optimization and will use given loss
                 value instead. default: None
@@ -86,6 +89,7 @@ class CostCooling(BayesianOptimization):
             patience=patience,
             logger=logger,
             budget=budget,
+            ignore_errors=ignore_errors,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
         )
@@ -102,6 +106,11 @@ class CostCooling(BayesianOptimization):
         self._num_train_x: int = 0
         self._pending_evaluations: list = []
         self._model_update_failed: bool = False
+
+        if ignore_errors:
+            self.logger.warning(
+                "ignore_errors was set, but this optimizer does not support it"
+            )
 
         surrogate_model_args = surrogate_model_args or {}
         cost_model_args = cost_model_args or {}
