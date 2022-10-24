@@ -92,7 +92,8 @@ class RacebandSamplingPolicy(SamplingPolicy):
         sample_local=True,
         prior_confidence=None,
         use_sobol=False,
-        use_sharp_prior=False
+        use_sharp_prior=False,
+        randomize_policy=False
     ):
         super().__init__(pipeline_space=pipeline_space)
         self.eta = eta
@@ -111,14 +112,56 @@ class RacebandSamplingPolicy(SamplingPolicy):
         default_values = {hp: val.default if val.default is not None else val.lower 
             for hp, val in self.pipeline_space.hyperparameters.items()}
         self.pipeline_space.set_hyperparameters_from_dict(default_values)
+        self.randomize_policy = randomize_policy
         
     def clear(self):
         self.sampled_configs = []
         self.sobol_samples = None
 
     def sample(self, num_total, previous_configs=None, previous_values=None) -> SearchSpace:
+        if self.randomize_policy:
+            return self._sample_randomized(num_total, previous_configs=previous_configs, previous_values=previous_values)
+        else:
+            return self._sample_deterministic(num_total, previous_configs=previous_configs, previous_values=previous_values)
+
+    def _sample_randomized(self, num_total, previous_configs=[], previous_values=[]) -> SearchSpace:
         num_sampled = len(self.sampled_configs)
-        num_neighborhoods = int(num_total / self.eta)
+        if num_sampled == 0:
+            sample = self.pipeline_space
+            self.sampled_configs.append(sample) 
+            return sample
+
+        local_prob = 0 if len(previous_configs) == 0 else self.eta / num_total
+        prior_prob = np.floor(num_total / self.eta) / num_total
+        randint = np.random.uniform()
+        
+        if randint < local_prob and len(previous_configs) > 0 and self.sample_local:
+            print('LOCAL', local_prob, randint)
+            best_previous_index = np.argmin(previous_values)
+            prev_configs_np = np.array(
+                [[x_.normalized().value if type(x_) is not ConstantParameter
+                  else 0.0 for x_ in list(x.values())] for x in previous_configs]
+            )
+            best_config = prev_configs_np[best_previous_index]
+            sample = self._sample_neighbors(
+                best_config, prev_configs_np)
+        
+        elif randint < (prior_prob + local_prob) and self.use_priors:
+            print('prior', prior_prob, local_prob, randint)
+            if num_sampled == self.eta and num_total > self.eta:
+                sample = self.pipeline_space
+            else:
+                sample = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=True, ignore_fidelity=True)
+        
+        else:
+            sample = self.pipeline_space.sample(
+            patience=self.patience, user_priors=False, ignore_fidelity=True)
+        self.sampled_configs.append(sample)
+        return sample
+
+    def _sample_deterministic(self, num_total, previous_configs=[], previous_values=[]) -> SearchSpace:
+        num_sampled = len(self.sampled_configs)
         num_prior = np.floor(num_total / self.eta)
         if len(previous_configs) > 0 and self.sample_local:
             num_prior += self.eta
