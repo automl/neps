@@ -1,6 +1,7 @@
 """The weisfeiler lehman kernel :cite:`shervashidze2011weisfeiler`."""
 
 import collections
+import collections.abc
 import logging
 import warnings
 from ast import literal_eval
@@ -216,13 +217,13 @@ class WeisfeilerLehman(Kernel):
             base_graph_kernel = self.base_graph_kernel_precomputed[self._h]
         else:
             # Input validation and parsing
-            if not isinstance(X, collections.Iterable):
+            if not isinstance(X, collections.abc.Iterable):
                 raise TypeError("input must be an iterable\n")
             else:
                 nx = 0
                 Gs_ed, L, distinct_values, extras = dict(), dict(), set(), dict()
                 for (idx, x) in enumerate(iter(X)):
-                    is_iter = isinstance(x, collections.Iterable)
+                    is_iter = isinstance(x, collections.abc.Iterable)
                     if is_iter:
                         x = list(x)
                     if is_iter and (len(x) == 0 or len(x) >= 2):
@@ -491,14 +492,14 @@ class WeisfeilerLehman(Kernel):
         if X is None:
             raise ValueError("transform input cannot be None")
         else:
-            if not isinstance(X, collections.Iterable):
+            if not isinstance(X, collections.abc.Iterable):
                 raise ValueError("input must be an iterable\n")
             else:
                 nx = 0
                 distinct_values = set()
                 Gs_ed, L = dict(), dict()
                 for (i, x) in enumerate(iter(X)):
-                    is_iter = isinstance(x, collections.Iterable)
+                    is_iter = isinstance(x, collections.abc.Iterable)
                     if is_iter:
                         x = list(x)
                     if is_iter and len(x) in [0, 2, 3]:

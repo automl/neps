@@ -28,7 +28,6 @@ core_examples = [  # Run locally and on github actions
     "basic_usage/hyperparameters",
     "expert_priors/architecture_and_hyperparameters",
     "multi_fidelity/optimize",
-    "experimental/cost_aware",
 ]
 all_examples = core_examples + [  # Run on github actions
     "basic_usage/architecture_and_hyperparameters",
