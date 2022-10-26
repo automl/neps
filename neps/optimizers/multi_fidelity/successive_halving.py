@@ -43,6 +43,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         promotion_policy: typing.Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
+        ignore_errors: bool = False,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
@@ -79,6 +80,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             budget=budget,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
             logger=logger,
         )
         if random_interleave_prob < 0 or random_interleave_prob > 1:
@@ -455,7 +457,6 @@ class SuccessiveHalving(SuccessiveHalvingBase):
             count = sum(config_history == rung)
             # `range(min_rung, rung+1)` counts the black-box cost of promotions since
             # SH budgets assume each promotion involves evaluation from scratch
-            # budget += count * (sum(np.arange(self.min_rung, rung + 1)) + rung)
             budget += count * sum(np.arange(self.min_rung, rung + 1))
         return budget
 
@@ -522,6 +523,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         promotion_policy: typing.Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
+        ignore_errors: bool = False,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
@@ -538,6 +540,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             promotion_policy=promotion_policy,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
@@ -560,6 +563,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
+        ignore_errors: bool = False,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
@@ -576,6 +580,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
             promotion_policy=promotion_policy,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
@@ -599,6 +604,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
+        ignore_errors: bool = False,
         logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
@@ -615,6 +621,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             promotion_policy=promotion_policy,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
             logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,

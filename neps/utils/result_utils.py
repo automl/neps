@@ -6,7 +6,7 @@ from typing import Any
 def get_loss(
     result: str | dict | float,
     loss_value_on_error: float = None,
-    ignore_errors=False,
+    ignore_errors: bool = False,
 ) -> float | Any:
     if result == "error":
         if ignore_errors:
@@ -28,7 +28,7 @@ def get_loss(
 def get_cost(
     result: str | dict | float,
     cost_value_on_error: float = None,
-    ignore_errors=False,
+    ignore_errors: bool = False,
 ) -> float | Any:
     if result == "error":
         if ignore_errors:
