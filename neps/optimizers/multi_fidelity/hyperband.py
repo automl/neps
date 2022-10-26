@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from copy import deepcopy
 
 import numpy as np
 from metahyper.api import ConfigResult
@@ -57,15 +58,11 @@ class HyperbandBase(SuccessiveHalving):
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             self.sh_brackets[s] = SuccessiveHalving(**args)
+            # `full_rung_trace` contains the index of SH bracket to run sequentially
             self.full_rung_trace.extend([s] * len(self.sh_brackets[s].full_rung_trace))
         # book-keeping variables
-        self.current_sh_bracket = None
+        self.current_sh_bracket = None  # type: ignore
         self.old_history_len = None
-
-    def _get_bracket_to_run(self) -> int:
-        """Retrieves the exact rung ID that is being scheduled by SH in the next call."""
-        bracket = self.full_rung_trace[self._counter % len(self.full_rung_trace)]
-        return bracket
 
     def _update_state_counter(self) -> None:
         # TODO: get rid of this dependency
@@ -77,42 +74,11 @@ class HyperbandBase(SuccessiveHalving):
         # optimization history, the promotion handler of the current SH bracket needs the
         # optimization state. Calling `load_results()` is an option but leads to
         # redundant data processing.
-        s = self.current_sh_bracket
-        self.sh_brackets[s].promotion_policy.set_state(
-            max_rung=self.max_rung,
-            members=self.rung_members,
-            performances=self.rung_members_performance,
-            config_map=self.sh_brackets[s].config_map,
-        )
-        self.sh_brackets[s].rung_promotions = self.sh_brackets[
-            s
-        ].promotion_policy.retrieve_promotions()
-        self.sh_brackets[s].observed_configs = self.observed_configs.copy()
-
-    def _retrieve_current_state(self) -> tuple[int, int]:
-        """Returns the current SH bracket number and the ordered index of config IDs
-        that are history to ignore.
-        """
-        nsamples_per_bracket = sum(
-            v.config_map[v.min_rung] for v in self.sh_brackets.values()
-        )
-        nevals_per_bracket = len(self.full_rung_trace)
-        # TODO: remove dependency on `_counter` by calculating it from `observed_configs`
-        nbrackets = self._counter // nevals_per_bracket
-        old_history_len = nbrackets * nsamples_per_bracket
-        # current HB bracket configs
-        new_bracket_len = self._counter % nevals_per_bracket
-        history_offset = 0
-        for s in sorted(self.sh_brackets.keys()):
-            _sh_bracket = self.sh_brackets[s]
-            sh_bracket_len = len(_sh_bracket.full_rung_trace)
-            if new_bracket_len >= sh_bracket_len:
-                history_offset += _sh_bracket.config_map[_sh_bracket.min_rung]
-                new_bracket_len -= sh_bracket_len
-            else:
-                break
-        old_history_len += history_offset
-        return s, old_history_len
+        # `clean_active_brackets` takes care of setting rung information and promotion
+        # for the current SH bracket in HB
+        # TODO: can we avoid copying full observation history
+        bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
+        bracket.observed_configs = self.observed_configs.copy()
 
     def clear_old_brackets(self):
         """Enforces reset at each new bracket."""
@@ -150,28 +116,85 @@ class HyperbandBase(SuccessiveHalving):
         Returns:
             [type]: [description]
         """
-        # the current SH bracket to execute in the current HB iteration
-        current_sh_bracket = self._get_bracket_to_run()
-        # update SH bracket with current state of promotion candidates
-        config, config_id, previous_config_id = self.sh_brackets[
-            current_sh_bracket
-        ].get_config_and_ids()
-        # IMPORTANT function call to tell synchronous SH to query the next allocation
-        self._update_state_counter()
-        return config, config_id, previous_config_id  # type: ignore
+        raise NotImplementedError
 
 
 class Hyperband(HyperbandBase):
     def clear_old_brackets(self):
-        """Enforces reset at each new bracket."""
-        # overloaded from SH since HB needs to not only forget the full past HB brackets
-        # but also the previous SH brackets in the current HB bracket
-        self.current_sh_bracket, self.old_history_len = self._retrieve_current_state()
-        self.config_map = self.sh_brackets[self.current_sh_bracket].config_map
-        if self.old_history_len > 0:
-            # disregarding older HB brackets + older SH brackets in current HB bracket
-            self._get_rungs_state(self.observed_configs.loc[self.old_history_len :])
-        return
+        """Enforces reset at each new bracket.
+
+        The _get_rungs_state() function creates the `rung_promotions` dict mapping which
+        is used by the promotion policies to determine the next step: promotion/sample.
+        To simulate reset of rungs like in vanilla HB, the algorithm is viewed as a
+        series of SH brackets, where the SH brackets comprising HB is repeated. This is
+        done by iterating over the closed loop of possible SH brackets (self.sh_brackets).
+        The oldest, active, incomplete SH bracket is searched for to choose the next
+        evaluation. If either all brackets are over or waiting, a new SH bracket,
+        corresponding to the SH bracket under HB as registered by `current_SH_bracket`.
+        """
+        n_sh_brackets = len(self.sh_brackets)
+        # iterates over the different SH brackets
+        self.current_sh_bracket = 0  # indexing from range(0, n_sh_brackets)
+        start = 0
+        _min_rung = self.sh_brackets[self.current_sh_bracket].min_rung
+        end = self.sh_brackets[self.current_sh_bracket].config_map[_min_rung]
+        # stores the base rung size for each SH bracket in HB
+        base_rung_sizes = []  # sorted(self.config_map.values(), reverse=True)
+        for bracket in self.sh_brackets.values():
+            base_rung_sizes.append(sorted(bracket.config_map.values(), reverse=True)[0])
+        while end <= len(self.observed_configs):
+            # subsetting only this SH bracket from the history
+            sh_bracket = self.sh_brackets[self.current_sh_bracket]
+            sh_bracket.clean_rung_information()
+            # for the SH bracket in start-end, calculate total SH budget used, from the
+            # correct SH bracket object to make the right budget calculations
+            bracket_budget_used = sh_bracket._calc_budget_used_in_bracket(
+                deepcopy(self.observed_configs.rung.values[start:end])
+            )
+            # if budget used is less than the total SH budget then still an active bracket
+            current_bracket_full_budget = sum(sh_bracket.full_rung_trace)
+            if bracket_budget_used < current_bracket_full_budget:
+                # updating rung information of the current bracket
+                sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
+                # extra call to use the updated rung member info to find promotions
+                # SyncPromotion signals a wait if a rung is full but with
+                # incomplete/pending evaluations, signals to starts a new SH bracket
+                sh_bracket._handle_promotions()
+                promotion_count = 0
+                for _, promotions in sh_bracket.rung_promotions.items():
+                    promotion_count += len(promotions)
+                # if no promotion candidates are returned, then the current bracket
+                # is active and waiting
+                if promotion_count:
+                    # returns the oldest active bracket if a promotion found which is the
+                    # current SH bracket at this scope
+                    return
+                # if no promotions, ensure an empty state explicitly to disable bracket
+                sh_bracket.clean_rung_information()
+            start = end
+            # updating pointer to the next SH bracket in HB
+            self.current_sh_bracket = (self.current_sh_bracket + 1) % n_sh_brackets
+            end = start + base_rung_sizes[self.current_sh_bracket]
+        # reaches here if all old brackets are either waiting or finished
+
+        # updates rung info with the latest active, incomplete bracket
+        sh_bracket = self.sh_brackets[self.current_sh_bracket]
+        sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
+        sh_bracket._handle_promotions()
+        # self._handle_promotion() need not be called as it is called by load_results()
+
+    def get_config_and_ids(  # pylint: disable=no-self-use
+        self,
+    ) -> tuple[SearchSpace, str, str | None]:
+        """...and this is the method that decides which point to query.
+
+        Returns:
+            [type]: [description]
+        """
+        config, config_id, previous_config_id = self.sh_brackets[
+            self.current_sh_bracket  # type: ignore
+        ].get_config_and_ids()
+        return config, config_id, previous_config_id
 
 
 class HyperbandWithPriors(Hyperband):
@@ -253,6 +276,7 @@ class AsynchronousHyperband(HyperbandBase):
         self.sh_brackets = {}
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
+            # key difference from vanilla HB where it runs synchronous SH brackets
             self.sh_brackets[s] = AsynchronousSuccessiveHalving(**args)
 
     def _update_sh_bracket_state(self) -> None:
@@ -261,8 +285,7 @@ class AsynchronousHyperband(HyperbandBase):
         # optimization history, the promotion handler of the SH brackets need the
         # optimization state. Calling `load_results()` is an option but leads to
         # redundant data processing.
-        # s = self.current_sh_bracket
-        for s, bracket in self.sh_brackets.items():
+        for _, bracket in self.sh_brackets.items():
             bracket.promotion_policy.set_state(
                 max_rung=self.max_rung,
                 members=self.rung_members,
@@ -286,6 +309,20 @@ class AsynchronousHyperband(HyperbandBase):
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
         bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
         return bracket_next
+
+    def get_config_and_ids(  # pylint: disable=no-self-use
+        self,
+    ) -> tuple[SearchSpace, str, str | None]:
+        """...and this is the method that decides which point to query.
+
+        Returns:
+            [type]: [description]
+        """
+        bracket_to_run = self._get_bracket_to_run()
+        config, config_id, previous_config_id = self.sh_brackets[
+            bracket_to_run
+        ].get_config_and_ids()
+        return config, config_id, previous_config_id  # type: ignore
 
 
 class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
