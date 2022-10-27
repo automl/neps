@@ -4,8 +4,9 @@ import typing
 from copy import deepcopy
 
 import numpy as np
-from metahyper.api import ConfigResult
 from typing_extensions import Literal
+
+from metahyper.api import ConfigResult
 
 from ...search_spaces.search_space import SearchSpace
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy

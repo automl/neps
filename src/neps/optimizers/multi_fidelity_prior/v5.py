@@ -4,8 +4,9 @@ from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-from metahyper.api import ConfigResult
 from typing_extensions import Literal
+
+from metahyper.api import ConfigResult
 
 from ...search_spaces.search_space import SearchSpace
 from ..multi_fidelity.promotion_policy import AsyncPromotionPolicy

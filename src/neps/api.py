@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import Callable
 
 import ConfigSpace as CS
+from typing_extensions import Literal
+
 import metahyper
 from metahyper.api import instance_from_map
-from typing_extensions import Literal
 
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.parameter import Parameter

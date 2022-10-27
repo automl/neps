@@ -6,8 +6,9 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from metahyper.api import ConfigResult
 from typing_extensions import Literal
+
+from metahyper.api import ConfigResult
 
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,

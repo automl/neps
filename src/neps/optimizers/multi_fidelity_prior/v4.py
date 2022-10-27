@@ -3,8 +3,9 @@ from typing import Dict, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from metahyper.api import ConfigResult
 from typing_extensions import Literal
+
+from metahyper.api import ConfigResult
 
 from ...search_spaces.hyperparameters.categorical import CategoricalParameter
 from ...search_spaces.hyperparameters.constant import ConstantParameter

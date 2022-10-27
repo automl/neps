@@ -3,13 +3,14 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
-from metahyper.api import ConfigResult
 from statsmodels.nonparametric import kernels
 from statsmodels.nonparametric._kernel_base import (
     EstimatorSettings,
     GenericKDE,
     _adjust_shape,
 )
+
+from metahyper.api import ConfigResult
 
 KERNEL_MAP = dict(
     wangryzin=kernels.wang_ryzin,
@@ -71,12 +72,11 @@ def weighted_generalized_kernel_prod(
     """
     # TODO clean up this mess of a function - I blame statsmodels even though
     # I basically stole their code / Carl
-    kernel_types = dict(f=float_kerneltype,
-                        o=ordered_kerneltype, u=unordered_kerneltype)
+    kernel_types = dict(f=float_kerneltype, o=ordered_kerneltype, u=unordered_kerneltype)
 
     K_val = np.empty(data.shape)
     for dim, var_type in enumerate(var_types):
-        if var_type == 'c':
+        if var_type == "c":
             # constants do not affect the density at all
             K_val[:, dim] = 1
             continue
@@ -92,14 +92,12 @@ def weighted_generalized_kernel_prod(
                 * data_weights
             )
         else:
-            test_data = K_val[:, dim] = func(
-                bw[dim], data[:, dim], data_predict[dim])
+            test_data = K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim])
             if np.isnan(test_data).sum() > 0:
-                raise SystemError('Test data is NaN')
+                raise SystemError("Test data is NaN")
             if np.isnan(data_weights).sum() > 0:
-                raise SystemError('data_weights is NaN', data_weights)
-            K_val[:, dim] = func(bw[dim], data[:, dim],
-                                 data_predict[dim]) * data_weights
+                raise SystemError("data_weights is NaN", data_weights)
+            K_val[:, dim] = func(bw[dim], data[:, dim], data_predict[dim]) * data_weights
 
     isfloat = np.array([f == "f" for f in var_types])
 
@@ -160,7 +158,7 @@ class KernelDensityEstimator(GenericKDE):
         self.estimator_kwargs = estimator_kwargs or {}
         # TODO consider the logged parameters when fitting the KDE
         self.logged_params = logged_params
-        self.num_constant_dims = np.sum(np.array(param_types) == 'c')
+        self.num_constant_dims = np.sum(np.array(param_types) == "c")
 
     def fit(
         self,
@@ -174,8 +172,7 @@ class KernelDensityEstimator(GenericKDE):
             data_weights = np.asarray(config_weights)
 
         self.data = self._convert_configs_to_numpy(configs)
-        self.data_weights = np.sqrt(
-            data_weights) / np.sum(np.sqrt(data_weights))
+        self.data_weights = np.sqrt(data_weights) / np.sum(np.sqrt(data_weights))
         self.nobs, self.k_vars = np.shape(self.data)
 
         # remove the dimensions from the data that are just constant
@@ -211,8 +208,7 @@ class KernelDensityEstimator(GenericKDE):
             np.ndarray: N x D normalized numpy array of configs
         """
         configs_np = np.array(
-            [[x_.normalized().value for x_ in list(x.values())]
-             for x in configs]
+            [[x_.normalized().value for x_ in list(x.values())] for x in configs]
         )
         if drop_fidelity:
             return configs_np[:, ~self.fid_array]

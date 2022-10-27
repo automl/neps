@@ -11,7 +11,7 @@ class ConstantParameter(NumericalParameter):
         self.default = value
         self.lower = value
         self.upper = value
-        
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
