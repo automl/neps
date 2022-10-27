@@ -475,11 +475,11 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#as-soon-as-possible" class="md-nav__link">
-    As soon as possible
+  <a href="#next-up" class="md-nav__link">
+    Next up
   </a>
   
-    <nav class="md-nav" aria-label="As soon as possible">
+    <nav class="md-nav" aria-label="Next up">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -490,8 +490,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixes" class="md-nav__link">
-    Fixes
+  <a href="#documentation" class="md-nav__link">
+    Documentation
   </a>
   
 </li>
@@ -504,15 +504,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#tests" class="md-nav__link">
-    Tests
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    Documentation
+  <a href="#tests-and-tooling" class="md-nav__link">
+    Tests and tooling
   </a>
   
 </li>
@@ -538,7 +531,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixes_1" class="md-nav__link">
+  <a href="#fixes" class="md-nav__link">
     Fixes
   </a>
   
@@ -581,6 +574,13 @@
           <li class="md-nav__item">
   <a href="#documentation_2" class="md-nav__link">
     Documentation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#miscellaneous" class="md-nav__link">
+    Miscellaneous
   </a>
   
 </li>
@@ -632,11 +632,11 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#as-soon-as-possible" class="md-nav__link">
-    As soon as possible
+  <a href="#next-up" class="md-nav__link">
+    Next up
   </a>
   
-    <nav class="md-nav" aria-label="As soon as possible">
+    <nav class="md-nav" aria-label="Next up">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -647,8 +647,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixes" class="md-nav__link">
-    Fixes
+  <a href="#documentation" class="md-nav__link">
+    Documentation
   </a>
   
 </li>
@@ -661,15 +661,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#tests" class="md-nav__link">
-    Tests
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#documentation" class="md-nav__link">
-    Documentation
+  <a href="#tests-and-tooling" class="md-nav__link">
+    Tests and tooling
   </a>
   
 </li>
@@ -695,7 +688,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixes_1" class="md-nav__link">
+  <a href="#fixes" class="md-nav__link">
     Fixes
   </a>
   
@@ -742,6 +735,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#miscellaneous" class="md-nav__link">
+    Miscellaneous
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -763,49 +763,49 @@
 
 
 <h1 id="roadmap">Roadmap</h1>
-<h2 id="as-soon-as-possible">As soon as possible</h2>
+<h2 id="next-up">Next up</h2>
 <h3 id="features">Features</h3>
 <ul>
-<li>Python 3.8+ support</li>
-<li>Utility to get best HPs and (built) architecture</li>
-<li>Utility to get incumbent losses over time</li>
-<li>Ignore error configurations</li>
-</ul>
-<h3 id="fixes">Fixes</h3>
-<ul>
-<li>Metahyper Refine jobtimelimit feature</li>
-<li>Optimize dependencies</li>
-</ul>
-<h3 id="refactoring">Refactoring</h3>
-<ul>
-<li>merge GP and hierarchical GP etc.</li>
-</ul>
-<h3 id="tests">Tests</h3>
-<ul>
-<li>Add simple regression tests to run on each push</li>
-<li>Add comprehensive regression tests to run manually on the cluster on each version release</li>
+<li>Utility to get best HPs and (built) architecture*</li>
+<li>Utility to get incumbent losses over time*</li>
 </ul>
 <h3 id="documentation">Documentation</h3>
 <ul>
-<li>Data reading example</li>
-<li>Working directory example</li>
-<li>Parallelization example</li>
-<li>Fill up the core documentation pages</li>
-<li>Testing protocol</li>
+<li>Data reading example*</li>
+<li>Working directory example*</li>
+<li>Parallelization example*</li>
+<li>Fill up the core documentation pages*</li>
+</ul>
+<h3 id="refactoring">Refactoring</h3>
+<ul>
+<li>Move metahyper to the neps repository</li>
+<li>Use undepreciated working dir name for metahyper.run</li>
+<li>Clean up unused branches</li>
+<li>Merge GP and hierarchical GP</li>
+<li>Merge gpytorch branch</li>
+</ul>
+<h3 id="tests-and-tooling">Tests and tooling</h3>
+<ul>
+<li>Add simple regression tests to run on each push</li>
+<li>poetry hooks</li>
+<li>poetry update</li>
 </ul>
 <h2 id="before-100-version">Before 1.0.0 version</h2>
 <h3 id="features_1">Features</h3>
 <ul>
-<li>Seamless ddp via cli launcher (fix from Fabio / Sam)</li>
+<li>Seamless ddp via cli launcher (fix from Fabio / Sam adapted to new ddp version)</li>
 <li>Finegrained control over HP user prior</li>
 <li>Incumbent plot</li>
 <li>Top vs all vs bottom distribution plots</li>
 <li>Tensorboard visualizations (incumbent plot, ..)</li>
 <li>Print search space upon run</li>
+<li>Add comprehensive regression tests to run manually on the cluster on each version release</li>
 </ul>
-<h3 id="fixes_1">Fixes</h3>
+<h3 id="fixes">Fixes</h3>
 <ul>
 <li>Printing architecture search spaces / search spaces in general</li>
+<li>Metahyper Refine jobtimelimit feature</li>
+<li>Optimize dependencies</li>
 </ul>
 <h3 id="refactoring_1">Refactoring</h3>
 <ul>
@@ -818,7 +818,7 @@
 </ul>
 <h3 id="documentation_1">Documentation</h3>
 <ul>
-<li>Changelog</li>
+<li>Keep a changelog</li>
 </ul>
 <h2 id="later-version">Later version</h2>
 <h3 id="features_2">Features</h3>
@@ -828,11 +828,19 @@
 <li>Utility neps.clean to manage existing run results</li>
 <li>Collect data optionally via phone-home to webserver</li>
 <li>Add Info dict to status</li>
+<li>BO improvements via Hebo tricks + Mll replacement</li>
 </ul>
 <h3 id="documentation_2">Documentation</h3>
 <ul>
-<li>Doing research with NePS</li>
-<li>Trunk based development techniques</li>
+<li>Documentation on cuda pytorch</li>
+<li>Conda install for meta cluster, put the export in profile</li>
+</ul>
+<h3 id="miscellaneous">Miscellaneous</h3>
+<ul>
+<li>Twitter handle and domain, e.g., neural-pipeline.search</li>
+<li>Doing research with NePS / Documentation on that or full setup</li>
+<li>Regular contributor meetings</li>
+<li>Maintain issues</li>
 </ul>
 
 
