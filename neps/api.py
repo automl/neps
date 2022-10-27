@@ -207,7 +207,7 @@ def run(
 
     if searcher == "default" or searcher is None:
         if pipeline_space.has_fidelity:
-            searcher = "mf_bayesian_optimization"
+            searcher = "mf_optimization"
         else:
             searcher = "bayesian_optimization"
 
