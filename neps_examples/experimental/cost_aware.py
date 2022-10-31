@@ -7,7 +7,7 @@ import neps
 
 
 def run_pipeline(
-    working_directory, float1, float2, categorical, integer1, integer2
+    pipeline_directory, float1, float2, categorical, integer1, integer2
 ):  # pylint: disable=unused-argument
     start = time.time()
     y = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))

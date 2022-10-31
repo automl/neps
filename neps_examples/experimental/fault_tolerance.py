@@ -11,9 +11,9 @@ from neps_examples.experimental.fault_tolerance_model_and_optimizer import (
 )
 
 
-def run_pipeline(working_directory, learning_rate):
+def run_pipeline(pipeline_directory, learning_rate):
     model, optimizer = get_model_and_optimizer(learning_rate)
-    checkpoint_path = working_directory / "checkpoint.pth"
+    checkpoint_path = pipeline_directory / "checkpoint.pth"
 
     # Check if there is a previous state of the model training that crashed
     if checkpoint_path.exists():

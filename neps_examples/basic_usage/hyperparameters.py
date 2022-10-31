@@ -6,7 +6,7 @@ import numpy as np
 import neps
 
 
-def run_pipeline(working_directory, float1, float2, categorical, integer1, integer2):
+def run_pipeline(pipeline_directory, float1, float2, categorical, integer1, integer2):
     start = time.time()
     loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     end = time.time()

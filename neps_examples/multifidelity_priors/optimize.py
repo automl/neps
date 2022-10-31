@@ -6,7 +6,7 @@ import numpy as np
 import neps
 
 
-def run_pipeline(working_directory, float1, float2, integer1, fidelity):
+def run_pipeline(pipeline_directory, float1, float2, integer1, fidelity):
     start = time.time()
     loss = -float(np.sum([float1, float2, integer1])) / fidelity
     end = time.time()

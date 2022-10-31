@@ -63,7 +63,7 @@ def set_recursive_attribute(op_name, predecessor_values):
     return dict(C_in=in_channels, C_out=out_channels)
 
 
-def run_pipeline(working_directory, architecture):
+def run_pipeline(pipeline_directory, architecture):
     start = time.time()
 
     in_channels = 3
