@@ -4,7 +4,7 @@ import time
 import neps
 
 
-def run_pipeline(pipeline_directory, some_float, some_integer, some_cat):
+def run_pipeline(some_float, some_integer, some_cat):
     start = time.time()
     if some_cat != "a":
         y = some_float + some_integer
