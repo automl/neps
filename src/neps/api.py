@@ -90,7 +90,7 @@ def _post_evaluation_hook_function(
 def run(
     run_pipeline: Callable,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
-    root_directory: None | str | Path = None,
+    root_directory: str | Path,
     overwrite_working_directory: bool = False,
     development_stage_id=None,
     task_id=None,
@@ -179,9 +179,6 @@ def run(
         raise ValueError(
             "The argument 'working_directory' is deprecated, please use 'root_directory' instead"
         )
-
-    if root_directory is None:
-        raise ValueError("'root_directory' can not be None")
 
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {root_directory}")
