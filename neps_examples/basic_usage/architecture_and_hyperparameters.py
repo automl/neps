@@ -4,7 +4,7 @@ import time
 import neps
 
 
-def run_pipeline(pipeline_directory, **config):
+def run_pipeline(**config):
     optimizer = config["optimizer"]
     learning_rate = config["learning_rate"]
     model = config["graph"].to_pytorch()
