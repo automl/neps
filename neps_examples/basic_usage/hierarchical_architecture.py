@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 
 from torch import nn
 
@@ -64,8 +63,6 @@ def set_recursive_attribute(op_name, predecessor_values):
 
 
 def run_pipeline(architecture):
-    start = time.time()
-
     in_channels = 3
     n_classes = 20
     base_channels = 64
@@ -81,17 +78,9 @@ def run_pipeline(architecture):
     )
 
     number_of_params = sum(p.numel() for p in model.parameters())
-    y = abs(1.5e7 - number_of_params)
+    validation_error = abs(1.5e7 - number_of_params)
 
-    end = time.time()
-
-    return {
-        "loss": y,
-        "info_dict": {
-            "test_score": y,
-            "train_time": end - start,
-        },
-    }
+    return validation_error
 
 
 pipeline_space = dict(
@@ -107,10 +96,10 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory="results/hierarchical_architecture_example_new",
+    root_directory="results/hierarchical_architecture_example",
     max_evaluations_total=15,
 )
 
 previous_results, pending_configs = neps.status(
-    "results/hierarchical_architecture_example_new"
+    "results/hierarchical_architecture_example"
 )

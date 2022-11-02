@@ -13,8 +13,8 @@ NePS helps deep learning experts find the best neural pipeline with
 
 For efficiency and convenience NePS allows you to
 
-- Input expert intuition to speed-up HPO, NAS, or JAHS ([examples](neps_examples/expert_priors), [paper](https://openreview.net/forum?id=MMAeCXIa89))
-- Asynchronously parallelize without code changes ([documentation](https://automl.github.io/neps/latest/parallelization/))
+- Input expert intuition to speed-up HPO, NAS, or JAHS ([example HPO](neps_examples/expert_prior_for_hyperparameters), [example JAHS](neps_examples/expert_prior_for_hyperparameters), [paper](https://openreview.net/forum?id=MMAeCXIa89))
+- Asynchronously parallelize without code changes ([example](neps_examples/efficiency/parallelization.py), [documentation](https://automl.github.io/neps/latest/parallelization/))
 
 ## Note
 

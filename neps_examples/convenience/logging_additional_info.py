@@ -7,9 +7,15 @@ import neps
 
 
 def run_pipeline(float1, float2, categorical, integer1, integer2):
+    start = time.time()
     loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
-    time.sleep(0.5)  # For demonstration purposes only
-    return loss
+    end = time.time()
+    return {
+        "loss": loss,
+        "info_dict": {  # Optionally include additional information as an info_dict
+            "train_time": end - start,
+        },
+    }
 
 
 pipeline_space = dict(
@@ -24,8 +30,8 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory="results/hyperparameters_example",
-    max_evaluations_total=15,
+    root_directory="results/logging_additional_info",
+    max_evaluations_total=5,
 )
 
-previous_results, pending_configs = neps.status("results/hyperparameters_example")
+previous_results, pending_configs = neps.status("results/logging_additional_info")

@@ -34,6 +34,8 @@ all_examples = core_examples + [  # Run on github actions
     "basic_usage/hierarchical_architecture",
     "efficiency/expert_priors_for_hyperparameters",
     "experimental/hierarchical_architecture_hierarchical_GP",
+    "convenience/logging_additional_info",
+    "convenience/working_directory_per_pipeline",
 ]
 
 
