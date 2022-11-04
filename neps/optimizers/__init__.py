@@ -14,8 +14,9 @@ from .multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
-from .multi_fidelity_prior.raceband import RaceBand
+from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
 from .multi_fidelity_prior.priorband import PriorBand
+from .multi_fidelity_prior.raceband import RaceBand
 
 ## custom algorithms
 from .multi_fidelity_prior.v1 import OurOptimizerV1, OurOptimizerV1_2, OurOptimizerV1_3
@@ -82,5 +83,7 @@ SearcherMapping: dict[str, Callable] = {
     "ours_v6_v5_2": OurOptimizerV6_V5_2,
     "ours_v6_v5_3": OurOptimizerV6_V5_3,
     "hyperband_custom_default": HyperbandCustomDefault,
-    "priorband": PriorBand,
+    "hb_priorband": PriorBand,
+    "asha_priorband": PriorBandAsha,
+    "asha_hb_priorband": PriorBandAshaHB,
 }
