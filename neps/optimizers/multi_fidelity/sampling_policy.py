@@ -99,12 +99,12 @@ class EnsemblePolicy(SamplingPolicy):
         policy = sorted(self.policy_map.keys())[policy_idx]
 
         if policy == "prior":
-            print("Sampling from prior")
+            print(f"Sampling from prior with weights {prob_weights}")
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True
             )
         elif policy == "inc":
-            print("Sampling from inc")
+            print(f"Sampling from inc with weights {prob_weights}")
             # use inc to set the defaults of the configuration
             inc.set_defaults_to_current_values()
             # then sample with prior=True from that configuration
@@ -113,7 +113,7 @@ class EnsemblePolicy(SamplingPolicy):
                 patience=self.patience, user_priors=True, ignore_fidelity=True
             )
         else:
-            print("Sampling from uniform")
+            print(f"Sampling from uniform with weights {prob_weights}")
             # random
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=True
