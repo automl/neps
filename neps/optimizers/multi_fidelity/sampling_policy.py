@@ -95,7 +95,6 @@ class EnsemblePolicy(SamplingPolicy):
 
         assert sum(self.policy_map.values()) == 1, "Policy prob. weights should sum to 1."
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
-        print("prob weights: ", prob_weights)
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 

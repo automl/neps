@@ -283,25 +283,6 @@ class HyperbandCustomDefault(HyperbandWithPriors):
         for _, sh in self.sh_brackets.items():
             sh.sampling_args = self.sampling_args
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
-        """...and this is the method that decides which point to query.
-
-        Returns:
-            [type]: [description]
-        """
-        policy_weights = {
-            "prior": 0.5,
-            "inc": 0,
-            "random": 0.5,
-        }
-        self.sampling_args = {
-            "inc": None,
-            "weights": policy_weights,
-        }
-        return super().get_config_and_ids()
-
 
 class AsynchronousHyperband(HyperbandBase):
     """Implements ASHA but as Hyperband.

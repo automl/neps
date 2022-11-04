@@ -207,13 +207,12 @@ def run(
 
     if searcher == "default" or searcher is None:
         if pipeline_space.has_fidelity:
-            print("HAS FIDELITY: ", pipeline_space.has_fidelity)
-            print(hasattr(pipeline_space, "has_prior"),  pipeline_space.has_prior)
             searcher = "hyperband"
             if hasattr(pipeline_space, "has_prior") and pipeline_space.has_prior:
                 searcher = "hyperband_custom_default"
         else:
             searcher = "bayesian_optimization"
+        logger.info(f"Running {searcher} as the searcher")
 
     searcher_kwargs.update(
         {
