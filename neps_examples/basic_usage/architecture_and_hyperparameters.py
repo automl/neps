@@ -1,33 +1,22 @@
 import logging
-import time
 
 import neps
 
 
-def run_pipeline(working_directory, **config):
+def run_pipeline(**config):
     optimizer = config["optimizer"]
     learning_rate = config["learning_rate"]
     model = config["graph"].to_pytorch()
 
-    start = time.time()
-
     target_params = 1531258
     number_of_params = sum(p.numel() for p in model.parameters())
-    y = abs(target_params - number_of_params) / target_params
+    validation_error = abs(target_params - number_of_params) / target_params
 
     target_lr = 10e-3
-    y += abs(target_lr - learning_rate) / target_lr
-    y += int(optimizer == "sgd")
+    validation_error += abs(target_lr - learning_rate) / target_lr
+    validation_error += int(optimizer == "sgd")
 
-    end = time.time()
-
-    return {
-        "loss": y,
-        "info_dict": {
-            "test_score": y,
-            "train_time": end - start,
-        },
-    }
+    return validation_error
 
 
 nb201_choices = [
