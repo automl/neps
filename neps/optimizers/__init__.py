@@ -7,7 +7,7 @@ from .bayesian_optimization.cost_cooling import CostCooling
 from .bayesian_optimization.mf_tpe import MultiFidelityPriorWeightedTreeParzenEstimator
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .multi_fidelity.hyperband import Hyperband
+from .multi_fidelity.hyperband import Hyperband, HyperbandCustomDefault
 from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
@@ -46,7 +46,6 @@ from .regularized_evolution.optimizer import RegularizedEvolution
 SearcherMapping: dict[str, Callable] = {
     "bayesian_optimization": BayesianOptimization,
     # "mf_bayesian_optimization": BayesianOptimizationMultiFidelity,
-    "mf_optimization": Hyperband,
     "cost_cooling_bayesian_optimization": CostCooling,
     "random_search": RandomSearch,
     "cost_cooling": CostCooling,
@@ -81,4 +80,5 @@ SearcherMapping: dict[str, Callable] = {
     "ours_v6_v5": OurOptimizerV6_V5,
     "ours_v6_v5_2": OurOptimizerV6_V5_2,
     "ours_v6_v5_3": OurOptimizerV6_V5_3,
+    "hyperband_custom_default": HyperbandCustomDefault,
 }

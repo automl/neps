@@ -9,11 +9,11 @@ from typing_extensions import Literal
 
 from ...search_spaces.search_space import SearchSpace
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
-from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
-from .successive_halving import AsynchronousSuccessiveHalving, SuccessiveHalving
+from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy, EnsemblePolicy
+from .successive_halving import AsynchronousSuccessiveHalving, SuccessiveHalvingBase, SuccessiveHalving
 
 
-class HyperbandBase(SuccessiveHalving):
+class HyperbandBase(SuccessiveHalvingBase):
     """Implements a Hyperband procedure with a sampling and promotion policy."""
 
     early_stopping_rate = 0
@@ -236,6 +236,71 @@ class HyperbandWithPriors(Hyperband):
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
         )
+
+
+class HyperbandCustomDefault(HyperbandWithPriors):
+    """If prior specified, does 50% times priors and 50% random search like vanilla-HB."""
+
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        budget: int,
+        eta: int = 3,
+        initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
+        sampling_policy: typing.Any = EnsemblePolicy,
+        promotion_policy: typing.Any = SyncPromotionPolicy,
+        loss_value_on_error: None | float = None,
+        cost_value_on_error: None | float = None,
+        ignore_errors: bool = False,
+        logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = "medium",
+        random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
+    ):
+        super().__init__(
+            pipeline_space=pipeline_space,
+            budget=budget,
+            eta=eta,
+            initial_design_type=initial_design_type,
+            sampling_policy=sampling_policy,
+            promotion_policy=promotion_policy,
+            loss_value_on_error=loss_value_on_error,
+            cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
+            logger=logger,
+            prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
+        )
+        self.sampling_args = {
+            "inc": None,
+            "weights": {
+                "prior": 0.5,
+                "inc": 0,
+                "random": 0.5,
+            },
+        }
+        for _, sh in self.sh_brackets.items():
+            sh.sampling_args = self.sampling_args
+
+    def get_config_and_ids(  # pylint: disable=no-self-use
+        self,
+    ) -> tuple[SearchSpace, str, str | None]:
+        """...and this is the method that decides which point to query.
+
+        Returns:
+            [type]: [description]
+        """
+        policy_weights = {
+            "prior": 0.5,
+            "inc": 0,
+            "random": 0.5,
+        }
+        self.sampling_args = {
+            "inc": None,
+            "weights": policy_weights,
+        }
+        return super().get_config_and_ids()
 
 
 class AsynchronousHyperband(HyperbandBase):
