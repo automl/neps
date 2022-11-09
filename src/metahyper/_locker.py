@@ -1,6 +1,6 @@
 import atexit
-import fcntl
 import time
+import portalocker as pl
 from contextlib import contextmanager
 
 
@@ -16,14 +16,14 @@ class Locker:
 
     def release_lock(self):
         self.logger.debug(f"Release lock for {self.lock_path}")
-        fcntl.lockf(self.lock_file, fcntl.LOCK_UN)
+        pl.lock(self.lock_file, pl.LOCK_UN)
 
     def acquire_lock(self):
         try:
-            fcntl.lockf(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            pl.lock(self.lock_file, pl.LOCK_EX | pl.LOCK_NB)
             self.logger.debug(f"Acquired lock for {self.lock_path}")
             return True
-        except BlockingIOError:
+        except pl.exceptions.LockException:
             self.logger.debug(f"Failed to acquire lock for {self.lock_path}")
             return False
 
