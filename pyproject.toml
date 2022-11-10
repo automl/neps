@@ -88,7 +88,7 @@ line_length = 90
 
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m core_examples"
-markers = ["all_examples", "core_examples", "regression_all"]
+markers = ["all_examples", "core_examples", "regression_all", "metahyper"]
 
 [tool.mypy]
 files = ["neps"]
