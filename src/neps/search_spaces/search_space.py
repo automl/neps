@@ -211,7 +211,7 @@ class SearchSpace(collections.abc.Mapping):
 
         return new_config1, new_config2
 
-    def get_normalized_hp_categories(self):
+    def get_normalized_hp_categories(self, ignore_fidelity=False):
         hps = {
             "continuous": [],
             "categorical": [],
@@ -219,6 +219,8 @@ class SearchSpace(collections.abc.Mapping):
         }
         for hp in self.values():
             hp_value = hp.normalized().value
+            if ignore_fidelity and hp.is_fidelity:
+                continue
             if isinstance(hp, ConstantParameter):
                 continue
             elif isinstance(hp, CategoricalParameter):
