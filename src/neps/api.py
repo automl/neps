@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+import errno
 import logging
+import os
 from pathlib import Path
 from typing import Callable
 
 import ConfigSpace as CS
+from attrdict import AttrDict
 from typing_extensions import Literal
 
 import metahyper
@@ -16,6 +19,8 @@ from metahyper.api import instance_from_map
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .utils.plotting import get_fig_and_axs, map_axs, plot_incumbent, save_fig, set_legend
+from .utils.read_results import process_seed
 from .utils.result_utils import get_loss
 
 
@@ -241,3 +246,120 @@ def run(
             loss_value_on_error, ignore_errors
         ),
     )
+
+
+def plot(
+    root_directory: str | Path,
+    key_to_extract: str | None = None,
+    scientific_mode: bool = False,
+    **plotting_kwargs,
+) -> None:
+    """Plot results of a neural pipeline search run.
+
+    Args:
+        root_directory: The directory with neps results (see below).
+        scientific_mode:
+            - False (default) - root_directory consists of a single run
+            - True - root_directory points to tree structure of
+                benchmark={}/algorithm={}/seed={}
+        key_to_extract: metric to be used on the x-axis (None, "cost", "fidelity")
+        **plotting_kwargs: specifies advanced settings for plotting:
+            - benchmarks: list of benchmarks to plot
+            - algorithms: list of algorithms to plot
+            - x_range: tuple (x_min, x_max) specify x-axis bounds
+            - log_x: toggles logarithmic scale on the x-axis
+            - log_y: toggles logarithmic scale on the y-axis
+            - n_workers: in case of parallel runs specify number of parallel processes
+            - filename
+            - extension: format to save, e.g. "png", "pdf"
+            - dpi: resolution of the image
+
+    Raises:
+        FileNotFoundError: If the data to be plotted is not present.
+    """
+
+    logger = logging.getLogger("neps")
+    logger.info(f"Starting neps.plot using working directory {root_directory}")
+
+    default_kwargs = {
+        "benchmarks": [str(root_directory).rsplit("/", maxsplit=1)[-1]],
+        "algorithms": ["neps"],
+        "x_range": None,
+        "log_x": False,
+        "log_y": False,
+        "n_workers": 1,
+        "filename": "incumbent_trajectory",
+        "extension": "png",
+        "dpi": 100,
+    }
+    settings = AttrDict(default_kwargs | plotting_kwargs)
+    logger.info(
+        f"Processing {len(settings.benchmarks)} benchmark(s) "
+        f"and {len(settings.algorithms)} algorithm(s)..."
+    )
+
+    fig, axs = get_fig_and_axs(settings)
+
+    base_path = Path(root_directory)
+    output_dir = base_path / "plots"
+
+    for benchmark_idx, benchmark in enumerate(settings.benchmarks):
+        if scientific_mode:
+            _base_path = os.path.join(base_path, f"benchmark={benchmark}")
+            if not os.path.isdir(_base_path):
+                raise FileNotFoundError(
+                    errno.ENOENT, os.strerror(errno.ENOENT), _base_path
+                )
+
+        for algorithm in settings.algorithms:
+            seeds = [None]
+            if scientific_mode:
+                _path = os.path.join(_base_path, f"algorithm={algorithm}")
+                if not os.path.isdir(_path):
+                    raise FileNotFoundError(
+                        errno.ENOENT, os.strerror(errno.ENOENT), _path
+                    )
+
+                seeds = sorted(os.listdir(_path))  # type: ignore
+
+            incumbents = []
+            costs = []
+            max_costs = []
+            for seed in seeds:
+                incumbent, cost, max_cost = process_seed(
+                    path=_path if scientific_mode else base_path,
+                    seed=seed,
+                    algorithm=algorithm,
+                    key_to_extract=key_to_extract,
+                    n_workers=settings.n_workers,
+                )
+                incumbents.append(incumbent)
+                costs.append(cost)
+                max_costs.append(max_cost)
+
+            is_last_row = lambda idx: idx >= (settings.nrows - 1) * settings.ncols
+            # pylint: disable=cell-var-from-loop
+            is_first_column = lambda idx: benchmark_idx % settings.ncols == 0
+            xlabel = "Iterations" if key_to_extract is None else key_to_extract.upper()
+            plot_incumbent(
+                ax=map_axs(
+                    axs,
+                    benchmark_idx,
+                    len(settings.benchmarks),
+                    settings.ncols,
+                ),
+                x=costs,
+                y=incumbents,
+                scale_x=max(max_costs) if key_to_extract == "fidelity" else None,
+                title=benchmark,
+                xlabel=xlabel if is_last_row(benchmark_idx) else None,
+                ylabel="Loss" if is_first_column(benchmark_idx) else None,
+                log_x=settings.log_x,
+                log_y=settings.log_y,
+                x_range=settings.x_range,
+                label=algorithm,
+            )
+
+    set_legend(fig, axs, settings)
+    save_fig(fig, output_dir=output_dir, settings=settings)
+    logger.info(f"Saved to '{output_dir}/{settings.filename}.{settings.extension}'")

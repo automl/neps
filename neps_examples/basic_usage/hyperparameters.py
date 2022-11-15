@@ -29,3 +29,5 @@ neps.run(
 )
 
 previous_results, pending_configs = neps.status("results/hyperparameters_example")
+
+neps.plot(root_directory="results/hyperparameters_example")
