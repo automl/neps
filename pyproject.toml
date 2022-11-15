@@ -1,20 +1,24 @@
 [tool.poetry]
 name = "neural-pipeline-search"
-version = "0.4.9"
+version = "v0.6.1"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     "Danny Stoll <stolld@cs.uni-freiburg.de>",
     "Simon Schrodi <schrodi@cs.uni-freiburg.de>",
     "Maciej Janowski <janowski@cs.uni-freiburg.de>",
     "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-    "Binxin Ru <robin@robots.ox.ac.uk>",
-    "Théophane Vallaeys <theophane.vallaeys@ens.psl.eu>",
-    "Frank Hutter <fh@cs.uni-freiburg.de>",
+    "Binxin Ru",
+    "Carl Hvarfner",
+    "Samir Garibov",
+    "Théophane Vallaeys",
+    "Nils Kober",
+    "Frank Hutter",
 ]
 readme = "README.md"
-license = "Apache License 2.0"
+license = "MIT"
 homepage = "https://github.com/automl/neps"
 repository = "https://github.com/automl/neps"
+documentation = "https://automl.github.io/neps/"
 keywords = ["Neural Pipeline Search", "Neural Architecture Search", "Hyperparameter Optimization", "AutoML"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -23,42 +27,59 @@ classifiers = [
   "Natural Language :: English",
   "Operating System :: Unix",
   "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Distributed Computing",
 ]
 packages = [
-    { include = "neps" },
+    { include = "neps", from = "src" },
+    { include = "metahyper", from = "src" },
     { include = "neps_examples" },
 ]
 
 
 [tool.poetry.dependencies]
-python = ">=3.7.1,<3.8"
-ConfigSpace = ">=0.4.19"
-grakel = ">=0.1.8"
-numpy = ">=1.21.1"
-pandas = ">=1.3.1"
-networkx = ">=2.6.3"
-nltk = ">=3.6.4"
-metahyper = ">=0.5.5"
-path = ">=16.2.0"
-termcolor = ">=1.1.0"
-typing-extensions = ">=4.0.1"
-types-termcolor = ">=1.1.2"
-scipy = ">=1.7"
-torch = ">=1.7.0"
-matplotlib = ">=3.4"
+python = ">=3.7.1,<3.11"
+ConfigSpace = "^0.4.19"
+grakel = "^0.1.9"
+numpy = [
+    {version = "~1.21.0", python = "<3.8"},
+    {version = "^1.22.0", python = ">=3.8"}
+]
+pandas = "^1.3.1"
+networkx = "^2.6.3"
+nltk = "^3.6.4"
+metahyper = "^0.5.3"
+path = "^16.2.0"
+termcolor = "^1.1.0"
+typing-extensions = "^4.0.1"
+types-termcolor = "^1.1.2"
+scipy = "^1.7"
+# currently torch version 1.13.0 causes installation to fail on ARM Mac devices
+# `Unable to find installation candidates for nvidia-cudnn-cu11 (8.5.0.96)`
+torch = ">=1.7.0,<1.13.0"
+matplotlib = "^3.4"
+statsmodels = "^0.13.2"
+more-itertools = "^9.0.0"
+dill = "^0.3.6"
 botorch = ">=0.6.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^2.10"
+mypy = "^0.930"
+pytest = "^6.2.5"
+types-PyYAML = "^6.0.12"
+typing-extensions = "^4.0.1"
+types-termcolor = "^1.1.2"
+jahs-bench = {git = "https://github.com/automl/jahs_bench_201.git", rev = "v1.0.2"}
+mkdocs-material = "^8.1.3"
+mike = "^1.1.2"
 jupyter = ">=1.0"
-pre-commit = ">=2.10"
-pytest = ">=6.2.5"
-mypy = ">=0.930"
-mkdocs-material = ">=8.1.3"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
@@ -71,7 +92,7 @@ line_length = 90
 
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m core_examples"
-markers = ["all_examples", "core_examples"]
+markers = ["all_examples", "core_examples", "regression_all"]
 
 [tool.mypy]
 files = ["neps"]
@@ -88,7 +109,7 @@ module = [
   "neps.optimizers.bayesian_optimization.kernels.*",
   "neps.optimizers.bayesian_optimization.acquisition_functions.*",
   "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
-  "neps.search_spaces.graph_dense.*",
+  "neps.search_spaces.architecture.*",
 ]
 ignore_errors = true
 

@@ -1,18 +1,40 @@
-site_name: NePS Documentation
+site_name: Neural Pipeline Search
 docs_dir: docs
 repo_url: https://github.com/automl/neps
 repo_name: automl/neps
 edit_uri: ""
+
 theme:
   name: material
   icon:
     repo: fontawesome/brands/github
 
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - attr_list
+
+extra:
+  version:
+    provider: mike
+
 nav:
-  - Introduction: 'README.md'
-  - Getting started: 'getting_started.md'
-  - The run_pipeline function: 'run_pipeline.md'
+  - Introduction and Installation: 'README.md'
+  - Getting Started: 'getting_started.md'
+  - The run_pipeline Function: 'run_pipeline.md'
   - The pipeline_space: 'pipeline_space.md'
-  - The neps.run function: 'neps_run.md'
-  - Analysing runs: 'status.md'
+  - The neps.run Function: 'neps_run.md'
+  - Analysing Runs: 'analyse.md'
   - Parallelization: 'parallelization.md'
+  - Alternatives: 'alternatives.md'
+  - Contributing:
+      - Introduction: "contributing/README.md"
+      - Installation for Contributors: "contributing/installation.md"
+      - Checks and Tests: "contributing/tests.md"
+      - Managing Dependencies: "contributing/dependencies.md"
+      - Releasing a New Version: "contributing/releasing.md"
+      - Documentation: "contributing/documentation.md"
+      - Roadmap: "contributing/roadmap.md"

@@ -1,3 +1,5 @@
+# type: ignore
+# pylint: disable=undefined-variable
 import argparse
 import os
 import pickle
@@ -10,14 +12,14 @@ import numpy as np
 from scipy import stats
 from torch import nn
 
-from neps.optimizers.bayesian_optimization.kernels import KernelMapping
+# from neps.optimizers.bayesian_optimization.kernels import KernelMapping
 from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
     ComprehensiveGPHierarchy,
 )
-from neps.search_spaces.graph_grammar import primitives as ops
-from neps.search_spaces.graph_grammar import topologies as topos
-from neps.search_spaces.graph_grammar.api import FunctionParameter
-from neps.search_spaces.graph_grammar.primitives import ResNetBasicblock
+from neps.search_spaces.architecture import primitives as ops
+from neps.search_spaces.architecture import topologies as topos
+from neps.search_spaces.architecture.api import FunctionParameter
+from neps.search_spaces.architecture.primitives import ResNetBasicblock
 from neps.search_spaces.search_space import SearchSpace
 
 PRODUCTIONS = """S -> "diamond" D2 D2 D1 D1 | "diamond" D1 D2 D2 D1 | "diamond" D1 D1 D2 D2 | "linear" D2 D1 | "linear" D1 D2 | "diamond_mid" D1 D2 D1 D2 D1 | "diamond_mid" D2 D2 Cell D1 D1
@@ -261,6 +263,7 @@ if __name__ == "__main__":
             # if hasattr(pipeline_space, "get_vectorial_dim")
             # else None,
         )
+        # pylint: disable=no-value-for-parameter
         surrogate_model.reset_XY(train_x=xtrain, train_y=ytrain)
         surrogate_model.fit()
 

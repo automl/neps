@@ -1,25 +1,9 @@
 # Neural Pipeline Search Examples
 
-1. Simple hyperparameter optimization
+1. Examples for the [basic usage](basic_usage) showing how to perform HPO / NAS / JAHS.
 
-   ```bash
-   python -m neps_examples.hyperparameters.optimize
-   ```
+1. Examples for how to [boost efficiency](efficiency) with [expert priors](expert_priors) and/or [multi fidelity](multi_fidelity) and/or parallelization.
 
-1. A joint architecture and hyperparameter search
+1. Examples showcasing some [utilities for your convenience](convenience).
 
-   ```bash
-   python -m neps_examples.hyperparameters_architecture.optimize
-   ```
-
-1. A search over a hierarchical architecture space
-
-   ```bash
-   python -m neps_examples.hierarchical_architecture.optimize
-   ```
-
-## Examples not yet supported
-
-1. cost_aware
-1. user_priors
-1. multi_fidelity
+1. [Experimental examples](experimental) which are mostly useful for contributors.

@@ -1,27 +1,28 @@
-# Neural Pipeline Search
+# Neural Pipeline Search (NePS)
 
-Neural Pipeline Search helps deep learning experts find the best neural pipeline.
-
-Features:
-
-- Hyperparameter optimization (HPO)
-- Neural architecture search (NAS): cell-based and hierarchical
-- Joint NAS and HPO
-- Expert priors to guide the search
-- Asynchronous parallelization and distribution
-- Fault tolerance for crashes and job time limits
-
-Soon-to-come Features:
-
-- Multi-fidelity
-- Cost-aware
-- Across code version transfer
-- Python 3.8+ support
-- Multi-objective
-
-![Python versions](https://img.shields.io/badge/python-3.7-informational)
-[![License](https://img.shields.io/badge/license-Apache%202.0-informational)](LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/neural-pipeline-search?color=informational)](https://pypi.org/project/neural-pipeline-search/)
+[![Python versions](https://img.shields.io/pypi/pyversions/neural-pipeline-search)](https://pypi.org/project/neural-pipeline-search/)
+[![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
+
+NePS helps deep learning experts find the best neural pipeline with
+
+- Hyperparameter Optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
+- (Hierarchical) Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py))
+- Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/basic_usage/architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=_HLcjaVlqJ))
+
+For efficiency and convenience NePS allows you to
+
+- Input expert intuition to speed-up HPO, NAS, or JAHS ([example HPO](neps_examples/expert_prior_for_hyperparameters), [example JAHS](neps_examples/expert_prior_for_hyperparameters), [paper](https://openreview.net/forum?id=MMAeCXIa89))
+- Asynchronously parallelize without code changes ([example](neps_examples/efficiency/parallelization.py), [documentation](https://automl.github.io/neps/latest/parallelization/))
+
+## Note
+
+As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
+
+## Documentation
+
+Please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
 
 ## Installation
 
@@ -31,17 +32,6 @@ Using pip
 pip install neural-pipeline-search
 ```
 
-### Optional: Specific torch versions
-
-If you run into any issues regarding versions of the torch ecosystem (like needing cuda enabled versions), you might want to use our utility
-
-```bash
-python -m neps.utils.install_torch
-```
-
-This script asks for the torch version you want and installs all the torch libraries needed for the neps package with
-that version. For the installation `pip` of the active python environment is used.
-
 ## Usage
 
 Using `neps` always follows the same pattern:
@@ -50,7 +40,7 @@ Using `neps` always follows the same pattern:
 1. Define a search space `pipeline_space` of architectures/hyperparameters
 1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
-In code the usage pattern can look like this:
+In code, the usage pattern can look like this:
 
 ```python
 import neps
@@ -73,40 +63,21 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    working_directory="usage_example",
+    root_directory="usage_example",
     max_evaluations_total=5,
 )
 ```
 
-### More examples
+For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
 
-For more usage examples for features of neps have a look at [neps_examples](neps_examples).
+## Analysing runs
 
-### Status information
+See our [documentation on analysing runs](https://automl.github.io/neps/latest/analyse).
 
-To show status information about a neural pipeline search use
+## Alternatives
 
-```bash
-python -m neps.status WORKING_DIRECTORY
-```
-
-If you need more status information than is printed per default (e.g., the best config over time), please have a look at
-
-```bash
-python -m neps.status --help
-```
-
-To show the status repeatedly, on unix systems you can use
-
-```bash
-watch --interval 30 python -m neps.status WORKING_DIRECTORY
-```
-
-### Parallelization
-
-In order to run a neural pipeline search with multiple processes or multiple machines, simply call `neps.run` multiple times.
-All calls to `neps.run` need to use the same `working_directory` on the same filesystem, otherwise there is no synchronization between the `neps.run`'s.
+NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/latest/alternatives).
 
 ## Contributing
 
-Please see our guidelines and guides for contributors at [CONTRIBUTING.md](CONTRIBUTING.md).
+Please see the [documentation for contributors](https://automl.github.io/neps/latest/contributing/).
