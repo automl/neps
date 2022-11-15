@@ -452,7 +452,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):
-    def _calc_budget_used_in_bracket(self, config_history):
+    def _calc_budget_used_in_bracket(self, config_history: typing.List[int]):
         budget = 0
         for rung in self.config_map.keys():
             count = sum(config_history == rung)

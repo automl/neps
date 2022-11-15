@@ -23,11 +23,13 @@ pipeline_space = dict(
     float1=neps.FloatParameter(
         lower=1, upper=1000, log=False, default=600, default_confidence="medium"
     ),
-    float2=neps.FloatParameter(lower=-10, upper=10),
+    float2=neps.FloatParameter(
+        lower=-10, upper=10, default=0, default_confidence="medium"
+    ),
     integer1=neps.IntegerParameter(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    fidelity=neps.IntegerParameter(lower=1, upper=5, is_fidelity=True),
+    fidelity=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
 )
 
 searcher = "multifidelity_tpe"

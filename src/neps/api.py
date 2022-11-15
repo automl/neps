@@ -220,9 +220,12 @@ def run(
 
     if searcher == "default" or searcher is None:
         if pipeline_space.has_fidelity:
-            searcher = "mf_optimization"
+            searcher = "hyperband"
+            if hasattr(pipeline_space, "has_prior") and pipeline_space.has_prior:
+                searcher = "hyperband_custom_default"
         else:
             searcher = "bayesian_optimization"
+        logger.info(f"Running {searcher} as the searcher")
 
     if isinstance(searcher, BaseOptimizer):
         if searcher.budget != budget:
