@@ -93,9 +93,11 @@ class SearchSpace(collections.abc.Mapping):
     def has_fidelity(self):
         return self.fidelity is not None
 
-    def compute_prior(self, log: bool = False):
+    def compute_prior(self, log: bool = False, ignore_fidelity=False):
         density_value = 0.0 if log else 1.0
         for hyperparameter in self.hyperparameters.values():
+            if ignore_fidelity and hyperparameter.is_fidelity:
+                continue
             if hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 if log:
                     density_value += hyperparameter.compute_prior(log=True)
@@ -329,6 +331,9 @@ class SearchSpace(collections.abc.Mapping):
         for hp_key, hp in self.hyperparameters.items():
             # First check if there is a new value for the hp and that its value is valid
             if hp_key not in hyperparameters:
+                continue
+            if self.hyperparameters[hp_key].is_fidelity:
+                hp.value = hyperparameters[hp_key]
                 continue
             new_hp_value = hyperparameters[hp_key]
             if not hp.lower <= new_hp_value <= hp.upper:

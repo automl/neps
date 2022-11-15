@@ -15,7 +15,12 @@ from .multi_fidelity.successive_halving import (
     SuccessiveHalvingWithPriors,
 )
 from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
-from .multi_fidelity_prior.priorband import PriorBand
+from .multi_fidelity_prior.priorband import (
+    PriorBand,
+    PriorBandCustom,
+    PriorBandDyna,
+    PriorBandHypothesis,
+)
 from .multi_fidelity_prior.raceband import RaceBand
 
 ## custom algorithms
@@ -59,31 +64,7 @@ SearcherMapping: dict[str, Callable] = {
     "hyperband": Hyperband,
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
     "multifidelity_tpe": MultiFidelityPriorWeightedTreeParzenEstimator,
-    # custom algorithms
-    "ours_v1": OurOptimizerV1,
-    "ours_v1_2": OurOptimizerV1_2,
-    "ours_v1_3": OurOptimizerV1_3,
-    "ours_v2": OurOptimizerV2,
-    "ours_v2_2": OurOptimizerV2_2,
-    "ours_v2_3": OurOptimizerV2_3,
-    "ours_v3_2": OurOptimizerV3_2,
-    "ours_v4_sh": OurOptimizerV4_SH,
-    "ours_v4_hb": OurOptimizerV4_HB,
-    "ours_v4_asha": OurOptimizerV4_ASHA,
-    "ours_v4_asha_hb": OurOptimizerV4_ASHA_HB,
-    "ours_v4_v3_2": OurOptimizerV4_V3_2,
-    "ours_v5": OurOptimizerV5,
     "raceband": RaceBand,
-    "ours_v5_2": OurOptimizerV5_2,
-    "ours_v5_3": OurOptimizerV5_3,
-    "ours_v5_v4": OurOptimizerV5_V4,
-    "ours_v5_2_v4": OurOptimizerV5_2_V4,
-    "ours_v6": OurOptimizerV6,
-    "ours_v6_v5": OurOptimizerV6_V5,
-    "ours_v6_v5_2": OurOptimizerV6_V5_2,
-    "ours_v6_v5_3": OurOptimizerV6_V5_3,
     "hyperband_custom_default": HyperbandCustomDefault,
-    "hb_priorband": PriorBand,
-    "asha_priorband": PriorBandAsha,
-    "asha_hb_priorband": PriorBandAshaHB,
+    "priorband": PriorBand,
 }
