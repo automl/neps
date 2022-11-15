@@ -28,7 +28,12 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         (train_x, _), _ = self.base_acquisition.surrogate_model.fitted_on
         if train_x[0].has_fidelity:
             decay_t = torch.sum(
-                _x.fidelity.value >= _x.fidelity.upper + EPSILON for _x in train_x
+                torch.tensor(
+                    [
+                        float(_x.fidelity.value >= _x.fidelity.upper) + EPSILON
+                        for _x in train_x
+                    ]
+                )
             )
         else:
             decay_t = len(train_x)

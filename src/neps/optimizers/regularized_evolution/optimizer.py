@@ -55,7 +55,7 @@ class RegularizedEvolution(BaseOptimizer):
                         user_priors=True,
                         constraint=self.sampling_constraint,
                     )
-                if config not in self.pending_evaluations.values():
+                if config not in self._pending_evaluations.values():
                     break
                 patience -= 1
         return config, self.get_new_config_id(config), None
