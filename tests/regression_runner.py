@@ -16,12 +16,12 @@ from neps.search_spaces.search_space import pipeline_space_from_configspace
 
 OPTIMIZERS = [
     "random_search",
-    "mf_bayesian_optimization",
+    # "mf_bayesian_optimization",
     "bayesian_optimization",
     "regularized_evolution",
 ]
 TASKS = ["cifar10", "fashion_mnist"]
-LOSS_FILE = Path(__file__, "losses.json")
+LOSS_FILE = Path(Path(__file__).parent, "losses.json")
 
 logging.basicConfig(level=logging.INFO)
 
