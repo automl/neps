@@ -296,9 +296,11 @@ def _evaluate_config(
         elif "working_directory" in evaluation_fn_params:
             warnings.warn(
                 "the argument: 'working_directory' is deprecated. "
-                "In the function: '{}', please, "
+                "In the Callable: '{}', please, "
                 "use 'pipeline_directory' instead. "
-                "version==0.5.5".format(evaluation_fn.__name__),
+                "version==0.5.5".format(
+                    getattr(evaluation_fn, "__name__", repr(evaluation_fn))
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -309,9 +311,11 @@ def _evaluate_config(
         elif "previous_working_directory" in evaluation_fn_params:
             warnings.warn(
                 "the argument: 'previous_working_directory' is deprecated. "
-                "In the function: '{}', please,  "
+                "In the Callable: '{}', please,  "
                 "use 'previous_pipeline_directory' instead. "
-                "version==0.5.5".format(evaluation_fn.__name__),
+                "version==0.5.5".format(
+                    getattr(evaluation_fn, "__name__", repr(evaluation_fn))
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
