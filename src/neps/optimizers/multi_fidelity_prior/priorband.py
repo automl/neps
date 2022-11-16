@@ -243,6 +243,30 @@ class PriorBandNoIncRandom(PriorBand):
         return sampling_args
 
 
+class PriorBandNoPrior(PriorBand):
+    """Disables prior based sampling to replace with uniform random sampling."""
+
+    def calc_sampling_args(self, rung_size, inc=None) -> dict:
+
+        if (
+            self.current_sh_bracket == 0
+            and len(self.observed_configs) <= self.config_map[self.min_rung]
+        ):
+            p_inc = 0
+        else:
+            p_inc = 0.33
+        sampling_args = {
+            "inc": inc,
+            "weights": {
+                "prior": 0,
+                "inc": p_inc,
+                "random": 1 - p_inc,
+            },
+        }
+
+        return sampling_args
+
+
 class PriorBandHypothesis(PriorBand):
     """Disables incumbent sampling to replace with uniform random sampling."""
 
