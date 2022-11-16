@@ -15,6 +15,7 @@ class RegularizedEvolution(BaseOptimizer):
         patience: int = 100,
         budget: None | int | float = None,
         logger=None,
+        initial_design_size: int = 30,  # pylint: disable=unused-argument
     ):
         super().__init__(
             pipeline_space=pipeline_space,

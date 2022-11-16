@@ -65,13 +65,14 @@ def draw_graph(
     dir_path = Path(os.path.dirname(os.path.realpath(__file__)))
     nx.drawing.nx_agraph.write_dot(g, dir_path / "test.dot")
     pos = nx.drawing.nx_agraph.graphviz_layout(g, prog="dot")
-    nx.draw(g, pos, with_labels=edge_attr)
+    nx.draw(g, pos, with_labels=False, node_size=5)
     if edge_attr:
         edge_labels = {e: g.edges[e][edge_label] for e in g.edges()}
         nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels)
     else:
         node_labels = {n: g.nodes[n][node_label] for n in g.nodes()}
         nx.draw_networkx_labels(g, pos, labels=node_labels)
+    plt.tight_layout()
     plt.savefig(write_out)
     plt.close()
     os.remove(dir_path / "test.dot")
