@@ -4,7 +4,8 @@ import os
 
 import numpy as np
 import yaml  # type: ignore
-from attrdict import AttrDict
+
+from ..utils.common import AttrDict
 
 SINGLE_FIDELITY_ALGORITHMS = [
     "random_search",

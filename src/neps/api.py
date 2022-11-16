@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Callable
 
 import ConfigSpace as CS
-from attrdict import AttrDict
 from typing_extensions import Literal
 
 import metahyper
@@ -19,7 +18,14 @@ from metahyper.api import instance_from_map
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
-from .utils.plotting import get_fig_and_axs, map_axs, plot_incumbent, save_fig, set_legend
+from .utils.plotting import (
+    Settings,
+    get_fig_and_axs,
+    map_axs,
+    plot_incumbent,
+    save_fig,
+    set_legend,
+)
 from .utils.read_results import process_seed
 from .utils.result_utils import get_loss
 
@@ -281,18 +287,7 @@ def plot(
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.plot using working directory {root_directory}")
 
-    default_kwargs = {
-        "benchmarks": [str(root_directory).rsplit("/", maxsplit=1)[-1]],
-        "algorithms": ["neps"],
-        "x_range": None,
-        "log_x": False,
-        "log_y": False,
-        "n_workers": 1,
-        "filename": "incumbent_trajectory",
-        "extension": "png",
-        "dpi": 100,
-    }
-    settings = AttrDict(default_kwargs | plotting_kwargs)
+    settings = Settings(plotting_kwargs)
     logger.info(
         f"Processing {len(settings.benchmarks)} benchmark(s) "
         f"and {len(settings.algorithms)} algorithm(s)..."

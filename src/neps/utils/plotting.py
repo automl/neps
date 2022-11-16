@@ -7,8 +7,28 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from attrdict import AttrDict
 from scipy import stats
+
+
+class Settings:
+    def __init__(self, *args, **kwargs):
+
+        self.benchmarks = ["example"]
+        self.algorithms = ["neps"]
+        self.x_range = None
+        self.log_x = False
+        self.log_y = False
+        self.n_workers = 1
+        self.filename = "incumbent_trajectory"
+        self.extension = "png"
+        self.dpi = 100
+
+        self.__dict__.update(*args, **kwargs)
+
+        self.ncol = len(self.algorithms)
+        self.ncols = 1 if len(self.benchmarks) == 1 else 2
+        self.nrows = np.ceil(len(self.benchmarks) / self.ncols).astype(int)
+
 
 map_axs = (
     lambda axs, idx, length, ncols: axs
@@ -17,7 +37,7 @@ map_axs = (
 )
 
 
-def set_general_plot_style() -> None:
+def _set_general_plot_style() -> None:
     """
     sns.set_style("ticks")
     sns.set_context("paper")
@@ -53,14 +73,10 @@ def set_general_plot_style() -> None:
 
 
 def get_fig_and_axs(
-    settings: AttrDict,
+    settings: Settings,
 ) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
 
-    set_general_plot_style()
-
-    settings.ncol = len(settings.algorithms)
-    settings.ncols = 1 if len(settings.benchmarks) == 1 else 2
-    settings.nrows = np.ceil(len(settings.benchmarks) / settings.ncols).astype(int)
+    _set_general_plot_style()
 
     figsize = (4 * settings.ncols, 3 * settings.nrows)
 
@@ -183,7 +199,7 @@ def df_to_x_range(
 
 
 def set_legend(
-    fig: matplotlib.figure.Figure, axs: matplotlib.axes.Axes, settings: AttrDict
+    fig: matplotlib.figure.Figure, axs: matplotlib.axes.Axes, settings: Settings
 ) -> None:
 
     bbox_y_mapping = {
@@ -217,7 +233,7 @@ def set_legend(
 def save_fig(
     fig: matplotlib.figure.Figure,
     output_dir: Path | str,
-    settings: AttrDict,
+    settings: Settings,
 ) -> None:
 
     output_dir = Path(output_dir)
