@@ -8,12 +8,6 @@ cat_channels = partial(torch.cat, dim=1)
 logger = logging.getLogger(__name__)
 
 
-class AttrDict(dict):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.__dict__ = self
-
-
 def iter_flatten(iterable):
     """
     Flatten a potentially deeply nested python list
