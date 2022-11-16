@@ -43,3 +43,9 @@ def set_rnd_state(state: dict):
         torch.cuda.set_rng_state_all(
             [torch.ByteTensor(dev) for dev in state["torch_cuda_seed_state"]]
         )
+
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self

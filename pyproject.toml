@@ -61,7 +61,6 @@ matplotlib = "^3.4"
 statsmodels = "^0.13.2"
 more-itertools = "^9.0.0"
 dill = "^0.3.6"
-attrdict = "^2.0.1"
 seaborn = "^0.12.1"
 
 [tool.poetry.group.dev.dependencies]
