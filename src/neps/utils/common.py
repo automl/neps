@@ -59,3 +59,9 @@ class DisabledFunctionError(Exception):
 
 def disabled(*args, **kwargs):  # pylint: disable=unused-argument
     raise DisabledFunctionError("This function has been disabled or is not applicable")
+
+
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__dict__ = self
