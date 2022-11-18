@@ -7,14 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ..utils.plotting import (
-    get_fig_and_axs,
-    map_axs,
-    plot_incumbent,
-    save_fig,
-    set_legend,
-)
-from ..utils.read_results import process_seed
+from .plotting import get_fig_and_axs, map_axs, plot_incumbent, save_fig, set_legend
+from .read_results import process_seed
 
 
 def plot(
