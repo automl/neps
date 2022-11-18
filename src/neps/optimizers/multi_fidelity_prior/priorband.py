@@ -15,7 +15,54 @@ from ..multi_fidelity.sampling_policy import EnsemblePolicy
 from .utils import DynamicWeights, compute_config_dist
 
 
-class PriorBand(HyperbandCustomDefault):
+class PriorBandBase:
+    def find_all_distances_from_incumbent(self, incumbent):
+        """Finds the distance to the nearest neighbour."""
+        dist = lambda x: compute_config_dist(incumbent, x)
+        # computing distance of incumbent from all seen points in history
+        distances = [dist(config) for config in self.observed_configs.config]
+        # ensuring the distances exclude 0 or the distance from itself
+        distances = [d for d in distances if d > 0]
+        return distances
+
+    def find_1nn_distance_from_incumbent(self, incumbent):
+        """Finds the distance to the nearest neighbour."""
+        distances = self.find_all_distances_from_incumbent(incumbent)
+        distance = min(distances)
+        return distance
+
+    def find_incumbent(self, rung: int = None) -> SearchSpace:
+        """Find the best performing configuration seen so far."""
+        rungs = self.observed_configs.rung.values
+        idxs = self.observed_configs.index.values
+        while rung is not None:
+            # enters this scope is `rung` argument passed and not left empty or None
+            if rung not in rungs:
+                self.logger.warn(f"{rung} not in {np.unique(idxs)}")
+            # filtering by rung based on argument passed
+            idxs = self.observed_configs.rung.values == rung
+            # checking width of current rung
+            if len(idxs) < self.eta:
+                self.logger.warn(
+                    f"Selecting incumbent from a rung with width less than {self.eta}"
+                )
+        # extracting the incumbent configuration
+        if len(idxs):
+            # finding the config with the lowest recorded performance
+            inc_idx = np.nanargmin(self.observed_configs.loc[idxs].perf.values)
+            inc = self.observed_configs.loc[idxs].iloc[inc_idx].config
+        else:
+            # THIS block should not ever execute, but for runtime anomalies, if no
+            # incumbent can be extracted, the prior is treated as the incumbent
+            inc = self.pipeline_space.sample_default_configuration()
+            self.logger.warn(
+                "Treating the prior as the incumbent. "
+                "Please check if this should not happen."
+            )
+        return inc
+
+
+class PriorBand(HyperbandCustomDefault, PriorBandBase):
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -101,51 +148,6 @@ class PriorBand(HyperbandCustomDefault):
             for rung in range(self.min_rung, self.max_rung + 1)
         }
         super().load_results(previous_results, pending_evaluations)
-
-    def find_all_distances_from_incumbent(self, incumbent):
-        """Finds the distance to the nearest neighbour."""
-        dist = lambda x: compute_config_dist(incumbent, x)
-        # computing distance of incumbent from all seen points in history
-        distances = [dist(config) for config in self.observed_configs.config]
-        # ensuring the distances exclude 0 or the distance from itself
-        distances = [d for d in distances if d > 0]
-        return distances
-
-    def find_1nn_distance_from_incumbent(self, incumbent):
-        """Finds the distance to the nearest neighbour."""
-        distances = self.find_all_distances_from_incumbent(incumbent)
-        distance = min(distances)
-        return distance
-
-    def find_incumbent(self, rung: int = None) -> SearchSpace:
-        """Find the best performing configuration seen so far."""
-        rungs = self.observed_configs.rung.values
-        idxs = self.observed_configs.index.values
-        while rung is not None:
-            # enters this scope is `rung` argument passed and not left empty or None
-            if rung not in rungs:
-                self.logger.warn(f"{rung} not in {np.unique(idxs)}")
-            # filtering by rung based on argument passed
-            idxs = self.observed_configs.rung.values == rung
-            # checking width of current rung
-            if len(idxs) < self.eta:
-                self.logger.warn(
-                    f"Selecting incumbent from a rung with width less than {self.eta}"
-                )
-        # extracting the incumbent configuration
-        if len(idxs):
-            # finding the config with the lowest recorded performance
-            inc_idx = np.nanargmin(self.observed_configs.loc[idxs].perf.values)
-            inc = self.observed_configs.loc[idxs].iloc[inc_idx].config
-        else:
-            # THIS block should not ever execute, but for runtime anomalies, if no
-            # incumbent can be extracted, the prior is treated as the incumbent
-            inc = self.pipeline_space.sample_default_configuration()
-            self.logger.warn(
-                "Treating the prior as the incumbent. "
-                "Please check if this should not happen."
-            )
-        return inc
 
     def calc_sampling_args(self, rung_size, inc=None) -> dict:
         """Sets the sampling args for the EnsemblePolicy."""
