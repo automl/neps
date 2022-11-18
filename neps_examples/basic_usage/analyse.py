@@ -6,9 +6,10 @@ Before running this example analysis, run the hyperparameters example with:
 """
 import neps
 
-# During the run,
+# 1. At all times, NePS maintains several files in the root directory that are human
+# read-able and can be useful
 
-# Printing a summary and reading in results.
+# 2. Printing a summary and reading in results.
 # Alternatively use `python -m neps.status results/hyperparameters_example`
 results, pending_configs = neps.status("results/hyperparameters_example")
 config_id = "1"
@@ -16,6 +17,6 @@ print(results[config_id].config)
 print(results[config_id].result)
 print(results[config_id].metadata)
 
-# Generating plots to the root directory (results/hyperparameters_example)
+# 3. Generating plots to the root directory (results/hyperparameters_example)
 # Alternatively use `python -m neps.plot results/hyperparameters_example`
 neps.plot("results/hyperparameters_example")
