@@ -42,6 +42,3 @@ neps.run(
     root_directory="results/hyperparameters_architecture_example",
     max_evaluations_total=15,
 )
-previous_results, pending_configs = neps.status(
-    "results/hyperparameters_architecture_example"
-)

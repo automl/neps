@@ -1,6 +1,7 @@
 import logging
 
-from .api import plot, run
+from .api import run
+from .plot.plot import plot
 from .search_spaces import (
     CategoricalParameter,
     ConstantParameter,

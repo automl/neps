@@ -5,16 +5,19 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-NePS helps deep learning experts find the best neural pipeline with
+NePS helps experts to optimize the hyperparameters and/or architecture of their deep learning pipeline with:
 
 - Hyperparameter Optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
-- (Hierarchical) Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py))
+- Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py), [paper](https://openreview.net/forum?id=Ok58hMNXIQ))
 - Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/basic_usage/architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=_HLcjaVlqJ))
 
 For efficiency and convenience NePS allows you to
 
-- Input expert intuition to speed-up HPO, NAS, or JAHS ([example HPO](neps_examples/expert_prior_for_hyperparameters), [example JAHS](neps_examples/expert_prior_for_hyperparameters), [paper](https://openreview.net/forum?id=MMAeCXIa89))
-- Asynchronously parallelize without code changes ([example](neps_examples/efficiency/parallelization.py), [documentation](https://automl.github.io/neps/latest/parallelization/))
+- Add your intuition as priors for the search ([example HPO](neps_examples/expert_prior_for_hyperparameters), [example JAHS](neps_examples/expert_prior_for_hyperparameters), [paper](https://openreview.net/forum?id=MMAeCXIa89))
+- Utilize low fidelity (e.g., low epoch) evaluations to focus on promising configurations ([example](neps_examples/efficiency/parallelization.md), [paper](https://openreview.net/forum?id=ds21dwfBBH))
+- Trivially parallelize across machines ([example](neps_examples/efficiency/parallelization.md), [documentation](https://automl.github.io/neps/latest/parallelization/))
+
+Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.md) for maximum efficiency!
 
 ## Note
 

@@ -72,11 +72,9 @@ pipeline_space = dict(
 )
 
 logging.basicConfig(level=logging.INFO)
-
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multi_fidelity",
     max_evaluations_total=20,
 )
-previous_results, pending_configs = neps.status("results/multi_fidelity")
