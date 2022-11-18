@@ -38,6 +38,10 @@ def _build(graph, set_recursive_attribute) -> Graph:
                 pred_pred = list(graph.predecessors(pred))[0]
                 predecessor_values = graph.edges[(pred_pred, pred)]
             graph.edges[e].update(set_recursive_attribute(op_name, predecessor_values))
+    # Cast to Graph type when _FunctionParameter type is given
+    if graph.__class__ is not Graph:
+        graph.__class__ = Graph
+        graph = Graph.copy(graph)
     return graph
 
 
@@ -136,7 +140,7 @@ def FunctionParameter(**kwargs):
 
                 arch.compile()
                 arch.update_op_names()
-            return arch.to_pytorch()  # create PyTorch model
+                return arch.to_pytorch()
 
         def to_tensorflow(self, inputs):
             composed_function = self.compose_functions(flatten_graph=False)
