@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-NePS helps experts to optimize the hyperparameters and/or architecture of their deep learning pipeline with:
+NePS helps deep learning experts to optimize the hyperparameters and/or architecture of their deep learning pipeline with:
 
 - Hyperparameter Optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
 - Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py), [paper](https://openreview.net/forum?id=Ok58hMNXIQ))
