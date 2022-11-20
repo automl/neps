@@ -15,13 +15,7 @@ from typing import Any
 import more_itertools
 
 from ._locker import Locker
-from .utils import (
-    SerializerMapping,
-    find_files,
-    init_serializer,
-    instance_from_map,
-    non_empty_file,
-)
+from .utils import YamlSerializer, find_files, non_empty_file
 
 warnings.simplefilter("always", DeprecationWarning)
 
@@ -138,19 +132,15 @@ def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
     return previous_paths, pending_paths
 
 
-def read_config_result(result_dir: Path | str, serializer: str | Any = None, logger=None):
+def _read_config_result(result_dir: Path | str, serializer: YamlSerializer):
     result_dir = Path(result_dir)
-    serializer = init_serializer(serializer, result_dir, logger)
-
     config = serializer.load_config(result_dir / "config")
     result = serializer.load(result_dir / "result")
     metadata = serializer.load(result_dir / "metadata")
     return ConfigResult(config, result, metadata)
 
 
-def read(
-    optimization_dir: Path | str, serializer: str | Any = None, logger=None, do_lock=True
-):
+def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=True):
     optimization_dir = Path(optimization_dir)
 
     if logger is None:
@@ -163,17 +153,16 @@ def read(
         while not decision_locker.acquire_lock():
             time.sleep(2)
 
-    # Try to guess the serialization method used
-    serializer = init_serializer(serializer, optimization_dir, logger)
+    if serializer is None:
+        serializer = YamlSerializer()
 
-    serializer = instance_from_map(SerializerMapping, serializer, "serializer")
     previous_paths, pending_paths = _load_sampled_paths(
         optimization_dir, serializer, logger
     )
     previous_results, pending_configs, pending_configs_free = {}, {}, {}
 
     for config_id, (config_dir, _, _) in previous_paths.items():
-        previous_results[config_id] = read_config_result(config_dir, serializer, logger)
+        previous_results[config_id] = _read_config_result(config_dir, serializer)
 
     for config_id, (config_dir, config_file) in pending_paths.items():
         pending_configs[config_id] = serializer.load_config(config_file)
@@ -356,20 +345,15 @@ def run(
     continue_until_max_evaluation_completed=False,
     development_stage_id=None,
     task_id=None,
-    serializer: str | Any = "yaml",
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
     filesystem_grace_period_for_crashed_configs=45,
 ):
-    serializer_cls = instance_from_map(
-        SerializerMapping, serializer, "serializer", as_class=True
-    )
-    serializer = serializer_cls(sampler.load_config)
+    serializer = YamlSerializer(sampler.load_config)
     if logger is None:
         logger = logging.getLogger("metahyper")
 
-    # TODO (Nils): Is this implementation sufficient?
     if task_id is not None:
         optimization_dir = Path(optimization_dir) / f"task_{task_id}"
     if development_stage_id is not None:
@@ -380,7 +364,7 @@ def run(
         logger.warning("Overwriting working_directory")
         shutil.rmtree(optimization_dir)
 
-    sampler_state_file = optimization_dir / f".optimizer_state{serializer.SUFFIX}"
+    sampler_state_file = optimization_dir / ".optimizer_state.yaml"
     base_result_directory = optimization_dir / "results"
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
@@ -438,7 +422,7 @@ def run(
                     f"Checking if config {config_id} crashed and needs to be continued."
                 )
                 time.sleep(filesystem_grace_period_for_crashed_configs)
-                if non_empty_file(pipeline_directory / f"result{serializer_cls.SUFFIX}"):
+                if non_empty_file(pipeline_directory / "result.yaml"):
                     logger.info(f"Config {config_id} did not crash.")
                     continue
                 logger.info(f"Config {config_id} did crash, so continuing/restarting it")

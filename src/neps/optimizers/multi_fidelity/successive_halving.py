@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Literal
 
-from metahyper.api import ConfigResult
+from metahyper import ConfigResult
 
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,
@@ -452,7 +452,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):
-    def _calc_budget_used_in_bracket(self, config_history: typing.List[int]):
+    def _calc_budget_used_in_bracket(self, config_history: list[int]):
         budget = 0
         for rung in self.config_map.keys():
             count = sum(config_history == rung)

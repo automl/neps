@@ -26,6 +26,7 @@ def no_logs_gte_error(caplog):
 
 core_examples = [  # Run locally and on github actions
     "basic_usage/hyperparameters",
+    "basic_usage/analyse",
     "efficiency/expert_priors_for_architecture_and_hyperparameters",
     "efficiency/multi_fidelity",
 ]
@@ -44,13 +45,17 @@ core_examples_scripts = [examples_folder / f"{example}.py" for example in core_e
 all_examples_scripts = [examples_folder / f"{example}.py" for example in all_examples]
 
 
-@pytest.mark.all_examples
-@pytest.mark.parametrize("example", all_examples_scripts, ids=all_examples)
-def test_all_examples(example):
-    runpy.run_path(example, run_name="__main__")
-
-
 @pytest.mark.core_examples
 @pytest.mark.parametrize("example", core_examples_scripts, ids=core_examples)
 def test_core_examples(example):
+    if example.name == "analyse.py":
+        # Run hyperparameters example to have something to analyse
+        runpy.run_path(core_examples_scripts[0], run_name="__main__")
+
     runpy.run_path(example, run_name="__main__")
+
+
+@pytest.mark.all_examples
+@pytest.mark.parametrize("example", all_examples_scripts, ids=all_examples)
+def test_all_examples(example):
+    test_core_examples(example)
