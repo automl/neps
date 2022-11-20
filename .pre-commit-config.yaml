@@ -48,6 +48,7 @@ repos:
       - id: mypy
         additional_dependencies:
           - types-termcolor
+          - types-PyYAML
 
   - repo: https://github.com/terrencepreilly/darglint
     rev: v1.8.1

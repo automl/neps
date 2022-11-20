@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from metahyper.api import ConfigResult, instance_from_map
+from metahyper import ConfigResult, instance_from_map
 
 from ...optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     CostCooler,

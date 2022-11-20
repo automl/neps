@@ -11,7 +11,7 @@ import ConfigSpace as CS
 from typing_extensions import Literal
 
 import metahyper
-from metahyper.api import instance_from_map
+from metahyper import instance_from_map
 
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.parameter import Parameter
@@ -107,7 +107,6 @@ def run(
         "grid_search",
     ]
     | BaseOptimizer = "default",
-    serializer: Literal["yaml", "dill", "json"] = "yaml",
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
@@ -118,7 +117,7 @@ def run(
     To parallelize:
         In order to run a neural pipeline search with multiple processes or machines,
         simply call run(.) multiple times (optionally on different machines). Make sure
-        that working_directory points to the same folder on the same filesystem, otherwise
+        that root_directory points to the same folder on the same filesystem, otherwise
         the multiple calls to run(.) will be independent.
 
     Args:
@@ -141,8 +140,6 @@ def run(
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
         searcher: Which optimizer to use.
-        serializer: Serializer to store hyperparameters configurations. Can be an object,
-            or a value in 'json', 'yaml' or 'dill' (see metahyper).
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards max_evaluations_total.
         loss_value_on_error: Setting this and cost_value_on_error to any float will
@@ -177,11 +174,12 @@ def run(
     """
     if "working_directory" in searcher_kwargs:
         raise ValueError(
-            "The argument 'working_directory' is deprecated, please use 'root_directory' instead"
+            "The argument 'working_directory' is deprecated, please use 'root_directory' "
+            "instead"
         )
 
     logger = logging.getLogger("neps")
-    logger.info(f"Starting neps.run using working directory {root_directory}")
+    logger.info(f"Starting neps.run using root directory {root_directory}")
     try:
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
@@ -235,7 +233,6 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
-        serializer=serializer,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook_function(
             loss_value_on_error, ignore_errors

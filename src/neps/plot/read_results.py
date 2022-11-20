@@ -20,7 +20,7 @@ def _get_seed_info(
         path = os.path.join(path, str(seed), "neps_root_directory")
 
     data = []
-    stats, _ = neps.status(path)
+    stats, _ = neps.status(path, print_summary=False)
     for config_id, config_result in stats.items():
         info = dict()
         if "info_dict" in config_result.result:
