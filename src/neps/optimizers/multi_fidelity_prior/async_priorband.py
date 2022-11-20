@@ -494,3 +494,17 @@ class AsyncPriorBandDyna(DynamicWeights, AsyncPriorBand):
             },
         }
         return sampling_args
+
+
+class TrulyAsyncHB(AsyncPriorBand):
+    def set_sampling_weights_and_inc(self, rung_size: int = None):
+        policy_weights = {
+            "prior": 0,
+            "inc": 0,
+            "random": 1,
+        }
+        self.sampling_args = {
+            "inc": None,
+            "weights": policy_weights,
+        }
+        return self.sampling_args
