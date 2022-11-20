@@ -117,7 +117,7 @@ def run(
     To parallelize:
         In order to run a neural pipeline search with multiple processes or machines,
         simply call run(.) multiple times (optionally on different machines). Make sure
-        that working_directory points to the same folder on the same filesystem, otherwise
+        that root_directory points to the same folder on the same filesystem, otherwise
         the multiple calls to run(.) will be independent.
 
     Args:
