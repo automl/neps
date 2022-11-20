@@ -238,10 +238,19 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
         pipeline_directory = base_result_directory / f"config_{config_id}"
         pipeline_directory.mkdir(exist_ok=True)
 
-        serializer.dump({"time_sampled": time.time()}, pipeline_directory / "metadata")
         if previous_config_id is not None:
             previous_config_id_file = pipeline_directory / "previous_config.id"
-            previous_config_id_file.write_text(previous_config_id)
+            previous_config_id_file.write_text(
+                previous_config_id
+            )  # TODO: Get rid of this
+            serializer.dump(
+                {"time_sampled": time.time(), "previous_config_id": previous_config_id},
+                pipeline_directory / "metadata",
+            )
+        else:
+            serializer.dump(
+                {"time_sampled": time.time()}, pipeline_directory / "metadata"
+            )
 
     if previous_config_id is not None:
         previous_pipeline_directory = Path(
