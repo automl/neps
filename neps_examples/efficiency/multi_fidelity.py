@@ -75,6 +75,6 @@ logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory="results/multi_fidelity",
+    root_directory="results/multi_fidelity_example",
     max_evaluations_total=20,
 )
