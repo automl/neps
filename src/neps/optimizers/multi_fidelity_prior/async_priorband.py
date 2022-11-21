@@ -208,6 +208,7 @@ class PriorBandAshaHB(PriorBandAsha):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
+            inc_sample_type=inc_sample_type,
         )
         super().__init__(**args)
         self.inc_sample_type = inc_sample_type
@@ -322,7 +323,7 @@ class AsyncPriorBand(PriorBandAsha):
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
         )
-        super().__init__(**args)
+        super().__init__(**args, inc_sample_type=inc_sample_type)
         self.sample_map = self.rung_map.copy()
         self.promotion_map = dict()
         resources = list(sorted(self.sample_map.values()))
@@ -408,6 +409,7 @@ class AsyncPriorBand(PriorBandAsha):
             resource = np.random.choice(list(r_sample.keys()), p=list(r_sample.values()))
             rung = self.get_rung_of_resource(resource)
             if len(self.observed_configs) == 0 and rung == self.max_rung:
+                # when no configurations seen, recover the mode as first evaluation
                 # recovering the mode at a random rung other than the max fidelity
                 while rung == self.max_rung:
                     resource = np.random.choice(
