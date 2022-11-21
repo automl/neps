@@ -572,13 +572,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#documentation_2" class="md-nav__link">
-    Documentation
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#miscellaneous" class="md-nav__link">
     Miscellaneous
   </a>
@@ -729,13 +722,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#documentation_2" class="md-nav__link">
-    Documentation
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#miscellaneous" class="md-nav__link">
     Miscellaneous
   </a>
@@ -768,18 +754,18 @@
 <ul>
 <li>Utility to get best HPs and (built) architecture*</li>
 <li>Utility to get incumbent losses over time*</li>
+<li>Windows support*</li>
 </ul>
 <h3 id="documentation">Documentation</h3>
 <ul>
-<li>Data reading example*</li>
-<li>Working directory example*</li>
-<li>Parallelization example*</li>
 <li>Fill up the core documentation pages*</li>
+<li>Fix NAS examples*</li>
 </ul>
 <h3 id="refactoring">Refactoring</h3>
 <ul>
-<li>Move metahyper to the neps repository</li>
-<li>Use undepreciated working dir name for metahyper.run</li>
+<li>remove graph_dense API*</li>
+<li>run_pipeline = evaluate_pipeline?*</li>
+<li>loss = validation_error | error | pipeline_error?*</li>
 <li>Clean up unused branches</li>
 <li>Merge GP and hierarchical GP</li>
 <li>Merge gpytorch branch</li>
@@ -787,15 +773,12 @@
 <h3 id="tests-and-tooling">Tests and tooling</h3>
 <ul>
 <li>Add simple regression tests to run on each push</li>
-<li>poetry hooks</li>
-<li>poetry update</li>
 </ul>
 <h2 id="before-100-version">Before 1.0.0 version</h2>
 <h3 id="features_1">Features</h3>
 <ul>
-<li>Seamless ddp via cli launcher (fix from Fabio / Sam adapted to new ddp version)</li>
+<li>Seamless ddp via cli launcher</li>
 <li>Finegrained control over HP user prior</li>
-<li>Incumbent plot</li>
 <li>Top vs all vs bottom distribution plots</li>
 <li>Tensorboard visualizations (incumbent plot, ..)</li>
 <li>Print search space upon run</li>
@@ -809,12 +792,8 @@
 </ul>
 <h3 id="refactoring_1">Refactoring</h3>
 <ul>
-<li>run_pipeline = evaluate_pipeline</li>
-<li>loss = validation_error</li>
-<li>remove graph_dense API</li>
 <li>clean up search spaces classes, unused methods</li>
 <li>break up search space and config aspect</li>
-<li>Improve error message printed by Loss value on error</li>
 </ul>
 <h3 id="documentation_1">Documentation</h3>
 <ul>
@@ -823,24 +802,16 @@
 <h2 id="later-version">Later version</h2>
 <h3 id="features_2">Features</h3>
 <ul>
-<li>Rework metahyper</li>
 <li>Optional argparse adder like pytorch lightning</li>
 <li>Utility neps.clean to manage existing run results</li>
 <li>Collect data optionally via phone-home to webserver</li>
 <li>Add Info dict to status</li>
 <li>BO improvements via Hebo tricks + Mll replacement</li>
 </ul>
-<h3 id="documentation_2">Documentation</h3>
-<ul>
-<li>Documentation on cuda pytorch</li>
-<li>Conda install for meta cluster, put the export in profile</li>
-</ul>
 <h3 id="miscellaneous">Miscellaneous</h3>
 <ul>
 <li>Twitter handle and domain, e.g., neural-pipeline.search</li>
 <li>Doing research with NePS / Documentation on that or full setup</li>
-<li>Regular contributor meetings</li>
-<li>Maintain issues</li>
 </ul>
 
 
