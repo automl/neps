@@ -221,6 +221,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                         config_val.result
                     )
             else:
+                # add new entry
                 _df = pd.DataFrame(
                     [[config_val.config, int(_rung), self.get_loss(config_val.result)]],
                     columns=self.observed_configs.columns,
@@ -236,11 +237,11 @@ class SuccessiveHalvingBase(BaseOptimizer):
     ) -> None:
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
-        for config_id, _ in pending_evaluations.items():
+        for config_id, config in pending_evaluations.items():
             _config, _rung = self._get_config_id_split(config_id)
             if int(_config) not in self.observed_configs.index:
                 _df = pd.DataFrame(
-                    [[None, int(_rung), None]],
+                    [[config, int(_rung), np.nan]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
@@ -249,7 +250,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 ).sort_index()
             else:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                self.observed_configs.at[int(_config), "perf"] = None
+                self.observed_configs.at[int(_config), "perf"] = np.nan
         return
 
     def clean_rung_information(self):

@@ -129,6 +129,7 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
         return sampling_args
 
     def set_sampling_weights_and_inc(self, rung_size: int = None):
+        # TODO: use resource spent to be the measure to activate incumbent sampling
         # activate incumbent sampling only when an evaluation has been recorded at the
         # highest rung or the max fidelity
         activate_inc = False

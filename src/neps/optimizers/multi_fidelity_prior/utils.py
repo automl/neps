@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import Dict, Union
 
 import numpy as np
+import pandas as pd
 import scipy
 
 from ...search_spaces.search_space import SearchSpace
@@ -51,6 +52,15 @@ def compute_scores(
     inc_score = _inc.compute_prior()
 
     return prior_score, inc_score
+
+
+def calc_total_resources_spent(observed_configs: pd.DataFrame):
+    # max rung adds 1 to sum
+    # max rung - 1 adds 1/eta to the sum
+    # max rung - 2 adds 1/eta**2 to the sum
+    # ... and so on till rung 0
+    # total resource spent = this sum * R (R is the max budget)
+    pass
 
 
 class DynamicWeights:

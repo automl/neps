@@ -49,7 +49,8 @@ class PriorBandBase:
         # extracting the incumbent configuration
         if len(idxs):
             # finding the config with the lowest recorded performance
-            inc_idx = np.nanargmin(self.observed_configs.loc[idxs].perf.values)
+            _perfs = self.observed_configs.loc[idxs].perf.values
+            inc_idx = np.nanargmin([np.nan if t is None else t for t in _perfs])
             inc = self.observed_configs.loc[idxs].iloc[inc_idx].config
         else:
             # THIS block should not ever execute, but for runtime anomalies, if no
