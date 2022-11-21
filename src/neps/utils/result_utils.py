@@ -13,9 +13,11 @@ def get_loss(
             return "error"
         elif loss_value_on_error is None:
             raise ValueError(
-                "An error happened and loss_value_on_error is not provided. You can"
-                " either set loss_value_on_error to some float, set"
-                " ignore_errors=True, or fix the error."
+                "An error happened during the execution of your run_pipeline function."
+                " You have three options: 1. If the error is expected and corresponds to"
+                " a loss value in your application (e.g., 0% accuracy), you can set"
+                " loss_value_on_error to some float. 2. If sometimes your pipeline"
+                " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
             )
         else:
             return loss_value_on_error
