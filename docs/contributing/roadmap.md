@@ -18,6 +18,7 @@
 - remove graph_dense API\*
 - run_pipeline = evaluate_pipeline?\*
 - loss = validation_error | error | pipeline_error?\*
+- IntegerParameter = IntegerSpace
 - Clean up unused branches
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
