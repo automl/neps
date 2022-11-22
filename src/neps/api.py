@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from pathlib import Path
 from typing import Callable
 
@@ -96,20 +97,19 @@ def run(
     task_id=None,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
-    budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
+    max_cost_total: int | float | None = None,
+    ignore_errors: bool = False,
+    loss_value_on_error: None | float = None,
+    cost_value_on_error: None | float = None,
     searcher: Literal[
         "default",
         "bayesian_optimization",
         "random_search",
-        "cost_cooling",
-        "mf_bayesian_optimization",
-        "grid_search",
+        "hyperband",
+        "hyperband_custom_default",
     ]
     | BaseOptimizer = "default",
-    ignore_errors: bool = False,
-    loss_value_on_error: None | float = None,
-    cost_value_on_error: None | float = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -126,7 +126,7 @@ def run(
         root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
-            the run.
+            the run. This is, e.g., useful when debugging a run_pipeline function.
         development_stage_id: ID for the current development stage. Only needed if
             you work with multiple development stages.
         task_id: ID for the current task. Only needed if you work with multiple
@@ -134,18 +134,19 @@ def run(
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
-        budget: Maximum allowed budget. Currently, can be exceeded, but no new evaluations
-            will start when the budget it depleted.
         continue_until_max_evaluation_completed: If true, only stop after
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
-        searcher: Which optimizer to use.
+        max_cost_total: No new evaluations will start when this cost is exceeded. Requires
+            returning a cost in the run_pipeline function, e.g.,
+            `return dict(loss=loss, cost=cost)`.
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards max_evaluations_total.
         loss_value_on_error: Setting this and cost_value_on_error to any float will
             supress any error and will use given loss value instead. default: None
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
+        searcher: Which optimizer to use. This is usually only needed by neps developers.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -177,6 +178,16 @@ def run(
             "The argument 'working_directory' is deprecated, please use 'root_directory' "
             "instead"
         )
+
+    if "budget" in searcher_kwargs:
+        warnings.warn(
+            "The argument: 'budget' is deprecated. In the neps.run call, please, use "
+            "'max_cost_total' instead. In future versions using `budget` will fail.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        max_cost_total = searcher_kwargs["budget"]
+        del searcher_kwargs["budget"]
 
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using root directory {root_directory}")
@@ -219,7 +230,7 @@ def run(
     )
     searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
         pipeline_space=pipeline_space,
-        budget=budget,
+        budget=max_cost_total,  # TODO: use max_cost_total everywhere
         **searcher_kwargs,
     )
 

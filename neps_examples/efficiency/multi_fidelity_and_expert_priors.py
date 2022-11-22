@@ -28,5 +28,5 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multifidelity_priors",
-    max_evaluations_total=25,
+    max_evaluations_total=25,  # For an alternate stopping method see multi_fidelity.py
 )

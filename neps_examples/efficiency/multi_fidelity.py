@@ -79,5 +79,5 @@ neps.run(
     root_directory="results/multi_fidelity_example",
     # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
     # field above.
-    budget=100,
+    max_cost_total=100,
 )

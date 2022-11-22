@@ -23,6 +23,7 @@
 - run_pipeline = evaluate_pipeline?\*
 - loss = validation_error | error | pipeline_error?\*
 - IntegerParameter = IntegerSpace
+- Use max_cost_total everywhere instead of budget
 - Clean up unused branches
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
