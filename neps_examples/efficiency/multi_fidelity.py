@@ -41,13 +41,14 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate,
     model, optimizer = get_model_and_optimizer(learning_rate)
     checkpoint_name = "checkpoint.pth"
 
-    # Read in state of the model after the previous fidelity rung
     if previous_pipeline_directory is not None:
+        # Read in state of the model after the previous fidelity rung
         checkpoint = torch.load(previous_pipeline_directory / checkpoint_name)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        epoch_already_trained = checkpoint["epoch"]
-        print(f"Read in model trained for {epoch_already_trained} epochs")
+        epochs_previously_spent = checkpoint["epoch"]
+    else:
+        epochs_previously_spent = 0
 
     # Train model here ...
 
@@ -61,13 +62,13 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate,
         pipeline_directory / checkpoint_name,
     )
 
-    return np.log(learning_rate / epoch)  # Replace with actual error
+    loss = np.log(learning_rate / epoch)  # Replace with actual error
+    epochs_spent_in_this_call = epoch - epochs_previously_spent  # Optional for stopping
+    return dict(loss=loss, cost=epochs_spent_in_this_call)
 
 
 pipeline_space = dict(
-    learning_rate=neps.FloatParameter(
-        lower=1e-4, upper=1e0, log=True, default=1e-1, default_confidence="high"
-    ),
+    learning_rate=neps.FloatParameter(lower=1e-4, upper=1e0, log=True),
     epoch=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
 )
 
@@ -76,5 +77,7 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multi_fidelity_example",
-    max_evaluations_total=20,
+    # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
+    # field above.
+    budget=100,
 )
