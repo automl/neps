@@ -12,6 +12,7 @@
 
 - Fill up the core documentation pages\*
 - Fix NAS examples\*
+- Document summary function
 
 ### Fixes
 
@@ -27,6 +28,7 @@
 - Clean up unused branches
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
+- Rethink summary/status API
 
 ### Tests and tooling
 
