@@ -15,7 +15,7 @@ from ..multi_fidelity.promotion_policy import AsyncPromotionPolicy
 from ..multi_fidelity.sampling_policy import EnsemblePolicy
 from ..multi_fidelity.successive_halving import AsynchronousSuccessiveHalvingWithPriors
 from ..multi_fidelity_prior.priorband import PriorBandBase
-from .utils import DynamicWeights
+from .utils import DynamicWeights, calc_total_resources_spent
 
 
 class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
@@ -128,17 +128,20 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
         }
         return sampling_args
 
-    def set_sampling_weights_and_inc(self, rung_size: int = None):
-        # TODO: use resource spent to be the measure to activate incumbent sampling
-        # activate incumbent sampling only when an evaluation has been recorded at the
-        # highest rung or the max fidelity
+    def is_activate_inc(self) -> bool:
+        """Function to checks optimization state to allow/disallow incumbent sampling"""
         activate_inc = False
         _df = self.observed_configs[self.observed_configs.rung.values == self.max_rung]
+        # activate incumbent sampling only when an evaluation has been recorded at the
+        # highest rung or the max fidelity
         if len(_df) > 0:
             if not np.isnan(_df.iloc[0].perf):
                 activate_inc = True
+        return activate_inc
 
-        if not activate_inc:
+    def set_sampling_weights_and_inc(self, rung_size: int = None):
+        # TODO: use resource spent to be the measure to activate incumbent sampling
+        if not self.is_activate_inc():
             # only prior and random sampling while no evaluation at highest fidelity
             policy_weights = {
                 "prior": 1 / 3,
@@ -209,9 +212,11 @@ class PriorBandAshaHB(PriorBandAsha):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
+        )
+        super().__init__(
+            **args,
             inc_sample_type=inc_sample_type,
         )
-        super().__init__(**args)
         self.inc_sample_type = inc_sample_type
         self.sampling_policy = sampling_policy(pipeline_space, self.inc_sample_type)
         self.sampling_args = {
@@ -335,6 +340,7 @@ class AsyncPriorBand(PriorBandAsha):
             self.promotion_map[i] = resources[i] - resources[i - 1]
         # base rung sizes are important to calculate weights for ensemble policy sampling
         self.base_rung_sizes = dict()
+        print(self.rung_map)
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             _sh_bracket = AsynchronousSuccessiveHalvingWithPriors(**args)
@@ -357,67 +363,112 @@ class AsyncPriorBand(PriorBandAsha):
                 break
         return rung_promotable
 
-    def get_rung_of_resource(self, resource: float | int) -> int:
-        if resource in self.sample_map.values():
-            rung = [k for k, v in self.sample_map.items() if v == resource][0]
-        elif resource in self.promotion_map.values():
-            rung = [k for k, v in self.promotion_map.items() if v == resource][0]
-        else:
-            raise ValueError(f"{resource} not in sample or promotion resource maps")
+    def get_rung_of_resource(self, resource: float | int, promote: bool = False) -> int:
+        mapper = self.sample_map
+        if promote:
+            mapper = self.promotion_map
+        _rung = [k for k, v in mapper.items() if v == resource]
+        if len(_rung) == 0:
+            raise ValueError(f"{resource} not found in {mapper}. Check arg `promote`.")
+        rung = _rung[0]
         return rung
 
-    def sample_resource_to_spend(self):
-        r = self.min_budget
-        sigma_s = (
-            27 * r + 9 * r * self.eta + r * 6 * self.eta**2 + 4 * r * self.eta**3
-        )
-        _eta = self.eta - 1
-        sigma_p = 9 * r * _eta + 6 * r * self.eta * _eta + 4 * r * _eta * self.eta**2
-        _sigma_s = sigma_s / sum([sigma_s, sigma_p])
-        _sigma_p = sigma_p / sum([sigma_s, sigma_p])
-        p_sample = np.exp(_sigma_s) / (np.exp(_sigma_s) + np.exp(_sigma_p))
-        p_promotion = np.exp(_sigma_p) / (np.exp(_sigma_s) + np.exp(_sigma_p))
+    def _scale_proportions(self, a, b):
+        _a = a / sum([a, b])
+        _b = b / sum([a, b])
+        p_a = np.exp(_a) / (np.exp(_a) + np.exp(_b))
+        p_b = np.exp(_b) / (np.exp(_a) + np.exp(_b))
+        return p_a, p_b
+        # _sigma_s = sigma_s / sum([sigma_s, sigma_p])
+        # _sigma_p = sigma_p / sum([sigma_s, sigma_p])
+        # p_sample = np.exp(_sigma_s) / (np.exp(_sigma_s) + np.exp(_sigma_p))
+        # p_promotion = np.exp(_sigma_p) / (np.exp(_sigma_s) + np.exp(_sigma_p))
+        # return p_a, p_b
 
-        r_promotion = {
-            v: [9 / 19, 6 / 19, 4 / 19][i]
-            for i, v in enumerate(sorted(self.promotion_map.values()))
-        }
-        r_sample = {
-            v: [27 / 46, 9 / 46, 6 / 46, 4 / 46][i]
-            for i, v in enumerate(sorted(self.sample_map.values()))
-        }
+    def calc_prob_maps(self):
+        # TODO: remove hard coding
+        r = self.min_budget
+        _eta = self.eta - 1
+        if self.max_rung == 3:
+            sigma_s = (
+                27 * r + 9 * r * self.eta + r * 6 * self.eta**2 + 4 * r * self.eta**3
+            )
+            sigma_p = (
+                9 * r * _eta + 6 * r * self.eta * _eta + 4 * r * _eta * self.eta**2
+            )
+            r_promotion = {
+                v: [9 / 19, 6 / 19, 4 / 19][i]
+                for i, v in enumerate(sorted(self.promotion_map.values()))
+            }
+            r_sample = {
+                v: [27 / 46, 9 / 46, 6 / 46, 4 / 46][i]
+                for i, v in enumerate(sorted(self.sample_map.values()))
+            }
+        elif self.max_rung == 2:
+            sigma_s = 9 * r + 3 * r * self.eta + 3 * r * self.eta**2
+            sigma_p = 3 * r * _eta + 2 * r * _eta * self.eta
+            r_promotion = {
+                v: [3 / 5, 2 / 5][i]
+                for i, v in enumerate(sorted(self.promotion_map.values()))
+            }
+            r_sample = {
+                v: [9 / 15, 3 / 15, 3 / 15][i]
+                for i, v in enumerate(sorted(self.sample_map.values()))
+            }
+        else:
+            raise NotImplementedError("Method applicable only for 4 rungs")
+        p_sample, p_promotion = self._scale_proportions(sigma_s, sigma_p)
+        return p_sample, p_promotion, r_sample, r_promotion
+
+    def sample_resource_to_spend(self) -> float | int | int:
+        # TODO: no sample at a rung if a configuration not already there
+        # TODO: inc sampling begins when 1x or 2x resources spent
+
+        p_sample, p_promotion, r_sample, r_promotion = self.calc_prob_maps()
 
         if self.is_promotable():
             # hierarchical sampling to allow promotions
             op_choice = np.random.choice(["promote", "sample"], p=[p_promotion, p_sample])
             resource_map = r_promotion if op_choice == "promote" else r_sample
             while True:
+                # the sampled resource is accepted, only if
+                # a) sampling is selected and the chosen rung has at least one config
+                # b) promotion is selected and the lower rung has at least one promotion
                 resource = np.random.choice(
                     list(resource_map.keys()), p=list(resource_map.values())
                 )
                 if op_choice == "sample":
-                    # always accept the rung selected for sampling a new config
-                    break
-
-                rung = self.get_rung_of_resource(resource)
-                if len(self.rung_promotions[rung - 1]):
-                    # resample till the selected rung has a config to promote
-                    # this scope will always contain at least a promotion in any rung
-                    # or always accept the rung selected for sampling a new config
+                    rung = self.get_rung_of_resource(resource, promote=False)
+                    if len(self.rung_histories[rung]["config"]) and len(
+                        self.observed_configs
+                    ):
+                        # need at least one config at a rung to allow samples there
+                        break
+                    else:
+                        # resample a rung if rung has seen no samples
+                        continue
+                rung = self.get_rung_of_resource(resource, promote=True)
+                if len(self.rung_promotions[rung - 1]):  # -1 safe since no promotion at 0
+                    # need at least one promotion possible to reach the chosen rung
                     break
         else:
-            # sample a rung to evaluate new sample at
-            resource = np.random.choice(list(r_sample.keys()), p=list(r_sample.values()))
-            rung = self.get_rung_of_resource(resource)
-            if len(self.observed_configs) == 0 and rung == self.max_rung:
-                # when no configurations seen, recover the mode as first evaluation
-                # recovering the mode at a random rung other than the max fidelity
-                while rung == self.max_rung:
-                    resource = np.random.choice(
-                        list(r_sample.keys()), p=list(r_sample.values())
-                    )
-                    rung = self.get_rung_of_resource(resource)
-        return resource
+            if len(self.observed_configs) == 0:
+                # sampling the first config always at the lowest rung
+                resource = self.rung_map[self.min_rung]
+                rung = self.min_rung
+                return resource, rung
+            while True:
+                # sample a rung to evaluate new sample at
+                resource = np.random.choice(
+                    list(r_sample.keys()), p=list(r_sample.values())
+                )
+                rung = self.get_rung_of_resource(resource, promote=False)
+                if len(self.rung_histories[rung]["config"]) and len(
+                    self.observed_configs
+                ):
+                    # need at least one config at a rung to allow samples there
+                    break
+        return resource, rung
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -427,8 +478,12 @@ class AsyncPriorBand(PriorBandAsha):
         Returns:
             [type]: [description]
         """
-        resource = self.sample_resource_to_spend()
-        rung = self.get_rung_of_resource(resource)
+        resource, rung = self.sample_resource_to_spend()
+        # rung = self.get_rung_of_resource(resource)
+
+        print(
+            f"Resources used: {calc_total_resources_spent(self.observed_configs, self.rung_map)/self.max_budget}x"
+        )
 
         if resource in self.promotion_map.values():
             # promotion

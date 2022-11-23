@@ -54,13 +54,15 @@ def compute_scores(
     return prior_score, inc_score
 
 
-def calc_total_resources_spent(observed_configs: pd.DataFrame):
-    # max rung adds 1 to sum
-    # max rung - 1 adds 1/eta to the sum
-    # max rung - 2 adds 1/eta**2 to the sum
-    # ... and so on till rung 0
-    # total resource spent = this sum * R (R is the max budget)
-    pass
+def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -> float:
+    # collects a list of fidelities/rungs reached by configurations that are not pending
+    rungs_used = [
+        observed_configs.at[i, "rung"]
+        for i in range(len(observed_configs))
+        if not np.isnan(observed_configs.at[i, "perf"])
+    ]
+    total_resources = sum(rung_map[r] for r in rungs_used)
+    return total_resources
 
 
 class DynamicWeights:
