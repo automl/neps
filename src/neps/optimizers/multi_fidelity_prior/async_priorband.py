@@ -340,7 +340,6 @@ class AsyncPriorBand(PriorBandAsha):
             self.promotion_map[i] = resources[i] - resources[i - 1]
         # base rung sizes are important to calculate weights for ensemble policy sampling
         self.base_rung_sizes = dict()
-        print(self.rung_map)
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             _sh_bracket = AsynchronousSuccessiveHalvingWithPriors(**args)
@@ -479,11 +478,6 @@ class AsyncPriorBand(PriorBandAsha):
             [type]: [description]
         """
         resource, rung = self.sample_resource_to_spend()
-        # rung = self.get_rung_of_resource(resource)
-
-        print(
-            f"Resources used: {calc_total_resources_spent(self.observed_configs, self.rung_map)/self.max_budget}x"
-        )
 
         if resource in self.promotion_map.values():
             # promotion
