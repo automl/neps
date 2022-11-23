@@ -117,17 +117,23 @@ def plot(
                 x=costs,
                 y=incumbents,
                 scale_x=max(max_costs) if key_to_extract == "fidelity" else None,
-                title=benchmark,
+                title=benchmark if scientific_mode else None,
                 xlabel=xlabel if is_last_row(benchmark_idx) else None,
-                ylabel="Loss" if is_first_column(benchmark_idx) else None,
+                ylabel="Best error" if is_first_column(benchmark_idx) else None,
                 log_x=log_x,
                 log_y=log_y,
                 x_range=x_range,
                 label=algorithm,
             )
 
-    set_legend(
-        fig, axs, benchmarks=benchmarks, algorithms=algorithms, nrows=nrows, ncols=ncols
-    )
+    if scientific_mode:
+        set_legend(
+            fig,
+            axs,
+            benchmarks=benchmarks,
+            algorithms=algorithms,
+            nrows=nrows,
+            ncols=ncols,
+        )
     save_fig(fig, output_dir=base_path, filename=filename, extension=extension, dpi=dpi)
     logger.info(f"Saved to '{base_path}/{filename}.{extension}'")
