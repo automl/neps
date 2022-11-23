@@ -328,10 +328,22 @@ class SearchSpace(collections.abc.Mapping):
                 hp.default = hp.value
 
     def set_hyperparameters_from_dict(
-        self, hyperparameters, defaults=True, values=True, confidence="low"
+        self,
+        hyperparameters,
+        defaults=True,
+        values=True,
+        confidence="low",
+        delete_previous_defaults=False,
+        delete_previous_values=False
+        # If new values / defaults are given, previous defaults / values are always
+        # overridden
     ):
         for hp_key, hp in self.hyperparameters.items():
             # First check if there is a new value for the hp and that its value is valid
+            if delete_previous_defaults:
+                hp.default = None
+            if delete_previous_values:
+                hp.value = None
             if hp_key not in hyperparameters:
                 continue
             if self.hyperparameters[hp_key].is_fidelity:
