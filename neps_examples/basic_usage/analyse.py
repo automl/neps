@@ -17,6 +17,10 @@ print(results[config_id].config)
 print(results[config_id].result)
 print(results[config_id].metadata)
 
-# 3. Generating plots to the root directory (results/hyperparameters_example)
+# 3. Get the summary as a dictionary
+summary = neps.get_summary_dict("results/hyperparameters_example")
+print(summary)
+
+# 4. Generating plots to the root directory (results/hyperparameters_example)
 # Alternatively use `python -m neps.plot results/hyperparameters_example`
 neps.plot("results/hyperparameters_example")

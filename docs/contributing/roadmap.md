@@ -12,15 +12,23 @@
 
 - Fill up the core documentation pages\*
 - Fix NAS examples\*
+- Document summary function
+
+### Fixes
+
+- Fix autograd warning?
 
 ### Refactoring
 
 - remove graph_dense API\*
 - run_pipeline = evaluate_pipeline?\*
 - loss = validation_error | error | pipeline_error?\*
+- IntegerParameter = IntegerSpace
+- Use max_cost_total everywhere instead of budget
 - Clean up unused branches
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
+- Rethink summary/status API
 
 ### Tests and tooling
 

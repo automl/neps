@@ -13,6 +13,6 @@ from .search_spaces import (
     GraphGrammarRepetitive,
     IntegerParameter,
 )
-from .status.status import status
+from .status.status import get_summary_dict, status
 
 logging.getLogger("neps").addHandler(logging.NullHandler())
