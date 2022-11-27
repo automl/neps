@@ -350,7 +350,12 @@ class SearchSpace(collections.abc.Mapping):
                 hp.value = hyperparameters[hp_key]
                 continue
             new_hp_value = hyperparameters[hp_key]
-            if not hp.lower <= new_hp_value <= hp.upper:
+            if (
+                isinstance(hp, NumericalParameter)
+                and not hp.lower <= new_hp_value <= hp.upper
+            ):
+                continue
+            if isinstance(hp, CategoricalParameter) and new_hp_value not in hp.choices:
                 continue
             if defaults and hasattr(hp, "default"):
                 hp.default = new_hp_value
