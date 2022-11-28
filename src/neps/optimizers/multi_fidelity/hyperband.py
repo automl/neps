@@ -6,12 +6,16 @@ from copy import deepcopy
 import numpy as np
 from typing_extensions import Literal
 
-from metahyper.api import ConfigResult
+from metahyper import ConfigResult
 
 from ...search_spaces.search_space import SearchSpace
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
-from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy, EnsemblePolicy
-from .successive_halving import AsynchronousSuccessiveHalving, SuccessiveHalvingBase, SuccessiveHalving
+from .sampling_policy import EnsemblePolicy, FixedPriorPolicy, RandomUniformPolicy
+from .successive_halving import (
+    AsynchronousSuccessiveHalving,
+    SuccessiveHalving,
+    SuccessiveHalvingBase,
+)
 
 
 class HyperbandBase(SuccessiveHalvingBase):

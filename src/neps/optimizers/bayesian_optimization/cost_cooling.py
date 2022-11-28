@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from metahyper.api import instance_from_map
+from metahyper import instance_from_map
 
 from ...search_spaces.search_space import SearchSpace
 from .acquisition_functions import AcquisitionMapping

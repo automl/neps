@@ -6,7 +6,7 @@ from typing import Any
 import torch
 from typing_extensions import Literal
 
-from metahyper.api import ConfigResult, instance_from_map
+from metahyper import ConfigResult, instance_from_map
 
 from ...search_spaces.search_space import SearchSpace
 from ...utils.common import disabled

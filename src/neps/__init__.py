@@ -1,6 +1,7 @@
 import logging
 
-from .api import plot, run
+from .api import run
+from .plot.plot import plot
 from .search_spaces import (
     CategoricalParameter,
     ConstantParameter,
@@ -12,6 +13,6 @@ from .search_spaces import (
     GraphGrammarRepetitive,
     IntegerParameter,
 )
-from .status.status import status
+from .status.status import get_summary_dict, status
 
 logging.getLogger("neps").addHandler(logging.NullHandler())

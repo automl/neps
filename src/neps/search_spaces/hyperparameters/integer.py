@@ -104,6 +104,10 @@ class IntegerParameter(FloatParameter):
         hp.value = self.value
         return hp.normalized()
 
+    def set_default_confidence_score(self, default_confidence):
+        self.float_hp.set_default_confidence_score(default_confidence)
+        super().set_default_confidence_score(default_confidence)
+
 
 def float_to_integer(float_hp):
     int_hp = IntegerParameter(

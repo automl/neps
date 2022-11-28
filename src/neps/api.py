@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
-import errno
 import logging
-import os
 import sys
+import warnings
 from pathlib import Path
 from typing import Callable
 
@@ -14,20 +13,11 @@ import ConfigSpace as CS
 from typing_extensions import Literal
 
 import metahyper
-from metahyper.api import instance_from_map
+from metahyper import instance_from_map
 
 from .optimizers import BaseOptimizer, SearcherMapping
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
-from .utils.plotting import (
-    Settings,
-    get_fig_and_axs,
-    map_axs,
-    plot_incumbent,
-    save_fig,
-    set_legend,
-)
-from .utils.read_results import process_seed
 from .utils.result_utils import get_loss
 
 
@@ -120,21 +110,19 @@ def run(
     task_id=None,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
-    budget: int | float | None = None,
     continue_until_max_evaluation_completed: bool = False,
+    max_cost_total: int | float | None = None,
+    ignore_errors: bool = False,
+    loss_value_on_error: None | float = None,
+    cost_value_on_error: None | float = None,
     searcher: Literal[
         "default",
         "bayesian_optimization",
         "random_search",
-        "cost_cooling",
-        "mf_bayesian_optimization",
-        "grid_search",
+        "hyperband",
+        "hyperband_custom_default",
     ]
     | BaseOptimizer = "default",
-    serializer: Literal["yaml", "dill", "json"] = "yaml",
-    ignore_errors: bool = False,
-    loss_value_on_error: None | float = None,
-    cost_value_on_error: None | float = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -142,7 +130,7 @@ def run(
     To parallelize:
         In order to run a neural pipeline search with multiple processes or machines,
         simply call run(.) multiple times (optionally on different machines). Make sure
-        that working_directory points to the same folder on the same filesystem, otherwise
+        that root_directory points to the same folder on the same filesystem, otherwise
         the multiple calls to run(.) will be independent.
 
     Args:
@@ -151,7 +139,7 @@ def run(
         root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
-            the run.
+            the run. This is, e.g., useful when debugging a run_pipeline function.
         development_stage_id: ID for the current development stage. Only needed if
             you work with multiple development stages.
         task_id: ID for the current task. Only needed if you work with multiple
@@ -159,20 +147,19 @@ def run(
         max_evaluations_total: Number of evaluations after which to terminate.
         max_evaluations_per_run: Number of evaluations the specific call to run(.) should
             maximally do.
-        budget: Maximum allowed budget. Currently, can be exceeded, but no new evaluations
-            will start when the budget it depleted.
         continue_until_max_evaluation_completed: If true, only stop after
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
-        searcher: Which optimizer to use.
-        serializer: Serializer to store hyperparameters configurations. Can be an object,
-            or a value in 'json', 'yaml' or 'dill' (see metahyper).
+        max_cost_total: No new evaluations will start when this cost is exceeded. Requires
+            returning a cost in the run_pipeline function, e.g.,
+            `return dict(loss=loss, cost=cost)`.
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards max_evaluations_total.
         loss_value_on_error: Setting this and cost_value_on_error to any float will
             supress any error and will use given loss value instead. default: None
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
+        searcher: Which optimizer to use. This is usually only needed by neps developers.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -202,8 +189,19 @@ def run(
     """
     if "working_directory" in searcher_kwargs:
         raise ValueError(
-            "The argument 'working_directory' is deprecated, please use 'root_directory' instead"
+            "The argument 'working_directory' is deprecated, please use 'root_directory' "
+            "instead"
         )
+
+    if "budget" in searcher_kwargs:
+        warnings.warn(
+            "The argument: 'budget' is deprecated. In the neps.run call, please, use "
+            "'max_cost_total' instead. In future versions using `budget` will fail.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        max_cost_total = searcher_kwargs["budget"]
+        del searcher_kwargs["budget"]
 
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using working directory {root_directory}")
@@ -239,10 +237,10 @@ def run(
         logger.info(f"Running {searcher} as the searcher")
 
     if isinstance(searcher, BaseOptimizer):
-        if searcher.budget != budget:
+        if searcher.budget != max_cost_total:
             raise ValueError(
                 "Manually initialized searcher with a budget of "
-                f"{searcher.budget} instead of {budget}"
+                f"{searcher.budget} instead of {max_cost_total}"
             )
         if searcher.pipeline_space is not pipeline_space:
             raise ValueError(
@@ -266,7 +264,7 @@ def run(
             SearcherMapping, searcher, "searcher", as_class=True
         )(
             pipeline_space=pipeline_space,
-            budget=budget,
+            budget=max_cost_total,  # TODO: use max_cost_total everywhere
             **searcher_kwargs,
         )
 
@@ -280,116 +278,9 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
-        serializer=serializer,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook_function(
             loss_value_on_error, ignore_errors
         ),
         filesystem_grace_period_for_crashed_configs=0 if _debugger_is_active() else 45,
     )
-
-
-def plot(
-    root_directory: str | Path,
-    key_to_extract: str | None = None,
-    scientific_mode: bool = False,
-    **plotting_kwargs,
-) -> None:
-    """Plot results of a neural pipeline search run.
-
-    Args:
-        root_directory: The directory with neps results (see below).
-        scientific_mode:
-            - False (default) - root_directory consists of a single run
-            - True - root_directory points to tree structure of
-                benchmark={}/algorithm={}/seed={}
-        key_to_extract: metric to be used on the x-axis (None, "cost", "fidelity")
-        **plotting_kwargs: specifies advanced settings for plotting:
-            - benchmarks: list of benchmarks to plot
-            - algorithms: list of algorithms to plot
-            - x_range: tuple (x_min, x_max) specify x-axis bounds
-            - log_x: toggles logarithmic scale on the x-axis
-            - log_y: toggles logarithmic scale on the y-axis
-            - n_workers: in case of parallel runs specify number of parallel processes
-            - filename
-            - extension: format to save, e.g. "png", "pdf"
-            - dpi: resolution of the image
-
-    Raises:
-        FileNotFoundError: If the data to be plotted is not present.
-    """
-
-    logger = logging.getLogger("neps")
-    logger.info(f"Starting neps.plot using working directory {root_directory}")
-
-    settings = Settings(plotting_kwargs)
-    logger.info(
-        f"Processing {len(settings.benchmarks)} benchmark(s) "
-        f"and {len(settings.algorithms)} algorithm(s)..."
-    )
-
-    fig, axs = get_fig_and_axs(settings)
-
-    base_path = Path(root_directory)
-    output_dir = base_path / "plots"
-
-    for benchmark_idx, benchmark in enumerate(settings.benchmarks):
-        if scientific_mode:
-            _base_path = os.path.join(base_path, f"benchmark={benchmark}")
-            if not os.path.isdir(_base_path):
-                raise FileNotFoundError(
-                    errno.ENOENT, os.strerror(errno.ENOENT), _base_path
-                )
-
-        for algorithm in settings.algorithms:
-            seeds = [None]
-            if scientific_mode:
-                _path = os.path.join(_base_path, f"algorithm={algorithm}")
-                if not os.path.isdir(_path):
-                    raise FileNotFoundError(
-                        errno.ENOENT, os.strerror(errno.ENOENT), _path
-                    )
-
-                seeds = sorted(os.listdir(_path))  # type: ignore
-
-            incumbents = []
-            costs = []
-            max_costs = []
-            for seed in seeds:
-                incumbent, cost, max_cost = process_seed(
-                    path=_path if scientific_mode else base_path,
-                    seed=seed,
-                    algorithm=algorithm,
-                    key_to_extract=key_to_extract,
-                    n_workers=settings.n_workers,
-                )
-                incumbents.append(incumbent)
-                costs.append(cost)
-                max_costs.append(max_cost)
-
-            is_last_row = lambda idx: idx >= (settings.nrows - 1) * settings.ncols
-            # pylint: disable=cell-var-from-loop
-            is_first_column = lambda idx: benchmark_idx % settings.ncols == 0
-            xlabel = "Iterations" if key_to_extract is None else key_to_extract.upper()
-            plot_incumbent(
-                ax=map_axs(
-                    axs,
-                    benchmark_idx,
-                    len(settings.benchmarks),
-                    settings.ncols,
-                ),
-                x=costs,
-                y=incumbents,
-                scale_x=max(max_costs) if key_to_extract == "fidelity" else None,
-                title=benchmark,
-                xlabel=xlabel if is_last_row(benchmark_idx) else None,
-                ylabel="Loss" if is_first_column(benchmark_idx) else None,
-                log_x=settings.log_x,
-                log_y=settings.log_y,
-                x_range=settings.x_range,
-                label=algorithm,
-            )
-
-    set_legend(fig, axs, settings)
-    save_fig(fig, output_dir=output_dir, settings=settings)
-    logger.info(f"Saved to '{output_dir}/{settings.filename}.{settings.extension}'")

@@ -99,7 +99,3 @@ neps.run(
     root_directory="results/hierarchical_architecture_example",
     max_evaluations_total=15,
 )
-
-previous_results, pending_configs = neps.status(
-    "results/hierarchical_architecture_example"
-)

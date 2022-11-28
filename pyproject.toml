@@ -127,7 +127,7 @@ enable = [
     'singleton-comparison','unneeded-not','ßconsider-iterating-dictionary','consider-using-enumerate','empty-docstring',
     'unidiomatic-typecheck','condition-evals-to-constant','consider-using-generator','nan-comparison',
     'consider-using-min-max-builtin','consider-using-with','invalid-all-format','consider-using-dict-items',
-    'deprecated-decorator','forgotten-debug-statement','unspecified-encoding','useless-with-lock',
+    'deprecated-decorator','forgotten-debug-statement','useless-with-lock',
     'use-implicit-booleaness-not-comparison','not-async-context-manager','yield-inside-async-function',
     'await-outside-async','invalid-unary-operand-type','unsupported-binary-operation','not-callable',
     'redundant-keyword-arg','assignment-from-no-return','assignment-from-none','not-context-manager',

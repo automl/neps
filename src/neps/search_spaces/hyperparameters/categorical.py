@@ -177,3 +177,6 @@ class CategoricalParameter(Parameter):
 
     def get_tensor_value(self, tensor_shape):  # pylint: disable=unused-argument
         return torch.tensor(self.normalized().value, dtype=torch.get_default_dtype())
+
+    def set_default_confidence_score(self, default_confidence):
+        self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]

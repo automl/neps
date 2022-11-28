@@ -30,5 +30,3 @@ neps.run(
     root_directory="results/working_directory_per_pipeline",
     max_evaluations_total=5,
 )
-
-previous_results, pending_configs = neps.status("results/working_directory_per_pipeline")

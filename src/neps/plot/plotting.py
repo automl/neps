@@ -9,27 +9,6 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
-
-class Settings:
-    def __init__(self, *args, **kwargs):
-
-        self.benchmarks = ["example"]
-        self.algorithms = ["neps"]
-        self.x_range = None
-        self.log_x = False
-        self.log_y = False
-        self.n_workers = 1
-        self.filename = "incumbent_trajectory"
-        self.extension = "png"
-        self.dpi = 100
-
-        self.__dict__.update(*args, **kwargs)
-
-        self.ncol = len(self.algorithms)
-        self.ncols = 1 if len(self.benchmarks) == 1 else 2
-        self.nrows = np.ceil(len(self.benchmarks) / self.ncols).astype(int)
-
-
 map_axs = (
     lambda axs, idx, length, ncols: axs
     if length == 1
@@ -73,16 +52,17 @@ def _set_general_plot_style() -> None:
 
 
 def get_fig_and_axs(
-    settings: Settings,
+    nrows: int = 1,
+    ncols: int = 1,
 ) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
 
     _set_general_plot_style()
 
-    figsize = (4 * settings.ncols, 3 * settings.nrows)
+    figsize = (4 * ncols, 3 * nrows)
 
     fig, axs = plt.subplots(
-        nrows=settings.nrows,
-        ncols=settings.ncols,
+        nrows=nrows,
+        ncols=ncols,
         figsize=figsize,
     )
 
@@ -102,7 +82,7 @@ def plot_incumbent(
     title: str | None = None,
     log_x: bool = False,
     log_y: bool = False,
-    x_range: tuple[float, float] | None = None,
+    x_range: tuple | None = None,
     **plotting_kwargs,
 ) -> None:
 
@@ -148,7 +128,7 @@ def plot_incumbent(
 def interpolate_time(
     incumbents: list | np.ndarray,
     costs: list | np.ndarray,
-    x_range: tuple[float, float] | None = None,
+    x_range: tuple | None = None,
     scale_x: float | None = None,
 ) -> pd.DataFrame:
     if isinstance(incumbents, list):
@@ -184,9 +164,7 @@ def interpolate_time(
     return df
 
 
-def df_to_x_range(
-    df: pd.DataFrame, x_range: tuple[float, float] | None = None
-) -> pd.DataFrame:
+def df_to_x_range(df: pd.DataFrame, x_range: tuple | None = None) -> pd.DataFrame:
 
     x_max = np.inf if x_range is None else int(x_range[-1])
     new_entry = {c: np.nan for c in df.columns}
@@ -199,7 +177,12 @@ def df_to_x_range(
 
 
 def set_legend(
-    fig: matplotlib.figure.Figure, axs: matplotlib.axes.Axes, settings: Settings
+    fig: matplotlib.figure.Figure,
+    axs: matplotlib.axes.Axes,
+    benchmarks: list[str],
+    algorithms: list[str],
+    nrows: int,
+    ncols: int,
 ) -> None:
 
     bbox_y_mapping = {
@@ -209,12 +192,10 @@ def set_legend(
         4: -0.05,
         5: -0.04,
     }
-    anchor_y = bbox_y_mapping[settings.nrows]
+    anchor_y = bbox_y_mapping[nrows]
     bbox_to_anchor = (0.5, anchor_y)
 
-    handles, labels = map_axs(
-        axs, 0, len(settings.benchmarks), settings.ncols
-    ).get_legend_handles_labels()
+    handles, labels = map_axs(axs, 0, len(benchmarks), ncols).get_legend_handles_labels()
 
     legend = fig.legend(
         handles,
@@ -222,7 +203,7 @@ def set_legend(
         fontsize="large",
         loc="lower center",
         bbox_to_anchor=bbox_to_anchor,
-        ncol=settings.ncol,
+        ncol=len(algorithms),
         frameon=True,
     )
 
@@ -233,13 +214,15 @@ def set_legend(
 def save_fig(
     fig: matplotlib.figure.Figure,
     output_dir: Path | str,
-    settings: Settings,
+    filename: str = "incumbent_trajectory",
+    extension: str = "png",
+    dpi: int = 100,
 ) -> None:
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(
-        output_dir / f"{settings.filename}.{settings.extension}",
+        output_dir / f"{filename}.{extension}",
         bbox_inches="tight",
-        dpi=settings.dpi,
+        dpi=dpi,
     )

@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import Dict, Union
 
 import numpy as np
+import pandas as pd
 import scipy
 
 from ...search_spaces.search_space import SearchSpace
@@ -51,6 +52,17 @@ def compute_scores(
     inc_score = _inc.compute_prior()
 
     return prior_score, inc_score
+
+
+def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -> float:
+    # collects a list of fidelities/rungs reached by configurations that are not pending
+    rungs_used = [
+        observed_configs.at[i, "rung"]
+        for i in range(len(observed_configs))
+        if not np.isnan(observed_configs.at[i, "perf"])
+    ]
+    total_resources = sum(rung_map[r] for r in rungs_used)
+    return total_resources
 
 
 class DynamicWeights:

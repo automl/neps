@@ -2,14 +2,10 @@ from __future__ import annotations
 
 import glob
 import inspect
-import json
-import logging
-from abc import abstractmethod
 from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
-import dill
 import yaml
 
 
@@ -34,31 +30,6 @@ def find_files(
     return found_paths
 
 
-# Serializers
-
-
-def init_serializer(serializer=None, read_files_in=None, logger=None):
-    if logger is None:
-        logger = logging.getLogger("metahyper")
-    if serializer is None:
-        if read_files_in is not None:
-            for name, serializer_cls in SerializerMapping.items():
-                data_files = [
-                    f".optimizer_state{serializer_cls.SUFFIX}",
-                    f"config{serializer_cls.SUFFIX}",
-                    f"result{serializer_cls.SUFFIX}",
-                ]
-                if find_files(read_files_in, data_files):
-                    serializer = name
-                    logger.debug(f"Auto-detected {name} format for serializer")
-                    break
-        if serializer is None:
-            serializer = "json"
-            logger.debug(f"Will use the {serializer} serializer as a default")
-
-    return instance_from_map(SerializerMapping, serializer, "serializer")
-
-
 def get_data_representation(data: Any):
     """Common data representations. Other specific types should be handled
     by the user in his Parameter class."""
@@ -77,26 +48,20 @@ def get_data_representation(data: Any):
         return data
 
 
-class DataSerializer:
-    SUFFIX = ""
+class YamlSerializer:
+    SUFFIX = ".yaml"
     PRE_SERIALIZE = True
 
     def __init__(self, config_loader: Callable | None = None):
         self.config_loader = config_loader or (lambda x: x)
 
-    @abstractmethod
-    def _load_from(self, path: str):
-        raise NotImplementedError
-
-    @abstractmethod
-    def _dump_to(self, data: Any, path: str):
-        raise NotImplementedError
-
     def load(self, path: Path | str, add_suffix=True):
         path = str(path)
         if add_suffix and Path(path).suffix != self.SUFFIX:
             path = path + self.SUFFIX
-        return self._load_from(path)
+
+        with open(path) as file_stream:
+            return yaml.full_load(file_stream)
 
     def dump(self, data: Any, path: Path | str, add_suffix=True):
         if self.PRE_SERIALIZE:
@@ -104,63 +69,19 @@ class DataSerializer:
         path = str(path)
         if add_suffix and Path(path).suffix != self.SUFFIX:
             path = path + self.SUFFIX
-        self._dump_to(data, path)
-
-    def load_config(self, path: Path | str):
-        if self.PRE_SERIALIZE:
-            return self.config_loader(self.load(path))
-        return self.load(path)
-
-
-class DillSerializer(DataSerializer):
-    SUFFIX = ".dill"
-    PRE_SERIALIZE = False
-
-    def _load_from(self, path: str):
-        with open(path, "rb") as file_stream:
-            return dill.load(file_stream)
-
-    def _dump_to(self, data: Any, path: str):
-        with open(path, "wb") as file_stream:
-            return dill.dump(data, file_stream)
-
-
-class JsonSerializer(DataSerializer):
-    SUFFIX = ".json"
-
-    def _load_from(self, path: str):
-        with open(path) as file_stream:
-            return json.load(file_stream)
-
-    def _dump_to(self, data: Any, path: str):
-        with open(path, "w") as file_stream:
-            return json.dump(data, file_stream)
-
-
-class YamlSerializer(DataSerializer):
-    SUFFIX = ".yaml"
-
-    def _load_from(self, path: str):
-        with open(path) as file_stream:
-            return yaml.full_load(file_stream)
-
-    def _dump_to(self, data: Any, path: str):
         with open(path, "w") as file_stream:
             try:
                 return yaml.safe_dump(data, file_stream)
             except yaml.representer.RepresenterError as e:
                 raise TypeError(
-                    f"You should return objects that are JSON-serializable. The object {e.args[1]} of type {type(e.args[1])} is not."
+                    "You should return objects that are JSON-serializable. The object "
+                    f"{e.args[1]} of type {type(e.args[1])} is not."
                 ) from e
 
-
-SerializerMapping = {
-    "yaml": YamlSerializer,
-    "json": JsonSerializer,
-    "dill": DillSerializer,
-}
-
-# Mappings
+    def load_config(self, path: Path | str):
+        if self.PRE_SERIALIZE:
+            return self.config_loader(self.load(path))
+        return self.load(path)
 
 
 def is_partial_class(obj):
