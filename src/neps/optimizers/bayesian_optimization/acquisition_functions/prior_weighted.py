@@ -2,7 +2,6 @@ from typing import Iterable
 
 import torch
 
-from ..default_consts import EPSILON
 from .base_acquisition import BaseAcquisition
 
 
@@ -29,10 +28,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         if train_x[0].has_fidelity:
             decay_t = torch.sum(
                 torch.tensor(
-                    [
-                        float(_x.fidelity.value >= _x.fidelity.upper) + EPSILON
-                        for _x in train_x
-                    ]
+                    [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x]
                 )
             )
         else:

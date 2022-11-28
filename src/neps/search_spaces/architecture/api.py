@@ -134,13 +134,15 @@ def FunctionParameter(**kwargs):
                 self.prune_graph()
 
                 if self._old_build_api:
-                    arch = self._set_recursive_attribute(deepcopy(self))  # type: ignore[misc] # This is the full build_fn
+                    arch = self._set_recursive_attribute(
+                        deepcopy(self)
+                    )  # type: ignore[misc] # This is the full build_fn
                 elif self._set_recursive_attribute:
                     arch = _build(deepcopy(self), self._set_recursive_attribute)
 
                 arch.compile()
                 arch.update_op_names()
-                return arch.to_pytorch()
+            return arch.to_pytorch()  # create PyTorch model
 
         def to_tensorflow(self, inputs):
             composed_function = self.compose_functions(flatten_graph=False)
