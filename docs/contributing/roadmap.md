@@ -38,7 +38,7 @@
 - Fix NAS examples
 - remove graph_dense API
 
-### Before 0.9.0
+## Before 0.9.0
 
 ### Features
 
