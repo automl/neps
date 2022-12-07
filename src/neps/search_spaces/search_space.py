@@ -327,19 +327,42 @@ class SearchSpace(collections.abc.Mapping):
             if hasattr(hp, "default"):
                 hp.default = hp.value
 
-    def set_hyperparameters_from_dict(self, hyperparameters, defaults=True, values=True):
+    def set_hyperparameters_from_dict(
+        self,
+        hyperparameters,
+        defaults=True,
+        values=True,
+        confidence="low",
+        delete_previous_defaults=False,
+        delete_previous_values=False
+        # If new values / defaults are given, previous defaults / values are always
+        # overridden
+    ):
         for hp_key, hp in self.hyperparameters.items():
             # First check if there is a new value for the hp and that its value is valid
+            if delete_previous_defaults:
+                hp.default = None
+            if delete_previous_values:
+                hp.value = None
             if hp_key not in hyperparameters:
                 continue
             if self.hyperparameters[hp_key].is_fidelity:
                 hp.value = hyperparameters[hp_key]
                 continue
             new_hp_value = hyperparameters[hp_key]
-            if not hp.lower <= new_hp_value <= hp.upper:
+            if (
+                isinstance(hp, NumericalParameter)
+                and not hp.lower <= new_hp_value <= hp.upper
+            ):
+                continue
+            if isinstance(hp, CategoricalParameter) and new_hp_value not in hp.choices:
                 continue
             if defaults and hasattr(hp, "default"):
                 hp.default = new_hp_value
+                self.has_prior = True
+                if hasattr(hp, "set_default_confidence_score"):
+                    hp.set_default_confidence_score(confidence)
+                    print("set confidence to: ", confidence)
             if values:
                 hp.value = new_hp_value
 
