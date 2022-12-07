@@ -16,7 +16,7 @@ class Locker:
 
     def release_lock(self):
         self.logger.debug(f"Release lock for {self.lock_path}")
-        pl.lock(self.lock_file, pl.LOCK_UN)
+        pl.unlock(self.lock_file)
 
     def acquire_lock(self):
         try:
