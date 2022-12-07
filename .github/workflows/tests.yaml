@@ -14,6 +14,9 @@ jobs:
       matrix:
         python-version: ['3.7', '3.8', '3.9', '3.10']
         os: [ubuntu-latest, macos-latest, windows-latest]
+        exclude:
+          - os: windows-latest  # Some mismatch between torch's specified numpy version and the one it was compiled against happens and will probably be resolved in the future by the torch team
+            python-version: '3.10'
 
     runs-on: ${{ matrix.os }}
 
