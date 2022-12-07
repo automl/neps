@@ -32,14 +32,12 @@ def test_filelock() -> None:
             stdout=subprocess.PIPE,
             shell=True,
             text=True,
-            preexec_fn=os.setsid,
         )
         p2 = subprocess.Popen(
             "python -m neps_examples.basic_usage.hyperparameters",
             stdout=subprocess.PIPE,
             shell=True,
             text=True,
-            preexec_fn=os.setsid,
         )
 
         # Wait for them
