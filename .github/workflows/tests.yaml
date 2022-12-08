@@ -18,7 +18,9 @@ jobs:
           - os: windows-latest  # Some mismatch between torch's specified numpy version and the one it was compiled against happens and will probably be resolved in the future by the torch team
             python-version: '3.10'
           - os: macos-latest  # Segmentation fault on github actions that we can not reproduce in the wild
-            python-version: ['3.7', '3.8']
+            python-version: '3.7'
+          - os: macos-latest
+            python-version: '3.8'
 
     runs-on: ${{ matrix.os }}
 
