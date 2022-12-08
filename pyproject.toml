@@ -60,7 +60,6 @@ torch = ">=1.7.0,<1.13.0"
 matplotlib = "^3.4"
 statsmodels = "^0.13.2"
 more-itertools = "^9.0.0"
-dill = "^0.3.6"
 portalocker = "^2.6.0"
 seaborn = "^0.12.1"
 
