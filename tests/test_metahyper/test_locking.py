@@ -1,4 +1,3 @@
-import os
 import re
 import shutil
 import subprocess
@@ -27,14 +26,14 @@ def test_filelock() -> None:
         assert not results_dir.exists()
 
         # Launch both processes
-        p1 = subprocess.Popen(
-            "python -m neps_examples.basic_usage.hyperparameters",
+        p1 = subprocess.Popen(  # pylint: disable=consider-using-with
+            "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
             stdout=subprocess.PIPE,
             shell=True,
             text=True,
         )
-        p2 = subprocess.Popen(
-            "python -m neps_examples.basic_usage.hyperparameters",
+        p2 = subprocess.Popen(  # pylint: disable=consider-using-with
+            "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
             stdout=subprocess.PIPE,
             shell=True,
             text=True,
@@ -43,7 +42,7 @@ def test_filelock() -> None:
         # Wait for them
         for p in (p1, p2):
             p.wait()
-            out, err = p.communicate()
+            out, _ = p.communicate()
             lines = out.splitlines()
 
             pending_re = r"#Pending configs with worker:\s+(\d+)"
@@ -62,7 +61,7 @@ def test_filelock() -> None:
             assert evaluated_configs + pending_configs == 15
 
         # Make sure there are 15 completed configurations
-        expected = sorted([f"config_{i}" for i in range(1, 16)])
+        expected = sorted(f"config_{i}" for i in range(1, 16))
         folders = sorted(f.name for f in results_dir.iterdir())
         assert folders == expected
 
