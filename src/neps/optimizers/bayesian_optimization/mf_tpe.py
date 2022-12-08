@@ -9,7 +9,7 @@ import torch
 from scipy.stats import spearmanr
 from typing_extensions import Literal
 
-from metahyper.api import ConfigResult, instance_from_map
+from metahyper import ConfigResult, instance_from_map
 
 from ...search_spaces import (
     CategoricalParameter,

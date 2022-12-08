@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from metahyper.api import ConfigResult, instance_from_map
+from metahyper import ConfigResult, instance_from_map
 
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer

@@ -1,5 +1,4 @@
 import logging
-import time
 
 import numpy as np
 
@@ -7,16 +6,8 @@ import neps
 
 
 def run_pipeline(float1, float2, integer1, fidelity):
-    start = time.time()
     loss = -float(np.sum([float1, float2, integer1])) / fidelity
-    end = time.time()
-    return {
-        "loss": loss,
-        "info_dict": {  # Optionally include additional information
-            "test_score": loss,
-            "train_time": end - start,
-        },
-    }
+    return loss
 
 
 pipeline_space = dict(
@@ -32,17 +23,10 @@ pipeline_space = dict(
     fidelity=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
 )
 
-searcher = "multifidelity_tpe"
-searcher_kwargs = dict(use_priors=False, initial_design_size=7)
-
 logging.basicConfig(level=logging.INFO)
-searcher_output = "multifidelity_priors"
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory=f"results/{searcher_output}",
-    max_evaluations_total=50,
-    searcher=searcher,
-    **searcher_kwargs,
+    root_directory="results/multifidelity_priors",
+    max_evaluations_total=25,  # For an alternate stopping method see multi_fidelity.py
 )
-previous_results, pending_configs = neps.status(f"results/{searcher_output}")

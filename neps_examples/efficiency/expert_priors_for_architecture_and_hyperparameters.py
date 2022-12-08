@@ -4,7 +4,6 @@ import time
 from torch import nn
 
 import neps
-from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
 from neps.search_spaces.architecture import primitives as ops
 from neps.search_spaces.architecture import topologies as topos
 
@@ -126,16 +125,11 @@ pipeline_space = dict(
     ),
 )
 
-acquisition_function = AcquisitionMapping["EI"]
-
 logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/user_priors_with_graphs",
     max_evaluations_total=15,
-    acquisition=acquisition_function,
     log_prior_weighted=True,
 )
-
-previous_results, pending_configs = neps.status("results/user_priors_with_graphs")

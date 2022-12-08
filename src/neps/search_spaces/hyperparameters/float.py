@@ -184,3 +184,6 @@ class FloatParameter(NumericalParameter):
         hp.high = 1
         hp.log = False
         return hp
+
+    def set_default_confidence_score(self, default_confidence):
+        self.default_confidence_score = FLOAT_CONFIDENCE_SCORES[default_confidence]

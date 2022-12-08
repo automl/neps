@@ -41,4 +41,3 @@ neps.run(
     root_directory="results/user_priors_example",
     max_evaluations_total=15,
 )
-previous_results, pending_configs = neps.status("results/user_priors_example")

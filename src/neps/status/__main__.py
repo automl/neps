@@ -31,7 +31,7 @@ parser = argparse.ArgumentParser(
     prog="python -m neps.status",
     description="Displays status information about a working directory of a neps.run"
 )
-parser.add_argument("working_directory", type=Path,
+parser.add_argument("root_directory", type=Path,
                     help="The working directory given to neps.run")
 parser.add_argument("--best_losses", action="store_true",
                     help="Show the trajectory of the best loss across evaluations")
@@ -43,4 +43,4 @@ args = parser.parse_args()
 # fmt: on
 
 logging.basicConfig(level=logging.WARN)
-status(args.working_directory, args.best_losses, args.best_configs, args.all_configs)
+status(args.root_directory, args.best_losses, args.best_configs, args.all_configs)

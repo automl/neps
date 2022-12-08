@@ -33,5 +33,3 @@ neps.run(
     root_directory="results/logging_additional_info",
     max_evaluations_total=5,
 )
-
-previous_results, pending_configs = neps.status("results/logging_additional_info")
