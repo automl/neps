@@ -206,7 +206,7 @@ class ComprehensiveGP:
                 )
                 K_i, logDetK = compute_pd_inverse(K, likelihood)
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
-                nlml.backward(create_graph=True)
+                nlml.backward()
                 if i % 10 == 0:
                     self.logger.debug(
                         f"Iteration: {i}/{iters} "

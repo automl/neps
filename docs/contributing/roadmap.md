@@ -2,30 +2,11 @@
 
 ## Before 0.7.0
 
-### Features
-
-- Windows support
-
-### Documentation
-
-- Fill up the core documentation pages
-
-### Fixes
-
-- Fix autograd warning
-
 ### Refactoring
 
 - run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
 - loss = validation_error | error | pipeline_error
-- Rename default-x to prior-x
 - XParameter = XSpace
-- FunctionSpace = CodeSpace
-- Use max_cost_total everywhere instead of budget
-
-### Testing and tooling
-
-- Add priorband to experimental
 
 ## Before 0.8.0
 
@@ -35,8 +16,14 @@
 
 ### Documentation
 
+- Fill up the core documentation pages
 - Fix NAS examples
 - remove graph_dense API
+
+### Refactoring
+
+- FunctionSpace = CodeSpace
+- Rename default-x to prior-x
 
 ## Before 0.9.0
 
@@ -56,6 +43,7 @@
 
 ### Refactoring
 
+- Use max_cost_total everywhere instead of budget
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
 - Rethink summary/status API
@@ -68,6 +56,7 @@
 
 ### Tests and tooling
 
+- Add priorband to experimental
 - Add simple regression tests to run on each push
 
 ## Before 1.0.0 version
