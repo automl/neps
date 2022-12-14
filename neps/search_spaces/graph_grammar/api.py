@@ -102,7 +102,7 @@ def FunctionParameter(**kwargs):
                         structure = Grammar.fromstring(structure)
                     else:
                         structure = ConstrainedGrammar.fromstring(structure)
-                        structure.set_constraints(**constraint_kwargs)
+                        structure.set_constraints(**constraint_kwargs)  # type: ignore[union-attr]
 
                 super().__init__(
                     grammar=structure,  # type: ignore[arg-type]
@@ -129,7 +129,8 @@ def FunctionParameter(**kwargs):
                 elif self._set_recursive_attribute:
                     _build(self, self._set_recursive_attribute)
 
-                if m is not None and isinstance(m, nn.Module):
+                # if m is not None and isinstance(m, nn.Module):
+                if m is not None:
                     return m
 
                 self.compile()

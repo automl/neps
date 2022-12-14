@@ -935,23 +935,29 @@ class CoreGraphGrammar(Graph):
                 terminal_to_graph_nodes = self.terminal_to_graph_nodes
             else:
                 terminal_to_graph_nodes = {
-                    k: to_node_attributed_edge_list(edge_list)
+                    k: to_node_attributed_edge_list(edge_list) if edge_list else []
                     for k, edge_list in self.terminal_to_graph_edges.items()
                 }
                 self.terminal_to_graph_nodes = terminal_to_graph_nodes
-            terminal_to_graph = {k: v[0] for k, v in terminal_to_graph_nodes.items()}
+            terminal_to_graph = {
+                k: v[0] if v else [] for k, v in terminal_to_graph_nodes.items()
+            }
             q_el = collections.deque()  # node-attr
 
         # pre-compute stuff
         begin_end_nodes = {}
         for sym, g in terminal_to_graph.items():
-            first_nodes = {e[0] for e in g}
-            second_nodes = {e[1] for e in g}
-            (begin_node,) = first_nodes - second_nodes
-            (end_node,) = second_nodes - first_nodes
-            begin_end_nodes[sym] = (begin_node, end_node)
+            if g:
+                first_nodes = {e[0] for e in g}
+                second_nodes = {e[1] for e in g}
+                (begin_node,) = first_nodes - second_nodes
+                (end_node,) = second_nodes - first_nodes
+                begin_end_nodes[sym] = (begin_node, end_node)
+            else:
+                begin_end_nodes[sym] = (None, None)
 
-        for split_idx, sym in enumerate(string_tree.split(" ")):
+        string_tree_splitted = string_tree.split(" ")
+        for split_idx, sym in enumerate(string_tree_splitted):
             if sym == "":
                 continue
             if compute_subgraphs:
@@ -1227,6 +1233,139 @@ class CoreGraphGrammar(Graph):
             return return_val
         return G
 
+    def get_graph_representation(
+        self,
+        identifier: str,
+        grammar: Grammar,
+        edge_attr: bool,
+    ) -> nx.DiGraph:
+        """This functions takes an identifier and constructs the
+        (multi-variate) composition of the functions it describes.
+
+        Args:
+            identifier (str): identifier
+            grammar (Grammar): grammar
+            flatten_graph (bool, optional): Whether to flatten the graph. Defaults to True.
+
+        Returns:
+            nx.DiGraph: (multi-variate) composition of functions
+        """
+
+        def _skip_char(char: str) -> bool:
+            return True if char in [" ", "\t", "\n", "[", "]"] else False
+
+        def _get_sym_from_split(split: str) -> str:
+            start_idx, end_idx = 0, len(split)
+            while start_idx < end_idx and split[start_idx] == "(":
+                start_idx += 1
+            while start_idx < end_idx and split[end_idx - 1] == ")":
+                end_idx -= 1
+            return split[start_idx:end_idx]
+
+        def to_node_attributed_edge_list(
+            edge_list: list[tuple],
+        ) -> tuple[list[tuple[int, int]], dict]:
+            first_nodes = {e[0] for e in edge_list}
+            second_nodes = {e[1] for e in edge_list}
+            src = first_nodes - second_nodes
+            tgt = second_nodes - first_nodes
+            node_offset = len(src)
+            edge_to_node_map = {e: i + node_offset for i, e in enumerate(edge_list)}
+            node_list = []
+            for e in edge_list:
+                ni = edge_to_node_map[e]
+                u, v = e
+                if u in src:
+                    node_list.append((u, ni))
+                if v in tgt:
+                    node_list.append((ni, v))
+
+                for e_ in filter(
+                    lambda e: (e[1] == u), edge_list  # pylint: disable=W0640
+                ):
+                    node_list.append((edge_to_node_map[e_], ni))
+
+            return node_list, edge_to_node_map
+
+        descriptor = self.id_to_string_tree(identifier)
+
+        if edge_attr:
+            terminal_to_graph = self.terminal_to_graph_edges
+        else:  # node-attr
+            terminal_to_graph_nodes = {
+                k: to_node_attributed_edge_list(edge_list) if edge_list else (None, None)
+                for k, edge_list in self.terminal_to_graph_edges.items()
+            }
+            terminal_to_graph = {k: v[0] for k, v in terminal_to_graph_nodes.items()}
+            # edge_to_node_map = {k: v[1] for k, v in terminal_to_graph_nodes.items()}
+
+        q_nonterminals: queue.LifoQueue = queue.LifoQueue()
+        q_topologies: queue.LifoQueue = queue.LifoQueue()
+        q_primitives: queue.LifoQueue = queue.LifoQueue()
+
+        G = nx.DiGraph()
+        for _, split in enumerate(descriptor.split(" ")):
+            if _skip_char(split):
+                continue
+            sym = _get_sym_from_split(split)
+
+            if sym in grammar.terminals:
+                is_topology = False
+                if inspect.isclass(self.terminal_to_op_names[sym]) and issubclass(
+                    self.terminal_to_op_names[sym], AbstractTopology
+                ):
+                    is_topology = True
+                elif isinstance(self.terminal_to_op_names[sym], partial) and issubclass(
+                    self.terminal_to_op_names[sym].func, AbstractTopology
+                ):
+                    is_topology = True
+
+                if is_topology:
+                    q_topologies.put([self.terminal_to_op_names[sym], 0])
+                else:  # is primitive operation
+                    q_primitives.put(self.terminal_to_op_names[sym])
+                    q_topologies.queue[-1][1] += 1  # count number of primitives
+            elif sym in grammar.nonterminals:
+                q_nonterminals.put(sym)
+            else:
+                raise Exception(f"Unknown symbol {sym}")
+
+            if ")" in split:
+                # closing symbol of production
+                while ")" in split:
+                    if q_nonterminals.qsize() == q_topologies.qsize():
+                        topology, number_of_primitives = q_topologies.get(block=False)
+                        primitives = [
+                            q_primitives.get(block=False)
+                            for _ in range(number_of_primitives)
+                        ][::-1]
+                        if (
+                            topology in terminal_to_graph
+                            and terminal_to_graph[topology] is not None
+                        ):
+                            raise NotImplementedError
+                            # edges = terminal_to_graph[topology]
+                        elif isinstance(topology, partial):
+                            raise NotImplementedError
+                        else:
+                            composed_function = topology(*primitives)
+                            node_attr_dag = composed_function.get_node_list_and_ops()
+                            G = node_attr_dag  # TODO only works for DARTS for now
+
+                        if not q_topologies.empty():
+                            q_primitives.put(composed_function)
+                            q_topologies.queue[-1][1] += 1
+
+                    _ = q_nonterminals.get(block=False)
+                    split = split[:-1]
+
+        if not q_topologies.empty():
+            raise Exception("Invalid descriptor")
+
+        # G = self.prune_unconnected_parts(G, src_node, sink_node)
+        # self._check_graph(G)
+        return G
+
     def prune_graph(self, graph: nx.DiGraph | Graph = None, edge_attr: bool = True):
         use_self = graph is None
         if use_self:
@@ -1374,6 +1513,11 @@ class CoreGraphGrammar(Graph):
                 nodes[u] = _u
                 if _u not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
                     flattened_graph.add_node(_u)  # type: ignore[union-attr]
+                if "already_set" not in flattened_graph.nodes[_u] or _u == start_node:
+                    for key, value in graph.nodes[u].items():
+                        if "comb_op" != key or value is not None:
+                            flattened_graph.nodes[_u][key] = value
+                    flattened_graph.nodes[_u]["already_set"] = True
 
             if v in nodes.keys():
                 _v = nodes[v]
@@ -1383,9 +1527,13 @@ class CoreGraphGrammar(Graph):
                 nodes[v] = _v
                 if _v not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
                     flattened_graph.add_node(_v)  # type: ignore[union-attr]
+                if "already_set" not in flattened_graph.nodes[_v] or _v == end_node:
+                    for key, value in graph.nodes[v].items():
+                        if "comb_op" != key or value is not None:
+                            flattened_graph.nodes[_v][key] = value
+                    flattened_graph.nodes[_v]["already_set"] = True
 
             if isinstance(data["op"], Graph):
-                # TODO Debug this too
                 flattened_graph = CoreGraphGrammar.flatten_graph(
                     data["op"], flattened_graph, start_node=_u, end_node=_v
                 )
@@ -1489,6 +1637,8 @@ class CoreGraphGrammar(Graph):
         for u, v, data in graph.edges(data=True):
             self.add_edge(u, v)  # type: ignore[union-attr]
             self.edges[u, v].update(data)  # type: ignore[union-attr]
+        for n, data in graph.nodes(data=True):
+            self.nodes[n].update(**data)
 
     def _unparse_tree(
         self, identifier: str, grammar: Grammar, as_composition: bool = True

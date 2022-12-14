@@ -30,6 +30,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         edge_label: str = "op_name",
         zero_op: list = ["Zero", "zero"],
         identity_op: list = ["Identity", "id"],
+        new_graph_repr_func: bool = False,
         name: str = None,
         scope: str = None,
         **kwargs,
@@ -56,6 +57,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         self._function_id: str = ""
         self.nxTree: nx.DiGraph = None
         self._value: nx.DiGraph = None
+        self.new_graph_repr_func = new_graph_repr_func
 
         if prior is not None:
             self.grammars[0].prior = prior
@@ -125,12 +127,19 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
     @property
     def value(self):
         if self._value is None:
-            self._value = self.from_stringTree_to_graph_repr(
-                self.string_tree,
-                self.grammars[0],
-                valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,
-            )
+            if self.new_graph_repr_func:
+                self._value = self.get_graph_representation(
+                    self.id,
+                    self.grammars[0],
+                    edge_attr=self.edge_attr,
+                )
+            else:
+                self._value = self.from_stringTree_to_graph_repr(
+                    self.string_tree,
+                    self.grammars[0],
+                    valid_terminals=self.terminal_to_op_names.keys(),
+                    edge_attr=self.edge_attr,
+                )
         return self._value
 
     def create_from_id(self, identifier: str):

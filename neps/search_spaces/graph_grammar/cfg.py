@@ -202,6 +202,8 @@ class Grammar(CFG):
         # collect possible productions from the starting symbol
         productions = self.productions(lhs=symbol)
         # sample
+        if 0 == len(productions):
+            raise Exception(f"Nonterminal {symbol} has no productions!")
         if user_priors and self._prior is not None:
             production = choice(productions, probs=self._prior[str(symbol)])
         else:

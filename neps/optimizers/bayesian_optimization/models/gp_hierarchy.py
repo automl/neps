@@ -417,7 +417,8 @@ class ComprehensiveGPHierarchy:
 
                 for h_combo in h_combo_candidates:
                     for i, k in enumerate(self.combined_kernel.kernels):
-                        k.change_kernel_params({"h": h_combo[i]})
+                        if isinstance(k, WeisfilerLehman):
+                            k.change_kernel_params({"h": h_combo[i]})
                     K = self.combined_kernel.fit_transform(
                         weights,
                         self.x_configs,
@@ -435,7 +436,8 @@ class ComprehensiveGPHierarchy:
                         best_subtree_depth_combo = h_combo
                         best_K = torch.clone(K)
                 for i, k in enumerate(self.combined_kernel.kernels):
-                    k.change_kernel_params({"h": best_subtree_depth_combo[i]})
+                    if isinstance(k, WeisfilerLehman):
+                        k.change_kernel_params({"h": best_subtree_depth_combo[i]})
                 self.combined_kernel._gram = best_K  # pylint: disable=protected-access
             else:
                 best_nlml = torch.tensor(np.inf)
@@ -445,28 +447,32 @@ class ComprehensiveGPHierarchy:
 
                 for h_i in list(h_):
                     # only optimize h in wl kernel
-                    self.combined_kernel.kernels[0].change_kernel_params({"h": h_i})
-                    K = self.combined_kernel.fit_transform(
-                        weights,
-                        self.x_configs,
-                        normalize=self.normalize_combined_kernel,
-                        layer_weights=None,
-                        rebuild_model=True,
-                        save_gram_matrix=True,
+                    if isinstance(self.combined_kernel.kernels[0], WeisfilerLehman):
+                        self.combined_kernel.kernels[0].change_kernel_params({"h": h_i})
+                        K = self.combined_kernel.fit_transform(
+                            weights,
+                            self.x_configs,
+                            normalize=self.normalize_combined_kernel,
+                            layer_weights=None,
+                            rebuild_model=True,
+                            save_gram_matrix=True,
+                        )
+                        K_i, logDetK = compute_pd_inverse(
+                            K, self.likelihood, gpytorch_kinv=self.gpytorch_kinv
+                        )
+                        nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
+                        # print(i, nlml)
+                        if nlml < best_nlml:
+                            best_nlml = nlml
+                            best_subtree_depth = h_i
+                            best_K = torch.clone(K)
+                if isinstance(self.combined_kernel.kernels[0], WeisfilerLehman):
+                    self.combined_kernel.kernels[0].change_kernel_params(
+                        {"h": best_subtree_depth}
                     )
-                    K_i, logDetK = compute_pd_inverse(
-                        K, self.likelihood, gpytorch_kinv=self.gpytorch_kinv
+                    self.combined_kernel._gram = (  # pylint: disable=protected-access
+                        best_K
                     )
-                    nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
-                    # print(i, nlml)
-                    if nlml < best_nlml:
-                        best_nlml = nlml
-                        best_subtree_depth = h_i
-                        best_K = torch.clone(K)
-                self.combined_kernel.kernels[0].change_kernel_params(
-                    {"h": best_subtree_depth}
-                )
-                self.combined_kernel._gram = best_K  # pylint: disable=protected-access
 
     def fit(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
         self._fit(train_x, train_y, **self.surrogate_model_fit_args)

@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+import math
+import os
 import random
+from typing import Callable
+
+import numpy as np
+import yaml  # type: ignore[import]
+from path import Path
 
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
@@ -15,7 +22,9 @@ class RegularizedEvolution(BaseOptimizer):
         patience: int = 100,
         budget: None | int | float = None,
         logger=None,
-        initial_design_size: int = 30,  # pylint: disable=unused-argument
+        assisted: bool = False,  # implements AREA from NASWOT paper
+        assisted_zero_cost_proxy: Callable = None,
+        assisted_init_population_dir: str | Path = None,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -31,6 +40,12 @@ class RegularizedEvolution(BaseOptimizer):
         self.population: list = []
         self.pending_evaluations: list = []
         self.num_train_x: int = 0
+        self.assisted = assisted
+        assert assisted and assisted_zero_cost_proxy is not None
+        self.assisted_zero_cost_proxy = assisted_zero_cost_proxy
+        if assisted_init_population_dir is not None:
+            self.assisted_init_population_dir = Path(assisted_init_population_dir)
+            self.assisted_init_population_dir.makedirs_p()
 
     def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
         train_x = [el.config for el in previous_results.values()]
@@ -46,7 +61,43 @@ class RegularizedEvolution(BaseOptimizer):
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
         if len(self.population) < self.population_size:
-            config = self.pipeline_space.sample(patience=self.patience, user_priors=True)
+            if self.assisted:
+                if 0 == len(os.listdir(self.assisted_init_population_dir)):
+                    print("Generate initial design with assistance")
+                    cur_population_size = self.population_size - len(self.population)
+                    configs = [
+                        self.pipeline_space.sample(
+                            patience=self.patience, user_priors=True
+                        )
+                        for _ in range(cur_population_size * 2)
+                    ]
+                    zero_cost_proxy_values = self.assisted_zero_cost_proxy(x=configs)
+                    indices = np.argsort(zero_cost_proxy_values)[-cur_population_size:][
+                        ::-1
+                    ]
+                    for idx, config_idx in enumerate(indices):
+                        filename = str(idx).zfill(
+                            int(math.log10(cur_population_size)) + 1
+                        )
+                        with open(
+                            self.assisted_init_population_dir / f"{filename}.yaml",
+                            "w",
+                            encoding="utf-8",
+                        ) as f:
+                            yaml.dump(configs[config_idx].serialize(), f)
+                print("Pick config from pre-computed population")
+                config_yaml = sorted(os.listdir(self.assisted_init_population_dir))[0]
+                with open(
+                    self.assisted_init_population_dir / config_yaml, encoding="utf-8"
+                ) as f:
+                    config_identifier = yaml.safe_load(f)
+                config = self.pipeline_space.copy()
+                config.load_from(config_identifier)
+                os.remove(self.assisted_init_population_dir / config_yaml)
+            else:
+                config = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=True
+                )
         else:
             candidates = [random.choice(self.population) for _ in range(self.sample_size)]
             parent = min(candidates, key=lambda c: c[1])[0]

@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
+from .encoding import NASBOTDistance
 from .vectorial_kernels import HammingKernel, Matern32Kernel, Matern52Kernel, RBFKernel
 from .weisfilerlehman import WeisfilerLehman
 
@@ -24,4 +25,5 @@ GraphKernelMapping: dict[str, Callable] = {
         h=0,
         oa=False,
     ),
+    "nasbot": NASBOTDistance,
 }

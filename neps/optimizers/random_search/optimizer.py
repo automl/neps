@@ -7,9 +7,7 @@ from ..base_optimizer import BaseOptimizer
 
 
 class RandomSearch(BaseOptimizer):
-    def __init__(
-        self, initial_design_size: int = 0, **optimizer_kwargs
-    ):  # pylint: disable=unused-argument
+    def __init__(self, **optimizer_kwargs):  # pylint: disable=unused-argument
         super().__init__(**optimizer_kwargs)
         self._num_previous_configs: int = 0
 
