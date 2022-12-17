@@ -1,5 +1,6 @@
 from typing import Iterable
 
+import numpy as np
 import torch
 
 from .base_acquisition import BaseAcquisition
@@ -28,9 +29,13 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         if train_x[0].has_fidelity:
             decay_t = torch.sum(
                 torch.tensor(
-                    [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x]
+                    [
+                        float(np.isclose(_x.fidelity.value, _x.fidelity.upper))
+                        for _x in train_x
+                    ]
                 )
             )
+            decay_t = self.pibo_beta if decay_t < 1 else decay_t
         else:
             decay_t = len(train_x)
 
