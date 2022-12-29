@@ -55,10 +55,6 @@ class ReLUConvBN(AbstractPrimitive):
     def forward(self, x):
         return self.op(x)
 
-    @property
-    def get_op_name(self):
-        return super().get_op_name + f"{self.kernel_size}x{self.kernel_size}"
-
 
 class AvgPool(AbstractPrimitive):
     def __init__(self, **kwargs):
