@@ -1,11 +1,5 @@
 # Roadmap
 
-## Before 0.8.0
-
-### Fixes
-
-- Ignore grakel deprecation
-
 ## Before 0.9.0
 
 ### Features
@@ -54,7 +48,6 @@
   - XParameter = XSpace
   - Rename default-x to prior-x
   - Use max_cost_total everywhere instead of budget
-  - FunctionParameter = CodeParameter | ModuleParameter
 
 ### Tests and tooling
 

@@ -1,4 +1,12 @@
+# pylint: disable=wrong-import-position
+
 import logging
+
+# Grakel internal deprecation
+import warnings
+
+warnings.filterwarnings("ignore", message="Importing from numpy.matlib is deprecated ")
+
 
 from .api import run
 from .plot.plot import plot
