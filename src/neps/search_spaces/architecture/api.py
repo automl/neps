@@ -15,6 +15,9 @@ def _dict_structure_to_str(structure: dict, primitives: dict) -> str:
     grammar = ""
     for nonterminal, productions in structure.items():
         grammar += nonterminal + " -> " + " | ".join(productions) + "\n"
+    grammar = grammar.replace("(", " ")
+    grammar = grammar.replace(")", "")
+    grammar = grammar.replace(",", "")
     for primitive in primitives.keys():
         grammar = grammar.replace(f" {primitive} ", f' "{primitive}" ')
         grammar = grammar.replace(f" {primitive}\n", f' "{primitive}"\n')

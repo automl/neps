@@ -11,11 +11,7 @@ from neps.search_spaces.architecture.primitives import AbstractPrimitive
 
 
 class DownSampleBlock(AbstractPrimitive):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-    ):
+    def __init__(self, in_channels: int, out_channels: int):
         super().__init__(locals())
         self.conv_a = ReLUConvBN(
             in_channels, out_channels, kernel_size=3, stride=2, padding=1
@@ -38,14 +34,7 @@ class DownSampleBlock(AbstractPrimitive):
 
 
 class ReLUConvBN(AbstractPrimitive):
-    def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-    ):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
         super().__init__(locals())
 
         self.kernel_size = kernel_size
@@ -83,16 +72,17 @@ class AvgPool(AbstractPrimitive):
 primitives = {
     "Sequential15": topos.get_sequential_n_edge(15),
     "DenseCell": topos.get_dense_n_node_dag(4),
-    "Down": {"op": DownSampleBlock},
+    "down": {"op": DownSampleBlock},
     "avg_pool": {"op": AvgPool},
-    "id": ops.Identity(),
+    "id": {"op": ops.Identity},
     "conv3x3": {"op": ReLUConvBN, "kernel_size": 3, "stride": 1, "padding": 1},
     "conv1x1": {"op": ReLUConvBN, "kernel_size": 1, "stride": 1, "padding": 0},
 }
 
+
 structure = {
-    "S": ["Sequential15 C C C C C Down C C C C C Down C C C C C"],
-    "C": ["DenseCell OPS OPS OPS OPS OPS OPS"],
+    "S": ["Sequential15(C, C, C, C, C, down, C, C, C, C, C, down, C, C, C, C, C)"],
+    "C": ["DenseCell(OPS, OPS, OPS, OPS, OPS, OPS)"],
     "OPS": ["id", "conv3x3", "conv1x1", "avg_pool"],
 }
 
