@@ -2,29 +2,24 @@
 
 ## Before 0.8.0
 
-### Features
-
-- Utility to get best HPs and architecture to pass to run_pipeline
-
 ### Fixes
 
 - Ignore grakel deprecation
-
-### Documentation
-
-- Fill up the core documentation pages
-- Fix NAS examples
-- remove graph_dense API
 
 ## Before 0.9.0
 
 ### Features
 
+- Utility to get best HPs and architecture to pass to run_pipeline
 - Plot in hours / days, but also show grid corresponding to 1x and 5x etc.
 
 ### Fixes
 
 - Do not plot log y axis per default
+
+### Documentation
+
+- Fill up the core documentation pages
 
 ## Before 0.10.0
 

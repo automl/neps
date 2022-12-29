@@ -3,11 +3,11 @@ import logging
 from .api import run
 from .plot.plot import plot
 from .search_spaces import (
+    ArchitectureParameter,
     CategoricalParameter,
     ConstantParameter,
     FloatParameter,
     FunctionParameter,
-    GraphDenseParameter,
     GraphGrammar,
     GraphGrammarCell,
     GraphGrammarRepetitive,

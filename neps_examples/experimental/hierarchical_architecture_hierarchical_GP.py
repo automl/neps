@@ -21,9 +21,8 @@ primitives = {
     "downsample": {"op": ops.ResNetBasicblock, "stride": 2},
     "residual": topos.Residual,
     "diamond": topos.Diamond,
-    "linear": topos.Linear,
+    "linear": topos.get_sequential_n_edge(2),
     "diamond_mid": topos.DiamondMid,
-    "down1": topos.DownsampleBlock,
 }
 
 structure = {
@@ -50,7 +49,7 @@ structure = {
         "diamond_mid D1Helper D1Helper Cell Cell Cell",
         "diamond_mid Cell D1Helper D1Helper D1Helper Cell",
     ],
-    "D1Helper": ["down1 Cell downsample"],
+    "D1Helper": ["linear Cell downsample"],
     "Cell": [
         "residual OPS OPS OPS",
         "diamond OPS OPS OPS OPS",

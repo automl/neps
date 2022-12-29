@@ -1,5 +1,4 @@
-from .architecture.api import FunctionParameter
-from .architecture.graph_dense import GraphDenseParameter
+from .architecture.api import ArchitectureParameter, FunctionParameter
 from .architecture.graph_grammar import (
     GraphGrammar,
     GraphGrammarCell,
