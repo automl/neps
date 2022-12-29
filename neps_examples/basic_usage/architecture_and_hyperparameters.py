@@ -32,14 +32,7 @@ class DownSampleBlock(AbstractPrimitive):
 
 
 class ReLUConvBN(AbstractPrimitive):
-    def __init__(
-        self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-    ):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
         super().__init__(locals())
 
         self.kernel_size = kernel_size
@@ -59,10 +52,6 @@ class ReLUConvBN(AbstractPrimitive):
 
     def forward(self, x):
         return self.op(x)
-
-    @property
-    def get_op_name(self):
-        return super().get_op_name + f"{self.kernel_size}x{self.kernel_size}"
 
 
 class AvgPool(AbstractPrimitive):
