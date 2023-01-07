@@ -11,7 +11,14 @@ from .cfg_variants.constrained_cfg import ConstrainedGrammar
 from .graph_grammar import GraphGrammar, GraphGrammarMultipleRepetitive
 
 
-def _dict_structure_to_str(structure: dict, primitives: dict) -> str:
+def _dict_structure_to_str(
+    structure: dict, primitives: dict, repetitive_mapping: dict = None
+) -> str:
+    def _save_replace(string: str, __old: str, __new: str):
+        while string.count(__old) > 0:
+            string = string.replace(__old, __new)
+        return string
+
     grammar = ""
     for nonterminal, productions in structure.items():
         grammar += nonterminal + " -> " + " | ".join(productions) + "\n"
@@ -19,8 +26,12 @@ def _dict_structure_to_str(structure: dict, primitives: dict) -> str:
     grammar = grammar.replace(")", "")
     grammar = grammar.replace(",", "")
     for primitive in primitives.keys():
-        grammar = grammar.replace(f" {primitive} ", f' "{primitive}" ')
-        grammar = grammar.replace(f" {primitive}\n", f' "{primitive}"\n')
+        grammar = _save_replace(grammar, f" {primitive} ", f' "{primitive}" ')
+        grammar = _save_replace(grammar, f" {primitive}\n", f' "{primitive}"\n')
+    if repetitive_mapping is not None:
+        for placeholder in repetitive_mapping.keys():
+            grammar = _save_replace(grammar, f" {placeholder} ", f' "{placeholder}" ')
+            grammar = _save_replace(grammar, f" {placeholder}\n", f' "{placeholder}"\n')
     return grammar
 
 
@@ -75,7 +86,15 @@ def ArchitectureParameter(**kwargs):
 
             if isinstance(structure, list):
                 structures = [
-                    _dict_structure_to_str(st, primitives) if isinstance(st, dict) else st
+                    _dict_structure_to_str(
+                        st,
+                        primitives,
+                        repetitive_mapping=kwargs["terminal_to_sublanguage_map"]
+                        if "terminal_to_sublanguage_map" in kwargs
+                        else None,
+                    )
+                    if isinstance(st, dict)
+                    else st
                     for st in structure
                 ]
                 _structures = []

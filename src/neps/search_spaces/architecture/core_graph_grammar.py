@@ -977,6 +977,7 @@ class CoreGraphGrammar(Graph):
             begin_end_nodes[sym] = (begin_node, end_node)
 
         for split_idx, sym in enumerate(string_tree.split(" ")):
+            is_nonterminal = False
             if sym == "":
                 continue
             if compute_subgraphs:
@@ -984,6 +985,7 @@ class CoreGraphGrammar(Graph):
                 sym_copy = sym[:]
             if sym[0] == "(":
                 sym = sym[1:]
+                is_nonterminal = True
             if sym[-1] == ")":
                 if add_subtree_map:
                     for _ in range(sym.count(")")):
@@ -1005,7 +1007,7 @@ class CoreGraphGrammar(Graph):
 
             if add_subtree_map and sym in grammar.nonterminals:
                 q_nonterminals.append((sym, split_idx))
-            elif sym in valid_terminals:  # terminal symbol
+            elif sym in valid_terminals and not is_nonterminal:  # terminal symbol
                 if sym in self.terminal_to_graph_edges:
                     if len(q_el) == 0:
                         if edge_attr:
@@ -1474,7 +1476,7 @@ class CoreGraphGrammar(Graph):
                 sym = descriptor[i:j]
                 i = j - 1
 
-                if sym in grammar.terminals:
+                if sym in grammar.terminals and descriptor[i - 1] != "(":
                     is_topology = False
                     if inspect.isclass(self.terminal_to_op_names[sym]) and issubclass(
                         self.terminal_to_op_names[sym], AbstractTopology
