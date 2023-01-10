@@ -25,15 +25,13 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         super().__init__()
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
 
-        if self.base_acquisition.surrogate_model.x[0].has_fidelity:
+        train_x = self.base_acquisition.surrogate_model.x
+        if train_x[0].has_fidelity:
             decay_t = np.sum(
-                [
-                    _x.fidelity.value == _x.fidelity.upper
-                    for _x in self.base_acquisition.surrogate_model.x
-                ]
+                [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x]
             )
         else:
-            decay_t = len(self.base_acquisition.surrogate_model.x)
+            decay_t = len(train_x)
 
         if self.log:
             min_acq_val = abs(min(acquisition)) if min(acquisition) < 0 else 0
