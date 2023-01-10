@@ -3,8 +3,11 @@ import inspect
 import logging
 import os
 import random
+import sys
 import types
+from collections import Counter
 from typing import Callable
+from typing import Counter as CounterType
 
 import networkx as nx
 import torch
@@ -13,9 +16,85 @@ from path import Path
 from torch import nn
 
 from ...utils.common import AttrDict
-from .graph_utils.logging import log_first_n, log_formats
-from .graph_utils.utils import iter_flatten
 from .primitives import AbstractPrimitive, Identity
+
+
+def log_formats(x):
+    if isinstance(x, torch.Tensor):
+        return x.shape
+    if isinstance(x, dict):
+        return {k: log_formats(v) for k, v in x.items()}
+    else:
+        return x
+
+
+def _find_caller():
+    """
+    Returns:
+        str: module name of the caller
+        tuple: a hashable key to be used to identify different callers
+    """
+    frame = sys._getframe(2)  # pylint: disable=protected-access
+    while frame:
+        code = frame.f_code
+        if os.path.join("utils", "logger.") not in code.co_filename:
+            mod_name = frame.f_globals["__name__"]
+            if mod_name == "__main__":
+                mod_name = "detectron2"
+            return mod_name, (code.co_filename, frame.f_lineno, code.co_name)
+        frame = frame.f_back
+
+
+_LOG_COUNTER: CounterType = Counter()
+_LOG_TIMER: dict = {}
+
+
+def log_first_n(lvl, msg, n=1, *, name=None, key="caller"):
+    """
+    Log only for the first n times.
+    Args:
+        lvl (int): the logging level
+        msg (str):
+        n (int):
+        name (str): name of the logger to use. Will use the caller's module by default.
+        key (str or tuple[str]): the string(s) can be one of "caller" or
+            "message", which defines how to identify duplicated logs.
+            For example, if called with `n=1, key="caller"`, this function
+            will only log the first call from the same caller, regardless of
+            the message content.
+            If called with `n=1, key="message"`, this function will log the
+            same content only once, even if they are called from different places.
+            If called with `n=1, key=("caller", "message")`, this function
+            will not log only if the same caller has logged the same message before.
+    """
+    if isinstance(key, str):
+        key = (key,)
+    assert len(key) > 0
+
+    caller_module, caller_key = _find_caller()
+    hash_key = ()
+    if "caller" in key:
+        hash_key = hash_key + caller_key
+    if "message" in key:
+        hash_key = hash_key + (msg,)
+
+    _LOG_COUNTER[hash_key] += 1
+    if _LOG_COUNTER[hash_key] <= n:
+        logging.getLogger(name or caller_module).log(lvl, msg)
+
+
+def iter_flatten(iterable):
+    """
+    Flatten a potentially deeply nested python list
+    """
+    # taken from https://rightfootin.blogspot.com/2006/09/more-on-python-flatten.html
+    it = iter(iterable)
+    for e in it:
+        if isinstance(e, (list, tuple)):
+            yield from iter_flatten(e)
+        else:
+            yield e
+
 
 logger = logging.getLogger(__name__)
 

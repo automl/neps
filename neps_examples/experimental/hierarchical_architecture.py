@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-import time
 
 from torch import nn
 
@@ -15,9 +16,8 @@ primitives = {
     "downsample": {"op": ops.ResNetBasicblock, "stride": 2},
     "residual": topos.Residual,
     "diamond": topos.Diamond,
-    "linear": topos.Linear,
+    "linear": topos.get_sequential_n_edge(2),
     "diamond_mid": topos.DiamondMid,
-    "down1": topos.DownsampleBlock,
 }
 
 structure = {
@@ -44,7 +44,7 @@ structure = {
         "diamond_mid D1Helper D1Helper Cell Cell Cell",
         "diamond_mid Cell D1Helper D1Helper D1Helper Cell",
     ],
-    "D1Helper": ["down1 Cell downsample"],
+    "D1Helper": ["linear Cell downsample"],
     "Cell": [
         "residual OPS OPS OPS",
         "diamond OPS OPS OPS OPS",
@@ -54,15 +54,6 @@ structure = {
     "OPS": ["conv3x3", "conv1x1", "avg_pool", "id"],
 }
 
-prior_distr = {
-    "S": [1 / 7 for _ in range(7)],
-    "D2": [1 / 3 for _ in range(3)],
-    "D1": [1 / 7 for _ in range(7)],
-    "D1Helper": [1],
-    "Cell": [1 / 4 for _ in range(4)],
-    "OPS": [1 / 4 for _ in range(4)],
-}
-
 
 def set_recursive_attribute(op_name, predecessor_values):
     in_channels = 64 if predecessor_values is None else predecessor_values["C_out"]
@@ -70,15 +61,13 @@ def set_recursive_attribute(op_name, predecessor_values):
     return dict(C_in=in_channels, C_out=out_channels)
 
 
-def run_pipeline(some_architecture, some_float, some_integer, some_cat):
-    start = time.time()
-
+def run_pipeline(architecture):
     in_channels = 3
     n_classes = 20
     base_channels = 64
     out_channels = 512
 
-    model = some_architecture.to_pytorch()
+    model = architecture.to_pytorch()
     model = nn.Sequential(
         ops.Stem(base_channels, C_in=in_channels),
         model,
@@ -88,48 +77,24 @@ def run_pipeline(some_architecture, some_float, some_integer, some_cat):
     )
 
     number_of_params = sum(p.numel() for p in model.parameters())
-    y = abs(1.5e7 - number_of_params)
+    validation_error = abs(1.5e7 - number_of_params)
 
-    if some_cat != "a":
-        y *= some_float + some_integer
-    else:
-        y *= -some_float - some_integer
-
-    end = time.time()
-
-    return {
-        "loss": y,
-        "info_dict": {
-            "test_score": y,
-            "train_time": end - start,
-        },
-    }
+    return validation_error
 
 
 pipeline_space = dict(
-    some_architecture=neps.FunctionParameter(
+    architecture=neps.FunctionParameter(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
-        name="pibo",
-        prior=prior_distr,
-    ),
-    some_float=neps.FloatParameter(
-        lower=1, upper=1000, log=True, default=900, default_confidence="medium"
-    ),
-    some_integer=neps.IntegerParameter(
-        lower=0, upper=50, default=35, default_confidence="low"
-    ),
-    some_cat=neps.CategoricalParameter(
-        choices=["a", "b", "c"], default="a", default_confidence="high"
-    ),
+        name="makrograph",
+    )
 )
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory="results/user_priors_with_graphs",
+    root_directory="results/hierarchical_architecture_example",
     max_evaluations_total=15,
-    log_prior_weighted=True,
 )

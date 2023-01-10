@@ -1,6 +1,7 @@
 import inspect
 import queue
 from abc import ABCMeta, abstractmethod
+from functools import partial
 from typing import Callable
 
 from .graph import Graph
@@ -112,27 +113,13 @@ class AbstractVariableTopology(AbstractTopology):
         raise NotImplementedError
 
 
-class Linear(AbstractTopology):
-    edge_list = [
-        (1, 2),
-        (2, 3),
-    ]
-
-    def __init__(self, *edge_vals, **kwargs):
-        super().__init__(**kwargs)
-
-        self.name = "linear"
-        self.create_graph(dict(zip(self.edge_list, edge_vals)))
-        self.set_scope(self.name)
-
-
-class LinearNEdge(AbstractTopology):
+class _SequentialNEdge(AbstractTopology):
     edge_list: list = []
 
     def __init__(self, *edge_vals, number_of_edges: int, **kwargs):
         super().__init__(**kwargs)
 
-        self.name = f"linear_{number_of_edges}_edges"
+        self.name = f"sequential_{number_of_edges}_edges"
         self.edge_list = self.get_edge_list(number_of_edges=number_of_edges)
         self.create_graph(dict(zip(self.edge_list, edge_vals)))
         self.set_scope(self.name)
@@ -140,6 +127,13 @@ class LinearNEdge(AbstractTopology):
     @staticmethod
     def get_edge_list(number_of_edges: int):
         return [(i + 1, i + 2) for i in range(number_of_edges)]
+
+
+LinearNEdge = _SequentialNEdge
+
+
+def get_sequential_n_edge(number_of_edges: int):
+    return partial(_SequentialNEdge, number_of_edges=number_of_edges)
 
 
 class Residual(AbstractTopology):
@@ -179,7 +173,7 @@ class DiamondMid(AbstractTopology):
         self.set_scope(self.name)
 
 
-class DenseNNodeDAG(AbstractTopology):
+class _DenseNNodeDAG(AbstractTopology):
     edge_list: list = []
 
     def __init__(self, *edge_vals, number_of_nodes: int, **kwargs):
@@ -196,12 +190,5 @@ class DenseNNodeDAG(AbstractTopology):
         return [(i + 1, j + 1) for j in range(number_of_nodes) for i in range(j)]
 
 
-class DownsampleBlock(AbstractTopology):
-    edge_list: list = [(1, 2), (2, 3)]
-
-    def __init__(self, *edge_vals, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.name = f"{self.__class__.__name__}"
-        self.create_graph(dict(zip(self.edge_list, edge_vals)))
-        self.set_scope(self.name)
-        self.graph_type = "edge_attr"
+def get_dense_n_node_dag(number_of_nodes: int):
+    return partial(_DenseNNodeDAG, number_of_nodes=number_of_nodes)

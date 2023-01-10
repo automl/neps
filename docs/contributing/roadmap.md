@@ -1,31 +1,21 @@
 # Roadmap
 
-## Before 0.7.0
-
-### Refactoring
-
-- run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
-- loss = validation_error | error | pipeline_error
-- XParameter = XSpace
-
-## Before 0.8.0
+## Before 0.9.0
 
 ### Features
 
 - Utility to get best HPs and architecture to pass to run_pipeline
+- Plot in hours / days, but also show grid corresponding to 1x and 5x etc.
+
+### Fixes
+
+- Do not plot log y axis per default
 
 ### Documentation
 
 - Fill up the core documentation pages
-- Fix NAS examples
-- remove graph_dense API
 
-### Refactoring
-
-- FunctionSpace = CodeSpace
-- Rename default-x to prior-x
-
-## Before 0.9.0
+## Before 0.10.0
 
 ### Features
 
@@ -43,7 +33,6 @@
 
 ### Refactoring
 
-- Use max_cost_total everywhere instead of budget
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
 - Rethink summary/status API
@@ -53,6 +42,12 @@
 - maintained vs unmaintained optimizers
 - Read and sample at the same time metahyper
 - Metahyper into neps
+- Renamings
+  - run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
+  - loss = validation_error | error | pipeline_error
+  - XParameter = XSpace
+  - Rename default-x to prior-x
+  - Use max_cost_total everywhere instead of budget
 
 ### Tests and tooling
 
@@ -71,8 +66,9 @@
 - Print search space upon run
 - Add comprehensive regression tests to run manually on the cluster on each version release
 - Utility to generate code for best architecture
-- Core Feature set in terms of research
 - 3.11 support
+- Deprecate 3.7
+- Core Feature set in terms of research
 
 ### Fixes
 
@@ -82,9 +78,10 @@
 
 ### Refactoring
 
-- clean up search spaces classes, unused methods
-- break up search space and config aspect
+- Clean up search spaces classes, unused methods
+- Break up search space and config aspect
 - Remove hnas branch
+- Refactor of constraint grammar
 
 ### Documentation
 

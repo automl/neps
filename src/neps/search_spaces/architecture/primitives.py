@@ -466,29 +466,3 @@ class ResNetBasicblock(AbstractPrimitive):
         basicblock = self.conv_b(basicblock)
         residual = self.downsample(x) if self.downsample is not None else x
         return residual + basicblock
-
-
-class ResNetBasicblockConvBnRelu(AbstractPrimitive):
-    def __init__(
-        self, C_in, C_out, stride, affine=True, **kwargs
-    ):  # pylint:disable=W0613
-        super().__init__(locals())
-        assert stride == 1 or stride == 2, f"invalid stride {stride}"
-        self.conv_a = ConvBnReLU(C_in, C_out, 3, stride)
-        self.conv_b = ConvBn(C_out, C_out, 3)
-        if stride == 2:
-            self.downsample = nn.Sequential(
-                # nn.AvgPool2d(kernel_size=2, stride=2, padding=0),
-                nn.Conv2d(C_in, C_out, kernel_size=1, stride=2, padding=0, bias=False),
-                nn.BatchNorm2d(C_out),
-            )
-        else:
-            self.downsample = None
-
-        self.relu = nn.ReLU()
-
-    def forward(self, x):
-        basicblock = self.conv_a(x, None)
-        basicblock = self.conv_b(basicblock, None)
-        residual = self.downsample(x) if self.downsample is not None else x
-        return self.relu(residual + basicblock)

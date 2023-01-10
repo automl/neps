@@ -27,12 +27,12 @@ def no_logs_gte_error(caplog):
 core_examples = [  # Run locally and on github actions
     "basic_usage/hyperparameters",
     "basic_usage/analyse",
-    "efficiency/expert_priors_for_architecture_and_hyperparameters",
+    "experimental/expert_priors_for_architecture_and_hyperparameters",
     "efficiency/multi_fidelity",
 ]
 all_examples = core_examples + [  # Run on github actions
     "basic_usage/architecture_and_hyperparameters",
-    "basic_usage/hierarchical_architecture",
+    "experimental/hierarchical_architecture",
     "efficiency/expert_priors_for_hyperparameters",
     "experimental/hierarchical_architecture_hierarchical_GP",
     "convenience/logging_additional_info",
