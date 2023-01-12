@@ -8,6 +8,37 @@ import scipy
 from ...search_spaces.search_space import SearchSpace
 
 
+def custom_crossover(
+    config1: SearchSpace,
+    config2: SearchSpace,
+    crossover_prob: float = 0.5,
+    patience: int = 50,
+) -> SearchSpace:
+    """Performs a crossover of config2 into config1.
+
+    Returns a configuration where each HP in config1 has `crossover_prob`% chance of
+    getting config2's value of the corresponding HP. By default, crossover rate is 50%.
+    """
+    for i in range(patience):
+        child_config = deepcopy(config1)
+        for key, hyperparameter in config1.items():
+            if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
+                # crossing over config2 values into config1
+                child_config[key].value = config2[key].value
+        if not child_config.is_equal_value(config1):
+            # breaks and returns only if the generated config is not the same
+            # thus requiring at least 1 HP to be crossed-over
+            break
+    else:
+        # fail safe check to handle edge cases where config1=config2 or
+        # config1 extremely local to config2 such that crossover fails to
+        # generate new config in a discrete (sub-)space
+        child_config = config1.sample(
+            patience=patience, user_priors=False, ignore_fidelity=True
+        )
+    return child_config
+
+
 def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     """Computes distance between two configurations.
 
@@ -63,53 +94,3 @@ def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -
     ]
     total_resources = sum(rung_map[r] for r in rungs_used)
     return total_resources
-
-
-class DynamicWeights:
-    def prior_inc_probability_ratio(
-        self, rung_history: Dict[str, Dict], prior: SearchSpace, inc: SearchSpace
-    ) -> Union[float, float]:
-        # uses the base rung size to determine the maximum size of top config list
-        max_rung_size = self.config_map[self.min_rung]
-        if inc is None:
-            return 1, 0
-        elif len(rung_history["config"]) < self.eta:
-            inc_score = 1
-            prior_score = self.eta * inc_score
-        else:
-            # subset top configs
-            top_len = min(len(rung_history["config"]) // self.eta, max_rung_size)
-            config_idxs = np.argsort(rung_history["perf"])[:top_len]
-            top_configs = np.array(rung_history["config"])[config_idxs]
-
-            # calculating scores for each config
-            top_config_scores = np.array(
-                [
-                    compute_scores(
-                        self.observed_configs.loc[config_id].config, prior, inc
-                    )
-                    for config_id in top_configs
-                ]
-            )
-            # adding weights as per rank of config
-            w = np.flip(np.arange(1, top_config_scores.shape[0] + 1)).reshape(-1, 1)
-            w_top_config_scores = top_config_scores * w  # / w.sum()
-            prior_score, inc_score = np.sum(w_top_config_scores, axis=0)
-
-        # calculating probabilities
-        # normalizer = np.exp(prior_score) + np.exp(inc_score)
-        # prior_prob = np.exp(prior_score) / normalizer
-        # inc_prob = np.exp(inc_score) / normalizer
-
-        _inc_prob = 0.333
-        delta = (prior_score - inc_score) / max(prior_score, inc_score)
-        # print(f"prior_score: {prior_score:.3f}; inc_score: {inc_score:.3f}")
-        # print(f"delta: {delta:.3f}")
-        _inc_prob -= _inc_prob * delta
-        _inc_prob = np.clip(_inc_prob, a_min=0, a_max=0.5)
-        # _inc_prob = np.clip(_inc_prob - delta, a_min=0, a_max=0.5)
-        # print(f"new inc prob: {_inc_prob}")
-        inc_prob = _inc_prob
-        prior_prob = 1 - inc_prob
-
-        return prior_prob, inc_prob

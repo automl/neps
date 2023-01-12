@@ -6,7 +6,7 @@ from copy import deepcopy
 import numpy as np
 
 from ...search_spaces.search_space import SearchSpace
-from ..multi_fidelity_prior.utils import compute_config_dist
+from ..multi_fidelity_prior.utils import compute_config_dist, custom_crossover
 
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
@@ -79,19 +79,21 @@ class EnsemblePolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        dist_type: str = "hypersphere",
+        inc_type: str = "hypersphere",
     ):
         """Samples a policy as per its weights and performs the selected sampling.
 
         Args:
             pipeline_space: Space in which to search
-            dist_type: str
+            inc_type: str
                 if "hypersphere", uniformly samples from around the incumbent within its
-                distance from the nearest neighbour in history
+                    distance from the nearest neighbour in history
                 if "gaussian", samples from a gaussian around the incumbent
+                if "crossover", generates a config by crossover between a random sample
+                    and the incumbent
         """
         super().__init__(pipeline_space=pipeline_space)
-        self.dist_type = dist_type
+        self.inc_type = inc_type
         # setting all probabilities uniformly
         self.policy_map = {"random": 0.33, "prior": 0.34, "inc": 0.33}
 
@@ -130,7 +132,6 @@ class EnsemblePolicy(SamplingPolicy):
         if weights is not None:
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value
-        # assert sum(self.policy_map.values()) == 1, "Policy prob. weights should sum to 1."
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
@@ -147,10 +148,10 @@ class EnsemblePolicy(SamplingPolicy):
                 inc = deepcopy(self.pipeline_space.sample_default_configuration())
                 print("No incumbent config found, using default as the incumbent.")
 
-            if self.dist_type == "hypersphere":
+            if self.inc_type == "hypersphere":
                 distance = kwargs["distance"]
                 config = self.sample_neighbour(inc, distance)
-            elif self.dist_type == "gaussian":
+            elif self.inc_type == "gaussian":
                 # use inc to set the defaults of the configuration
                 _inc = deepcopy(inc)
                 _inc.set_defaults_to_current_values()
@@ -159,9 +160,18 @@ class EnsemblePolicy(SamplingPolicy):
                 config = _inc.sample(
                     patience=self.patience, user_priors=True, ignore_fidelity=True
                 )
+            elif self.inc_type == "crossover":
+                # TODO: could instead crossover inc with a random sample
+                # generating a config from the prior
+                _config = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=True, ignore_fidelity=True
+                )
+                # injecting hyperparameters from the prior config into the incumbent
+                # TODO: ideally lower crossover prob overtime
+                config = custom_crossover(inc, _config, crossover_prob=0.5)
             else:
                 raise ValueError(
-                    f"{self.dist_type} is not in {{'hypersphere', 'gaussian'}}"
+                    f"{self.inc_type} is not in {{'hypersphere', 'gaussian'}}"
                 )
         else:
             print(f"Sampling from uniform with weights (i, p, r)={prob_weights}")

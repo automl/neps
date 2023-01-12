@@ -15,12 +15,7 @@ from .multi_fidelity.successive_halving import (
     SuccessiveHalvingWithPriors,
 )
 from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
-from .multi_fidelity_prior.priorband import (
-    PriorBand,
-    PriorBandCustom,
-    PriorBandDyna,
-    PriorBandHypothesis,
-)
+from .multi_fidelity_prior.priorband import PriorBand
 from .multi_fidelity_prior.raceband import RaceBand
 
 ## custom algorithms

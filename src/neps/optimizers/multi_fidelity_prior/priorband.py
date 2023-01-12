@@ -12,10 +12,12 @@ from ...search_spaces.search_space import SearchSpace
 from ..multi_fidelity.hyperband import HyperbandCustomDefault
 from ..multi_fidelity.promotion_policy import SyncPromotionPolicy
 from ..multi_fidelity.sampling_policy import EnsemblePolicy
-from .utils import DynamicWeights, compute_config_dist
+from .utils import compute_config_dist, compute_scores
 
 
 class PriorBandBase:
+    """Class that defines essential properties needed by PriorBand."""
+
     def find_all_distances_from_incumbent(self, incumbent):
         """Finds the distance to the nearest neighbour."""
         dist = lambda x: compute_config_dist(incumbent, x)
@@ -62,6 +64,148 @@ class PriorBandBase:
             )
         return inc
 
+    def set_sampling_weights_and_inc(self, rung: int):
+        sampling_args = self.calc_sampling_args(rung)
+        if not self.is_activate_inc():
+            sampling_args["prior"] += sampling_args["inc"]
+            sampling_args["inc"] = 0
+            inc = None
+            self.sampling_args = {"inc": inc, "weights": sampling_args}
+        else:
+            inc = self.find_incumbent()
+            self.sampling_args = {"inc": inc, "weights": sampling_args}
+            if self.inc_sample_type == "hypersphere":
+                min_dist = self.find_1nn_distance_from_incumbent(inc)
+                self.sampling_args.update({"distance": min_dist})
+        return self.sampling_args
+
+    def is_activate_inc(self) -> bool:
+        """Function to check optimization state to allow/disallow incumbent sampling"""
+        activate_inc = False
+
+        bracket = self.sh_brackets[self.min_rung]
+        base_rung_size = bracket.config_map[bracket.min_rung]
+
+        if len(self.observed_configs) > base_rung_size:
+            if not np.any(np.isnan(self.observed_configs.perf.values[:base_rung_size])):
+                activate_inc = True
+        return activate_inc
+
+    def calc_sampling_args(self, rung) -> dict:
+        _w_random = 1
+        # scales likelihood of a prior sample with the current rung to sample at
+        _w_prior = (self.eta**rung) * _w_random
+
+        w_prior = _w_prior / (_w_prior + _w_random)
+        w_random = _w_random / (_w_prior + _w_random)
+
+        _w_prior, _w_inc = self.prior_to_incumbent_ratio(1, 0, self.max_rung)
+        w_inc = _w_inc * w_prior
+        w_prior = _w_prior * w_prior
+
+        sampling_args = {
+            "prior": w_prior,
+            "inc": w_inc,
+            "random": w_random,
+        }
+        return sampling_args
+
+    def prior_to_incumbent_ratio(self, w1: float, w2: float, rung: int) -> float | float:
+        if self.inc_style == "constant":
+            return self._prior_to_incumbent_ratio_constant()
+        elif self.inc_style == "decay":
+            return self._prior_to_incumbent_ratio_decay(w1, w2)
+        elif self.inc_style == "dynamic":
+            return self._prior_to_incumbent_ratio_dynamic(rung)
+        else:
+            raise ValueError(f"Invalid option {self.inc_style}")
+
+    def _get_alpha(self, crossover: int = 0.5) -> float:
+        nconfigs = 0
+        for bracket in self.sh_brackets.values():
+            nconfigs += bracket.config_map[bracket.min_rung]
+        n = np.ceil((self.eta - 1) * nconfigs / self.eta)
+        alpha = np.power(crossover, 1 / n)
+        return alpha
+
+    def _prior_to_incumbent_ratio_decay(self, w1: float, w2: float) -> float | float:
+        """Decays the prior weightage and increases the incumbent weightage.
+
+        The sum of weightage for prior and incumbents is always 1 here. `alpha` controls
+        the rate of decay. The `crossover` point is where the weightage is equal.
+        `alpha` is calculated to be such that given the HB allocations, the crossover
+        will happen roughly when (eta-1) * N/eta configurations have been seen. Where,
+        N is the total number of configurations sampled in 1 full HB bracket.
+        """
+        # 0.5 is the crossover point in between w_prior=1 and w_inc=0
+        alpha = self._get_alpha(crossover=0.5)
+        _w1 = w1
+        _w2 = w2
+        t = np.count_nonzero(
+            ~np.isnan(self.observed_configs.perf.values.tolist() + [np.nan])
+        )
+        for _t in range(t):
+            _w1 = alpha * _w1 + (1 - alpha) * w2
+            _w2 = alpha * _w2 + (1 - alpha) * w1
+        return _w1, _w2
+
+    def _prior_to_incumbent_ratio_constant(self) -> float | float:
+        """Fixes the weightage of incumbent sampling to 1/eta of prior sampling."""
+        # fixing weight of incumbent to 1/eta of prior
+        w_prior = (self.eta - 1) / self.eta
+        w_inc = 1 / self.eta
+        return w_prior, w_inc
+
+    def _prior_to_incumbent_ratio_dynamic(self, rung: int) -> float | float:
+        """Dynamically determines the ratio of weights for prior and incumbent sampling.
+
+        Finds the highest rung with configurations recorded. Picks the top-eta configs
+        from this rung. Each config is then ranked by performance and scored by the
+        Gaussian centered around the prior configuration and the Gaussian centered around
+        the current incumbent. This scores each of the top-eta configs with the
+        likelihood of being sampled by the prior or the incumbent. A weighted sum is
+        performed on these scores based on their ranks. The ratio of the scores is used
+        as the weights for prior and incumbent sampling. These weighs are calculated
+        before every sampling operation.
+        """
+        # retrieve the prior
+        prior = self.pipeline_space.sample_default_configuration()
+        # retrieve the global incumbent
+        inc = self.find_incumbent()
+        if len(self.rung_histories[rung]["config"]):
+            # ranking by performance
+            config_idxs = np.argsort(self.rung_histories[rung]["perf"])[: self.eta]
+            # find the top-eta configurations in the rung
+            top_configs = np.array(self.rung_histories[rung]["config"])[config_idxs]
+            top_config_scores = np.array(
+                [
+                    # `compute_scores` returns a tuple of scores resp. by prior and inc
+                    compute_scores(
+                        self.observed_configs.loc[config_id].config, prior, inc
+                    )
+                    for config_id in top_configs
+                ]
+            )
+            # adding positional weights to the score, with the best config weighed most
+            weights = np.flip(np.arange(1, top_config_scores.shape[0] + 1)).reshape(-1, 1)
+            # calculating sum of weights
+            weighted_top_config_scores = np.sum(top_config_scores * weights, axis=0)
+            prior_score, inc_score = weighted_top_config_scores
+            # normalizing scores to be weighted ratios
+            w_prior = prior_score / sum(weighted_top_config_scores)
+            w_inc = inc_score / sum(weighted_top_config_scores)
+        else:
+            # if no configurations recorded yet
+            # check if it is the base rung which is empty
+            if rung == self.min_rung:
+                w_prior = 1
+                w_inc = 0
+            else:
+                # if rung > min.rung then the lower rung could already have enough
+                # configurations and thus can be recursively queried till the base rung
+                return self._prior_to_incumbent_ratio_dynamic(rung - 1)
+        return w_prior, w_inc
+
 
 class PriorBand(HyperbandCustomDefault, PriorBandBase):
     def __init__(
@@ -79,7 +223,8 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
-        inc_sample_type: str = "hypersphere",  # could be "gaussian" too
+        inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
+        inc_style: str = "constant",  # could also be {"decay", "dynamic"}
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -97,7 +242,11 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
             sample_default_first=sample_default_first,
         )
         self.inc_sample_type = inc_sample_type
-        self.sampling_policy = sampling_policy(pipeline_space, self.inc_sample_type)
+        self.sampling_policy = sampling_policy(
+            pipeline_space=pipeline_space, inc_type=self.inc_sample_type
+        )
+        # determines the kind of trade-off between incumbent and prior weightage
+        self.inc_style = inc_style  # used by PriorBandBase
         self.sampling_args = {
             "inc": None,
             "weights": {
@@ -135,6 +284,7 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
                 ).sort_index()
             # for efficiency, redefining the function to have the
             # `rung_histories` assignment inside the for loop
+            # rung histories are collected only for `previous` and not `pending` configs
             self.rung_histories[int(_rung)]["config"].append(int(_config))
             self.rung_histories[int(_rung)]["perf"].append(perf)
         return
@@ -150,38 +300,6 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
         }
         super().load_results(previous_results, pending_evaluations)
 
-    def calc_sampling_args(self, rung_size, inc=None) -> dict:
-        """Sets the sampling args for the EnsemblePolicy."""
-        nincs = 0 if inc is None else self.eta
-        nincs = 1 if rung_size <= self.eta else nincs
-        npriors = np.floor(rung_size / self.eta)
-        npriors = npriors if npriors else 1
-        nrandom = rung_size - npriors - nincs
-        if self.current_sh_bracket == 0 and len(self.observed_configs) < npriors:
-            # Enforce only prior based samples till the required number of prior samples
-            # seen at the base rung of the first ever SH bracket
-            nrandom = 0
-        elif self.current_sh_bracket == 0 and len(self.observed_configs) <= rung_size:
-            # Enforce only random samples when the required number of prior samples
-            # at the base rung of the first ever SH bracket is seen
-            nrandom = 1
-            npriors = 0
-        if self.current_sh_bracket == len(self.sh_brackets) - 1:
-            # disable random search at the max rung
-            nrandom = 0
-            npriors = self.eta * nincs
-        # normalize weights into probabilities
-        _total = npriors + nincs + nrandom
-        sampling_args = {
-            "inc": inc,
-            "weights": {
-                "prior": npriors / _total,
-                "inc": nincs / _total,
-                "random": nrandom / _total,
-            },
-        }
-        return sampling_args
-
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -190,209 +308,50 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
         Returns:
             [type]: [description]
         """
-        sh_bracket = self.sh_brackets[self.current_sh_bracket]
-        rung_size = sh_bracket.config_map[sh_bracket.min_rung]
-        # don't activate incumbent for the base rung in the first bracket
-        if self.current_sh_bracket == 0 and len(self.observed_configs) <= rung_size:
-            # no incumbent selection yet
-            inc = None
-        else:
-            inc = self.find_incumbent()
-        self.sampling_args = self.calc_sampling_args(rung_size, inc)
-        if self.inc_sample_type == "hypersphere" and inc is not None:
-            min_dist = self.find_1nn_distance_from_incumbent(inc)
-            self.sampling_args.update({"distance": min_dist})
+        print(f"Rung={self.current_sh_bracket}")
+        self.set_sampling_weights_and_inc(rung=self.current_sh_bracket)
+
         for _, sh in self.sh_brackets.items():
             sh.sampling_args = self.sampling_args
+        print(sh.sampling_args["weights"])
         return super().get_config_and_ids()
 
 
-class PriorBandCustom(PriorBand):
-    def calc_sampling_args(self, rung_size, inc=None) -> dict:
-        sampling_args = {
-            "inc": inc,
-            "weights": {
-                "prior": 1 / 2 if inc is None else 1 / 3,
-                "inc": 0 if inc is None else 1 / 3,
-                "random": 1 / 2 if inc is None else 1 / 3,
-            },
-        }
-        return sampling_args
-
-
-class PriorBandNoIncPrior(PriorBand):
+class PriorBandNoIncToPrior(PriorBand):
     """Disables incumbent sampling to replace with prior-based sampling."""
 
-    def calc_sampling_args(self, rung_size, inc=None) -> dict:
-        sampling_args = super().calc_sampling_args(rung_size, inc)
-
-        # distribute inc mass to prior
-        sampling_args["weights"]["prior"] += sampling_args["weights"]["inc"]
-        sampling_args["weights"]["inc"] = 0
-
+    def calc_sampling_args(self, rung) -> dict:
+        sampling_args = super().calc_sampling_args(rung)
+        sampling_args["prior"] += sampling_args["inc"]
+        sampling_args["inc"] = 0
         return sampling_args
 
 
-class PriorBandNoIncRandom(PriorBand):
+class PriorBandNoIncToRandom(PriorBand):
     """Disables incumbent sampling to replace with uniform random sampling."""
 
-    def calc_sampling_args(self, rung_size, inc=None) -> dict:
-        sampling_args = super().calc_sampling_args(rung_size, inc)
-
-        # distribute inc mass to prior
-        sampling_args["weights"]["random"] += sampling_args["weights"]["inc"]
-        sampling_args["weights"]["inc"] = 0
-
+    def calc_sampling_args(self, rung) -> dict:
+        sampling_args = super().calc_sampling_args(rung)
+        sampling_args["random"] += sampling_args["inc"]
+        sampling_args["inc"] = 0
         return sampling_args
 
 
-class PriorBandNoPrior(PriorBand):
+class PriorBandNoPriorToRandom(PriorBand):
     """Disables prior based sampling to replace with uniform random sampling."""
 
-    def calc_sampling_args(self, rung_size, inc=None) -> dict:
-
-        if (
-            self.current_sh_bracket == 0
-            and len(self.observed_configs) <= self.config_map[self.min_rung]
-        ):
-            p_inc = 0
-        else:
-            p_inc = 0.33
-        sampling_args = {
-            "inc": inc,
-            "weights": {
-                "prior": 0,
-                "inc": p_inc,
-                "random": 1 - p_inc,
-            },
-        }
-
+    def calc_sampling_args(self, rung) -> dict:
+        sampling_args = super().calc_sampling_args(rung)
+        sampling_args["random"] += sampling_args["prior"]
+        sampling_args["prior"] = 0
         return sampling_args
 
 
-class PriorBandHypothesis(PriorBand):
-    """Disables incumbent sampling to replace with uniform random sampling."""
+class PriorBandNoPriorToInc(PriorBand):
+    """Disables prior based sampling to replace with incumbent-based sampling."""
 
-    def calc_sampling_args(self, rung_size, inc=None) -> dict:
-        sampling_args = super().calc_sampling_args(rung_size, inc)
-
-        # distribute inc mass
-        random = sampling_args["weights"]["random"]
-        inc = sampling_args["weights"]["inc"]
-        prior = sampling_args["weights"]["prior"]
-
-        # fixing a weight of 0.33 for every rung for the incumbent sampler
-        # accordingly re-distributing the prob. mass to the other two samplers
-        random += inc / 2
-        prior += inc / 2
-        inc = 0.333
-        random -= inc / 2
-        prior -= inc / 2
-
-        # for certain rungs, the above operation
-        if prior < 0:
-            random -= np.abs(prior) / 2
-            inc -= np.abs(prior) / 2
-            prior = 0
-        if random < 0:
-            prior -= np.abs(random) / 2
-            inc -= np.abs(random) / 2
-            random = 0
-
-        npriors = np.floor(rung_size / self.eta)
-        if self.current_sh_bracket == 0 and len(self.observed_configs) < npriors:
-            # Enforce only prior based samples till the required number of prior samples
-            # seen at the base rung of the first ever SH bracket
-            prior = 1
-            random = inc = 0
-        elif self.current_sh_bracket == 0 and len(self.observed_configs) <= rung_size:
-            # Enforce only random samples when the required number of prior samples
-            # at the base rung of the first ever SH bracket is seen
-            random = 1
-            prior = inc = 0
-
-        sampling_args["weights"]["random"] = random
-        sampling_args["weights"]["inc"] = inc
-        sampling_args["weights"]["prior"] = prior
-
+    def calc_sampling_args(self, rung) -> dict:
+        sampling_args = super().calc_sampling_args(rung)
+        sampling_args["inc"] += sampling_args["prior"]
+        sampling_args["prior"] = 0
         return sampling_args
-
-
-class PriorBandDyna(DynamicWeights, PriorBand):
-    def calc_sampling_args(self, rung_to_run, rung_size, inc) -> dict:
-        """Sets the sampling args for the EnsemblePolicy."""
-
-        nrungs = len(self.sh_brackets)
-        rung_history = self.rung_histories[rung_to_run]
-
-        npriors = np.floor(rung_size / self.eta)
-        if self.current_sh_bracket == 0 and len(self.observed_configs) < npriors:
-            # Enforce only prior based samples till the required number of prior samples
-            # seen at the base rung of the first ever SH bracket
-            p_rand = 0
-        elif self.current_sh_bracket == 0 and len(self.observed_configs) <= rung_size:
-            # Enforce only random samples when the required number of prior samples
-            # at the base rung of the first ever SH bracket is seen
-            p_rand = 1
-            p_prior = 0
-            p_inc = 0
-            return {
-                "inc": inc,
-                "weights": {
-                    "prior": p_prior,
-                    "inc": p_inc,
-                    "random": p_rand,
-                },
-            }
-        else:
-            p_rand_max_rung = 0
-            p_rand_min_rung = 0.6
-            # linear decay of random
-            p_rand = np.linspace(
-                start=p_rand_min_rung, stop=p_rand_max_rung, endpoint=True, num=nrungs
-            )[rung_to_run]
-
-        _p = 1 - p_rand  # remaining probability mass for prior and inc
-
-        prior = self.pipeline_space.sample_default_configuration()
-        _p_prior, _p_inc = self.prior_inc_probability_ratio(rung_history, prior, inc)
-
-        # calculating scaled probabilities
-        p_prior = _p_prior * _p
-        p_inc = _p_inc * _p
-
-        sampling_args = {
-            "inc": inc,
-            "weights": {
-                "prior": p_prior,
-                "inc": p_inc,
-                "random": p_rand,
-            },
-        }
-        return sampling_args
-
-    def get_config_and_ids(  # pylint: disable=no-self-use
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
-        """...and this is the method that decides which point to query.
-
-        Returns:
-            [type]: [description]
-        """
-        # the SH bracket to run in the current iteration
-        sh_bracket = self.sh_brackets[self.current_sh_bracket]
-        rung_to_run = sh_bracket.min_rung
-        rung_size = sh_bracket.config_map[rung_to_run]
-        # don't activate incumbent for the base rung in the first bracket
-        if self.current_sh_bracket == 0 and len(self.observed_configs) <= rung_size:
-            # no incumbent selection yet
-            inc = None
-        else:
-            inc = self.find_incumbent()
-        self.sampling_args = self.calc_sampling_args(rung_to_run, rung_size, inc)
-        if self.inc_sample_type == "hypersphere" and inc is not None:
-            min_dist = self.find_1nn_distance_from_incumbent(inc)
-            self.sampling_args.update({"distance": min_dist})
-
-        sh_bracket.sampling_args = self.sampling_args
-        return sh_bracket.get_config_and_ids()
