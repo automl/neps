@@ -21,7 +21,7 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
 from ..bayesian_optimization.models import SurrogateModelMapping
-from ..multi_fidelity_prior.utils import compute_config_dist
+from ..multi_fidelity_prior.utils import compute_config_dist, custom_crossover
 
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
