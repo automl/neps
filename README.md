@@ -8,7 +8,7 @@
 NePS helps deep learning experts to optimize the hyperparameters and/or architecture of their deep learning pipeline with:
 
 - Hyperparameter Optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
-- Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/hierarchical_architecture.py), [paper](https://openreview.net/forum?id=Ok58hMNXIQ))
+- Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/architecture.py), [paper](https://openreview.net/forum?id=Ok58hMNXIQ))
 - Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/basic_usage/architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=_HLcjaVlqJ))
 
 For efficiency and convenience NePS allows you to

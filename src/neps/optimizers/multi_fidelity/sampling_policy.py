@@ -1,12 +1,27 @@
 from __future__ import annotations
 
+import typing
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 
+from metahyper import instance_from_map
+
 from ...search_spaces.search_space import SearchSpace
-from ..multi_fidelity_prior.utils import compute_config_dist, custom_crossover
+from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
+from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_functions.prior_weighted import (
+    DecayingPriorWeightedAcquisition,
+)
+from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
+from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+from ..bayesian_optimization.kernels.get_kernels import get_kernels
+from ..bayesian_optimization.models import SurrogateModelMapping
+from ..multi_fidelity_prior.utils import compute_config_dist
 
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
@@ -14,14 +29,14 @@ DELTA_THRESHOLD = 1e-2  # 1%
 
 
 class SamplingPolicy(ABC):
-    """Base class for implementing a sampling straregy for SH and its subclasses"""
+    """Base class for implementing a sampling strategy for SH and its subclasses"""
 
     def __init__(self, pipeline_space: SearchSpace, patience: int = 100):
         self.pipeline_space = pipeline_space
         self.patience = patience
 
     @abstractmethod
-    def sample(self) -> SearchSpace:
+    def sample(self, *args, **kwargs) -> SearchSpace:
         pass
 
 
@@ -38,7 +53,7 @@ class RandomUniformPolicy(SamplingPolicy):
     ):
         super().__init__(pipeline_space=pipeline_space)
 
-    def sample(self) -> SearchSpace:
+    def sample(self, *args, **kwargs) -> SearchSpace:
         return self.pipeline_space.sample(
             patience=self.patience, user_priors=False, ignore_fidelity=True
         )
@@ -54,7 +69,7 @@ class FixedPriorPolicy(SamplingPolicy):
         assert 0 <= fraction_from_prior <= 1
         self.fraction_from_prior = fraction_from_prior
 
-    def sample(self) -> SearchSpace:
+    def sample(self, *args, **kwargs) -> SearchSpace:
         """Samples from the prior with a certain probabiliyu
 
         Returns:
@@ -122,9 +137,9 @@ class EnsemblePolicy(SamplingPolicy):
         return config
 
     def sample(
-        self, inc: SearchSpace, weights: dict[str, float] = None, **kwargs
+        self, inc: SearchSpace = None, weights: dict[str, float] = None, *args, **kwargs
     ) -> SearchSpace:
-        """Samples from the prior with a certain probabiliyu
+        """Samples from the prior with a certain probability
 
         Returns:
             SearchSpace: [description]
@@ -178,5 +193,108 @@ class EnsemblePolicy(SamplingPolicy):
             # random
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=True
+            )
+        return config
+
+
+class ModelPolicy(SamplingPolicy):
+    """A policy for sampling configuration, i.e. the default for SH / hyperband
+
+    Args:
+        SamplingPolicy ([type]): [description]
+    """
+
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        surrogate_model: str | Any = "gp",
+        domain_se_kernel: str = None,
+        hp_kernels: list = None,
+        surrogate_model_args: dict = None,
+        acquisition: str | BaseAcquisition = "EI",
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "random",
+        patience: int = 100,
+        initial_design_size: int = 3,
+        initial_design_sampling_policy: typing.Any = FixedPriorPolicy,
+    ):
+        super().__init__(pipeline_space=pipeline_space)
+        surrogate_model_args = surrogate_model_args or {}
+
+        _, hp_kernels = get_kernels(
+            pipeline_space=pipeline_space,
+            domain_se_kernel=domain_se_kernel,
+            graph_kernels=None,
+            hp_kernels=hp_kernels,
+            optimal_assignment=False,
+        )
+        if "graph_kernels" not in surrogate_model_args:
+            surrogate_model_args["graph_kernels"] = None
+        if "hp_kernels" not in surrogate_model_args:
+            surrogate_model_args["hp_kernels"] = hp_kernels
+        if not surrogate_model_args["hp_kernels"]:
+            raise ValueError("No kernels are provided!")
+        if "vectorial_features" not in surrogate_model_args:
+            surrogate_model_args[
+                "vectorial_features"
+            ] = pipeline_space.get_vectorial_dim()
+
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            surrogate_model,
+            name="surrogate model",
+            kwargs=surrogate_model_args,
+        )
+
+        self.acquisition = instance_from_map(
+            AcquisitionMapping,
+            acquisition,
+            name="acquisition function",
+        )
+
+        if pipeline_space.has_prior:
+            self.acquisition = DecayingPriorWeightedAcquisition(
+                self.acquisition, log=log_prior_weighted
+            )
+
+        self.acquisition_sampler = instance_from_map(
+            AcquisitionSamplerMapping,
+            acquisition_sampler,
+            name="acquisition sampler function",
+            kwargs={"patience": patience, "pipeline_space": pipeline_space},
+        )
+
+        self.patience = patience
+        self.initial_design_size = initial_design_size
+        self.initial_design_sampling_policy = initial_design_sampling_policy(
+            pipeline_space
+        )
+        self.sampling_args: dict = {}
+
+    def _update(self, train_x, train_y):
+        self.surrogate_model.fit(train_x, train_y)
+        self.acquisition.set_state(self.surrogate_model)
+        self.acquisition_sampler.set_state(x=train_x, y=train_y)
+
+    def sample(self, train_x=None, train_y=None, *args, **kwargs) -> SearchSpace:
+
+        is_init_phase = True
+        if len(train_x) > 0:
+            _evaluated_on_max = np.sum(
+                [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x],
+                dtype=int,
+            )
+            is_init_phase = _evaluated_on_max <= self.initial_design_size
+
+        if is_init_phase:
+            return self.initial_design_sampling_policy.sample(**self.sampling_args)
+        self._update(train_x, train_y)
+        for _ in range(self.patience):
+            config = self.acquisition_sampler.sample(self.acquisition)
+            # TODO: if config not in self.observed_configs:
+            break
+        else:
+            config = self.pipeline_space.sample(
+                patience=self.patience, user_priors=True, ignore_fidelity=False
             )
         return config

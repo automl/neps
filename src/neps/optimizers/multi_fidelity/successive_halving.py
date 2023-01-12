@@ -284,13 +284,14 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
 
+    # pylint: disable=no-self-use
     def clear_old_brackets(self):
         return
 
-    def _fit_models(self):
-        # define any model or surrogate training and acquisition function state setting
-        # if adding model-based search to the basic multi-fidelity algorithm
-        return
+    # def _fit_models(self):
+    #     # define any model or surrogate training and acquisition function state setting
+    #     # if adding model-based search to the basic multi-fidelity algorithm
+    #     return
 
     def load_results(
         self,
@@ -322,7 +323,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self._handle_promotions()
 
         # fit any model/surrogates
-        self._fit_models()
+        if hasattr(self, "_fit_models"):
+            self._fit_models()
 
         return
 

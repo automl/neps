@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from torch import nn
@@ -87,20 +89,25 @@ def set_recursive_attribute(op_name, predecessor_values):
     return dict(in_channels=in_channels, out_channels=out_channels)
 
 
-def run_pipeline(**config):
-    optimizer = config["optimizer"]
-    learning_rate = config["learning_rate"]
-    model = config["architecture"].to_pytorch()
+def run_pipeline(architecture):
+    in_channels = 3
+    base_channels = 16
+    n_classes = 10
+    out_channels_factor = 4
 
-    target_params = 1531258
-    number_of_params = sum(p.numel() for p in model.parameters())
-    validation_error = abs(target_params - number_of_params) / target_params
-
-    target_lr = 10e-3
-    validation_error += abs(target_lr - learning_rate) / target_lr
-    validation_error += int(optimizer == "sgd")
-
-    return validation_error
+    # E.g., in shape = (N, 3, 32, 32) => out shape = (N, 10)
+    model = architecture.to_pytorch()
+    model = nn.Sequential(
+        nn.Conv2d(in_channels, base_channels, 3, padding=1, bias=False),
+        nn.BatchNorm2d(base_channels),
+        model,
+        nn.BatchNorm2d(base_channels * out_channels_factor),
+        nn.ReLU(inplace=True),
+        nn.AdaptiveAvgPool2d(1),
+        nn.Flatten(),
+        nn.Linear(base_channels * out_channels_factor, n_classes),
+    )
+    return 1
 
 
 pipeline_space = dict(
@@ -108,15 +115,13 @@ pipeline_space = dict(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
-    ),
-    optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
-    learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+    )
 )
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
-    root_directory="results/hyperparameters_architecture_example",
+    root_directory="results/architecture",
     max_evaluations_total=15,
 )

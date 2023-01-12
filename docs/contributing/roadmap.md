@@ -1,37 +1,57 @@
 # Roadmap
 
-## Next up
+## Before 0.9.0
 
 ### Features
 
-- Utility to get best HPs and (built) architecture\*
-- Utility to get incumbent losses over time\*
-- Windows support\*
-
-### Documentation
-
-- Fill up the core documentation pages\*
-- Fix NAS examples\*
-- Document summary function
+- Utility to get best HPs and architecture to pass to run_pipeline
+- Plot in hours / days, but also show grid corresponding to 1x and 5x etc.
 
 ### Fixes
 
-- Fix autograd warning?
+- Do not plot log y axis per default
+
+### Documentation
+
+- Fill up the core documentation pages
+
+## Before 0.10.0
+
+### Features
+
+- Evolution as acq sampler
+- Generate plot after each evaluation
+
+### Fixes
+
+- Open never closes (talk to Nils)
+- Deadlock in ASHA-like optimizers (talk to Neeratyoy)
+
+### Documentation
+
+- Document summary function
 
 ### Refactoring
 
-- remove graph_dense API\*
-- run_pipeline = evaluate_pipeline?\*
-- loss = validation_error | error | pipeline_error?\*
-- IntegerParameter = IntegerSpace
-- Use max_cost_total everywhere instead of budget
-- Clean up unused branches
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
 - Rethink summary/status API
+- Utility to get incumbent losses over time
+- Restructure folder structure
+- Improve placement of \_post_evaluation_hook_function
+- maintained vs unmaintained optimizers
+- Read and sample at the same time metahyper
+- Metahyper into neps
+- Renamings
+  - run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
+  - loss = validation_error | error | pipeline_error
+  - XParameter = XSpace
+  - Rename default-x to prior-x
+  - Use max_cost_total everywhere instead of budget
 
 ### Tests and tooling
 
+- Add priorband to experimental
 - Add simple regression tests to run on each push
 
 ## Before 1.0.0 version
@@ -42,8 +62,13 @@
 - Finegrained control over HP user prior
 - Top vs all vs bottom distribution plots
 - Tensorboard visualizations (incumbent plot, ..)
+- Loss distribution plot
 - Print search space upon run
 - Add comprehensive regression tests to run manually on the cluster on each version release
+- Utility to generate code for best architecture
+- 3.11 support
+- Deprecate 3.7
+- Core Feature set in terms of research
 
 ### Fixes
 
@@ -53,8 +78,10 @@
 
 ### Refactoring
 
-- clean up search spaces classes, unused methods
-- break up search space and config aspect
+- Clean up search spaces classes, unused methods
+- Break up search space and config aspect
+- Remove hnas branch
+- Refactor of constraint grammar
 
 ### Documentation
 
@@ -64,13 +91,17 @@
 
 ### Features
 
+- neps_examples callable for options of examples
 - Optional argparse adder like pytorch lightning
 - Utility neps.clean to manage existing run results
 - Collect data optionally via phone-home to webserver
 - Add Info dict to status
+- Seed (setting context manager?)
 - BO improvements via Hebo tricks + Mll replacement
+- Checkout Rich logging
 
 ### Miscellaneous
 
+- User Mattermost Channel
 - Twitter handle and domain, e.g., neural-pipeline.search
 - Doing research with NePS / Documentation on that or full setup

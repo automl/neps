@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import typing
 from copy import deepcopy
+from functools import partial
+from typing import Any
 
 import numpy as np
 from typing_extensions import Literal
@@ -9,8 +11,18 @@ from typing_extensions import Literal
 from metahyper import ConfigResult
 
 from ...search_spaces.search_space import SearchSpace
+from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+from .mf_bo import MFBOBase
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
-from .sampling_policy import EnsemblePolicy, FixedPriorPolicy, RandomUniformPolicy
+from .sampling_policy import (
+    EnsemblePolicy,
+    FixedPriorPolicy,
+    ModelPolicy,
+    RandomUniformPolicy,
+)
 from .successive_halving import (
     AsynchronousSuccessiveHalving,
     SuccessiveHalving,
@@ -87,6 +99,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
         bracket.observed_configs = self.observed_configs.copy()
 
+    # pylint: disable=no-self-use
     def clear_old_brackets(self):
         """Enforces reset at each new bracket."""
         # unlike synchronous SH, the state is not reset at each rung and a configuration
@@ -155,6 +168,7 @@ class Hyperband(HyperbandBase):
             sh_bracket.clean_rung_information()
             # for the SH bracket in start-end, calculate total SH budget used, from the
             # correct SH bracket object to make the right budget calculations
+            # pylint: disable=protected-access
             bracket_budget_used = sh_bracket._calc_budget_used_in_bracket(
                 deepcopy(self.observed_configs.rung.values[start:end])
             )
@@ -162,11 +176,12 @@ class Hyperband(HyperbandBase):
             current_bracket_full_budget = sum(sh_bracket.full_rung_trace)
             if bracket_budget_used < current_bracket_full_budget:
                 # updating rung information of the current bracket
+                # pylint: disable=protected-access
                 sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
                 # extra call to use the updated rung member info to find promotions
                 # SyncPromotion signals a wait if a rung is full but with
                 # incomplete/pending evaluations, signals to starts a new SH bracket
-                sh_bracket._handle_promotions()
+                sh_bracket._handle_promotions()  # pylint: disable=protected-access
                 promotion_count = 0
                 for _, promotions in sh_bracket.rung_promotions.items():
                     promotion_count += len(promotions)
@@ -186,6 +201,7 @@ class Hyperband(HyperbandBase):
 
         # updates rung info with the latest active, incomplete bracket
         sh_bracket = self.sh_brackets[self.current_sh_bracket]
+        # pylint: disable=protected-access
         sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
         sh_bracket._handle_promotions()
         # self._handle_promotion() need not be called as it is called by load_results()
@@ -419,3 +435,69 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
         )
+
+
+class MOBSTER(AsynchronousHyperband, MFBOBase):
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        budget: int,
+        eta: int = 3,
+        initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
+        use_priors: bool = False,
+        sampling_policy: typing.Any = ModelPolicy,
+        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        loss_value_on_error: None | float = None,
+        cost_value_on_error: None | float = None,
+        ignore_errors: bool = False,
+        logger=None,
+        prior_confidence: Literal["low", "medium", "high"] = None,
+        random_interleave_prob: float = 0.0,
+        sample_default_first: bool = False,
+        surrogate_model: str | Any = "gp",
+        domain_se_kernel: str = None,
+        hp_kernels: list = None,
+        surrogate_model_args: dict = None,
+        initial_design_size: int = 3,
+        acquisition: str | BaseAcquisition = "EI",
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "mutation",
+        patience: int = 100,
+        initial_design_sampling_policy: typing.Any = FixedPriorPolicy,
+    ):
+
+        bo_args = dict(
+            surrogate_model=surrogate_model,
+            domain_se_kernel=domain_se_kernel,
+            hp_kernels=hp_kernels,
+            surrogate_model_args=surrogate_model_args,
+            acquisition=acquisition,
+            log_prior_weighted=log_prior_weighted,
+            acquisition_sampler=acquisition_sampler,
+            patience=patience,
+            initial_design_size=initial_design_size,
+            initial_design_sampling_policy=initial_design_sampling_policy,
+        )
+        sampling_policy = partial(sampling_policy, **bo_args)
+        hb_args = dict(
+            pipeline_space=pipeline_space,
+            budget=budget,
+            eta=eta,
+            initial_design_type=initial_design_type,
+            use_priors=use_priors,
+            sampling_policy=sampling_policy,
+            promotion_policy=promotion_policy,
+            loss_value_on_error=loss_value_on_error,
+            cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
+            logger=logger,
+            prior_confidence=prior_confidence,
+            random_interleave_prob=random_interleave_prob,
+            sample_default_first=sample_default_first,
+        )
+        super().__init__(**hb_args)
+
+        self.sampling_args = {
+            "train_x": [],
+            "train_y": [],
+        }

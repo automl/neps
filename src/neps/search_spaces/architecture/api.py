@@ -8,17 +8,30 @@ from torch import nn
 
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
-from .graph import Graph
 from .graph_grammar import GraphGrammar, GraphGrammarMultipleRepetitive
 
 
-def _dict_structure_to_str(structure: dict, primitives: dict) -> str:
+def _dict_structure_to_str(
+    structure: dict, primitives: dict, repetitive_mapping: dict = None
+) -> str:
+    def _save_replace(string: str, __old: str, __new: str):
+        while string.count(__old) > 0:
+            string = string.replace(__old, __new)
+        return string
+
     grammar = ""
     for nonterminal, productions in structure.items():
         grammar += nonterminal + " -> " + " | ".join(productions) + "\n"
+    grammar = grammar.replace("(", " ")
+    grammar = grammar.replace(")", "")
+    grammar = grammar.replace(",", "")
     for primitive in primitives.keys():
-        grammar = grammar.replace(f" {primitive} ", f' "{primitive}" ')
-        grammar = grammar.replace(f" {primitive}\n", f' "{primitive}"\n')
+        grammar = _save_replace(grammar, f" {primitive} ", f' "{primitive}" ')
+        grammar = _save_replace(grammar, f" {primitive}\n", f' "{primitive}"\n')
+    if repetitive_mapping is not None:
+        for placeholder in repetitive_mapping.keys():
+            grammar = _save_replace(grammar, f" {placeholder} ", f' "{placeholder}" ')
+            grammar = _save_replace(grammar, f" {placeholder}\n", f' "{placeholder}"\n')
     return grammar
 
 
@@ -36,7 +49,7 @@ def _build(graph, set_recursive_attribute):
             graph.edges[e].update(set_recursive_attribute(op_name, predecessor_values))
 
 
-def FunctionParameter(**kwargs):
+def ArchitectureParameter(**kwargs):
     """Factory function"""
 
     if "structure" not in kwargs:
@@ -59,9 +72,8 @@ def FunctionParameter(**kwargs):
             | list[dict],
             primitives: dict,
             constraint_kwargs: dict | None = None,
-            name: str = "",
+            name: str = "ArchitectureParameter",
             set_recursive_attribute: Callable | None = None,
-            old_build_api: bool = False,
             **kwargs,
         ):
             local_vars = locals()
@@ -74,7 +86,15 @@ def FunctionParameter(**kwargs):
 
             if isinstance(structure, list):
                 structures = [
-                    _dict_structure_to_str(st, primitives) if isinstance(st, dict) else st
+                    _dict_structure_to_str(
+                        st,
+                        primitives,
+                        repetitive_mapping=kwargs["terminal_to_sublanguage_map"]
+                        if "terminal_to_sublanguage_map" in kwargs
+                        else None,
+                    )
+                    if isinstance(st, dict)
+                    else st
                     for st in structure
                 ]
                 _structures = []
@@ -113,7 +133,6 @@ def FunctionParameter(**kwargs):
                 )
 
             self._set_recursive_attribute = set_recursive_attribute
-            self._old_build_api = old_build_api
             self.name: str = name
 
         def to_pytorch(self) -> nn.Module:
@@ -124,15 +143,8 @@ def FunctionParameter(**kwargs):
                 self.graph_to_self(composed_function)
                 self.prune_graph()
 
-                if self._old_build_api:
-                    m = self._set_recursive_attribute(self)  # type: ignore[misc] # This is the full build_fn
-                elif self._set_recursive_attribute:
-                    m = _build(self, self._set_recursive_attribute)
-
-                if m is not None and isinstance(m, Graph):
-                    self.graph_to_self(m, clear_self=True)
-                elif m is not None and isinstance(m, nn.Module):
-                    return m
+                if self._set_recursive_attribute:
+                    _build(self, self._set_recursive_attribute)
 
                 self.compile()
                 self.update_op_names()
@@ -143,8 +155,11 @@ def FunctionParameter(**kwargs):
             return composed_function(inputs)
 
         def create_new_instance_from_id(self, identifier: str):
-            g = FunctionParameter(**self.input_kwargs)  # type: ignore[arg-type]
+            g = ArchitectureParameter(**self.input_kwargs)  # type: ignore[arg-type]
             g.load_from(identifier)
             return g
 
     return _FunctionParameter(**kwargs)
+
+
+FunctionParameter = ArchitectureParameter

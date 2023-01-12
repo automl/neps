@@ -7,7 +7,12 @@ from .bayesian_optimization.cost_cooling import CostCooling
 from .bayesian_optimization.mf_tpe import MultiFidelityPriorWeightedTreeParzenEstimator
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .multi_fidelity.hyperband import Hyperband, HyperbandCustomDefault
+from .multi_fidelity.hyperband import (
+    MOBSTER,
+    AsynchronousHyperband,
+    Hyperband,
+    HyperbandCustomDefault,
+)
 from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
@@ -62,4 +67,5 @@ SearcherMapping: dict[str, Callable] = {
     "raceband": RaceBand,
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
+    "mobster": MOBSTER,
 }

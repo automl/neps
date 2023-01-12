@@ -15,7 +15,32 @@ from .cfg import Grammar
 from .graph import Graph
 from .primitives import AbstractPrimitive
 from .topologies import AbstractTopology
-from .utils import get_edge_lists_of_topologies
+
+
+def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
+    topology_edge_lists = {}
+    for k, v in terminal_map.items():
+        if inspect.isclass(v):
+            is_topology = issubclass(v, AbstractTopology)
+        elif isinstance(v, partial):
+            is_topology = issubclass(v.func, AbstractTopology)  # type: ignore[arg-type]
+        else:
+            is_topology = False
+        if is_topology:
+            if isinstance(v, partial):
+                if hasattr(v.func, "get_edge_list"):
+                    func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
+                    kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
+                    topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
+                elif hasattr(v.func, "edge_list"):
+                    topology_edge_lists[k] = v.func.edge_list  # type: ignore[attr-defined]
+                else:
+                    raise Exception(
+                        f"Please implement a get_edge_list static method for {v.func.__name__} or set edge_list!"
+                    )
+            else:
+                topology_edge_lists[k] = v.edge_list
+    return topology_edge_lists
 
 
 class CoreGraphGrammar(Graph):
@@ -952,6 +977,7 @@ class CoreGraphGrammar(Graph):
             begin_end_nodes[sym] = (begin_node, end_node)
 
         for split_idx, sym in enumerate(string_tree.split(" ")):
+            is_nonterminal = False
             if sym == "":
                 continue
             if compute_subgraphs:
@@ -959,6 +985,7 @@ class CoreGraphGrammar(Graph):
                 sym_copy = sym[:]
             if sym[0] == "(":
                 sym = sym[1:]
+                is_nonterminal = True
             if sym[-1] == ")":
                 if add_subtree_map:
                     for _ in range(sym.count(")")):
@@ -980,7 +1007,7 @@ class CoreGraphGrammar(Graph):
 
             if add_subtree_map and sym in grammar.nonterminals:
                 q_nonterminals.append((sym, split_idx))
-            elif sym in valid_terminals:  # terminal symbol
+            elif sym in valid_terminals and not is_nonterminal:  # terminal symbol
                 if sym in self.terminal_to_graph_edges:
                     if len(q_el) == 0:
                         if edge_attr:
@@ -1374,7 +1401,7 @@ class CoreGraphGrammar(Graph):
                 nodes[u] = _u
                 if _u not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
                     flattened_graph.add_node(_u)  # type: ignore[union-attr]
-                    flattened_graph.nodes[_u].update(graph.nodes[u])
+                    flattened_graph.nodes[_u].update(graph.nodes[u])  # type: ignore[union-attr]
 
             if v in nodes.keys():
                 _v = nodes[v]
@@ -1384,7 +1411,7 @@ class CoreGraphGrammar(Graph):
                 nodes[v] = _v
                 if _v not in flattened_graph.nodes.keys():  # type: ignore[union-attr]
                     flattened_graph.add_node(_v)  # type: ignore[union-attr]
-                flattened_graph.nodes[_v].update(
+                flattened_graph.nodes[_v].update(  # type: ignore[union-attr]
                     graph.nodes[v]
                 )  # last time node is called combo op is used
 
@@ -1449,7 +1476,7 @@ class CoreGraphGrammar(Graph):
                 sym = descriptor[i:j]
                 i = j - 1
 
-                if sym in grammar.terminals:
+                if sym in grammar.terminals and descriptor[i - 1] != "(":
                     is_topology = False
                     if inspect.isclass(self.terminal_to_op_names[sym]) and issubclass(
                         self.terminal_to_op_names[sym], AbstractTopology

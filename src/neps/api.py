@@ -108,6 +108,7 @@ def run(
         "random_search",
         "hyperband",
         "hyperband_custom_default",
+        "mobster",
     ]
     | BaseOptimizer = "default",
     **searcher_kwargs,
