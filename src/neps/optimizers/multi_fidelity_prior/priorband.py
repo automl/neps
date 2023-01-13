@@ -340,6 +340,11 @@ class PriorBandNoIncToRandom(PriorBand):
 class PriorBandNoPriorToRandom(PriorBand):
     """Disables prior based sampling to replace with uniform random sampling."""
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # cannot use prior in this version
+        self.pipeline_space.has_prior = False
+
     def calc_sampling_args(self, rung) -> dict:
         sampling_args = super().calc_sampling_args(rung)
         sampling_args["random"] += sampling_args["prior"]
@@ -349,6 +354,11 @@ class PriorBandNoPriorToRandom(PriorBand):
 
 class PriorBandNoPriorToInc(PriorBand):
     """Disables prior based sampling to replace with incumbent-based sampling."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # cannot use prior in this version
+        self.pipeline_space.has_prior = False
 
     def calc_sampling_args(self, rung) -> dict:
         sampling_args = super().calc_sampling_args(rung)

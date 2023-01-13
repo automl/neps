@@ -159,6 +159,14 @@ class EnsemblePolicy(SamplingPolicy):
         elif policy == "inc":
             print(f"Sampling from inc with weights (i, p, r)={prob_weights}")
 
+            if (
+                hasattr(self.pipeline_space, "has_prior")
+                and self.pipeline_space.has_prior
+            ):
+                user_priors = True
+            else:
+                user_priors = False
+
             if inc is None:
                 inc = deepcopy(self.pipeline_space.sample_default_configuration())
                 print("No incumbent config found, using default as the incumbent.")
@@ -173,13 +181,13 @@ class EnsemblePolicy(SamplingPolicy):
                 # then sample with prior=True from that configuration
                 # since the defaults are treated as the prior
                 config = _inc.sample(
-                    patience=self.patience, user_priors=True, ignore_fidelity=True
+                    patience=self.patience, user_priors=user_priors, ignore_fidelity=True
                 )
             elif self.inc_type == "crossover":
                 # TODO: could instead crossover inc with a random sample
                 # generating a config from the prior
                 _config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True, ignore_fidelity=True
+                    patience=self.patience, user_priors=user_priors, ignore_fidelity=True
                 )
                 # injecting hyperparameters from the prior config into the incumbent
                 # TODO: ideally lower crossover prob overtime
