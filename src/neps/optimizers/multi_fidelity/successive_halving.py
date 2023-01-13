@@ -402,21 +402,20 @@ class SuccessiveHalvingBase(BaseOptimizer):
         else:
             rung_id = self.min_rung
             # using random instead of np.random to be consistent with NePS BO
-            if random.random() < self.random_interleave_prob:
+            if (
+                self.use_priors
+                and self.sample_default_first
+                and len(self.observed_configs) == 0
+            ):
+                config = self.pipeline_space.sample_default_configuration()
+            elif random.random() < self.random_interleave_prob:
                 config = self.pipeline_space.sample(
                     patience=self.patience,
                     user_priors=False,  # sample uniformly random
                     ignore_fidelity=True,
                 )
             else:
-                if (
-                    self.use_priors
-                    and self.sample_default_first
-                    and len(self.observed_configs) == 0
-                ):
-                    config = self.pipeline_space.sample_default_configuration()
-                else:
-                    config = self.sample_new_config(rung=rung_id)
+                config = self.sample_new_config(rung=rung_id)
             fidelity_value = self.rung_map[rung_id]
             config.fidelity.value = fidelity_value
 
