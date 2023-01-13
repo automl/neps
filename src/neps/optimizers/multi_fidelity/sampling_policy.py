@@ -159,6 +159,7 @@ class EnsemblePolicy(SamplingPolicy):
         elif policy == "inc":
             print(f"Sampling from inc with weights (i, p, r)={prob_weights}")
 
+            # pylint: disable=simplifiable-if-statement
             if (
                 hasattr(self.pipeline_space, "has_prior")
                 and self.pipeline_space.has_prior
@@ -280,6 +281,30 @@ class ModelPolicy(SamplingPolicy):
         self.sampling_args: dict = {}
 
     def _update(self, train_x, train_y):
+
+        _pending_ids = [
+            i for i, x in list(filter(lambda x: x[1] is None, enumerate(train_y)))
+        ]
+        if len(_pending_ids) > 0:
+            # We want to use hallucinated results for the evaluations that have
+            # not finished yet. For this we fit a model on the finished
+            # evaluations and add these to the other results to fit another model.
+            _train_x = [
+                elem for idx, elem in enumerate(train_x) if idx not in _pending_ids
+            ]
+            _train_y = [
+                elem for idx, elem in enumerate(train_y) if idx not in _pending_ids
+            ]
+
+            _pending_evaluations = list(map(train_x.__getitem__, _pending_ids))
+
+            self.surrogate_model.fit(_train_x, _train_y)
+            ys, _ = self.surrogate_model.predict(_pending_evaluations)
+
+            train_y = np.array(train_y)
+            train_y[_pending_ids] = ys.detach().numpy()
+            train_y = train_y.tolist()
+
         self.surrogate_model.fit(train_x, train_y)
         self.acquisition.set_state(self.surrogate_model)
         self.acquisition_sampler.set_state(x=train_x, y=train_y)
