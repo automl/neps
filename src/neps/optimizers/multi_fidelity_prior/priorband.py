@@ -86,9 +86,12 @@ class PriorBandBase:
         bracket = self.sh_brackets[self.min_rung]
         base_rung_size = bracket.config_map[bracket.min_rung]
 
-        if len(self.observed_configs) > base_rung_size:
-            if not np.any(np.isnan(self.observed_configs.perf.values[:base_rung_size])):
-                activate_inc = True
+        configs_recorded = np.count_nonzero(
+            ~np.isnan(self.observed_configs.perf.values.tolist() + [np.nan])
+        )
+
+        if configs_recorded >= base_rung_size:
+            activate_inc = True
         return activate_inc
 
     def calc_sampling_args(self, rung) -> dict:
