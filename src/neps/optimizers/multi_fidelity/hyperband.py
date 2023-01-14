@@ -1,8 +1,9 @@
+# type: ignore
+
 from __future__ import annotations
 
 import typing
 from copy import deepcopy
-from functools import partial
 from typing import Any
 
 import numpy as np
@@ -437,7 +438,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         )
 
 
-class MOBSTER(AsynchronousHyperband, MFBOBase):
+class MOBSTER(MFBOBase, AsynchronousHyperband):
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -445,7 +446,8 @@ class MOBSTER(AsynchronousHyperband, MFBOBase):
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = ModelPolicy,
+        sampling_policy: typing.Any = RandomUniformPolicy,
+        model_policy: typing.Any = ModelPolicy,
         promotion_policy: typing.Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
@@ -458,27 +460,11 @@ class MOBSTER(AsynchronousHyperband, MFBOBase):
         domain_se_kernel: str = None,
         hp_kernels: list = None,
         surrogate_model_args: dict = None,
-        initial_design_size: int = 3,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "mutation",
-        patience: int = 100,
-        initial_design_sampling_policy: typing.Any = FixedPriorPolicy,
+        acquisition_sampler: str | AcquisitionSampler = "random",
     ):
 
-        bo_args = dict(
-            surrogate_model=surrogate_model,
-            domain_se_kernel=domain_se_kernel,
-            hp_kernels=hp_kernels,
-            surrogate_model_args=surrogate_model_args,
-            acquisition=acquisition,
-            log_prior_weighted=log_prior_weighted,
-            acquisition_sampler=acquisition_sampler,
-            patience=patience,
-            initial_design_size=initial_design_size,
-            initial_design_sampling_policy=initial_design_sampling_policy,
-        )
-        sampling_policy = partial(sampling_policy, **bo_args)
         hb_args = dict(
             pipeline_space=pipeline_space,
             budget=budget,
@@ -497,7 +483,21 @@ class MOBSTER(AsynchronousHyperband, MFBOBase):
         )
         super().__init__(**hb_args)
 
-        self.sampling_args = {
-            "train_x": [],
-            "train_y": [],
-        }
+        bo_args = dict(
+            use_priors=use_priors,
+            surrogate_model=surrogate_model,
+            domain_se_kernel=domain_se_kernel,
+            hp_kernels=hp_kernels,
+            surrogate_model_args=surrogate_model_args,
+            acquisition=acquisition,
+            log_prior_weighted=log_prior_weighted,
+            acquisition_sampler=acquisition_sampler,
+        )
+        self.model_based = True
+
+        self.init_size = sum(list(pipeline_space.get_vectorial_dim().values())) + 1
+        self.model_policy = model_policy(pipeline_space, **bo_args)
+
+        for _, sh in self.sh_brackets.items():
+            sh.model_policy = self.model_policy
+            sh.sample_new_config = self.sample_new_config

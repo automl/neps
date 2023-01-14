@@ -16,6 +16,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         self.pibo_beta = pibo_beta
         self.base_acquisition = base_acquisition
         self.log = log
+        self.decay_t = 0.0
 
     def eval(
         self,
@@ -24,14 +25,6 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
     ) -> Union[np.ndarray, torch.Tensor, float]:
         super().__init__()
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
-
-        train_x = self.base_acquisition.surrogate_model.x
-        if train_x[0].has_fidelity:
-            decay_t = np.sum(
-                [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x]
-            )
-        else:
-            decay_t = len(train_x)
 
         if self.log:
             min_acq_val = abs(min(acquisition)) if min(acquisition) < 0 else 0
@@ -44,13 +37,24 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
                     # also shift acquisition values to avoid negativ values
                     acquisition[i] = (
                         np.log(acquisition[i] + min_acq_val + 1e-12)
-                        + (self.pibo_beta / decay_t) * prior_weight
+                        + (self.pibo_beta / self.decay_t) * prior_weight
                     )
                 else:
                     acquisition[i] *= np.power(
-                        prior_weight + 1e-12, self.pibo_beta / decay_t
+                        prior_weight + 1e-12, self.pibo_beta / self.decay_t
                     )
         return acquisition
 
     def set_state(self, surrogate_model, **kwargs):
+        if "decay_t" in kwargs:
+            decay_t = kwargs.pop("decay_t")
+        else:
+            train_x = surrogate_model.x
+            if train_x[0].has_fidelity:
+                decay_t = np.sum(
+                    [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x]
+                )
+            else:
+                decay_t = len(train_x)
+        self.decay_t = decay_t
         self.base_acquisition.set_state(surrogate_model, **kwargs)

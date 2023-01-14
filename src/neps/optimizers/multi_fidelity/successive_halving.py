@@ -1,3 +1,5 @@
+# type: ignore
+
 from __future__ import annotations
 
 import random
@@ -141,6 +143,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # prior setups
         self.prior_confidence = prior_confidence
         self._enhance_priors()
+        self.rung_histories = None
 
     @classmethod
     def _get_rung_trace(cls, rung_map: dict, config_map: dict) -> list[int]:
@@ -211,25 +214,28 @@ class SuccessiveHalvingBase(BaseOptimizer):
     ) -> None:
         for config_id, config_val in previous_results.items():
             _config, _rung = self._get_config_id_split(config_id)
+            perf = self.get_loss(config_val.result)
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
                 rung_recorded = self.observed_configs.at[int(_config), "rung"]
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = self.get_loss(
-                        config_val.result
-                    )
+                    self.observed_configs.at[int(_config), "perf"] = perf
             else:
-                # add new entry
                 _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), self.get_loss(config_val.result)]],
+                    [[config_val.config, int(_rung), perf]],
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
                 self.observed_configs = pd.concat(
                     (self.observed_configs, _df)
                 ).sort_index()
+            # for efficiency, redefining the function to have the
+            # `rung_histories` assignment inside the for loop
+            # rung histories are collected only for `previous` and not `pending` configs
+            self.rung_histories[int(_rung)]["config"].append(int(_config))
+            self.rung_histories[int(_rung)]["perf"].append(perf)
         return
 
     def _handle_pending_evaluations(
@@ -288,10 +294,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def clear_old_brackets(self):
         return
 
-    # def _fit_models(self):
-    #     # define any model or surrogate training and acquisition function state setting
-    #     # if adding model-based search to the basic multi-fidelity algorithm
-    #     return
+    def _fit_models(self):
+        # define any model or surrogate training and acquisition function state setting
+        # if adding model-based search to the basic multi-fidelity algorithm
+        return
 
     def load_results(
         self,
@@ -304,6 +310,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
             previous_results (dict[str, ConfigResult]): [description]
             pending_evaluations (dict[str, ConfigResult]): [description]
         """
+
+        self.rung_histories = {
+            rung: {"config": [], "perf": []}
+            for rung in range(self.min_rung, self.max_rung + 1)
+        }
+
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
 
         # previous optimization run exists and needs to be loaded
@@ -323,28 +335,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self._handle_promotions()
 
         # fit any model/surrogates
-        if hasattr(self, "_fit_models"):
-            self._fit_models()
+        self._fit_models()
 
         return
 
     def is_init_phase(self) -> bool:
-        """Decides if optimization is still under the warmstart phase/model-based search.
-
-        If `initial_design_type` is `max_budget`, the number of evaluations made at the
-            target budget is compared to `initial_design_size`.
-        If `initial_design_type` is `unique_configs`, the total number of unique
-            configurations is compared to the `initial_design_size`.
-        """
-        _observed_configs = self.observed_configs.copy().dropna()
-        if self.initial_design_type == "max_budget":
-            val = (
-                np.sum(_observed_configs.rung == self.max_rung)
-                < self._initial_design_size
-            )
-        else:
-            val = len(_observed_configs) <= self._initial_design_size
-        return val
+        return True
 
     def sample_new_config(
         self,

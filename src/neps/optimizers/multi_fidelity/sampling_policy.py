@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import typing
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any
@@ -216,6 +215,7 @@ class ModelPolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
+        use_priors: bool = False,
         surrogate_model: str | Any = "gp",
         domain_se_kernel: str = None,
         hp_kernels: list = None,
@@ -224,10 +224,9 @@ class ModelPolicy(SamplingPolicy):
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
         patience: int = 100,
-        initial_design_size: int = 3,
-        initial_design_sampling_policy: typing.Any = FixedPriorPolicy,
     ):
         super().__init__(pipeline_space=pipeline_space)
+
         surrogate_model_args = surrogate_model_args or {}
 
         _, hp_kernels = get_kernels(
@@ -273,61 +272,30 @@ class ModelPolicy(SamplingPolicy):
             kwargs={"patience": patience, "pipeline_space": pipeline_space},
         )
 
-        self.patience = patience
-        self.initial_design_size = initial_design_size
-        self.initial_design_sampling_policy = initial_design_sampling_policy(
-            pipeline_space
-        )
+        self.use_priors = use_priors
         self.sampling_args: dict = {}
 
-    def _update(self, train_x, train_y):
+    def update_model(self, train_x, train_y):
 
-        _pending_ids = [
-            i for i, x in list(filter(lambda x: x[1] is None, enumerate(train_y)))
-        ]
-        if len(_pending_ids) > 0:
+        pending_ids = train_y.index[np.where(train_y.isna())[0]].to_numpy()
+        observed_ids = np.setdiff1d(np.array(train_y.index), pending_ids)
+
+        if len(pending_ids) > 0:
             # We want to use hallucinated results for the evaluations that have
             # not finished yet. For this we fit a model on the finished
             # evaluations and add these to the other results to fit another model.
-            _train_x = [
-                elem for idx, elem in enumerate(train_x) if idx not in _pending_ids
-            ]
-            _train_y = [
-                elem for idx, elem in enumerate(train_y) if idx not in _pending_ids
-            ]
 
-            _pending_evaluations = list(map(train_x.__getitem__, _pending_ids))
+            self.surrogate_model.fit(
+                train_x[observed_ids].to_list(), train_y[observed_ids].to_list()
+            )
 
-            self.surrogate_model.fit(_train_x, _train_y)
-            ys, _ = self.surrogate_model.predict(_pending_evaluations)
+            ys, _ = self.surrogate_model.predict(train_x[pending_ids].to_list())
 
-            train_y = np.array(train_y)
-            train_y[_pending_ids] = ys.detach().numpy()
-            train_y = train_y.tolist()
+            train_y.loc[pending_ids] = ys.detach().numpy()
 
-        self.surrogate_model.fit(train_x, train_y)
-        self.acquisition.set_state(self.surrogate_model)
+        self.surrogate_model.fit(train_x.to_list(), train_y.to_list())
+        self.acquisition.set_state(self.surrogate_model, decay_t=len(observed_ids))
         self.acquisition_sampler.set_state(x=train_x, y=train_y)
 
-    def sample(self, train_x=None, train_y=None, *args, **kwargs) -> SearchSpace:
-
-        is_init_phase = True
-        if len(train_x) > 0:
-            _evaluated_on_max = np.sum(
-                [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x],
-                dtype=int,
-            )
-            is_init_phase = _evaluated_on_max <= self.initial_design_size
-
-        if is_init_phase:
-            return self.initial_design_sampling_policy.sample(**self.sampling_args)
-        self._update(train_x, train_y)
-        for _ in range(self.patience):
-            config = self.acquisition_sampler.sample(self.acquisition)
-            # TODO: if config not in self.observed_configs:
-            break
-        else:
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
-        return config
+    def sample(self, *args, **kwargs) -> SearchSpace:
+        return self.acquisition_sampler.sample(self.acquisition)

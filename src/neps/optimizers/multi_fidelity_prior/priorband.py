@@ -1,12 +1,11 @@
+# type: ignore
+
 from __future__ import annotations
 
 import typing
 
 import numpy as np
-import pandas as pd
 from typing_extensions import Literal
-
-from metahyper import ConfigResult
 
 from ...search_spaces.search_space import SearchSpace
 from ..multi_fidelity.hyperband import HyperbandCustomDefault
@@ -70,9 +69,11 @@ class PriorBandBase:
             sampling_args["prior"] += sampling_args["inc"]
             sampling_args["inc"] = 0
             inc = None
+            # pylint: disable=attribute-defined-outside-init
             self.sampling_args = {"inc": inc, "weights": sampling_args}
         else:
             inc = self.find_incumbent()
+            # pylint: disable=attribute-defined-outside-init
             self.sampling_args = {"inc": inc, "weights": sampling_args}
             if self.inc_sample_type == "hypersphere":
                 min_dist = self.find_1nn_distance_from_incumbent(inc)
@@ -261,47 +262,6 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy
             sh.sampling_args = self.sampling_args
-        self.rung_histories = None
-
-    def _load_previous_observations(
-        self, previous_results: dict[str, ConfigResult]
-    ) -> None:
-        for config_id, config_val in previous_results.items():
-            _config, _rung = self._get_config_id_split(config_id)
-            perf = self.get_loss(config_val.result)
-            if int(_config) in self.observed_configs.index:
-                # config already recorded in dataframe
-                rung_recorded = self.observed_configs.at[int(_config), "rung"]
-                if rung_recorded < int(_rung):
-                    # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = perf
-            else:
-                _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), perf]],
-                    columns=self.observed_configs.columns,
-                    index=pd.Series(int(_config)),  # key for config_id
-                )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
-            # for efficiency, redefining the function to have the
-            # `rung_histories` assignment inside the for loop
-            # rung histories are collected only for `previous` and not `pending` configs
-            self.rung_histories[int(_rung)]["config"].append(int(_config))
-            self.rung_histories[int(_rung)]["perf"].append(perf)
-        return
-
-    def load_results(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
-    ) -> None:
-        self.rung_histories = {
-            rung: {"config": [], "perf": []}
-            for rung in range(self.min_rung, self.max_rung + 1)
-        }
-        super().load_results(previous_results, pending_evaluations)
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -316,7 +276,7 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
 
         for _, sh in self.sh_brackets.items():
             sh.sampling_args = self.sampling_args
-        print(sh.sampling_args["weights"])
+        print(sh.sampling_args["weights"])  # pylint: disable=undefined-loop-variable
         return super().get_config_and_ids()
 
 
