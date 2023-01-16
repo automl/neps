@@ -176,7 +176,7 @@ class PriorBandBase:
         prior = self.pipeline_space.sample_default_configuration()
         # retrieve the global incumbent
         inc = self.find_incumbent()
-        if len(self.rung_histories[rung]["config"]):
+        if len(self.rung_histories[rung]["config"]) >= self.eta:
             # ranking by performance
             config_idxs = np.argsort(self.rung_histories[rung]["perf"])[: self.eta]
             # find the top-eta configurations in the rung
