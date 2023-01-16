@@ -325,6 +325,8 @@ class PriorBandNoPriorToInc(PriorBand):
 
     def calc_sampling_args(self, rung) -> dict:
         sampling_args = super().calc_sampling_args(rung)
-        sampling_args["inc"] += sampling_args["prior"]
+        # setting the incumbent weight to eta times of random
+        sampling_args["random"] = self.eta / (1 + self.eta)
+        sampling_args["inc"] = 1 / (1 + self.eta)
         sampling_args["prior"] = 0
         return sampling_args
