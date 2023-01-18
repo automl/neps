@@ -283,36 +283,12 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
 class PriorBandNoIncToPrior(PriorBand):
     """Disables incumbent sampling to replace with prior-based sampling."""
 
-    def calc_sampling_args(self, rung) -> dict:
-        sampling_args = super().calc_sampling_args(rung)
-        sampling_args["prior"] += sampling_args["inc"]
-        sampling_args["inc"] = 0
-        return sampling_args
+    def set_sampling_weights_and_inc(self, rung: int):
+        super().set_sampling_weights_and_inc(rung)
+        self.sampling_args["weights"]["prior"] += self.sampling_args["weights"]["inc"]
+        self.sampling_args["weights"]["inc"] = 0
 
-
-class PriorBandNoIncToRandom(PriorBand):
-    """Disables incumbent sampling to replace with uniform random sampling."""
-
-    def calc_sampling_args(self, rung) -> dict:
-        sampling_args = super().calc_sampling_args(rung)
-        sampling_args["random"] += sampling_args["inc"]
-        sampling_args["inc"] = 0
-        return sampling_args
-
-
-class PriorBandNoPriorToRandom(PriorBand):
-    """Disables prior based sampling to replace with uniform random sampling."""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # cannot use prior in this version
-        self.pipeline_space.has_prior = False
-
-    def calc_sampling_args(self, rung) -> dict:
-        sampling_args = super().calc_sampling_args(rung)
-        sampling_args["random"] += sampling_args["prior"]
-        sampling_args["prior"] = 0
-        return sampling_args
+        return self.sampling_args
 
 
 class PriorBandNoPriorToInc(PriorBand):
@@ -323,10 +299,13 @@ class PriorBandNoPriorToInc(PriorBand):
         # cannot use prior in this version
         self.pipeline_space.has_prior = False
 
-    def calc_sampling_args(self, rung) -> dict:
-        sampling_args = super().calc_sampling_args(rung)
-        # setting the incumbent weight to eta times of random
-        sampling_args["random"] = self.eta / (1 + self.eta)
-        sampling_args["inc"] = 1 / (1 + self.eta)
-        sampling_args["prior"] = 0
-        return sampling_args
+    def set_sampling_weights_and_inc(self, rung: int):
+        super().set_sampling_weights_and_inc(rung)
+        # setting the incumbent weight to eta times of random when in-sampling activated
+        if self.sampling_args["weights"]["inc"] > 0:
+            self.sampling_args["weights"]["random"] = self.eta / (1 + self.eta)
+            self.sampling_args["weights"]["inc"] = 1 / (1 + self.eta)
+        else:
+            self.sampling_args["weights"]["random"] = 1
+        self.sampling_args["weights"]["prior"] = 0
+        return self.sampling_args

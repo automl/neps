@@ -447,7 +447,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
         sampling_policy: typing.Any = RandomUniformPolicy,
-        model_policy: typing.Any = ModelPolicy,
         promotion_policy: typing.Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
@@ -456,6 +455,8 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
+        # new arguments for model
+        model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | Any = "gp",
         domain_se_kernel: str = None,
         hp_kernels: list = None,
