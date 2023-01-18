@@ -485,7 +485,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         super().__init__(**hb_args)
 
         bo_args = dict(
-            use_priors=use_priors,
             surrogate_model=surrogate_model,
             domain_se_kernel=domain_se_kernel,
             hp_kernels=hp_kernels,
@@ -495,8 +494,16 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
             acquisition_sampler=acquisition_sampler,
         )
         self.model_based = True
-
-        self.init_size = sum(list(pipeline_space.get_vectorial_dim().values())) + 1
+        # counting non-fidelity dimensions in search space
+        ndims = sum(
+            
+                1
+                for _, hp in self.pipeline_space.hyperparameters.items()
+                if not hp.is_fidelity
+            
+        )
+        n_min = ndims + 1
+        self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
         self.model_policy = model_policy(pipeline_space, **bo_args)
 
         for _, sh in self.sh_brackets.items():

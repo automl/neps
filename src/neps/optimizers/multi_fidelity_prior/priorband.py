@@ -8,9 +8,14 @@ import numpy as np
 from typing_extensions import Literal
 
 from ...search_spaces.search_space import SearchSpace
+from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
 from ..multi_fidelity.hyperband import HyperbandCustomDefault
+from ..multi_fidelity.mf_bo import MFBOBase
 from ..multi_fidelity.promotion_policy import SyncPromotionPolicy
-from ..multi_fidelity.sampling_policy import EnsemblePolicy
+from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
 from .utils import compute_config_dist, compute_scores
 
 
@@ -172,11 +177,11 @@ class PriorBandBase:
         as the weights for prior and incumbent sampling. These weighs are calculated
         before every sampling operation.
         """
-        # retrieve the prior
-        prior = self.pipeline_space.sample_default_configuration()
-        # retrieve the global incumbent
-        inc = self.find_incumbent()
         if len(self.rung_histories[rung]["config"]) >= self.eta:
+            # retrieve the prior
+            prior = self.pipeline_space.sample_default_configuration()
+            # retrieve the global incumbent
+            inc = self.find_incumbent()
             # ranking by performance
             config_idxs = np.argsort(self.rung_histories[rung]["perf"])[: self.eta]
             # find the top-eta configurations in the rung
@@ -211,7 +216,8 @@ class PriorBandBase:
         return w_prior, w_inc
 
 
-class PriorBand(HyperbandCustomDefault, PriorBandBase):
+# order of inheritance (method resolution order) extremely essential for correct behaviour
+class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -229,6 +235,16 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
         sample_default_first: bool = True,
         inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
         inc_style: str = "constant",  # could also be {"decay", "dynamic"}
+        # arguments for model
+        model_based: bool = False,  # crucial argument to set to allow model-search
+        model_policy: typing.Any = ModelPolicy,
+        surrogate_model: str | typing.Any = "gp",
+        domain_se_kernel: str = None,
+        hp_kernels: list = None,
+        surrogate_model_args: dict = None,
+        acquisition: str | BaseAcquisition = "EI",
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "random",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -259,9 +275,34 @@ class PriorBand(HyperbandCustomDefault, PriorBandBase):
                 "random": 0,
             },
         }
+
+        bo_args = dict(
+            surrogate_model=surrogate_model,
+            domain_se_kernel=domain_se_kernel,
+            hp_kernels=hp_kernels,
+            surrogate_model_args=surrogate_model_args,
+            acquisition=acquisition,
+            log_prior_weighted=log_prior_weighted,
+            acquisition_sampler=acquisition_sampler,
+        )
+        self.model_based = model_based
+        # counting non-fidelity dimensions in search space
+        ndims = sum(
+            
+                1
+                for _, hp in self.pipeline_space.hyperparameters.items()
+                if not hp.is_fidelity
+            
+        )
+        n_min = ndims + 1
+        self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
+        self.model_policy = model_policy(pipeline_space, **bo_args)
+
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy
             sh.sampling_args = self.sampling_args
+            sh.model_policy = self.model_policy
+            sh.sample_new_config = self.sample_new_config
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,

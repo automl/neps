@@ -215,7 +215,6 @@ class ModelPolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        use_priors: bool = False,
         surrogate_model: str | Any = "gp",
         domain_se_kernel: str = None,
         hp_kernels: list = None,
@@ -272,7 +271,6 @@ class ModelPolicy(SamplingPolicy):
             kwargs={"patience": patience, "pipeline_space": pipeline_space},
         )
 
-        self.use_priors = use_priors
         self.sampling_args: dict = {}
 
     def update_model(self, train_x, train_y):
