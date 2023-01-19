@@ -20,7 +20,10 @@ from .utils import compute_config_dist, compute_scores
 
 
 class PriorBandBase:
-    """Class that defines essential properties needed by PriorBand."""
+    """Class that defines essential properties needed by PriorBand.
+
+    Designed to work with the topmost parent class as SuccessiveHalvingBase.
+    """
 
     def find_all_distances_from_incumbent(self, incumbent):
         """Finds the distance to the nearest neighbour."""
@@ -101,14 +104,37 @@ class PriorBandBase:
         return activate_inc
 
     def calc_sampling_args(self, rung) -> dict:
-        _w_random = 1
-        # scales likelihood of a prior sample with the current rung to sample at
-        _w_prior = (self.eta**rung) * _w_random
+        """Sets the weights for each of the sampling techniques."""
+        if self.prior_weight_type == "geometric":
+            _w_random = 1
+            # scales weight of prior by eta raised to the current rung level
+            # at the base rung thus w_prior = w_random
+            # at the max rung r, w_prior = eta^r * w_random
+            _w_prior = (self.eta**rung) * _w_random
+        elif self.prior_weight_type == "linear":
+            _w_random = 1
+            w_prior_min_rung = 1
+            w_prior_max_rung = self.eta
+            num_rungs = len(self.rung_map)
+            # linearly increasing prior weight such that
+            # at base rung, w_prior = w_random
+            # at max rung, w_prior = self.eta * w_random
+            _w_prior = np.linspace(
+                start=w_prior_min_rung,
+                stop=w_prior_max_rung,
+                endpoint=True,
+                num=num_rungs,
+            )[rung]
+            pass
+        else:
+            raise ValueError(f"{self.prior_weight_type} not in {{'linear', 'geometric'}}")
 
+        # normalizing weights of random and prior sampling
         w_prior = _w_prior / (_w_prior + _w_random)
         w_random = _w_random / (_w_prior + _w_random)
-
+        # calculating ratio of prior and incumbent weights
         _w_prior, _w_inc = self.prior_to_incumbent_ratio(1, 0, self.max_rung)
+        # scaling back such that w_random + w_prior + w_inc = 1
         w_inc = _w_inc * w_prior
         w_prior = _w_prior * w_prior
 
@@ -120,6 +146,10 @@ class PriorBandBase:
         return sampling_args
 
     def prior_to_incumbent_ratio(self, w1: float, w2: float, rung: int) -> float | float:
+        """Calculates the normalized weight distribution between prior and incumbent.
+
+        Sum of the weights should be 1.
+        """
         if self.inc_style == "constant":
             return self._prior_to_incumbent_ratio_constant()
         elif self.inc_style == "decay":
@@ -130,11 +160,17 @@ class PriorBandBase:
             raise ValueError(f"Invalid option {self.inc_style}")
 
     def _get_alpha(self, crossover: int = 0.5) -> float:
+        """Calculating approximate alpha rate for a specific crossover point.
+
+        Since with every iteration, the weight is reduced by alpha. We can approximately
+        calculate at which iteration (n) we can achieve the crossover value, by
+        calculating the n-th root of the crossover value. n is chosen as the total number
+        of samples seen in a single, full Hyperband bracket.
+        """
         nconfigs = 0
         for bracket in self.sh_brackets.values():
             nconfigs += bracket.config_map[bracket.min_rung]
-        n = np.ceil((self.eta - 1) * nconfigs / self.eta)
-        alpha = np.power(crossover, 1 / n)
+        alpha = np.power(crossover, 1 / nconfigs)
         return alpha
 
     def _prior_to_incumbent_ratio_decay(self, w1: float, w2: float) -> float | float:
@@ -161,29 +197,34 @@ class PriorBandBase:
     def _prior_to_incumbent_ratio_constant(self) -> float | float:
         """Fixes the weightage of incumbent sampling to 1/eta of prior sampling."""
         # fixing weight of incumbent to 1/eta of prior
-        w_prior = (self.eta - 1) / self.eta
-        w_inc = 1 / self.eta
+        _w_prior = self.eta
+        _w_inc = 1
+        w_prior = _w_prior / (_w_prior + _w_inc)
+        w_inc = _w_inc / (_w_prior + _w_inc)
         return w_prior, w_inc
 
     def _prior_to_incumbent_ratio_dynamic(self, rung: int) -> float | float:
         """Dynamically determines the ratio of weights for prior and incumbent sampling.
 
-        Finds the highest rung with configurations recorded. Picks the top-eta configs
-        from this rung. Each config is then ranked by performance and scored by the
-        Gaussian centered around the prior configuration and the Gaussian centered around
-        the current incumbent. This scores each of the top-eta configs with the
+        Finds the highest rung with eta configurations recorded. Picks the top-1/eta
+        configs from this rung. Each config is then ranked by performance and scored by
+        the Gaussian centered around the prior configuration and the Gaussian centered
+        around the current incumbent. This scores each of the top-eta configs with the
         likelihood of being sampled by the prior or the incumbent. A weighted sum is
         performed on these scores based on their ranks. The ratio of the scores is used
         as the weights for prior and incumbent sampling. These weighs are calculated
         before every sampling operation.
         """
+        # requires at least eta configurations to start computing scores
         if len(self.rung_histories[rung]["config"]) >= self.eta:
             # retrieve the prior
             prior = self.pipeline_space.sample_default_configuration()
             # retrieve the global incumbent
             inc = self.find_incumbent()
+            # subsetting the top 1/eta configs from the rung
+            top_n = len(self.rung_histories[rung]["perf"]) // self.eta
             # ranking by performance
-            config_idxs = np.argsort(self.rung_histories[rung]["perf"])[: self.eta]
+            config_idxs = np.argsort(self.rung_histories[rung]["perf"])[:top_n]
             # find the top-eta configurations in the rung
             top_configs = np.array(self.rung_histories[rung]["config"])[config_idxs]
             top_config_scores = np.array(
@@ -197,18 +238,18 @@ class PriorBandBase:
             )
             # adding positional weights to the score, with the best config weighed most
             weights = np.flip(np.arange(1, top_config_scores.shape[0] + 1)).reshape(-1, 1)
-            # calculating sum of weights
+            # calculating weighted sum of scores
             weighted_top_config_scores = np.sum(top_config_scores * weights, axis=0)
             prior_score, inc_score = weighted_top_config_scores
             # normalizing scores to be weighted ratios
             w_prior = prior_score / sum(weighted_top_config_scores)
             w_inc = inc_score / sum(weighted_top_config_scores)
         else:
-            # if no configurations recorded yet
-            # check if it is the base rung which is empty
+            # if eta-configurations recorded yet
+            # check if it is the base rung
             if rung == self.min_rung:
-                w_prior = 1
-                w_inc = 0
+                w_prior = self.eta / (1 + self.eta)
+                w_inc = 1 / (1 + self.eta)
             else:
                 # if rung > min.rung then the lower rung could already have enough
                 # configurations and thus can be recursively queried till the base rung
@@ -233,6 +274,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
+        prior_weight_type: str = "linear",  # could also be {"geometric"}
         inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
         inc_style: str = "constant",  # could also be {"decay", "dynamic"}
         # arguments for model
@@ -261,6 +303,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
         )
+        self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
         self.sampling_policy = sampling_policy(
             pipeline_space=pipeline_space, inc_type=self.inc_sample_type
@@ -288,11 +331,9 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self.model_based = model_based
         # counting non-fidelity dimensions in search space
         ndims = sum(
-            
-                1
-                for _, hp in self.pipeline_space.hyperparameters.items()
-                if not hp.is_fidelity
-            
+            1
+            for _, hp in self.pipeline_space.hyperparameters.items()
+            if not hp.is_fidelity
         )
         n_min = ndims + 1
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2

@@ -140,7 +140,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
             self.rung_map, self.config_map
         )
 
-        # prior setups
+        #############################
+        # Setting prior confidences #
+        #############################
+        # the std. dev or peakiness of distribution
         self.prior_confidence = prior_confidence
         self._enhance_priors()
         self.rung_histories = None
@@ -524,7 +527,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = "medium",
+        prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
     ):
