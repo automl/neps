@@ -35,7 +35,7 @@ class CostCooling(BayesianOptimization):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = True,
+        log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 100,
