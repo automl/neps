@@ -273,7 +273,7 @@ class ModelPolicy(SamplingPolicy):
 
         self.sampling_args: dict = {}
 
-    def update_model(self, train_x, train_y):
+    def update_model(self, train_x, train_y, decay_t=None):
 
         pending_ids = train_y.index[np.where(train_y.isna())[0]].to_numpy()
         observed_ids = np.setdiff1d(np.array(train_y.index), pending_ids)
@@ -291,9 +291,14 @@ class ModelPolicy(SamplingPolicy):
 
             train_y.loc[pending_ids] = ys.detach().numpy()
 
+        if decay_t is None:
+            decay_t = len(observed_ids)
+
         self.surrogate_model.fit(train_x.to_list(), train_y.to_list())
-        self.acquisition.set_state(self.surrogate_model, decay_t=len(observed_ids))
+        print(f"decay_t: {decay_t}")
+        self.acquisition.set_state(self.surrogate_model, decay_t=decay_t)
         self.acquisition_sampler.set_state(x=train_x, y=train_y)
 
     def sample(self, *args, **kwargs) -> SearchSpace:
+        print("Acquiring...")
         return self.acquisition_sampler.sample(self.acquisition)
