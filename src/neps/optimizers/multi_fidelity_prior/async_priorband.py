@@ -36,6 +36,7 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
+        prior_weight_type: str = "linear",  # could also be {"geometric"}
         inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
         inc_style: str = "constant",  # could also be {"decay", "dynamic"}
     ):
@@ -55,6 +56,7 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
         )
+        self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
         self.sampling_policy = sampling_policy(
             pipeline_space=pipeline_space, inc_type=self.inc_sample_type
@@ -159,6 +161,7 @@ class PriorBandAshaHB(PriorBandAsha):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
+        prior_weight_type: str = "linear",  # could also be {"geometric"}
         inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
         inc_style: str = "constant",  # could also be {"decay", "dynamic"}
     ):
@@ -182,6 +185,7 @@ class PriorBandAshaHB(PriorBandAsha):
             inc_sample_type=inc_sample_type,
             inc_style=inc_style,
         )
+        self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
         self.sampling_policy = sampling_policy(pipeline_space, self.inc_sample_type)
         self.sampling_args = {
