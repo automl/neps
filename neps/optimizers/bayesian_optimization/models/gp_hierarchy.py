@@ -298,7 +298,7 @@ class ComprehensiveGPHierarchy:
         combined_kernel: str = "sum",
         verbose: bool = False,
         surrogate_model_fit_args: dict = None,
-        gpytorch_kinv: bool = True,
+        gpytorch_kinv: bool = False,
     ):
         self.likelihood = likelihood
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}

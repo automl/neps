@@ -34,6 +34,7 @@ class BayesianOptimization(BaseOptimizer):
         acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 100,
+        predefined_initial_design: None | list = None,
         budget: None | int | float = None,
         logger=None,
     ):
@@ -56,6 +57,7 @@ class BayesianOptimization(BaseOptimizer):
             random_interleave_prob: Frequency at which random configurations are sampled
                 instead of configurations from the acquisition strategy.
             patience: How many times we try something that fails before giving up.
+            predefined_initial_design: predefined initial design instead of random
             budget: Maximum budget
             logger: logger object, or None to use the neps logger
 
@@ -80,6 +82,9 @@ class BayesianOptimization(BaseOptimizer):
             raise ValueError("random_interleave_prob should be between 0.0 and 1.0")
 
         self._initial_design_size = initial_design_size
+        self._predefined_initial_design = predefined_initial_design
+        # assert self._predefined_initial_design is None or len(self._predefined_initial_design) == 0 or len(self._predefined_initial_design) <= self._initial_design_size
+
         self._random_interleave_prob = random_interleave_prob
         self._num_train_x: int = 0
         self._pending_evaluations: list = []
@@ -174,7 +179,19 @@ class BayesianOptimization(BaseOptimizer):
                 self._model_update_failed = True
 
     def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
-        if self._num_train_x == 0 and self._initial_design_size >= 1:
+        if (
+            self._predefined_initial_design is not None
+            and len(self._predefined_initial_design) > 0
+            and self._num_train_x + len(self._pending_evaluations)
+            < len(self._predefined_initial_design)
+        ):
+            config = self.pipeline_space.copy()
+            config.load_from(
+                self._predefined_initial_design[
+                    self._num_train_x + len(self._pending_evaluations)
+                ]
+            )
+        elif self._num_train_x == 0 and self._initial_design_size >= 1:
             # TODO: if default config sample it
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False

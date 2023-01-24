@@ -704,6 +704,21 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                     valid_terminals=self.terminal_to_op_names.keys(),
                     edge_attr=self.edge_attr,
                 )
+                motif_trees = self.string_tree_list[1:]
+                repetitive_mapping = {
+                    replacement: motif
+                    for motif, replacement in zip(
+                        self.terminal_to_sublanguage_map.keys(), motif_trees
+                    )
+                }
+                for subgraph in self._value[1].values():
+                    old_node_attributes = nx.get_node_attributes(subgraph, "op_name")
+                    new_node_labels = {
+                        k: (repetitive_mapping[v] if v in motif_trees else v)
+                        for k, v in old_node_attributes.items()
+                    }
+                    nx.set_node_attributes(subgraph, new_node_labels, name="op_name")
+
         return self._value
 
     def create_from_id(self, identifier: str):

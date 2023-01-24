@@ -41,7 +41,7 @@ class RegularizedEvolution(BaseOptimizer):
         self.pending_evaluations: list = []
         self.num_train_x: int = 0
         self.assisted = assisted
-        assert assisted and assisted_zero_cost_proxy is not None
+        assert not assisted or (assisted and assisted_zero_cost_proxy is not None)
         self.assisted_zero_cost_proxy = assisted_zero_cost_proxy
         if assisted_init_population_dir is not None:
             self.assisted_init_population_dir = Path(assisted_init_population_dir)
@@ -71,7 +71,7 @@ class RegularizedEvolution(BaseOptimizer):
                         )
                         for _ in range(cur_population_size * 2)
                     ]
-                    zero_cost_proxy_values = self.assisted_zero_cost_proxy(x=configs)
+                    zero_cost_proxy_values = self.assisted_zero_cost_proxy(x=configs)  # type: ignore[misc]
                     indices = np.argsort(zero_cost_proxy_values)[-cur_population_size:][
                         ::-1
                     ]
