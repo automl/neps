@@ -41,14 +41,7 @@ class FloatParameter(NumericalParameter):
         self.log = log
 
         if self.log:
-            if self.lower <= 0:
-                raise ValueError("Float parameter: bounds error (log scale).")
-            self._lower = np.log(self.lower)
-            self._upper = np.log(self.upper)
-            if self.default is not None:
-                self._default = np.log(self.default)
-            else:
-                self._default = None
+            self._set_log_values()
 
         self.value: None | float = None
 
@@ -66,8 +59,19 @@ class FloatParameter(NumericalParameter):
         float_repr = f"{self.value:.07f}" if self.value is not None else "None"
         return f"<Float, range: [{self.lower}, {self.upper}], value: {float_repr}>"
 
+    def _set_log_values(self):
+        if self.lower <= 0:
+            raise ValueError("Float parameter: bounds error (log scale).")
+        self._lower = np.log(self.lower)
+        self._upper = np.log(self.upper)
+        if self.default is not None:
+            self._default = np.log(self.default)
+        else:
+            self._default = None
+
     def _get_low_high_default(self):
         if self.log:
+            self._set_log_values()
             return self._lower, self._upper, self._default
         else:
             return self.lower, self.upper, self.default
