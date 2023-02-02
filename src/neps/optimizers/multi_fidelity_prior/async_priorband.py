@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import random
 import typing
-from copy import deepcopy
 
 import numpy as np
-import pandas as pd
 from typing_extensions import Literal
 
 from metahyper import ConfigResult
 
 from ...search_spaces.search_space import SearchSpace
+from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
 from ..multi_fidelity.promotion_policy import AsyncPromotionPolicy
-from ..multi_fidelity.sampling_policy import EnsemblePolicy
+from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
 from ..multi_fidelity.successive_halving import AsynchronousSuccessiveHalvingWithPriors
 from ..multi_fidelity_prior.priorband import PriorBandBase
 
@@ -37,8 +38,18 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         prior_weight_type: str = "linear",  # could also be {"geometric"}
-        inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
-        inc_style: str = "constant",  # could also be {"decay", "dynamic"}
+        inc_sample_type: str = "crossover",  # could also be {"gaussian", "hypersphere"}
+        inc_style: str = "dynamic",  # could also be {"decay", "constant"}
+        # arguments for model
+        model_based: bool = False,  # crucial argument to set to allow model-search
+        model_policy: typing.Any = ModelPolicy,
+        surrogate_model: str | typing.Any = "gp",
+        domain_se_kernel: str = None,
+        hp_kernels: list = None,
+        surrogate_model_args: dict = None,
+        acquisition: str | BaseAcquisition = "EI",
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "random",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -72,58 +83,25 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
             },
         }
 
-    def _load_previous_observations(
-        self, previous_results: dict[str, ConfigResult]
-    ) -> None:
-        for config_id, config_val in previous_results.items():
-            _config, _rung = self._get_config_id_split(config_id)
-            perf = self.get_loss(config_val.result)
-            if int(_config) in self.observed_configs.index:
-                # config already recorded in dataframe
-                rung_recorded = self.observed_configs.at[int(_config), "rung"]
-                if rung_recorded < int(_rung):
-                    # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = perf
-            else:
-                _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), perf]],
-                    columns=self.observed_configs.columns,
-                    index=pd.Series(int(_config)),  # key for config_id
-                )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
-            # for efficiency, redefining the function to have the
-            # `rung_histories` assignment inside the for loop
-            # rung histories are collected only for `previous` and not `pending` configs
-            self.rung_histories[int(_rung)]["config"].append(int(_config))
-            self.rung_histories[int(_rung)]["perf"].append(perf)
-        return
-
-    def load_results(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
-    ) -> None:
-        self.rung_histories = {
-            rung: {"config": [], "perf": []}
-            for rung in range(self.min_rung, self.max_rung + 1)
-        }
-        super().load_results(previous_results, pending_evaluations)
-
-    def is_activate_inc(self) -> bool:
-        """Function to check optimization state to allow/disallow incumbent sampling"""
-        # THIS FUNCTION NEEDS TO BE OVERLOADED FROM PriorBandBase AS ASYNC METHODS NO
-        # FIXED SIZE BASE RUNG TO FINISH BEFORE STARTING INCUMBENT SAMPLING
-        activate_inc = False
-        _df = self.observed_configs[self.observed_configs.rung.values == self.max_rung]
-        # activate incumbent sampling only when an evaluation has been recorded at the
-        # highest rung or the max fidelity
-        if len(_df) > 0:
-            if not np.isnan(_df.iloc[0].perf):
-                activate_inc = True
-        return activate_inc
+        bo_args = dict(
+            surrogate_model=surrogate_model,
+            domain_se_kernel=domain_se_kernel,
+            hp_kernels=hp_kernels,
+            surrogate_model_args=surrogate_model_args,
+            acquisition=acquisition,
+            log_prior_weighted=log_prior_weighted,
+            acquisition_sampler=acquisition_sampler,
+        )
+        self.model_based = model_based
+        # counting non-fidelity dimensions in search space
+        ndims = sum(
+            1
+            for _, hp in self.pipeline_space.hyperparameters.items()
+            if not hp.is_fidelity
+        )
+        n_min = ndims + 1
+        self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
+        self.model_policy = model_policy(pipeline_space, **bo_args)
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -146,14 +124,16 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
 class PriorBandAshaHB(PriorBandAsha):
     """Implements a PriorBand on top of ASHA-HB (Mobster)."""
 
+    early_stopping_rate: int = 0
+
     def __init__(
         self,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = EnsemblePolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        sampling_policy: typing.Any = EnsemblePolicy,  # key difference to ASHA
+        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
@@ -162,13 +142,25 @@ class PriorBandAshaHB(PriorBandAsha):
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         prior_weight_type: str = "linear",  # could also be {"geometric"}
-        inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
-        inc_style: str = "constant",  # could also be {"decay", "dynamic"}
+        inc_sample_type: str = "crossover",  # could also be {"gaussian", "hypersphere"}
+        inc_style: str = "dynamic",  # could also be {"decay", "constant"}
+        # arguments for model
+        model_based: bool = False,  # crucial argument to set to allow model-search
+        model_policy: typing.Any = ModelPolicy,
+        surrogate_model: str | typing.Any = "gp",
+        domain_se_kernel: str = None,
+        hp_kernels: list = None,
+        surrogate_model_args: dict = None,
+        acquisition: str | BaseAcquisition = "EI",
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "random",
     ):
+        # collecting arguments required by ASHA
         args = dict(
             pipeline_space=pipeline_space,
             budget=budget,
             eta=eta,
+            early_stopping_rate=self.early_stopping_rate,
             initial_design_type=initial_design_type,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
@@ -180,22 +172,26 @@ class PriorBandAshaHB(PriorBandAsha):
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
         )
+        bo_args = dict(
+            surrogate_model=surrogate_model,
+            domain_se_kernel=domain_se_kernel,
+            hp_kernels=hp_kernels,
+            surrogate_model_args=surrogate_model_args,
+            acquisition=acquisition,
+            log_prior_weighted=log_prior_weighted,
+            acquisition_sampler=acquisition_sampler,
+        )
         super().__init__(
             **args,
+            prior_weight_type=prior_weight_type,
             inc_sample_type=inc_sample_type,
             inc_style=inc_style,
+            model_based=model_based,
+            model_policy=model_policy,
+            **bo_args,
         )
-        self.prior_weight_type = prior_weight_type
-        self.inc_sample_type = inc_sample_type
-        self.sampling_policy = sampling_policy(pipeline_space, self.inc_sample_type)
-        self.sampling_args = {
-            "inc": None,
-            "weights": {
-                "prior": 1,  # begin with only prior sampling
-                "inc": 0,
-                "random": 0,
-            },
-        }
+
+        # Creating the ASHA (SH) brackets that Hyperband iterates over
         self.sh_brackets = {}
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
@@ -203,7 +199,8 @@ class PriorBandAshaHB(PriorBandAsha):
             self.sh_brackets[s] = AsynchronousSuccessiveHalvingWithPriors(**args)
             self.sh_brackets[s].sampling_policy = self.sampling_policy
             self.sh_brackets[s].sampling_args = self.sampling_args
-        self.rung_histories = None
+            self.sh_brackets[s].model_policy = self.model_policy
+            self.sh_brackets[s].sample_new_config = self.sample_new_config
 
     def _update_sh_bracket_state(self) -> None:
         # `load_results()` for each of the SH bracket objects are not called as they are
@@ -232,7 +229,11 @@ class PriorBandAshaHB(PriorBandAsha):
         self._update_sh_bracket_state()
 
     def _get_bracket_to_run(self):
-        """Samples the ASHA bracket to run"""
+        """Samples the ASHA bracket to run.
+
+        The selected bracket always samples at its minimum rung. Thus, selecting a bracket
+        effectively selects the rung that a new sample will be evaluated at.
+        """
         # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
         # Adapting the distribution based on the current optimization state
         # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
@@ -254,278 +255,12 @@ class PriorBandAshaHB(PriorBandAsha):
         Returns:
             [type]: [description]
         """
+        # the rung to sample at
         bracket_to_run = self._get_bracket_to_run()
+
         self.set_sampling_weights_and_inc(rung=bracket_to_run)
         self.sh_brackets[bracket_to_run].sampling_args = self.sampling_args
         config, config_id, previous_config_id = self.sh_brackets[
             bracket_to_run
         ].get_config_and_ids()
         return config, config_id, previous_config_id  # type: ignore
-
-
-# class AsyncPriorBand(PriorBandAsha):
-#     def __init__(
-#         self,
-#         pipeline_space: SearchSpace,
-#         budget: int,
-#         eta: int = 3,
-#         early_stopping_rate: int = 0,
-#         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-#         sampling_policy: typing.Any = EnsemblePolicy,  # key difference to ASHA
-#         promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
-#         loss_value_on_error: None | float = None,
-#         cost_value_on_error: None | float = None,
-#         ignore_errors: bool = False,
-#         logger=None,
-#         prior_confidence: Literal["low", "medium", "high"] = "medium",
-#         random_interleave_prob: float = 0.0,
-#         sample_default_first: bool = True,
-#         inc_sample_type: str = "hypersphere",  # could be "gaussian" too
-#     ):
-#         args = dict(
-#             pipeline_space=pipeline_space,
-#             budget=budget,
-#             eta=eta,
-#             early_stopping_rate=early_stopping_rate,
-#             initial_design_type=initial_design_type,
-#             sampling_policy=sampling_policy,
-#             promotion_policy=promotion_policy,
-#             loss_value_on_error=loss_value_on_error,
-#             cost_value_on_error=cost_value_on_error,
-#             ignore_errors=ignore_errors,
-#             logger=logger,
-#             prior_confidence=prior_confidence,
-#             random_interleave_prob=random_interleave_prob,
-#             sample_default_first=sample_default_first,
-#         )
-#         super().__init__(**args, inc_sample_type=inc_sample_type)
-#         self.sample_map = self.rung_map.copy()
-#         self.promotion_map = dict()
-#         resources = list(sorted(self.sample_map.values()))
-#         for i, r in enumerate(resources[1:], start=1):
-#             # collects the resources spent on promotion
-#             # for a configuration evaluated at rungs={1,2,...,max_rung}, the resource
-#             # spent could be either sample_map[rung] or promotion_map[rung]
-#             self.promotion_map[i] = resources[i] - resources[i - 1]
-#         # base rung sizes are important to calculate weights for ensemble policy sampling
-#         self.base_rung_sizes = dict()
-#         for s in range(self.max_rung + 1):
-#             args.update({"early_stopping_rate": s})
-#             _sh_bracket = AsynchronousSuccessiveHalvingWithPriors(**args)
-#             _rung_size = _sh_bracket.config_map[_sh_bracket.min_rung]
-#             self.base_rung_sizes[s] = _rung_size
-#             del _sh_bracket
-#         # clearing excess variables and memory
-#         # del self.sh_brackets
-#
-#     def is_promotable(self) -> bool:
-#         """Returns an int if a rung can be promoted, else a None."""
-#         rung_promotable = False
-#
-#         # # iterates starting from the highest fidelity promotable to the lowest fidelity
-#         for rung in reversed(range(self.min_rung, self.max_rung)):
-#             if len(self.rung_promotions[rung]) > 0:
-#                 rung_promotable = True
-#                 # stop checking when a promotable config found
-#                 # no need to search at lower fidelities
-#                 break
-#         return rung_promotable
-#
-#     def get_rung_of_resource(self, resource: float | int, promote: bool = False) -> int:
-#         mapper = self.sample_map
-#         if promote:
-#             mapper = self.promotion_map
-#         _rung = [k for k, v in mapper.items() if v == resource]
-#         if len(_rung) == 0:
-#             raise ValueError(f"{resource} not found in {mapper}. Check arg `promote`.")
-#         rung = _rung[0]
-#         return rung
-#
-#     def _scale_proportions(self, a, b):
-#         _a = a / sum([a, b])
-#         _b = b / sum([a, b])
-#         p_a = np.exp(_a) / (np.exp(_a) + np.exp(_b))
-#         p_b = np.exp(_b) / (np.exp(_a) + np.exp(_b))
-#         return p_a, p_b
-#         # _sigma_s = sigma_s / sum([sigma_s, sigma_p])
-#         # _sigma_p = sigma_p / sum([sigma_s, sigma_p])
-#         # p_sample = np.exp(_sigma_s) / (np.exp(_sigma_s) + np.exp(_sigma_p))
-#         # p_promotion = np.exp(_sigma_p) / (np.exp(_sigma_s) + np.exp(_sigma_p))
-#         # return p_a, p_b
-#
-#     def calc_prob_maps(self):
-#         # TODO: remove hard coding
-#         r = self.min_budget
-#         _eta = self.eta - 1
-#         if self.max_rung == 3:
-#             sigma_s = (
-#                 27 * r + 9 * r * self.eta + r * 6 * self.eta**2 + 4 * r * self.eta**3
-#             )
-#             sigma_p = (
-#                 9 * r * _eta + 6 * r * self.eta * _eta + 4 * r * _eta * self.eta**2
-#             )
-#             r_promotion = {
-#                 v: [9 / 19, 6 / 19, 4 / 19][i]
-#                 for i, v in enumerate(sorted(self.promotion_map.values()))
-#             }
-#             r_sample = {
-#                 v: [27 / 46, 9 / 46, 6 / 46, 4 / 46][i]
-#                 for i, v in enumerate(sorted(self.sample_map.values()))
-#             }
-#         elif self.max_rung == 2:
-#             sigma_s = 9 * r + 3 * r * self.eta + 3 * r * self.eta**2
-#             sigma_p = 3 * r * _eta + 2 * r * _eta * self.eta
-#             r_promotion = {
-#                 v: [3 / 5, 2 / 5][i]
-#                 for i, v in enumerate(sorted(self.promotion_map.values()))
-#             }
-#             r_sample = {
-#                 v: [9 / 15, 3 / 15, 3 / 15][i]
-#                 for i, v in enumerate(sorted(self.sample_map.values()))
-#             }
-#         else:
-#             raise NotImplementedError("Method applicable only for 4 rungs")
-#         p_sample, p_promotion = self._scale_proportions(sigma_s, sigma_p)
-#         return p_sample, p_promotion, r_sample, r_promotion
-#
-#     def sample_resource_to_spend(self) -> float | int | int:
-#         # TODO: no sample at a rung if a configuration not already there
-#         # TODO: inc sampling begins when 1x or 2x resources spent
-#
-#         p_sample, p_promotion, r_sample, r_promotion = self.calc_prob_maps()
-#
-#         if self.is_promotable():
-#             # hierarchical sampling to allow promotions
-#             op_choice = np.random.choice(["promote", "sample"], p=[p_promotion, p_sample])
-#             resource_map = r_promotion if op_choice == "promote" else r_sample
-#             while True:
-#                 # the sampled resource is accepted, only if
-#                 # a) sampling is selected and the chosen rung has at least one config
-#                 # b) promotion is selected and the lower rung has at least one promotion
-#                 resource = np.random.choice(
-#                     list(resource_map.keys()), p=list(resource_map.values())
-#                 )
-#                 if op_choice == "sample":
-#                     rung = self.get_rung_of_resource(resource, promote=False)
-#                     if len(self.rung_histories[rung]["config"]) and len(
-#                         self.observed_configs
-#                     ):
-#                         # need at least one config at a rung to allow samples there
-#                         break
-#                     else:
-#                         # resample a rung if rung has seen no samples
-#                         continue
-#                 rung = self.get_rung_of_resource(resource, promote=True)
-#                 if len(self.rung_promotions[rung - 1]):  # -1 safe since no promotion at 0
-#                     # need at least one promotion possible to reach the chosen rung
-#                     break
-#         else:
-#             if len(self.observed_configs) == 0:
-#                 # sampling the first config always at the lowest rung
-#                 resource = self.rung_map[self.min_rung]
-#                 rung = self.min_rung
-#                 return resource, rung
-#             while True:
-#                 # sample a rung to evaluate new sample at
-#                 resource = np.random.choice(
-#                     list(r_sample.keys()), p=list(r_sample.values())
-#                 )
-#                 rung = self.get_rung_of_resource(resource, promote=False)
-#                 if len(self.rung_histories[rung]["config"]) and len(
-#                     self.observed_configs
-#                 ):
-#                     # need at least one config at a rung to allow samples there
-#                     break
-#         return resource, rung
-#
-#     def get_config_and_ids(  # pylint: disable=no-self-use
-#         self,
-#     ) -> tuple[SearchSpace, str, str | None]:
-#         """...and this is the method that decides which point to query.
-#
-#         Returns:
-#             [type]: [description]
-#         """
-#         resource, rung = self.sample_resource_to_spend()
-#
-#         if resource in self.promotion_map.values():
-#             # promotion
-#             rung_to_promote = rung - 1
-#             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
-#             config = deepcopy(row["config"])
-#             config.fidelity.value = self.rung_map[rung]
-#             previous_config_id = f"{row.name}_{rung_to_promote}"
-#             config_id = f"{row.name}_{rung}"
-#             print(f"Promoting {rung_to_promote} to {rung}")
-#         else:
-#             # sample
-#             rung_id = rung
-#             # using random instead of np.random to be consistent with NePS BO
-#             if random.random() < self.random_interleave_prob:
-#                 config = self.pipeline_space.sample(
-#                     patience=self.patience,
-#                     user_priors=False,  # sample uniformly random
-#                     ignore_fidelity=True,
-#                 )
-#             else:
-#                 if (
-#                     self.use_priors
-#                     and self.sample_default_first
-#                     and len(self.observed_configs) == 0
-#                 ):
-#                     print("Sampling THE prior")
-#                     config = self.pipeline_space.sample_default_configuration()
-#                 else:
-#                     rung_size = self.base_rung_sizes[rung_id]
-#                     self.set_sampling_weights_and_inc(rung_size)
-#                     config = self.sample_new_config(rung=rung_id)
-#             fidelity_value = self.rung_map[rung_id]
-#             config.fidelity.value = fidelity_value
-#
-#             previous_config_id = None
-#             config_id = f"{self._generate_new_config_id()}_{rung_id}"
-#             print(f"Sampling at {rung}")
-#
-#         return config.hp_values(), config_id, previous_config_id  # type: ignore
-#
-#
-# class AsyncPriorBandDyna(AsyncPriorBand):
-#     def calc_sampling_args(self, rung_size, inc=None) -> dict:
-#         """Sets the sampling args for the EnsemblePolicy."""
-#         sampling_args = super().calc_sampling_args(rung_size, inc)
-#         if sampling_args["weights"]["inc"] == 0 or inc is None:
-#             return sampling_args
-#
-#         rung_to_run = [k for k, v in self.base_rung_sizes.items() if v == rung_size][0]
-#         rung_history = self.rung_histories[rung_to_run]
-#         prior = self.pipeline_space.sample_default_configuration()
-#         _p_prior, _p_inc = self.prior_inc_probability_ratio(rung_history, prior, inc)
-#         # remaining probability mass for prior and inc
-#         _p = 1 - sampling_args["weights"]["random"]
-#         # calculating scaled probabilities
-#         p_prior = _p_prior * _p
-#         p_inc = _p_inc * _p
-#
-#         sampling_args = {
-#             "inc": inc,
-#             "weights": {
-#                 "prior": p_prior,
-#                 "inc": p_inc,
-#                 "random": sampling_args["weights"]["random"],
-#             },
-#         }
-#         return sampling_args
-#
-#
-# class TrulyAsyncHB(AsyncPriorBand):
-#     def set_sampling_weights_and_inc(self, rung_size: int = None):
-#         policy_weights = {
-#             "prior": 0,
-#             "inc": 0,
-#             "random": 1,
-#         }
-#         self.sampling_args = {
-#             "inc": None,
-#             "weights": policy_weights,
-#         }
-#         return self.sampling_args

@@ -175,7 +175,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         _max_budget = self.max_budget
         rung_map = dict()
         for i in reversed(range(nrungs)):
-            # TODO: add +s to keys and TEST
             rung_map[i + s] = (
                 int(_max_budget)
                 if isinstance(self.pipeline_space.fidelity, IntegerParameter)
@@ -200,7 +199,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
         config_map = dict()
         for i in range(nrungs):
-            # TODO: add +s to keys and TEST
             config_map[i + s] = int(_n_config)
             _n_config //= self.eta
         return config_map
@@ -211,7 +209,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         _config, _rung = config_id.split("_")
         return _config, _rung
 
-    # TODO: check pending
     def _load_previous_observations(
         self, previous_results: dict[str, ConfigResult]
     ) -> None:
@@ -223,6 +220,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 rung_recorded = self.observed_configs.at[int(_config), "rung"]
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
+                    self.observed_configs.at[int(_config), "config"] = config_val.config
                     self.observed_configs.at[int(_config), "rung"] = int(_rung)
                     self.observed_configs.at[int(_config), "perf"] = perf
             else:

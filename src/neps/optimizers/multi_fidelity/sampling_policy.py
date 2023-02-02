@@ -146,6 +146,8 @@ class EnsemblePolicy(SamplingPolicy):
         if weights is not None:
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value
+        else:
+            print(f"Using default policy weights: {self.policy_map}")
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
@@ -184,12 +186,25 @@ class EnsemblePolicy(SamplingPolicy):
                     patience=self.patience, user_priors=user_priors, ignore_fidelity=True
                 )
             elif self.inc_type == "crossover":
-                # TODO: could instead crossover inc with a random sample
-                # generating a config from the prior
+                # choosing the configuration for crossover with incumbent
+                # the weight distributed across prior adnd inc
+                _w_priors = 1 - self.policy_map["random"]
+                # re-calculate normalized score ratio for prior-inc
+                w_prior = self.policy_map["prior"] / _w_priors
+                w_inc = self.policy_map["inc"] / _w_priors
+                # calculating difference of prior and inc score
+                score_diff = np.abs(w_prior - w_inc)
+                # using the difference in score as the weight of what to sample when
+                # if the score difference is small, crossover between incumbent and prior
+                # if the score difference is large, crossover between incumbent and random
+                probs = [1 - score_diff, score_diff]  # the order is [prior, random]
+                user_priors = np.random.choice([True, False], p=probs)
+                print(f"Crossing over with user_priors={user_priors} with p={probs}")
+                # sampling a configuration either randomly or from a prior
                 _config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=user_priors, ignore_fidelity=True
                 )
-                # injecting hyperparameters from the prior config into the incumbent
+                # injecting hyperparameters from the sampled config into the incumbent
                 # TODO: ideally lower crossover prob overtime
                 config = custom_crossover(inc, _config, crossover_prob=0.5)
             else:

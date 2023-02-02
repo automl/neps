@@ -370,7 +370,11 @@ class AsynchronousHyperband(HyperbandBase):
             bracket.observed_configs = self.observed_configs.copy()
 
     def _get_bracket_to_run(self):
-        """Samples the ASHA bracket to run"""
+        """Samples the ASHA bracket to run.
+
+        The selected bracket always samples at its minimum rung. Thus, selecting a bracket
+        effectively selects the rung that a new sample will be evaluated at.
+        """
         # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
         # Adapting the distribution based on the current optimization state
         # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
@@ -392,6 +396,7 @@ class AsynchronousHyperband(HyperbandBase):
         Returns:
             [type]: [description]
         """
+        # the rung to sample at
         bracket_to_run = self._get_bracket_to_run()
         config, config_id, previous_config_id = self.sh_brackets[
             bracket_to_run
@@ -509,3 +514,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         for _, sh in self.sh_brackets.items():
             sh.model_policy = self.model_policy
             sh.sample_new_config = self.sample_new_config
+
+
+# TODO: TrulyAsyncHyperband

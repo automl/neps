@@ -16,7 +16,7 @@ from ..multi_fidelity.hyperband import HyperbandCustomDefault
 from ..multi_fidelity.mf_bo import MFBOBase
 from ..multi_fidelity.promotion_policy import SyncPromotionPolicy
 from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
-from .utils import compute_config_dist, compute_scores
+from .utils import calc_total_resources_spent, compute_config_dist, compute_scores
 
 
 class PriorBandBase:
@@ -89,17 +89,34 @@ class PriorBandBase:
         return self.sampling_args
 
     def is_activate_inc(self) -> bool:
-        """Function to check optimization state to allow/disallow incumbent sampling"""
+        """Function to check optimization state to allow/disallow incumbent sampling.
+
+        This function checks if the total resources used for the finished evaluations
+        sums to the budget of one full SH bracket.
+        """
         activate_inc = False
 
-        bracket = self.sh_brackets[self.min_rung]
-        base_rung_size = bracket.config_map[bracket.min_rung]
+        # calculate total resource cost required for the first SH bracket in HB
+        if hasattr(self, "sh_brackets") and len(self.sh_brackets) > 1:
+            # for HB or AsyncHB which invokes multiple SH brackets
+            bracket = self.sh_brackets[self.min_rung]
+        else:
+            # for SH or ASHA which do not invoke multiple SH brackets
+            bracket = self
+        # calculating the total resources spent in the first SH bracket, taking into
+        # account the continuations, that is, the resources spent on a promoted config is
+        # not fidelity[rung] but (fidelity[rung] - fidelity[rung - 1])
+        continuation_resources = bracket.rung_map[bracket.min_rung]
+        resources = bracket.config_map[bracket.min_rung] * continuation_resources
+        for r in range(1, len(bracket.rung_map)):
+            rung = sorted(list(bracket.rung_map.keys()), reverse=False)[r]
+            continuation_resources = bracket.rung_map[rung] - bracket.rung_map[rung - 1]
+            resources += bracket.config_map[rung] * continuation_resources
 
-        configs_recorded = np.count_nonzero(
-            ~np.isnan(self.observed_configs.perf.values.tolist() + [np.nan])
-        )
+        # find resources spent so far for all finished evaluations
+        resources_used = calc_total_resources_spent(self.observed_configs, self.rung_map)
 
-        if configs_recorded >= base_rung_size:
+        if resources_used >= resources:
             activate_inc = True
         return activate_inc
 
@@ -113,8 +130,8 @@ class PriorBandBase:
             _w_prior = (self.eta**rung) * _w_random
         elif self.prior_weight_type == "linear":
             _w_random = 1
-            w_prior_min_rung = 1
-            w_prior_max_rung = self.eta
+            w_prior_min_rung = 1 * _w_random
+            w_prior_max_rung = self.eta * _w_random
             num_rungs = len(self.rung_map)
             # linearly increasing prior weight such that
             # at base rung, w_prior = w_random
@@ -125,7 +142,9 @@ class PriorBandBase:
                 endpoint=True,
                 num=num_rungs,
             )[rung]
-            pass
+        elif self.prior_weight_type == "50-50":
+            _w_random = 1
+            _w_prior = 1
         else:
             raise ValueError(f"{self.prior_weight_type} not in {{'linear', 'geometric'}}")
 
@@ -215,14 +234,14 @@ class PriorBandBase:
         as the weights for prior and incumbent sampling. These weighs are calculated
         before every sampling operation.
         """
-        # requires at least eta configurations to start computing scores
+        # requires at least eta completed configurations to begin computing scores
         if len(self.rung_histories[rung]["config"]) >= self.eta:
             # retrieve the prior
             prior = self.pipeline_space.sample_default_configuration()
             # retrieve the global incumbent
             inc = self.find_incumbent()
             # subsetting the top 1/eta configs from the rung
-            top_n = len(self.rung_histories[rung]["perf"]) // self.eta
+            top_n = max(len(self.rung_histories[rung]["perf"]) // self.eta, self.eta)
             # ranking by performance
             config_idxs = np.argsort(self.rung_histories[rung]["perf"])[:top_n]
             # find the top-eta configurations in the rung
@@ -245,9 +264,10 @@ class PriorBandBase:
             w_prior = prior_score / sum(weighted_top_config_scores)
             w_inc = inc_score / sum(weighted_top_config_scores)
         else:
-            # if eta-configurations recorded yet
+            # if eta-configurations NOT recorded yet
             # check if it is the base rung
             if rung == self.min_rung:
+                # setting `w_inc = eta * w_prior` as default till score calculation begins
                 w_prior = self.eta / (1 + self.eta)
                 w_inc = 1 / (1 + self.eta)
             else:
@@ -274,9 +294,9 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
-        prior_weight_type: str = "linear",  # could also be {"geometric"}
-        inc_sample_type: str = "hypersphere",  # could also be {"gaussian", "crossover"}
-        inc_style: str = "constant",  # could also be {"decay", "dynamic"}
+        prior_weight_type: str = "linear",  # could also be {"geometric", "50-50"}
+        inc_sample_type: str = "crossover",  # could also be {"gaussian", "hypersphere"}
+        inc_style: str = "dynamic",  # could also be {"decay", "constant"}
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
         model_policy: typing.Any = ModelPolicy,
