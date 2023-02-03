@@ -190,8 +190,8 @@ class EnsemblePolicy(SamplingPolicy):
                 # the weight distributed across prior adnd inc
                 _w_priors = 1 - self.policy_map["random"]
                 # re-calculate normalized score ratio for prior-inc
-                w_prior = self.policy_map["prior"] / _w_priors
-                w_inc = self.policy_map["inc"] / _w_priors
+                w_prior = np.clip(self.policy_map["prior"] / _w_priors, a_min=0, a_max=1)
+                w_inc = np.clip(self.policy_map["inc"] / _w_priors, a_min=0, a_max=1)
                 # calculating difference of prior and inc score
                 score_diff = np.abs(w_prior - w_inc)
                 # using the difference in score as the weight of what to sample when
@@ -199,6 +199,11 @@ class EnsemblePolicy(SamplingPolicy):
                 # if the score difference is large, crossover between incumbent and random
                 probs = [1 - score_diff, score_diff]  # the order is [prior, random]
                 user_priors = np.random.choice([True, False], p=probs)
+                if (
+                    hasattr(self.pipeline_space, "has_prior")
+                    and not self.pipeline_space.has_prior
+                ):
+                    user_priors = False
                 print(f"Crossing over with user_priors={user_priors} with p={probs}")
                 # sampling a configuration either randomly or from a prior
                 _config = self.pipeline_space.sample(

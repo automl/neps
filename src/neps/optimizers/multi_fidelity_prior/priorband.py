@@ -387,6 +387,7 @@ class PriorBandNoIncToPrior(PriorBand):
 
     def set_sampling_weights_and_inc(self, rung: int):
         super().set_sampling_weights_and_inc(rung)
+        # distributing the inc weight to the prior entirely
         self.sampling_args["weights"]["prior"] += self.sampling_args["weights"]["inc"]
         self.sampling_args["weights"]["inc"] = 0
 
@@ -403,10 +404,10 @@ class PriorBandNoPriorToInc(PriorBand):
 
     def set_sampling_weights_and_inc(self, rung: int):
         super().set_sampling_weights_and_inc(rung)
-        # setting the incumbent weight to eta times of random when in-sampling activated
+        # distributing the prior weight to the incumbent entirely
         if self.sampling_args["weights"]["inc"] > 0:
-            self.sampling_args["weights"]["random"] = self.eta / (1 + self.eta)
-            self.sampling_args["weights"]["inc"] = 1 / (1 + self.eta)
+            self.sampling_args["weights"]["inc"] += self.sampling_args["weights"]["prior"]
+            self.sampling_args["weights"]["prior"] = 0
         else:
             self.sampling_args["weights"]["random"] = 1
         self.sampling_args["weights"]["prior"] = 0
