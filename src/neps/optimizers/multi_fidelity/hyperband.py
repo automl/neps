@@ -444,6 +444,9 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
 
 
 class MOBSTER(MFBOBase, AsynchronousHyperband):
+    model_based = True
+    modelling_type = "rung"
+
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -500,7 +503,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
             log_prior_weighted=log_prior_weighted,
             acquisition_sampler=acquisition_sampler,
         )
-        self.model_based = True
         # counting non-fidelity dimensions in search space
         ndims = sum(
             1

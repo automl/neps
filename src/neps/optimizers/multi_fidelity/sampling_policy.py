@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Any
 
 import numpy as np
+import pandas as pd
 
 from metahyper import instance_from_map
 
@@ -20,7 +21,11 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
 from ..bayesian_optimization.models import SurrogateModelMapping
-from ..multi_fidelity_prior.utils import compute_config_dist, custom_crossover
+from ..multi_fidelity_prior.utils import (
+    compute_config_dist,
+    custom_crossover,
+    update_fidelity,
+)
 
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
@@ -279,10 +284,11 @@ class ModelPolicy(SamplingPolicy):
             name="acquisition function",
         )
 
-        if pipeline_space.has_prior:
-            self.acquisition = DecayingPriorWeightedAcquisition(
-                self.acquisition, log=log_prior_weighted
-            )
+        # TODO: Enable only when a flag exists to toggle prior-based decaying of AF
+        # if pipeline_space.has_prior:
+        #     self.acquisition = DecayingPriorWeightedAcquisition(
+        #         self.acquisition, log=log_prior_weighted
+        #     )
 
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
@@ -293,32 +299,76 @@ class ModelPolicy(SamplingPolicy):
 
         self.sampling_args: dict = {}
 
-    def update_model(self, train_x, train_y, decay_t=None):
+    def _fantasize_pending(self, train_x, train_y, pending_x):
+        if len(pending_x) == 0:
+            return train_x, train_y
+        # fit model on finished evaluations
+        self.surrogate_model.fit(train_x, train_y)
+        # hallucinating: predict for the pending evaluations
+        _y, _ = self.surrogate_model.predict(pending_x)
+        _y = _y.detach().numpy().tolist()
+        # appending to training data
+        train_x.extend(pending_x)
+        train_y.extend(_y)
+        return train_x, train_y
 
-        pending_ids = train_y.index[np.where(train_y.isna())[0]].to_numpy()
-        observed_ids = np.setdiff1d(np.array(train_y.index), pending_ids)
-
-        if len(pending_ids) > 0:
-            # We want to use hallucinated results for the evaluations that have
-            # not finished yet. For this we fit a model on the finished
-            # evaluations and add these to the other results to fit another model.
-
-            self.surrogate_model.fit(
-                train_x[observed_ids].to_list(), train_y[observed_ids].to_list()
-            )
-
-            ys, _ = self.surrogate_model.predict(train_x[pending_ids].to_list())
-
-            train_y.loc[pending_ids] = ys.detach().numpy()
-
+    def update_model(self, train_x, train_y, pending_x, decay_t=None):
         if decay_t is None:
-            decay_t = len(observed_ids)
-
-        self.surrogate_model.fit(train_x.to_list(), train_y.to_list())
-        print(f"decay_t: {decay_t}")
+            decay_t = len(train_x)
+        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
+        self.surrogate_model.fit(train_x, train_y)
         self.acquisition.set_state(self.surrogate_model, decay_t=decay_t)
-        self.acquisition_sampler.set_state(x=train_x, y=train_y)
+        # TODO: set_state should generalize to all options
+        #  no needed to set state of sampler when using `random`
+        # self.acquisition_sampler.set_state(x=train_x, y=train_y)
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
+    def sample(
+        self, active_max_fidelity: int = None, fidelity: int = None, **kwargs
+    ) -> SearchSpace:
+        """Performs the equivalent of optimizing the acquisition function.
+
+        Performs 2 strategies as per the arguments passed:
+            * If fidelity is not None, triggers the case when the surrogate has been
+              trained jointly with the fidelity dimension, i.e., all observations ever
+              recorded. In this case, the EI for random samples is evaluated at the
+              `fidelity` where the new sample will be evaluated. The top-10 are selected,
+              and the EI for them is evaluated at the target/mmax fidelity.
+            * If active_max_fidelity is not None, triggers the case when a surrogate is
+              trained per fidelity. In this case, all samples have their fidelity
+              variable set to the same value. This value is same as that of the fidelity
+              value of the configs in the training data.
+        """
         print("Acquiring...")
-        return self.acquisition_sampler.sample(self.acquisition)
+
+        # sampling random configurations
+        samples = [
+            self.pipeline_space.sample(user_priors=False, ignore_fidelity=True)
+            for _ in range(SAMPLE_THRESHOLD)
+        ]
+
+        if fidelity is not None:
+            # w/o setting this flag, the AF eval will set all fidelities to max
+            self.acquisition.optimize_on_max_fidelity = False
+            samples = list(map(update_fidelity, samples, [fidelity] * len(samples)))
+            # sampling 3 configurations from EI
+            eis = self.acquisition.eval(x=samples, asscalar=True)
+            # extracting the 10 highest scores
+            _ids = np.argsort(eis)[-10:]
+            samples = pd.Series(samples).iloc[_ids].values.tolist()
+            # setting the fidelity to the maximum fidelity
+            self.acquisition.optimize_on_max_fidelity = True
+
+        if active_max_fidelity is not None:
+            # w/o setting this flag, the AF eval will set all fidelities to max
+            self.acquisition.optimize_on_max_fidelity = False
+            fidelity = active_max_fidelity
+            samples = list(map(update_fidelity, samples, [fidelity] * len(samples)))
+
+        # computes the EI for all `samples`
+        eis = self.acquisition.eval(x=samples, asscalar=True)
+        # extracting the highest scored sample
+        config = samples[np.argmax(eis)]
+        # TODO: can generalize s.t. sampler works for all types, currently,
+        #  random sampler in NePS does not do what is required here
+        # return self.acquisition_sampler.sample(self.acquisition)
+        return config

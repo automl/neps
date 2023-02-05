@@ -1,11 +1,16 @@
 from copy import deepcopy
-from typing import Dict, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
 import scipy
 
 from ...search_spaces.search_space import SearchSpace
+
+
+def update_fidelity(config, fidelity):
+    config.fidelity.value = fidelity
+    return config
 
 
 def custom_crossover(
@@ -19,7 +24,7 @@ def custom_crossover(
     Returns a configuration where each HP in config1 has `crossover_prob`% chance of
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
-    for i in range(patience):
+    for _ in range(patience):
         child_config = deepcopy(config1)
         for key, hyperparameter in config1.items():
             if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:

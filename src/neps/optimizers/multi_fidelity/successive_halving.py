@@ -345,6 +345,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
     def sample_new_config(
         self,
+        rung: int = None,
         **kwargs,  # pylint: disable=unused-argument
     ):
         # Samples configuration from policy or random

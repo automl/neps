@@ -116,7 +116,13 @@ class PriorBandBase:
         # find resources spent so far for all finished evaluations
         resources_used = calc_total_resources_spent(self.observed_configs, self.rung_map)
 
-        if resources_used >= resources:
+        if resources_used >= resources and len(
+            self.rung_histories[self.max_rung]["config"]
+        ):
+            # activate incumbent-based sampling if a total resources is at least
+            # equivalent to one SH bracket resource usage, and additionally, for the
+            # asynchronous case with large number of workers, the check enforces that
+            # at least one configuration has been evaluated at the highest fidelity
             activate_inc = True
         return activate_inc
 
@@ -299,6 +305,8 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         inc_style: str = "dynamic",  # could also be {"decay", "constant"}
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
+        modelling_type: str = "joint",  # could also be {"rung"}
+        initial_design_size: int = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
         domain_se_kernel: str = None,
@@ -349,6 +357,8 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             acquisition_sampler=acquisition_sampler,
         )
         self.model_based = model_based
+        self.modelling_type = modelling_type
+        self.initial_design_size = initial_design_size
         # counting non-fidelity dimensions in search space
         ndims = sum(
             1
@@ -357,6 +367,8 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         )
         n_min = ndims + 1
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
+        if self.modelling_type == "joint" and self.initial_design_size is not None:
+            self.init_size = self.initial_design_size
         self.model_policy = model_policy(pipeline_space, **bo_args)
 
         for _, sh in self.sh_brackets.items():

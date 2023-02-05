@@ -12,13 +12,14 @@ from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseA
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
+from ..multi_fidelity.mf_bo import MFBOBase
 from ..multi_fidelity.promotion_policy import AsyncPromotionPolicy
 from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
 from ..multi_fidelity.successive_halving import AsynchronousSuccessiveHalvingWithPriors
 from ..multi_fidelity_prior.priorband import PriorBandBase
 
 
-class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
+class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
     """Implements a PriorBand on top of ASHA."""
 
     def __init__(
@@ -37,11 +38,13 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
-        prior_weight_type: str = "linear",  # could also be {"geometric"}
+        prior_weight_type: str = "linear",  # could also be {"geometric", "50-50"}
         inc_sample_type: str = "crossover",  # could also be {"gaussian", "hypersphere"}
         inc_style: str = "dynamic",  # could also be {"decay", "constant"}
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
+        modelling_type: str = "joint",  # could also be {"rung"}
+        initial_design_size: int = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
         domain_se_kernel: str = None,
@@ -93,6 +96,8 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
             acquisition_sampler=acquisition_sampler,
         )
         self.model_based = model_based
+        self.modelling_type = modelling_type
+        self.initial_design_size = initial_design_size
         # counting non-fidelity dimensions in search space
         ndims = sum(
             1
@@ -100,7 +105,9 @@ class PriorBandAsha(PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
             if not hp.is_fidelity
         )
         n_min = ndims + 1
-        self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
+        self.init_size = n_min + 1  # in BOHB: init_design >= N_dim + 2
+        if self.modelling_type == "joint" and self.initial_design_size is not None:
+            self.init_size = self.initial_design_size
         self.model_policy = model_policy(pipeline_space, **bo_args)
 
     def get_config_and_ids(  # pylint: disable=no-self-use
@@ -146,6 +153,8 @@ class PriorBandAshaHB(PriorBandAsha):
         inc_style: str = "dynamic",  # could also be {"decay", "constant"}
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
+        modelling_type: str = "joint",  # could also be {"rung"}
+        initial_design_size: int = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
         domain_se_kernel: str = None,
@@ -187,6 +196,8 @@ class PriorBandAshaHB(PriorBandAsha):
             inc_sample_type=inc_sample_type,
             inc_style=inc_style,
             model_based=model_based,
+            modelling_type=modelling_type,
+            initial_design_size=initial_design_size,
             model_policy=model_policy,
             **bo_args,
         )
