@@ -132,14 +132,13 @@ class MFBOBase:
     ):
         """Samples configuration from policies or random."""
         if self.model_based and not self.is_init_phase():
-            # `rung` should not be None when not in init phase
-            active_max_rung = self._active_rung()
-            active_max_fidelity = self.rung_map[active_max_rung]
-            fidelity = self.rung_map[rung]
-
             if self.modelling_type == "rung":
+                # `rung` should not be None when not in init phase
+                active_max_rung = self._active_rung()
                 fidelity = None
+                active_max_fidelity = self.rung_map[active_max_rung]
             elif self.modelling_type == "joint":
+                fidelity = self.rung_map[rung]
                 active_max_fidelity = None
             else:
                 fidelity = active_max_fidelity = None
