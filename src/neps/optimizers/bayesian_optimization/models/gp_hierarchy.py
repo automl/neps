@@ -1,5 +1,6 @@
 import itertools
 import logging
+import warnings
 from copy import deepcopy
 from typing import Iterable, Union
 
@@ -13,6 +14,269 @@ from ..kernels.graph_kernel import GraphKernels
 from ..kernels.utils import extract_configs_hierarchy
 from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
+
+
+# Code for psd_safe_cholesky from gypytorch
+class _value_context:
+    _global_value = None
+
+    @classmethod
+    def value(cls):
+        return cls._global_value
+
+    @classmethod
+    def _set_value(cls, value):
+        cls._global_value = value
+
+    def __init__(self, value):
+        self._orig_value = self.__class__.value()
+        self._instance_value = value
+
+    def __enter__(
+        self,
+    ):
+        self.__class__._set_value(self._instance_value)
+
+    def __exit__(self, *args):
+        self.__class__._set_value(self._orig_value)
+        return False
+
+
+class _dtype_value_context:
+    _global_float_value = None
+    _global_double_value = None
+    _global_half_value = None
+
+    @classmethod
+    def value(cls, dtype):
+        if torch.is_tensor(dtype):
+            dtype = dtype.dtype
+        if dtype == torch.float:
+            return cls._global_float_value
+        elif dtype == torch.double:
+            return cls._global_double_value
+        elif dtype == torch.half:
+            return cls._global_half_value
+        else:
+            raise RuntimeError(f"Unsupported dtype for {cls.__name__}.")
+
+    @classmethod
+    def _set_value(cls, float_value, double_value, half_value):
+        if float_value is not None:
+            cls._global_float_value = float_value
+        if double_value is not None:
+            cls._global_double_value = double_value
+        if half_value is not None:
+            cls._global_half_value = half_value
+
+    def __init__(
+        self, float=None, double=None, half=None  # pylint: disable=redefined-builtin
+    ):
+        self._orig_float_value = (
+            self.__class__.value()  # pylint: disable=no-value-for-parameter
+        )
+        self._instance_float_value = float
+        self._orig_double_value = (
+            self.__class__.value()  # pylint: disable=no-value-for-parameter
+        )
+        self._instance_double_value = double
+        self._orig_half_value = (
+            self.__class__.value()  # pylint: disable=no-value-for-parameter
+        )
+        self._instance_half_value = half
+
+    def __enter__(
+        self,
+    ):
+        self.__class__._set_value(
+            self._instance_float_value,
+            self._instance_double_value,
+            self._instance_half_value,
+        )
+
+    def __exit__(self, *args):
+        self.__class__._set_value(
+            self._orig_float_value, self._orig_double_value, self._orig_half_value
+        )
+        return False
+
+
+class cholesky_jitter(_dtype_value_context):
+    """
+    The jitter value used by `psd_safe_cholesky` when using cholesky solves.
+    - Default for `float`: 1e-6
+    - Default for `double`: 1e-8
+    """
+
+    _global_float_value = 1e-6  # type: ignore[assignment]
+    _global_double_value = 1e-8  # type: ignore[assignment]
+
+    @classmethod
+    def value(cls, dtype=None):
+        if dtype is None:
+            # Deprecated in 1.4: remove in 1.5
+            warnings.warn(
+                "cholesky_jitter is now a _dtype_value_context and should be called with a dtype argument",
+                DeprecationWarning,
+            )
+            return cls._global_float_value
+        return super().value(dtype=dtype)
+
+
+class _feature_flag:
+    r"""Base class for feature flag settings with global scope.
+    The default is set via the `_default` class attribute.
+    """
+
+    _default = False
+    _state = None
+
+    @classmethod
+    def is_default(cls):
+        return cls._state is None
+
+    @classmethod
+    def on(cls):
+        if cls.is_default():
+            return cls._default
+        return cls._state
+
+    @classmethod
+    def off(cls):
+        return not cls.on()
+
+    @classmethod
+    def _set_state(cls, state):
+        cls._state = state
+
+    def __init__(self, state=True):
+        self.prev = self.__class__._state
+        self.state = state
+
+    def __enter__(self):
+        self.__class__._set_state(self.state)
+
+    def __exit__(self, *args):
+        self.__class__._set_state(self.prev)
+        return False
+
+
+class verbose_linalg(_feature_flag):
+    """
+    Print out information whenever running an expensive linear algebra routine (e.g. Cholesky, CG, Lanczos, CIQ, etc.)
+    (Default: False)
+    """
+
+    _default = False
+
+    # Create a global logger
+    logger = logging.getLogger("LinAlg (Verbose)")
+    logger.setLevel(logging.DEBUG)
+
+    # Output logging results to the stdout stream
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+
+class cholesky_max_tries(_value_context):
+    """
+    The max_tries value used by `psd_safe_cholesky` when using cholesky solves.
+    (Default: 3)
+    """
+
+    _global_value = 3  # type: ignore[assignment]
+
+
+class NumericalWarning(RuntimeWarning):
+    """
+    Warning thrown when convergence criteria are not met, or when comptuations require extra stability.
+    """
+
+    pass  # pylint: disable=unnecessary-pass
+
+
+class NanError(RuntimeError):
+    pass
+
+
+class NotPSDError(RuntimeError):
+    pass
+
+
+def _psd_safe_cholesky(A, out=None, jitter=None, max_tries=None):
+    # Maybe log
+    if verbose_linalg.on():
+        verbose_linalg.logger.debug(f"Running Cholesky on a matrix of size {A.shape}.")
+
+    if out is not None:
+        out = (out, torch.empty(A.shape[:-2], dtype=torch.int32, device=out.device))
+
+    L, info = torch.linalg.cholesky_ex(A, out=out)
+    if not torch.any(info):
+        return L
+
+    isnan = torch.isnan(A)
+    if isnan.any():
+        raise NanError(
+            f"cholesky_cpu: {isnan.sum().item()} of {A.numel()} elements of the {A.shape} tensor are NaN."
+        )
+
+    if jitter is None:
+        jitter = cholesky_jitter.value(A.dtype)
+    if max_tries is None:
+        max_tries = cholesky_max_tries.value()
+    Aprime = A.clone()
+    jitter_prev = 0
+    for i in range(max_tries):
+        jitter_new = jitter * (10**i)
+        # add jitter only where needed
+        diag_add = (
+            ((info > 0) * (jitter_new - jitter_prev))
+            .unsqueeze(-1)
+            .expand(*Aprime.shape[:-1])
+        )
+        Aprime.diagonal(dim1=-1, dim2=-2).add_(diag_add)
+        jitter_prev = jitter_new
+        warnings.warn(
+            f"A not p.d., added jitter of {jitter_new:.1e} to the diagonal",
+            NumericalWarning,
+        )
+        L, info = torch.linalg.cholesky_ex(Aprime, out=out)
+        if not torch.any(info):
+            return L
+    raise NotPSDError(
+        f"Matrix not positive definite after repeatedly adding jitter up to {jitter_new:.1e}."
+    )
+
+
+def psd_safe_cholesky(A, upper=False, out=None, jitter=None, max_tries=None):
+    """Compute the Cholesky decomposition of A. If A is only p.s.d, add a small jitter to the diagonal.
+    Args:
+        A (Tensor):
+            The tensor to compute the Cholesky decomposition of
+        upper (bool, optional):
+            See torch.cholesky
+        out (Tensor, optional):
+            See torch.cholesky
+        jitter (float, optional):
+            The jitter to add to the diagonal of A in case A is only p.s.d. If omitted,
+            uses settings.cholesky_jitter.value()
+        max_tries (int, optional):
+            Number of attempts (with successively increasing jitter) to make before raising an error.
+    """
+    L = _psd_safe_cholesky(A, out=out, jitter=jitter, max_tries=max_tries)
+    if upper:
+        if out is not None:
+            out = out.transpose_(-1, -2)
+        else:
+            L = L.transpose(-1, -2)
+    return L
+
+
+# Code for psd_safe_cholesky from gypytorch
 
 
 class ComprehensiveGPHierarchy:
@@ -31,6 +295,7 @@ class ComprehensiveGPHierarchy:
         combined_kernel: str = "sum",
         verbose: bool = False,
         surrogate_model_fit_args: dict = None,
+        gpytorch_kinv: bool = False,
     ):
         self.likelihood = likelihood
         self.surrogate_model_fit_args = surrogate_model_fit_args or {}
@@ -102,12 +367,14 @@ class ComprehensiveGPHierarchy:
         self.layer_weights = None
         self.nlml = None
 
-        self.x_configs: list = None
+        self.x_configs: list = None  # type: ignore[assignment]
         self.y: torch.Tensor = None
         self.y_: torch.Tensor = None
         self.y_mean: torch.Tensor = None
         self.y_std: torch.Tensor = None
-        self.n: int = None
+        self.n: int = None  # type: ignore[assignment]
+
+        self.gpytorch_kinv = gpytorch_kinv
 
     def _optimize_graph_kernels(self, h_: int, lengthscale_):
         weights = self.init_weights.clone()
@@ -130,6 +397,7 @@ class ComprehensiveGPHierarchy:
                         self.y,
                         self.likelihood,
                         lengthscales=lengthscale_,
+                        gpytorch_kinv=self.gpytorch_kinv,
                     )
                 else:
                     logging.warning(
@@ -147,7 +415,8 @@ class ComprehensiveGPHierarchy:
 
                 for h_combo in h_combo_candidates:
                     for i, k in enumerate(self.combined_kernel.kernels):
-                        k.change_kernel_params({"h": h_combo[i]})
+                        if isinstance(k, WeisfilerLehman):
+                            k.change_kernel_params({"h": h_combo[i]})
                     K = self.combined_kernel.fit_transform(
                         weights,
                         self.x_configs,
@@ -156,14 +425,17 @@ class ComprehensiveGPHierarchy:
                         rebuild_model=True,
                         save_gram_matrix=True,
                     )
-                    K_i, logDetK = compute_pd_inverse(K, self.likelihood)
+                    K_i, logDetK = compute_pd_inverse(
+                        K, self.likelihood, self.gpytorch_kinv
+                    )
                     nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
                     if nlml < best_nlml:
                         best_nlml = nlml
                         best_subtree_depth_combo = h_combo
                         best_K = torch.clone(K)
                 for i, k in enumerate(self.combined_kernel.kernels):
-                    k.change_kernel_params({"h": best_subtree_depth_combo[i]})
+                    if isinstance(k, WeisfilerLehman):
+                        k.change_kernel_params({"h": best_subtree_depth_combo[i]})  # type: ignore[index]
                 self.combined_kernel._gram = best_K  # pylint: disable=protected-access
             else:
                 best_nlml = torch.tensor(np.inf)
@@ -171,28 +443,34 @@ class ComprehensiveGPHierarchy:
                 best_K = None
                 train_y = self.y
 
-                for h_i in list(h_):
+                for h_i in list(h_):  # type: ignore[call-overload]
                     # only optimize h in wl kernel
-                    self.combined_kernel.kernels[0].change_kernel_params({"h": h_i})
-                    K = self.combined_kernel.fit_transform(
-                        weights,
-                        self.x_configs,
-                        normalize=self.normalize_combined_kernel,
-                        layer_weights=None,
-                        rebuild_model=True,
-                        save_gram_matrix=True,
+                    if isinstance(self.combined_kernel.kernels[0], WeisfilerLehman):
+                        self.combined_kernel.kernels[0].change_kernel_params({"h": h_i})
+                        K = self.combined_kernel.fit_transform(
+                            weights,
+                            self.x_configs,
+                            normalize=self.normalize_combined_kernel,
+                            layer_weights=None,
+                            rebuild_model=True,
+                            save_gram_matrix=True,
+                        )
+                        K_i, logDetK = compute_pd_inverse(
+                            K, self.likelihood, self.gpytorch_kinv
+                        )
+                        nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
+                        # print(i, nlml)
+                        if nlml < best_nlml:
+                            best_nlml = nlml
+                            best_subtree_depth = h_i
+                            best_K = torch.clone(K)
+                if isinstance(self.combined_kernel.kernels[0], WeisfilerLehman):
+                    self.combined_kernel.kernels[0].change_kernel_params(
+                        {"h": best_subtree_depth}
                     )
-                    K_i, logDetK = compute_pd_inverse(K, self.likelihood)
-                    nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
-                    # print(i, nlml)
-                    if nlml < best_nlml:
-                        best_nlml = nlml
-                        best_subtree_depth = h_i
-                        best_K = torch.clone(K)
-                self.combined_kernel.kernels[0].change_kernel_params(
-                    {"h": best_subtree_depth}
-                )
-                self.combined_kernel._gram = best_K  # pylint: disable=protected-access
+                    self.combined_kernel._gram = (  # pylint: disable=protected-access
+                        best_K
+                    )
 
     def fit(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
         self._fit(train_x, train_y, **self.surrogate_model_fit_args)
@@ -204,7 +482,9 @@ class ComprehensiveGPHierarchy:
         iters: int = 20,
         optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
-        wl_lengthscales: tuple = tuple(np.e**i for i in range(-2, 3)),
+        wl_lengthscales: tuple = tuple(
+            np.e**i for i in range(-2, 3)  # type: ignore[name-defined]
+        ),
         optimize_lik: bool = True,
         max_lik: float = 0.5,  # pylint: disable=unused-argument
         optimize_wl_layer_weights: bool = False,
@@ -218,7 +498,7 @@ class ComprehensiveGPHierarchy:
             optimizer_kwargs = {"lr": 0.1}
         if len(wl_subtree_candidates) > 0:
             self._optimize_graph_kernels(
-                wl_subtree_candidates,
+                wl_subtree_candidates,  # type: ignore[arg-type]
                 wl_lengthscales,
             )
 
@@ -234,7 +514,7 @@ class ComprehensiveGPHierarchy:
             theta_vector = torch.log(torch.tensor([0.6]))
 
         # if use continuous graph properties and we set to use stationary kernels
-        if self.d_graph_features > 0 and len(self.hp_kernels) > 0:
+        if self.d_graph_features > 0 and len(self.hp_kernels) > 0:  # type: ignore[arg-type]
             # TODO modify the code on theta_vector betlow to be compatibale with HPO
             # theta in this case are the lengthscales for the two global property of
             # the final architecture graph
@@ -282,7 +562,7 @@ class ComprehensiveGPHierarchy:
                 layer_weights=layer_weights,
                 rebuild_model=True,
             )
-            K_i, logDetK = compute_pd_inverse(K, likelihood)
+            K_i, logDetK = compute_pd_inverse(K, likelihood, self.gpytorch_kinv)
         else:
             # Select the optimizer
             assert optimizer.lower() in ["adam", "sgd"]
@@ -305,7 +585,7 @@ class ComprehensiveGPHierarchy:
                     rebuild_model=True,
                     save_gram_matrix=True,
                 )
-                K_i, logDetK = compute_pd_inverse(K, likelihood)
+                K_i, logDetK = compute_pd_inverse(K, likelihood, self.gpytorch_kinv)
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
                 nlml.backward(create_graph=True)
                 if self.verbose and i % 10 == 0:
@@ -339,7 +619,16 @@ class ComprehensiveGPHierarchy:
                 optim.zero_grad(set_to_none=True)
 
             theta_vector, weights, likelihood = optim_vars_list[np.argmin(nlml_list)]
-            K_i, logDetK = compute_pd_inverse(K, likelihood)
+            K = self.combined_kernel.fit_transform(
+                weights,
+                self.x_configs,
+                normalize=self.normalize_combined_kernel,
+                feature_lengthscale=torch.exp(theta_vector),
+                layer_weights=layer_weights,
+                rebuild_model=True,
+                save_gram_matrix=True,
+            )
+            K_i, logDetK = compute_pd_inverse(K, likelihood, self.gpytorch_kinv)
 
         # Apply the optimal hyperparameters
         # transform the weights in the combine_kernel function
@@ -478,7 +767,7 @@ class ComprehensiveGPHierarchy:
         return self.x_configs
 
     def _reset_XY(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
-        self.x_configs = train_x
+        self.x_configs = train_x  # type: ignore[assignment]
         self.n = len(self.x_configs)
         train_y_tensor = (
             train_y
@@ -678,6 +967,7 @@ def _grid_search_wl_kernel(
     subtree_prior=None,  # pylint: disable=unused-argument
     lengthscales=None,
     lengthscales_prior=None,  # pylint: disable=unused-argument
+    gpytorch_kinv: bool = False,
 ):
     """Optimize the *discrete hyperparameters* of Weisfeiler Lehman kernel.
     k: a Weisfeiler-Lehman kernel instance
@@ -704,7 +994,7 @@ def _grid_search_wl_kernel(
         k.change_kernel_params({"h": i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
         # print(K)
-        K_i, logDetK = compute_pd_inverse(K, lik)
+        K_i, logDetK = compute_pd_inverse(K, lik, gpytorch_kinv)
         # print(train_y)
         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
         # print(i, nlml)
@@ -814,25 +1104,37 @@ def generate_h_combo_candidates(hierarchy_consider):
     return h_combo_sub
 
 
-def compute_pd_inverse(K: torch.tensor, jitter: float = 1e-5):
+def compute_pd_inverse(
+    K: torch.tensor, jitter: float = 1e-5, gpytorch_kinv: bool = False
+):
     """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
-    n = K.shape[0]
-    assert (
-        isinstance(jitter, float) or jitter.ndim == 0
-    ), "only homoscedastic noise variance is allowed here!"
-    is_successful = False
-    fail_count = 0
-    max_fail = 3
-    while fail_count < max_fail and not is_successful:
+    if gpytorch_kinv:
+        Kc = psd_safe_cholesky(K)
         try:
-            jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
-            K_ = K + jitter_diag
-            Kc = torch.linalg.cholesky(K_)
-            is_successful = True
-        except RuntimeError:
-            fail_count += 1
-    if not is_successful:
-        raise RuntimeError(f"Gram matrix not positive definite despite of jitter:\n{K}")
+            Kc.required_grad = True
+        except Exception:
+            Kc = torch.Tensor(Kc)
+    else:
+        n = K.shape[0]
+        assert (
+            isinstance(jitter, float) or jitter.ndim == 0
+        ), "only homoscedastic noise variance is allowed here!"
+        is_successful = False
+        fail_count = 0
+        max_fail = 3
+        while fail_count < max_fail and not is_successful:
+            try:
+                jitter_diag = jitter * torch.eye(n, device=K.device) * 10**fail_count
+                K_ = K + jitter_diag
+                Kc = torch.linalg.cholesky(K_)
+                is_successful = True
+            except RuntimeError:
+                fail_count += 1
+        if not is_successful:
+            raise RuntimeError(
+                f"Gram matrix not positive definite despite of jitter:\n{K}"
+            )
+
     logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
     K_i = torch.cholesky_inverse(Kc)
     return K_i.to(torch.get_default_dtype()), logDetK.to(torch.get_default_dtype())
