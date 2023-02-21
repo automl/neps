@@ -205,15 +205,28 @@ class SearchSpace(collections.abc.Mapping):
         hps = {
             "continuous": [],
             "categorical": [],
+            "string": [],
             "graphs": [],
         }
         for hp in self.values():
-            hp_value = hp.normalized().value
             if isinstance(hp, CategoricalParameter):
+                hp_value = hp.normalized().value
                 hps["categorical"].append(hp_value)
             elif isinstance(hp, NumericalParameter):
+                hp_value = hp.normalized().value
                 hps["continuous"].append(hp_value)
             else:
+                # Since graph valued `.value` needs to still be present until conversion
+                # to graph is removed entirely, use a separate `value_as_string` property.
+                # Once `.value` doesn't need to be a graph anymore anywhere,
+                # `value_as_string` code can be moved to `value`
+                hp_normalized = hp.normalized()
+                if hasattr(hp, "value_as_string"):
+                    hp_value = hp_normalized.value_as_string
+                    hps["string"].append(hp_value)
+
+                # Keep the original graph value (needed by graph based methods)
+                hp_value = hp_normalized.value
                 hps["graphs"].append(hp_value)
         return hps
 

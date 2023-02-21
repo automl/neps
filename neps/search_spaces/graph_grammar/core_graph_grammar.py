@@ -757,6 +757,20 @@ class CoreGraphGrammar(Graph):
             except Exception:
                 self.edges[u, v].update({"op_name": self.edges[u, v]["op"].name})
 
+    def from_stringTree_to_string_repr(
+        self,
+        string_tree: str,
+        grammar: Grammar,
+        valid_terminals: collections.abc.KeysView,
+        edge_attr: bool = True,
+        sym_name: str = "op_name",
+        prune: bool = True,
+        add_subtree_map: bool = False,
+        return_all_subgraphs: bool = None,
+        return_graph_per_hierarchy: bool = None,
+    ) -> str | tuple[str, collections.OrderedDict]:
+        return string_tree
+
     def from_stringTree_to_graph_repr(
         self,
         string_tree: str,
@@ -1230,7 +1244,9 @@ class CoreGraphGrammar(Graph):
                     graph_per_hierarchy.popitem()
                 )  # remove last graph since it is equal to full graph
                 return_val.append(graph_per_hierarchy)
+
             return return_val
+
         return G
 
     def get_graph_representation(

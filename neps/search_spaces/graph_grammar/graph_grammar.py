@@ -142,6 +142,15 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                 )
         return self._value
 
+    @property
+    def value_as_string(self):
+        return self.from_stringTree_to_string_repr(
+            self.string_tree,
+            self.grammars[0],
+            valid_terminals=self.terminal_to_op_names.keys(),
+            edge_attr=self.edge_attr,
+        )
+
     def create_from_id(self, identifier: str):
         self.reset()
         self.id = identifier
@@ -344,6 +353,15 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
                 edge_attr=self.edge_attr,
             )
         return self._value
+
+    @property
+    def value_as_string(self):
+        return self.from_stringTree_to_string_repr(
+            self.string_tree,
+            self.full_grammar,
+            valid_terminals=self.terminal_to_op_names.keys(),
+            edge_attr=self.edge_attr,
+        )
 
     def create_from_id(self, identifier: str | list):
         self.reset()
@@ -720,6 +738,35 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                     nx.set_node_attributes(subgraph, new_node_labels, name="op_name")
 
         return self._value
+
+    @property
+    def value_as_string(self):
+        if self.fixed_macro_grammar:
+            result = []
+
+            string_list_idx = 0
+            for grammar, number_of_motifs in zip(
+                self.grammars, self.number_of_repetitive_motifs_per_grammar
+            ):
+                for _ in range(number_of_motifs):
+                    result.append(
+                        self.from_stringTree_to_string_repr(
+                            self.string_tree_list[string_list_idx],
+                            grammar,
+                            valid_terminals=self.terminal_to_op_names.keys(),
+                            edge_attr=self.edge_attr,
+                        )
+                    )
+                    string_list_idx += 1
+            result = result[0]  # TODO trick
+        else:
+            result = self.from_stringTree_to_string_repr(
+                self.string_tree,
+                self.full_grammar,
+                valid_terminals=self.terminal_to_op_names.keys(),
+                edge_attr=self.edge_attr,
+            )
+        return result
 
     def create_from_id(self, identifier: str):
         self.reset()
