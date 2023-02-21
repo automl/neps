@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import math
 from collections import deque
@@ -12,17 +14,42 @@ from nltk.grammar import Nonterminal
 from ..cfg import Grammar, choice
 
 
+class Constraint:
+    def __init__(self, current_derivation: str = None) -> None:
+        self.current_derivation = current_derivation
+
+    @staticmethod
+    def initialize_constraints(topology: str) -> Constraint:
+        raise NotImplementedError
+
+    def get_not_allowed_productions(self, productions: str) -> list[bool] | bool:
+        raise NotImplementedError
+
+    def update_context(self, new_part: str) -> None:
+        raise NotImplementedError
+
+    def get_all_potential_productions(self, production) -> list:
+        raise NotImplementedError
+
+    def mutate_not_allowed_productions(
+        self, nonterminal: str, before: str, after: str, possible_productions: list
+    ) -> list:
+        raise NotImplementedError
+
+
 class ConstrainedGrammar(Grammar):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.constraints = None
         self.none_operation = None
+        self.constraint_is_class: bool = False
 
         self._prior: dict = None
 
-    def set_constraints(self, constraints: dict, none_operation: str):
+    def set_constraints(self, constraints: dict, none_operation: str = None):
         self.constraints = constraints
         self.none_operation = none_operation
+        self.constraint_is_class = isinstance(self.constraints, Constraint)
 
     @staticmethod
     def is_constrained():
@@ -55,7 +82,7 @@ class ConstrainedGrammar(Grammar):
             _check_prior(value)
         self._prior = value
 
-    def sampler(
+    def sampler(  # type: ignore[override]
         self,
         n=1,
         start_symbol: str = None,
@@ -134,31 +161,46 @@ class ConstrainedGrammar(Grammar):
         else:
             production = choice(productions)
         counter = 0
-        current_derivation = self.constraints(production.rhs()[0])
+        if self.constraint_is_class:
+            constraints = self.constraints.initialize_constraints(production.rhs()[0])
+        else:
+            current_derivation = self.constraints(production.rhs()[0])
         for sym in production.rhs():
             if isinstance(sym, str):
                 # if terminal then add string to sequence
                 tree = tree + " " + sym
             else:
-                context_information = self.constraints(
-                    production.rhs()[0],
-                    current_derivation,
-                )
-                if isinstance(context_information, list):
-                    not_allowed_productions = self._get_not_allowed_productions(
-                        self.productions(lhs=sym), context_information[counter]
-                    )
-                elif isinstance(context_information, bool):
-                    not_allowed_productions = self._get_not_allowed_productions(
-                        self.productions(lhs=sym), context_information
+                if self.constraint_is_class:
+                    not_allowed_productions = (
+                        constraints.get_not_allowed_productions(
+                            productions=self.productions(lhs=sym)
+                        )
+                        if constraints is not None
+                        else []
                     )
                 else:
-                    raise NotImplementedError
+                    context_information = self.constraints(
+                        production.rhs()[0],
+                        current_derivation,
+                    )
+                    if isinstance(context_information, list):
+                        not_allowed_productions = self._get_not_allowed_productions(
+                            self.productions(lhs=sym), context_information[counter]
+                        )
+                    elif isinstance(context_information, bool):
+                        not_allowed_productions = self._get_not_allowed_productions(
+                            self.productions(lhs=sym), context_information
+                        )
+                    else:
+                        raise NotImplementedError
                 ret_val = self._constrained_sampler(
                     sym, not_allowed_productions, user_priors=user_priors
                 )
                 tree = tree + " " + ret_val + ")"
-                current_derivation[counter] = ret_val + ")"
+                if self.constraint_is_class:
+                    constraints.update_context(ret_val + ")")
+                else:
+                    current_derivation[counter] = ret_val + ")"
                 counter += 1
         return tree
 
@@ -417,24 +459,35 @@ class ConstrainedGrammar(Grammar):
         # chop out subtree
         pre, _, post = self.remove_subtree(parent, subtree_index)
         if pre != " " and bool(post):
-            rhs, current_derivation = self._compute_current_context(pre, post)
-            context_information = self.constraints(
-                rhs,
-                current_derivation,
-            )
-            if isinstance(context_information, list):
-                not_allowed_productions = self._get_not_allowed_productions(
-                    self.productions(lhs=Nonterminal(subtree_node)),
-                    context_information[
-                        [i for i, cd in enumerate(current_derivation) if cd is None][0]
-                    ],
-                )
-            elif isinstance(context_information, bool):
-                not_allowed_productions = self._get_not_allowed_productions(
-                    self.productions(lhs=Nonterminal(subtree_node)), context_information
+            if self.constraint_is_class:
+                not_allowed_productions = self.constraints.mutate_not_allowed_productions(
+                    subtree_node,
+                    pre,
+                    post,
+                    possible_productions=self.productions(lhs=Nonterminal(subtree_node)),
                 )
             else:
-                raise NotImplementedError
+                rhs, current_derivation = self._compute_current_context(pre, post)
+                context_information = self.constraints(
+                    rhs,
+                    current_derivation,
+                )
+                if isinstance(context_information, list):
+                    not_allowed_productions = self._get_not_allowed_productions(
+                        self.productions(lhs=Nonterminal(subtree_node)),
+                        context_information[
+                            [i for i, cd in enumerate(current_derivation) if cd is None][
+                                0
+                            ]
+                        ],
+                    )
+                elif isinstance(context_information, bool):
+                    not_allowed_productions = self._get_not_allowed_productions(
+                        self.productions(lhs=Nonterminal(subtree_node)),
+                        context_information,
+                    )
+                else:
+                    raise NotImplementedError
         else:
             not_allowed_productions = []
         _patience = patience
@@ -448,6 +501,12 @@ class ConstrainedGrammar(Grammar):
             child = pre + new_subtree + post
             if parent != child:  # ensure that parent is really mutated
                 break
+            if (
+                len(self.productions(lhs=Nonterminal(subtree_node)))
+                - len(not_allowed_productions)
+                == 1
+            ):
+                break
             _patience -= 1
         child = self._remove_empty_spaces(child)
         return child
@@ -459,6 +518,8 @@ class ConstrainedGrammar(Grammar):
         patience: int = 50,
         return_crossover_subtrees: bool = False,
     ):
+        if self.constraint_is_class:
+            raise NotImplementedError
         _patience = patience
         while _patience > 0:
             subtree_node, subtree_index = self.rand_subtree(parent1)
@@ -650,17 +711,24 @@ class ConstrainedGrammar(Grammar):
                         if isinstance(sym, Nonterminal)
                     }
                 )
-                if any(
-                    production.rhs()[0] == self.none_operation
-                    for nonterminal in nonterminals
-                    for production in self.productions(nonterminal)
-                ):
-                    potential_productions += _get_all_variants(potential_production)
-                elif not (
-                    len(potential_production.rhs()) == 1
-                    and potential_production.rhs()[0] == self.none_operation
-                ):
-                    potential_productions.append(potential_production)
+                if self.constraint_is_class:
+                    potential_productions += (
+                        self.constraints.get_all_potential_productions(
+                            potential_production
+                        )
+                    )
+                else:
+                    if any(
+                        production.rhs()[0] == self.none_operation
+                        for nonterminal in nonterminals
+                        for production in self.productions(nonterminal)
+                    ):
+                        potential_productions += _get_all_variants(potential_production)
+                    elif not (
+                        len(potential_production.rhs()) == 1
+                        and potential_production.rhs()[0] == self.none_operation
+                    ):
+                        potential_productions.append(potential_production)
             _possibilites = 0
             for potential_production in potential_productions:
                 nonterminals = [

@@ -119,7 +119,8 @@ def extract_configs_hierarchy(
                 }
                 nx.set_node_attributes(G, new_node_labels, name="op_name")
     else:
-        graphs = [g[0][0] for g in combined_graphs]
+        # graphs = [g[0][0] for g in combined_graphs]
+        graphs = combined_graphs
 
     if N > 0 and d_graph_features > 0:
         # graph_features = [c['metafeature'] for c in configs]

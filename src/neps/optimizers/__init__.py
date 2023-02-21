@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Callable
 
 from .base_optimizer import BaseOptimizer
@@ -32,6 +33,7 @@ SearcherMapping: dict[str, Callable] = {
     "random_search": RandomSearch,
     "cost_cooling": CostCooling,
     "regularized_evolution": RegularizedEvolution,
+    "assisted_regularized_evolution": partial(RegularizedEvolution, assisted=True),
     "grid_search": GridSearch,
     "successive_halving": SuccessiveHalving,
     "successive_halving_prior": SuccessiveHalvingWithPriors,
