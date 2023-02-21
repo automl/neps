@@ -93,7 +93,7 @@ class MFBOBase:
             raise ValueError("Choice of modelling_type not in {{'rung', 'joint'}}")
         # the `model_policy` class should define a function to train the surrogates
         # and set the acquisition states
-        self.model_policy.update_model(train_x, train_y, pending_x, decay_t)
+        self.model_policy.update_model(train_x, train_y, pending_x, decay_t=decay_t)
 
     def _active_rung(self):
         """Returns the highest rung that can fit a model, `None` if no rung is eligible."""
@@ -132,6 +132,7 @@ class MFBOBase:
     ):
         """Samples configuration from policies or random."""
         if self.model_based and not self.is_init_phase():
+            incumbent = None
             if self.modelling_type == "rung":
                 # `rung` should not be None when not in init phase
                 active_max_rung = self._active_rung()
@@ -140,6 +141,8 @@ class MFBOBase:
             elif self.modelling_type == "joint":
                 fidelity = self.rung_map[rung]
                 active_max_fidelity = None
+                # IMPORTANT step for correct 2-step acquisition
+                incumbent = min(self.rung_histories[rung]["perf"])
             else:
                 fidelity = active_max_fidelity = None
             assert (
@@ -150,6 +153,7 @@ class MFBOBase:
             config = self.model_policy.sample(
                 active_max_fidelity=active_max_fidelity,
                 fidelity=fidelity,
+                incumbent=incumbent,
                 **self.sampling_args,
             )
         elif self.sampling_policy is not None:

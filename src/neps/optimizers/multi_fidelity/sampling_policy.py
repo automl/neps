@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import torch
 
 from metahyper import instance_from_map
 
@@ -30,6 +31,7 @@ from ..multi_fidelity_prior.utils import (
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
 DELTA_THRESHOLD = 1e-2  # 1%
+TOP_EI_SAMPLE_COUNT = 10
 
 
 class SamplingPolicy(ABC):
@@ -349,14 +351,23 @@ class ModelPolicy(SamplingPolicy):
         if fidelity is not None:
             # w/o setting this flag, the AF eval will set all fidelities to max
             self.acquisition.optimize_on_max_fidelity = False
+            _inc_copy = self.acquisition.incumbent
+            # TODO: better design required, for example, not import torch
+            #  right now this case handles the 2-step acquisition in `sample`
+            if "incumbent" in kwargs:
+                # sets the incumbent to the best score at the required fidelity for
+                # correct computation of EI scores
+                self.acquisition.incumbent = torch.tensor(kwargs["incumbent"])
+            # updating the fidelity of the sampled configurations
             samples = list(map(update_fidelity, samples, [fidelity] * len(samples)))
-            # sampling 3 configurations from EI
+            # computing EI at the given `fidelity`
             eis = self.acquisition.eval(x=samples, asscalar=True)
             # extracting the 10 highest scores
-            _ids = np.argsort(eis)[-10:]
+            _ids = np.argsort(eis)[-TOP_EI_SAMPLE_COUNT:]
             samples = pd.Series(samples).iloc[_ids].values.tolist()
             # setting the fidelity to the maximum fidelity
             self.acquisition.optimize_on_max_fidelity = True
+            self.acquisition.incumbent = _inc_copy
 
         if active_max_fidelity is not None:
             # w/o setting this flag, the AF eval will set all fidelities to max
