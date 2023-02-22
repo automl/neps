@@ -342,6 +342,7 @@ class SearchSpace(collections.abc.Mapping):
             # First check if there is a new value for the hp and that its value is valid
             if delete_previous_defaults:
                 hp.default = None
+                hp.has_prior = False
             if delete_previous_values:
                 hp.value = None
             if hp_key not in hyperparameters:
