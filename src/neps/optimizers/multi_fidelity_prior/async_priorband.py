@@ -39,7 +39,9 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         prior_weight_type: str = "linear",  # could also be {"geometric", "50-50"}
-        inc_sample_type: str = "crossover",  # could also be {"gaussian", "hypersphere"}
+        inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
+        inc_mutation_rate: float = 0.5,
+        inc_mutation_std: float = 0.25,
         inc_style: str = "dynamic",  # could also be {"decay", "constant"}
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
@@ -72,6 +74,8 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         )
         self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
+        self.inc_mutation_rate = inc_mutation_rate
+        self.inc_mutation_std = inc_mutation_std
         self.sampling_policy = sampling_policy(
             pipeline_space=pipeline_space, inc_type=self.inc_sample_type
         )
@@ -149,7 +153,9 @@ class PriorBandAshaHB(PriorBandAsha):
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         prior_weight_type: str = "linear",  # could also be {"geometric"}
-        inc_sample_type: str = "crossover",  # could also be {"gaussian", "hypersphere"}
+        inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
+        inc_mutation_rate: float = 0.5,
+        inc_mutation_std: float = 0.25,
         inc_style: str = "dynamic",  # could also be {"decay", "constant"}
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
@@ -194,6 +200,8 @@ class PriorBandAshaHB(PriorBandAsha):
             **args,
             prior_weight_type=prior_weight_type,
             inc_sample_type=inc_sample_type,
+            inc_mutation_rate=inc_mutation_rate,
+            inc_mutation_std=inc_mutation_std,
             inc_style=inc_style,
             model_based=model_based,
             modelling_type=modelling_type,

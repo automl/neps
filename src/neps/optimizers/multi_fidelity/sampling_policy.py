@@ -26,6 +26,7 @@ from ..multi_fidelity_prior.utils import (
     compute_config_dist,
     custom_crossover,
     update_fidelity,
+    local_mutation
 )
 
 TOLERANCE = 1e-2  # 1%
@@ -100,7 +101,7 @@ class EnsemblePolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        inc_type: str = "hypersphere",
+        inc_type: str = "mutation",
     ):
         """Samples a policy as per its weights and performs the selected sampling.
 
@@ -112,6 +113,9 @@ class EnsemblePolicy(SamplingPolicy):
                 if "gaussian", samples from a gaussian around the incumbent
                 if "crossover", generates a config by crossover between a random sample
                     and the incumbent
+                if "mutation", generates a config by perturbing each hyperparameter with
+                    50% (mutation_rate=0.5) probability of selecting each hyperparmeter
+                    for perturbation, sampling a deviation N(value, mutation_std=0.5))
         """
         super().__init__(pipeline_space=pipeline_space)
         self.inc_type = inc_type
@@ -219,9 +223,18 @@ class EnsemblePolicy(SamplingPolicy):
                 # injecting hyperparameters from the sampled config into the incumbent
                 # TODO: ideally lower crossover prob overtime
                 config = custom_crossover(inc, _config, crossover_prob=0.5)
+            elif self.inc_type == "mutation":
+                if "inc_mutation_rate" in kwargs:
+                    config = local_mutation(
+                        inc,
+                        mutation_rate=kwargs["inc_mutation_rate"],
+                        std=kwargs["inc_mutation_std"]
+                    )
+                else:
+                    config = local_mutation(inc)
             else:
                 raise ValueError(
-                    f"{self.inc_type} is not in {{'hypersphere', 'gaussian'}}"
+                    f"{self.inc_type} is not in {{'mutation', 'crossover', 'hypersphere', 'gaussian'}}"
                 )
         else:
             print(f"Sampling from uniform with weights (i, p, r)={prob_weights}")
