@@ -33,17 +33,14 @@ def local_mutation(
             hp = new_config.get(hp_name)
             if hp.is_fidelity or np.random.uniform() > mutation_rate:
                 continue
-            try:
-                kwargs = {"mutation_strategy": "local_search"}
-                if isinstance(hp, CategoricalParameter):
-                    confidences = {hp.value: len(hp.choices)}
-                    kwargs["confidences"] = confidences
-                elif isinstance(hp, IntegerParameter) or isinstance(hp, FloatParameter):
-                    kwargs["std"] = std
-                hp.value = hp.mutate(**kwargs).value
-            except Exception as e:
-                print(f"{hp_name} FAILED!")
-                continue
+            kwargs = {"mutation_strategy": "local_search"}
+            if isinstance(hp, CategoricalParameter):
+                confidences = {hp.value: len(hp.choices)}
+                kwargs["confidences"] = confidences
+            elif isinstance(hp, IntegerParameter) or isinstance(hp, FloatParameter):
+                kwargs["std"] = std
+            _val = hp.mutate(**kwargs).value
+            hp.value = _val
         if not config.is_equal_value(new_config, include_fidelity=False):
             # if the new config doesn't differ from the original config then regenerate
             break

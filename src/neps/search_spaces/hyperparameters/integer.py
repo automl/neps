@@ -34,6 +34,11 @@ class IntegerParameter(FloatParameter):
     def __repr__(self):
         return f"<Integer, range: [{self.lower}, {self.upper}], value: {self.value}>"
 
+    def _set_float_hp_val(self):
+        # IMPORTANT function to call wherever `self.float_hp` is used in this class
+        self.float_hp.value = float(self.value)
+        self.float_hp.default = float(self.default)
+
     def sample(self, user_priors: bool = False):
         self.float_hp.sample(user_priors=user_priors)
         self.value = int(round(self.float_hp.value))  # type: ignore[arg-type]
@@ -47,6 +52,7 @@ class IntegerParameter(FloatParameter):
     ):
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
+        self._set_float_hp_val()
         mutant = self.float_hp.mutate(
             parent=parent,
             mutation_rate=mutation_rate,
@@ -74,6 +80,7 @@ class IntegerParameter(FloatParameter):
 
     # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
+        self._set_float_hp_val()
         neighbours = self.float_hp._get_neighbours(std, num_neighbours)
         for idx, neighbour in enumerate(neighbours):
             neighbours[idx] = float_to_integer(neighbour)
@@ -91,6 +98,7 @@ class IntegerParameter(FloatParameter):
         return hp.normalized()
 
     def set_default_confidence_score(self, default_confidence):
+        self._set_float_hp_val()
         self.float_hp.set_default_confidence_score(default_confidence)
         super().set_default_confidence_score(default_confidence)
 
