@@ -86,6 +86,7 @@ class CategoricalParameter(Parameter):
         parent=None,
         mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
+        **kwargs
     ):
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
@@ -97,7 +98,8 @@ class CategoricalParameter(Parameter):
             child = copy(self)
             child.sample()
         elif mutation_strategy == "local_search":
-            child = self._get_neighbours(num_neighbours=1)[0]
+            confidences = kwargs["confidencs"] if "confidences" in kwargs else None
+            child = self._get_neighbours(num_neighbours=1, confidences=confidences)[0]
         else:
             raise NotImplementedError
 
@@ -125,20 +127,34 @@ class CategoricalParameter(Parameter):
         # expected len(children) == num_neighbours
         return children
 
-    def _get_neighbours(self, num_neighbours: int = 1):
+    def _get_neighbours(self, num_neighbours: int = 1, confidences: Iterable = None):
         neighbours: list[CategoricalParameter] = []
 
         idx = 0
         choices = self.choices.copy()
+        # allows the different choices to have different confidence of selection by
+        # adding more of that choice in the choices list to increase chance of selection
+        if confidences is not None:
+            for k, v in confidences.items():
+                if k in choices and v > 1:
+                    choices += [k] * v
         random.shuffle(choices)
 
         while len(neighbours) < num_neighbours:
+            # `num_choices` contains the unique set of choices unlike `choices`
+            # which can contain duplicated choices
             if num_neighbours > self.num_choices - 1:
-                choice = self.choices[np.random.randint(0, self.num_choices)]
+                # when more neighbours required than choices available,
+                # select a random choice each time
+                choice = choices[np.random.randint(0, len(choices))]
             else:
+                # when number of neigbours required is lesser than number of unique
+                # choices, shuffle the list of choices and iterate over it
                 choice = choices[idx]
                 idx += 1
             if choice == self.value and len(self.choices) > 1:
+                # this condition is triggered only for one value and as long as choice
+                # list is at least 2, this condition will not be triggered for certain
                 continue
             neighbour = deepcopy(self)
             neighbour.value = choice

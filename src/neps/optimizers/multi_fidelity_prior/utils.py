@@ -6,11 +6,49 @@ import pandas as pd
 import scipy
 
 from ...search_spaces.search_space import SearchSpace
+from ...search_spaces import (
+    CategoricalParameter,
+    FloatParameter,
+    IntegerParameter,
+)
 
 
 def update_fidelity(config, fidelity):
     config.fidelity.value = fidelity
     return config
+
+
+def local_mutation(
+    config: SearchSpace,
+    std: float = 0.25,
+    mutation_rate: float = 0.5,
+    patience: int = 50
+) -> SearchSpace:
+    """Performs a local search by mutating randomly chosen hyperparameters.
+    """
+    for _ in range(patience):
+        new_config = deepcopy(config)
+        config_hp_names = list(new_config.keys())
+        for hp_name in config_hp_names:
+            hp = new_config.get(hp_name)
+            if hp.is_fidelity or np.random.uniform() > mutation_rate:
+                continue
+            try:
+                kwargs = {"mutation_strategy": "local_search"}
+                if isinstance(hp, CategoricalParameter):
+                    confidences = {hp.value: len(hp.choices)}
+                    kwargs["confidences"] = confidences
+                elif isinstance(hp, IntegerParameter) or isinstance(hp, FloatParameter):
+                    kwargs["std"] = std
+                hp.value = hp.mutate(**kwargs).value
+            except Exception as e:
+                print(f"{hp_name} FAILED!")
+                continue
+        if not config.is_equal_value(new_config, include_fidelity=False):
+            # if the new config doesn't differ from the original config then regenerate
+            break
+
+    return new_config
 
 
 def custom_crossover(

@@ -126,13 +126,22 @@ class SearchSpace(collections.abc.Mapping):
 
     def mutate(
         self,
-        config=None,  # pylint: disable=unused-argument
-        patience=50,
+        parent=None,  # pylint: disable=unused-argument
+        mutation_rate: float = 1.0,
         mutation_strategy="smbo",
+        patience=50,
+        **kwargs
     ):
 
         if mutation_strategy == "smbo":
-            new_config = self._smbo_mutation(patience)
+            args = {
+                "parent": parent,
+                "mutation_rate": mutation_rate,
+                "mutation_strategy": "local_search",  # fixing property for SMBO mutation
+                "patience": patience,
+            }
+            kwargs.update(args)
+            new_config = self._smbo_mutation(**kwargs)
         else:
             raise NotImplementedError("No such mutation strategy!")
 
@@ -140,7 +149,7 @@ class SearchSpace(collections.abc.Mapping):
 
         return child
 
-    def _smbo_mutation(self, patience=50):
+    def _smbo_mutation(self, patience=50, **kwargs):
         new_config = deepcopy(self.hyperparameters)
         config_hp_names = list(new_config)
 
@@ -151,9 +160,10 @@ class SearchSpace(collections.abc.Mapping):
             if isinstance(hp, NumericalParameter) and hp.is_fidelity:
                 continue
             try:
-                new_config[hp_name] = hp.mutate()
+                new_config[hp_name] = hp.mutate(**kwargs)
                 break
-            except Exception:
+            except Exception as e:
+                print(f"{hp_name} FAILED!")
                 continue
         return new_config
 

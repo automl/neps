@@ -109,6 +109,7 @@ class FloatParameter(NumericalParameter):
         parent=None,
         mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
+        **kwargs
     ):
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
@@ -119,9 +120,14 @@ class FloatParameter(NumericalParameter):
             child = deepcopy(self)
             child.sample()
         elif mutation_strategy == "local_search":
-            child = self._get_neighbours(num_neighbours=1)[
-                0
-            ]  # pylint: disable=protected-access
+            if "std" in kwargs:
+                child = self._get_neighbours(std=kwargs["std"], num_neighbours=1)[
+                    0
+                ]  # pylint: disable=protected-access
+            else:
+                child = self._get_neighbours(num_neighbours=1)[
+                    0
+                ]  # pylint: disable=protected-access
         else:
             raise NotImplementedError
 
