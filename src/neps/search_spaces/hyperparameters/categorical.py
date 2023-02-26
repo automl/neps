@@ -98,7 +98,7 @@ class CategoricalParameter(Parameter):
             child = copy(self)
             child.sample()
         elif mutation_strategy == "local_search":
-            confidences = kwargs["confidencs"] if "confidences" in kwargs else None
+            confidences = kwargs["confidences"] if "confidences" in kwargs else None
             child = self._get_neighbours(num_neighbours=1, confidences=confidences)[0]
         else:
             raise NotImplementedError
