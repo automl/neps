@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from itertools import chain
@@ -44,6 +45,30 @@ def read_tasks_and_dev_stages_from_disk(
     return results
 
 
+def read_user_prior_results_from_disk(path: str):
+    """
+    Reads the user prior results from the disk.
+    :param path: Path to the user prior results.
+    :return: dict[hyperparameter, value]
+    """
+    print("prior_path")
+    print(path)
+    # check if path is valid directory
+    if path is None or not os.path.isdir(path):
+        return {}
+    prior_iter = os.scandir(path)
+    results = {}
+    for prior_dir in prior_iter:
+        prior_dir_path = prior_dir.path
+        # check if the path is a directory
+        if not os.path.isdir(prior_dir_path):
+            continue
+        # get name of the directory
+        name = os.path.basename(prior_dir_path)
+        results[name], _, _ = metahyper.api.read(prior_dir_path)
+    return results
+
+
 def is_valid_task_path(path: str | None):
     """
     Checks if the given path is a valid task path. It follows the pattern task_00000,
@@ -82,8 +107,14 @@ def is_valid_seed_path(path: str | None):
     """
     if path is None:
         return False
-    pattern = re.compile(r".*seed_\d+")
-    return pattern.fullmatch(path) is not None and os.path.isdir(path)
+    if not os.path.isdir(path):
+        return False
+    # check if the directory name starts with "seed"
+    if not path.split(os.sep)[-1].startswith("seed"):
+        return False
+    return True
+    # pattern = re.compile(r".*seed=\d+")
+    # return pattern.fullmatch(path) is not None and os.path.isdir(path)
 
 
 def get_id_from_path(path: str | None) -> int | None:
@@ -102,25 +133,37 @@ def get_id_from_path(path: str | None) -> int | None:
     return number
 
 
-def summarize_results(working_dir: str, final_task_id: int, final_dev_id: int):
+# TODO: Implement summarize results for nested working directories with multiple experiments
+def summarize_results(
+    working_dir: str,
+    final_task_id: int | None = None,
+    final_dev_id: int | None = None,
+    sub_dir: str = "",
+    write_to_file: bool = True,
+):
     """
     Summarizes the results of the given working directory. This includes runs over
     multiple seeds. The results are saved in the working directory.
     :param working_dir: path to the working directory that contains directories for all
                         seeds
-    :param final_task_id: id of the tasks whose results should be summarized
-    :param final_dev_id: if of the development stage whose results should be summarized
+    :param final_task_id: id of the tasks whose results should be summarized. If None, all tasks are summarized.
+    :param final_dev_id: if of the development stage whose results should be summarized. If None, all development stages are summarized.
     :return: None
     """
     best_losses = []
     seed_iter = os.scandir(working_dir)
     for seed_dir in seed_iter:
-        print("seed: ", seed_dir.path)
         seed_dir_path = seed_dir.path
         if not is_valid_seed_path(seed_dir_path):
             continue
-        results = read_tasks_and_dev_stages_from_disk([seed_dir_path])
-        final_results = results[final_task_id][final_dev_id]
+        print("seed: ", seed_dir.path)
+        seed_dir_path = os.path.join(seed_dir_path, sub_dir)
+        if final_task_id is not None and final_dev_id is not None:
+            results = read_tasks_and_dev_stages_from_disk([seed_dir_path])
+            #  TOOD: only use IDs if provided
+            final_results = results[final_task_id][final_dev_id]
+        else:
+            final_results, _, _ = metahyper.api.read(seed_dir_path)
 
         # This part is copied from neps.status()
         best_loss = float("inf")
@@ -152,9 +195,68 @@ def summarize_results(working_dir: str, final_task_id: int, final_dev_id: int):
     best_losses_metrics["best_loss_quantile_75"] = float(np.quantile(best_losses, 0.75))
 
     print(best_losses_metrics)
-    task_id_str = str(final_task_id).zfill(5)
-    dev_id_str = str(final_dev_id).zfill(5)
-    with open(
-        working_dir + "/summary_task_" + task_id_str + "_dev_" + dev_id_str + ".yaml", "w"
-    ) as f:
-        yaml.dump(best_losses_metrics, f, default_flow_style=False)
+    if write_to_file:
+        task_id_str = str(final_task_id).zfill(5)
+        dev_id_str = str(final_dev_id).zfill(5)
+        file_name = working_dir + "/summary_task_" + task_id_str + "_dev_" + dev_id_str
+        with open(file_name + ".yaml", "w") as f:
+            yaml.dump(best_losses_metrics, f, default_flow_style=False)
+        with open(file_name + ".json", "w") as f:
+            f.write(json.dumps(best_losses_metrics))
+    return best_losses_metrics
+
+
+def summarize_results_all_tasks_all_devs(
+    path, sub_dir="", file_name="summary", user_prior_dir=None
+):
+    """
+    Summarizes the results of all tasks and all development stages. This includes runs over
+    multiple seeds. The results are saved in the working directory.
+    :return: None
+    """
+    # go into the first seed directory and read the tasks and dev stages
+    seed_iter = os.scandir(path)
+    results = None
+    for seed_dir in seed_iter:
+        seed_dir_path = seed_dir.path
+        if not is_valid_seed_path(seed_dir_path):
+            continue
+        seed_dir_path = os.path.join(seed_dir_path, sub_dir)
+        results = read_tasks_and_dev_stages_from_disk([seed_dir_path])
+        break
+    summary = {}
+    # iterate over all tasks and dev stages
+    for task_id, task in results.items():
+        for dev_id, _ in task.items():
+            summary[(task_id, dev_id)] = summarize_results(
+                path,
+                final_task_id=task_id,
+                final_dev_id=dev_id,
+                sub_dir=sub_dir,
+                write_to_file=False,
+            )
+    # with open(os.path.join(path, file_name) + ".yaml", "w") as f:
+    #     yaml.dump(summary, f, default_flow_style=False)
+    summary_user_prior = {}
+    if user_prior_dir is not None:
+        user_prior_results = read_user_prior_results_from_disk(
+            os.path.join(sub_dir, user_prior_dir)
+        )
+        for prior_name, _ in user_prior_results.items():
+            summary_user_prior[prior_name] = summarize_results(
+                working_dir=path,
+                sub_dir=os.path.join(sub_dir, user_prior_dir, prior_name),
+                write_to_file=False,
+            )
+    with open(os.path.join(path, file_name) + ".jsonl", "w") as f:
+        # write jsonl file with one line per task and dev stage
+        for (task_id, dev_id), metrics in summary.items():
+            f.write(
+                json.dumps(
+                    {"IDs": {"task_id": task_id, "dev_id": dev_id}, "metrics": metrics}
+                )
+            )
+            f.write("\n")
+        for prior_name, metrics in summary_user_prior.items():
+            f.write(json.dumps({"IDs": {"prior_name": prior_name}, "metrics": metrics}))
+            f.write("\n")
