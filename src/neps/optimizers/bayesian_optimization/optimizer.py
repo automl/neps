@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import random
 from typing import Any
+from typing_extensions import Literal
 
 from metahyper import ConfigResult, instance_from_map
 
+from ...search_spaces.hyperparameters.categorical import (
+    CATEGORICAL_CONFIDENCE_SCORES,
+    CategoricalParameter,
+)
+from ...search_spaces.hyperparameters.constant import ConstantParameter
+from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES, FloatParameter
+from ...search_spaces.hyperparameters.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 from .acquisition_functions import AcquisitionMapping
@@ -14,6 +22,13 @@ from .acquisition_samplers import AcquisitionSamplerMapping
 from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .kernels.get_kernels import get_kernels
 from .models import SurrogateModelMapping
+
+
+CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
+
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
 class BayesianOptimization(BaseOptimizer):
@@ -40,6 +55,7 @@ class BayesianOptimization(BaseOptimizer):
         cost_value_on_error: None | float = None,
         logger=None,
         disable_priors: bool = False,
+        prior_confidence: Literal["low", "medium", "high"] = None,
         sample_default_first: bool = False,
     ):
         """Initialise the BO loop.
@@ -84,6 +100,9 @@ class BayesianOptimization(BaseOptimizer):
         """
         if disable_priors:
             pipeline_space.has_prior = False
+            self.prior_confidence = None
+        else:
+            self.prior_confidence = prior_confidence
 
         super().__init__(
             pipeline_space=pipeline_space,
@@ -157,6 +176,39 @@ class BayesianOptimization(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
+        self._enhance_priors()
+        print()
+
+    def _enhance_priors(self, confidence_score: dict = None) -> None:
+        """Only applicable when priors are given along with a confidence.
+
+        Args:
+            confidence_score: dict
+                The confidence scores for the 2 major variable types.
+                Example: {"categorical": 5.2, "numeric": 0.15}
+        """
+        if self.prior_confidence is None:
+            return
+        if hasattr(self.pipeline_space, "has_prior") and not self.pipeline_space.has_prior:
+            return
+        for k, v in self.pipeline_space.items():
+            if v.is_fidelity or isinstance(v, ConstantParameter):
+                continue
+            elif isinstance(v, (FloatParameter, IntegerParameter)):
+                if confidence_score is None:
+                    confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                else:
+                    confidence = confidence_score["numeric"]
+                self.pipeline_space[k].default_confidence_score = confidence
+            elif isinstance(v, CategoricalParameter):
+                if confidence_score is None:
+                    confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
+                        self.prior_confidence
+                    ]
+                else:
+                    confidence = confidence_score["categorical"]
+                self.pipeline_space[k].default_confidence_score = confidence
+        return
 
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search."""
