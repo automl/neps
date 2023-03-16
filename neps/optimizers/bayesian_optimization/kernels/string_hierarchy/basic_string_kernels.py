@@ -6,94 +6,118 @@ import logging
 import torch
 
 from . import config_string
-from . import string_kernel_abc
 
 _logger = logging.getLogger(__name__)
 
 
-# StringKernelV1
+def normalize_gram(K: torch.Tensor) -> torch.Tensor:
+    K_diag = torch.sqrt(torch.diag(K))
+    K_diag_outer = torch.ger(K_diag, K_diag)
+    return K / K_diag_outer
 
-class StringKernelV1(string_kernel_abc.StringKernel):
-    def __init__(self, hierarchy_level: int | None = None):
+
+# StringKernelV1Torch
+
+class StringKernelV1(torch.nn.Module):
+    def __init__(
+        self,
+        hierarchy_level: int | None = None,
+        learnable_weights: bool = True,
+    ):
         super().__init__()
+
         self._hierarchy_level = hierarchy_level
 
-    def __str__(self) -> str:
-        return f"{self.__name__}(hierarchy_level={self._hierarchy_level})"
+        operator_weight = 1.0
+        sub_config_weight = 1.0
+        joined_operator_sub_config_weight = 1.0
 
+        self.weights = torch.nn.Parameter(
+            torch.tensor([
+                operator_weight,
+                sub_config_weight,
+                joined_operator_sub_config_weight,
+            ]),
+            requires_grad=learnable_weights,
+        )
+        if not self.weights.size() == (3,):
+            raise ValueError(
+                "Expected `weights` to have size (3,). "
+                + f"Received (weights, size): ({self.weights}, ({self.weights.size()})"
+            )
+
+        # For each instance, cache the last `_process_configs` result
+        # There is no need to cache more calls
+        #  and no need to share the cache between instances
+        self._process_configs = functools.lru_cache(maxsize=1)(self._process_configs)
+
+    # A cached class method.
+    # Computations are the same no matter the seed and instance,
+    #  but are unique to the class
+    # Other classes can have different ways of computing the result!
     @classmethod
-    def _get_symbols_from_configs(
-        cls,
-        configs: tuple[config_string.ConfigString],
-    ) -> set[str]:
+    @functools.lru_cache(maxsize=2000)  # no specific meaning, a reasonable default
+    def _get_symbols_from_config(cls, config: config_string.ConfigString) -> set[str]:
         symbols = set()
-        for config in configs:
-            for item in config.unwrapped:
-                symbols.add(item.operator)
-                if item.sub_config:
-                    symbols.add(item.sub_config)
-                    symbols.add(f"{item.operator} ({item.sub_config})")
+        for item in config.unwrapped:
+            symbols.add(item.operator)
+            if item.sub_config:
+                symbols.add(item.sub_config)
+                symbols.add(f"{item.operator} ({item.sub_config})")
         return symbols
 
-    @classmethod
     def _process_configs(
-        cls,
+        self,
         configs: tuple[config_string.ConfigString],
     ) -> torch.Tensor:
-        symbols = cls._get_symbols_from_configs(configs=configs)
+        symbols = set()
+        symbols.update(*list(
+            self.__class__._get_symbols_from_config(config=c) for c in configs
+        ))
         symbols = sorted(list(symbols), key=len)
 
         n_symbols = len(symbols)
         n_configs = len(configs)
-        result = torch.zeros(size=(n_configs, n_symbols))
 
-        for i, c in enumerate(configs):
-            vals = {}
+        result = torch.zeros(size=(n_configs, n_symbols, 3))
+
+        """
+        weights:
+            torch.Tensor of size (3,) with weights corresponding to
+            [0] - weight of the `operator`
+            [1] - weight of the `sub_config`
+            [2] - weight of the joined `operator` and `sub_config`
+        """
+
+        symbol_indices = {}
+        for i, s in enumerate(symbols):
+            symbol_indices[s] = i
+
+        for conf_idx, c in enumerate(configs):
+            conf_values = result[conf_idx]
             for part in c.unwrapped:
-                vals[part.operator] = (
-                    vals.get(part.operator, 0)
-                    + 1 * (c.max_hierarchy_level / part.level) / 10
-                )
+                part_weighting = 1
+
+                # Increment `operator`
+                sym_index = symbol_indices[part.operator]
+                conf_values[sym_index][0] += part_weighting
+
                 if part.sub_config:
-                    vals[part.sub_config] = (
-                        vals.get(part.sub_config, 0)
-                        + 1 * (c.max_hierarchy_level / part.level) / 20
-                    )
-                    joined_op_subconfig = f"{part.operator} ({part.sub_config})"
-                    vals[joined_op_subconfig] = (
-                        vals.get(joined_op_subconfig, 0)
-                        + 1 * (c.max_hierarchy_level / part.level)
-                    )
+                    # Increment `sub_config`
+                    sym_index = symbol_indices[part.sub_config]
+                    conf_values[sym_index][1] += part_weighting
 
-            vec = [vals.get(item, 0) for item in symbols]
-            assert len(vec) == n_symbols, f"{len(vec)} != {n_symbols}"
+                    # Increment joined `operator` and `sub_config`
+                    joined_val = f"{part.operator} ({part.sub_config})"
+                    sym_index = symbol_indices[joined_val]
+                    conf_values[sym_index][2] += part_weighting
 
-            vec = torch.reshape(torch.tensor(vec), (1, n_symbols))
-            result[i, :] = vec
+        assert result.size() == (n_configs, n_symbols, 3), \
+            f"{result.size()} != {(n_configs, n_symbols, 3)}"
 
         return result
 
-    # A cached class method.
-    # Computations are the same no matter the seed and instance.
-    # At different hierarchy levels, the config tuple is different,
-    #  so there will not be collisions in the cached values
-    #  between different instances.
-    # Class method so that the lru_cache does not prevent garbage collection
-    #  of unused kernel instances (by keeping a reference to `self`).
-    @classmethod
-    @functools.lru_cache(maxsize=64)  # no specific meaning, a good default
-    def _transform(cls, configs: tuple[config_string.ConfigString]):
-        processed_configs = cls._process_configs(configs)
-        result = processed_configs @ processed_configs.T
-        result = cls.normalize_gram(result)
-
-        n_configs = len(configs)
-        assert result.shape == (n_configs, n_configs), \
-            (result.shape, (n_configs, n_configs))
-
-        return result
-
-    def transform(self, configs: tuple[config_string.ConfigString]):
+    def forward(self, configs: tuple[config_string.ConfigString]) -> torch.Tensor:
         if self._hierarchy_level is not None:
             configs = tuple(
                 c.at_hierarchy_level(self._hierarchy_level) for c in configs
@@ -101,99 +125,33 @@ class StringKernelV1(string_kernel_abc.StringKernel):
 
         _logger.debug(f"Called method `transform` of kernel `%s`", self)
         _logger.debug("Count of received config strings: %d", len(configs))
-        K = self.__class__._transform(configs=configs)
-        _logger.debug(
-            "Cache stats (_transform): %r",
-            self.__class__._transform.cache_info(),
-        )
-        _logger.debug("Returning K of size %s", K.shape)
-        return K
+        _logger.debug("Part weights: %s", self.weights)
 
-
-# StringKernelV2
-
-class StringKernelV2(string_kernel_abc.StringKernel):
-    def __init__(self, hierarchy_level: int | None = None):
-        super().__init__()
-        self._hierarchy_level = hierarchy_level
-
-    def __str__(self) -> str:
-        return f"{self.__name__}(hierarchy_level={self._hierarchy_level})"
-
-    @classmethod
-    def _process_configs(
-        cls,
-        configs: tuple[config_string.ConfigString],
-    ) -> torch.Tensor:
-        n_configs = len(configs)
-        result = torch.zeros(size=(n_configs, n_configs))
-
-        config_data = []
-        for c in configs:
-            config_level_data = []
-            for level in range(1, c.max_hierarchy_level + 1):
-                relevant_items = (i for i in c.unwrapped if i.level == level)
-                elements_at_level = [i.operator for i in relevant_items]
-                config_level_data.append(elements_at_level)
-            config_data.append(config_level_data)
-
-        # compute the lower triangle part of the Gram
-        for i1, c1_data in enumerate(config_data):
-            for i2 in range(i1 + 1):  # include the diagonal
-                c2_data = config_data[i2]
-
-                # `+ 1` since list indexing from 0, hierarchy indexing from 1
-                max_common_level = min(len(c1_data), len(c2_data)) + 1
-                same_count = 0
-                for level in range(1, max_common_level):
-                    # `- 1` since list indexing from 0, hierarchy indexing from 1
-                    c1_at_level = c1_data[level - 1]
-                    c2_at_level = c2_data[level - 1]
-                    min_level_length = min(len(c1_at_level), len(c2_at_level))
-                    for level_item_idx in range(min_level_length):
-                        if c1_at_level[level_item_idx] == c2_at_level[level_item_idx]:
-                            increment = 1
-                            same_count += increment
-
-                result[i1, i2] = same_count
-
-        # copy the lower triangle to the upper
-        result = result + result.T - torch.diag(torch.diag(result))
-
-        return result
-
-    # A cached class method.
-    # Computations are the same no matter the seed and instance.
-    # At different hierarchy levels, the config tuple is different,
-    #  so there will not be collisions in the cached values
-    #  between different instances.
-    # Class method so that the lru_cache does not prevent garbage collection
-    #  of unused kernel instances (by keeping a reference to `self`).
-    @classmethod
-    @functools.lru_cache(maxsize=64)  # no specific meaning, a good default
-    def _transform(cls, configs: tuple[config_string.ConfigString]):
-        processed_configs = cls._process_configs(configs)
-        result = processed_configs
-        result = cls.normalize_gram(result)
+        # processed_configs have shape: (n_configs, n_symbols, 3)
+        processed_configs = self._process_configs(configs=configs).clone().detach()
 
         n_configs = len(configs)
-        assert result.shape == (n_configs, n_configs), \
-            (result.shape, (n_configs, n_configs))
+        n_symbols = processed_configs.size()[1]  # (n_configs, n_symbols, 3)
 
-        return result
+        # Adjust the weights to be in range (0, inf)
+        with torch.no_grad():
+            torch.clamp_(self.weights, min=1e-5)
 
-    def transform(self, configs: tuple[config_string.ConfigString]):
-        if self._hierarchy_level is not None:
-            configs = tuple(
-                c.at_hierarchy_level(self._hierarchy_level) for c in configs
-            )
+        # Per config, weigh the counts of parts
+        K = self.weights * processed_configs
+        assert K.size() == processed_configs.size(), \
+            f"{K.size()} != {processed_configs.size()}"
 
-        _logger.debug(f"Called method `transform` of kernel `%s`", self)
-        _logger.debug("Count of received config strings: %d", len(configs))
-        K = self.__class__._transform(configs=configs)
-        _logger.debug(
-            "Cache stats (_transform): %r",
-            self.__class__._transform.cache_info(),
-        )
-        _logger.debug("Returning K of size %s", K.shape)
+        # Per config, sum the counts of parts
+        K = torch.sum(K, dim=2)
+        assert K.size() == (n_configs, n_symbols), \
+            f"{K.size()} != {(n_configs, n_symbols)}"
+
+        K = K @ K.T
+        K = normalize_gram(K)
+
+        assert K.size() == (n_configs, n_configs), \
+            (K.size(), (n_configs, n_configs))
+
+        _logger.debug("Returning K of size %s", K.size())
         return K

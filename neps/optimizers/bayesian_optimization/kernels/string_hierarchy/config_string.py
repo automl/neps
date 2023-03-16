@@ -132,10 +132,11 @@ class ConfigString:
 
         # TODO (birinxhl): consider debugging env variable
         # test that meaning was preserved between wrapping and unwrapping
-        assert (
-            wrap_config_into_string(unwrapped_config=unwrapped)
-            == self.config_string
-        ), f"Error during wrapping unwrapping for config string: {self.config_string}"
+        rewrapped_config = wrap_config_into_string(unwrapped_config=unwrapped)
+        assert self.config_string == rewrapped_config, (
+            "Error during wrapping unwrapping: config_string != rewrapped_config_string",
+            self.config_string, rewrapped_config
+        )
 
         self._unwrapped = unwrapped
         return self._unwrapped

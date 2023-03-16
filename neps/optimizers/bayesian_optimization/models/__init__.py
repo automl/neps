@@ -1,6 +1,6 @@
 from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
-from .string_hierarchy import GPStringHierarchy
+from .gp_string_hierarchy import GPStringHierarchy
 
 SurrogateModelMapping = {
     "gp": ComprehensiveGP,
