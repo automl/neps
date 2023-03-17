@@ -7,11 +7,12 @@ authors = [
     "Simon Schrodi <schrodi@cs.uni-freiburg.de>",
     "Maciej Janowski <janowski@cs.uni-freiburg.de>",
     "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-    "Binxin Ru",
     "Carl Hvarfner",
+    "Binxin Ru",
     "Samir Garibov",
-    "Théophane Vallaeys",
     "Nils Kober",
+    "Eddie Bergman",
+    "Théophane Vallaeys",
     "Frank Hutter",
 ]
 readme = "README.md"
