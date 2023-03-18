@@ -43,7 +43,7 @@ git push
 First check if the documentation has any issues via
 
 ```bash
-mike deploy 0.4.10 latest
+mike deploy 0.4.10 latest -u
 mike serve
 ```
 
@@ -52,7 +52,7 @@ and then looking at it.
 Afterwards, publish it via
 
 ```bash
-mike deploy 0.4.10 latest -p
+mike deploy 0.4.10 latest -up
 ```
 
 ## 4. Publish on PyPI
