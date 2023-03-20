@@ -13,11 +13,11 @@ NePS helps deep learning experts to optimize the hyperparameters and/or architec
 
 For efficiency and convenience NePS allows you to
 
-- Add your intuition as priors for the search ([example HPO](neps_examples/expert_prior_for_hyperparameters), [example JAHS](neps_examples/expert_prior_for_hyperparameters), [paper](https://openreview.net/forum?id=MMAeCXIa89))
-- Utilize low fidelity (e.g., low epoch) evaluations to focus on promising configurations ([example](neps_examples/efficiency/parallelization.md), [paper](https://openreview.net/forum?id=ds21dwfBBH))
+- Add your intuition as priors for the search ([example HPO](neps_examples/efficiency/expert_priors_for_hyperparameters.py), [example JAHS](neps_examples/experimental/expert_priors_for_architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=MMAeCXIa89))
+- Utilize low fidelity (e.g., low epoch) evaluations to focus on promising configurations ([example](neps_examples/efficiency/multi_fidelity.py), [paper](https://openreview.net/forum?id=ds21dwfBBH))
 - Trivially parallelize across machines ([example](neps_examples/efficiency/parallelization.md), [documentation](https://automl.github.io/neps/latest/parallelization/))
 
-Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.md) for maximum efficiency!
+Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.py) for maximum efficiency!
 
 ## Note
 
