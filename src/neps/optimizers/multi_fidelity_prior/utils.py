@@ -134,3 +134,19 @@ def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -
     ]
     total_resources = sum(rung_map[r] for r in rungs_used)
     return total_resources
+
+
+def get_prior_weight_for_decay(
+    resources_used: float, eta: int, min_budget, max_budget
+) -> float:
+    nrungs = np.floor(np.log(max_budget/min_budget) / np.log(eta)).astype(int) + 1
+    unit_HB_resources = nrungs * eta * max_budget
+    idx = resources_used // unit_HB_resources
+    start_weight = 1 / eta ** idx
+    end_weight = start_weight / eta
+    _resources = resources_used / unit_HB_resources - idx
+
+    # equation for line in the idx-th HB bracket in terms of resource usage
+    y = (end_weight - start_weight) * _resources + start_weight
+
+    return y

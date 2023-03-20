@@ -16,7 +16,11 @@ from ..multi_fidelity.hyperband import HyperbandCustomDefault
 from ..multi_fidelity.mf_bo import MFBOBase
 from ..multi_fidelity.promotion_policy import SyncPromotionPolicy
 from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
-from .utils import calc_total_resources_spent, compute_config_dist, compute_scores
+from .utils import (
+    calc_total_resources_spent,
+    compute_config_dist, compute_scores,
+    get_prior_weight_for_decay
+)
 
 
 class PriorBandBase:
@@ -163,7 +167,7 @@ class PriorBandBase:
         w_prior = _w_prior / (_w_prior + _w_random)
         w_random = _w_random / (_w_prior + _w_random)
         # calculating ratio of prior and incumbent weights
-        _w_prior, _w_inc = self.prior_to_incumbent_ratio(1, 0, self.max_rung)
+        _w_prior, _w_inc = self.prior_to_incumbent_ratio()
         # scaling back such that w_random + w_prior + w_inc = 1
         w_inc = _w_inc * w_prior
         w_prior = _w_prior * w_prior
@@ -175,7 +179,7 @@ class PriorBandBase:
         }
         return sampling_args
 
-    def prior_to_incumbent_ratio(self, w1: float, w2: float, rung: int) -> float | float:
+    def prior_to_incumbent_ratio(self) -> float | float:
         """Calculates the normalized weight distribution between prior and incumbent.
 
         Sum of the weights should be 1.
@@ -183,46 +187,24 @@ class PriorBandBase:
         if self.inc_style == "constant":
             return self._prior_to_incumbent_ratio_constant()
         elif self.inc_style == "decay":
-            return self._prior_to_incumbent_ratio_decay(w1, w2)
+            resources = calc_total_resources_spent(self.observed_configs, self.rung_map)
+            return self._prior_to_incumbent_ratio_decay(
+                resources, self.eta, self.min_budget, self.max_budget
+            )
         elif self.inc_style == "dynamic":
-            return self._prior_to_incumbent_ratio_dynamic(rung)
+            return self._prior_to_incumbent_ratio_dynamic(self.max_rung)
         else:
             raise ValueError(f"Invalid option {self.inc_style}")
 
-    def _get_alpha(self, crossover: int = 0.5) -> float:
-        """Calculating approximate alpha rate for a specific crossover point.
-
-        Since with every iteration, the weight is reduced by alpha. We can approximately
-        calculate at which iteration (n) we can achieve the crossover value, by
-        calculating the n-th root of the crossover value. n is chosen as the total number
-        of samples seen in a single, full Hyperband bracket.
-        """
-        nconfigs = 0
-        for bracket in self.sh_brackets.values():
-            nconfigs += bracket.config_map[bracket.min_rung]
-        alpha = np.power(crossover, 1 / nconfigs)
-        return alpha
-
-    def _prior_to_incumbent_ratio_decay(self, w1: float, w2: float) -> float | float:
+    def _prior_to_incumbent_ratio_decay(
+        self, resources: float, eta: int, min_budget, max_budget
+    ) -> float | float:
         """Decays the prior weightage and increases the incumbent weightage.
-
-        The sum of weightage for prior and incumbents is always 1 here. `alpha` controls
-        the rate of decay. The `crossover` point is where the weightage is equal.
-        `alpha` is calculated to be such that given the HB allocations, the crossover
-        will happen roughly when (eta-1) * N/eta configurations have been seen. Where,
-        N is the total number of configurations sampled in 1 full HB bracket.
         """
-        # 0.5 is the crossover point in between w_prior=1 and w_inc=0
-        alpha = self._get_alpha(crossover=0.5)
-        _w1 = w1
-        _w2 = w2
-        t = np.count_nonzero(
-            ~np.isnan(self.observed_configs.perf.values.tolist() + [np.nan])
-        )
-        for _t in range(t):
-            _w1 = alpha * _w1 + (1 - alpha) * w2
-            _w2 = alpha * _w2 + (1 - alpha) * w1
-        return _w1, _w2
+        w_prior = get_prior_weight_for_decay(resources, eta, min_budget, max_budget)
+        w_inc = 1 - w_prior
+        print(w_prior, w_inc)
+        return w_prior, w_inc
 
     def _prior_to_incumbent_ratio_constant(self) -> float | float:
         """Fixes the weightage of incumbent sampling to 1/eta of prior sampling."""
