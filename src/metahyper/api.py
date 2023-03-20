@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from ._locker import Locker
+from ._watcher import Watch
 from .utils import YamlSerializer, find_files, non_empty_file
 
 warnings.simplefilter("always", DeprecationWarning)
@@ -142,31 +143,25 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
     if logger is None:
         logger = logging.getLogger("metahyper")
 
-    if do_lock:
-        decision_lock_file = optimization_dir / ".decision_lock"
-        decision_lock_file.touch(exist_ok=True)
-        decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
-        while not decision_locker.acquire_lock():
-            time.sleep(2)
-
     if serializer is None:
         serializer = YamlSerializer()
 
-    previous_paths, pending_paths = _load_sampled_paths(
-        optimization_dir, serializer, logger
-    )
-    previous_results, pending_configs, pending_configs_free = {}, {}, {}
+    locker = Locker.local(optimization_dir, suffix="decision_lock") if do_lock else Locker.nolock()
+    with locker:
 
-    for config_id, (config_dir, _, _) in previous_paths.items():
-        previous_results[config_id] = _read_config_result(config_dir, serializer)
+        previous_paths, pending_paths = _load_sampled_paths(
+            optimization_dir, serializer, logger
+        )
+        previous_results, pending_configs, pending_configs_free = {}, {}, {}
 
-    for config_id, (config_dir, config_file) in pending_paths.items():
-        pending_configs[config_id] = serializer.load_config(config_file)
+        for config_id, (config_dir, _, _) in previous_paths.items():
+            previous_results[config_id] = _read_config_result(config_dir, serializer)
 
-        config_lock_file = config_dir / ".config_lock"
-        config_locker = Locker(config_lock_file, logger.getChild("_locker"))
-        if config_locker.acquire_lock():
-            pending_configs_free[config_id] = pending_configs[config_id]
+        for config_id, (config_dir, config_file) in pending_paths.items():
+            pending_configs[config_id] = serializer.load_config(config_file)
+
+            with Locker.local(config_file, suffix=".config_lock"):
+                pending_configs_free[config_id] = pending_configs[config_id]
 
     logger.debug(
         f"Read in {len(previous_results)} previous results and "
@@ -178,9 +173,6 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
         f"pending_configs={pending_configs}, "
         f"and pending_configs_free={pending_configs_free}, "
     )
-
-    if do_lock:
-        decision_locker.release_lock()
     return previous_results, pending_configs, pending_configs_free
 
 
@@ -355,9 +347,10 @@ def run(
     base_result_directory = optimization_dir / "results"
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
-    decision_lock_file = optimization_dir / ".decision_lock"
-    decision_lock_file.touch(exist_ok=True)
-    decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
+    # NOTE:
+    #   * Decision locker is to make sure no two samplings happen at the same time
+    #   * Revisit crash recovery of config
+    decision_locker = Locker.local(optimization_dir, suffix=".decision_lock")
 
     evaluations_in_this_run = 0
     while True:
@@ -378,8 +371,16 @@ def run(
             logger.info("Maximum evaluations per run is reached, shutting down")
             break
 
-        if decision_locker.acquire_lock():
-            try:
+        try:
+            # If we fail to obtain the decision locker, another worker is making
+            # a decision and we will start the loop again
+            with decision_locker.lock(timeout=1):
+
+                # TODO: Check if the config has actually got a result
+
+                # Try to sample a new config
+                # TODO(eddiebergman): Discuss if the sampler should take in an optional
+                # lock argument, prevents a lot of this nesting
                 with sampler.using_state(sampler_state_file, serializer):
                     if sampler.budget is not None:
                         if sampler.used_budget >= sampler.budget:
@@ -391,16 +392,40 @@ def run(
                         pipeline_directory,
                         previous_pipeline_directory,
                     ) = _sample_config(optimization_dir, sampler, serializer, logger)
+                    should_evaluate = True
 
-                config_lock_file = pipeline_directory / ".config_lock"
-                config_lock_file.touch(exist_ok=True)
-                config_locker = Locker(config_lock_file, logger.getChild("_locker"))
-                config_lock_acquired = config_locker.acquire_lock()
-            finally:
-                decision_locker.release_lock()
+        except Locker.Timeout:
+            logger.info("Another worker is already making a decision, waiting")
+            should_evaluate = False
+            continue
+        except Exception as e:
+            # TODO(eddiebergman): This should probably be more specific to errors
+            # that can be caused during the with sampler block
+            logger.info("Failed to generate a new config, waiting for the next iteration")
+            logger.debug(f"Exception during generation of config was {e}")
+            should_evaluate = False
+            continue
 
-            if config_lock_acquired:
-                try:
+        # TODO: Comment out for now
+
+        # We managed to sample a new config, great, now lets try to evaluate it
+        if should_evaluate:
+
+            # TODO(eddiebergman): Clarify with @dstoll if the inded behaviour here
+            # is that we obtain the lock if possible and then wait 45 seconds for
+            # the check below
+            # TODO: Figure out purpose of this lock
+            #   * So we know whether there is a worker evaluating this config
+            #   * If there's a configuration with no current worker, then we should evaluate
+            #       it in this worker. Only if the configuration is not already evaluated.
+            config_locker = Locker.local(pipeline_directory, suffix=".config_lock")
+
+            # TODO: Re-add block to do with filesystem syncing in the `pipline_dir / results.yaml`
+
+            with config_locker.lock():
+                # TODO: Check end condition and break if true
+
+                with config_locker.release_on_error():
                     # 1. First, we evaluate the config
                     result, metadata = _evaluate_config(
                         config_id,
@@ -420,7 +445,7 @@ def run(
                             eval_cost = float(result["cost"])
                             account_for_cost = result.get("account_for_cost", True)
                             if account_for_cost:
-                                with decision_locker.acquire_force(time_step=1):
+                                with decision_locker.lock():
                                     with sampler.using_state(
                                         sampler_state_file, serializer
                                     ):
@@ -449,9 +474,5 @@ def run(
                         )
                     else:
                         logger.info(f"Finished evaluating config {config_id}")
-                finally:
-                    config_locker.release_lock()
 
                 evaluations_in_this_run += 1
-        else:
-            time.sleep(3)

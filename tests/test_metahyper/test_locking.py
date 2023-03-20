@@ -1,14 +1,71 @@
+from __future__ import annotations
 import re
 import shutil
 import subprocess
+from typing import TypeVar, Generic
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 from more_itertools import first_true
 
+HERE = Path(__file__).parent
+LOCK_GRABBER = HERE / "lock_grabber.py"
+
+CMD = f"python {LOCK_GRABBER}"
+
+def process(cmd) -> subprocess.Popen:
+    """Run a command in a subprocess."""
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, text=True)
+
+
+@dataclass
+class Task:
+    file: Path
+
+@dataclass
+class Writer(Task):
+    content: str
+
+    def start(self) -> Worker[Writer]:
+        return Worker(self, process(f"{CMD} --file {self.file} --content {self.content}"))
+
+@dataclass
+class Reader(Task):
+
+    def start(self) -> Worker[Reader]:
+        return Worker(self, process(f"{CMD} --file {self.file}"))
+
+WorkerKind = TypeVar("WorkerKind", bound=Task)
+
+@dataclass
+class Worker(Generic[WorkerKind]):
+    task: WorkerKind
+    process: subprocess.Popen
+
+    def wait(self) -> None:
+        self.process.wait()
+
+    def stdout(self) -> str:
+        stdout = self.process.stdout
+        assert stdout is not None
+        return stdout.read()
+
+    def stderr(self) -> str:
+        stderr = self.process.stderr
+        assert stderr is not None
+        return stderr.read()
+
 
 @pytest.mark.metahyper
-def test_filelock() -> None:
+def test_many_acquirers(tmp_path: Path) -> None:
+    test_dir = tmp_path / "test_many_acquirers"
+    test_dir.mkdir()
+
+
+
+@pytest.mark.metahyper
+def test_example_with_filelock() -> None:
     """Test that the filelocking method of parallelization works as intended."""
     # Note: Not using tmpdir
     #
@@ -26,18 +83,8 @@ def test_filelock() -> None:
         assert not results_dir.exists()
 
         # Launch both processes
-        p1 = subprocess.Popen(  # pylint: disable=consider-using-with
-            "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
-            stdout=subprocess.PIPE,
-            shell=True,
-            text=True,
-        )
-        p2 = subprocess.Popen(  # pylint: disable=consider-using-with
-            "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
-            stdout=subprocess.PIPE,
-            shell=True,
-            text=True,
-        )
+        p1 = process("python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse")
+        p2 = process("python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse")
 
         # Wait for them
         for p in (p1, p2):

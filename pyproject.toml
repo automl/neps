@@ -11,7 +11,7 @@ authors = [
     "Binxin Ru",
     "Samir Garibov",
     "Nils Kober",
-    "Eddie Bergman",
+    "Eddie Bergman <eddiebergmanhs@gmail.com>",
     "Théophane Vallaeys",
     "Frank Hutter",
 ]
@@ -67,7 +67,7 @@ torch = [
 matplotlib = "^3.4"
 statsmodels = "^0.13.2"
 more-itertools = "^9.0.0"
-portalocker = "^2.6.0"
+filelock = "^3"
 seaborn = "^0.12.1"
 pyyaml = "^6.0"
 
