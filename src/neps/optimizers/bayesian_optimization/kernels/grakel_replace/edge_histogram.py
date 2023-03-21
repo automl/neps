@@ -56,7 +56,7 @@ class EdgeHistogram(VertexHistogram):
             elif self._method_calling == 3:
                 labels = dict(self._labels)
             ni = 0
-            for (i, x) in enumerate(iter(X)):
+            for i, x in enumerate(iter(X)):
                 is_iter = isinstance(x, Iterable)
                 if is_iter:
                     x = list(x)
@@ -81,7 +81,7 @@ class EdgeHistogram(VertexHistogram):
                 if L is None:
                     raise ValueError("Invalid graph entry at location " + str(i) + "!")
                 # construct the data input for the numpy array
-                for (label, frequency) in Counter(L.values()).items():
+                for label, frequency in Counter(L.values()).items():
                     # for the row that corresponds to that graph
                     rows.append(ni)
 

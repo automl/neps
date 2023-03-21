@@ -33,7 +33,6 @@ def get_op_list(string):
 
 
 def edit_distance(g1, g2):
-
     g1_ops = get_op_list(g1.name)
     g2_ops = get_op_list(g2.name)
     return np.sum([1 for i in range(len(g1_ops)) if g1_ops[i] != g2_ops[i]])

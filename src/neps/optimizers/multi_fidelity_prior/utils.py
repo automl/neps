@@ -5,12 +5,8 @@ import numpy as np
 import pandas as pd
 import scipy
 
+from ...search_spaces import CategoricalParameter, FloatParameter, IntegerParameter
 from ...search_spaces.search_space import SearchSpace
-from ...search_spaces import (
-    CategoricalParameter,
-    FloatParameter,
-    IntegerParameter,
-)
 
 
 def update_fidelity(config, fidelity):
@@ -19,13 +15,9 @@ def update_fidelity(config, fidelity):
 
 
 def local_mutation(
-    config: SearchSpace,
-    std: float = 0.25,
-    mutation_rate: float = 0.5,
-    patience: int = 50
+    config: SearchSpace, std: float = 0.25, mutation_rate: float = 0.5, patience: int = 50
 ) -> SearchSpace:
-    """Performs a local search by mutating randomly chosen hyperparameters.
-    """
+    """Performs a local search by mutating randomly chosen hyperparameters."""
     for _ in range(patience):
         new_config = deepcopy(config)
         config_hp_names = list(new_config.keys())
@@ -139,10 +131,10 @@ def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -
 def get_prior_weight_for_decay(
     resources_used: float, eta: int, min_budget, max_budget
 ) -> float:
-    nrungs = np.floor(np.log(max_budget/min_budget) / np.log(eta)).astype(int) + 1
+    nrungs = np.floor(np.log(max_budget / min_budget) / np.log(eta)).astype(int) + 1
     unit_HB_resources = nrungs * eta * max_budget
     idx = resources_used // unit_HB_resources
-    start_weight = 1 / eta ** idx
+    start_weight = 1 / eta**idx
     end_weight = start_weight / eta
     _resources = resources_used / unit_HB_resources - idx
 

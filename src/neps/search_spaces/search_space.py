@@ -130,9 +130,8 @@ class SearchSpace(collections.abc.Mapping):
         mutation_rate: float = 1.0,
         mutation_strategy="smbo",
         patience=50,
-        **kwargs
+        **kwargs,
     ):
-
         if mutation_strategy == "smbo":
             args = {
                 "parent": parent,
@@ -174,7 +173,6 @@ class SearchSpace(collections.abc.Mapping):
         patience: int = 50,
         crossover_strategy: str = "simple",
     ):
-
         if crossover_strategy == "simple":
             new_config1, new_config2 = self._simple_crossover(
                 config2, crossover_probability_per_hyperparameter, patience

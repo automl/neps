@@ -34,7 +34,6 @@ def calculate_kernel_matrix_as_tensor(
     """
 
     if Y is None:
-
         if se_kernel is not None:
             K = se_kernel.forward(X, X)
         else:

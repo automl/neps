@@ -297,7 +297,6 @@ class RegressionRunner:
 
 
 if __name__ == "__main__":
-
     json_file = Path("losses.json")
     if json_file.exists():
         with json_file.open(mode="r", encoding="utf-8") as f:

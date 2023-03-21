@@ -49,7 +49,6 @@ class CombineKernel:
         feature_lengthscale: list = None,
         **kwargs,
     ):
-
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
 

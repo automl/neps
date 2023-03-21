@@ -473,7 +473,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
     ):
-
         hb_args = dict(
             pipeline_space=pipeline_space,
             budget=budget,

@@ -86,7 +86,7 @@ class CategoricalParameter(Parameter):
         parent=None,
         mutation_rate: float = 1.0,  # pylint: disable=unused-argument
         mutation_strategy: str = "local_search",
-        **kwargs
+        **kwargs,
     ):
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")

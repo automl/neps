@@ -49,7 +49,7 @@ class IntegerParameter(FloatParameter):
         parent=None,
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
-        **kwargs
+        **kwargs,
     ):
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
@@ -58,7 +58,7 @@ class IntegerParameter(FloatParameter):
             parent=parent,
             mutation_rate=mutation_rate,
             mutation_strategy=mutation_strategy,
-            **kwargs
+            **kwargs,
         )
         child = float_to_integer(mutant)
         return child

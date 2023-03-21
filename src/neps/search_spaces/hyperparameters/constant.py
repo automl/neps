@@ -28,7 +28,7 @@ class ConstantParameter(NumericalParameter):
         parent=None,
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
-        **kwargs
+        **kwargs,
     ):
         return self
 

@@ -40,10 +40,8 @@ def process_seed(
     costs = []
 
     for config_id, config_result in stats.items():
-
         config_cost = get_cost(config_id)
         if consider_continuations:
-
             if n_workers == 1:
                 # calculates continuation costs for MF algorithms NOTE: assumes that
                 # all recorded evaluations are black-box evaluations where

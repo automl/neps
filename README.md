@@ -49,6 +49,7 @@ In code, the usage pattern can look like this:
 import neps
 import logging
 
+
 # 1. Define a function that accepts hyperparameters and computes the validation error
 def run_pipeline(hyperparameter_a: float, hyperparameter_b: int):
     validation_error = -hyperparameter_a * hyperparameter_b

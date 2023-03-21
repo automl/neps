@@ -95,7 +95,6 @@ def unnormalize_sample(array, pipeline_space):
 
 
 class RacebandSamplingPolicy(SamplingPolicy):
-
     num_fidelity_parameters = 1
 
     def __init__(

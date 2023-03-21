@@ -63,7 +63,6 @@ class CombineKernel:
         feature_lengthscale: list = None,
         **kwargs,
     ):
-
         weights = transform_weights(weights.clone())
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
@@ -161,7 +160,6 @@ class CombineKernel:
         gp_fit: bool = True,
         **kwargs,
     ):
-
         weights = transform_weights(weights.clone())
         # N = len(configs)
         # K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from typing import Any
+
 from typing_extensions import Literal
 
 from metahyper import ConfigResult, instance_from_map
@@ -22,7 +23,6 @@ from .acquisition_samplers import AcquisitionSamplerMapping
 from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
 from .kernels.get_kernels import get_kernels
 from .models import SurrogateModelMapping
-
 
 CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
@@ -189,7 +189,10 @@ class BayesianOptimization(BaseOptimizer):
         """
         if self.prior_confidence is None:
             return
-        if hasattr(self.pipeline_space, "has_prior") and not self.pipeline_space.has_prior:
+        if (
+            hasattr(self.pipeline_space, "has_prior")
+            and not self.pipeline_space.has_prior
+        ):
             return
         for k, v in self.pipeline_space.items():
             if v.is_fidelity or isinstance(v, ConstantParameter):
