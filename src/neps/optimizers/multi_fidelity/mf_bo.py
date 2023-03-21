@@ -42,7 +42,7 @@ class MFBOBase:
                 raise ValueError(
                     "Returned rung is None. Should not be so when not init phase."
                 )
-            print(f"Building model at rung {rung}")
+            self.logger.info(f"Building model at rung {rung}")
             # collecting finished evaluations at `rung`
             train_df = self.observed_configs.loc[
                 self.rung_histories[rung]["config"]

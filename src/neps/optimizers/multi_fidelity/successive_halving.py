@@ -91,13 +91,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.random_interleave_prob = random_interleave_prob
         self.sample_default_first = sample_default_first
 
-        self.min_budget = pipeline_space.fidelity.lower
-        self.max_budget = pipeline_space.fidelity.upper
+        self.min_budget = self.pipeline_space.fidelity.lower
+        self.max_budget = self.pipeline_space.fidelity.upper
         self.eta = eta
         # SH implicitly sets early_stopping_rate to 0
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
-        self.sampling_policy = sampling_policy(pipeline_space)
+        self.sampling_policy = sampling_policy(self.pipeline_space, self.logger)
         self.promotion_policy = promotion_policy(self.eta)
 
         # `max_budget_init` checks for the number of configurations that have been

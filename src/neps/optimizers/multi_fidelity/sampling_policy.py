@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any
 
+import logging
 import numpy as np
 import pandas as pd
 import torch
@@ -38,9 +39,10 @@ TOP_EI_SAMPLE_COUNT = 10
 class SamplingPolicy(ABC):
     """Base class for implementing a sampling strategy for SH and its subclasses"""
 
-    def __init__(self, pipeline_space: SearchSpace, patience: int = 100):
+    def __init__(self, pipeline_space: SearchSpace, patience: int = 100, logger=None):
         self.pipeline_space = pipeline_space
         self.patience = patience
+        self.logger = logger or logging.getLogger("neps")
 
     @abstractmethod
     def sample(self, *args, **kwargs) -> SearchSpace:
@@ -57,8 +59,9 @@ class RandomUniformPolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
+        logger=None,
     ):
-        super().__init__(pipeline_space=pipeline_space)
+        super().__init__(pipeline_space=pipeline_space, logger=logger)
 
     def sample(self, *args, **kwargs) -> SearchSpace:
         return self.pipeline_space.sample(
@@ -71,8 +74,10 @@ class FixedPriorPolicy(SamplingPolicy):
     a fixed fraction from the prior.
     """
 
-    def __init__(self, pipeline_space: SearchSpace, fraction_from_prior: float = 1):
-        super().__init__(pipeline_space=pipeline_space)
+    def __init__(
+        self, pipeline_space: SearchSpace, fraction_from_prior: float = 1, logger=None
+    ):
+        super().__init__(pipeline_space=pipeline_space, logger=logger)
         assert 0 <= fraction_from_prior <= 1
         self.fraction_from_prior = fraction_from_prior
 
@@ -102,6 +107,7 @@ class EnsemblePolicy(SamplingPolicy):
         self,
         pipeline_space: SearchSpace,
         inc_type: str = "mutation",
+        logger=None,
     ):
         """Samples a policy as per its weights and performs the selected sampling.
 
@@ -117,7 +123,7 @@ class EnsemblePolicy(SamplingPolicy):
                     50% (mutation_rate=0.5) probability of selecting each hyperparmeter
                     for perturbation, sampling a deviation N(value, mutation_std=0.5))
         """
-        super().__init__(pipeline_space=pipeline_space)
+        super().__init__(pipeline_space=pipeline_space, logger=logger)
         self.inc_type = inc_type
         # setting all probabilities uniformly
         self.policy_map = {"random": 0.33, "prior": 0.34, "inc": 0.33}
@@ -158,19 +164,18 @@ class EnsemblePolicy(SamplingPolicy):
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value
         else:
-            print(f"Using default policy weights: {self.policy_map}")
+            self.logger.info(f"Using default policy weights: {self.policy_map}")
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 
+        self.logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
+
         if policy == "prior":
-            print(f"Sampling from prior with weights (i, p, r)={prob_weights}")
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True
             )
         elif policy == "inc":
-            print(f"Sampling from inc with weights (i, p, r)={prob_weights}")
-
             # pylint: disable=simplifiable-if-statement
             if (
                 hasattr(self.pipeline_space, "has_prior")
@@ -182,7 +187,7 @@ class EnsemblePolicy(SamplingPolicy):
 
             if inc is None:
                 inc = deepcopy(self.pipeline_space.sample_default_configuration())
-                print("No incumbent config found, using default as the incumbent.")
+                self.logger.warning("No incumbent config found, using default as the incumbent.")
 
             if self.inc_type == "hypersphere":
                 distance = kwargs["distance"]
@@ -215,7 +220,9 @@ class EnsemblePolicy(SamplingPolicy):
                     and not self.pipeline_space.has_prior
                 ):
                     user_priors = False
-                print(f"Crossing over with user_priors={user_priors} with p={probs}")
+                self.logger.info(
+                    f"Crossing over with user_priors={user_priors} with p={probs}"
+                )
                 # sampling a configuration either randomly or from a prior
                 _config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=user_priors, ignore_fidelity=True
@@ -234,10 +241,10 @@ class EnsemblePolicy(SamplingPolicy):
                     config = local_mutation(inc)
             else:
                 raise ValueError(
-                    f"{self.inc_type} is not in {{'mutation', 'crossover', 'hypersphere', 'gaussian'}}"
+                    f"{self.inc_type} is not in "
+                    f"{{'mutation', 'crossover', 'hypersphere', 'gaussian'}}"
                 )
         else:
-            print(f"Sampling from uniform with weights (i, p, r)={prob_weights}")
             # random
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=True
@@ -263,8 +270,9 @@ class ModelPolicy(SamplingPolicy):
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
         patience: int = 100,
+        logger=None,
     ):
-        super().__init__(pipeline_space=pipeline_space)
+        super().__init__(pipeline_space=pipeline_space, logger=logger)
 
         surrogate_model_args = surrogate_model_args or {}
 
@@ -353,7 +361,7 @@ class ModelPolicy(SamplingPolicy):
               variable set to the same value. This value is same as that of the fidelity
               value of the configs in the training data.
         """
-        print("Acquiring...")
+        self.logger.info("Acquiring...")
 
         # sampling random configurations
         samples = [

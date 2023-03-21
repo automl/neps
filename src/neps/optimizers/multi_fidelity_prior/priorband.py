@@ -203,7 +203,6 @@ class PriorBandBase:
         """
         w_prior = get_prior_weight_for_decay(resources, eta, min_budget, max_budget)
         w_inc = 1 - w_prior
-        print(w_prior, w_inc)
         return w_prior, w_inc
 
     def _prior_to_incumbent_ratio_constant(self) -> float | float:
@@ -376,12 +375,10 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         Returns:
             [type]: [description]
         """
-        print(f"Rung={self.current_sh_bracket}")
         self.set_sampling_weights_and_inc(rung=self.current_sh_bracket)
 
         for _, sh in self.sh_brackets.items():
             sh.sampling_args = self.sampling_args
-        print(sh.sampling_args["weights"])  # pylint: disable=undefined-loop-variable
         return super().get_config_and_ids()
 
 
