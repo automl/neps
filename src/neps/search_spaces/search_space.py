@@ -163,7 +163,7 @@ class SearchSpace(collections.abc.Mapping):
                 new_config[hp_name] = hp.mutate(**kwargs)
                 break
             except Exception as e:
-                print(f"{hp_name} FAILED!")
+                self.logger.warning(f"{hp_name} FAILED!")
                 continue
         return new_config
 
