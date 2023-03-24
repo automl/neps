@@ -97,7 +97,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # SH implicitly sets early_stopping_rate to 0
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
-        self.sampling_policy = sampling_policy(self.pipeline_space, self.logger)
+        self.sampling_policy = sampling_policy(
+            pipeline_space=self.pipeline_space,
+            logger=self.logger
+        )
         self.promotion_policy = promotion_policy(self.eta)
 
         # `max_budget_init` checks for the number of configurations that have been
