@@ -18,8 +18,9 @@ from ..multi_fidelity.promotion_policy import SyncPromotionPolicy
 from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
 from .utils import (
     calc_total_resources_spent,
-    compute_config_dist, compute_scores,
-    get_prior_weight_for_decay
+    compute_config_dist,
+    compute_scores,
+    get_prior_weight_for_decay,
 )
 
 
@@ -91,10 +92,12 @@ class PriorBandBase:
                 min_dist = self.find_1nn_distance_from_incumbent(inc)
                 self.sampling_args.update({"distance": min_dist})
             elif self.inc_sample_type == "mutation":
-                self.sampling_args.update({
-                    "inc_mutation_rate": self.inc_mutation_rate,
-                    "inc_mutation_std": self.inc_mutation_std,
-                })
+                self.sampling_args.update(
+                    {
+                        "inc_mutation_rate": self.inc_mutation_rate,
+                        "inc_mutation_std": self.inc_mutation_std,
+                    }
+                )
         return self.sampling_args
 
     def is_activate_inc(self) -> bool:
@@ -199,8 +202,7 @@ class PriorBandBase:
     def _prior_to_incumbent_ratio_decay(
         self, resources: float, eta: int, min_budget, max_budget
     ) -> float | float:
-        """Decays the prior weightage and increases the incumbent weightage.
-        """
+        """Decays the prior weightage and increases the incumbent weightage."""
         w_prior = get_prior_weight_for_decay(resources, eta, min_budget, max_budget)
         w_inc = 1 - w_prior
         return w_prior, w_inc

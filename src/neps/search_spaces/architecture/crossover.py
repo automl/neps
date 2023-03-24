@@ -68,7 +68,12 @@ def repetitive_search_space_crossover(
         # parent2_motifs = _motifs_in_base_tree(
         #     child2_string_trees[0], terminal_to_sublanguage_map
         # )
-        (_, _, subtrees_child1, subtrees_child2,) = inner_crossover_strategy(
+        (
+            _,
+            _,
+            subtrees_child1,
+            subtrees_child2,
+        ) = inner_crossover_strategy(
             child1_string_trees[0],
             child2_string_trees[0],
             base_grammar,

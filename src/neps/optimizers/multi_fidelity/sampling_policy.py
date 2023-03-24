@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import Any
 
-import logging
 import numpy as np
 import pandas as pd
 import torch
@@ -26,8 +26,8 @@ from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import (
     compute_config_dist,
     custom_crossover,
+    local_mutation,
     update_fidelity,
-    local_mutation
 )
 
 TOLERANCE = 1e-2  # 1%
@@ -187,7 +187,9 @@ class EnsemblePolicy(SamplingPolicy):
 
             if inc is None:
                 inc = deepcopy(self.pipeline_space.sample_default_configuration())
-                self.logger.warning("No incumbent config found, using default as the incumbent.")
+                self.logger.warning(
+                    "No incumbent config found, using default as the incumbent."
+                )
 
             if self.inc_type == "hypersphere":
                 distance = kwargs["distance"]
@@ -235,7 +237,7 @@ class EnsemblePolicy(SamplingPolicy):
                     config = local_mutation(
                         inc,
                         mutation_rate=kwargs["inc_mutation_rate"],
-                        std=kwargs["inc_mutation_std"]
+                        std=kwargs["inc_mutation_std"],
                     )
                 else:
                     config = local_mutation(inc)

@@ -1,7 +1,8 @@
 import atexit
 import time
-import portalocker as pl
 from contextlib import contextmanager
+
+import portalocker as pl
 
 
 class Locker:

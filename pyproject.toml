@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "neural-pipeline-search"
-version = "v0.8.2"
+version = "v0.8.3"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     "Danny Stoll <stolld@cs.uni-freiburg.de>",
@@ -55,9 +55,7 @@ nltk = "^3.6.4"
 path = "^16.2.0"
 termcolor = "^1.1.0"
 scipy = "^1.7"
-# currently torch version 1.13.0 causes installation to fail on ARM Mac devices
-# `Unable to find installation candidates for nvidia-cudnn-cu11 (8.5.0.96)`
-torch = ">=1.7.0,<1.13.0"
+torch = ">=1.7.0"
 matplotlib = "^3.4"
 statsmodels = "^0.13.2"
 more-itertools = "^9.0.0"

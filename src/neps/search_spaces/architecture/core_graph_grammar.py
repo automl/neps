@@ -1446,7 +1446,6 @@ class CoreGraphGrammar(Graph):
                         graph.nodes[n]["op_name"] in self.zero_op
                         or graph.nodes[n]["op_name"] in self.identity_op
                     ):
-
                         if graph.nodes[n]["op_name"] in self.identity_op:
                             # reconnect edges for removed nodes with 'skip_connect'
                             graph.add_edges_from(

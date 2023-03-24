@@ -55,7 +55,6 @@ def get_fig_and_axs(
     nrows: int = 1,
     ncols: int = 1,
 ) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
-
     _set_general_plot_style()
 
     figsize = (4 * ncols, 3 * nrows)
@@ -85,7 +84,6 @@ def plot_incumbent(
     x_range: tuple | None = None,
     **plotting_kwargs,
 ) -> None:
-
     df = interpolate_time(incumbents=y, costs=x, x_range=x_range, scale_x=scale_x)
     df = df_to_x_range(df, x_range=x_range)
 
@@ -165,7 +163,6 @@ def interpolate_time(
 
 
 def df_to_x_range(df: pd.DataFrame, x_range: tuple | None = None) -> pd.DataFrame:
-
     x_max = np.inf if x_range is None else int(x_range[-1])
     new_entry = {c: np.nan for c in df.columns}
     _df = pd.DataFrame.from_dict(new_entry, orient="index").T
@@ -184,7 +181,6 @@ def set_legend(
     nrows: int,
     ncols: int,
 ) -> None:
-
     bbox_y_mapping = {
         1: -0.22,
         2: -0.11,
@@ -218,7 +214,6 @@ def save_fig(
     extension: str = "png",
     dpi: int = 100,
 ) -> None:
-
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     fig.savefig(

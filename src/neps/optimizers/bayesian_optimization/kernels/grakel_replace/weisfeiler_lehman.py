@@ -222,7 +222,7 @@ class WeisfeilerLehman(Kernel):
             else:
                 nx = 0
                 Gs_ed, L, distinct_values, extras = dict(), dict(), set(), dict()
-                for (idx, x) in enumerate(iter(X)):
+                for idx, x in enumerate(iter(X)):
                     is_iter = isinstance(x, collections.abc.Iterable)
                     if is_iter:
                         x = list(x)
@@ -378,7 +378,7 @@ class WeisfeilerLehman(Kernel):
             base_graph_kernel = {}
 
             K = []
-            for (i, g) in enumerate(generate_graphs(label_count, WL_labels_inverse)):
+            for i, g in enumerate(generate_graphs(label_count, WL_labels_inverse)):
                 param = self._params
                 if self._feature_weight is not None:
                     param.update({"mahalanobis_precision": self._feature_weight[i]})
@@ -498,7 +498,7 @@ class WeisfeilerLehman(Kernel):
                 nx = 0
                 distinct_values = set()
                 Gs_ed, L = dict(), dict()
-                for (i, x) in enumerate(iter(X)):
+                for i, x in enumerate(iter(X)):
                     is_iter = isinstance(x, collections.abc.Iterable)
                     if is_iter:
                         x = list(x)
@@ -538,7 +538,7 @@ class WeisfeilerLehman(Kernel):
             new_graphs = list()
             for j in range(nx):
                 new_labels = dict()
-                for (k, v) in L[j].items():
+                for k, v in L[j].items():
                     if v in self._inv_labels[0]:
                         new_labels[k] = self._inv_labels[0][v]
                     else:
@@ -577,7 +577,7 @@ class WeisfeilerLehman(Kernel):
                 new_graphs = list()
                 for j in range(nx):
                     new_labels = dict()
-                    for (k, v) in L_temp[j].items():
+                    for k, v in L_temp[j].items():
                         if v in self._inv_labels[i]:
                             new_labels[k] = self._inv_labels[i][v]
                         else:
