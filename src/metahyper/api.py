@@ -12,8 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import more_itertools
-
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
 
@@ -26,8 +24,6 @@ class ConfigResult:
     result: dict
     metadata: dict
 
-    # TODO (Nlis): allow other entries in result instead of "loss" and implement exception
-    #  handling if key does not exist
     def __lt__(self, other):
         return self.result["loss"] < other.result["loss"]
 
@@ -215,48 +211,32 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
         optimization_dir, serializer, logger, do_lock=False
     )
 
-    # Then, either:
-    # If: Sample a previously sampled config that is now without worker
-    # Else: Sample according to the sampler
     base_result_directory = optimization_dir / "results"
+
+    logger.debug("Sampling a new configuration")
+    sampler.load_results(previous_results, pending_configs)
+    config, config_id, previous_config_id = sampler.get_config_and_ids()
+
+    pipeline_directory = base_result_directory / f"config_{config_id}"
+    pipeline_directory.mkdir(exist_ok=True)
+
     if pending_configs_free:
-        logger.debug("Sampling a pending config without a worker")
-        is_continuation_of_crashed_config = True
-        config_id, config = more_itertools.first(pending_configs_free.items())
-        pipeline_directory = base_result_directory / f"config_{config_id}"
-        previous_config_id_file = pipeline_directory / "previous_config.id"
-        if previous_config_id_file.exists():
-            previous_config_id = previous_config_id_file.read_text()
-        else:
-            previous_config_id = None
-    else:
-        logger.debug("Sampling a new configuration")
-        is_continuation_of_crashed_config = False
-        sampler.load_results(previous_results, pending_configs)
-        config, config_id, previous_config_id = sampler.get_config_and_ids()
-
-        pipeline_directory = base_result_directory / f"config_{config_id}"
-        pipeline_directory.mkdir(exist_ok=True)
-
-        if previous_config_id is not None:
-            previous_config_id_file = pipeline_directory / "previous_config.id"
-            previous_config_id_file.write_text(
-                previous_config_id
-            )  # TODO: Get rid of this
-            serializer.dump(
-                {"time_sampled": time.time(), "previous_config_id": previous_config_id},
-                pipeline_directory / "metadata",
-            )
-        else:
-            serializer.dump(
-                {"time_sampled": time.time()}, pipeline_directory / "metadata"
-            )
+        logger.warning(
+            f"There are {len(pending_configs_free)} configs that were sampled, but have no worker assigned. Sometimes this is due to a delay in the filesystem communication, but most likely some configs crashed during their execution or a jobtime-limit was reached."
+        )
 
     if previous_config_id is not None:
+        previous_config_id_file = pipeline_directory / "previous_config.id"
+        previous_config_id_file.write_text(previous_config_id)  # TODO: Get rid of this
+        serializer.dump(
+            {"time_sampled": time.time(), "previous_config_id": previous_config_id},
+            pipeline_directory / "metadata",
+        )
         previous_pipeline_directory = Path(
             base_result_directory, f"config_{previous_config_id}"
         )
     else:
+        serializer.dump({"time_sampled": time.time()}, pipeline_directory / "metadata")
         previous_pipeline_directory = None
 
     # We want this to be the last action in sampling to catch potential crashes
@@ -268,7 +248,6 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
         config,
         pipeline_directory,
         previous_pipeline_directory,
-        is_continuation_of_crashed_config,
     )
 
 
@@ -357,7 +336,6 @@ def run(
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
-    filesystem_grace_period_for_crashed_configs=45,
 ):
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:
@@ -412,7 +390,6 @@ def run(
                         config,
                         pipeline_directory,
                         previous_pipeline_directory,
-                        is_continuation_of_crashed_config,
                     ) = _sample_config(optimization_dir, sampler, serializer, logger)
 
                 config_lock_file = pipeline_directory / ".config_lock"
@@ -421,20 +398,6 @@ def run(
                 config_lock_acquired = config_locker.acquire_lock()
             finally:
                 decision_locker.release_lock()
-
-            if is_continuation_of_crashed_config:
-                # This is to catch the case of the shared filesystem being out of sync,
-                # so the lock is not there anymore, but the result is not yet seen by one
-                # of the workers. Wait for a grace period and then check if the config
-                # really crashed.
-                logger.info(
-                    f"Checking if config {config_id} crashed and needs to be continued."
-                )
-                time.sleep(filesystem_grace_period_for_crashed_configs)
-                if non_empty_file(pipeline_directory / "result.yaml"):
-                    logger.info(f"Config {config_id} did not crash.")
-                    continue
-                logger.info(f"Config {config_id} did crash, so continuing/restarting it")
 
             if config_lock_acquired:
                 try:
