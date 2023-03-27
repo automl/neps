@@ -51,6 +51,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
+        sample_default_at_target: bool = False,
     ):
         """Initialise an SH bracket.
 
@@ -77,6 +78,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 The higher the confidence, the smaller is the standard deviation of the
                 prior distribution centered around the default
             random_interleave_prob: Chooses the fraction of samples from random vs prior
+            sample_default_first: Whether to sample the default configuration first
+            sample_default_at_target: Whether to evaluate the default configuration at
+                the target fidelity or max budget
         """
         super().__init__(
             pipeline_space=pipeline_space,
@@ -90,6 +94,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
         self.random_interleave_prob = random_interleave_prob
         self.sample_default_first = sample_default_first
+        self.sample_default_at_target = sample_default_at_target
 
         self.min_budget = self.pipeline_space.fidelity.lower
         self.max_budget = self.pipeline_space.fidelity.upper
@@ -276,6 +281,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
             if observed_configs is None
             else observed_configs
         )
+        # remove the default from being part of a Successive-Halving bracket
+        if (
+            self.sample_default_first
+            and self.sample_default_at_target
+            and 0 in observed_configs.index.values
+        ):
+            observed_configs = observed_configs.drop(index=0)
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.clean_rung_information()
@@ -408,7 +420,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 and self.sample_default_first
                 and len(self.observed_configs) == 0
             ):
+                if self.sample_default_at_target:
+                    # sets the default config to be evaluated at the target fidelity
+                    rung_id = self.max_rung
+                    self.logger.info("Next config will be evaluated at target fidelity.")
+                self.logger.info("Sampling the default configuration...")
                 config = self.pipeline_space.sample_default_configuration()
+
             elif random.random() < self.random_interleave_prob:
                 config = self.pipeline_space.sample(
                     patience=self.patience,
@@ -417,6 +435,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 )
             else:
                 config = self.sample_new_config(rung=rung_id)
+
             fidelity_value = self.rung_map[rung_id]
             config.fidelity.value = fidelity_value
 
@@ -479,6 +498,9 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         # indexes to mark separate brackets
         start = 0
         end = self.config_map[self.min_rung]  # length of lowest rung in a bracket
+        if self.sample_default_at_target and self.sample_default_first:
+            start += 1
+            end += 1
         # iterates over the different SH brackets which span start-end by index
         while end <= len(self.observed_configs):
             # for the SH bracket in start-end, calculate total SH budget used
@@ -532,6 +554,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
+        sample_default_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -549,6 +572,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
+            sample_default_at_target=sample_default_at_target,
         )
 
 
@@ -572,6 +596,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         prior_confidence: Literal["low", "medium", "high"] = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
+        sample_default_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -589,6 +614,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
+            sample_default_at_target=sample_default_at_target,
         )
 
 
@@ -613,6 +639,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
+        sample_default_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -630,6 +657,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
+            sample_default_at_target=sample_default_at_target,
         )
 
 

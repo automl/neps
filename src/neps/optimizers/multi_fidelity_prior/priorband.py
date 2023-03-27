@@ -288,6 +288,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
+        sample_default_at_target: bool = False,
         prior_weight_type: str = "linear",  # could also be {"geometric", "50-50"}
         inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
         inc_mutation_rate: float = 0.5,
@@ -320,6 +321,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
+            sample_default_at_target=sample_default_at_target,
         )
         self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
