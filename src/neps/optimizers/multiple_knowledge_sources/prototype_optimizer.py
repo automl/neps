@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from metahyper.api import ConfigResult
+from metahyper import Config.Result
 
 from ...search_spaces.search_space import SearchSpace
 from ...utils.data_loading import read_tasks_and_dev_stages_from_disk
@@ -46,8 +46,8 @@ class KnowledgeSampling(BaseOptimizer):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config.Result],
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 

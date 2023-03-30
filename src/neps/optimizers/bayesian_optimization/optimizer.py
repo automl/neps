@@ -221,7 +221,7 @@ class BayesianOptimization(BaseOptimizer):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
         pending_evaluations: dict[str, ConfigResult],
     ) -> None:
         train_x = [el.config for el in previous_results.values()]

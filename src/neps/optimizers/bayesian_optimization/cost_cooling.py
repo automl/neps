@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from metahyper import ConfigResult, instance_from_map
+from metahyper import Config, instance_from_map
 
 from ...optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     CostCooler,
@@ -186,12 +186,12 @@ class CostCooling(BayesianOptimization):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config],
     ) -> None:
         # TODO(Jan): read out cost and fit cost model
         train_x = [el.config for el in previous_results.values()]
-        train_y = [self.get_loss(el.result) for el in previous_results.values()]
+        train_y = [self.get_loss(el) for el in previous_results.values()]
         train_cost = [self.get_cost(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
         self._pending_evaluations = [el for el in pending_evaluations.values()]

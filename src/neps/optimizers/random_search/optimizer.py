@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from metahyper.api import ConfigResult
+from metahyper import Config.Result
 
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
@@ -15,8 +15,8 @@ class RandomSearch(BaseOptimizer):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config.Result],
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 

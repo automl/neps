@@ -10,7 +10,7 @@ from statsmodels.nonparametric._kernel_base import (
     _adjust_shape,
 )
 
-from metahyper.api import ConfigResult
+from metahyper import Config.Result
 
 KERNEL_MAP = dict(
     wangryzin=kernels.wang_ryzin,
@@ -162,7 +162,7 @@ class KernelDensityEstimator(GenericKDE):
 
     def fit(
         self,
-        configs: list[ConfigResult],
+        configs: list[Config.Result],
         config_weights: list[float] = None,
         fixed_bw: list[float] = None,
     ) -> None:

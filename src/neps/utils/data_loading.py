@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import yaml
 
-import metahyper.api
+from metahyper import read as metahyper_read, ConfigStatus
 
 from .result_utils import get_loss
 
@@ -38,8 +38,15 @@ def read_tasks_and_dev_stages_from_disk(
             if not is_valid_dev_path(dev_dir_path):
                 continue
             dev_id = get_id_from_path(dev_dir_path)
-            # TODO: Perhaps use 2nd and 3rd argument as well
-            result, _, _ = metahyper.api.read(dev_dir_path)
+
+            # NOTE: Explicitly showing that this causing a lock to occur
+            configs_by_status = metahyper_read(dev_dir_path, do_lock=True)
+
+            complete_configs = configs_by_status[ConfigStatus.COMPLETE]
+            results = {
+                config.id: config.as_result()
+                for config in complete_configs
+            }
             results[task_id][dev_id] = result
     return results
 

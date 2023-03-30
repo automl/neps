@@ -7,7 +7,7 @@ import tempfile
 from abc import ABC
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, ContextManager
 
 import filelock
 from typing_extensions import Self
@@ -102,6 +102,10 @@ class Locker(ABC):
             return True
         except filelock.Timeout:
             return False
+
+    @property
+    def locked(self) -> bool:
+        return self._lock.is_locked
 
     @contextmanager
     def release_on_error(self) -> Iterator[Self]:

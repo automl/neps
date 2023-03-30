@@ -4,84 +4,33 @@ import glob
 import inspect
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable
-
-import yaml
-
+from typing import Any, Iterator
 
 def non_empty_file(file_path: Path) -> bool:
     return file_path.exists() and file_path.stat().st_size != 0
 
 
 def find_files(
-    directory: Path, files: list[str], any_suffix=False, check_nonempty=False
-) -> list[Path]:
-    found_paths = []
+    directory: Path,
+    files: list[str],
+    any_suffix: bool = False,
+    check_nonempty: bool = False,
+) -> Iterator[Path]:
+    # OPTIM: Performing a recursive glob several times could be optimized
+    # to only do this once. It can be pretty significant in large directories.
     for file_name in files:
         pattern = f"{directory.absolute()}/**/{file_name}"
+
         if any_suffix:
             pattern += "*"
+
         for f_path in glob.glob(pattern, recursive=True):
             path_found = Path(f_path)
             if path_found.is_file():
                 if check_nonempty and not non_empty_file(path_found):
                     continue
-                found_paths.append(path_found)
-    return found_paths
 
-
-def get_data_representation(data: Any):
-    """Common data representations. Other specific types should be handled
-    by the user in his Parameter class."""
-    if isinstance(data, dict):
-        return {key: get_data_representation(val) for key, val in data.items()}
-    elif isinstance(data, list) or isinstance(data, tuple):
-        return [get_data_representation(val) for val in data]
-    elif type(data).__module__ in ["numpy", "torch"]:
-        data = data.tolist()
-        if type(data).__module__ == "numpy":
-            data = data.item()
-        return get_data_representation(data)
-    elif hasattr(data, "serialize"):
-        return get_data_representation(data.serialize())
-    else:
-        return data
-
-
-class YamlSerializer:
-    SUFFIX = ".yaml"
-    PRE_SERIALIZE = True
-
-    def __init__(self, config_loader: Callable | None = None):
-        self.config_loader = config_loader or (lambda x: x)
-
-    def load(self, path: Path | str, add_suffix=True):
-        path = str(path)
-        if add_suffix and Path(path).suffix != self.SUFFIX:
-            path = path + self.SUFFIX
-
-        with open(path) as file_stream:
-            return yaml.full_load(file_stream)
-
-    def dump(self, data: Any, path: Path | str, add_suffix=True):
-        if self.PRE_SERIALIZE:
-            data = get_data_representation(data)
-        path = str(path)
-        if add_suffix and Path(path).suffix != self.SUFFIX:
-            path = path + self.SUFFIX
-        with open(path, "w") as file_stream:
-            try:
-                return yaml.safe_dump(data, file_stream)
-            except yaml.representer.RepresenterError as e:
-                raise TypeError(
-                    "You should return objects that are JSON-serializable. The object "
-                    f"{e.args[1]} of type {type(e.args[1])} is not."
-                ) from e
-
-    def load_config(self, path: Path | str):
-        if self.PRE_SERIALIZE:
-            return self.config_loader(self.load(path))
-        return self.load(path)
+                yield path_found
 
 
 def is_partial_class(obj):
@@ -97,7 +46,7 @@ def instance_from_map(
     name: str = "mapping",
     allow_any: bool = True,
     as_class: bool = False,
-    kwargs: dict = None,
+    kwargs: dict | None = None,
 ):
     """Get an instance of an class from a mapping.
 

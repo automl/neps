@@ -3,17 +3,19 @@ from __future__ import annotations
 import logging
 from abc import abstractmethod
 from copy import deepcopy
-from typing import Any
+from typing import Any, Mapping
+
+from typing_extensions import Literal
 
 import metahyper
-from metahyper.api import ConfigResult
 
 from ..search_spaces.search_space import SearchSpace
 from ..utils.common import get_rnd_state, set_rnd_state
 from ..utils.result_utils import get_cost, get_loss
+from ..config import ConfigResult
 
 
-class BaseOptimizer(metahyper.Sampler):
+class BaseOptimizer(metahyper.Sampler[SearchSpace]):
     """Base sampler class. Implements all the low-level work."""
 
     def __init__(
@@ -41,7 +43,7 @@ class BaseOptimizer(metahyper.Sampler):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         raise NotImplementedError
 
@@ -59,12 +61,12 @@ class BaseOptimizer(metahyper.Sampler):
         set_rnd_state(state["rnd_seeds"])
         super().load_state(state)
 
-    def load_config(self, config_dict):
+    def parse_config(self, config_dict: Mapping[str, Any]) -> SearchSpace:
         config = deepcopy(self.pipeline_space)
         config.load_from(config_dict)
         return config
 
-    def get_loss(self, result: str | dict | float) -> float | Any:
+    def get_loss(self, result: Literal["error"] | str | float | int | Mapping[str, Any]) -> float | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes."""
         return get_loss(

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from metahyper import read
-from metahyper.api import ConfigResult
+from metahyper import Config.Result
 
 from ..search_spaces.search_space import SearchSpace
 from ..utils.result_utils import get_loss
@@ -65,7 +65,7 @@ def status(
     best_configs: bool = False,
     all_configs: bool = False,
     print_summary: bool = True,
-) -> tuple[dict[str, ConfigResult], dict[str, SearchSpace]]:
+) -> tuple[dict[str, Config.Result], dict[str, SearchSpace]]:
     """Print status information of a neps run and return results.
 
     Args:

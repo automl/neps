@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Literal
 
-from metahyper import ConfigResult
+from metahyper import Config.Result
 
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,
@@ -218,7 +218,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return _config, _rung
 
     def _load_previous_observations(
-        self, previous_results: dict[str, ConfigResult]
+        self, previous_results: dict[str, Config.Result]
     ) -> None:
         for config_id, config_val in previous_results.items():
             _config, _rung = self._get_config_id_split(config_id)
@@ -248,7 +248,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return
 
     def _handle_pending_evaluations(
-        self, pending_evaluations: dict[str, ConfigResult]
+        self, pending_evaluations: dict[str, Config.Result]
     ) -> None:
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
@@ -317,8 +317,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config.Result],
     ) -> None:
         """This is basically the fit method.
 

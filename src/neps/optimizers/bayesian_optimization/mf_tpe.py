@@ -9,7 +9,7 @@ import torch
 from scipy.stats import spearmanr
 from typing_extensions import Literal
 
-from metahyper import ConfigResult, instance_from_map
+from metahyper import Config, instance_from_map
 
 from ...search_spaces import (
     CategoricalParameter,
@@ -455,8 +455,8 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config],
     ) -> None:
         # TODO remove doubles from previous results
         train_y = [self.get_loss(el.result) for el in previous_results.values()]

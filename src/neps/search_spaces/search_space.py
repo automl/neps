@@ -6,6 +6,7 @@ import random
 from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
+from typing import Any, Mapping
 
 import ConfigSpace as CS
 import numpy as np
@@ -312,7 +313,7 @@ class SearchSpace(collections.abc.Mapping):
     def serialize(self):
         return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
 
-    def load_from(self, config: dict):
+    def load_from(self, config: Mapping[str, Any]):
         for name in config.keys():
             self.hyperparameters[name].load_from(config[name])
 

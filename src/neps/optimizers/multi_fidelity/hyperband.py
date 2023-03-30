@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 from typing_extensions import Literal
 
-from metahyper import ConfigResult
+from metahyper import Config.Result
 
 from ...search_spaces.search_space import SearchSpace
 from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
@@ -124,8 +124,8 @@ class HyperbandBase(SuccessiveHalvingBase):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config.Result],
     ) -> None:
         super().load_results(previous_results, pending_evaluations)
         # important for the global HB to run the right SH

@@ -10,7 +10,7 @@ from scipy.stats.qmc import LatinHypercube
 from torch.quasirandom import SobolEngine
 from typing_extensions import Literal
 
-from metahyper.api import ConfigResult
+from metahyper import Config.Result
 
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,
@@ -696,7 +696,7 @@ class RaceHalving(BaseOptimizer):
 
     # TODO: check pending
     def _load_previous_observations(
-        self, previous_results: dict[str, ConfigResult]
+        self, previous_results: dict[str, Config.Result]
     ) -> None:
         for config_id, config_val in previous_results.items():
             _config, _rung = self._get_config_id_split(config_id)
@@ -721,7 +721,7 @@ class RaceHalving(BaseOptimizer):
         return
 
     def _handle_pending_evaluations(
-        self, pending_evaluations: dict[str, ConfigResult]
+        self, pending_evaluations: dict[str, Config.Result]
     ) -> None:
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
@@ -769,8 +769,8 @@ class RaceHalving(BaseOptimizer):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config.Result],
     ) -> None:
         """This is basically the fit method.
 
@@ -995,8 +995,8 @@ class RaceBand(RaceHalving):
 
     def load_results(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        previous_results: dict[str, Config.Result],
+        pending_evaluations: dict[str, Config.Result],
     ) -> None:
         filtered_previous_results = {
             key: result
