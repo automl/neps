@@ -4,11 +4,10 @@ import logging
 
 import torch
 
-
 _logger = logging.getLogger(__name__)
 
 
-# Define the combining kernel
+# CombiningKernel
 
 class CombiningKernel(torch.nn.Module):
     def __init__(
@@ -18,15 +17,7 @@ class CombiningKernel(torch.nn.Module):
     ):
         super().__init__()
 
-        if n_kernels < 1:
-            raise ValueError(f"n_kernels can not be < 1: {n_kernels}")
         self.n_kernels = n_kernels
-
-        if combining_kernel_variant not in ("sum", "product"):
-            raise ValueError(
-                "Invalid value for combining kernel variant: "
-                + f"{combining_kernel_variant!r}"
-            )
         self.combining_kernel_variant = combining_kernel_variant
 
         self.combining_weights = torch.nn.Parameter(
@@ -35,6 +26,9 @@ class CombiningKernel(torch.nn.Module):
         )
 
     def forward(self, kernel_results: torch.Tensor) -> torch.Tensor:
+        _logger.debug(f"Called method `forward` of kernel `%s`", self)
+        _logger.debug("Combining weights: %s", self.combining_weights)
+
         kernel_results = kernel_results.clone()
 
         # We expect kernel_results to have size (n_kernels, n_configs, n_configs)
@@ -56,7 +50,9 @@ class CombiningKernel(torch.nn.Module):
                 + f"{kernel_results_size[1]} != {kernel_results_size[2]}"
             )
 
-        # # Adjust the weights to be in a good range
+        # Adjust the combining weights to an appropriate range
+        # Weights were initialized with equal values, so their values
+        #  after softmax will also initially be equal between them.
         combining_weights = torch.softmax(self.combining_weights, dim=0)
 
         # Multiply kernel results by their weights
@@ -74,5 +70,11 @@ class CombiningKernel(torch.nn.Module):
                 + f"{self.combining_kernel_variant!r}"
             )
         assert K.size() == (kernel_results_size[1], kernel_results_size[2])
+
+        assert bool((torch.diag(K) != 0.0).all()), f"Found value 0.0 in diagonal: {K}"
+        assert bool((torch.max(K, dim=1).values - torch.diag(K) <= 1e-5).all()), (
+            f"Max value not in diagonal: {torch.max(K, dim=1).values}, {torch.diag(K)}, "
+            f"{torch.max(K, dim=1).values == torch.diag(K)}"
+        )
 
         return K

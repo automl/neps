@@ -10,13 +10,13 @@ from . import config_string
 _logger = logging.getLogger(__name__)
 
 
-def normalize_gram(K: torch.Tensor) -> torch.Tensor:
+def _normalize_gram(K: torch.Tensor) -> torch.Tensor:
     K_diag = torch.sqrt(torch.diag(K))
     K_diag_outer = torch.ger(K_diag, K_diag)
     return K / K_diag_outer
 
 
-# StringKernelV1Torch
+# StringKernelV1
 
 class StringKernelV1(torch.nn.Module):
     def __init__(
@@ -26,7 +26,7 @@ class StringKernelV1(torch.nn.Module):
     ):
         super().__init__()
 
-        self._hierarchy_level = hierarchy_level
+        self.hierarchy_level = hierarchy_level
 
         operator_weight = 1.0
         sub_config_weight = 1.0
@@ -96,21 +96,19 @@ class StringKernelV1(torch.nn.Module):
         for conf_idx, c in enumerate(configs):
             conf_values = result[conf_idx]
             for part in c.unwrapped:
-                part_weighting = 1
-
                 # Increment `operator`
                 sym_index = symbol_indices[part.operator]
-                conf_values[sym_index][0] += part_weighting
+                conf_values[sym_index][0] += 1.0
 
                 if part.sub_config:
                     # Increment `sub_config`
                     sym_index = symbol_indices[part.sub_config]
-                    conf_values[sym_index][1] += part_weighting
+                    conf_values[sym_index][1] += 1.0
 
                     # Increment joined `operator` and `sub_config`
                     joined_val = f"{part.operator} ({part.sub_config})"
                     sym_index = symbol_indices[joined_val]
-                    conf_values[sym_index][2] += part_weighting
+                    conf_values[sym_index][2] += 1.0
 
         assert result.size() == (n_configs, n_symbols, 3), \
             f"{result.size()} != {(n_configs, n_symbols, 3)}"
@@ -118,24 +116,21 @@ class StringKernelV1(torch.nn.Module):
         return result
 
     def forward(self, configs: tuple[config_string.ConfigString]) -> torch.Tensor:
-        if self._hierarchy_level is not None:
+        if self.hierarchy_level is not None:
             configs = tuple(
-                c.at_hierarchy_level(self._hierarchy_level) for c in configs
+                c.at_hierarchy_level(self.hierarchy_level) for c in configs
             )
 
-        _logger.debug(f"Called method `transform` of kernel `%s`", self)
+        _logger.debug(f"Called method `forward` of kernel `%s`", self)
         _logger.debug("Count of received config strings: %d", len(configs))
         _logger.debug("Part weights: %s", self.weights)
+        assert bool((self.weights > 0).all()), f"Weights !>0: {self.weights}"
 
         # processed_configs have shape: (n_configs, n_symbols, 3)
         processed_configs = self._process_configs(configs=configs).clone().detach()
 
         n_configs = len(configs)
         n_symbols = processed_configs.size()[1]  # (n_configs, n_symbols, 3)
-
-        # Adjust the weights to be in range (0, inf)
-        with torch.no_grad():
-            torch.clamp_(self.weights, min=1e-5)
 
         # Per config, weigh the counts of parts
         K = self.weights * processed_configs
@@ -148,10 +143,14 @@ class StringKernelV1(torch.nn.Module):
             f"{K.size()} != {(n_configs, n_symbols)}"
 
         K = K @ K.T
-        K = normalize_gram(K)
-
+        K = _normalize_gram(K)
         assert K.size() == (n_configs, n_configs), \
             (K.size(), (n_configs, n_configs))
 
-        _logger.debug("Returning K of size %s", K.size())
+        assert bool((torch.diag(K) != 0.0).all()), f"Found value 0.0 in diagonal: {K}"
+        assert bool((torch.max(K, dim=1).values - torch.diag(K) <= 1e-5).all()), (
+            f"Max value not in diagonal: {torch.max(K, dim=1).values}, {torch.diag(K)}, "
+            f"{torch.max(K, dim=1).values == torch.diag(K)}"
+        )
+
         return K
