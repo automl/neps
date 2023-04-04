@@ -387,7 +387,11 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
 
 
 class PriorBandNoIncToPrior(PriorBand):
-    """Disables incumbent sampling to replace with prior-based sampling."""
+    """Disables incumbent sampling to replace with prior-based sampling.
+
+    This is equivalent to running HyperBand with Prior and Random sampling, where their
+    relationship is controlled by the `prior_weight_type` argument.
+    """
 
     def set_sampling_weights_and_inc(self, rung: int):
         super().set_sampling_weights_and_inc(rung)
