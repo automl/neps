@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 from pathlib import Path
 
 import jahs_bench
 import numpy as np
-from joint_config_space import joint_config_space
 from scipy.stats import kstest
 from typing_extensions import Literal
 
 import neps
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.search_space import pipeline_space_from_configspace
+from tests.joint_config_space import joint_config_space
 
 OPTIMIZERS = [
     "random_search",
@@ -102,6 +103,8 @@ class RegressionRunner:
         | str = "cifar10",
         max_evaluations: int = 150,
         budget: int = 10000,
+        surrogate_model: str = "gp",
+        surrogate_model_args: None | dict = None,
         experiment_name: str = "",
     ):
         """
@@ -125,23 +128,14 @@ class RegressionRunner:
         self.benchmark = None
         self.run_pipeline = None
         # TODO: convert string paths to Path objects
-        self.root_directory = f"./{self.name}"
+        self.surrogate_model = surrogate_model
+        self.surrogate_model_args = surrogate_model_args
 
         # Cost cooling optimizer expects budget but none of the others does
         self.budget = budget if "cost" in optimizer else None
         self.max_evaluations = max_evaluations
 
-        if optimizer not in OPTIMIZERS:
-            ValueError(
-                f"Regression hasn't been run for {optimizer} optimizer, "
-                f"please update the SEARCHERS first"
-            )
-
         self.final_losses: list[float] = []
-        file_name = f"final_losses_{self.max_evaluations}_.txt"
-        self.final_losses_path = Path(self.root_directory, file_name)
-        if not self.final_losses_path.parent.exists():
-            Path(self.root_directory).mkdir()
 
         self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
 
@@ -154,10 +148,31 @@ class RegressionRunner:
         self.pipeline_space["epoch"] = neps.IntegerParameter(
             lower=1, upper=200, is_fidelity=is_fidelity
         )
+        if not self.run_pipeline:
+            try:
+                self.run_pipeline = self.evaluation_func()
+            except ValueError:
+                warnings.warn(
+                    f"Task name {self.task} not in the the task"
+                    f" list of JAHS benchmark. Not Using JAHS Benchmark"
+                    f" for this run"
+                )
 
-    def save_losses(self, file_name: str | None = None):
-        if file_name:
-            self.final_losses_path = Path(self.root_directory, file_name)
+    @property
+    def root_directory(self):
+        return f"./{self.name}"
+
+    @property
+    def final_losses_path(self):
+        return Path(self.root_directory, self.loss_file_name)
+
+    @property
+    def loss_file_name(self):
+        return f"final_losses_{self.surrogate_model}_{self.max_evaluations}_.txt"
+
+    def save_losses(self):
+        if not self.final_losses_path.parent.exists():
+            Path(self.root_directory).mkdir()
         with self.final_losses_path.open(mode="w+", encoding="utf-8") as f:
             f.writelines([str(loss) + "\n" for loss in self.final_losses])
         logging.info(
@@ -166,27 +181,33 @@ class RegressionRunner:
             f"max evaluations into the file: {self.final_losses_path}"
         )
 
-    def run_neps(self, save=False):
+    def neps_run(self, working_directory: Path):
+        neps.run(
+            run_pipeline=self.run_pipeline,
+            pipeline_space=self.pipeline_space,
+            searcher=self.optimizer,
+            budget=self.budget,
+            root_directory=working_directory,
+            max_evaluations_total=self.max_evaluations,
+            surrogate_model=self.surrogate_model,
+            surrogate_model_args=self.surrogate_model_args,
+        )
+
+        best_error = incumbent_at(working_directory, self.max_evaluations)
+        return best_error
+
+    def run_regression(self, save=False):
         """
         Run iterations number of neps runs
         """
-        # Retrieve the surrogate model only if we are going to run the optimizer
-        if not self.run_pipeline:
-            self.run_pipeline = self.evaluation_func()
+        # # Retrieve the surrogate model only if we are going to run the optimizer
+        # if not self.run_pipeline:
+        #     self.run_pipeline = self.evaluation_func()
 
         for i in range(self.iterations):
             working_directory = Path(self.root_directory, "results/test_run_" + str(i))
 
-            neps.run(
-                run_pipeline=self.run_pipeline,
-                pipeline_space=self.pipeline_space,
-                searcher=self.optimizer,
-                budget=self.budget,
-                root_directory=working_directory,
-                max_evaluations_total=self.max_evaluations,
-            )
-
-            best_error = incumbent_at(working_directory, self.max_evaluations)
+            best_error = self.neps_run(working_directory)
 
             self.final_losses.append(float(best_error))
 
@@ -237,7 +258,7 @@ class RegressionRunner:
                     ) from not_found
         return np.array(self.final_losses)
 
-    def test(self, max_evaluations=150):
+    def test(self):
         """
         Target run for the regression test, keep all the parameters same.
 
@@ -245,23 +266,11 @@ class RegressionRunner:
             max_evaluations: Number of evaluations after which to terminate optimization.
         """
 
-        # Retrieve the surrogate model only if we are going to run the optimizer
-        if not self.run_pipeline:
-            self.run_pipeline = self.evaluation_func()
-
         # Sample losses of self.sample_size runs
         samples = []
         for i in range(self.sample_size):
             working_directory = Path(self.root_directory, f"results/test_run_target_{i}")
-            neps.run(
-                run_pipeline=self.run_pipeline,
-                pipeline_space=self.pipeline_space,
-                searcher=self.optimizer,
-                budget=self.budget,
-                root_directory=working_directory,
-                max_evaluations_total=max_evaluations,
-            )
-            best_error = incumbent_at(working_directory, max_evaluations)
+            best_error = self.neps_run(working_directory)
             samples.append(best_error)
 
         # Try to reduce memory consumption
@@ -321,7 +330,7 @@ if __name__ == "__main__":
                 runner = RegressionRunner(optimizer, n, task, max_evaluations=150)
                 # runner.pipeline_space = can be customized here...
                 # runner.run_pipeline = can be customized here...
-                runner.run_neps(save=True)
+                runner.run_regression(save=True)
                 best_results = runner.read_results().tolist()
                 minv, maxv = min(best_results), max(best_results)
                 print(
