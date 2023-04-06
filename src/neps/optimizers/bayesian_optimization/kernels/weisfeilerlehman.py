@@ -155,6 +155,8 @@ class WeisfeilerLehman(GraphKernel, CustomKernel):
 
         assert "training" in kwargs
         gp_fit = kwargs["training"]
+        # TODO: fix what happens when x1.shape == x2.shape and
+        #  len(eval_graphs) == len(train_graphs) for the case test_size == train_size
         if gp_fit or len(self.train_graphs[0]) == x1.shape[0] == x2.shape[0]:
             gr = self.train_graphs[0]
         else:
@@ -164,13 +166,31 @@ class WeisfeilerLehman(GraphKernel, CustomKernel):
             gr=gr, rebuild_model=True, save_gram_matrix=not gp_fit, gp_fit=gp_fit
         )
 
+        # Depending on the size of the samples gpytorch requests exact_GP in 2 different
+        # form either by dividing the gram matrix into 2 pieces
+        # or dividing the gram matrix into 3 pieces
+        # Refer to: http://krasserm.github.io/2018/03/19/gaussian-processes/
+        # For N := number of training samples and N_* := number of test samples
+        # gpytorch either requests 2 matrices (N_*, N+N_*), (N, N);
+        # or 3 matrices (N_*, N_*), (N_*, N), (N, N)
+        # see gpytorch.models.exact_prediction_strategies exact_prediction
+
+        # IMPORTANT: There is a FAILURE MODE in the case N==N_* and N+N_* > 512
+        # This happens, because in the case of N_*==N the kernel can't differentiate
+        # between the second and the third matrix above and returns the third one due to
+        # the line "gr = self.train_graphs[0]" above
         assert K.shape[0] >= x1.shape[0]
         if not gp_fit and K.shape[0] != x1.shape[0]:
             K = K[len(self.train_graphs[0]) :, :]
         assert K.shape[1] >= x2.shape[0]
-        if not gp_fit and K.shape[1] != x2.shape[0]:
+        if not gp_fit and K.shape[1] != x2.shape[0] and x1.shape[0] == x2.shape[0]:
             K = K[:, len(self.train_graphs[0]) :]
-        assert K.shape == (x1.shape[0], x2.shape[0])
+        elif not gp_fit and K.shape[1] != x2.shape[0]:
+            K = K[:, : len(self.train_graphs[0])]
+        assert K.shape == (
+            x1.shape[0],
+            x2.shape[0],
+        ), f" {K.shape, (x1.shape[0], x2.shape[0])}"
         return K
 
     def change_se_params(self, params: dict):
