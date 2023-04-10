@@ -6,6 +6,6 @@ from .gp import GPModel  # type: ignore[attr-defined]
 
 SurrogateModelMapping = {
     "gp": GPModel,
-    # "gp_hierarchy": ComprehensiveGPHierarchy,
+    "gp_hierarchy": GPModel,
     # "kde": KernelDensityEstimator,
 }

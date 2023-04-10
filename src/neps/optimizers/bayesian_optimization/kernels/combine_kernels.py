@@ -45,6 +45,42 @@ class CombineKernel(Kernel):
                 sub_kernels.append(child_built_kernel)
         return sub_kernels
 
+    def assign_hierarichal_hyperparameters(self, hirarichal_hps_and_levels: list):
+        """
+        A trick to isolate kernels for each hierarchical level, as opposed to
+        all graph kernels being used for all graph data.
+        """
+        h_l_idx = 0
+        for k in self.kernels:
+            if h_l_idx < len(hirarichal_hps_and_levels):
+                hp_name = hirarichal_hps_and_levels[h_l_idx]
+                if hp_name in k.active_hps:
+                    k.active_hps = [hp_name]
+                    h_l_idx += 1
+            else:
+                for hp_n in hirarichal_hps_and_levels:
+                    if hp_n in k.active_hps:
+                        k.active_hps.remove(hp_n)
+        self.assign_hyperparameters({})
+
+    def assign_feature_hyperparameters(self, feature_names: list):
+        """
+        A trick to isolate the kernel for the graph feature data, as opposed to
+        using different Float kernels for graph feature data
+        """
+        h_idx = 0
+        for k in self.kernels:
+            if h_idx < len(feature_names):
+                hp_name = feature_names[h_idx]
+                if hp_name in k.active_hps:
+                    k.active_hps = [hp_name]
+                    h_idx += 1
+            else:
+                for hp_n in feature_names:
+                    if hp_n in k.active_hps:
+                        k.active_hps.remove(hp_n)
+        self.assign_hyperparameters({})
+
 
 class SumKernel(CombineKernel):
     def build(self, hp_shapes):
