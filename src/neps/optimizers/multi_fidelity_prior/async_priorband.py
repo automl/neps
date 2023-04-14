@@ -38,8 +38,8 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
-        sample_default_at_target: bool = False,
-        prior_weight_type: str = "linear",  # could also be {"geometric", "50-50"}
+        sample_default_at_target: bool = True,
+        prior_weight_type: str = "geometric",  # could also be {"linear", "50-50"}
         inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
         inc_mutation_rate: float = 0.5,
         inc_mutation_std: float = 0.25,
@@ -146,7 +146,7 @@ class PriorBandAshaHB(PriorBandAsha):
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: typing.Any = EnsemblePolicy,  # key difference to ASHA
-        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
+        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from PB
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
@@ -154,8 +154,8 @@ class PriorBandAshaHB(PriorBandAsha):
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
-        sample_default_at_target: bool = False,
-        prior_weight_type: str = "linear",  # could also be {"geometric"}
+        sample_default_at_target: bool = True,
+        prior_weight_type: str = "geometric",  # could also be {"linear", "50-50"}
         inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
         inc_mutation_rate: float = 0.5,
         inc_mutation_std: float = 0.25,
