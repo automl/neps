@@ -54,6 +54,8 @@ class GPStringHierarchy:
                 if not math.isinf(y):
                     filtered_x.append(x)
                     filtered_y.append(y)
+                else:
+                    _logger.debug("Skipped config with inf value: %s", x)
             train_x = tuple(filtered_x)
             train_y = tuple(filtered_y)
             assert len(train_y) == len(train_x), (len(train_y), len(train_x))
