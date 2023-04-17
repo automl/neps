@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import Iterable
 
 import numpy as np
@@ -43,6 +44,20 @@ class GPStringHierarchy:
         train_x: tuple | None = None,
         train_y: tuple | None = None,
     ):
+        # Filter out the configs for which the y value is infinite
+        # Otherwise, we will get errors during math operations
+        if train_y is not None:
+            filtered_x = []
+            filtered_y = []
+            assert len(train_y) == len(train_x), (len(train_y), len(train_x))
+            for x, y in zip(train_x, train_y, strict=True):
+                if not math.isinf(y):
+                    filtered_x.append(x)
+                    filtered_y.append(y)
+            train_x = tuple(filtered_x)
+            train_y = tuple(filtered_y)
+            assert len(train_y) == len(train_x), (len(train_y), len(train_x))
+
         self.x_configs = train_x
         if train_y is not None:
             train_y = (
