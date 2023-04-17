@@ -121,10 +121,12 @@ class StringKernelV1(torch.nn.Module):
                 c.at_hierarchy_level(self.hierarchy_level) for c in configs
             )
 
+        if not bool((self.weights > 0).all()):
+            raise ValueError(f"Weights !>0: {self.weights}")
+
         _logger.debug(f"Called method `forward` of kernel `%s`", self)
         _logger.debug("Count of received config strings: %d", len(configs))
         _logger.debug("Part weights: %s", self.weights)
-        assert bool((self.weights > 0).all()), f"Weights !>0: {self.weights}"
 
         # processed_configs have shape: (n_configs, n_symbols, 3)
         processed_configs = self._process_configs(configs=configs).clone().detach()
