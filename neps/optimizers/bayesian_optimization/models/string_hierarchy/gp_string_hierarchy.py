@@ -50,7 +50,7 @@ class GPStringHierarchy:
             filtered_x = []
             filtered_y = []
             assert len(train_y) == len(train_x), (len(train_y), len(train_x))
-            for x, y in zip(train_x, train_y, strict=True):
+            for x, y in zip(train_x, train_y):
                 if not math.isinf(y):
                     filtered_x.append(x)
                     filtered_y.append(y)
