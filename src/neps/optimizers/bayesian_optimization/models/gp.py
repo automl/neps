@@ -66,6 +66,7 @@ class GPTorchModel(gpytorch.models.ExactGP):
     def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
+        print(f"train_input: {x.shape}\n\n")
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
@@ -160,7 +161,9 @@ class GPModel:
 
         # Init torch optimizer and optimizer options
         optimizer_fn = partial(
-            fit_gpytorch_torch, options={"maxiter": 20, "disp": False, "lr": 0.05}
+            fit_gpytorch_torch,
+            options={"maxiter": 20, "disp": False, "lr": 0.1},
+            approx_mll=False,
         )
 
         if self.aux_data.graph_structures is not None:  # pre-compute graph kernel
@@ -182,7 +185,6 @@ class GPModel:
         if self.gp is None:
             raise Exception("Can't use predict before fitting the GP model")
         x_tensor, x_graphs = self.aux_data.build_input_tensor(x_configs)
-        # gpytorch.settings.max_eager_kernel_size._set_value(1000)
 
         # inject x_graphs into kernel
         if self.aux_data.graph_structures is not None:  # pre-compute graph kernel
@@ -205,7 +207,7 @@ class GPModel:
                             f"Graph kernels ({len(self.gp.covar_module.kernels)}) can't be more "
                             f"than graph structures ({len(self.aux_data.graph_structures)})"
                         )
-        with torch.no_grad():
+        with torch.no_grad(), gpytorch.settings.max_eager_kernel_size(2000):
             with botorch.models.utils.gpt_posterior_settings():
                 mvn = self.gp(x_tensor)
                 mean, covariance_matrix = mvn.mean, mvn.covariance_matrix

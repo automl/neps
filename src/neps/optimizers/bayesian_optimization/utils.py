@@ -203,12 +203,36 @@ class GpAuxData:
                         hp_shape.hp_instances = x_graphs[idx]
 
 
-# Change the value of max_tries in cholesky
-# assert gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__ == (False, None, None, None)
-_func_args_with_defaults = get_default_args(gpytorch.utils.cholesky.psd_safe_cholesky)
-assert "max_tries" in _func_args_with_defaults
-idx = list(_func_args_with_defaults.keys()).index("max_tries")
-gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__ = tuple(
-    6 if idx == i else default
-    for i, default in enumerate(gpytorch.utils.cholesky.psd_safe_cholesky.__defaults__)
+def update_default_args(func, **kwargs):
+    _func_args_with_defaults = get_default_args(func)
+    arg_names = list(kwargs.keys())
+    for name in arg_names:
+        assert (
+            name in _func_args_with_defaults
+        ), f"Argument '{name}' is not an argument in the given function"
+    indices = [list(_func_args_with_defaults.keys()).index(name) for name in arg_names]
+
+    new_values = []
+    index = 0
+
+    for idx, default in enumerate(func.__defaults__):
+        if idx in indices:
+            new_values.append(kwargs[arg_names[index]])
+            index += 1
+        else:
+            new_values.append(default)
+    func.__defaults__ = tuple(new_values)
+
+
+update_default_args(
+    gpytorch.settings.fast_computations.__init__,
+    covar_root_decomposition=False,
+    log_prob=False,
+    solves=False,
 )
+
+# gpytorch.settings.verbose_linalg._set_state(True)
+
+
+# Change the value of max_tries in cholesky
+update_default_args(gpytorch.utils.cholesky.psd_safe_cholesky, max_tries=6)
