@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gpytorch
+import torch
 
 import neps
 from metahyper.utils import instance_from_map
@@ -82,10 +83,34 @@ class CombineKernel(Kernel):
         self.assign_hyperparameters({})
 
 
+class AdditiveKernel(gpytorch.kernels.AdditiveKernel):
+    """
+    Extends gpytorch.kernels.AdditiveKernel to include scalar weights
+    for each kernel, which will be optimized as well
+
+    Each weight is multiplied by a single kernel output.
+    """
+
+    def __init__(self, *kernels):
+        super().__init__(*kernels)
+        self.kernel_weights = torch.tensor([1.0 / len(self.kernels)] * len(self.kernels))
+
+    def forward(self, x1, x2, diag=False, **params):
+        res = gpytorch.lazy.ZeroLazyTensor() if not diag else 0
+        for idx, kern in enumerate(self.kernels):
+            next_term = kern(x1, x2, diag=diag, **params) * self.kernel_weights[idx]
+            if not diag:
+                res = res + gpytorch.lazy.lazify(next_term)
+            else:
+                res = res + next_term
+
+        return res
+
+
 class SumKernel(CombineKernel):
     def build(self, hp_shapes):
         sub_kernels = self._build_sub_kernels(hp_shapes)
-        return gpytorch.kernels.AdditiveKernel(*sub_kernels)
+        return AdditiveKernel(*sub_kernels)
 
 
 class ProductKernel(CombineKernel):
