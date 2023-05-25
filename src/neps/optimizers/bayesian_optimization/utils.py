@@ -136,7 +136,7 @@ class GpAuxData:
                 x_configs, hierarchy_consider=self.hierarchy_consider, d_graph_features=0
             )
         # Disregard hierarchy information if there are any
-        elif isinstance(x_graphs[0][0], list):
+        elif len(x_graphs) and len(x_graphs[0]) and isinstance(x_graphs[0][0], list):
             x_graphs = [[value_list[0] for value_list in hps] for hps in x_graphs]
 
         return x_tensor, x_graphs

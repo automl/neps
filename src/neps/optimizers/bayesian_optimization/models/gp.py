@@ -80,7 +80,7 @@ class GPModel:
         logger=None,
         noise: str = "low",
         hierarchy_consider=None,
-        d_graph_features=1,
+        d_graph_features=0,
         vectorial_features=None,
         verbose=False,
     ):  # pylint: disable=unused-argument

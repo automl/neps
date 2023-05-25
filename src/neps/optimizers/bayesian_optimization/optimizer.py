@@ -131,18 +131,18 @@ class BayesianOptimization(BaseOptimizer):
 
         if graph_kernels:
             kernels = (kernels or []) + graph_kernels
-            logger.warn(
+            self.logger.warn(
                 "Using 'graph_kernels' is deprecated and you should directly use the 'kernels' argument"
             )
 
         if hp_kernels:
             kernels = (kernels or []) + hp_kernels
-            logger.warn(
+            self.logger.warn(
                 "Using 'hp_kernels' is deprecated and you should directly use the 'kernels' argument"
             )
 
         if surrogate_model_args:
-            logger.warn(
+            self.logger.warn(
                 "Using 'surrogate_model_args' is deprecated. You can use a partial for the surrogate model instead: ('model_name', {args...})"
             )
 
