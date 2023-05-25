@@ -203,7 +203,7 @@ class GPModel:
                         )
                         graph_kernel_idx += 1
                     else:
-                        Exception(
+                        raise Exception(
                             f"Graph kernels ({len(self.gp.covar_module.kernels)}) can't be more "
                             f"than graph structures ({len(self.aux_data.graph_structures)})"
                         )

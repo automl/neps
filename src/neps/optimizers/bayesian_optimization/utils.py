@@ -1,7 +1,7 @@
 # type: ignore
 import inspect
 from collections import OrderedDict
-from typing import Callable
+from typing import Callable, List, Tuple
 
 import gpytorch
 import torch
@@ -99,8 +99,8 @@ class GpAuxData:
         self.extended_pipeline_space = new_pipeline_space
 
     def build_input_tensor(
-        self, x_configs: list[SearchSpace]
-    ) -> tuple[torch.tensor, list[list[Graph]]]:
+        self, x_configs: List[SearchSpace]
+    ) -> Tuple[torch.tensor, List[List[Graph]]]:
         """
         Build input tensor and extract graph data from configurations
         """

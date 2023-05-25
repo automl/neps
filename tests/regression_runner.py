@@ -7,13 +7,13 @@ from pathlib import Path
 
 import jahs_bench
 import numpy as np
+from joint_config_space import joint_config_space
 from scipy.stats import kstest
 from typing_extensions import Literal
 
 import neps
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.search_space import pipeline_space_from_configspace
-from tests.joint_config_space import joint_config_space
 
 OPTIMIZERS = [
     "random_search",
