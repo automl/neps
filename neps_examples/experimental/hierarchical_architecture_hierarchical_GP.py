@@ -7,9 +7,7 @@ from torch import nn
 
 import neps
 from neps.optimizers.bayesian_optimization.kernels import GraphKernelMapping
-from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
-    ComprehensiveGPHierarchy,
-)
+from neps.optimizers.bayesian_optimization.models.gp import GPModel
 from neps.search_spaces.architecture import primitives as ops
 from neps.search_spaces.architecture import topologies as topos
 
@@ -120,10 +118,10 @@ graph_kernels = [
     )
     for j, kernel in enumerate(graph_kernels)
 ]
-surrogate_model = ComprehensiveGPHierarchy
+surrogate_model = GPModel
 surrogate_model_args = {
-    "graph_kernels": graph_kernels,
-    "hp_kernels": [],
+    "kernels": graph_kernels,
+    # "hp_kernels": [],
     "verbose": False,
     "hierarchy_consider": hierarchy_considered,
     "d_graph_features": 0,

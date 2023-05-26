@@ -66,7 +66,6 @@ class GPTorchModel(gpytorch.models.ExactGP):
     def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
-        print(f"train_input: {x.shape}\n\n")
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
