@@ -1,2 +1,2 @@
 from .gp_string_hierarchy import GPStringHierarchy
-from .basic_string_kernels import StringKernelV1
+from .basic_string_kernels import ASK

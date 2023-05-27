@@ -6,7 +6,7 @@ from typing import Callable
 from .encoding import NASBOTDistance
 from .vectorial_kernels import HammingKernel, Matern32Kernel, Matern52Kernel, RBFKernel
 from .weisfilerlehman import WeisfilerLehman
-from .string_hierarchy import StringKernelV1
+from .string_hierarchy import ASK
 
 StationaryKernelMapping: dict[str, Callable] = {
     "m52": Matern52Kernel,
@@ -30,7 +30,5 @@ GraphKernelMapping: dict[str, Callable] = {
 }
 
 StringKernelMapping: dict[str, Callable] = {
-    "string_v1": partial(
-        StringKernelV1,
-    ),
+    "ASK": partial(ASK),
 }

@@ -7,7 +7,7 @@ from typing import Iterable
 import numpy as np
 import torch
 
-from .basic_string_kernels import StringKernelV1
+from .basic_string_kernels import ASK
 from .combining_string_kernels import CombiningKernel
 from .. import gp_hierarchy as graph_gp_hierarchy  # Needed for some math helper functions
 
@@ -17,11 +17,11 @@ _logger = logging.getLogger(__name__)
 class GPStringHierarchy:
     def __init__(
         self,
-        graph_kernels: Iterable[StringKernelV1],
+        graph_kernels: Iterable[ASK],
         hp_kernels: Iterable | None = None,
         likelihood: float = 1e-3,
         combining_kernel_variant: str = "sum",
-        surrogate_model_fit_args: dict = None,
+        surrogate_model_fit_args: dict | None = None,
         gpytorch_kinv: bool = False,
         vectorial_features: int | None = None,
     ):

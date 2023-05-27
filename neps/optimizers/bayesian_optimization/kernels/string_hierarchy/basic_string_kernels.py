@@ -16,9 +16,9 @@ def _normalize_gram(K: torch.Tensor) -> torch.Tensor:
     return K / K_diag_outer
 
 
-# StringKernelV1
+# Architecture string kernel: ASK
 
-class StringKernelV1(torch.nn.Module):
+class ASK(torch.nn.Module):
     def __init__(
         self,
         hierarchy_level: int | None = None,
