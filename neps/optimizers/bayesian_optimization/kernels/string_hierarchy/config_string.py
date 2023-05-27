@@ -146,8 +146,9 @@ class ConfigString:
         if not unwrapped:
             raise ValueError(f"Error unwrapping config string: {self.config_string}")
 
-        # TODO (birinxhl): consider debugging env variable
-        # test that meaning was preserved between wrapping and unwrapping
+        # NOTE: slow test that can possibly be removed
+        #  test that meaning was preserved between wrapping and unwrapping
+        #  to make sure the config string wrapping/unwrapping is working well
         rewrapped_config = wrap_config_into_string(unwrapped_config=unwrapped)
         assert self.config_string == rewrapped_config, (
             "Error during wrapping unwrapping: config_string != rewrapped_config_string",
