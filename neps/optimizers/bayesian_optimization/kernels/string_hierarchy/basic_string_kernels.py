@@ -124,7 +124,7 @@ class StringKernelV1(torch.nn.Module):
         if not bool((self.weights > 0).all()):
             raise ValueError(f"Weights !>0: {self.weights}")
 
-        _logger.debug(f"Called method `forward` of kernel `%s`", self)
+        _logger.debug("Called method `forward` of kernel `%s`", self)
         _logger.debug("Count of received config strings: %d", len(configs))
         _logger.debug("Part weights: %s", self.weights)
 

@@ -26,7 +26,7 @@ class CombiningKernel(torch.nn.Module):
         )
 
     def forward(self, kernel_results: torch.Tensor) -> torch.Tensor:
-        _logger.debug(f"Called method `forward` of kernel `%s`", self)
+        _logger.debug("Called method `forward` of kernel `%s`", self)
         _logger.debug("Combining weights: %s", self.combining_weights)
 
         kernel_results = kernel_results.clone()
