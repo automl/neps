@@ -16,9 +16,9 @@ def _normalize_gram(K: torch.Tensor) -> torch.Tensor:
     return K / K_diag_outer
 
 
-# Architecture string kernel: ASK
+# Neural Architecture String Kernel: NASK
 
-class ASK(torch.nn.Module):
+class NASK(torch.nn.Module):
     def __init__(
         self,
         hierarchy_level: int | None = None,

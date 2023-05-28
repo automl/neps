@@ -1,6 +1,6 @@
 from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
-from .string_hierarchy import GPStringHierarchy, ASK
+from .string_hierarchy import GPStringHierarchy, NASK
 
 SurrogateModelMapping = {
     "gp": ComprehensiveGP,
@@ -9,5 +9,5 @@ SurrogateModelMapping = {
 }
 
 StringKernelModelMapping = {
-    "ASK": ASK,
+    "nask": NASK,
 }

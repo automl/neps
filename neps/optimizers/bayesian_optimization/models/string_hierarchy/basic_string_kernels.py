@@ -65,9 +65,9 @@ def _get_config_strings(configs: tuple) -> tuple[config_string.ConfigString]:
     return config_strings
 
 
-# Architecture string kernel: ASK
+# Neural Architecture String Kernel: NASK
 
-class ASK:
+class NASK:
     def __init__(
         self,
         hierarchy_level: int | None = None,
@@ -80,7 +80,7 @@ class ASK:
         self._reset_state()
 
     def _reset_state(self):
-        self._kernel = basic_string_kernels.ASK(
+        self._kernel = basic_string_kernels.NASK(
             hierarchy_level=self.hierarchy_level,
             learnable_weights=self.learnable_weights,
         )
