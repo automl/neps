@@ -16,6 +16,12 @@ def _normalize_gram(K: torch.Tensor) -> torch.Tensor:
     return K / K_diag_outer
 
 
+def _compute_joined_operator_operands(
+    part: config_string.UnwrappedConfigStringPart,
+) -> str:
+    return f"{part.operator} ({part.operands})"
+
+
 # Neural Architecture String Kernel: NASK
 
 class NASK(torch.nn.Module):
@@ -29,14 +35,14 @@ class NASK(torch.nn.Module):
         self.hierarchy_level = hierarchy_level
 
         operator_weight = 1.0
-        sub_config_weight = 1.0
-        joined_operator_sub_config_weight = 1.0
+        operands_weight = 1.0
+        joined_operator_operands_weight = 1.0
 
         self.weights = torch.nn.Parameter(
             torch.tensor([
                 operator_weight,
-                sub_config_weight,
-                joined_operator_sub_config_weight,
+                operands_weight,
+                joined_operator_operands_weight,
             ]),
             requires_grad=learnable_weights,
         )
@@ -59,11 +65,12 @@ class NASK(torch.nn.Module):
     @functools.lru_cache(maxsize=2000)  # no specific meaning, a reasonable default
     def _get_symbols_from_config(cls, config: config_string.ConfigString) -> set[str]:
         symbols = set()
-        for item in config.unwrapped:
-            symbols.add(item.operator)
-            if item.sub_config:
-                symbols.add(item.sub_config)
-                symbols.add(f"{item.operator} ({item.sub_config})")
+        for part in config.unwrapped:
+            symbols.add(part.operator)
+            if part.operands:
+                symbols.add(part.operands)
+                joined_operator_operands = _compute_joined_operator_operands(part)
+                symbols.add(joined_operator_operands)
         return symbols
 
     def _process_configs(
@@ -85,8 +92,8 @@ class NASK(torch.nn.Module):
         weights:
             torch.Tensor of size (3,) with weights corresponding to
             [0] - weight of the `operator`
-            [1] - weight of the `sub_config`
-            [2] - weight of the joined `operator` and `sub_config`
+            [1] - weight of the `operands`
+            [2] - weight of the joined `operator` and `operands`
         """
 
         symbol_indices = {}
@@ -100,14 +107,13 @@ class NASK(torch.nn.Module):
                 sym_index = symbol_indices[part.operator]
                 conf_values[sym_index][0] += 1.0
 
-                if part.sub_config:
-                    # Increment `sub_config`
-                    sym_index = symbol_indices[part.sub_config]
+                if part.operands:
+                    # Increment `operands`
+                    sym_index = symbol_indices[part.operands]
                     conf_values[sym_index][1] += 1.0
-
-                    # Increment joined `operator` and `sub_config`
-                    joined_val = f"{part.operator} ({part.sub_config})"
-                    sym_index = symbol_indices[joined_val]
+                    # Increment joined `operator` and `operands`
+                    joined_operator_operands = _compute_joined_operator_operands(part)
+                    sym_index = symbol_indices[joined_operator_operands]
                     conf_values[sym_index][2] += 1.0
 
         assert result.size() == (n_configs, n_symbols, 3), \

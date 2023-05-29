@@ -9,7 +9,7 @@ class UnwrappedConfigStringPart:
     level: int
     opening_index: int
     operator: str
-    sub_config: str
+    operands: str
 
 
 @functools.lru_cache(maxsize=2000)
@@ -56,15 +56,15 @@ def unwrap_config_string(config_string: str) -> tuple[UnwrappedConfigStringPart]
             value = value.split(" (", maxsplit=1)
             operator = value[0]
             if len(value) > 1:
-                sub_config = "(" + value[1]
+                operands = "(" + value[1]
             else:
-                sub_config = ""
+                operands = ""
 
             item = UnwrappedConfigStringPart(
                 level=level,
                 opening_index=opening_index,
                 operator=operator,
-                sub_config=sub_config,
+                operands=operands,
             )
             result.append(item)
 
@@ -211,7 +211,7 @@ class ConfigString:
         return self._at_hierarchy_level_cache[level]
 
     def pretty_format(self) -> str:
-        format_str = "{indent}{item.level:0>2d} :: {item.operator} ({item.sub_config})"
+        format_str = "{indent}{item.level:0>2d} :: {item.operator} ({item.operands})"
         lines = []
         for item in self.unwrapped:
             lines.append(format_str.format(item=item, indent='\t' * item.level))
