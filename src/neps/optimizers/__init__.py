@@ -22,7 +22,6 @@ from .multi_fidelity.successive_halving import (
 )
 from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
 from .multi_fidelity_prior.priorband import PriorBand
-from .multi_fidelity_prior.raceband import RaceBand
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
 
