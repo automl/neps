@@ -40,7 +40,6 @@ SearcherMapping: dict[str, Callable] = {
     "hyperband": Hyperband,
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
     "multifidelity_tpe": MultiFidelityPriorWeightedTreeParzenEstimator,
-    "raceband": RaceBand,
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
     "mobster": MOBSTER,
