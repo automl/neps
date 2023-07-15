@@ -362,6 +362,8 @@ class SearchSpace(collections.abc.Mapping):
                 hp.value = hyperparameters[hp_key]
                 continue
             new_hp_value = hyperparameters[hp_key]
+            if isinstance(new_hp_value, Parameter):
+                new_hp_value = new_hp_value.value
             if (
                 isinstance(hp, NumericalParameter)
                 and not hp.lower <= new_hp_value <= hp.upper
