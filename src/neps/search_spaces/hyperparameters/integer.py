@@ -38,7 +38,8 @@ class IntegerParameter(FloatParameter):
         # IMPORTANT function to call wherever `self.float_hp` is used in this class
         self.float_hp.value = None if self.value is None else float(self.value)
         self.float_hp.default = None if self.default is None else float(self.default)
-        self.float_hp._set_log_values()
+        if self.log:
+            self.float_hp._set_log_values()
 
     def sample(self, user_priors: bool = False):
         self.float_hp.sample(user_priors=user_priors)
