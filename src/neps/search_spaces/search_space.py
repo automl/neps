@@ -374,6 +374,7 @@ class SearchSpace(collections.abc.Mapping):
             if defaults and hasattr(hp, "default"):
                 hp.default = new_hp_value
                 self.has_prior = True
+                hp.has_prior = True
                 if hasattr(hp, "set_default_confidence_score"):
                     hp.set_default_confidence_score(confidence)
                     print("set confidence to: ", confidence)
