@@ -345,7 +345,8 @@ class SearchSpace(collections.abc.Mapping):
         values=True,
         confidence="low",
         delete_previous_defaults=False,
-        delete_previous_values=False
+        delete_previous_values=False,
+        overwrite_constants=False,
         # If new values / defaults are given, previous defaults / values are always
         # overridden
     ):
@@ -355,7 +356,8 @@ class SearchSpace(collections.abc.Mapping):
                 hp.default = None
                 hp.has_prior = False
             if delete_previous_values:
-                hp.value = None
+                if not isinstance(hp, ConstantParameter) or overwrite_constants:
+                    hp.value = None
             if hp_key not in hyperparameters:
                 continue
             if self.hyperparameters[hp_key].is_fidelity:
@@ -371,6 +373,8 @@ class SearchSpace(collections.abc.Mapping):
                 continue
             if isinstance(hp, CategoricalParameter) and new_hp_value not in hp.choices:
                 continue
+            if isinstance(hp, ConstantParameter) and not overwrite_constants:
+                continue
             if defaults and hasattr(hp, "default"):
                 hp.default = new_hp_value
                 self.has_prior = True
@@ -380,6 +384,9 @@ class SearchSpace(collections.abc.Mapping):
                     print("set confidence to: ", confidence)
             if values:
                 hp.value = new_hp_value
+                if isinstance(hp, ConstantParameter):
+                    hp.lower = new_hp_value
+                    hp.upper = new_hp_value
 
     def __getitem__(self, key):
         return self.hyperparameters[key]
