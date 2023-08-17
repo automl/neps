@@ -395,6 +395,9 @@ def run(
                     ) = _sample_config(optimization_dir, sampler, serializer, logger)
                 # Take the config data in case tensorboard is to be used.
                 if tblogger.logger_init_bool or tblogger.logger_bool:
+                    # A trick to enter the condition once if tblogger is not used and always
+                    # if it is, necessary to log the first config. (need to save the first config
+                    # then check if tblogger is used during training in the run_pipeline.)
                     tblogger.config_track_init_api(
                         config_id=config_id,
                         config=config,
