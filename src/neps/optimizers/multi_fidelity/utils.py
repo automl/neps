@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
-import numpy as np
 import pandas as pd
 
 
@@ -15,27 +14,34 @@ class MFObservedData:
     So far this is just a draft class containing the DataFrame and some properties.
     """
 
+    default_config_idx = "config_id"
+    default_budget_idx = "budget_id"
+    default_config_col = "config"
+    default_perf_col = "perf"
+
     def __init__(
         self,
         columns: Union[List[str], None] = None,
         index_names: Union[List[str], None] = None,
-        config_column_name: str = "config",
-        perf_column_name: str = "perf",
-        budget_level_column_name: str = "budget_id",
     ):
         if columns is None:
-            columns = ["config", "perf", "budget_id"]
+            columns = [self.default_config_col, self.default_perf_col]
         if index_names is None:
-            index_names = ["config_id", "budget_id"]
+            index_names = [self.default_config_idx, self.default_budget_idx]
 
-        self.config_col = config_column_name
-        self.perf_col = perf_column_name
-        self.budget_col = budget_level_column_name
+        self.config_col = columns[0]
+        self.perf_col = columns[1]
+        self.budget_col = "budget_col"
 
-        if len(index_names) > 1:
-            index = pd.MultiIndex.from_tuples([], names=index_names)
-        else:
-            index = pd.Index([], name=index_names[0], dtype=np.int64)
+        columns += [self.budget_col]
+
+        if len(index_names) == 1:
+            index_names += ["budget_id"]
+
+        self.config_idx = index_names[0]
+        self.budget_idx = index_names[1]
+
+        index = pd.MultiIndex.from_tuples([], names=index_names)
 
         self.df = pd.DataFrame([], columns=columns, index=index)
 
@@ -102,55 +108,76 @@ class MFObservedData:
                 f"Given indices: {index_list}"
             )
 
+    def get_learning_curves(self):
+        return self.df.pivot_table(
+            index=self.df.index.names[0],
+            columns=self.df.index.names[1],
+            values=self.perf_col,
+        )
+
+    def get_incumbents_for_budgets(self, maximize: bool = True):
+        """
+        Returns a series object with the best configuration id for each budget id
+
+        Note: this will always map the best lowest ID if two configurations
+              has the same performance at the same fidelity
+        """
+        learning_curves = self.get_learning_curves()
+        if maximize:
+            return learning_curves.idxmax(axis=0)
+        else:
+            return learning_curves.idxmin(axis=0)
+
+    def get_best_learning_curve_id(self, maximize: bool = True):
+        """
+        Returns a single configuration id of the best observed performance
+
+        Note: this will always return the single best lowest ID
+              if two configurations has the same performance
+        """
+        learning_curves = self.get_learning_curves()
+        if maximize:
+            return learning_curves.max(axis=1).idxmax()
+        else:
+            return learning_curves.min(axis=1).idxmin()
+
 
 if __name__ == "__main__":
     # TODO: Either delete these or convert them to tests (karibbov)
     """
     Here are a few examples of how to manage data with this class:
     """
-    # Multi Index case:
-    data = MFObservedData(
-        ["config", "perf", "budget_id"], index_names=["config_id", "budget_id"]
-    )
+    data = MFObservedData(["config", "perf"], index_names=["config_id", "budget_id"])
 
     # When adding multiple indices data should be list of rows(lists) and the index should be list of tuples
     data.add_data(
-        [["conf1", 0.5, 0], ["conf2", 0.8, 1], ["conf1", 0.9, 1], ["conf2", 0.4, 0]],
+        [["conf1", 0.5, 0], ["conf2", 0.9, 1], ["conf1", 0.9, 1], ["conf2", 0.4, 0]],
         index=[(0, 0), (1, 1), (0, 1), (1, 0)],
     )
+    data.add_data(
+        [["conf1", 0.5, 2], ["conf2", 0.8, 2], ["conf1", 0.9, 3]],
+        index=[(0, 2), (1, 2), (0, 3)],
+    )
     print(data.df)
+    print(data.get_learning_curves())
+    print(
+        "Mapping of budget IDs into best performing configuration IDs at each fidelity:\n",
+        data.get_incumbents_for_budgets(),
+    )
+    print(
+        "Configuration ID of the best observed performance so far: ",
+        data.get_best_learning_curve_id(),
+    )
 
     # When updating multiple indices at a time both the values in the data dictionary and the indices should be lists
-    data.update_data({"perf": [1.8, 1.5], "budget_id": [5, 6]}, index=[(1, 1), (0, 0)])
+    data.update_data({"perf": [1.8, 1.5], "budget_col": [5, 6]}, index=[(1, 1), (0, 0)])
     print(data.df)
 
-    data = MFObservedData(
-        ["config", "perf", "budget_id"], index_names=["config_id", "budget_id"]
-    )
+    data = MFObservedData(["config", "perf"], index_names=["config_id", "budget_id"])
 
     # when adding a single row second level list is not necessary
     data.add_data(["conf1", 0.5, 0], index=(0, 0))
     print(data.df)
 
-    data.update_data({"perf": [1.8], "budget_id": [5]}, index=(0, 0))
-    print(data.df)
-
-    # Single index case:
-    data = MFObservedData(["config", "perf", "budget_id"], index_names=["config_id"])
-
-    data.add_data(
-        [["conf1", 0.5, 0], ["conf2", 0.8, 1], ["conf1", 0.9, 1], ["conf2", 0.4, 0]],
-        index=[(0), (1), (2), (3)],
-    )
-    print(data.df)
-
-    data.update_data({"perf": [1.8, 1.5], "budget_id": [5, 6]}, index=[(1), (0)])
-    print(data.df)
-
-    data = MFObservedData(["config", "perf", "budget_id"], index_names=["config_id"])
-
-    data.add_data(["conf1", 0.5, 0], index=0)
-    print(data.df)
-
-    data.update_data({"perf": [1.8], "budget_id": [5]}, index=0)
+    data.update_data({"perf": [1.8], "budget_col": [5]}, index=(0, 0))
     print(data.df)
