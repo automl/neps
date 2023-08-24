@@ -1,3 +1,4 @@
+# mypy: disable-error-code = assignment
 from __future__ import annotations
 
 import logging
@@ -269,7 +270,7 @@ class ModelPolicy(SamplingPolicy):
         hp_kernels: list = None,
         surrogate_model_args: dict = None,
         acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,
+        log_prior_weighted: bool = False,  # pylint: disable=unused-argument
         acquisition_sampler: str | AcquisitionSampler = "random",
         patience: int = 100,
         logger=None,
@@ -406,3 +407,170 @@ class ModelPolicy(SamplingPolicy):
         #  random sampler in NePS does not do what is required here
         # return self.acquisition_sampler.sample(self.acquisition)
         return config
+
+
+class BaseDynamicModelPolicy(SamplingPolicy):
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        observed_configs: Any = None,
+        surrogate_model: str | Any = "gp",
+        domain_se_kernel: str = None,
+        hp_kernels: list = None,
+        graph_kernels: list = None,
+        surrogate_model_args: dict = None,
+        acquisition: str | BaseAcquisition = "EI",
+        use_priors: bool = False,
+        log_prior_weighted: bool = False,
+        acquisition_sampler: str | AcquisitionSampler = "random",
+        patience: int = 100,
+        logger=None,
+    ):
+        super().__init__(pipeline_space=pipeline_space, logger=logger)
+
+        surrogate_model_args = surrogate_model_args or {}
+
+        graph_kernels, hp_kernels = get_kernels(
+            pipeline_space=pipeline_space,
+            domain_se_kernel=domain_se_kernel,
+            graph_kernels=graph_kernels,
+            hp_kernels=hp_kernels,
+            optimal_assignment=False,
+        )
+        if "graph_kernels" not in surrogate_model_args:
+            surrogate_model_args["graph_kernels"] = graph_kernels
+        if "hp_kernels" not in surrogate_model_args:
+            surrogate_model_args["hp_kernels"] = hp_kernels
+        if not surrogate_model_args["hp_kernels"]:
+            raise ValueError("No kernels are provided!")
+        if "vectorial_features" not in surrogate_model_args:
+            surrogate_model_args[
+                "vectorial_features"
+            ] = pipeline_space.get_vectorial_dim()
+
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            surrogate_model,
+            name="surrogate model",
+            kwargs=surrogate_model_args,
+        )
+
+        self.acquisition = instance_from_map(
+            AcquisitionMapping,
+            acquisition,
+            name="acquisition function",
+        )
+
+        if use_priors and pipeline_space.has_prior:
+            self.acquisition = DecayingPriorWeightedAcquisition(
+                self.acquisition, log=log_prior_weighted
+            )
+
+        self.acquisition_sampler = instance_from_map(
+            AcquisitionSamplerMapping,
+            acquisition_sampler,
+            name="acquisition sampler function",
+            kwargs={"patience": patience, "pipeline_space": pipeline_space},
+        )
+
+        self.sampling_args: dict = {}
+
+        self.observed_configs = observed_configs
+
+    def _fantasize_pending(self, train_x, train_y, pending_x):
+        if len(pending_x) == 0:
+            return train_x, train_y
+        # fit model on finished evaluations
+        self.surrogate_model.fit(train_x, train_y)
+        # hallucinating: predict for the pending evaluations
+        _y, _ = self.surrogate_model.predict(pending_x)
+        _y = _y.detach().numpy().tolist()
+        # appending to training data
+        train_x.extend(pending_x)
+        train_y.extend(_y)
+        return train_x, train_y
+
+    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
+        if train_x is None:
+            train_x = []
+        if train_y is None:
+            train_y = []
+        if pending_x is None:
+            pending_x = []
+
+        if decay_t is None:
+            decay_t = len(train_x)
+        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
+        self.surrogate_model.fit(train_x, train_y)
+        self.acquisition.set_state(self.surrogate_model, decay_t=decay_t)
+        self.acquisition_sampler.set_state(x=train_x, y=train_y)
+
+    @abstractmethod
+    def sample(self, *args, **kwargs) -> tuple[int, SearchSpace]:
+        pass
+
+
+class RandomPromotionDynamicPolicy(BaseDynamicModelPolicy):
+    def __init__(self, *args, **kwargs):
+        self.num_train_configs = 0
+
+        super().__init__(*args, **kwargs)
+
+    def _fantasize_pending(self, *args, **kwargs):  # pylint: disable=unused-argument
+        pending_configs = []
+
+        # Select configs that are neither pending nor resulted in error
+        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
+
+        # Get the config, performance values for the maximum budget runs that are completed
+        max_budget_samples = completed_configs.sort_index().groupby(level=0).last()
+        max_budget_configs = max_budget_samples[
+            self.observed_configs.config_col
+        ].to_list()
+        max_budget_perf = max_budget_samples[self.observed_configs.perf_col].to_list()
+
+        pending_condition = self.observed_configs.pending_condition
+        if pending_condition.any():
+            pending_configs = (
+                self.observed_configs.df[pending_condition]
+                .loc[(), self.observed_configs.config_col]
+                .unique()
+                .to_list()
+            )
+        return super()._fantasize_pending(
+            max_budget_configs, max_budget_perf, pending_configs
+        )
+
+    def sample(
+        self, rand_promotion_prob=0.5, seed=777, is_promotion=False, **kwargs
+    ):  # pylint: disable=unused-argument
+        promoted = False
+        # np.random.seed(seed)
+        if np.random.random_sample() < rand_promotion_prob:
+            config_id = (
+                self.observed_configs.df[~self.observed_configs.error_condition]
+                .sample(1)
+                .index[0][0]
+            )
+            max_budget_id = self.observed_configs.df.loc[(config_id,)].index[-1]
+            config = self.observed_configs.df.loc[
+                (config_id, max_budget_id), self.observed_configs.config_col
+            ]
+            promoted = True
+
+        else:
+            config_id = len(self.observed_configs.df.index.levels[0])
+            config = self.acquisition_sampler.sample(self.acquisition)
+
+        if is_promotion and promoted:
+            return config_id
+        elif is_promotion:
+            return None
+        else:
+            return config
+
+    # def sample(self, **kwargs):
+    #     return self._sample(is_promotion=False, **kwargs)
+    #
+    # def retrieve_promotions(self, **kwargs):
+    #     return self._sample(is_promotion=True, **kwargs)
