@@ -393,11 +393,19 @@ def run(
                         pipeline_directory,
                         previous_pipeline_directory,
                     ) = _sample_config(optimization_dir, sampler, serializer, logger)
-                # Take the config data in case tensorboard is to be used.
                 if tblogger.logger_init_bool or tblogger.logger_bool:
-                    # A trick to enter the condition once if tblogger is not used and always
-                    # if it is, necessary to log the first config. (need to save the first config
-                    # then check if tblogger is used during training in the run_pipeline.)
+                    # The following code block handles configuration data for potential use with TensorBoard.
+                    # If the TensorBoard logger has been initialized or is active, this block captures
+                    # configuration details. During the first configuration sampling, this process captures
+                    # the initial configuration regardless of whether TensorBoard is used. In the subsequent
+                    # sampling rounds, if the `logger_bool` flag is True, indicating TensorBoard usage,
+                    # the logger will continue to capture and track configurations. If `logger_bool` is False,
+                    # and `logger_init_bool` is False as well, no more configurations will be captured.
+
+                    # The `run_pipeline` step occurs after this sampling, and at this initial stage, it's not possible to know
+                    # whether TensorBoard will be used. Gathering initial configuration details at this point ensures their
+                    # availability for later stages, even if TensorBoard is not employed and stops capturing if it actually
+                    # is not employed.
                     tblogger.config_track_init_api(
                         config_id=config_id,
                         config=config,

@@ -4,11 +4,11 @@ NePS tblogger With TensorBoard
 1- Introduction
 ---------------
 
-Welcome to the NePS tblogger with TensorBoard tutorial! This guide will walk you
+Welcome to the NePS tblogger with TensorBoard tutorial. This guide will walk you
 through the process of using the NePS tblogger class to effectively monitor and
 analyze performance data from various model configurations during training.
 
-Assuming you already have an experience in NePS the main reason of creating this tutorial is to showcase the
+Assuming you already have experience in NePS, the main reason of creating this tutorial is to showcase the
 power of visualization using tblogger. if you wish to directly reach that part, check the lines
 between 244-264 or search for 'Start Tensorboard Logging'
 
@@ -29,15 +29,15 @@ Before we dive in, make sure you have the necessary dependencies installed. If y
 install the ``NePS`` package using the following command:
 
 ```bash
-
-    pip install neural-pipeline-search
+pip install neural-pipeline-search
+```
 
 Additionally, please note that NePS does not include ``torchvision`` as a dependency.
 You can install it with the following command:
 
 ```bash
-
-   pip install torchvision
+pip install torchvision==0.14.1
+```
 
 These dependencies will ensure you have everything you need to follow along with this tutorial successfully.
 """
@@ -53,6 +53,7 @@ from typing import Tuple
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision
 from torch.optim import lr_scheduler
 from torch.utils.data.dataloader import DataLoader
@@ -122,7 +123,6 @@ def MNIST(
 class MLP(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.relu = nn.ReLU()
         self.linear1 = nn.Linear(in_features=784, out_features=392)
         self.linear2 = nn.Linear(in_features=392, out_features=196)
         self.linear3 = nn.Linear(in_features=196, out_features=10)
@@ -130,8 +130,8 @@ class MLP(nn.Module):
     def forward(self, x):
         # Flattening the grayscaled image from 1x28x28 (CxWxH) to 784.
         x = x.view(x.size(0), -1)
-        x = self.relu(self.linear1(x))
-        x = self.relu(self.linear2(x))
+        x = F.relu(self.linear1(x))
+        x = F.relu(self.linear2(x))
         x = self.linear3(x)
 
         return x
@@ -216,6 +216,10 @@ def run_pipeline_BO(lr, optim, weight_decay):
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     elif optim == "SGD":
         optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+    else:
+        raise ValueError(
+            "Optimizer choices are defined differently in the pipeline_space"
+        )
 
     max_epochs = 9
 
@@ -251,10 +255,10 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
         # tblogger for neps config loggings. This line will result in the following:
 
-        # 1 Incumbent of the configs (best performance regardless of fiedlity budget if the searcher was fidelity depenedent).
-        # 2 Loss curves of each of the configsat each epochs.
+        # 1 Incumbent of the configs (best performance regardless of fidelity budget, if the searcher was fidelity dependent).
+        # 2 Loss curves of each of the configs at each epoch.
         # 3 lr_decay curve at each epoch.
-        # 4 miss_img which represents the wrongly classified images by the model according the the counter.
+        # 4 miss_img which represents the wrongly classified images by the model.
         # 5 first two layer_gradients computed above and passed as scalar configs.
 
         tblogger.log(
@@ -262,7 +266,9 @@ def run_pipeline_BO(lr, optim, weight_decay):
             current_epoch=i,
             data={
                 "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
-                "miss_img": tblogger.image_logging(img_tensor=miss_img, counter=2),
+                "miss_img": tblogger.image_logging(
+                    img_tensor=miss_img, counter=2, seed=2
+                ),
                 "layer_gradient1": tblogger.scalar_logging(value=mean_gradient[0]),
                 "layer_gradient2": tblogger.scalar_logging(value=mean_gradient[1]),
             },
@@ -305,9 +311,9 @@ if __name__ == "__main__":
     When running this code without any arguments, it will by default run bayesian optimization with 10 max evaluations
     of 9 epochs each:
 
-        ```bash:
-
-                python neps_tblogger_tutorial.py
+    ```bash
+    python neps_tblogger_tutorial.py
+    ```
     """
 
     start_time = time.time()
@@ -322,17 +328,16 @@ if __name__ == "__main__":
     For showcasing purposes. After completing the first run, one can uncomment the line below
     and continue the search via:
 
-        ```bash:
-
-                python neps_tblogger_tutorial.py --max_evaluations_total 15
+    ```bash:
+    python neps_tblogger_tutorial.py --max_evaluations_total 15
+    ```
 
     This would result in continuing the search for 5 new different configurations in addition
     to disabling the logging, hence tblogger can always be disabled using the line below.
 
-        ```code:
-
-                tblogger.disable()
-
+    ```python:
+    tblogger.disable()
+    ```
     """
 
     # tblogger.disable()
@@ -347,17 +352,17 @@ if __name__ == "__main__":
 
     """
     To check live plots during this search, please open a new terminal and make sure to be at the same level directory
-    of your project and run this commant on the file created by neps search algorithm.
+    of your project and run this command on the file created by neps search algorithm.
 
-        ```bash:
-
-                tensorboard --logdir bayesian_optimization
+    ```bash:
+    tensorboard --logdir bayesian_optimization
+    ```
 
     To be able to check the visualization of tensorboard make sure to follow the local link provided.
 
-        ```bash:
-
-                http://localhost:6006/
+    ```bash:
+    http://localhost:6006/
+    ```
 
     If nothing was visualized and you followed the tutorial exactly, there could have been an error in passing the correct
     directory, please double check. Tensorboard will always run in the command line without checking if the directory exists.
