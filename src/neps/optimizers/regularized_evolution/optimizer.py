@@ -22,7 +22,7 @@ class RegularizedEvolution(BaseOptimizer):
         patience: int = 100,
         budget: None | int | float = None,
         logger=None,
-        assisted: bool = True,
+        assisted: bool = False,
         assisted_zero_cost_proxy: Callable | None = None,
         assisted_init_population_dir: str | Path | None = None,
         **optimizer_kwargs,
