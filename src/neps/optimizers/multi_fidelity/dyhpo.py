@@ -109,7 +109,7 @@ class DyHPOBase(BaseOptimizer):
             promotion_policy_args = dict()
 
         self.observed_configs = MFObservedData(
-            columns=["config", "perf", "budget_id"],
+            columns=["config", "perf"],
             index_names=["config_id", "budget_id"],
         )
 
@@ -236,9 +236,7 @@ class DyHPOBase(BaseOptimizer):
             _config, _budget_level = config_id.split("_")
             perf = self.get_loss(config_val.result)
             index = (int(_config), int(_budget_level))
-            self.observed_configs.add_data(
-                [config_val.config, perf, int(_budget_level)], index=index
-            )
+            self.observed_configs.add_data([config_val.config, perf], index=index)
 
             if not np.isclose(
                 self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
@@ -247,7 +245,6 @@ class DyHPOBase(BaseOptimizer):
                     {
                         self.observed_configs.config_col: config_val.config,
                         self.observed_configs.perf_col: perf,
-                        self.observed_configs.budget_col: int(_budget_level),
                     },
                     index=index,
                 )
@@ -258,15 +255,12 @@ class DyHPOBase(BaseOptimizer):
             index = (int(_config), int(_budget_level))
 
             if index not in self.observed_configs.df.index:
-                self.observed_configs.add_data(
-                    [config_val.config, np.nan, int(_budget_level)], index=index
-                )
+                self.observed_configs.add_data([config_val.config, np.nan], index=index)
             else:
                 self.observed_configs.update_data(
                     {
                         self.observed_configs.config_col: config_val.config,
                         self.observed_configs.perf_col: np.nan,
-                        self.observed_configs.budget_col: int(_budget_level),
                     },
                     index=index,
                 )
