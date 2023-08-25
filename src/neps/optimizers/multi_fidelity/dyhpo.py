@@ -20,13 +20,6 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
 from .mf_bo import ModelBase
-from .promotion_policy import PromotionPolicy
-from .sampling_policy import (
-    BaseDynamicModelPolicy,
-    ModelPolicy,
-    RandomPromotionDynamicPolicy,
-    SamplingPolicy,
-)
 from .utils import MFObservedData
 
 
@@ -65,7 +58,6 @@ class MFEIBO(BaseOptimizer):
         acquisition: Union[str, BaseAcquisition] = acquisition,
         acquisition_sampler: Union[str, AcquisitionSampler] = "freeze-thaw",
         model_policy: Any = ModelBase,
-        model_policy_args: Union[dict, None] = None,
         log_prior_weighted: bool = False,
         initial_design_size: int = 10,
     ):
@@ -338,51 +330,6 @@ class MFEIBO(BaseOptimizer):
         # TODO: Once done with development catch the model update exceptions
         # and skip model based suggestions if failed (karibbov)
         self.model_policy.update_model()
-
-    def is_promotable(self, promotion_type: str = "model") -> Union[int, None]:
-        """
-        Check if there are any configurations to promote, if yes then return the integer
-        ID of the promoted configuration, else return None.
-        """
-        if promotion_type == "model":
-            config_id = self.model_policy.sample(is_promotion=True, **self.sampling_args)
-        elif promotion_type == "policy":
-            config_id = self.promotion_policy.retrieve_promotions()
-        elif promotion_type is None:
-            config_id = None
-        else:
-            raise ValueError(
-                f"'{promotion_type}' based promotion is not possible, please"
-                f"use either 'model', 'policy' or None as promotion_type"
-            )
-
-        return config_id
-
-    def sample_new_config(
-        self, sample_type: str = "model", **kwargs  # pylint: disable=unused-argument
-    ) -> SearchSpace:
-        """
-        Sample completely new configuration that
-        hasn't been observed in any fidelity before.
-        Your model_policy and/or sampling_policy must satisfy this constraint
-        """
-        if sample_type == "model":
-            config = self.model_policy.sample(**self.sampling_args)
-        elif sample_type == "policy":
-            config = self.sampling_policy.sample(**self.sampling_args)
-        elif sample_type is None:
-            config = self.pipeline_space.sample(
-                patience=self.patience,
-                user_priors=self.use_priors,
-                ignore_fidelity=True,
-            )
-        else:
-            raise ValueError(
-                f"'{sample_type}' based sampling is not possible, please"
-                f"use either 'model', 'policy' or None as sampling_type"
-            )
-
-        return config
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
