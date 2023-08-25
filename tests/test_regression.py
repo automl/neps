@@ -2,7 +2,8 @@ import logging
 import os
 
 import pytest
-from regression_runner import OPTIMIZERS, TASKS, RegressionRunner
+
+from tests.settings import OPTIMIZERS
 
 
 @pytest.fixture(autouse=True)
@@ -26,12 +27,15 @@ def no_logs_gte_error(caplog):
 @pytest.mark.regression_all
 @pytest.mark.parametrize("optimizer", OPTIMIZERS, ids=OPTIMIZERS)
 def test_regression_all(optimizer):
+    from tests.regression_runner import TASK_OBJECTIVE_MAPPING, RegressionRunner
+    from tests.settings import TASKS
+
     test_results = {}
     test_results["test_agg"] = 0
     test_results["task_agg"] = 0
     for task in TASKS:
         ks_test, median_test, median_improvement = RegressionRunner(
-            optimizer=optimizer, task=task
+            objective=TASK_OBJECTIVE_MAPPING[task](optimizer=optimizer, task=task)
         ).test()
 
         test_results[task] = [ks_test, median_test, median_improvement]
@@ -49,5 +53,4 @@ def test_regression_all(optimizer):
         else 0
     )
     assert result == 1, f"Test for {optimizer} didn't pass: {test_results}"
-
     logging.info(f"Regression test for {optimizer} passed successfully!")

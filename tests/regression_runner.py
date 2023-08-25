@@ -1,27 +1,28 @@
+# mypy: disable-error-code = union-attr
 from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
+from typing import Callable
 
-import jahs_bench
 import numpy as np
-from joint_config_space import joint_config_space
 from scipy.stats import kstest
-from typing_extensions import Literal
 
 import neps
-from neps.optimizers.base_optimizer import BaseOptimizer
-from neps.search_spaces.search_space import pipeline_space_from_configspace
+from tests.regression_objectives import (
+    HartmannObjective,
+    JAHSObjective,
+    RegressionObjectiveBase,
+)
+from tests.settings import ITERATIONS, LOSS_FILE, MAX_EVALUATIONS_TOTAL, OPTIMIZERS, TASKS
 
-OPTIMIZERS = [
-    "random_search",
-    "mf_bayesian_optimization",
-    "bayesian_optimization",
-    "regularized_evolution",
-]
-TASKS = ["cifar10", "fashion_mnist"]
-LOSS_FILE = Path(__file__, "losses.json")
+TASK_OBJECTIVE_MAPPING = {
+    "cifar10": JAHSObjective,
+    "fashion_mnist": JAHSObjective,
+    "hartmann3": HartmannObjective,
+    "hartmann6": HartmannObjective,
+}
 
 logging.basicConfig(level=logging.INFO)
 
@@ -45,119 +46,83 @@ def incumbent_at(root_directory: str | Path, step: int):
 
 
 class RegressionRunner:
-    """Setting standard configurations, running the optimizations,
-    and running regression test"""
-
-    def evaluation_func(self):
-        """
-        If the optimizer is cost aware, return the evaluation function with cost
-        """
-
-        self.benchmark = jahs_bench.Benchmark(
-            task=self.task, kind="surrogate", download=True
-        )
-
-        def cost_evaluation(
-            pipeline_directory, previous_pipeline_directory, **joint_configuration
-        ):  # pylint: disable=unused-argument
-            epoch = joint_configuration.pop("epoch")
-            joint_configuration.update({"N": 5, "W": 16, "Resolution": 1.0})
-
-            results = self.benchmark(joint_configuration, nepochs=epoch)
-            return {
-                "loss": 100 - results[epoch]["valid-acc"],
-                "cost": results[epoch]["runtime"],
-            }
-
-        def loss_evaluation(
-            pipeline_directory, previous_pipeline_directory, **joint_configuration
-        ):  # pylint: disable=unused-argument
-            epoch = joint_configuration.pop("epoch")
-            joint_configuration.update({"N": 5, "W": 16, "Resolution": 1.0})
-
-            results = self.benchmark(joint_configuration, nepochs=epoch)
-            return 100 - results[epoch]["valid-acc"]
-
-        if "cost" in self.optimizer:
-            return cost_evaluation
-        else:
-            return loss_evaluation
+    """This class runs the optimization algorithms and stores the results in separate files"""
 
     def __init__(
         self,
-        optimizer: Literal[
-            "default",
-            "bayesian_optimization",
-            "random_search",
-            "cost_cooling",
-            "mf_bayesian_optimization",
-            "grid_search",
-            "cost_cooling_bayesian_optimization",  # not implemented yet?
-            "regularized_evolution",
-        ]
-        | BaseOptimizer
-        | str = "mf_bayesian_optimization",
+        objective: RegressionObjectiveBase | Callable,
         iterations: int = 100,
-        task: Literal["cifar10", "colorectal_histology", "fashion_mnist"]
-        | str = "cifar10",
         max_evaluations: int = 150,
         budget: int = 10000,
         experiment_name: str = "",
+        **kwargs,
     ):
         """
         Download benchmark, initialize Pipeline space, evaluation function and set paths,
 
         Args:
-            optimizer: Choose an optimizer to run, this will also be the name of the run
-            iterations: For how many repetitions to run the optimizations
-            task: the dataset name for jahs_bench
-            max_evaluations: maximum number of total evaluations
-            budget: budget for cost aware methods
+            objective: callable that takes a configuration as input and evaluates it
+            iterations: number of times to record the whole optimization process
+            max_evaluations: maximum number of total evaluations for each optimization process
+            budget: budget for cost aware optimizers
             experiment_name: string to identify different experiments
         """
+        self.objective = objective
+        if isinstance(objective, RegressionObjectiveBase):
+            self.task = self.objective.task
+            self.optimizer = self.objective.optimizer
+            self.pipeline_space = self.objective.pipeline_space
+        else:
+            self.task = kwargs.get("task", None)
+            if self.task is None:
+                raise AttributeError(
+                    f"self.task can not be {self.task}, "
+                    f"please provide a task argument"
+                )
 
-        self.task = task
-        self.optimizer = optimizer
+            self.optimizer = kwargs.get("optimizer", None)
+            if self.optimizer is None:
+                raise AttributeError(
+                    f"self.optimizer can not be {self.optimizer}, "
+                    f"please provide an optimizer argument"
+                )
+
+            self.pipeline_space = kwargs.get("pipeline_space", None)
+            if self.pipeline_space is None:
+                raise AttributeError(
+                    f"self.pipeline_space can not be {self.pipeline_space}, "
+                    f"please provide an pipeline_space argument"
+                )
         if experiment_name:
             experiment_name += "_"
-        self.name = f"{optimizer}_{task}_{experiment_name}runs"
+        self.name = f"{self.optimizer}_{self.task}_{experiment_name}runs"
         self.iterations = iterations
         self.benchmark = None
-        self.run_pipeline = None
-        # TODO: convert string paths to Path objects
-        self.root_directory = f"./{self.name}"
 
         # Cost cooling optimizer expects budget but none of the others does
-        self.budget = budget if "cost" in optimizer else None
+        self.budget = budget if "cost" in self.optimizer else None
         self.max_evaluations = max_evaluations
 
-        if optimizer not in OPTIMIZERS:
-            ValueError(
-                f"Regression hasn't been run for {optimizer} optimizer, "
-                f"please update the SEARCHERS first"
-            )
-
         self.final_losses: list[float] = []
-        file_name = f"final_losses_{self.max_evaluations}_.txt"
-        self.final_losses_path = Path(self.root_directory, file_name)
-        if not self.final_losses_path.parent.exists():
-            Path(self.root_directory).mkdir()
 
-        self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
-
-        # Sample size for tests
+        # Number of samples for testing
         self.sample_size = 10
 
-        # For Regularized evolution sampler ignores fidelity hyperparameters
-        # by sampling None for them
-        is_fidelity = self.optimizer != "regularized_evolution"
-        self.pipeline_space["epoch"] = neps.IntegerParameter(
-            lower=1, upper=200, is_fidelity=is_fidelity
-        )
+    @property
+    def root_directory(self):
+        return f"./{self.name}"
 
-    def save_losses(self, file_name: str | None = None):
-        if file_name:
-            self.final_losses_path = Path(self.root_directory, file_name)
+    @property
+    def final_losses_path(self):
+        return Path(self.root_directory, self.loss_file_name)
+
+    @property
+    def loss_file_name(self):
+        return f"final_losses_{self.max_evaluations}_.txt"
+
+    def save_losses(self):
+        if not self.final_losses_path.parent.exists():
+            Path(self.root_directory).mkdir()
         with self.final_losses_path.open(mode="w+", encoding="utf-8") as f:
             f.writelines([str(loss) + "\n" for loss in self.final_losses])
         logging.info(
@@ -166,33 +131,31 @@ class RegressionRunner:
             f"max evaluations into the file: {self.final_losses_path}"
         )
 
-    def run_neps(self, save=False):
+    def neps_run(self, working_directory: Path):
+        neps.run(
+            run_pipeline=self.objective,
+            pipeline_space=self.pipeline_space,
+            searcher=self.optimizer,
+            max_cost_total=self.budget,
+            root_directory=working_directory,
+            max_evaluations_total=self.max_evaluations,
+        )
+
+        best_error = incumbent_at(working_directory, self.max_evaluations)
+        return best_error
+
+    def run_regression(self, save=False):
         """
         Run iterations number of neps runs
         """
-        # Retrieve the surrogate model only if we are going to run the optimizer
-        if not self.run_pipeline:
-            self.run_pipeline = self.evaluation_func()
 
         for i in range(self.iterations):
             working_directory = Path(self.root_directory, "results/test_run_" + str(i))
 
-            neps.run(
-                run_pipeline=self.run_pipeline,
-                pipeline_space=self.pipeline_space,
-                searcher=self.optimizer,
-                budget=self.budget,
-                root_directory=working_directory,
-                max_evaluations_total=self.max_evaluations,
-            )
-
-            best_error = incumbent_at(working_directory, self.max_evaluations)
+            best_error = self.neps_run(working_directory)
 
             self.final_losses.append(float(best_error))
 
-        # Try to reduce memory consumption
-        del self.benchmark
-        self.run_pipeline = None
         if save:
             self.save_losses()
 
@@ -202,7 +165,7 @@ class RegressionRunner:
         """
         Read the results of the last run.
         Either returns results of the most recent run, or
-        return the values from LOSS_DICT
+        return the values from LOSS_FILE
         """
 
         if self.final_losses:
@@ -237,7 +200,7 @@ class RegressionRunner:
                     ) from not_found
         return np.array(self.final_losses)
 
-    def test(self, max_evaluations=150):
+    def test(self):
         """
         Target run for the regression test, keep all the parameters same.
 
@@ -245,28 +208,12 @@ class RegressionRunner:
             max_evaluations: Number of evaluations after which to terminate optimization.
         """
 
-        # Retrieve the surrogate model only if we are going to run the optimizer
-        if not self.run_pipeline:
-            self.run_pipeline = self.evaluation_func()
-
         # Sample losses of self.sample_size runs
         samples = []
         for i in range(self.sample_size):
             working_directory = Path(self.root_directory, f"results/test_run_target_{i}")
-            neps.run(
-                run_pipeline=self.run_pipeline,
-                pipeline_space=self.pipeline_space,
-                searcher=self.optimizer,
-                budget=self.budget,
-                root_directory=working_directory,
-                max_evaluations_total=max_evaluations,
-            )
-            best_error = incumbent_at(working_directory, max_evaluations)
+            best_error = self.neps_run(working_directory)
             samples.append(best_error)
-
-        # Try to reduce memory consumption
-        del self.benchmark
-        self.run_pipeline = None
 
         # Run tests
         target = self.read_results()
@@ -297,6 +244,7 @@ class RegressionRunner:
 
 
 if __name__ == "__main__":
+    # Collect samples for each optimizer and store the data in the LOSS_FILE
     json_file = Path("losses.json")
     if json_file.exists():
         with json_file.open(mode="r", encoding="utf-8") as f:
@@ -304,8 +252,6 @@ if __name__ == "__main__":
     else:
         losses_dict = dict()
 
-    n = 100
-    max_evaluations = 150
     print(f"Optimizers the results are already recorded for: {losses_dict.keys()}")
     for optimizer in OPTIMIZERS:
         if optimizer in losses_dict:
@@ -313,14 +259,17 @@ if __name__ == "__main__":
         for task in TASKS:
             if (
                 isinstance(losses_dict.get(optimizer, None), dict)
-                and len(losses_dict[optimizer].get(task, [])) == n
+                and len(losses_dict[optimizer].get(task, [])) == ITERATIONS
             ):
                 continue
             else:
-                runner = RegressionRunner(optimizer, n, task, max_evaluations=150)
-                # runner.pipeline_space = can be customized here...
-                # runner.run_pipeline = can be customized here...
-                runner.run_neps(save=True)
+                runner = RegressionRunner(
+                    objective=TASK_OBJECTIVE_MAPPING[task](
+                        optimizer=optimizer, task=task
+                    ),
+                    max_evaluations=MAX_EVALUATIONS_TOTAL,
+                )
+                runner.run_regression(save=True)
                 best_results = runner.read_results().tolist()
                 minv, maxv = min(best_results), max(best_results)
                 print(
