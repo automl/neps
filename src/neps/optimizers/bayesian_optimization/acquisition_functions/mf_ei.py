@@ -29,16 +29,21 @@ class MFEI(ComprehensiveExpectedImprovement):
         required by the multi-fidelity Expected Improvement acquisition function.
         """
         budget_list = []
+        # TODO: get the appropriate mapping of budget to incumbent (a dict?)
         _configs = self.observations.get_incumbents_for_budgets()
 
+        # TODO: check that the samples here have their fidelities appropriately set
         # incrementing budget by b_step for all candidates
         # collecting the list of budgets over which incumbent needs to be found
         for _x in x:
-            _x.fidelity.value = _x.fidelity.value + self.b_step
+            _x.fidelity.value = _x.fidelity.value + self.b_step  # +1 step in budget
             budget_list.append(_x.fidelity.value)
 
         # finding the incumbent for each budget
         # TODO: how to do this correctly?
+        # this step creates a one-to-one ordering wrt x that assings the relevant
+        # incumbent value for it such that it is the best value seen at a budget b+1
+        # where b is the maximum steps seen by the config in x
         inc_list = [_configs.budget.perf for budget in budget_list]
 
         return x, inc_list

@@ -1,17 +1,25 @@
 # mypy: disable-error-code = assignment
+from copy import deepcopy
 from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
 
-from metahyper import ConfigResult
+from metahyper import ConfigResult, instance_from_map
 
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from ..base_optimizer import BaseOptimizer
+from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
 from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_functions.prior_weighted import (
+    DecayingPriorWeightedAcquisition,
+)
+from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
+from ..bayesian_optimization.kernels.get_kernels import get_kernels
+from .mf_bo import ModelBase
 from .promotion_policy import PromotionPolicy
 from .sampling_policy import (
     BaseDynamicModelPolicy,
@@ -36,13 +44,13 @@ class MFEIBO(BaseOptimizer):
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
-        sampling_policy: Any = None,
-        promotion_policy: Any = None,
-        sample_policy_args: Union[dict, None] = None,
-        promotion_policy_args: Union[dict, None] = None,
-        promotion_type: str = "model",
-        sample_type: str = "model",
-        sampling_args: Union[dict, None] = None,
+        # sampling_policy: Any = None,
+        # promotion_policy: Any = None,
+        # sample_policy_args: Union[dict, None] = None,
+        # promotion_policy_args: Union[dict, None] = None,
+        # promotion_type: str = "model",
+        # sample_type: str = "model",
+        # sampling_args: Union[dict, None] = None,
         loss_value_on_error: Union[None, float] = None,
         cost_value_on_error: Union[None, float] = None,
         patience: int = 100,
@@ -56,10 +64,10 @@ class MFEIBO(BaseOptimizer):
         hp_kernels: list = None,
         acquisition: Union[str, BaseAcquisition] = acquisition,
         acquisition_sampler: Union[str, AcquisitionSampler] = "freeze-thaw",
-        model_policy: Any = RandomPromotionDynamicPolicy,
+        model_policy: Any = ModelBase,
+        model_policy_args: Union[dict, None] = None,
         log_prior_weighted: bool = False,
         initial_design_size: int = 10,
-        model_policy_args: Union[dict, None] = None,
     ):
         """Initialise
 
@@ -99,83 +107,131 @@ class MFEIBO(BaseOptimizer):
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
 
-        self.promotion_type = promotion_type
-        self.sample_type = sample_type
-        self.sampling_args = {} if sampling_args is None else sampling_args
         self.use_priors = use_priors
         self.total_fevals: int = 0
-
-        # TODO: Use initialized objects where possible instead of ..._args parameters.
-        # This will also make it easier to write new policies for users.
-        if model_policy_args is None:
-            model_policy_args = dict()
-        if sample_policy_args is None:
-            sample_policy_args = dict()
-        if promotion_policy_args is None:
-            promotion_policy_args = dict()
 
         self.observed_configs = MFObservedData(
             columns=["config", "perf"],
             index_names=["config_id", "budget_id"],
         )
 
-        if model_policy is not None:
-            model_params = dict(
-                pipeline_space=pipeline_space,
-                surrogate_model=surrogate_model,
-                domain_se_kernel=domain_se_kernel,
+        # Preparing model
+        graph_kernels, hp_kernels = get_kernels(
+            pipeline_space=pipeline_space,
+            domain_se_kernel=domain_se_kernel,
+            graph_kernels=graph_kernels,
+            hp_kernels=hp_kernels,
+            optimal_assignment=optimal_assignment,
+        )
+        self.surrogate_model_args = (
+            {} if surrogate_model_args is None else surrogate_model_args
+        )
+        self.surrogate_model_args.update(
+            dict(
+                # domain_se_kernel=domain_se_kernel,
                 hp_kernels=hp_kernels,
                 graph_kernels=graph_kernels,
-                surrogate_model_args=surrogate_model_args,
-                acquisition=acquisition,
-                use_priors=use_priors,
-                log_prior_weighted=log_prior_weighted,
-                acquisition_sampler=acquisition_sampler,
-                logger=logger,
             )
-            model_params.update(model_policy_args)
-            if issubclass(model_policy, BaseDynamicModelPolicy):
-                self.model_policy = model_policy(
-                    observed_configs=self.observed_configs, **model_params
-                )
-            elif issubclass(model_policy, ModelPolicy):
-                self.model_policy = model_policy(**model_params)
-            elif issubclass(model_policy, SamplingPolicy):
-                self.model_policy = model_policy(
-                    pipeline_space=pipeline_space,
-                    patience=patience,
-                    logger=logger,
-                    **model_policy_args,
-                )
-            else:
-                raise ValueError(
-                    f"Model policy can't be {model_policy}. "
-                    f"It must subclass one of the predefined base classes"
-                )
+        )
+        if not self.surrogate_model_args["hp_kernels"]:
+            raise ValueError("No kernels are provided!")
+        if "vectorial_features" not in self.surrogate_model_args:
+            self.surrogate_model_args[
+                "vectorial_features"
+            ] = pipeline_space.get_vectorial_dim()
+        # The surrogate model is initalized here
+        self.model_policy = model_policy(
+            pipeline_space=pipeline_space,
+            surrogate_model=surrogate_model,
+            surrogate_model_args=self.surrogate_model_args,
+        )
 
-        if sampling_policy is not None:
-            sampling_params = dict(
-                pipeline_space=pipeline_space, patience=patience, logger=logger
+        self.acquisition = instance_from_map(
+            AcquisitionMapping,
+            acquisition,
+            name="acquisition function",
+        )
+        if self.pipeline_space.has_prior:
+            self.acquisition = DecayingPriorWeightedAcquisition(
+                self.acquisition, log=log_prior_weighted
             )
-            if issubclass(sampling_policy, SamplingPolicy):
-                sampling_params.update(sample_policy_args)
-                self.sampling_policy = sampling_policy(**sampling_params)
-            else:
-                raise ValueError(
-                    f"Sampling policy {sampling_policy} must inherit from "
-                    f"SamplingPolicy base class"
-                )
 
-        if promotion_policy is not None:
-            if issubclass(promotion_policy, PromotionPolicy):
-                promotion_params = dict(eta=3)
-                promotion_params.update(promotion_policy_args)
-                self.promotion_policy = promotion_policy(**promotion_params)
-            else:
-                raise ValueError(
-                    f"Promotion policy {promotion_policy} must inherit from "
-                    f"PromotionPolicy base class"
-                )
+        self.acquisition_sampler = instance_from_map(
+            AcquisitionSamplerMapping,
+            acquisition_sampler,
+            name="acquisition sampler function",
+            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
+        )
+        # if model_policy is not None:
+        #     model_params = dict(
+        #         pipeline_space=pipeline_space,
+        #         surrogate_model=surrogate_model,
+        #         domain_se_kernel=domain_se_kernel,
+        #         hp_kernels=hp_kernels,
+        #         graph_kernels=graph_kernels,
+        #         surrogate_model_args=surrogate_model_args,
+        #         acquisition=acquisition,
+        #         log_prior_weighted=log_prior_weighted,
+        #         acquisition_sampler=acquisition_sampler,
+        #         logger=logger,
+        #     )
+        #     model_policy_args = {} if model_policy_args is None else model_policy_args
+        #     model_params.update(model_policy_args)
+        #     if issubclass(model_policy, BaseDynamicModelPolicy):
+        #         self.model_policy = model_policy(
+        #             observed_configs=self.observed_configs, **model_params
+        #         )
+        #     elif issubclass(model_policy, ModelPolicy):
+        #         self.model_policy = model_policy(**model_params)
+        #     elif issubclass(model_policy, SamplingPolicy):
+        #         self.model_policy = model_policy(
+        #             pipeline_space=pipeline_space,
+        #             patience=patience,
+        #             logger=logger,
+        #             **model_policy_args,
+        #         )
+        #     else:
+        #         raise ValueError(
+        #             f"Model policy can't be {model_policy}. "
+        #             f"It must subclass one of the predefined base classes"
+        #         )
+
+        # self.promotion_type = promotion_type
+        # self.sample_type = sample_type
+        # self.sampling_args = {} if sampling_args is None else sampling_args
+
+        # TODO: Use initialized objects where possible instead of ..._args parameters.
+        # This will also make it easier to write new policies for users.
+        # if model_policy_args is None:
+        #     model_policy_args = dict()
+        # if sample_policy_args is None:
+        #     sample_policy_args = dict()
+        # if promotion_policy_args is None:
+        #     promotion_policy_args = dict()
+
+        # if sampling_policy is not None:
+        #     sampling_params = dict(
+        #         pipeline_space=pipeline_space, patience=patience, logger=logger
+        #     )
+        #     if issubclass(sampling_policy, SamplingPolicy):
+        #         sampling_params.update(sample_policy_args)
+        #         self.sampling_policy = sampling_policy(**sampling_params)
+        #     else:
+        #         raise ValueError(
+        #             f"Sampling policy {sampling_policy} must inherit from "
+        #             f"SamplingPolicy base class"
+        #         )
+
+        # if promotion_policy is not None:
+        #     if issubclass(promotion_policy, PromotionPolicy):
+        #         promotion_params = dict(eta=3)
+        #         promotion_params.update(promotion_policy_args)
+        #         self.promotion_policy = promotion_policy(**promotion_params)
+        #     else:
+        #         raise ValueError(
+        #             f"Promotion policy {promotion_policy} must inherit from "
+        #             f"PromotionPolicy base class"
+        #         )
 
     def get_budget_level(self, config: SearchSpace) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.step_size)
@@ -234,7 +290,7 @@ class MFEIBO(BaseOptimizer):
         )
 
         # TODO: can we do better than keeping a copy of the observed configs?
-        self.model_policy.observed_configs = self.observed_configs.copy()
+        self.model_policy.observed_configs = deepcopy(self.observed_configs)
 
         # fit any model/surrogates
         if not self.is_init_phase:
@@ -336,8 +392,8 @@ class MFEIBO(BaseOptimizer):
         Returns:
             [type]: [description]
         """
-        _config_id = None
-        fidelity_value_set = False
+        config_id = None
+        previous_config_id = None
         if (
             (self.num_train_configs == 0 and self._initial_design_size >= 1)
             or self.is_init_phase
@@ -346,25 +402,25 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
+            # TODO: set this in such a way that it triggers the fidelity calculation correctly
+            _config_id = 1e6  # set this as len(self.observed_configs) + 1
         else:
             # main call here
+
+            # TODO: obtain a df of samples with relevant indexes
             samples = self.acquisition_sampler.sample()
-            # TODO: subset only configs for `eval`
+            # TODO: subset only configs for `eval`, ignore index when calling this function
             eis = self.acquisition.eval(x=samples, asscalar=True)
 
+            # TODO: find the index with the max value of ei
             # TODO: verify
             _ids = np.argsort(eis)[0]
             config = pd.Series(samples).iloc[_ids].values.tolist()[0]
+            _config_id = _ids
 
-        if not fidelity_value_set:
-            config.fidelity.value = self.get_budget_value(0)
+        # TODO: use _config_id to appropriately set the fidelity value, config_id and previous_config_id
+        #    if this index is among the index in the observed configs,
+        #    then we `promote` and set next fidelity to curr fidelity+step size`
+        #    else we `sample` and set next fidelity to min budget, prev to None
 
-        if _config_id is None:
-            _config_id = (
-                self.observed_configs.df.index.get_level_values(0).max() + 1
-                if len(self.observed_configs.df.index.get_level_values(0)) > 0
-                else 0
-            )
-        config_id = f"{_config_id}_{self.get_budget_level(config)}"
-        # print(self.observed_configs)
-        return config.hp_values(), config_id, None
+        return config.hp_values(), config_id, previous_config_id

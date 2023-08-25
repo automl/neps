@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from metahyper import instance_from_map
+
+from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 
 
@@ -167,3 +170,46 @@ class MFBOBase:
                 ignore_fidelity=True,
             )
         return config
+
+
+class ModelBase:
+    """A policy for sampling configuration, i.e. the default for SH / hyperband
+
+    Args:
+        SamplingPolicy ([type]): [description]
+    """
+
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        surrogate_model: str | Any = "gp",
+        surrogate_model_args: dict = None,
+    ):
+        self.pipeline_space = pipeline_space
+
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            surrogate_model,
+            name="surrogate model",
+            kwargs=surrogate_model_args if surrogate_model_args is not None else {},
+        )
+
+    def _fantasize_pending(self, train_x, train_y, pending_x):
+        if len(pending_x) == 0:
+            return train_x, train_y
+        # fit model on finished evaluations
+        self.surrogate_model.fit(train_x, train_y)
+        # hallucinating: predict for the pending evaluations
+        _y, _ = self.surrogate_model.predict(pending_x)
+        _y = _y.detach().numpy().tolist()
+        # appending to training data
+        train_x.extend(pending_x)
+        train_y.extend(_y)
+        return train_x, train_y
+
+    def update_model(self, train_x, train_y, pending_x, decay_t=None):
+        if decay_t is None:
+            decay_t = len(train_x)
+        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
+        self.surrogate_model.fit(train_x, train_y)
+        return self.surrogate_model, decay_t
