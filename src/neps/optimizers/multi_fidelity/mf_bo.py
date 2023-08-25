@@ -6,6 +6,8 @@ from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fide
 
 
 class MFBOBase:
+    """Base class for multi-fidelity Bayesian optimization for SH-based algorithms."""
+
     def _fit_models(self):
         """Performs necessary procedures to build and use models."""
 
@@ -17,7 +19,7 @@ class MFBOBase:
             return
 
         if self.pipeline_space.has_prior:
-            # PriorBand
+            # PriorBand + BO
             total_resources = calc_total_resources_spent(
                 self.observed_configs, self.rung_map
             )

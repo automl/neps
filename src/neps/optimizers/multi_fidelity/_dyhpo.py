@@ -2,7 +2,6 @@
 from typing import Any, List, Union
 
 import numpy as np
-import pandas as pd
 
 from metahyper import ConfigResult
 
@@ -25,7 +24,7 @@ from .utils import MFObservedData
 class MFEIBO(BaseOptimizer):
     """Base class for MF-BO algorithms that use DyHPO like acquisition and budgeting."""
 
-    acquisition: str = "MFEI"
+    acquisition: str = "EI"
 
     def __init__(
         self,
@@ -55,7 +54,7 @@ class MFEIBO(BaseOptimizer):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: Union[str, BaseAcquisition] = acquisition,
-        acquisition_sampler: Union[str, AcquisitionSampler] = "freeze-thaw",
+        acquisition_sampler: Union[str, AcquisitionSampler] = "mutation",
         model_policy: Any = RandomPromotionDynamicPolicy,
         log_prior_weighted: bool = False,
         initial_design_size: int = 10,
@@ -90,10 +89,6 @@ class MFEIBO(BaseOptimizer):
         )
         self._budget_list: List[Union[int, float]] = []
         self.step_size: Union[int, float] = step_size
-        self.min_budget = self.pipeline_space.fidelity.lower
-        # TODO: generalize this to work with real data (not benchmarks)
-        self.max_budget = self.pipeline_space.fidelity.upper
-
         self._initial_design_size = initial_design_size
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
@@ -228,15 +223,12 @@ class MFEIBO(BaseOptimizer):
         # account for pending evaluations
         self._handle_pending_evaluations(pending_evaluations)
 
-        # an aesthetic choice more than a functional choice
         self.observed_configs.df.sort_index(
             level=self.observed_configs.df.index.names, inplace=True
         )
-
-        # TODO: can we do better than keeping a copy of the observed configs?
-        self.model_policy.observed_configs = self.observed_configs.copy()
-
+        self.model_policy.observed_configs = self.observed_configs
         # fit any model/surrogates
+
         if not self.is_init_phase:
             self._fit_models()
 
@@ -244,23 +236,19 @@ class MFEIBO(BaseOptimizer):
         for config_id, config_val in previous_results.items():
             _config, _budget_level = config_id.split("_")
             perf = self.get_loss(config_val.result)
-            # TODO: do we record learning curves?
-            # lcs = self.get_learning_curves(config_val.result)
-
             index = (int(_config), int(_budget_level))
             self.observed_configs.add_data([config_val.config, perf], index=index)
 
-            # TODO: why do we need to check for np.isclose here?
-            # if not np.isclose(
-            #     self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
-            # ):
-            #     self.observed_configs.update_data(
-            #         {
-            #             self.observed_configs.config_col: config_val.config,
-            #             self.observed_configs.perf_col: perf,
-            #         },
-            #         index=index,
-            #     )
+            if not np.isclose(
+                self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
+            ):
+                self.observed_configs.update_data(
+                    {
+                        self.observed_configs.config_col: config_val.config,
+                        self.observed_configs.perf_col: perf,
+                    },
+                    index=index,
+                )
 
     def _handle_pending_evaluations(self, pending_evaluations):
         for config_id, config_val in pending_evaluations.items():
@@ -339,6 +327,14 @@ class MFEIBO(BaseOptimizer):
         _config_id = None
         fidelity_value_set = False
         if (
+            self.num_train_configs == 0
+            and self.sample_default_first
+            and self.pipeline_space.has_prior
+        ):
+            config = self.pipeline_space.sample_default_configuration(
+                patience=self.patience, ignore_fidelity=False
+            )
+        elif (
             (self.num_train_configs == 0 and self._initial_design_size >= 1)
             or self.is_init_phase
             or self._model_update_failed
@@ -347,14 +343,51 @@ class MFEIBO(BaseOptimizer):
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
         else:
-            # main call here
-            samples = self.acquisition_sampler.sample()
-            # TODO: subset only configs for `eval`
-            eis = self.acquisition.eval(x=samples, asscalar=True)
+            for _ in range(self.patience):
+                promoted_config_id = self.is_promotable(
+                    promotion_type=self.promotion_type
+                )
+                if (
+                    promoted_config_id is not None
+                    and promoted_config_id in self.observed_configs.df.index.levels[0]
+                ):
+                    current_budget = self.observed_configs.df.loc[
+                        (promoted_config_id,)
+                    ].index[-1]
+                    next_budget = current_budget + 1
+                    config = self.observed_configs.df.loc[
+                        (promoted_config_id, current_budget),
+                        self.observed_configs.config_col,
+                    ]
+                    if np.less_equal(
+                        self.get_budget_value(next_budget), config.fidelity.upper
+                    ):
+                        config.fidelity.value = self.get_budget_value(next_budget)
+                        _config_id = promoted_config_id
+                        fidelity_value_set = True
+                        break
+                elif promoted_config_id is not None:
+                    self.logger.warn(
+                        f"Configuration ID: '{promoted_config_id}' is "
+                        f"not promotable because it doesn't exist in "
+                        f"the observed configuration IDs: "
+                        f"{self.observed_configs.df.index.levels[0]}.\n\n"
+                        f"Trying to sample again..."
+                    )
+                else:
+                    # sample_new_config must return a completely new configuration that
+                    # hasn't been observed in any fidelity before
+                    config = self.sample_new_config(sample_type=self.sample_type)
+                    break
 
-            # TODO: verify
-            _ids = np.argsort(eis)[0]
-            config = pd.Series(samples).iloc[_ids].values.tolist()[0]
+                # if the returned config already observed,
+                # set the fidelity to the next budget level if not max already
+                # else set the fidelity to the minimum budget level
+                # print(config_condition)
+            else:
+                config = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=True, ignore_fidelity=False
+                )
 
         if not fidelity_value_set:
             config.fidelity.value = self.get_budget_value(0)
