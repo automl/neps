@@ -51,8 +51,18 @@ class MFObservedData:
         return self.df[self.perf_col] == "error"
 
     @property
+    def seen_config_ids(self) -> List:
+        return self.df.index.levels[0].to_list()
+
+    @property
     def completed_runs(self):
         return self.df[~(self.pending_condition | self.error_condition)]
+
+    def next_config_id(self) -> int:
+        if len(self.seen_config_ids):
+            return max(self.seen_config_ids) + 1
+        else:
+            return 0
 
     def add_data(
         self,
@@ -112,7 +122,7 @@ class MFObservedData:
             values=self.perf_col,
         )
 
-    def get_incumbents_for_budgets(self, maximize: bool = True):
+    def get_incumbents_for_budgets(self, maximize: bool = False):
         """
         Returns a series object with the best configuration id for each budget id
 
@@ -125,7 +135,7 @@ class MFObservedData:
         else:
             return learning_curves.idxmin(axis=0)
 
-    def get_best_learning_curve_id(self, maximize: bool = True):
+    def get_best_learning_curve_id(self, maximize: bool = False):
         """
         Returns a single configuration id of the best observed performance
 
@@ -138,6 +148,28 @@ class MFObservedData:
         else:
             return learning_curves.min(axis=1).idxmin()
 
+    def get_best_seen_performance(self, maximize: bool = False):
+        learning_curves = self.get_learning_curves()
+        if maximize:
+            return learning_curves.max(axis=1).max()
+        else:
+            return learning_curves.min(axis=1).min()
+
+    def get_single_index(self):
+        combined_df = self.df.reset_index(level=1)
+        combined_df.set_index(
+            keys=[self.budget_idx], drop=False, append=True, inplace=True
+        )
+        return combined_df
+
+    def reduce_to_max_seen_budgets(self):
+        self.df.sort_index(inplace=True)
+        combined_df = self.get_single_index()
+        return combined_df.groupby(level=0).last()
+
+    def get_partial_configs_at_max_seen(self):
+        return self.reduce_to_max_seen_budgets()[self.config_col]
+
 
 if __name__ == "__main__":
     # TODO: Either delete these or convert them to tests (karibbov)
@@ -148,12 +180,12 @@ if __name__ == "__main__":
 
     # When adding multiple indices data should be list of rows(lists) and the index should be list of tuples
     data.add_data(
-        [["conf1", 0.5], ["conf2", 0.9], ["conf1", 0.9], ["conf2", 0.4]],
-        index=[(0, 0), (1, 1), (0, 1), (1, 0)],
+        [["conf1", 0.5], ["conf2", 0.7], ["conf1", 0.6], ["conf2", 0.4]],
+        index=[(0, 0), (1, 1), (0, 3), (1, 0)],
     )
     data.add_data(
-        [["conf1", 0.5], ["conf2", 0.8], ["conf1", 0.9]],
-        index=[(0, 2), (1, 2), (0, 3)],
+        [["conf1", 0.5], ["conf2", 0.10], ["conf1", 0.11]],
+        index=[(0, 2), (1, 2), (0, 1)],
     )
 
     print(data.df)
@@ -166,6 +198,8 @@ if __name__ == "__main__":
         "Configuration ID of the best observed performance so far: ",
         data.get_best_learning_curve_id(),
     )
+    # data.df.sort_index(inplace=True)
+    print(data.get_partial_configs_at_max_seen())
 
     # When updating multiple indices at a time both the values in the data dictionary and the indices should be lists
     data.update_data({"perf": [1.8, 1.5]}, index=[(1, 1), (0, 0)])

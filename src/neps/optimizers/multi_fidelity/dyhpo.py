@@ -1,9 +1,9 @@
 # mypy: disable-error-code = assignment
+# type: ignore
 from copy import deepcopy
 from typing import Any, List, Union
 
 import numpy as np
-import pandas as pd
 
 from metahyper import ConfigResult, instance_from_map
 
@@ -19,7 +19,7 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
-from .mf_bo import ModelBase
+from .mf_bo import MFEIModel
 from .utils import MFObservedData
 
 
@@ -57,7 +57,7 @@ class MFEIBO(BaseOptimizer):
         hp_kernels: list = None,
         acquisition: Union[str, BaseAcquisition] = acquisition,
         acquisition_sampler: Union[str, AcquisitionSampler] = "freeze-thaw",
-        model_policy: Any = ModelBase,
+        model_policy: Any = MFEIModel,
         log_prior_weighted: bool = False,
         initial_design_size: int = 10,
     ):
@@ -154,76 +154,6 @@ class MFEIBO(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
-        # if model_policy is not None:
-        #     model_params = dict(
-        #         pipeline_space=pipeline_space,
-        #         surrogate_model=surrogate_model,
-        #         domain_se_kernel=domain_se_kernel,
-        #         hp_kernels=hp_kernels,
-        #         graph_kernels=graph_kernels,
-        #         surrogate_model_args=surrogate_model_args,
-        #         acquisition=acquisition,
-        #         log_prior_weighted=log_prior_weighted,
-        #         acquisition_sampler=acquisition_sampler,
-        #         logger=logger,
-        #     )
-        #     model_policy_args = {} if model_policy_args is None else model_policy_args
-        #     model_params.update(model_policy_args)
-        #     if issubclass(model_policy, BaseDynamicModelPolicy):
-        #         self.model_policy = model_policy(
-        #             observed_configs=self.observed_configs, **model_params
-        #         )
-        #     elif issubclass(model_policy, ModelPolicy):
-        #         self.model_policy = model_policy(**model_params)
-        #     elif issubclass(model_policy, SamplingPolicy):
-        #         self.model_policy = model_policy(
-        #             pipeline_space=pipeline_space,
-        #             patience=patience,
-        #             logger=logger,
-        #             **model_policy_args,
-        #         )
-        #     else:
-        #         raise ValueError(
-        #             f"Model policy can't be {model_policy}. "
-        #             f"It must subclass one of the predefined base classes"
-        #         )
-
-        # self.promotion_type = promotion_type
-        # self.sample_type = sample_type
-        # self.sampling_args = {} if sampling_args is None else sampling_args
-
-        # TODO: Use initialized objects where possible instead of ..._args parameters.
-        # This will also make it easier to write new policies for users.
-        # if model_policy_args is None:
-        #     model_policy_args = dict()
-        # if sample_policy_args is None:
-        #     sample_policy_args = dict()
-        # if promotion_policy_args is None:
-        #     promotion_policy_args = dict()
-
-        # if sampling_policy is not None:
-        #     sampling_params = dict(
-        #         pipeline_space=pipeline_space, patience=patience, logger=logger
-        #     )
-        #     if issubclass(sampling_policy, SamplingPolicy):
-        #         sampling_params.update(sample_policy_args)
-        #         self.sampling_policy = sampling_policy(**sampling_params)
-        #     else:
-        #         raise ValueError(
-        #             f"Sampling policy {sampling_policy} must inherit from "
-        #             f"SamplingPolicy base class"
-        #         )
-
-        # if promotion_policy is not None:
-        #     if issubclass(promotion_policy, PromotionPolicy):
-        #         promotion_params = dict(eta=3)
-        #         promotion_params.update(promotion_policy_args)
-        #         self.promotion_policy = promotion_policy(**promotion_params)
-        #     else:
-        #         raise ValueError(
-        #             f"Promotion policy {promotion_policy} must inherit from "
-        #             f"PromotionPolicy base class"
-        #         )
 
     def get_budget_level(self, config: SearchSpace) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.step_size)
@@ -283,7 +213,6 @@ class MFEIBO(BaseOptimizer):
 
         # TODO: can we do better than keeping a copy of the observed configs?
         self.model_policy.observed_configs = deepcopy(self.observed_configs)
-
         # fit any model/surrogates
         if not self.is_init_phase:
             self._fit_models()
@@ -298,17 +227,16 @@ class MFEIBO(BaseOptimizer):
             index = (int(_config), int(_budget_level))
             self.observed_configs.add_data([config_val.config, perf], index=index)
 
-            # TODO: why do we need to check for np.isclose here?
-            # if not np.isclose(
-            #     self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
-            # ):
-            #     self.observed_configs.update_data(
-            #         {
-            #             self.observed_configs.config_col: config_val.config,
-            #             self.observed_configs.perf_col: perf,
-            #         },
-            #         index=index,
-            #     )
+            if not np.isclose(
+                self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
+            ):
+                self.observed_configs.update_data(
+                    {
+                        self.observed_configs.config_col: config_val.config,
+                        self.observed_configs.perf_col: perf,
+                    },
+                    index=index,
+                )
 
     def _handle_pending_evaluations(self, pending_evaluations):
         for config_id, config_val in pending_evaluations.items():
@@ -316,11 +244,11 @@ class MFEIBO(BaseOptimizer):
             index = (int(_config), int(_budget_level))
 
             if index not in self.observed_configs.df.index:
-                self.observed_configs.add_data([config_val.config, np.nan], index=index)
+                self.observed_configs.add_data([config_val, np.nan], index=index)
             else:
                 self.observed_configs.update_data(
                     {
-                        self.observed_configs.config_col: config_val.config,
+                        self.observed_configs.config_col: config_val,
                         self.observed_configs.perf_col: np.nan,
                     },
                     index=index,
@@ -330,6 +258,12 @@ class MFEIBO(BaseOptimizer):
         # TODO: Once done with development catch the model update exceptions
         # and skip model based suggestions if failed (karibbov)
         self.model_policy.update_model()
+        self.acquisition.set_state(
+            self.model_policy.surrogate_model, self.observed_configs, self.step_size
+        )
+        self.acquisition_sampler.set_state(
+            self.pipeline_space, self.observed_configs, self.step_size
+        )
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
@@ -349,25 +283,34 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            # TODO: set this in such a way that it triggers the fidelity calculation correctly
-            _config_id = 1e6  # set this as len(self.observed_configs) + 1
+            config.fidelity.value = config.fidelity.lower
+            _config_id = self.observed_configs.next_config_id()
         else:
             # main call here
 
-            # TODO: obtain a df of samples with relevant indexes
             samples = self.acquisition_sampler.sample()
-            # TODO: subset only configs for `eval`, ignore index when calling this function
-            eis = self.acquisition.eval(x=samples, asscalar=True)
-
-            # TODO: find the index with the max value of ei
+            eis = self.acquisition.eval(x=deepcopy(samples.to_list()), asscalar=True)
             # TODO: verify
             _ids = np.argsort(eis)[0]
-            config = pd.Series(samples).iloc[_ids].values.tolist()[0]
+            config = samples.iloc[_ids]
             _config_id = _ids
 
-        # TODO: use _config_id to appropriately set the fidelity value, config_id and previous_config_id
-        #    if this index is among the index in the observed configs,
-        #    then we `promote` and set next fidelity to curr fidelity+step size`
-        #    else we `sample` and set next fidelity to min budget, prev to None
+        if _config_id in self.observed_configs.seen_config_ids:
+            next_budget_level = self.get_budget_level(config) + 1
+
+            if np.less_equal(
+                self.get_budget_value(next_budget_level), config.fidelity.upper
+            ):
+                config.fidelity.value = self.get_budget_value(next_budget_level)
+                config_id = f"{_config_id}_{next_budget_level}"
+                previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
+            else:
+                config = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=True, ignore_fidelity=False
+                )
+                config.fidelity.value = config.fidelity.lower
+                config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
+        else:
+            config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
 
         return config.hp_values(), config_id, previous_config_id

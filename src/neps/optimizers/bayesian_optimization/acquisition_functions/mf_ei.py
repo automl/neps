@@ -1,3 +1,4 @@
+# type: ignore
 from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
@@ -5,7 +6,6 @@ import torch
 from torch.distributions import Normal
 
 from ...multi_fidelity.utils import MFObservedData
-from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
 
 
@@ -22,6 +22,9 @@ class MFEI(ComprehensiveExpectedImprovement):
         self.observations = None
         self.b_step = None
 
+    def get_budget_level(self, config) -> int:
+        return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
+
     def preprocess(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         """Prepares the configurations for appropriate EI calculation.
 
@@ -29,24 +32,25 @@ class MFEI(ComprehensiveExpectedImprovement):
         required by the multi-fidelity Expected Improvement acquisition function.
         """
         budget_list = []
-        # TODO: get the appropriate mapping of budget to incumbent (a dict?)
-        _configs = self.observations.get_incumbents_for_budgets()
+        config_id_series = self.observations.get_incumbents_for_budgets()
 
-        # TODO: check that the samples here have their fidelities appropriately set
-        # incrementing budget by b_step for all candidates
-        # collecting the list of budgets over which incumbent needs to be found
-        for _x in x:
-            _x.fidelity.value = _x.fidelity.value + self.b_step  # +1 step in budget
-            budget_list.append(_x.fidelity.value)
+        new_configs_from = len(self.observations.get_partial_configs_at_max_seen())
+        for idx, _x in enumerate(x):
+            if idx < new_configs_from:
+                _x.fidelity.value = _x.fidelity.value + self.b_step  # +1 step in budget
+            budget_list.append(self.get_budget_level(_x))
 
-        # finding the incumbent for each budget
-        # TODO: how to do this correctly?
-        # this step creates a one-to-one ordering wrt x that assings the relevant
-        # incumbent value for it such that it is the best value seen at a budget b+1
-        # where b is the maximum steps seen by the config in x
-        inc_list = [_configs.budget.perf for budget in budget_list]
+        inc_list = []
+        for budget in budget_list:
+            if budget in config_id_series.index:
+                inc = self.observations.df.loc[
+                    (config_id_series[budget], budget), self.observations.perf_col
+                ]
+            else:
+                inc = self.observations.get_best_seen_performance()
+            inc_list.append(inc)
 
-        return x, inc_list
+        return x, torch.Tensor(inc_list)
 
     def eval(
         self, x: Iterable, asscalar: bool = False
@@ -92,7 +96,11 @@ class MFEI(ComprehensiveExpectedImprovement):
         return ei
 
     def set_state(
-        self, surrogate_model: Any, observations: MFObservedData, b_step: int, **kwargs
+        self,
+        surrogate_model: Any,
+        observations: MFObservedData,
+        b_step: Union[int, float],
+        **kwargs,
     ):
         # overload to select incumbent differently through observations
         self.surrogate_model = surrogate_model

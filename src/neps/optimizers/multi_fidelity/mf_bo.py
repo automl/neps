@@ -1,3 +1,4 @@
+# type: ignore
 from __future__ import annotations
 
 from copy import deepcopy
@@ -181,8 +182,8 @@ class ModelBase:
 
     def __init__(
         self,
-        pipeline_space: SearchSpace,
-        surrogate_model: str | Any = "gp",
+        pipeline_space,
+        surrogate_model: str = "gp",
         surrogate_model_args: dict = None,
     ):
         self.pipeline_space = pipeline_space
@@ -212,4 +213,52 @@ class ModelBase:
             decay_t = len(train_x)
         train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
         self.surrogate_model.fit(train_x, train_y)
+        return self.surrogate_model, decay_t
+
+
+class MFEIModel(ModelBase):
+    def __init__(self, *args, **kwargs):
+        self.num_train_configs = 0
+        self.observed_configs = kwargs.get("observed_configs", None)
+
+        super().__init__(*args, **kwargs)
+
+    def _fantasize_pending(self, *args, **kwargs):  # pylint: disable=unused-argument
+        pending_configs = []
+
+        # Select configs that are neither pending nor resulted in error
+        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
+
+        # Get the config, performance values for the maximum budget runs that are completed
+        max_budget_samples = completed_configs.sort_index().groupby(level=0).last()
+        max_budget_configs = max_budget_samples[
+            self.observed_configs.config_col
+        ].to_list()
+        max_budget_perf = max_budget_samples[self.observed_configs.perf_col].to_list()
+
+        pending_condition = self.observed_configs.pending_condition
+        if pending_condition.any():
+            pending_configs = (
+                self.observed_configs.df[pending_condition]
+                .loc[(), self.observed_configs.config_col]
+                .unique()
+                .to_list()
+            )
+        return super()._fantasize_pending(
+            max_budget_configs, max_budget_perf, pending_configs
+        )
+
+    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
+        if train_x is None:
+            train_x = []
+        if train_y is None:
+            train_y = []
+        if pending_x is None:
+            pending_x = []
+
+        if decay_t is None:
+            decay_t = len(train_x)
+        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
+        self.surrogate_model.fit(train_x, train_y)
+
         return self.surrogate_model, decay_t
