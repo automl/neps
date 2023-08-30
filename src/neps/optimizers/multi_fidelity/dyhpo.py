@@ -1,7 +1,8 @@
 # mypy: disable-error-code = assignment
-# type: ignore
+from __future__ import annotations
+
 from copy import deepcopy
-from typing import Any, List, Union
+from typing import Any
 
 import numpy as np
 
@@ -32,7 +33,7 @@ class MFEIBO(BaseOptimizer):
         self,
         pipeline_space: SearchSpace,
         budget: int,
-        step_size: Union[int, float] = 1,
+        step_size: int | float = 1,
         optimal_assignment: bool = False,  # pylint: disable=unused-argument
         use_priors: bool = False,
         sample_default_first: bool = False,
@@ -44,19 +45,19 @@ class MFEIBO(BaseOptimizer):
         # promotion_type: str = "model",
         # sample_type: str = "model",
         # sampling_args: Union[dict, None] = None,
-        loss_value_on_error: Union[None, float] = None,
-        cost_value_on_error: Union[None, float] = None,
+        loss_value_on_error: None | float = None,
+        cost_value_on_error: None | float = None,
         patience: int = 100,
         ignore_errors: bool = False,
         logger=None,
         # arguments for model
-        surrogate_model: Union[str, Any] = "gp",
+        surrogate_model: str | Any = "gp",
         surrogate_model_args: dict = None,
         domain_se_kernel: str = None,
         graph_kernels: list = None,
         hp_kernels: list = None,
-        acquisition: Union[str, BaseAcquisition] = acquisition,
-        acquisition_sampler: Union[str, AcquisitionSampler] = "freeze-thaw",
+        acquisition: str | BaseAcquisition = acquisition,
+        acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
         model_policy: Any = MFEIModel,
         log_prior_weighted: bool = False,
         initial_design_size: int = 10,
@@ -88,8 +89,8 @@ class MFEIBO(BaseOptimizer):
             ignore_errors=ignore_errors,
             logger=logger,
         )
-        self._budget_list: List[Union[int, float]] = []
-        self.step_size: Union[int, float] = step_size
+        self._budget_list: list[int | float] = []
+        self.step_size: int | float = step_size
         self.min_budget = self.pipeline_space.fidelity.lower
         # TODO: generalize this to work with real data (not benchmarks)
         self.max_budget = self.pipeline_space.fidelity.upper
@@ -158,7 +159,7 @@ class MFEIBO(BaseOptimizer):
     def get_budget_level(self, config: SearchSpace) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.step_size)
 
-    def get_budget_value(self, budget_level: Union[int, float]) -> Union[int, float]:
+    def get_budget_value(self, budget_level: int | float) -> int | float:
         if isinstance(self.pipeline_space.fidelity, IntegerParameter):
             budget_val = int(
                 self.step_size * budget_level + self.pipeline_space.fidelity.lower
@@ -267,7 +268,7 @@ class MFEIBO(BaseOptimizer):
 
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
-    ) -> tuple[SearchSpace, str, Union[str, None]]:
+    ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -289,27 +290,19 @@ class MFEIBO(BaseOptimizer):
             # main call here
 
             samples = self.acquisition_sampler.sample()
-            eis = self.acquisition.eval(x=deepcopy(samples.to_list()), asscalar=True)
+            eis = self.acquisition.eval(  # type: ignore[attr-defined]
+                x=samples.to_list(), asscalar=True
+            )
             # TODO: verify
             _ids = np.argsort(eis)[0]
+            # samples should have new configs with fidelities set to minimum
+            # due to this line, otherwise we have to set them in here
             config = samples.iloc[_ids]
-            _config_id = _ids
+            _config_id = samples.index[_ids]
 
         if _config_id in self.observed_configs.seen_config_ids:
-            next_budget_level = self.get_budget_level(config) + 1
-
-            if np.less_equal(
-                self.get_budget_value(next_budget_level), config.fidelity.upper
-            ):
-                config.fidelity.value = self.get_budget_value(next_budget_level)
-                config_id = f"{_config_id}_{next_budget_level}"
-                previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
-            else:
-                config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True, ignore_fidelity=False
-                )
-                config.fidelity.value = config.fidelity.lower
-                config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
+            config_id = f"{_config_id}_{self.get_budget_level(config)}"
+            previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
         else:
             config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
 
