@@ -9,8 +9,8 @@ from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 
 
+"""Base class for multi-fidelity Bayesian optimization for SH-based algorithms."""
 class MFBOBase:
-    """Base class for multi-fidelity Bayesian optimization for SH-based algorithms."""
 
     def _fit_models(self):
         """Performs necessary procedures to build and use models."""

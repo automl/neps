@@ -9,7 +9,7 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-    n = 1000  # number of random samples to draw at lowest fidelity
+    n = 500  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

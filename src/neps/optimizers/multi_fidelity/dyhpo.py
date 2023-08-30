@@ -1,5 +1,7 @@
 # mypy: disable-error-code = assignment
 # type: ignore
+from __future__ import annotations
+
 from copy import deepcopy
 from typing import Any, List, Union
 
@@ -137,16 +139,11 @@ class MFEIBO(BaseOptimizer):
             surrogate_model=surrogate_model,
             surrogate_model_args=self.surrogate_model_args,
         )
-
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
             name="acquisition function",
         )
-        if self.pipeline_space.has_prior:
-            self.acquisition = DecayingPriorWeightedAcquisition(
-                self.acquisition, log=log_prior_weighted
-            )
 
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,

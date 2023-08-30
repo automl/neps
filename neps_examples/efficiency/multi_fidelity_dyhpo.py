@@ -80,7 +80,7 @@ neps.run(
     searcher="mf_ei_bo",
     # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
     # field above.
-    max_cost_total=20,
+    max_cost_total=50,
     surrogate_model="gp",
     hp_kernels=["m52"],
 )
