@@ -325,7 +325,7 @@ if __name__ == "__main__":
         shutil.rmtree("results/bayesian_optimization")
 
     """
-    For showcasing purposes. After completing the first run, one can uncomment the line below
+    For showcasing purposes. After completing the first run, one can uncomment line 351
     and continue the search via:
 
     ```bash:
@@ -338,7 +338,15 @@ if __name__ == "__main__":
     ```python:
     tblogger.disable()
     ```
+
+    Note that by default tblogger is enabled when used. However, there is also an enable toggle that can be used
+    ```python:
+    tblogger.enable()
+    ```
     """
+
+    # by defualt tblogger is enabled when used, one can also check the status using:
+    # tblogger.get_status()
 
     # tblogger.disable()
 
@@ -352,7 +360,7 @@ if __name__ == "__main__":
 
     """
     To check live plots during this search, please open a new terminal and make sure to be at the same level directory
-    of your project and run this command on the file created by neps search algorithm.
+    of your project and run this command on the file created by neps root_directory.
 
     ```bash:
     tensorboard --logdir bayesian_optimization

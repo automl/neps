@@ -95,18 +95,16 @@ class tblogger:
 
     @staticmethod
     def _initialize_writers() -> None:
-        # This code runs only once per config, which is at the very beginning to assign that config
-        # a config_writer in the correct directory.
+        # This code runs only once per config, to assign that config a config_writer.
         if tblogger.config_previous_directory is None:
-            # If no fidelities are there yet, define the writer via the normal config_id
+            # If no fidelities are there yet, define the writer via the config_id
             tblogger.config_writer = SummaryWriter_(
                 tblogger.config_working_directory / "tbevents"
             )
             return
         while not tblogger._is_initialized():
-            # While no writer has been assigned yet, knowing previous directory exists.
-            # TensorBoard requires tfevent files for the same plot to be located in the same directory for proper data appending.
-            # In this case we search for the first fidelity directory and store all tfevent files there
+            # Ensure proper directory for TensorBoard data appending.
+            # Search for the first fidelity directory to store tfevent files.
 
             prev_dir_id_from_init = (
                 tblogger.config_working_directory / "previous_config.id"
@@ -151,8 +149,8 @@ class tblogger:
                         tblogger.optim_path / "results" / f"config_{contents}"
                     )
             else:
-                # If we do not find tbevents, hence we passed through each and every
-                # directory for that config, raising error rather than staying in a 'while 1'.
+                # If no tbevents found after traversing all config directories,
+                # raise an error to prevent indefinite 'while 1' loop.
                 raise FileNotFoundError(
                     "'tbevents' was not found in the directory of the initial fidelity."
                 )
@@ -233,10 +231,10 @@ class tblogger:
         Args:
             img_tensor (torch.Tensor): The image tensor to be logged.
             counter (int): A counter value for the frequency of image logging (ex: counter 2 means for every
-                        2 epochs a new set of images are logged).
+                        2 global steps a new set of images are logged).
             resize_images (list of int): A list of integers representing the image sizes
-                                                        after resizing or None if no resizing required.
-                                                        Default is None.
+                                                    after resizing or None if no resizing required.
+                                                    Default is None.
             random_images (bool, optional): Whether the images are selected randomly. Default is True.
             num_images (int, optional): The number of images to log. Default is 20.
             seed (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control
@@ -244,7 +242,7 @@ class tblogger:
 
         Returns:
             tuple: A tuple containing the logging mode and all the necessary parameters for image logging.
-                The tuple format is (logging_mode, img_tensor, counter, repetitive, resize_images,
+                The tuple format is (logging_mode, img_tensor, counter, resize_images,
                                     random_images, num_images, seed).
         """
         logging_mode = "image"
@@ -271,7 +269,7 @@ class tblogger:
             If the tag is 'Loss' and scalar_accuracy_mode is True, the tag will be changed to 'Accuracy',
             and the value will be transformed accordingly.
 
-            The function relies on the initialize_config_writer to ensure the TensorBoard writer is initialized at
+            The function relies on the _initialize_writers to ensure the TensorBoard writer is initialized at
             the correct directory.
 
             It also depends on the following global variables:
@@ -297,7 +295,7 @@ class tblogger:
             )
         else:
             raise ValueError(
-                "The 'config_writer' is None in _write_scalar_config. No loggings are performed. "
+                "The 'config_writer' is None in _write_scalar_config. No logging is performed."
                 "An error occurred during the initialization process."
             )
 
@@ -327,7 +325,7 @@ class tblogger:
                                                                the randomness of image selection. Default is None.
 
         Note:
-            The function relies on the initialize_config_writer to ensure the TensorBoard writer is initialized at
+            The function relies on the _initialize_writers to ensure the TensorBoard writer is initialized at
             the correct directory.
 
             It also depends on the following global variables:
@@ -379,7 +377,7 @@ class tblogger:
                 )
             else:
                 raise ValueError(
-                    "The 'config_writer' is None in _write_image_config. No loggings are performed. "
+                    "The 'config_writer' is None in _write_image_config. No logging is performed. "
                     "An error occurred during the initialization process."
                 )
 
@@ -389,7 +387,7 @@ class tblogger:
         Write hyperparameter configurations to the TensorBoard log, inspired by the 'hparam' original function of tensorboard.
 
         Note:
-            The function relies on the initialize_config_writer to ensure the TensorBoard writer is initialized at
+            The function relies on the _initialize_writers to ensure the TensorBoard writer is initialized at
             the correct directory.
 
             It also depends on the following global variables:
@@ -423,7 +421,7 @@ class tblogger:
             )
         else:
             raise ValueError(
-                "The 'config_writer' is None in _write_hparam_config. No loggings are performed. "
+                "The 'config_writer' is None in _write_hparam_config. No logging is performed. "
                 "An error occurred during the initialization process."
             )
 
@@ -447,11 +445,8 @@ class tblogger:
             It increments the incumbent tracker based on occurrences of "Config ID" in the 'all_losses_and_configs.txt' file.
         """
         if tblogger.config_writer:
-            # Close and reset previous config writers to ensure proper handling of logging continuity.
-
-            # This is important as writers can be reinitialized to the same directory for ongoing
-            # logging (across different fidelities). Closing writers after logging ensures consistency
-            # and avoids conflicts.
+            # Close and reset previous config writers for consistent logging.
+            # Prevent conflicts by reinitializing writers when logging ongoing.
             tblogger.config_writer.close()
             tblogger.config_writer = None
 
@@ -459,8 +454,7 @@ class tblogger:
         tblogger.incum_tracker = 0
         if os.path.exists(file_path):
             with open(file_path) as f:
-                # Count the amount of presence of "Config ID" because it correlates to the
-                # step size of how many configurations were completed.
+                # Count "Config ID" occurrences to track completed configurations.
                 tblogger.incum_tracker = sum(line.count("Config ID") for line in f)
         else:
             raise FileExistsError(
@@ -480,11 +474,8 @@ class tblogger:
             global_step=tblogger.incum_tracker,
         )
 
-        # One challenge here is that the process of frequently closing existing writers and creating new ones
-        # leads to the creation of new 'tfevent' files (handled by TensorBoard). Although this outcome is unavoidable,
-        # it arises due to the necessity of allowing multiple writers to operate concurrently on the same directory.
-        # When multiple writers remain open simultaneously, conflicts can arise. This is the reason writers are
-        # flushed and closed after their use. (To make it work for parallelization)
+        # Frequent writer open/close creates new 'tfevent' files due to parallelization needs.
+        # Simultaneous open writers risk conflicts, so they're flushed and closed after use.
 
         tblogger.summary_writer.flush()
         tblogger.summary_writer.close()
@@ -520,6 +511,13 @@ class tblogger:
         tblogger.disable_logging = False
 
     @staticmethod
+    def get_status():
+        """
+        Returns the currect state of tblogger ie. whether the logger is enabled or not
+        """
+        return not tblogger.disable_logging
+
+    @staticmethod
     def log(
         loss: float,
         current_epoch: int,
@@ -530,7 +528,7 @@ class tblogger:
         data: dict | None = None,
     ) -> None:
         """
-        Log experiment data to the logger, including scalar values, hyperparameters, images, and layer gradients.
+        Log experiment data to the logger, including scalar values, hyperparameters, and images.
 
         Args:
             loss (float): The current loss value in training.
@@ -546,7 +544,7 @@ class tblogger:
             data (dict, optional): Additional experiment data to be logged. It should be in the format:
                                 {
                                     'tag1': tblogger.scalar_logging(value=value1),
-                                    'tag2': tblogger.image_logging(img_tensor=img, counter=2),
+                                    'tag2': tblogger.image_logging(img_tensor=img, counter=2, seed=0),
                                 }
                                 Default is None.
 
