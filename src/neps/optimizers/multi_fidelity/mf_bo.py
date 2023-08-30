@@ -1,11 +1,17 @@
+# type: ignore
 from __future__ import annotations
 
 from copy import deepcopy
 
+from metahyper import instance_from_map
+
+from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 
 
 class MFBOBase:
+    """Base class for multi-fidelity Bayesian optimization for SH-based algorithms."""
+
     def _fit_models(self):
         """Performs necessary procedures to build and use models."""
 
@@ -17,7 +23,7 @@ class MFBOBase:
             return
 
         if self.pipeline_space.has_prior:
-            # PriorBand
+            # PriorBand + BO
             total_resources = calc_total_resources_spent(
                 self.observed_configs, self.rung_map
             )
@@ -165,3 +171,94 @@ class MFBOBase:
                 ignore_fidelity=True,
             )
         return config
+
+
+class ModelBase:
+    """A policy for sampling configuration, i.e. the default for SH / hyperband
+
+    Args:
+        SamplingPolicy ([type]): [description]
+    """
+
+    def __init__(
+        self,
+        pipeline_space,
+        surrogate_model: str = "gp",
+        surrogate_model_args: dict = None,
+    ):
+        self.pipeline_space = pipeline_space
+
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            surrogate_model,
+            name="surrogate model",
+            kwargs=surrogate_model_args if surrogate_model_args is not None else {},
+        )
+
+    def _fantasize_pending(self, train_x, train_y, pending_x):
+        if len(pending_x) == 0:
+            return train_x, train_y
+        # fit model on finished evaluations
+        self.surrogate_model.fit(train_x, train_y)
+        # hallucinating: predict for the pending evaluations
+        _y, _ = self.surrogate_model.predict(pending_x)
+        _y = _y.detach().numpy().tolist()
+        # appending to training data
+        train_x.extend(pending_x)
+        train_y.extend(_y)
+        return train_x, train_y
+
+    def update_model(self, train_x, train_y, pending_x, decay_t=None):
+        if decay_t is None:
+            decay_t = len(train_x)
+        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
+        self.surrogate_model.fit(train_x, train_y)
+        return self.surrogate_model, decay_t
+
+
+class MFEIModel(ModelBase):
+    def __init__(self, *args, **kwargs):
+        self.num_train_configs = 0
+        self.observed_configs = kwargs.get("observed_configs", None)
+
+        super().__init__(*args, **kwargs)
+
+    def _fantasize_pending(self, *args, **kwargs):  # pylint: disable=unused-argument
+        pending_configs = []
+
+        # Select configs that are neither pending nor resulted in error
+        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
+
+        # Get the config, performance values for the maximum budget runs that are completed
+        max_budget_samples = completed_configs.sort_index().groupby(level=0).last()
+        max_budget_configs = max_budget_samples[
+            self.observed_configs.config_col
+        ].to_list()
+        max_budget_perf = max_budget_samples[self.observed_configs.perf_col].to_list()
+
+        pending_condition = self.observed_configs.pending_condition
+        if pending_condition.any():
+            pending_configs = (
+                self.observed_configs.df[pending_condition]
+                .loc[(), self.observed_configs.config_col]
+                .unique()
+                .to_list()
+            )
+        return super()._fantasize_pending(
+            max_budget_configs, max_budget_perf, pending_configs
+        )
+
+    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
+        if train_x is None:
+            train_x = []
+        if train_y is None:
+            train_y = []
+        if pending_x is None:
+            pending_x = []
+
+        if decay_t is None:
+            decay_t = len(train_x)
+        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
+        self.surrogate_model.fit(train_x, train_y)
+
+        return self.surrogate_model, decay_t

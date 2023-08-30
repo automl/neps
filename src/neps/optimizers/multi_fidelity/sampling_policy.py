@@ -267,6 +267,7 @@ class ModelPolicy(SamplingPolicy):
         pipeline_space: SearchSpace,
         surrogate_model: str | Any = "gp",
         domain_se_kernel: str = None,
+        graph_kernels: list = None,
         hp_kernels: list = None,
         surrogate_model_args: dict = None,
         acquisition: str | BaseAcquisition = "EI",
@@ -279,10 +280,10 @@ class ModelPolicy(SamplingPolicy):
 
         surrogate_model_args = surrogate_model_args or {}
 
-        _, hp_kernels = get_kernels(
+        graph_kernels, hp_kernels = get_kernels(
             pipeline_space=pipeline_space,
             domain_se_kernel=domain_se_kernel,
-            graph_kernels=None,
+            graph_kernels=graph_kernels,
             hp_kernels=hp_kernels,
             optimal_assignment=False,
         )

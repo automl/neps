@@ -4,6 +4,7 @@ from functools import partial
 from typing import Callable
 
 from .ei import ComprehensiveExpectedImprovement
+from .mf_ei import MFEI
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
@@ -23,5 +24,10 @@ AcquisitionMapping: dict[str, Callable] = {
         ComprehensiveExpectedImprovement,
         in_fill="posterior",
         augmented_ei=True,
+    ),
+    "MFEI": partial(
+        MFEI,
+        in_fill="best",
+        augmented_ei=False,
     ),
 }

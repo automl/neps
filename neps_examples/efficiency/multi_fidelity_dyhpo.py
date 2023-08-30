@@ -77,7 +77,7 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multi_fidelity_example",
-    searcher="dyhpo",
+    searcher="mf_ei_bo",
     # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
     # field above.
     max_cost_total=20,
