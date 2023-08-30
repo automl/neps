@@ -32,20 +32,15 @@ class MFEI(ComprehensiveExpectedImprovement):
         required by the multi-fidelity Expected Improvement acquisition function.
         """
         budget_list = []
-        config_id_series = self.observations.get_incumbents_for_budgets()
+        performances = self.observations.get_best_performance_for_each_budget()
 
-        new_configs_from = len(self.observations.get_partial_configs_at_max_seen())
-        for idx, _x in enumerate(x):
-            if idx < new_configs_from:
-                _x.fidelity.value = _x.fidelity.value + self.b_step  # +1 step in budget
+        for _x in x:
             budget_list.append(self.get_budget_level(_x))
 
         inc_list = []
-        for budget in budget_list:
-            if budget in config_id_series.index:
-                inc = self.observations.df.loc[
-                    (config_id_series[budget], budget), self.observations.perf_col
-                ]
+        for budget_level in budget_list:
+            if budget_level in performances.index:
+                inc = performances[budget_level]
             else:
                 inc = self.observations.get_best_seen_performance()
             inc_list.append(inc)
