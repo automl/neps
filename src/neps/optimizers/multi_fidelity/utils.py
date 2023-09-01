@@ -124,16 +124,35 @@ class MFObservedData:
 
     def get_incumbents_for_budgets(self, maximize: bool = False):
         """
-        Returns a series object with the best configuration id for each budget id
+        Returns a series object with the best partial configuration for each budget id
 
         Note: this will always map the best lowest ID if two configurations
               has the same performance at the same fidelity
         """
         learning_curves = self.get_learning_curves()
         if maximize:
-            return learning_curves.idxmax(axis=0)
+            config_ids = learning_curves.idxmax(axis=0)
         else:
-            return learning_curves.idxmin(axis=0)
+            config_ids = learning_curves.idxmin(axis=0)
+
+        indices = list(zip(config_ids.values.tolist(), config_ids.index.to_list()))
+        partial_configs = self.df.loc[indices, self.config_col].to_list()
+        return pd.Series(partial_configs, index=config_ids.index, name=self.config_col)
+
+    def get_best_performance_for_each_budget(self, maximize: bool = False):
+        """
+        Returns a series object with the best partial configuration for each budget id
+
+        Note: this will always map the best lowest ID if two configurations
+              has the same performance at the same fidelity
+        """
+        learning_curves = self.get_learning_curves()
+        if maximize:
+            performance = learning_curves.max(axis=0)
+        else:
+            performance = learning_curves.min(axis=0)
+
+        return performance
 
     def get_best_learning_curve_id(self, maximize: bool = False):
         """
@@ -155,7 +174,7 @@ class MFObservedData:
         else:
             return learning_curves.min(axis=1).min()
 
-    def get_single_index(self):
+    def add_budget_column(self):
         combined_df = self.df.reset_index(level=1)
         combined_df.set_index(
             keys=[self.budget_idx], drop=False, append=True, inplace=True
@@ -164,7 +183,7 @@ class MFObservedData:
 
     def reduce_to_max_seen_budgets(self):
         self.df.sort_index(inplace=True)
-        combined_df = self.get_single_index()
+        combined_df = self.add_budget_column()
         return combined_df.groupby(level=0).last()
 
     def get_partial_configs_at_max_seen(self):
@@ -191,8 +210,12 @@ if __name__ == "__main__":
     print(data.df)
     print(data.get_learning_curves())
     print(
-        "Mapping of budget IDs into best performing configuration IDs at each fidelity:\n",
+        "Mapping of budget IDs into best performing configurations at each fidelity:\n",
         data.get_incumbents_for_budgets(),
+    )
+    print(
+        "Best Performance at each budget level:\n",
+        data.get_best_performance_for_each_budget(),
     )
     print(
         "Configuration ID of the best observed performance so far: ",
