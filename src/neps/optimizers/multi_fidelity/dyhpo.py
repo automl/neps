@@ -62,6 +62,7 @@ class MFEIBO(BaseOptimizer):
         model_policy: Any = MFEIModel,
         log_prior_weighted: bool = False,
         initial_design_size: int = 10,
+        initial_design_budget: int = 100,
     ):
         """Initialise
 
@@ -97,6 +98,7 @@ class MFEIBO(BaseOptimizer):
         self.max_budget = self.pipeline_space.fidelity.upper
 
         self._initial_design_size = initial_design_size
+        self._initial_design_budget = initial_design_budget
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
@@ -173,11 +175,34 @@ class MFEIBO(BaseOptimizer):
             )
         self._budget_list.append(budget_val)
         return budget_val
+    
+    def total_budget_spent(self) -> int | float:
+        """ Calculates the toal budget spent so far.
+
+        This is calculated as a function of the fidelity range provided, that takes into 
+        account the minimum budget and the step size.
+        """
+        if len(self.observed_configs.df) == 0:
+            return 0
+        _df = self.observed_configs.get_learning_curves()  
+        # budgets are columns now in _df
+        budget_used = 0
+
+        for idx in _df.index:
+            # finds the budget steps taken per config excluding first min_budget step
+            _n = (~_df.loc[idx].isna()).sum() - 1   # budget_id starts from 0
+            budget_used += self.get_budget_value(_n)
+        
+        return budget_used
 
     @property
-    def is_init_phase(self) -> bool:
-        if self.num_train_configs < self._initial_design_size:
-            return True
+    def is_init_phase(self, budget_based: bool=True) -> bool:
+        if budget_based:
+            if self.total_budget_spent() < self._initial_design_budget:
+                return True
+        else:
+            if self.num_train_configs < self._initial_design_size:
+                return True
         return False
 
     @property
@@ -262,6 +287,45 @@ class MFEIBO(BaseOptimizer):
             self.pipeline_space, self.observed_configs, self.step_size
         )
 
+    def _sample_init_design(self) -> tuple[SearchSpace, int]:
+        """ Samples the initial design.
+        
+        With an unbiased coin toss (p=0.5) it decides whether to sample a new 
+        configuration or continue a partial configuration, until initial_design_size 
+        configurations have been sampled.
+        """
+        _p = np.random.uniform()  # random choice
+        print("*" * 50, "\n", len(self.observed_configs.seen_config_ids), "\n", "*" * 50)
+        if (
+            (_p < 0.5 or len(self.observed_configs.df) == 0) and 
+            len(self.observed_configs.seen_config_ids) < self._initial_design_size
+        ):
+            # sampling a new configuration
+            config = self.pipeline_space.sample(
+                patience=self.patience, user_priors=True, ignore_fidelity=False
+            )
+            # setting the fidelity to the minimum
+            config.fidelity.value = self.min_budget
+            # finding the ID of the new configuration
+            _config_id = self.observed_configs.next_config_id()
+        else:
+            # sampling a configuration ID from the observed ones
+            _config_ids = np.unique(
+                self.observed_configs.df.index.get_level_values('config_id').values
+            )
+            _config_id = np.random.choice(_config_ids)
+            # extracting the config
+            config = self.observed_configs.df.loc[
+                _config_id, self.observed_configs.config_col
+            ].iloc[0]
+            # extracting the budget level
+            budget = self.observed_configs.df.loc[_config_id].index.values[-1]
+            # calculating fidelity value
+            new_fidelity = self.get_budget_value(budget + 1)
+            # settingt the config fidelity
+            config.fidelity.value = new_fidelity
+        return config, _config_id
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -277,22 +341,22 @@ class MFEIBO(BaseOptimizer):
             or self.is_init_phase
             or self._model_update_failed
         ):
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
-            config.fidelity.value = config.fidelity.lower
-            _config_id = self.observed_configs.next_config_id()
+            # config = self.pipeline_space.sample(
+            #     patience=self.patience, user_priors=True, ignore_fidelity=False
+            # )
+            # config.fidelity.value = config.fidelity.lower
+            # _config_id = self.observed_configs.next_config_id()
+            config, _config_id = self._sample_init_design()
         else:
             # main call here
-
             samples = self.acquisition_sampler.sample()
             eis = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples.to_list(), asscalar=True
             )
-            # TODO: verify
-            _ids = np.argsort(eis)[0]
-            # samples should have new configs with fidelities set to minimum
-            # due to this line, otherwise we have to set them in here
+            # maximizing EI
+            _ids = np.argsort(eis)[-1]
+            # samples should have new configs with fidelities set to as required by 
+            # the acquisition sampler
             config = samples.iloc[_ids]
             _config_id = samples.index[_ids]
 
