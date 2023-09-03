@@ -12,7 +12,7 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-    n = 500  # number of random samples to draw at lowest fidelity
+    SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -20,7 +20,7 @@ class FreezeThawSampler(AcquisitionSampler):
         self.b_step = None
 
     def _sample_new(self, index_from: int, n: int = None) -> pd.Series:
-        n = n if n is not None else self.n
+        n = n if n is not None else self.SAMPLES_TO_DRAW
         configs = [
             self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=False
@@ -69,4 +69,4 @@ class FreezeThawSampler(AcquisitionSampler):
         self.pipeline_space = pipeline_space
         self.observations = observations
         self.b_step = b_step
-        self.n = n if n is not None else self.n
+        self.n = n if n is not None else self.SAMPLES_TO_DRAW

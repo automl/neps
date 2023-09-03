@@ -51,7 +51,6 @@ class MFEI(ComprehensiveExpectedImprovement):
         self, x: Iterable, asscalar: bool = False
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
-
         x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
 
         _x = x.copy()
