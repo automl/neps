@@ -1,45 +1,45 @@
 """
 NePS tblogger With TensorBoard
-====================================
+==============================
+
 1- Introduction
 ---------------
-
 Welcome to the NePS tblogger with TensorBoard tutorial. This guide will walk you
-through the process of using the NePS tblogger class to effectively monitor and
-analyze performance data from various model configurations during training.
+through the process of using the NePS tblogger class to monitor performance
+data for different hyperparameter configurations during optimization.
 
-Assuming you already have experience in NePS, the main reason of creating this tutorial is to showcase the
-power of visualization using tblogger. if you wish to directly reach that part, check the lines
-between 244-264 or search for 'Start Tensorboard Logging'
+Assuming you have experience with NePS, this tutorial aims to showcase the power
+of visualization using tblogger. To go directly to that part, check lines 244-264 
+or search for 'Start Tensorboard Logging'.
 
 2- Learning Objectives
 ----------------------
-
 By completing this tutorial, you will:
 
-- Understand the role of NePS tblogger and its importance in HPO and NAS.
-- Learn how to define search spaces within NePS to explore different model configurations.
+- Understand the role of NePS tblogger in HPO and NAS.
+- Learn to define search spaces within NePS for different model configurations.
 - Build a comprehensive run pipeline to train and evaluate models.
-- Utilize TensorBoard to visualize and compare performance metrics of different model configurations.
+- Utilize TensorBoard to visualize and compare performance metrics of different
+  model configurations.
 
 3- Setup
 --------
-
-Before we dive in, make sure you have the necessary dependencies installed. If you haven't already,
-install the ``NePS`` package using the following command:
+Before we begin, ensure you have the necessary dependencies installed. To install
+the 'NePS' package, use the following command:
 
 ```bash
 pip install neural-pipeline-search
 ```
 
-Additionally, please note that NePS does not include ``torchvision`` as a dependency.
-You can install it with the following command:
+Additionally, note that 'NePS' does not include 'torchvision' as a dependency. 
+You can install it with this command:
 
 ```bash
 pip install torchvision==0.14.1
 ```
 
-These dependencies will ensure you have everything you need to follow along with this tutorial successfully.
+These dependencies ensure you have everything you need for this tutorial.
+
 """
 
 import argparse
@@ -94,20 +94,28 @@ def set_seed(seed=123):
 def MNIST(
     batch_size: int = 32, n_train: int = 8192, n_valid: int = 1024
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    # Datasets downloading if required.
     train_dataset = torchvision.datasets.MNIST(
-        root="./data", train=True, transform=transforms.ToTensor(), download=True
+        root="./data", train=True, transform=transforms.ToTensor(),
+        download=True
     )
     test_dataset = torchvision.datasets.MNIST(
-        root="./data", train=False, transform=transforms.ToTensor(), download=True
+        root="./data", train=False, transform=transforms.ToTensor(),
+        download=True
     )
 
+    # Further sampling a validation dataset from the train dataset.
     train_sampler = SubsetRandomSampler(range(n_train))
     valid_sampler = SubsetRandomSampler(range(n_train, n_train + n_valid))
+
+    # Creating the dataloaders.
     train_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=train_sampler
+        dataset=train_dataset, batch_size=batch_size, shuffle=False,
+        sampler=train_sampler
     )
     val_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=valid_sampler
+        dataset=train_dataset, batch_size=batch_size, shuffle=False,
+        sampler=valid_sampler
     )
     test_dataloader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
@@ -138,7 +146,8 @@ class MLP(nn.Module):
 
 
 #############################################################
-# 4 Define the training step and return the validation error and misclassified images.
+# 4 Define the training step. Return the validation error and 
+# misclassified images.
 
 
 def loss_ev(model: nn.Module, data_loader: DataLoader) -> float:
@@ -156,19 +165,27 @@ def loss_ev(model: nn.Module, data_loader: DataLoader) -> float:
     return 1 - accuracy
 
 
-def training(model, optimizer, criterion, train_loader, validation_loader):
+def training(
+        model: nn.Module, 
+        optimizer: torch.optim, 
+        criterion: nn.modules.loss, 
+        train_loader: DataLoader, 
+        validation_loader: DataLoader,
+    ) -> Tuple[float, torch.Tensor]:
     """
-    Function that trains the model for one epoch and evaluates the model on the validation set.
+    Function that trains the model for one epoch and evaluates the model 
+    on the validation set.
 
     Args:
         model (nn.Module): Model to be trained.
-        optimizer (torch.nn.optim): Optimizer used to train the weights (depends on the pipeline space).
+        optimizer (torch.optim): Optimizer used to train the weights.
         criterion (nn.modules.loss) : Loss function to use.
-        train_loader (torch.utils.Dataloader): Data loader containing the training data.
-        validation_loader (torch.utils.Dataloader): Data loader containing the validation data.
+        train_loader (Dataloader): Dataloader containing the training data.
+        validation_loader (Dataloader): Dataloader containing the validation data.
 
     Returns:
-        (float) validation error for the epoch.
+    Tuple[float, torch.Tensor]: A tuple containing the validation error (float) 
+                                and a tensor of misclassified images.
     """
     incorrect_images = []
     model.train()
@@ -188,7 +205,7 @@ def training(model, optimizer, criterion, train_loader, validation_loader):
     if len(incorrect_images) > 0:
         incorrect_images = torch.cat(incorrect_images, dim=0)
 
-    return validation_loss, incorrect_images
+    return (validation_loss, incorrect_images)
 
 
 #############################################################
@@ -213,9 +230,13 @@ def run_pipeline_BO(lr, optim, weight_decay):
     model = MLP()
 
     if optim == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=lr, weight_decay=weight_decay
+        )
     elif optim == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = torch.optim.SGD(
+            model.parameters(), lr=lr, weight_decay=weight_decay
+        )
     else:
         raise ValueError(
             "Optimizer choices are defined differently in the pipeline_space"
@@ -228,9 +249,7 @@ def run_pipeline_BO(lr, optim, weight_decay):
     )
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
-
     criterion = nn.CrossEntropyLoss()
-    losses = []
 
     for i in range(max_epochs):
         loss, miss_img = training(
@@ -240,9 +259,8 @@ def run_pipeline_BO(lr, optim, weight_decay):
             train_loader=train_loader,
             validation_loader=validation_loader,
         )
-        losses.append(loss)
 
-        # Gathering the gradient mean in each layer to display some of them in tensorboard
+        # Gathering the gradient mean in each layer
         mean_gradient = []
         for layer in model.children():
             layer_gradients = [param.grad for param in layer.parameters()]
@@ -253,13 +271,14 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
         ###################### Start Tensorboard Logging ######################
 
-        # tblogger for neps config loggings. This line will result in the following:
+        # This followinf line will result in:
 
-        # 1 Incumbent of the configs (best performance regardless of fidelity budget, if the searcher was fidelity dependent).
+        # 1 Incumbent trajectory (best performance regardless of the
+        #   fidelity budget, if the searcher was fidelity dependent).
         # 2 Loss curves of each of the configs at each epoch.
         # 3 lr_decay curve at each epoch.
-        # 4 miss_img which represents the wrongly classified images by the model.
-        # 5 first two layer_gradients computed above and passed as scalar configs.
+        # 4 The wrongly classified images by the model.
+        # 5 first two layer_gradients passed as scalar configs.
 
         tblogger.log(
             loss=loss,
@@ -288,16 +307,23 @@ def run_pipeline_BO(lr, optim, weight_decay):
         "info_dict": {
             "train_accuracy": train_accuracy,
             "test_accuracy": test_accuracy,
-            "val_errors": losses,
             "cost": max_epochs,
         },
     }
 
 
 #############################################################
-# 6 Running neps with BO as our main searcher, saving the results in a defined directory.
+# 6 Running neps with BO as the searcher.
 
 if __name__ == "__main__":
+    """
+    When running this code without any arguments, it will by default 
+    run bayesian optimization with 10 evaluations of 9 epochs each:
+
+    ```bash
+    python neps_tblogger_tutorial.py
+    ```
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--max_evaluations_total",
@@ -307,15 +333,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    """
-    When running this code without any arguments, it will by default run bayesian optimization with 10 max evaluations
-    of 9 epochs each:
-
-    ```bash
-    python neps_tblogger_tutorial.py
-    ```
-    """
-
     start_time = time.time()
 
     set_seed(112)
@@ -324,28 +341,7 @@ if __name__ == "__main__":
     if os.path.exists("results/bayesian_optimization"):
         shutil.rmtree("results/bayesian_optimization")
 
-    """
-    For showcasing purposes. After completing the first run, one can uncomment line 351
-    and continue the search via:
-
-    ```bash:
-    python neps_tblogger_tutorial.py --max_evaluations_total 15
-    ```
-
-    This would result in continuing the search for 5 new different configurations in addition
-    to disabling the logging, hence tblogger can always be disabled using the line below.
-
-    ```python:
-    tblogger.disable()
-    ```
-
-    Note that by default tblogger is enabled when used. However, there is also an enable toggle that can be used
-    ```python:
-    tblogger.enable()
-    ```
-    """
-
-    # by defualt tblogger is enabled when used, one can also check the status using:
+    # Check the status of  tblogger via:
     # tblogger.get_status()
 
     # tblogger.disable()
@@ -356,26 +352,54 @@ if __name__ == "__main__":
         root_directory="bayesian_optimization",
         max_evaluations_total=args.max_evaluations_total,
         searcher="bayesian_optimization",
+        # By default, NePS runs 10 random configurations before sampling 
+        # from the acquisition function. We will change this behavior with
+        # the following keyword argument.
+        initial_design_size = 5,
     )
 
     """
-    To check live plots during this search, please open a new terminal and make sure to be at the same level directory
-    of your project and run this command on the file created by neps root_directory.
+    To check live plots during this search, please open a new terminal 
+    and make sure to be at the same level directory of your project and 
+    run the following command on the file created by neps root_directory.
 
     ```bash:
     tensorboard --logdir bayesian_optimization
     ```
 
-    To be able to check the visualization of tensorboard make sure to follow the local link provided.
+    To be able to check the visualization of tensorboard make sure to 
+    follow the local link provided.
 
     ```bash:
     http://localhost:6006/
     ```
 
-    If nothing was visualized and you followed the tutorial exactly, there could have been an error in passing the correct
-    directory, please double check. Tensorboard will always run in the command line without checking if the directory exists.
+    If nothing was visualized and you followed the tutorial exactly, 
+    there could have been an error in passing the correct directory, 
+    please double check. Tensorboard will always run in the command 
+    line without checking if the directory exists.
     """
 
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
     logging.info(f"Execution time: {execution_time} seconds")
+
+
+    """
+    For showcasing purposes. After completing the first run, one can 
+    uncomment line 348 and continue the search via:
+
+    ```bash:
+    python neps_tblogger_tutorial.py --max_evaluations_total 15
+    ```
+
+    This would result in continuing the search for 5 different configurations
+    in addition to disabling tblogger.
+
+    Note that by default tblogger is enabled when used. However, 
+    one can also enable when needed via.
+
+    ```python:
+    tblogger.enable()
+    ```
+    """
