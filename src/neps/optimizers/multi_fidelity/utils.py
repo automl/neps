@@ -189,6 +189,23 @@ class MFObservedData:
     def get_partial_configs_at_max_seen(self):
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
+    def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+        lcs = self.get_learning_curves()
+        lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
+        return lc
+
+    def get_training_data_4DyHPO(self, df: pd.DataFrame):
+        configs = []
+        learning_curves = []
+        performance = []
+        for idx, row in df.iterrows():
+            config_id = idx[0]
+            budget_id = idx[1]
+            configs.append(row[self.config_col])
+            performance.append(row[self.perf_col])
+            learning_curves.append(self.extract_learning_curve(config_id, budget_id))
+        return configs, learning_curves, performance
+
 
 if __name__ == "__main__":
     # TODO: Either delete these or convert them to tests (karibbov)
@@ -221,6 +238,7 @@ if __name__ == "__main__":
         "Configuration ID of the best observed performance so far: ",
         data.get_best_learning_curve_id(),
     )
+    print(data.extract_learning_curve(0, 2))
     # data.df.sort_index(inplace=True)
     print(data.get_partial_configs_at_max_seen())
 

@@ -15,7 +15,7 @@ from ....search_spaces.search_space import (
 )
 
 
-class DeepKernel(nn.Module):
+class NeuralFeatureExtractor(nn.Module):
     """
     Neural network to be used in the DeepGP
     """
@@ -133,6 +133,7 @@ class DeepGP:
         pipeline_space: SearchSpace,
         neural_network_args: dict | None = None,
         logger=None,
+        **kwargs,  # pylint: disable=unused-argument
     ):
         super().__init__()
         self.__preprocess_search_space(pipeline_space)
@@ -154,7 +155,7 @@ class DeepGP:
         )
 
         # build the neural network
-        self.nn = DeepKernel(self.input_size, **neural_network_args)
+        self.nn = NeuralFeatureExtractor(self.input_size, **neural_network_args)
 
         self.logger = logger or logging.getLogger("neps")
 
@@ -302,10 +303,10 @@ class DeepGP:
 
     def _preprocess_y(self, y_train: list[float], normalize_y: bool = False):
         y_train_array = np.array(y_train, dtype=np.single)
+        self.min_y = y_train_array.min()  # pylint: disable=attribute-defined-outside-init
+        self.max_y = y_train_array.max()  # pylint: disable=attribute-defined-outside-init
         if normalize_y:
-            y_train_array = (y_train_array - y_train_array.min()) / (
-                y_train_array.max() - y_train_array.min()
-            )
+            y_train_array = (y_train_array - self.min_y) / (self.max_y - self.min_y)
         y_train_array = torch.tensor(y_train_array).to(device=self.device)
         return y_train_array
 
@@ -373,6 +374,7 @@ class DeepGP:
 
         for epoch_nr in range(0, n_epochs):
             if count_down == 0:
+                # stop training if performance doesn't increase after `patience` epochs
                 break
 
             nr_examples_batch = x_train.size(dim=0)
@@ -402,7 +404,6 @@ class DeepGP:
                     f"for the past {patience - count_down} epochs "
                     f"the training will stop in {count_down} epochs"
                 )
-
                 count_down -= 1
 
             mse = gpytorch.metrics.mean_squared_error(output, self.model.train_targets)
@@ -423,8 +424,17 @@ class DeepGP:
             #     training_errored = True
             #     break
 
-    def predict(self, x: list[SearchSpace], learning_curves: list[list[float]]):
+    def set_prediction_learning_curves(self, learning_curves: list[list[float]]):
+        # pylint: disable=attribute-defined-outside-init
+        self.prediction_learning_curves = learning_curves
+        # pylint: enable=attribute-defined-outside-init
+
+    def predict(
+        self, x: list[SearchSpace], learning_curves: list[list[float]] | None = None
+    ):
         # Preprocess input
+        if learning_curves is None:
+            learning_curves = self.prediction_learning_curves
         x_test, test_budgets, learning_curves = self._preprocess_input(
             x, learning_curves, self.normalize_budget
         )
@@ -445,22 +455,12 @@ class DeepGP:
 
             preds = self.likelihood(self.model(projected_test_x))
 
-        means = (
-            preds.mean.detach()
-            .to("cpu")
-            .numpy()
-            .reshape(
-                -1,
-            )
-        )
-        cov = (
-            preds.variance.detach()
-            .to("cpu")
-            .numpy()
-            .reshape(
-                -1,
-            )
-        )
+        means = preds.mean.detach()
+
+        if self.normalize_y:
+            means = (means + self.min_y) * (self.max_y - self.min_y)
+
+        cov = torch.diag(torch.pow(preds.stddev.detach(), 2))
 
         return means, cov
 
@@ -489,3 +489,4 @@ if __name__ == "__main__":
     means, stds = deep_gp.predict(configs, lcs)
 
     print(list(zip(means, y)))
+    print(stds)
