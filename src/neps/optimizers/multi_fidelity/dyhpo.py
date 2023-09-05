@@ -39,13 +39,6 @@ class MFEIBO(BaseOptimizer):
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
-        # sampling_policy: Any = None,
-        # promotion_policy: Any = None,
-        # sample_policy_args: Union[dict, None] = None,
-        # promotion_policy_args: Union[dict, None] = None,
-        # promotion_type: str = "model",
-        # sample_type: str = "model",
-        # sampling_args: Union[dict, None] = None,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         patience: int = 100,
@@ -60,8 +53,9 @@ class MFEIBO(BaseOptimizer):
         acquisition: str | BaseAcquisition = acquisition,
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
         model_policy: Any = MFEIModel,
-        log_prior_weighted: bool = False,
+        initial_design_fraction: float = 0.75,
         initial_design_size: int = 10,
+        initial_design_budget: int = None,
     ):
         """Initialise
 
@@ -96,7 +90,10 @@ class MFEIBO(BaseOptimizer):
         # TODO: generalize this to work with real data (not benchmarks)
         self.max_budget = self.pipeline_space.fidelity.upper
 
-        self._initial_design_size = initial_design_size
+        self._initial_design_fraction = initial_design_fraction
+        self._initial_design_size, self._initial_design_budget = self._set_initial_design(
+            initial_design_size, initial_design_budget, self._initial_design_fraction
+        )
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
@@ -151,6 +148,46 @@ class MFEIBO(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
+        self.count = 0
+
+    def _set_initial_design(
+            self, 
+            initial_design_size: int=None, 
+            initial_design_budget: int=None, 
+            initial_design_fraction: float=0.75
+        ) -> tuple[int|float, int|float]:
+        """ Sets the initial design size and budget."""
+        
+        # user specified initial_design_size takes precedence
+        if initial_design_budget is not None:
+            _initial_design_budget = initial_design_budget
+        else:
+            _initial_design_budget = self.max_budget
+        
+        # user specified initial_design_size takes precedence
+        _initial_design_size = np.inf
+        if initial_design_size is not None:
+            _initial_design_size = initial_design_size
+        if (
+            initial_design_size is None or 
+            _initial_design_size * self.min_budget > _initial_design_budget
+        ):
+            # if the initial design budget is less than the budget spend on sampling
+            # the initial design at the minimum budget (fidelity)
+            # 2 choices here:
+            #    1. Reduce initial_design_size
+            #    2. Increase initial_design_budget
+            # we choose to reduce initial_design_size
+            _init_budget = initial_design_fraction * self.max_budget
+            # number of min budget evaluations fitting within initial design budget
+            _initial_design_size = _init_budget // self.min_budget
+        
+        self.logger.info(
+            f"\n\ninitial_design_size: {_initial_design_size}\n"
+            f"initial_design_budget: {_initial_design_budget}\n"
+            f"min_budget: {self.min_budget}\n\n"
+        )
+        return _initial_design_size, _initial_design_budget
 
     def get_budget_level(self, config: SearchSpace) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.step_size)
@@ -173,11 +210,33 @@ class MFEIBO(BaseOptimizer):
             )
         self._budget_list.append(budget_val)
         return budget_val
+    
+    def total_budget_spent(self) -> int | float:
+        """ Calculates the toal budget spent so far.
 
-    @property
-    def is_init_phase(self) -> bool:
-        if self.num_train_configs < self._initial_design_size:
-            return True
+        This is calculated as a function of the fidelity range provided, that takes into 
+        account the minimum budget and the step size.
+        """
+        if len(self.observed_configs.df) == 0:
+            return 0
+        _df = self.observed_configs.get_learning_curves()  
+        # budgets are columns now in _df
+        budget_used = 0
+
+        for idx in _df.index:
+            # finds the budget steps taken per config excluding first min_budget step
+            _n = (~_df.loc[idx].isna()).sum() - 1   # budget_id starts from 0
+            budget_used += self.get_budget_value(_n)
+        
+        return budget_used
+
+    def is_init_phase(self, budget_based: bool=True) -> bool:
+        if budget_based:
+            if self.total_budget_spent() < self._initial_design_budget:
+                return True
+        else:
+            if self.num_train_configs < self._initial_design_size:
+                return True
         return False
 
     @property
@@ -211,7 +270,7 @@ class MFEIBO(BaseOptimizer):
         # TODO: can we do better than keeping a copy of the observed configs?
         self.model_policy.observed_configs = deepcopy(self.observed_configs)
         # fit any model/surrogates
-        if not self.is_init_phase:
+        if not self.is_init_phase():
             self._fit_models()
 
     def _load_previous_observations(self, previous_results):
@@ -262,6 +321,30 @@ class MFEIBO(BaseOptimizer):
             self.pipeline_space, self.observed_configs, self.step_size
         )
 
+    def _randomly_promote(self) -> tuple[SearchSpace, int]:
+        """ Samples the initial design.
+        
+        With an unbiased coin toss (p=0.5) it decides whether to sample a new 
+        configuration or continue a partial configuration, until initial_design_size 
+        configurations have been sampled.
+        """
+        # sampling a configuration ID from the observed ones
+        _config_ids = np.unique(
+            self.observed_configs.df.index.get_level_values('config_id').values
+        )
+        _config_id = np.random.choice(_config_ids)
+        # extracting the config
+        config = self.observed_configs.df.loc[
+            _config_id, self.observed_configs.config_col
+        ].iloc[0]
+        # extracting the budget level
+        budget = self.observed_configs.df.loc[_config_id].index.values[-1]
+        # calculating fidelity value
+        new_fidelity = self.get_budget_value(budget + 1)
+        # settingt the config fidelity
+        config.fidelity.value = new_fidelity
+        return config, _config_id
+
     def get_config_and_ids(  # pylint: disable=no-self-use
         self,
     ) -> tuple[SearchSpace, str, str | None]:
@@ -272,27 +355,37 @@ class MFEIBO(BaseOptimizer):
         """
         config_id = None
         previous_config_id = None
-        if (
-            (self.num_train_configs == 0 and self._initial_design_size >= 1)
-            or self.is_init_phase
-            or self._model_update_failed
-        ):
+        if self.is_init_phase(budget_based=False):
+            # sample a new config till initial design size is satisfied
+            self.logger.info("sampling...")
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            config.fidelity.value = config.fidelity.lower
+            config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
+        elif (
+            self.is_init_phase(budget_based=True)
+            or self._model_update_failed
+        ):
+            # promote a config randomly if initial design size is satisfied but the 
+            # initial design budget has not been exhausted
+            self.logger.info("promoting...")
+            config, _config_id = self._randomly_promote()
         else:
-            # main call here
-
+            if self.count == 0:
+                self.logger.info("\nPartial learning curves as initial design:\n")
+                self.logger.info(f"{self.observed_configs.get_learning_curves()}\n")
+            self.count += 1
+            # main acquisition call here after initial design is turned off
+            self.logger.info("acquiring...")
             samples = self.acquisition_sampler.sample()
             eis = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples.to_list(), asscalar=True
             )
-            # TODO: verify
-            _ids = np.argsort(eis)[0]
-            # samples should have new configs with fidelities set to minimum
-            # due to this line, otherwise we have to set them in here
+            # maximizing EI
+            _ids = np.argsort(eis)[-1]
+            # samples should have new configs with fidelities set to as required by 
+            # the acquisition sampler
             config = samples.iloc[_ids]
             _config_id = samples.index[_ids]
 
