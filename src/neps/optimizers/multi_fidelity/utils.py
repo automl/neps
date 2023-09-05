@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import pandas as pd
 
@@ -21,8 +23,8 @@ class MFObservedData:
 
     def __init__(
         self,
-        columns: Union[List[str], None] = None,
-        index_names: Union[List[str], None] = None,
+        columns: list[str] | None = None,
+        index_names: list[str] | None = None,
     ):
         if columns is None:
             columns = [self.default_config_col, self.default_perf_col]
@@ -51,7 +53,7 @@ class MFObservedData:
         return self.df[self.perf_col] == "error"
 
     @property
-    def seen_config_ids(self) -> List:
+    def seen_config_ids(self) -> list:
         return self.df.index.levels[0].to_list()
 
     @property
@@ -66,8 +68,8 @@ class MFObservedData:
 
     def add_data(
         self,
-        data: Union[List[Any], List[List[Any]]],
-        index: Union[Tuple[int, ...], Sequence[Tuple[int, ...]], Sequence[int], int],
+        data: list[Any] | list[list[Any]],
+        index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         error: bool = False,
     ):
         """
@@ -92,8 +94,8 @@ class MFObservedData:
 
     def update_data(
         self,
-        data_dict: Dict[str, List[Any]],
-        index: Union[Tuple[int, ...], Sequence[Tuple[int, ...]], Sequence[int], int],
+        data_dict: dict[str, list[Any]],
+        index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         error: bool = False,
     ):
         """
