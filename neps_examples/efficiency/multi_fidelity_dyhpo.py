@@ -81,5 +81,5 @@ neps.run(
     # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
     # field above.
     max_cost_total=50,
-    surrogate_model="gp",
+    surrogate_model="deep_gp",
 )
