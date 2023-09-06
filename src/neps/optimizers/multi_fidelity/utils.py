@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from __future__ import annotations
+
+from typing import Any, Sequence
 
 import pandas as pd
 
@@ -21,8 +23,8 @@ class MFObservedData:
 
     def __init__(
         self,
-        columns: Union[List[str], None] = None,
-        index_names: Union[List[str], None] = None,
+        columns: list[str] | None = None,
+        index_names: list[str] | None = None,
     ):
         if columns is None:
             columns = [self.default_config_col, self.default_perf_col]
@@ -51,7 +53,7 @@ class MFObservedData:
         return self.df[self.perf_col] == "error"
 
     @property
-    def seen_config_ids(self) -> List:
+    def seen_config_ids(self) -> list:
         return self.df.index.levels[0].to_list()
 
     @property
@@ -66,8 +68,8 @@ class MFObservedData:
 
     def add_data(
         self,
-        data: Union[List[Any], List[List[Any]]],
-        index: Union[Tuple[int, ...], Sequence[Tuple[int, ...]], Sequence[int], int],
+        data: list[Any] | list[list[Any]],
+        index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         error: bool = False,
     ):
         """
@@ -92,8 +94,8 @@ class MFObservedData:
 
     def update_data(
         self,
-        data_dict: Dict[str, List[Any]],
-        index: Union[Tuple[int, ...], Sequence[Tuple[int, ...]], Sequence[int], int],
+        data_dict: dict[str, list[Any]],
+        index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         error: bool = False,
     ):
         """
@@ -189,6 +191,23 @@ class MFObservedData:
     def get_partial_configs_at_max_seen(self):
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
+    def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+        lcs = self.get_learning_curves()
+        lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
+        return lc
+
+    def get_training_data_4DyHPO(self, df: pd.DataFrame):
+        configs = []
+        learning_curves = []
+        performance = []
+        for idx, row in df.iterrows():
+            config_id = idx[0]
+            budget_id = idx[1]
+            configs.append(row[self.config_col])
+            performance.append(row[self.perf_col])
+            learning_curves.append(self.extract_learning_curve(config_id, budget_id))
+        return configs, learning_curves, performance
+
 
 if __name__ == "__main__":
     # TODO: Either delete these or convert them to tests (karibbov)
@@ -221,6 +240,7 @@ if __name__ == "__main__":
         "Configuration ID of the best observed performance so far: ",
         data.get_best_learning_curve_id(),
     )
+    print(data.extract_learning_curve(0, 2))
     # data.df.sort_index(inplace=True)
     print(data.get_partial_configs_at_max_seen())
 

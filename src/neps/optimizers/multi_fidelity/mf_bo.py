@@ -8,10 +8,10 @@ from metahyper import instance_from_map
 from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 
-
 """Base class for multi-fidelity Bayesian optimization for SH-based algorithms."""
-class MFBOBase:
 
+
+class MFBOBase:
     def _fit_models(self):
         """Performs necessary procedures to build and use models."""
 
@@ -220,7 +220,6 @@ class MFEIModel(ModelBase):
     def __init__(self, *args, **kwargs):
         self.num_train_configs = 0
         self.observed_configs = kwargs.get("observed_configs", None)
-
         super().__init__(*args, **kwargs)
 
     def _fantasize_pending(self, *args, **kwargs):  # pylint: disable=unused-argument
@@ -238,6 +237,7 @@ class MFEIModel(ModelBase):
 
         pending_condition = self.observed_configs.pending_condition
         if pending_condition.any():
+            # TODO: Unique might not work here replace this (karibbov)
             pending_configs = (
                 self.observed_configs.df[pending_condition]
                 .loc[(), self.observed_configs.config_col]
@@ -260,5 +260,64 @@ class MFEIModel(ModelBase):
             decay_t = len(train_x)
         train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
         self.surrogate_model.fit(train_x, train_y)
+
+        return self.surrogate_model, decay_t
+
+
+class MFEIDeepModel(ModelBase):
+    def __init__(
+        self,
+        pipeline_space,
+        surrogate_model: str = "deep_gp",
+        surrogate_model_args: dict = None,
+    ):
+        self.pipeline_space = pipeline_space
+
+        surrogate_model_args = (
+            surrogate_model_args if surrogate_model_args is not None else {}
+        )
+
+        if surrogate_model == "deep_gp":
+            surrogate_model_args.update({"pipeline_space": pipeline_space})
+
+        super().__init__(pipeline_space, surrogate_model, surrogate_model_args)
+
+    def _fantasize_pending(self, train_x, train_y, pending_x):
+        # Select configs that are neither pending nor resulted in error
+        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
+        train_x, train_lcs, train_y = self.observed_configs.get_training_data_4DyHPO(
+            completed_configs
+        )
+
+        pending_condition = self.observed_configs.pending_condition
+
+        if pending_condition.any():
+            pending_configs = self.observed_configs.df.loc[pending_condition]
+            pending_x, pending_lcs, _ = self.observed_configs.get_training_data_4DyHPO(
+                pending_configs
+            )
+            self.surrogate_model.fit(train_x, train_y, train_lcs)
+            _y, _ = self.surrogate_model.predict(pending_x, pending_lcs)
+            _y = _y.tolist()
+
+            train_x.extend(pending_x)
+            train_y.extend(_y)
+            train_lcs.extend(pending_lcs)
+        return train_x, train_y, train_lcs
+
+    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
+        if train_x is None:
+            train_x = []
+        if train_y is None:
+            train_y = []
+        if pending_x is None:
+            pending_x = []
+
+        if decay_t is None:
+            decay_t = len(train_x)
+
+        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
+        # print(train_x, train_y, train_lcs)
+        self.surrogate_model.fit(train_x, train_y, train_lcs)
 
         return self.surrogate_model, decay_t

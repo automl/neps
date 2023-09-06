@@ -82,5 +82,4 @@ neps.run(
     # field above.
     max_cost_total=50,
     surrogate_model="gp",
-    hp_kernels=["m52"],
 )
