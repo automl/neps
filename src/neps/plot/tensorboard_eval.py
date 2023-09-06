@@ -13,17 +13,20 @@ from torch.utils.tensorboard.summary import hparams
 
 class SummaryWriter_(SummaryWriter):
     """
-    This class inherits from the base SummaryWriter class and provides modifications to improve the logging.
-    It simplifies the logging structure and ensures consistent tag formatting for metrics.
+    This class inherits from the base SummaryWriter class and provides
+    modifications to improve the logging. It simplifies the logging structure
+    and ensures consistent tag formatting for metrics.
 
     Changes Made:
     - Avoids creating unnecessary subfolders in the log directory.
-    - Ensures all logs are stored in the same 'tfevent' directory for better organization.
+    - Ensures all logs are stored in the same 'tfevent' directory for
+      better organization.
     - Updates metric keys to have a consistent 'Summary/' prefix for clarity.
     - Improves the display of 'Loss' or 'Accuracy' on the Summary file.
 
     Methods:
-    - add_hparams: Overrides the base method to log hyperparameters and metrics with better formatting.
+    - add_hparams: Overrides the base method to log hyperparameters and
+    metrics with better formatting.
     """
 
     def add_hparams(self, hparam_dict: dict, metric_dict: dict, global_step: int) -> None:
@@ -47,16 +50,16 @@ class tblogger:
     config_previous_directory: Path | None = None
 
     logger_init_bool: bool = True
-    """logger_init_bool is only used once to capture configuration data for the first ever configuration,
-    and then turned false for the entire run."""
+    """logger_init_bool is only used once to capture configuration data
+    for the first configuration, and then turned false for the entire run."""
 
     logger_bool: bool = False
-    """logger_bool is true only if tblogger.log is used by the user, hence this allows to always capturing
-    the configuration data for all configurations."""
+    """logger_bool is true only if tblogger.log is used by the user, this
+    allows to always capturing the configuration data."""
 
     disable_logging: bool = False
-    """disable_logging is a hard switch to disable the logging feature if it was turned true.
-    hence even when logger_bool is true it disables the logging process"""
+    """disable_logging is a hard switch to disable the logging feature
+    if it was turned true."""
 
     loss: float | None = None
     current_epoch: int | None = None
@@ -78,8 +81,9 @@ class tblogger:
         config_previous_directory: Path | None = None,
     ) -> None:
         """
-        Track the Configuration space data from the way handled by neps metahyper '_sample_config' to keep in sync with
-        config ids and directories NePS is operating on.
+        Track the Configuration space data from the way handled by neps metahyper
+        '_sample_config' to keep in sync with config ids and directories NePS is
+        operating on.
         """
 
         tblogger.config = config
@@ -119,7 +123,8 @@ class tblogger:
 
             # This should execute when having Config_x_1 and Config_x_0
             if os.path.exists(get_tbevent_dir):
-                # When tfevents directory is detected => we are at the first fidelity directory, create writer.
+                # When tfevents directory is detected => we are at the first
+                # fidelity directory, create writer.
                 with open(prev_dir_id_from_init) as file:
                     contents = file.read()
                     tblogger.config_id = contents
@@ -161,13 +166,15 @@ class tblogger:
         Create a grid of images from a batch of images.
 
         Args:
-            images (torch.Tensor): The input batch of images with shape (batch_size, num_channels, height, width).
+            images (torch.Tensor): The input batch of images with shape
+                                (batch_size, num_channels, height, width).
             nrow (int): The number of rows on the grid.
-            padding (int, optional): The padding between images in the grid. Default is 2.
+            padding (int, optional): The padding between images in the grid.
+                                Default is 2.
 
         Returns:
-            torch.Tensor: A grid of images with shape (num_channels, total_height, total_width),
-                        where total_height and total_width depend on the number of images and the grid settings.
+            torch.Tensor: A grid of images with shape:
+                        (num_channels, total_height, total_width)
         """
         batch_size, num_channels, height, width = images.size()
         x_mapping = min(nrow, batch_size)
@@ -210,7 +217,7 @@ class tblogger:
 
     @staticmethod
     def image_logging(
-        img_tensor: torch.Tensor,
+        image: torch.Tensor,
         counter: int = 1,
         resize_images: list[None | int] | None = None,
         random_images: bool = True,
@@ -229,26 +236,26 @@ class tblogger:
         Prepare an image tensor for logging.
 
         Args:
-            img_tensor (torch.Tensor): The image tensor to be logged.
-            counter (int): A counter value for the frequency of image logging (ex: counter 2 means for every
-                        2 global steps a new set of images are logged).
-            resize_images (list of int): A list of integers representing the image sizes
-                                                    after resizing or None if no resizing required.
-                                                    Default is None.
-            random_images (bool, optional): Whether the images are selected randomly. Default is True.
-            num_images (int, optional): The number of images to log. Default is 20.
-            seed (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control
-                                                               the randomness of image selection. Default is None.
+            image (torch.Tensor): Image tensor to be logged.
+            counter (int): Counter value associated with the images.
+            resize_images (list of int, optional): List of integers for image
+                                                sizes after resizing (default: None).
+            random_images (bool, optional): Images are randomly selected
+                                        if True (default: True).
+            num_images (int, optional): Number of images to log (default: 20).
+            seed (int or np.random.RandomState or None, optional): Seed value
+                or RandomState instance to control randomness (default: None).
 
         Returns:
-            tuple: A tuple containing the logging mode and all the necessary parameters for image logging.
-                The tuple format is (logging_mode, img_tensor, counter, resize_images,
-                                    random_images, num_images, seed).
+            tuple: A tuple containing the logging mode and all the necessary
+            parameters for image logging.
+                Tuple: (logging_mode, img_tensor, counter, resize_images,
+                                random_images, num_images, seed).
         """
         logging_mode = "image"
         return (
             logging_mode,
-            img_tensor,
+            image,
             counter,
             resize_images,
             random_images,
@@ -266,18 +273,19 @@ class tblogger:
             value (float or int): The scalar value to be logged. Default is None.
 
         Note:
-            If the tag is 'Loss' and scalar_accuracy_mode is True, the tag will be changed to 'Accuracy',
-            and the value will be transformed accordingly.
+            If the tag is 'Loss' and scalar_accuracy_mode is True, the tag will
+            be changed to 'Accuracy', and the value will be transformed accordingly.
 
-            The function relies on the _initialize_writers to ensure the TensorBoard writer is initialized at
-            the correct directory.
+            The function relies on the _initialize_writers to ensure the
+            TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
                 - tblogger.scalar_accuracy_mode (bool)
                 - tblogger.config_writer (SummaryWriter_)
                 - tblogger.config_id (str)
 
-            The function will log the scalar value under different tags based on fidelity mode and other configurations.
+            The function will log the scalar value under different tags based
+            on fidelity mode and other configurations.
         """
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
@@ -295,7 +303,7 @@ class tblogger:
             )
         else:
             raise ValueError(
-                "The 'config_writer' is None in _write_scalar_config. No logging is performed."
+                "The 'config_writer' is None in _write_scalar_config."
                 "An error occurred during the initialization process."
             )
 
@@ -313,27 +321,28 @@ class tblogger:
         Write images to the TensorBoard log.
 
         Args:
-            tag (str): The tag for the images.
-            image (torch.Tensor): The image tensor to be logged.
-            counter (int): A counter value associated with the images.
-            resize_images (list of int): A list of integers representing the image sizes
-                                                        after resizing or None if no resizing required.
-                                                        Default is None.
-            random_images (bool, optional): Whether the images are selected randomly. Default is True.
-            num_images (int, optional): The number of images to log. Default is 20.
-            seed (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control
-                                                               the randomness of image selection. Default is None.
+            tag (str): Tag for the images.
+            image (torch.Tensor): Image tensor to be logged.
+            counter (int): Counter value associated with the images.
+            resize_images (list of int, optional): List of integers for image
+                                                sizes after resizing (default: None).
+            random_images (bool, optional): Images are randomly selected
+                                        if True (default: True).
+            num_images (int, optional): Number of images to log (default: 20).
+            seed (int or np.random.RandomState or None, optional): Seed value
+                or RandomState instance to control randomness (default: None).
 
         Note:
-            The function relies on the _initialize_writers to ensure the TensorBoard writer is initialized at
-            the correct directory.
+            The function relies on the _initialize_writers to ensure the
+            TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
                 - tblogger.current_epoch (int)
                 - tblogger.config_writer (SummaryWriter_)
                 - tblogger.config_id (str)
 
-            The function will log a subset of images to TensorBoard based on the given configurations.
+            The function will log a subset of images to TensorBoard based on
+            the given configurations.
         """
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
@@ -365,7 +374,8 @@ class tblogger:
                 mode="bilinear",
                 align_corners=False,
             )
-            # Create the grid according to the number of images and log the grid to tensorboard.
+            # Create the grid according to the number of images and log
+            # the grid to tensorboard.
             nrow = int(resized_images.size(0) ** 0.75)
             img_grid = tblogger._make_grid(resized_images, nrow=nrow)
             # Just an extra safety measure
@@ -377,18 +387,19 @@ class tblogger:
                 )
             else:
                 raise ValueError(
-                    "The 'config_writer' is None in _write_image_config. No logging is performed. "
+                    "The 'config_writer' is None in _write_image_config."
                     "An error occurred during the initialization process."
                 )
 
     @staticmethod
     def _write_hparam_config() -> None:
         """
-        Write hyperparameter configurations to the TensorBoard log, inspired by the 'hparam' original function of tensorboard.
+        Write hyperparameter configurations to the TensorBoard log, inspired
+        by the 'hparam' original function of tensorboard.
 
         Note:
-            The function relies on the _initialize_writers to ensure the TensorBoard writer is initialized at
-            the correct directory.
+            The function relies on the _initialize_writers to ensure the
+            TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
                 - tblogger.hparam_accuracy_mode (bool)
@@ -397,8 +408,9 @@ class tblogger:
                 - tblogger.config (dict)
                 - tblogger.current_epoch (int)
 
-            The function will log hyperparameter configurations along with a metric value (either accuracy or loss)
-            to TensorBoard based on the given configurations.
+            The function will log hyperparameter configurations along
+            with a metric value (either accuracy or loss) to TensorBoard
+            based on the given configurations.
         """
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
@@ -421,7 +433,7 @@ class tblogger:
             )
         else:
             raise ValueError(
-                "The 'config_writer' is None in _write_hparam_config. No logging is performed. "
+                "The 'config_writer' is None in _write_hparam_config."
                 "An error occurred during the initialization process."
             )
 
@@ -431,7 +443,8 @@ class tblogger:
         Track the incumbent (best) loss and log it in the TensorBoard summary.
 
         Args:
-            best_loss (float): The best loss value to be tracked, according to the _post_hook_function of NePS.
+            best_loss (float): The best loss value to be tracked, according
+            to the _post_hook_function of NePS.
 
         Note:
             The function relies on the following global variables:
@@ -441,8 +454,10 @@ class tblogger:
                 - tblogger.incum_val (float)
                 - tblogger.summary_writer (SummaryWriter_)
 
-            The function logs the incumbent loss in a TensorBoard summary with a graph.
-            It increments the incumbent tracker based on occurrences of "Config ID" in the 'all_losses_and_configs.txt' file.
+            The function logs the incumbent trajectory in TensorBoard.
+
+            It increments the incumbent tracker based on occurrences of
+            "Config ID" in the 'all_losses_and_configs.txt' file.
         """
         if tblogger.config_writer:
             # Close and reset previous config writers for consistent logging.
@@ -474,8 +489,9 @@ class tblogger:
             global_step=tblogger.incum_tracker,
         )
 
-        # Frequent writer open/close creates new 'tfevent' files due to parallelization needs.
-        # Simultaneous open writers risk conflicts, so they're flushed and closed after use.
+        # Frequent writer open/close creates new 'tfevent' files due to
+        # parallelization needs. Simultaneous open writers risk conflicts,
+        # so they're flushed and closed after use.
 
         tblogger.summary_writer.flush()
         tblogger.summary_writer.close()
@@ -483,11 +499,10 @@ class tblogger:
     @staticmethod
     def disable() -> None:
         """
-        The function allows for disabling the logger functionality
-        throughout the program execution by updating the value of 'tblogger.disable_logging'.
-        When the logger is disabled, it will not perform any logging operations.
+        The function allows for disabling the logger functionality.
+        When the logger is disabled, it will not perform logging operations.
 
-        By default tblogger is enabled when used. If for any reason disabling is needed. This function does the job.
+        By default tblogger is enabled when used.
 
         Example:
             # Disable the logger
@@ -498,11 +513,10 @@ class tblogger:
     @staticmethod
     def enable() -> None:
         """
-        The function allows for enabling the logger functionality
-        throughout the program execution by updating the value of 'tblogger.disable_logging'.
+        The function allows for enabling the logger functionality.
         When the logger is enabled, it will perform the logging operations.
 
-        By default this is enabled. Hence only needed when tblogger was once disabled.
+        By default this is enabled.
 
         Example:
             # Enable the logger
@@ -513,7 +527,8 @@ class tblogger:
     @staticmethod
     def get_status():
         """
-        Returns the currect state of tblogger ie. whether the logger is enabled or not
+        Returns the currect state of tblogger ie. whether the logger is
+        enabled or not
         """
         return not tblogger.disable_logging
 
@@ -528,26 +543,22 @@ class tblogger:
         data: dict | None = None,
     ) -> None:
         """
-        Log experiment data to the logger, including scalar values, hyperparameters, and images.
+        Log experiment data to the logger, including scalar values,
+        hyperparameters, and images.
 
         Args:
-            loss (float): The current loss value in training.
-            current_epoch (int): The current epoch of the experiment. Used as the global step.
-            writer_scalar (bool, optional): Whether to write the loss or accuracy for the
-                                        configs during training. Default is True.
-            writer_hparam (bool, optional): Whether to write hyperparameters logging
-                                        of the configs during training. Default is True.
-            scalar_accuracy_mode (bool, optional): If True, interpret the 'loss' as 'accuracy' and transform it's
-                                                value accordingliy. Default is False.
-            hparam_accuracy_mode (bool, optional): If True, interpret the 'loss' as 'accuracy' and transform it's
-                                                value accordingliy. Default is False.
-            data (dict, optional): Additional experiment data to be logged. It should be in the format:
-                                {
-                                    'tag1': tblogger.scalar_logging(value=value1),
-                                    'tag2': tblogger.image_logging(img_tensor=img, counter=2, seed=0),
-                                }
-                                Default is None.
-
+            loss (float): Current loss value in training.
+            current_epoch (int): Current epoch of the experiment
+                                (used as the global step).
+            writer_scalar (bool, optional): Displaying the loss or accuracy
+                                        curve on tensorboard (default: True)
+            writer_hparam (bool, optional): Write hyperparameters logging of
+                                        the configs (default: True).
+            scalar_accuracy_mode (bool, optional): Interpret 'loss' as 'accuracy'
+                                                and change value (default: False).
+            hparam_accuracy_mode (bool, optional): Interpret 'loss' as 'accuracy'
+                                                and change value (default: False).
+            data (dict, optional): Additional experiment data for logging.
         """
         tblogger.current_epoch = current_epoch
         tblogger.loss = loss
