@@ -317,7 +317,7 @@ class DeepGP:
         x_train: list[SearchSpace],
         y_train: list[float],
         learning_curves: list[list[float]],
-        normalize_y: bool = True,
+        normalize_y: bool = False,
         normalize_budget: bool = True,
         n_epochs: int = 1000,
         optimizer_args: dict | None = None,
