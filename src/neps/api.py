@@ -15,6 +15,7 @@ import metahyper
 from metahyper import instance_from_map
 
 from .optimizers import BaseOptimizer, SearcherMapping
+from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
 from .utils.result_utils import get_loss
@@ -82,8 +83,14 @@ def _post_evaluation_hook_function(
                 f"Finished evaluating config {config_id}"
                 f" -- new best with loss {float(loss) :.3f}"
             )
+            if tblogger.logger_bool:
+                tblogger.tracking_incumbent_api(best_loss=loss)
+
         else:
             logger.info(f"Finished evaluating config {config_id}")
+            # Track the incumbent from the best loss
+            if tblogger.logger_bool:
+                tblogger.tracking_incumbent_api(best_loss=best_loss)
 
     return _post_evaluation_hook
 
