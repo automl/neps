@@ -124,6 +124,9 @@ class MFObservedData:
             values=self.perf_col,
         )
 
+    def all_configs_list(self) -> list[Any]:
+        return self.df.loc[:, self.config_col].values.tolist()
+
     def get_incumbents_for_budgets(self, maximize: bool = False):
         """
         Returns a series object with the best partial configuration for each budget id

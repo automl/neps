@@ -1,6 +1,7 @@
 # type: ignore
 from __future__ import annotations
 
+import warnings
 from copy import deepcopy
 
 import numpy as np
@@ -18,16 +19,50 @@ class FreezeThawSampler(AcquisitionSampler):
         super().__init__(**kwargs)
         self.observations = None
         self.b_step = None
+        self.n = None
 
-    def _sample_new(self, index_from: int, n: int = None) -> pd.Series:
+    def _sample_new(
+        self, index_from: int, n: int = None, patience: int = 10
+    ) -> pd.Series:
         n = n if n is not None else self.SAMPLES_TO_DRAW
-        configs = [
-            self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=False
-            )
-            for _ in range(n)
-        ]
-        return pd.Series(configs, index=range(index_from, index_from + len(configs)))
+        assert (
+            patience > 0 and n > 0
+        ), "Patience and SAMPLES_TO_DRAW must be larger than 0"
+
+        existing_configs = self.observations.all_configs_list()
+        new_configs = []
+        for _ in range(n):
+            # Sample patience times for an unobserved configuration
+            for _ in range(patience):
+                _config = self.pipeline_space.sample(
+                    patience=self.patience, user_priors=False, ignore_fidelity=False
+                )
+                # Iterate over all observed configs
+                for config in existing_configs:
+                    if _config.is_equal_value(config, include_fidelity=False):
+                        # if the sampled config already exists
+                        # do the next iteration of patience
+                        break
+                else:
+                    # If the new sample is not equal to any previous
+                    # then it's a new config
+                    new_config = _config
+                    break
+            else:
+                # TODO: use logger.warn here instead (karibbov)
+                warnings.warn(
+                    f"Couldn't find an unobserved configuration in {patience} "
+                    f"iterations. Using an observed config instead"
+                )
+                # patience budget exhausted use the last sampled config anyway
+                new_config = _config
+
+            # append the new config to the list
+            new_configs.append(new_config)
+
+        return pd.Series(
+            new_configs, index=range(index_from, index_from + len(new_configs))
+        )
 
     def sample(self, acquisition_function=None, n: int = None) -> pd.Series:
         partial_configs = self.observations.get_partial_configs_at_max_seen()
