@@ -29,13 +29,13 @@ class NeuralFeatureExtractor(nn.Module):
         self.n_layers = kwargs.get("n_layers", 2)
         self.activation = nn.LeakyReLU()
 
-        layer1_units = kwargs.get("layer1_units", 64)
+        layer1_units = kwargs.get("layer1_units", 128)
         self.fc1 = nn.Linear(input_size, layer1_units)
         self.bn1 = nn.BatchNorm1d(layer1_units)
 
         previous_layer_units = layer1_units
         for i in range(2, self.n_layers):
-            next_layer_units = kwargs.get(f"layer{i}_units", 128)
+            next_layer_units = kwargs.get(f"layer{i}_units", 256)
             setattr(
                 self,
                 f"fc{i}",
@@ -54,7 +54,7 @@ class NeuralFeatureExtractor(nn.Module):
             nn.Linear(
                 previous_layer_units + kwargs.get("cnn_nr_channels", 4),
                 # accounting for the learning curve features
-                kwargs.get(f"layer{self.n_layers}_units", 128),
+                kwargs.get(f"layer{self.n_layers}_units", 256),
             ),
         )
         self.cnn = nn.Sequential(
@@ -133,8 +133,12 @@ class DeepGP:
         pipeline_space: SearchSpace,
         neural_network_args: dict | None = None,
         logger=None,
+        surrogate_model_fit_args: dict | None = None,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        self.surrogate_model_fit_args = (
+            surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
+        )
         super().__init__()
         self.__preprocess_search_space(pipeline_space)
         # set the categories array for the encoder
@@ -146,7 +150,7 @@ class DeepGP:
         self.device = (
             torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         )
-        self.device = torch.device("cpu")
+        # self.device = torch.device("cpu")
 
         # Save the NN args, necessary for preprocessing
         self.cnn_kernel_size = neural_network_args.get("cnn_kernel_size", 3)
@@ -256,6 +260,9 @@ class DeepGP:
             padding_length = max([max_length - len(lc), self.cnn_kernel_size - len(lc)])
             lc.extend([padding_value] * padding_length)
 
+        # TODO: check if the lc values are within bounds [0, 1] (karibbov)
+        # TODO: add normalize_lcs option in the future
+
         return np.array(learning_curves, dtype=np.single)
 
     def __reset_xy(
@@ -317,10 +324,19 @@ class DeepGP:
         x_train: list[SearchSpace],
         y_train: list[float],
         learning_curves: list[list[float]],
-        normalize_y: bool = True,
+    ):
+        self._fit(x_train, y_train, learning_curves, **self.surrogate_model_fit_args)
+
+    def _fit(
+        self,
+        x_train: list[SearchSpace],
+        y_train: list[float],
+        learning_curves: list[list[float]],
+        normalize_y: bool = False,
         normalize_budget: bool = True,
         n_epochs: int = 1000,
         optimizer_args: dict | None = None,
+        early_stopping: bool = True,
         patience: int = 10,
     ):
         self.__reset_xy(
@@ -342,6 +358,7 @@ class DeepGP:
             self.y_train,
             n_epochs=n_epochs,
             optimizer_args=optimizer_args,
+            early_stopping=early_stopping,
             patience=patience,
         )
 
@@ -353,6 +370,7 @@ class DeepGP:
         y_train: torch.Tensor,
         n_epochs: int = 1000,
         optimizer_args: dict | None = None,
+        early_stopping: bool = True,
         patience: int = 10,
     ):
         if optimizer_args is None:
@@ -361,7 +379,6 @@ class DeepGP:
         self.model.train()
         self.likelihood.train()
         self.nn.train()
-
         self.optimizer = (  # pylint: disable=attribute-defined-outside-init
             torch.optim.Adam(
                 [
@@ -375,8 +392,13 @@ class DeepGP:
         min_loss_val = np.inf
 
         for epoch_nr in range(0, n_epochs):
-            if count_down == 0:
-                # stop training if performance doesn't increase after `patience` epochs
+            if early_stopping and count_down == 0:
+                self.logger.info(
+                    f"Epoch: {epoch_nr - 1} surrogate training stops due to early "
+                    f"stopping with the patience: {patience} and "
+                    f"the minimum loss of {min_loss_val} and "
+                    f"the final loss of {loss_value}"
+                )
                 break
 
             nr_examples_batch = x_train.size(dim=0)
@@ -395,12 +417,12 @@ class DeepGP:
             # try:
             # Calc loss and backprop derivatives
             loss = -self.mll(output, self.model.train_targets)
-            loss_value = loss.detach().to("cpu").item()
+            loss_value: float = loss.detach().to("cpu").item()
 
             if loss_value < min_loss_val:
                 min_loss_val = loss_value
                 count_down = patience
-            else:
+            elif early_stopping:
                 self.logger.debug(
                     f"No improvement over the minimum loss value of {min_loss_val} "
                     f"for the past {patience - count_down} epochs "

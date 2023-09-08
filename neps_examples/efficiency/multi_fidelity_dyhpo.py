@@ -82,4 +82,8 @@ neps.run(
     # field above.
     max_cost_total=50,
     surrogate_model="deep_gp",
+    # Normalizing y here since we return unbounded loss, not completely correct to do so
+    surrogate_model_args={
+        "surrogate_model_fit_args": {"normalize_y": True},
+    },
 )

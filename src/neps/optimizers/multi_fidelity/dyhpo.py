@@ -305,6 +305,7 @@ class MFEIBO(BaseOptimizer):
             index = (int(_config), int(_budget_level))
 
             if index not in self.observed_configs.df.index:
+                # TODO: Validate this
                 self.observed_configs.add_data([config_val, np.nan], index=index)
             else:
                 self.observed_configs.update_data(
