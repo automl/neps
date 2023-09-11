@@ -10,7 +10,7 @@ from metahyper.api import ConfigResult
 
 from ..search_spaces.search_space import SearchSpace
 from ..utils.common import get_rnd_state, set_rnd_state
-from ..utils.result_utils import get_cost, get_loss
+from ..utils.result_utils import get_cost, get_learning_curve, get_loss
 
 
 class BaseOptimizer(metahyper.Sampler):
@@ -24,6 +24,7 @@ class BaseOptimizer(metahyper.Sampler):
         budget: None | int | float = None,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
+        learning_curve_on_error: None | float | list[float] = None,
         ignore_errors=False,
     ):
         super().__init__(budget=budget)
@@ -35,6 +36,7 @@ class BaseOptimizer(metahyper.Sampler):
         self.logger = logger or logging.getLogger("neps")
         self.loss_value_on_error = loss_value_on_error
         self.cost_value_on_error = cost_value_on_error
+        self.learning_curve_on_error = learning_curve_on_error
         self.ignore_errors = ignore_errors
 
     @abstractmethod
@@ -79,5 +81,14 @@ class BaseOptimizer(metahyper.Sampler):
         return get_cost(
             result,
             cost_value_on_error=self.cost_value_on_error,
+            ignore_errors=self.ignore_errors,
+        )
+
+    def get_learning_curve(self, result: str | dict | float) -> float | Any:
+        """Calls result.utils.get_loss() and passes the error handling through.
+        Please use self.get_loss() instead of get_loss() in all optimizer classes."""
+        return get_learning_curve(
+            result,
+            learning_curve_on_error=self.learning_curve_on_error,
             ignore_errors=self.ignore_errors,
         )

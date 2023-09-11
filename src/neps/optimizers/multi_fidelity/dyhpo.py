@@ -99,7 +99,7 @@ class MFEIBO(BaseOptimizer):
         self.total_fevals: int = 0
 
         self.observed_configs = MFObservedData(
-            columns=["config", "perf"],
+            columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
         )
 
@@ -282,11 +282,10 @@ class MFEIBO(BaseOptimizer):
         for config_id, config_val in previous_results.items():
             _config, _budget_level = config_id.split("_")
             perf = self.get_loss(config_val.result)
-            # TODO: do we record learning curves?
-            # lcs = self.get_learning_curves(config_val.result)
+            lc = self.get_learning_curve(config_val.result)
 
             index = (int(_config), int(_budget_level))
-            self.observed_configs.add_data([config_val.config, perf], index=index)
+            self.observed_configs.add_data([config_val.config, perf, lc], index=index)
 
             if not np.isclose(
                 self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
@@ -295,6 +294,7 @@ class MFEIBO(BaseOptimizer):
                     {
                         self.observed_configs.config_col: config_val.config,
                         self.observed_configs.perf_col: perf,
+                        self.observed_configs.lc_col_name: lc,
                     },
                     index=index,
                 )
@@ -306,12 +306,15 @@ class MFEIBO(BaseOptimizer):
 
             if index not in self.observed_configs.df.index:
                 # TODO: Validate this
-                self.observed_configs.add_data([config_val, np.nan], index=index)
+                self.observed_configs.add_data(
+                    [config_val, np.nan, [np.nan]], index=index
+                )
             else:
                 self.observed_configs.update_data(
                     {
                         self.observed_configs.config_col: config_val,
                         self.observed_configs.perf_col: np.nan,
+                        self.observed_configs.lc_col_name: [np.nan],
                     },
                     index=index,
                 )

@@ -64,7 +64,10 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate,
 
     loss = np.log(learning_rate / epoch)  # Replace with actual error
     epochs_spent_in_this_call = epoch - epochs_previously_spent  # Optional for stopping
-    return dict(loss=loss, cost=epochs_spent_in_this_call)
+    learning_curve = np.linspace(
+        0, loss, num=int(epoch)
+    ).tolist()  # learning curves as a list
+    return dict(loss=loss, cost=epochs_spent_in_this_call, learning_curve=learning_curve)
 
 
 pipeline_space = dict(
