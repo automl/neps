@@ -35,8 +35,13 @@ Additionally, note that 'NePS' does not include 'torchvision' as a dependency.
 You can install it with this command:
 
 ```bash
-pip install torchvision==0.14.1
+pip install torchvision==0.14.0
 ```
+
+Make sure to download the torchvision version that fits with your pytorch
+version. More info on this link:
+
+https://pypi.org/project/torchvision/
 
 These dependencies ensure you have everything you need for this tutorial.
 
@@ -285,7 +290,7 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
         ###################### Start Tensorboard Logging ######################
 
-        # This followinf line will result in:
+        # The following line will result in:
 
         # 1 Incumbent trajectory (best performance regardless of the
         #   fidelity budget, if the searcher was fidelity dependent).
@@ -396,7 +401,7 @@ if __name__ == "__main__":
 
     """
     After your first run, you can continue with more experiments by
-    uncommenting line 361 and running the following command in your terminal:
+    uncommenting line 363 and running the following command in your terminal:
 
     ```bash:
     python neps_tblogger_tutorial.py --max_evaluations_total 15
