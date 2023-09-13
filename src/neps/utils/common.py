@@ -1,9 +1,35 @@
 from __future__ import annotations
 
+import os
 import random
 
 import numpy as np
 import torch
+import yaml
+
+
+def get_searcher_data(searcher: str) -> str:
+    """
+    Returns the data from the YAML file associated with the specified searcher.
+
+    Args:
+        searcher (str): The name of the searcher.
+
+    Returns:
+        str: The content of the YAML file.
+    """
+    folder_path = "optimizers/default_searchers"
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    parent_directory = os.path.join(script_directory, os.pardir)
+    resource_path = os.path.join(parent_directory, folder_path, f"{searcher}.yaml")
+
+    if not os.path.exists(resource_path):
+        raise FileNotFoundError(f"Searcher '{searcher}' does not exit.")
+
+    with open(resource_path, "rb") as file:
+        data = yaml.safe_load(file)
+
+    return data
 
 
 def has_instance(collection, *types):

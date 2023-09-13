@@ -1,0 +1,14 @@
+searcher_init:
+  algorithm: hyperband
+searcher_kwargs:
+  # Arguments that can be modified by the user
+  eta: 3
+  initial_design_type: max_budget # or {"unique_configs"}
+  use_priors: false
+  random_interleave_prob: 0.0
+  sample_default_first: false
+  sample_default_at_target: false
+
+  # Arguments that can not be modified by the user
+  # sampling_policy: RandomUniformPolicy
+  # promotion_policy: AsyncPromotionPolicy

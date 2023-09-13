@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Callable
 
 import ConfigSpace as CS
+import yaml
 from typing_extensions import Literal
 
 import metahyper
@@ -18,6 +20,7 @@ from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .utils.common import get_searcher_data
 from .utils.result_utils import get_loss
 
 
@@ -114,10 +117,11 @@ def run(
         "bayesian_optimization",
         "random_search",
         "hyperband",
-        "hyperband_custom_default",
+        "priorband",
         "mobster",
     ]
     | BaseOptimizer = "default",
+    searcher_path: str | None = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -155,6 +159,8 @@ def run(
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
         searcher: Which optimizer to use. This is usually only needed by neps developers.
+        searcher_path: The path to the user created searcher. None when the user
+            is using NePS designed searchers.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -162,6 +168,7 @@ def run(
         ValueError: If deprecated argument working_directory is used.
         ValueError: If root_directory is None.
         TypeError: If pipeline_space has invalid type.
+        FileNotFoundError: If the specified searcher is not found.
 
 
     Example:
@@ -220,31 +227,88 @@ def run(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if searcher == "default" or searcher is None:
-        if pipeline_space.has_fidelity:
-            searcher = "hyperband"
-            if hasattr(pipeline_space, "has_prior") and pipeline_space.has_prior:
-                searcher = "hyperband_custom_default"
-        else:
-            searcher = "bayesian_optimization"
-        logger.info(f"Running {searcher} as the searcher")
+    user_defined_searcher = False
 
-    searcher_kwargs.update(
+    if searcher_path is not None:
+        # The user has their own custom searcher.
+        user_yaml_path = os.path.join(searcher_path, f"{searcher}.yaml")
+
+        if not os.path.exists(user_yaml_path):
+            raise FileNotFoundError(
+                f"File '{searcher}.yaml' does not exist in {user_yaml_path}."
+            )
+
+        with open(user_yaml_path) as config_file:
+            config = yaml.safe_load(config_file)
+            user_defined_searcher = True
+
+        logging.info("Preparing to run user created searcher")
+    else:
+        if searcher in ["default", None]:
+            # NePS decides the searcher.
+            if pipeline_space.has_prior:
+                searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
+            elif pipeline_space.has_fidelity:
+                searcher = "hyperband"
+            else:
+                searcher = "bayesian_optimization"
+        else:
+            # User specifies one of NePS searchers.
+            user_defined_searcher = True
+
+        config = get_searcher_data(searcher)
+
+    searcher_alg = config["searcher_init"]["algorithm"]
+    searcher_config = config["searcher_kwargs"]
+
+    logger.info(f"Running {searcher} as the searcher")
+    logger.info(f"Algorithm: {searcher_alg}")
+
+    # Updating searcher arguments from searcher_kwargs
+    if user_defined_searcher:
+        for key, value in searcher_kwargs.items():
+            if key not in searcher_config:
+                searcher_config[key] = value
+                logger.info(
+                    f"Updating the current searcher argument '{key}'"
+                    f" with the value '{value}'"
+                )
+            elif searcher_config[key] != value:
+                searcher_config[key] = value
+                logger.info(
+                    f"Updating the current searcher argument '{key}'"
+                    f" with the value '{value}'"
+                )
+            else:
+                logger.info(
+                    f"The searcher argument '{key}' has the same"
+                    f" value '{value}' as default. No update"
+                )
+    elif searcher_kwargs and not user_defined_searcher:
+        # No searcher argument updates when NePS decides the searcher.
+        logger.info(
+            "No updates were made to the searcher arguments due to"
+            " NePS deciding the searcher."
+        )
+
+    searcher_config.update(
         {
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
         }
     )
-    searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
+    searcher_instance = instance_from_map(
+        SearcherMapping, searcher_alg, "searcher", as_class=True
+    )(
         pipeline_space=pipeline_space,
         budget=max_cost_total,  # TODO: use max_cost_total everywhere
-        **searcher_kwargs,
+        **searcher_config,
     )
 
     metahyper.run(
         run_pipeline,
-        searcher,
+        searcher_instance,
         root_directory,
         development_stage_id=development_stage_id,
         task_id=task_id,
