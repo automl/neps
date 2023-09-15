@@ -83,10 +83,17 @@ neps.run(
     searcher="mf_ei_bo",
     # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
     # field above.
-    max_cost_total=50,
+    max_cost_total=60,
     surrogate_model="deep_gp",
     # Normalizing y here since we return unbounded loss, not completely correct to do so
     surrogate_model_args={
-        "surrogate_model_fit_args": {"normalize_y": True},
+        "surrogate_model_fit_args": {
+            "normalize_y": True,
+            "batch_size": 8,
+            "early_stopping": True,
+        },
+        "checkpointing": True,
+        "root_directory": "results/multi_fidelity_example",
     },
+    step_size=3,
 )
