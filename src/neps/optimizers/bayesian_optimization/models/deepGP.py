@@ -394,31 +394,38 @@ class DeepGP:
             normalize_budget=normalize_budget,
         )
 
-        if self.checkpointing:
-            non_improvement_steps = count_non_improvement_steps(self.root_dir)
-            # If checkpointing and patience is not exhausted load a partial model
-            if self.checkpoint_path.exists() and non_improvement_steps < perf_patience:
-                n_epochs = self.refine_epochs
-                self.load_checkpoint(self.checkpoint_path)
-            self.logger.info(f"No improvement: {non_improvement_steps}")
-        self.logger.info(f"N Epochs: {n_epochs}")
-
         self.model.to(self.device)
         self.likelihood.to(self.device)
         self.nn.to(self.device)
 
-        self.__train_model(
-            self.x_train,
-            self.train_budgets,
-            self.learning_curves,
-            self.y_train,
-            n_epochs=n_epochs,
-            batch_size=batch_size,
-            optimizer_args=optimizer_args,
-            early_stopping=early_stopping,
-            patience=patience,
-        )
-        self.save_checkpoint(self.checkpoint_path)
+        if self.checkpointing and self.checkpoint_path.exists():
+            non_improvement_steps = count_non_improvement_steps(self.root_dir)
+            # If checkpointing and patience is not exhausted load a partial model
+            if non_improvement_steps < perf_patience:
+                n_epochs = self.refine_epochs
+                self.load_checkpoint()
+            self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
+        self.logger.debug(f"N Epochs for the full training: {n_epochs}")
+
+        initial_state = self.get_state()
+        try:
+            self.__train_model(
+                self.x_train,
+                self.train_budgets,
+                self.learning_curves,
+                self.y_train,
+                n_epochs=n_epochs,
+                batch_size=batch_size,
+                optimizer_args=optimizer_args,
+                early_stopping=early_stopping,
+                patience=patience,
+            )
+            self.save_checkpoint()
+        except gpytorch.utils.errors.NotPSDError:
+            self.logger.info("Model training failed loading the untrained model")
+            self.load_checkpoint(initial_state)
+            # Delete checkpoint to restart training
+            self.delete_checkpoint()
 
     def __train_model(
         self,
@@ -578,16 +585,23 @@ class DeepGP:
 
         return means, cov
 
-    def load_checkpoint(self, checkpoint_path: str | Path):
+    def load_checkpoint(self, state: dict | None = None):
         """
         Load the state from a previous checkpoint.
         """
-        checkpoint = torch.load(checkpoint_path)
+        if state is None:
+            checkpoint = torch.load(self.checkpoint_path)
+        else:
+            checkpoint = state
         self.model.load_state_dict(checkpoint["gp_state_dict"])
         self.nn.load_state_dict(checkpoint["nn_state_dict"])
         self.likelihood.load_state_dict(checkpoint["likelihood_state_dict"])
 
-    def save_checkpoint(self, checkpoint_path: str | Path, state: dict | None = None):
+        self.model.to(self.device)
+        self.likelihood.to(self.device)
+        self.nn.to(self.device)
+
+    def save_checkpoint(self, state: dict | None = None):
         """
         Save the given state or the current state in a
         checkpoint file.
@@ -601,12 +615,12 @@ class DeepGP:
         if state is None:
             torch.save(
                 self.get_state(),
-                checkpoint_path,
+                self.checkpoint_path,
             )
         else:
             torch.save(
                 state,
-                checkpoint_path,
+                self.checkpoint_path,
             )
 
     def get_state(self) -> dict[str, dict]:
@@ -624,6 +638,9 @@ class DeepGP:
         }
 
         return current_state
+
+    def delete_checkpoint(self):
+        self.checkpoint_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
