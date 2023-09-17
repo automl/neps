@@ -2,7 +2,29 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+import numpy as np
 import pandas as pd
+
+from ...search_spaces.search_space import SearchSpace
+
+
+def continuous_to_tabular(
+    config: SearchSpace, categorical_space: SearchSpace
+) -> SearchSpace:
+    """
+    Convert the continuous parameters in the config into categorical ones based on
+    the categorical_space provided
+    """
+    result = config.copy()
+    for hp_name, _ in config.items():
+        if hp_name in categorical_space.keys():
+            choices = np.array(categorical_space[hp_name].choices)
+            diffs = choices - config[hp_name].value
+            # NOTE: in case of a tie the first value in the choices array will be returned
+            closest = choices[np.abs(diffs).argmin()]
+            result[hp_name].value = closest
+
+    return result
 
 
 class MFObservedData:

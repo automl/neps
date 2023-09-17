@@ -19,7 +19,7 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
 from .mf_bo import MFEIDeepModel, MFEIModel
-from .utils import MFObservedData
+from .utils import MFObservedData, continuous_to_tabular
 
 
 class MFEIBO(BaseOptimizer):
@@ -53,6 +53,7 @@ class MFEIBO(BaseOptimizer):
         initial_design_fraction: float = 0.75,
         initial_design_size: int = 10,
         initial_design_budget: int = None,
+        tabular_space: dict | SearchSpace | None = None,
     ):
         """Initialise
 
@@ -91,6 +92,11 @@ class MFEIBO(BaseOptimizer):
         self._initial_design_size, self._initial_design_budget = self._set_initial_design(
             initial_design_size, initial_design_budget, self._initial_design_fraction
         )
+
+        self.tabular_space = (
+            SearchSpace(**{}) if tabular_space is None else SearchSpace(**tabular_space)
+        )
+
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
@@ -327,7 +333,7 @@ class MFEIBO(BaseOptimizer):
             self.model_policy.surrogate_model, self.observed_configs, self.step_size
         )
         self.acquisition_sampler.set_state(
-            self.pipeline_space, self.observed_configs, self.step_size
+            self.pipeline_space, self.observed_configs, self.step_size, self.tabular_space
         )
 
     def _randomly_promote(self) -> tuple[SearchSpace, int]:
@@ -370,6 +376,8 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
+            # Convert continuous into tabular if the space is tabular
+            config = continuous_to_tabular(config, self.tabular_space)
             config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
         elif self.is_init_phase(budget_based=True) or self._model_update_failed:

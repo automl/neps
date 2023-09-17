@@ -71,8 +71,13 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate,
 
 
 pipeline_space = dict(
+    # Use an extra int parameter to get a larger pipeline_space so the gp training doesn't fail
+    # int_param=neps.IntegerParameter(lower=1, upper=100),
     learning_rate=neps.FloatParameter(lower=1e-4, upper=1e0, log=True),
     epoch=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
+)
+categorical_space = dict(
+    learning_rate=neps.CategoricalParameter(choices=[1e-4, 1e-3, 1e-2, 1e-1, 1e0])
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -95,5 +100,7 @@ neps.run(
         "checkpointing": True,
         "root_directory": "results/multi_fidelity_example",
     },
+    # Dyhpo hyperparameters
     step_size=3,
+    tabular_space=categorical_space,
 )
