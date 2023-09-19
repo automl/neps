@@ -19,7 +19,7 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
 from .mf_bo import MFEIDeepModel, MFEIModel
-from .utils import MFObservedData
+from .utils import MFObservedData, continuous_to_tabular
 
 
 class MFEIBO(BaseOptimizer):
@@ -53,6 +53,7 @@ class MFEIBO(BaseOptimizer):
         initial_design_fraction: float = 0.75,
         initial_design_size: int = 10,
         initial_design_budget: int = None,
+        tabular_space: dict | SearchSpace | None = None,
     ):
         """Initialise
 
@@ -91,6 +92,11 @@ class MFEIBO(BaseOptimizer):
         self._initial_design_size, self._initial_design_budget = self._set_initial_design(
             initial_design_size, initial_design_budget, self._initial_design_fraction
         )
+
+        self.tabular_space = (
+            SearchSpace(**{}) if tabular_space is None else SearchSpace(**tabular_space)
+        )
+
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
@@ -99,7 +105,7 @@ class MFEIBO(BaseOptimizer):
         self.total_fevals: int = 0
 
         self.observed_configs = MFObservedData(
-            columns=["config", "perf"],
+            columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
         )
 
@@ -282,11 +288,10 @@ class MFEIBO(BaseOptimizer):
         for config_id, config_val in previous_results.items():
             _config, _budget_level = config_id.split("_")
             perf = self.get_loss(config_val.result)
-            # TODO: do we record learning curves?
-            # lcs = self.get_learning_curves(config_val.result)
+            lc = self.get_learning_curve(config_val.result)
 
             index = (int(_config), int(_budget_level))
-            self.observed_configs.add_data([config_val.config, perf], index=index)
+            self.observed_configs.add_data([config_val.config, perf, lc], index=index)
 
             if not np.isclose(
                 self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
@@ -295,6 +300,7 @@ class MFEIBO(BaseOptimizer):
                     {
                         self.observed_configs.config_col: config_val.config,
                         self.observed_configs.perf_col: perf,
+                        self.observed_configs.lc_col_name: lc,
                     },
                     index=index,
                 )
@@ -305,12 +311,16 @@ class MFEIBO(BaseOptimizer):
             index = (int(_config), int(_budget_level))
 
             if index not in self.observed_configs.df.index:
-                self.observed_configs.add_data([config_val, np.nan], index=index)
+                # TODO: Validate this
+                self.observed_configs.add_data(
+                    [config_val, np.nan, [np.nan]], index=index
+                )
             else:
                 self.observed_configs.update_data(
                     {
                         self.observed_configs.config_col: config_val,
                         self.observed_configs.perf_col: np.nan,
+                        self.observed_configs.lc_col_name: [np.nan],
                     },
                     index=index,
                 )
@@ -323,7 +333,7 @@ class MFEIBO(BaseOptimizer):
             self.model_policy.surrogate_model, self.observed_configs, self.step_size
         )
         self.acquisition_sampler.set_state(
-            self.pipeline_space, self.observed_configs, self.step_size
+            self.pipeline_space, self.observed_configs, self.step_size, self.tabular_space
         )
 
     def _randomly_promote(self) -> tuple[SearchSpace, int]:
@@ -366,6 +376,8 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
+            # Convert continuous into tabular if the space is tabular
+            config = continuous_to_tabular(config, self.tabular_space)
             config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
         elif self.is_init_phase(budget_based=True) or self._model_update_failed:

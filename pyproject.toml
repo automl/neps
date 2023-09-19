@@ -70,6 +70,10 @@ more-itertools = "^9.0.0"
 portalocker = "^2.6.0"
 seaborn = "^0.12.1"
 pyyaml = "^6.0"
+tensorboard = [
+    {version = "^2.11", python = "<3.8"},
+    {version = "^2.13", python = ">=3.8"}
+]
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.10"

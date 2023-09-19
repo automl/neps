@@ -2,7 +2,29 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+import numpy as np
 import pandas as pd
+
+from ...search_spaces.search_space import SearchSpace
+
+
+def continuous_to_tabular(
+    config: SearchSpace, categorical_space: SearchSpace
+) -> SearchSpace:
+    """
+    Convert the continuous parameters in the config into categorical ones based on
+    the categorical_space provided
+    """
+    result = config.copy()
+    for hp_name, _ in config.items():
+        if hp_name in categorical_space.keys():
+            choices = np.array(categorical_space[hp_name].choices)
+            diffs = choices - config[hp_name].value
+            # NOTE: in case of a tie the first value in the choices array will be returned
+            closest = choices[np.abs(diffs).argmin()]
+            result[hp_name].value = closest
+
+    return result
 
 
 class MFObservedData:
@@ -20,6 +42,7 @@ class MFObservedData:
     default_budget_idx = "budget_id"
     default_config_col = "config"
     default_perf_col = "perf"
+    default_lc_col = "learning_curves"
 
     def __init__(
         self,
@@ -33,6 +56,11 @@ class MFObservedData:
 
         self.config_col = columns[0]
         self.perf_col = columns[1]
+
+        if len(columns) > 2:
+            self.lc_col_name = columns[2]
+        else:
+            self.lc_col_name = self.default_lc_col
 
         if len(index_names) == 1:
             index_names += ["budget_id"]
@@ -75,6 +103,7 @@ class MFObservedData:
         """
         Add data only if none of the indices are already existing in the DataFrame
         """
+        # TODO: If index is only config_id extend it
         if not isinstance(index, list):
             index_list = [index]
             data_list = [data]
@@ -123,6 +152,9 @@ class MFObservedData:
             columns=self.df.index.names[1],
             values=self.perf_col,
         )
+
+    def all_configs_list(self) -> list[Any]:
+        return self.df.loc[:, self.config_col].values.tolist()
 
     def get_incumbents_for_budgets(self, maximize: bool = False):
         """
@@ -192,8 +224,11 @@ class MFObservedData:
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
     def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
-        lcs = self.get_learning_curves()
-        lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
+        if self.lc_col_name in self.df.columns:
+            lc = self.df.loc[(config_id, budget_id), self.lc_col_name]
+        else:
+            lcs = self.get_learning_curves()
+            lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
         return lc
 
     def get_training_data_4DyHPO(self, df: pd.DataFrame):

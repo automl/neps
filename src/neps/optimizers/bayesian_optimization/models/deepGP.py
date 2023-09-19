@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
+from copy import deepcopy
+from pathlib import Path
 
 import gpytorch
 import numpy as np
@@ -13,6 +16,32 @@ from ....search_spaces.search_space import (
     IntegerParameter,
     SearchSpace,
 )
+
+
+def count_non_improvement_steps(root_directory: Path | str) -> int:
+    root_directory = Path(root_directory)
+
+    all_losses_file = root_directory / "all_losses_and_configs.txt"
+    best_loss_fiel = root_directory / "best_loss_trajectory.txt"
+
+    # Read all losses from the file in the order they are explored
+    losses = [
+        float(line[6:])
+        for line in all_losses_file.read_text(encoding="utf-8").splitlines()
+        if "Loss: " in line
+    ]
+    # Get the best seen loss value
+    best_loss = float(best_loss_fiel.read_text(encoding="utf-8").splitlines()[-1].strip())
+
+    # Count the non-improvement
+    count = 0
+    for loss in reversed(losses):
+        if np.greater(loss, best_loss):
+            count += 1
+        else:
+            break
+
+    return count
 
 
 class NeuralFeatureExtractor(nn.Module):
@@ -29,13 +58,13 @@ class NeuralFeatureExtractor(nn.Module):
         self.n_layers = kwargs.get("n_layers", 2)
         self.activation = nn.LeakyReLU()
 
-        layer1_units = kwargs.get("layer1_units", 64)
+        layer1_units = kwargs.get("layer1_units", 128)
         self.fc1 = nn.Linear(input_size, layer1_units)
         self.bn1 = nn.BatchNorm1d(layer1_units)
 
         previous_layer_units = layer1_units
         for i in range(2, self.n_layers):
-            next_layer_units = kwargs.get(f"layer{i}_units", 128)
+            next_layer_units = kwargs.get(f"layer{i}_units", 256)
             setattr(
                 self,
                 f"fc{i}",
@@ -54,7 +83,7 @@ class NeuralFeatureExtractor(nn.Module):
             nn.Linear(
                 previous_layer_units + kwargs.get("cnn_nr_channels", 4),
                 # accounting for the learning curve features
-                kwargs.get(f"layer{self.n_layers}_units", 128),
+                kwargs.get(f"layer{self.n_layers}_units", 256),
             ),
         )
         self.cnn = nn.Sequential(
@@ -133,8 +162,28 @@ class DeepGP:
         pipeline_space: SearchSpace,
         neural_network_args: dict | None = None,
         logger=None,
+        surrogate_model_fit_args: dict | None = None,
+        # IMPORTANT: Checkpointing does not use file locking,
+        # IMPORTANT: hence, it is not suitable for multiprocessing settings
+        checkpointing: bool = False,
+        root_directory: Path | str | None = None,
+        checkpoint_file: Path | str = "surrogate_checkpoint.pth",
+        refine_epochs: int = 50,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        self.surrogate_model_fit_args = (
+            surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
+        )
+
+        self.checkpointing = checkpointing
+        self.refine_epochs = refine_epochs
+        if checkpointing:
+            assert (
+                root_directory is not None
+            ), "neps root_directory must be provided for the checkpointing"
+            self.root_dir = Path(os.getcwd(), root_directory)
+            self.checkpoint_path = Path(os.getcwd(), root_directory, checkpoint_file)
+
         super().__init__()
         self.__preprocess_search_space(pipeline_space)
         # set the categories array for the encoder
@@ -146,7 +195,7 @@ class DeepGP:
         self.device = (
             torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         )
-        self.device = torch.device("cpu")
+        # self.device = torch.device("cpu")
 
         # Save the NN args, necessary for preprocessing
         self.cnn_kernel_size = neural_network_args.get("cnn_kernel_size", 3)
@@ -256,6 +305,9 @@ class DeepGP:
             padding_length = max([max_length - len(lc), self.cnn_kernel_size - len(lc)])
             lc.extend([padding_value] * padding_length)
 
+        # TODO: check if the lc values are within bounds [0, 1] (karibbov)
+        # TODO: add normalize_lcs option in the future
+
         return np.array(learning_curves, dtype=np.single)
 
     def __reset_xy(
@@ -317,11 +369,22 @@ class DeepGP:
         x_train: list[SearchSpace],
         y_train: list[float],
         learning_curves: list[list[float]],
+    ):
+        self._fit(x_train, y_train, learning_curves, **self.surrogate_model_fit_args)
+
+    def _fit(
+        self,
+        x_train: list[SearchSpace],
+        y_train: list[float],
+        learning_curves: list[list[float]],
         normalize_y: bool = False,
         normalize_budget: bool = True,
         n_epochs: int = 1000,
+        batch_size: int = 64,
         optimizer_args: dict | None = None,
+        early_stopping: bool = True,
         patience: int = 10,
+        perf_patience: int = 10,
     ):
         self.__reset_xy(
             x_train,
@@ -335,15 +398,34 @@ class DeepGP:
         self.likelihood.to(self.device)
         self.nn.to(self.device)
 
-        self.__train_model(
-            self.x_train,
-            self.train_budgets,
-            self.learning_curves,
-            self.y_train,
-            n_epochs=n_epochs,
-            optimizer_args=optimizer_args,
-            patience=patience,
-        )
+        if self.checkpointing and self.checkpoint_path.exists():
+            non_improvement_steps = count_non_improvement_steps(self.root_dir)
+            # If checkpointing and patience is not exhausted load a partial model
+            if non_improvement_steps < perf_patience:
+                n_epochs = self.refine_epochs
+                self.load_checkpoint()
+            self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
+        self.logger.debug(f"N Epochs for the full training: {n_epochs}")
+
+        initial_state = self.get_state()
+        try:
+            self.__train_model(
+                self.x_train,
+                self.train_budgets,
+                self.learning_curves,
+                self.y_train,
+                n_epochs=n_epochs,
+                batch_size=batch_size,
+                optimizer_args=optimizer_args,
+                early_stopping=early_stopping,
+                patience=patience,
+            )
+            self.save_checkpoint()
+        except gpytorch.utils.errors.NotPSDError:
+            self.logger.info("Model training failed loading the untrained model")
+            self.load_checkpoint(initial_state)
+            # Delete checkpoint to restart training
+            self.delete_checkpoint()
 
     def __train_model(
         self,
@@ -352,7 +434,9 @@ class DeepGP:
         learning_curves: torch.Tensor,
         y_train: torch.Tensor,
         n_epochs: int = 1000,
+        batch_size: int = 64,
         optimizer_args: dict | None = None,
+        early_stopping: bool = True,
         patience: int = 10,
     ):
         if optimizer_args is None:
@@ -361,7 +445,6 @@ class DeepGP:
         self.model.train()
         self.likelihood.train()
         self.nn.train()
-
         self.optimizer = (  # pylint: disable=attribute-defined-outside-init
             torch.optim.Adam(
                 [
@@ -372,51 +455,87 @@ class DeepGP:
         )
 
         count_down = patience
-        min_loss_val = np.inf
+        min_avg_loss_val = np.inf
+        average_loss: float = 0.0
 
         for epoch_nr in range(0, n_epochs):
-            if count_down == 0:
-                # stop training if performance doesn't increase after `patience` epochs
+            if early_stopping and count_down == 0:
+                self.logger.info(
+                    f"Epoch: {epoch_nr - 1} surrogate training stops due to early "
+                    f"stopping with the patience: {patience} and "
+                    f"the minimum average loss of {min_avg_loss_val} and "
+                    f"the final average loss of {average_loss}"
+                )
                 break
 
-            nr_examples_batch = x_train.size(dim=0)
-            # if only one example in the batch, skip the batch.
-            # Otherwise, the code will fail because of batchnorm
-            if nr_examples_batch == 1:
-                continue
+            n_examples_batch = x_train.size(dim=0)
 
-            # Zero backprop gradients
-            self.optimizer.zero_grad()
+            # get a random permutation for mini-batches
+            permutation = torch.randperm(n_examples_batch)
 
-            projected_x = self.nn(x_train, train_budgets, learning_curves)
-            self.model.set_train_data(projected_x, y_train, strict=False)
-            output = self.model(projected_x)
+            # optimize over mini-batches
+            total_scaled_loss = 0.0
+            for batch_idx, start_index in enumerate(
+                range(0, n_examples_batch, batch_size)
+            ):
+                end_index = start_index + batch_size
+                if end_index > n_examples_batch:
+                    end_index = n_examples_batch
+                indices = permutation[start_index:end_index]
+                batch_x, batch_budget, batch_lc, batch_y = (
+                    x_train[indices],
+                    train_budgets[indices],
+                    learning_curves[indices],
+                    y_train[indices],
+                )
 
-            # try:
-            # Calc loss and backprop derivatives
-            loss = -self.mll(output, self.model.train_targets)
-            loss_value = loss.detach().to("cpu").item()
+                minibatch_size = end_index - start_index
+                # if only one example in the batch, skip the batch.
+                # Otherwise, the code will fail because of batchnorm
+                if minibatch_size <= 1:
+                    continue
 
-            if loss_value < min_loss_val:
-                min_loss_val = loss_value
-                count_down = patience
-            else:
+                # Zero backprop gradients
+                self.optimizer.zero_grad()
+
+                projected_x = self.nn(batch_x, batch_budget, batch_lc)
+                self.model.set_train_data(projected_x, batch_y, strict=False)
+                output = self.model(projected_x)
+
+                # try:
+                # Calc loss and backprop derivatives
+                loss = -self.mll(output, self.model.train_targets)
+                episodic_loss_value: float = loss.detach().to("cpu").item()
+                # weighted sum over losses in the batch
+                total_scaled_loss = (
+                    total_scaled_loss + episodic_loss_value * minibatch_size
+                )
+
+                mse = gpytorch.metrics.mean_squared_error(
+                    output, self.model.train_targets
+                )
                 self.logger.debug(
-                    f"No improvement over the minimum loss value of {min_loss_val} "
+                    f"Epoch {epoch_nr}  Batch {batch_idx} - MSE {mse:.5f}, "
+                    f"Loss: {episodic_loss_value:.3f}, "
+                    f"lengthscale: {self.model.covar_module.base_kernel.lengthscale.item():.3f}, "
+                    f"noise: {self.model.likelihood.noise.item():.3f}, "
+                )
+
+                loss.backward()
+                self.optimizer.step()
+
+            # Get average weighted loss over every batch
+            average_loss = total_scaled_loss / n_examples_batch
+            if average_loss < min_avg_loss_val:
+                min_avg_loss_val = average_loss
+                count_down = patience
+            elif early_stopping:
+                self.logger.debug(
+                    f"No improvement over the minimum loss value of {min_avg_loss_val} "
                     f"for the past {patience - count_down} epochs "
                     f"the training will stop in {count_down} epochs"
                 )
                 count_down -= 1
-
-            mse = gpytorch.metrics.mean_squared_error(output, self.model.train_targets)
-            self.logger.debug(
-                f"Epoch {epoch_nr} - MSE {mse:.5f}, "
-                f"Loss: {loss_value:.3f}, "
-                f"lengthscale: {self.model.covar_module.base_kernel.lengthscale.item():.3f}, "
-                f"noise: {self.model.likelihood.noise.item():.3f}, "
-            )
-            loss.backward()
-            self.optimizer.step()
             # except Exception as training_error:
             #     self.logger.error(
             #         f'The following error happened while training: {training_error}')
@@ -465,6 +584,63 @@ class DeepGP:
         cov = torch.diag(torch.pow(preds.stddev.detach(), 2))
 
         return means, cov
+
+    def load_checkpoint(self, state: dict | None = None):
+        """
+        Load the state from a previous checkpoint.
+        """
+        if state is None:
+            checkpoint = torch.load(self.checkpoint_path)
+        else:
+            checkpoint = state
+        self.model.load_state_dict(checkpoint["gp_state_dict"])
+        self.nn.load_state_dict(checkpoint["nn_state_dict"])
+        self.likelihood.load_state_dict(checkpoint["likelihood_state_dict"])
+
+        self.model.to(self.device)
+        self.likelihood.to(self.device)
+        self.nn.to(self.device)
+
+    def save_checkpoint(self, state: dict | None = None):
+        """
+        Save the given state or the current state in a
+        checkpoint file.
+
+        Args:
+            checkpoint_path: path to the checkpoint file
+            state: The state to save, if none, it will
+            save the current state.
+        """
+
+        if state is None:
+            torch.save(
+                self.get_state(),
+                self.checkpoint_path,
+            )
+        else:
+            torch.save(
+                state,
+                self.checkpoint_path,
+            )
+
+    def get_state(self) -> dict[str, dict]:
+        """
+        Get the current state of the surrogate.
+
+        Returns:
+            current_state: A dictionary that represents
+                the current state of the surrogate model.
+        """
+        current_state = {
+            "gp_state_dict": deepcopy(self.model.state_dict()),
+            "nn_state_dict": deepcopy(self.nn.state_dict()),
+            "likelihood_state_dict": deepcopy(self.likelihood.state_dict()),
+        }
+
+        return current_state
+
+    def delete_checkpoint(self):
+        self.checkpoint_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

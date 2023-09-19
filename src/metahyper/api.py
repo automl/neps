@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from neps.plot.tensorboard_eval import tblogger
+
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
 
@@ -391,6 +393,19 @@ def run(
                         pipeline_directory,
                         previous_pipeline_directory,
                     ) = _sample_config(optimization_dir, sampler, serializer, logger)
+                if tblogger.logger_init_bool or tblogger.logger_bool:
+                    # This block manages configuration data, potentially for TensorBoard.
+                    # Captures details during sampling; initial config always captured.
+                    # In later rounds, captures if `logger_bool` is True; stops if False.
+                    # Initial details gathered for `run_pipeline` pre-TensorBoard decision.
+                    tblogger.config_track_init_api(
+                        config_id=config_id,
+                        config=config,
+                        config_working_directory=pipeline_directory,
+                        config_previous_directory=previous_pipeline_directory,
+                        optim_path=optimization_dir,
+                    )
+                    tblogger.logger_init_bool = False
 
                 config_lock_file = pipeline_directory / ".config_lock"
                 config_lock_file.touch(exist_ok=True)
