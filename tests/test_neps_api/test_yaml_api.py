@@ -33,44 +33,31 @@ expected_dicts = {
         "searcher_name": "priorband_bo",
         "searcher_alg": "priorband",
         "user_defined_searcher": True,
-        "accepted_changes": {
-            "initial_design_size": 5,
-            "eta": 3,
-        },
-        "rejected_changes": {},
+        "args_accepted_changes": True,
     },
     "priorband_neps_decided": {
         "searcher_name": "priorband",
         "searcher_alg": "priorband",
         "user_defined_searcher": False,
-        "accepted_changes": {},
-        "rejected_changes": {
-            "initial_design_size": 5,
-            "eta": 3,
-        },
+        "args_accepted_changes": False,
     },
     "bo_neps_decided": {
         "searcher_name": "bayesian_optimization",
         "searcher_alg": "bayesian_optimization",
         "user_defined_searcher": False,
-        "accepted_changes": {},
-        "rejected_changes": {},
+        "args_accepted_changes": None,
     },
     "pibo_neps_decided": {
         "searcher_name": "pibo",
         "searcher_alg": "bayesian_optimization",
         "user_defined_searcher": False,
-        "accepted_changes": {},
-        "rejected_changes": {
-            "initial_design_size": 5,
-        },
+        "args_accepted_changes": False,
     },
     "hyperband_neps_decided": {
         "searcher_name": "hyperband",
         "searcher_alg": "hyperband",
         "user_defined_searcher": False,
-        "accepted_changes": {},
-        "rejected_changes": {"eta": 2},
+        "args_accepted_changes": False,
     },
 }
 
