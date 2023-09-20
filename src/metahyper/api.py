@@ -329,6 +329,7 @@ def _evaluate_config(
 def run(
     evaluation_fn,
     sampler: Sampler,
+    sampler_info: dict,
     optimization_dir,
     max_evaluations_total=None,
     max_evaluations_per_run=None,
@@ -354,12 +355,18 @@ def run(
         shutil.rmtree(optimization_dir)
 
     sampler_state_file = optimization_dir / ".optimizer_state.yaml"
+    sampler_info_file = optimization_dir / ".optimizer_info.yaml"
     base_result_directory = optimization_dir / "results"
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
     decision_lock_file = optimization_dir / ".decision_lock"
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
+
+    # Check if the directory already exists
+    if not Path(sampler_info_file).exists():
+        # Write the sampler_info to a YAML file
+        serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
 
     evaluations_in_this_run = 0
     while True:

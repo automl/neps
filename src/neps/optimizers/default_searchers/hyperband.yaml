@@ -11,4 +11,4 @@ searcher_kwargs:
 
   # Arguments that can not be modified by the user
   # sampling_policy: RandomUniformPolicy
-  # promotion_policy: AsyncPromotionPolicy
+  # promotion_policy: SyncPromotionPolicy

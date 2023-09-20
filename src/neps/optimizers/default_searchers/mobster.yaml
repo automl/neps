@@ -13,7 +13,7 @@ searcher_kwargs:
   surrogate_model: gp # or {"gp_hierarchy", "deep_gp"}
   acquisition: EI # or {"LogEI", "AEI", "MFEI"}
   log_prior_weighted: false
-  acquisition_sampler: mutation # or {"random", "evolution", "freeze-thaw"}
+  acquisition_sampler: random # or {"mutation", "evolution", "freeze-thaw"}
 
   # Arguments that can not be modified by the user
   # sampling_policy: RandomUniformPolicy

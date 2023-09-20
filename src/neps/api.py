@@ -230,12 +230,12 @@ def run(
     user_defined_searcher = False
 
     if searcher_path is not None:
-        # The user has their own custom searcher.
+        # The users has their own custom searcher.
         user_yaml_path = os.path.join(searcher_path, f"{searcher}.yaml")
 
         if not os.path.exists(user_yaml_path):
             raise FileNotFoundError(
-                f"File '{searcher}.yaml' does not exist in {user_yaml_path}."
+                f"File '{searcher}.yaml' does not exist in {os.getcwd()}."
             )
 
         with open(user_yaml_path) as config_file:
@@ -245,7 +245,7 @@ def run(
         logging.info("Preparing to run user created searcher")
     else:
         if searcher in ["default", None]:
-            # NePS decides the searcher.
+            # NePS decides the searcher according to the pipeline space.
             if pipeline_space.has_prior:
                 searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
             elif pipeline_space.has_fidelity:
@@ -253,9 +253,10 @@ def run(
             else:
                 searcher = "bayesian_optimization"
         else:
-            # User specifies one of NePS searchers.
+            # Users choose one of NePS searchers.
             user_defined_searcher = True
 
+        # Fetching the searcher data, throws an error when the searcher is not found
         config = get_searcher_data(searcher)
 
     searcher_alg = config["searcher_init"]["algorithm"]
@@ -264,32 +265,40 @@ def run(
     logger.info(f"Running {searcher} as the searcher")
     logger.info(f"Algorithm: {searcher_alg}")
 
+    # Used to create the yaml holding information about the searcher.
+    # Also important for testing and debugging the api.
+    searcher_info = {
+        "searcher_name": searcher,
+        "searcher_alg": searcher_alg,
+        "user_defined_searcher": user_defined_searcher,
+        "accepted_changes": {},
+        "rejected_changes": {},
+    }
+
     # Updating searcher arguments from searcher_kwargs
-    if user_defined_searcher:
-        for key, value in searcher_kwargs.items():
-            if key not in searcher_config:
+    for key, value in searcher_kwargs.items():
+        if user_defined_searcher:
+            if key not in searcher_config or searcher_config[key] != value:
                 searcher_config[key] = value
                 logger.info(
                     f"Updating the current searcher argument '{key}'"
                     f" with the value '{value}'"
                 )
-            elif searcher_config[key] != value:
-                searcher_config[key] = value
-                logger.info(
-                    f"Updating the current searcher argument '{key}'"
-                    f" with the value '{value}'"
-                )
+                searcher_info["accepted_changes"][key] = value
             else:
                 logger.info(
                     f"The searcher argument '{key}' has the same"
-                    f" value '{value}' as default. No update"
+                    f" value '{value}' as default."
                 )
-    elif searcher_kwargs and not user_defined_searcher:
-        # No searcher argument updates when NePS decides the searcher.
-        logger.info(
-            "No updates were made to the searcher arguments due to"
-            " NePS deciding the searcher."
-        )
+                searcher_info["accepted_changes"][key] = value
+        else:
+            # No searcher argument updates when NePS decides the searcher.
+            logger.info(50 * "=")
+            logger.info(
+                f"The searcher argument '{key}' will not change to '{value}'"
+                f" because NePS chose the searcher"
+            )
+            searcher_info["rejected_changes"][key] = value
 
     searcher_config.update(
         {
@@ -309,6 +318,7 @@ def run(
     metahyper.run(
         run_pipeline,
         searcher_instance,
+        searcher_info,
         root_directory,
         development_stage_id=development_stage_id,
         task_id=task_id,
