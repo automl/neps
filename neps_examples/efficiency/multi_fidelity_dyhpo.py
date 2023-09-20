@@ -71,8 +71,13 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate,
 
 
 pipeline_space = dict(
+    # Use an extra int parameter to get a larger pipeline_space so the gp training doesn't fail
+    # int_param=neps.IntegerParameter(lower=1, upper=100),
     learning_rate=neps.FloatParameter(lower=1e-4, upper=1e0, log=True),
     epoch=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
+)
+categorical_space = dict(
+    learning_rate=neps.CategoricalParameter(choices=[1e-4, 1e-3, 1e-2, 1e-1, 1e0])
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -83,10 +88,19 @@ neps.run(
     searcher="mf_ei_bo",
     # Optional: Do not start another evaluation after <=100 epochs, corresponds to cost
     # field above.
-    max_cost_total=50,
+    max_cost_total=60,
     surrogate_model="deep_gp",
     # Normalizing y here since we return unbounded loss, not completely correct to do so
     surrogate_model_args={
-        "surrogate_model_fit_args": {"normalize_y": True},
+        "surrogate_model_fit_args": {
+            "normalize_y": True,
+            "batch_size": 8,
+            "early_stopping": True,
+        },
+        "checkpointing": True,
+        "root_directory": "results/multi_fidelity_example",
     },
+    # Dyhpo hyperparameters
+    step_size=3,
+    tabular_space=categorical_space,
 )

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ....search_spaces.search_space import SearchSpace
-from ...multi_fidelity.utils import MFObservedData
+from ...multi_fidelity.utils import MFObservedData, continuous_to_tabular
 from .base_acq_sampler import AcquisitionSampler
 
 
@@ -20,6 +20,7 @@ class FreezeThawSampler(AcquisitionSampler):
         self.observations = None
         self.b_step = None
         self.n = None
+        self.tabular_space = None
 
     def _sample_new(
         self, index_from: int, n: int = None, patience: int = 10
@@ -37,6 +38,8 @@ class FreezeThawSampler(AcquisitionSampler):
                 _config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=False, ignore_fidelity=False
                 )
+                # Convert continuous into tabular if the space is tabular
+                _config = continuous_to_tabular(_config, self.tabular_space)
                 # Iterate over all observed configs
                 for config in existing_configs:
                     if _config.is_equal_value(config, include_fidelity=False):
@@ -98,6 +101,7 @@ class FreezeThawSampler(AcquisitionSampler):
         pipeline_space: SearchSpace,
         observations: MFObservedData,
         b_step: int,
+        tabular_space: SearchSpace,
         n: int = None,
     ):
         # overload to select incumbent differently through observations
@@ -105,3 +109,4 @@ class FreezeThawSampler(AcquisitionSampler):
         self.observations = observations
         self.b_step = b_step
         self.n = n if n is not None else self.SAMPLES_TO_DRAW
+        self.tabular_space = tabular_space
