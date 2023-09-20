@@ -62,16 +62,16 @@ expected_dicts = {
 }
 
 
-core_examples = "examples_test_api"  # Run locally and on github actions
+yaml_api_example = "examples_test_api"  # Run locally and on github actions
 
 examples_folder = Path(__file__, "..").resolve()
-core_example_script = examples_folder / f"{core_examples}.py"
+yaml_api_example_script = examples_folder / f"{yaml_api_example}.py"
 
 
-@pytest.mark.core_examples
+@pytest.mark.yaml_api
 def test_core_examples(tmp_path):
     # Running the example files holding multiple neps.run commands.
-    runpy.run_path(core_example_script, run_name="__main__")
+    runpy.run_path(yaml_api_example_script, run_name="__main__")
 
     # Testing each folder with its corresponding expected dictionary
     for folder_name in os.listdir(tmp_path):
