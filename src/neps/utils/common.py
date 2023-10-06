@@ -24,7 +24,7 @@ def get_searcher_data(searcher: str) -> str:
     resource_path = os.path.join(parent_directory, folder_path, f"{searcher}.yaml")
 
     if not os.path.exists(resource_path):
-        raise FileNotFoundError(f"Searcher '{searcher}' does not exit.")
+        raise FileNotFoundError(f"Searcher '{searcher}' not exist.")
 
     with open(resource_path, "rb") as file:
         data = yaml.safe_load(file)

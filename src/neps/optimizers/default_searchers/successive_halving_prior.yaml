@@ -4,8 +4,8 @@ searcher_kwargs:
   # Arguments that can be modified by the user
   eta: 3
   early_stopping_rate: 0
-  initial_design_type: max_budget # or {"unique_configs"}
-  prior_confidence: medium # or {"low", "high"}
+  initial_design_type: max_budget
+  prior_confidence: medium  # or {"low", "high"}
   random_interleave_prob: 0.0
   sample_default_first: false
   sample_default_at_target: false

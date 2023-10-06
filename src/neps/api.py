@@ -248,10 +248,10 @@ def run(
             # NePS decides the searcher according to the pipeline space.
             if pipeline_space.has_prior:
                 searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
-            elif pipeline_space.has_fidelity:
-                searcher = "hyperband"
             else:
-                searcher = "bayesian_optimization"
+                searcher = (
+                    "hyperband" if pipeline_space.has_fidelity else "bayesian_optimization"
+                )
         else:
             # Users choose one of NePS searchers.
             user_defined_searcher = True
@@ -318,14 +318,14 @@ def run(
         searcher_instance,
         searcher_info,
         root_directory,
-        development_stage_id=development_stage_id,
-        task_id=task_id,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
-        overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+        development_stage_id=development_stage_id,
+        task_id=task_id,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook_function(
             loss_value_on_error, ignore_errors
         ),
+        overwrite_optimization_dir=overwrite_working_directory,
     )

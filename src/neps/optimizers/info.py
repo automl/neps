@@ -63,7 +63,7 @@ class SearcherConfigs:
         return list(prev_algorithms)
 
     @staticmethod
-    def get_searcher_from_alg(algorithm: str) -> list[str]:
+    def get_searcher_from_algorithm(algorithm: str) -> list[str]:
         """
         Get all NePS searchers that use a specific searching algorithm.
 
