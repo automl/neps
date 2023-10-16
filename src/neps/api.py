@@ -4,13 +4,11 @@
 from __future__ import annotations
 
 import logging
-import os
 import warnings
 from pathlib import Path
 from typing import Callable
 
 import ConfigSpace as CS
-import yaml
 from typing_extensions import Literal
 
 import metahyper
@@ -119,9 +117,11 @@ def run(
         "hyperband",
         "priorband",
         "mobster",
+        "asha",
+        "regularized_evolution",
     ]
     | BaseOptimizer = "default",
-    searcher_path: str | None = None,
+    searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -168,7 +168,6 @@ def run(
         ValueError: If deprecated argument working_directory is used.
         ValueError: If root_directory is None.
         TypeError: If pipeline_space has invalid type.
-        FileNotFoundError: If the specified searcher is not found.
 
 
     Example:
@@ -231,18 +230,10 @@ def run(
 
     if searcher_path is not None:
         # The users has their own custom searcher.
-        user_yaml_path = os.path.join(searcher_path, f"{searcher}.yaml")
-
-        if not os.path.exists(user_yaml_path):
-            raise FileNotFoundError(
-                f"File '{searcher}.yaml' does not exist in {os.getcwd()}."
-            )
-
-        with open(user_yaml_path) as config_file:
-            config = yaml.safe_load(config_file)
-            user_defined_searcher = True
-
         logging.info("Preparing to run user created searcher")
+
+        config = get_searcher_data(searcher, searcher_path)
+        user_defined_searcher = True
     else:
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
@@ -250,7 +241,9 @@ def run(
                 searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
             else:
                 searcher = (
-                    "hyperband" if pipeline_space.has_fidelity else "bayesian_optimization"
+                    "hyperband"
+                    if pipeline_space.has_fidelity
+                    else "bayesian_optimization"
                 )
         else:
             # Users choose one of NePS searchers.
@@ -291,7 +284,8 @@ def run(
             searcher_info["args_accepted_changes"] = True
         else:
             # No searcher argument updates when NePS decides the searcher.
-            logger.info(50 * "=")
+            logger.info(35 * "=" + "WARNING" + 35 * "=")
+            logger.info("CHANGINE ARGUMENTS ONLY WORKS WHEN SEARCHER IS DEFINED")
             logger.info(
                 f"The searcher argument '{key}' will not change to '{value}'"
                 f" because NePS chose the searcher"
