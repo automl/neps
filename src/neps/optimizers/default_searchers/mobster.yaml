@@ -1,0 +1,27 @@
+searcher_init:
+  algorithm: mobster
+searcher_kwargs:
+  # Arguments that can be modified by the user
+  eta: 3
+  initial_design_type: max_budget
+  use_priors: false
+  random_interleave_prob: 0.0
+  sample_default_first: false
+  sample_default_at_target: false
+
+  # arguments for model
+  surrogate_model: gp  # or {"gp_hierarchy"}
+  acquisition: EI  # or {"LogEI", "AEI"}
+  log_prior_weighted: false
+  acquisition_sampler: random  # or {"mutation", "evolution"}
+
+  # Arguments that can not be modified by the user
+  # sampling_policy: RandomUniformPolicy
+  # promotion_policy: AsyncPromotionPolicy
+  # model_policy: ModelPolicy
+
+  # Other arguments
+  # surrogate_model_args: None # type: dict
+  # domain_se_kernel: None # type: str
+  # graph_kernels: None # type: list
+  # hp_kernels: None # type: list

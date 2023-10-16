@@ -1,0 +1,19 @@
+searcher_init:
+  algorithm: bayesian_optimization
+searcher_kwargs:
+  # Arguments that can be modified by the user
+  initial_design_size: 10
+  surrogate_model: gp  # or {"gp_hierarchy"}
+  acquisition: EI  # or {"LogEI", "AEI"}
+  log_prior_weighted: false
+  acquisition_sampler: mutation  # or {"random", "evolution"}
+  random_interleave_prob: 0.0
+  disable_priors: true
+  sample_default_first: false
+
+  # Other arguments:
+  # surrogate_model_args: None # type: dict
+  # optimal_assignment: false # type: bool
+  # domain_se_kernel: None # type: str
+  # graph_kernels: None # type: list
+  # hp_kernels: None # type: list

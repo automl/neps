@@ -1,9 +1,57 @@
 from __future__ import annotations
 
+import os
 import random
+from pathlib import Path
 
 import numpy as np
 import torch
+import yaml
+
+from ..optimizers.info import SearcherConfigs
+
+
+def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) -> dict:
+    """
+    Returns the data from the YAML file associated with the specified searcher.
+
+    Args:
+        searcher (str): The name of the searcher.
+        searcher_path (Path | None, optional): The path to the directory where the searcher
+            defined YAML file is located. Defaults to None.
+
+    Returns:
+        dict: The content of the YAML file.
+    """
+
+    if searcher_path:
+        user_yaml_path = os.path.join(searcher_path, f"{searcher}.yaml")
+
+        if not os.path.exists(user_yaml_path):
+            raise FileNotFoundError(
+                f"File '{searcher}.yaml' does not exist in {os.getcwd()}."
+            )
+
+        with open(user_yaml_path) as file:
+            data = yaml.safe_load(file)
+
+    else:
+        folder_path = "optimizers/default_searchers"
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        parent_directory = os.path.join(script_directory, os.pardir)
+        resource_path = os.path.join(parent_directory, folder_path, f"{searcher}.yaml")
+
+        searchers = SearcherConfigs.get_searchers()
+
+        if not os.path.exists(resource_path):
+            raise FileNotFoundError(
+                f"Searcher '{searcher}' not in:\n{', '.join(searchers)}"
+            )
+
+        with open(resource_path) as file:
+            data = yaml.safe_load(file)
+
+    return data
 
 
 def has_instance(collection, *types):
