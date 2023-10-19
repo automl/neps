@@ -59,6 +59,7 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import transforms
 
 import neps
+from neps.utils.common import get_initial_directory, load_lightning_checkpoint
 
 #############################################################
 # Definig the seeds for reproducibility
@@ -68,39 +69,6 @@ def set_seed(seed=123):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-
-
-#############################################################
-# Function to get the initial directory used for storing tfevent files and
-# checkpoints
-
-
-def initial_directory(pipeline_directory: Path) -> Path:
-    """
-    Find the initial directory based on its existence and the presence of
-    the "previous_config.id" file.
-
-    Args:
-        pipeline_directory (Path): The starting directory to search from.
-
-    Returns:
-        Path: The initial directory.
-    """
-    while True:
-        # Get the id of the previous directory
-        previous_pipeline_directory_id = pipeline_directory / "previous_config.id"
-
-        # Get the directory where all configs are saved
-        optim_result_dir = pipeline_directory.parent
-
-        if previous_pipeline_directory_id.exists():
-            # Get and join to the previous path according to the id
-            with open(previous_pipeline_directory_id) as config_id_file:
-                id = config_id_file.read()
-                pipeline_directory = optim_result_dir / f"config_{id}"
-        else:
-            # Initial directory found
-            return pipeline_directory
 
 
 #############################################################
@@ -299,7 +267,7 @@ def search_space() -> dict:
 
 def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
     # Initialize the first directory to store the event and checkpoints files
-    init_dir = initial_directory(pipeline_directory)
+    init_dir = get_initial_directory(pipeline_directory)
     checkpoint_dir = init_dir / "checkpoints"
 
     # Initialize the model and checkpoint dir
@@ -316,23 +284,16 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
         filename="{epoch}-{val_loss:.2f}",
     )
 
-    # Initialize variables for checkpoint tracking progress
-    previously_spent_epochs = 0
-    checkpoint_path = None
+    # Use this function to load the previous checkpoint if it exists
+    checkpoint_path, checkpoint = load_lightning_checkpoint(
+        previous_pipeline_directory=previous_pipeline_directory,
+        checkpoint_dir=checkpoint_dir,
+    )
 
-    if previous_pipeline_directory:
-        # Search for possible checkpoints to continue training
-        ckpt_files = glob.glob(str(checkpoint_dir / "*.ckpt"))
-
-        if ckpt_files:
-            # Load the checkpoint and retrieve necessary data
-            checkpoint_path = ckpt_files[-1]
-            checkpoint = torch.load(checkpoint_path)
-            previously_spent_epochs = checkpoint["epoch"]
-        else:
-            raise FileNotFoundError(
-                "No checkpoint files were located in the checkpoint directory"
-            )
+    if checkpoint is None:
+        previously_spent_epochs = 0
+    else:
+        previously_spent_epochs = checkpoint["epoch"]
 
     # Create a PyTorch Lightning Trainer
     epochs = config["epochs"]

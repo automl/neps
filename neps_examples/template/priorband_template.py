@@ -20,6 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import neps
+from neps.utils.common import load_checkpoint, save_checkpoint
 
 
 class my_model(nn.Module):
@@ -50,11 +51,9 @@ def pipeline_space() -> dict:
     return space
 
 
+# NOTE: The order of the arguments in the run_pipeline function is important.
 def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
-    # 1. Create your checkpoint directory
-    checkpoint_path = f"{previous_pipeline_directory}/checkpoint"
-
-    # 2. Create your model and the optimizer according to the coniguration
+    # 1. Create your model and the optimizer according to the coniguration
     model = my_model()
 
     if config["optimizer"] == "Adam":
@@ -70,31 +69,34 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
             "Optimizer choices are defined differently in the pipeline_space"
         )
 
-    # 3. Load the checkpoint states if it exists
-    if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoint["model_state_dict"])
-        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        epoch_already_trained = checkpoint["epoch"]
-        print(f"Read in model trained for {epoch_already_trained} epochs")
-    else:
-        epoch_already_trained = 0
-
-    # 4. Train or continue training the model based on the specified checkpoint
-    for epoch in range(epoch_already_trained, config["epochs"]):
-        val_loss = 0
-
-    # 5. Save the checkpoint data in the current directory
-    torch.save(
-        {
-            "epoch": config["epochs"],
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-        },
-        f"{pipeline_directory}/checkpoint",
+    # 2. Load the checkpoints if they exist from previous_pipeline_directory
+    loaded_values = load_checkpoint(
+        previous_pipeline_directory=previous_pipeline_directory,
+        model=model,
+        optimizer=optimizer,
     )
 
-    # 6. Return a dictionary with the results, or a single float value (loss)
+    if loaded_values is not None:
+        epoch_already_trained = loaded_values["epochs"]
+        # + Anything else saved in the checkpoint.
+    else:
+        epoch_already_trained = 0
+        # + Anything else with default value.
+
+    # 3. Train or continue training the model based on the specified checkpoint
+    max_epochs = config["epochs"]
+    for epoch in range(epoch_already_trained, max_epochs):
+        val_loss = 0
+
+    # 4. Save the checkpoint data in the current directory
+    save_checkpoint(
+        pipeline_directory=pipeline_directory,
+        values_to_save={"epochs": max_epochs},
+        model=model,
+        optimizer=optimizer,
+    )
+
+    # 5. Return a dictionary with the results, or a single float value (loss)
     return {
         "loss": val_loss,
         "info_dict": {
