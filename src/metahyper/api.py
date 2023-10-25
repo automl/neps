@@ -367,15 +367,6 @@ def run(
     if not Path(sampler_info_file).exists():
         # Write the sampler_info to a YAML file
         serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
-    else:
-        # Load the sampler_info from a YAML file
-        sampler_info_from_file = serializer.load(sampler_info_file)
-        # Check if the sampler_info is valid
-        if sampler_info != sampler_info_from_file:
-            raise ValueError(
-                f"The sampler_info in the file {sampler_info_file} is not valid. "
-                f"Expected: {sampler_info}, Found: {sampler_info_from_file}"
-            )
 
     evaluations_in_this_run = 0
     while True:

@@ -264,7 +264,7 @@ def run(
         "searcher_name": searcher,
         "searcher_alg": searcher_alg,
         "user_defined_searcher": user_defined_searcher,
-        "args_accepted_changes": None,
+        "searcher_args_user_modified": False,
     }
 
     # Updating searcher arguments from searcher_kwargs
@@ -281,7 +281,7 @@ def run(
                     f"The searcher argument '{key}' has the same"
                     f" value '{value}' as default."
                 )
-            searcher_info["args_accepted_changes"] = True
+            searcher_info["searcher_args_user_modified"] = True
         else:
             # No searcher argument updates when NePS decides the searcher.
             logger.info(35 * "=" + "WARNING" + 35 * "=")
@@ -290,7 +290,7 @@ def run(
                 f"The searcher argument '{key}' will not change to '{value}'"
                 f" because NePS chose the searcher"
             )
-            searcher_info["args_accepted_changes"] = False
+            searcher_info["searcher_args_user_modified"] = False
 
     searcher_config.update(
         {

@@ -33,31 +33,31 @@ expected_dicts = {
         "searcher_name": "priorband_bo",
         "searcher_alg": "priorband",
         "user_defined_searcher": True,
-        "args_accepted_changes": True,
+        "searcher_args_user_modified": True,
     },
     "priorband_neps_decided": {
         "searcher_name": "priorband",
         "searcher_alg": "priorband",
         "user_defined_searcher": False,
-        "args_accepted_changes": False,
+        "searcher_args_user_modified": False,
     },
     "bo_neps_decided": {
         "searcher_name": "bayesian_optimization",
         "searcher_alg": "bayesian_optimization",
         "user_defined_searcher": False,
-        "args_accepted_changes": None,
+        "searcher_args_user_modified": False,
     },
     "pibo_neps_decided": {
         "searcher_name": "pibo",
         "searcher_alg": "bayesian_optimization",
         "user_defined_searcher": False,
-        "args_accepted_changes": False,
+        "searcher_args_user_modified": False,
     },
     "hyperband_neps_decided": {
         "searcher_name": "hyperband",
         "searcher_alg": "hyperband",
         "user_defined_searcher": False,
-        "args_accepted_changes": False,
+        "searcher_args_user_modified": False,
     },
 }
 
