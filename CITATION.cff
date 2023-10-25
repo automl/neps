@@ -3,24 +3,24 @@ message: "If you use this software, please cite it as below."
 authors:
   - family-names: Stoll
     given-names: Danny
+  - family-names: Mallik
+    given-names: Neeratyoy
   - family-names: Schrodi
     given-names: Simon
   - family-names: Janowski
     given-names: Maciej
-  - family-names: Mallik
-    given-names: Neeratyoy
-  - family-names: Hvarfner
-    given-names: Carl
-  - family-names: Binxin
-    given-names: Ru
   - family-names: Garibov
     given-names: Samir
   - family-names: Abou Chakra
     given-names: Tarek
-  - family-names: Kober
-    given-names: Nils
+  - family-names: Hvarfner
+    given-names: Carl
   - family-names: Bergman
     given-names: Eddie
+  - family-names: Binxin
+    given-names: Ru
+  - family-names: Kober
+    given-names: Nils
   - family-names: Vallaeys
     given-names: Théophane
   - family-names: Hutter
