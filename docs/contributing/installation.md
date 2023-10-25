@@ -46,7 +46,14 @@ to your `.zshrc` / `.bashrc` or alternatively simply running the export manually
 
 ## 3. Install the neps Package Using poetry
 
-Inside the main directory of neps run
+Clone the repository, e.g.,
+
+```bash
+git clone https://github.com/automl/neps.git
+cd neps
+```
+
+Then, inside the main directory of neps run
 
 ```bash
 poetry install
