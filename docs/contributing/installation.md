@@ -24,7 +24,7 @@ Consider running `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` .
 Then finally create the environment and activate it
 
 ```bash
-conda create -n neps python=3.7.5
+conda create -n neps python=3.10
 conda activate neps
 ```
 

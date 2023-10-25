@@ -15,7 +15,7 @@ We follow the [semantic versioning](https://semver.org) scheme.
 ## 1. Update the Package Version and CITATION.cff
 
 ```bash
-poetry version v0.4.10
+poetry version v0.9.0
 ```
 
 and manually change the version specified in `CITATION.cff`.
@@ -26,14 +26,14 @@ First commit and test
 
 ```bash
 git add pyproject.toml
-git commit -m "Bump version from v0.4.9 to v0.4.10"
+git commit -m "Bump version from v0.8.4 to v0.9.0"
 pytest
 ```
 
 Then tag and push
 
 ```bash
-git tag v0.4.10
+git tag v0.9.0
 git push --tags
 git push
 ```
@@ -43,7 +43,7 @@ git push
 First check if the documentation has any issues via
 
 ```bash
-mike deploy 0.4.10 latest -u
+mike deploy 0.9.0 latest -u
 mike serve
 ```
 
@@ -52,7 +52,7 @@ and then looking at it.
 Afterwards, publish it via
 
 ```bash
-mike deploy 0.4.10 latest -up
+mike deploy 0.9.0 latest -up
 ```
 
 ## 4. Publish on PyPI

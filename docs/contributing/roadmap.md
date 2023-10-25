@@ -1,6 +1,6 @@
 # Roadmap
 
-## Before 0.9.0
+## Before 0.10.0
 
 ### Features
 
@@ -15,7 +15,7 @@
 
 - Fill up the core documentation pages
 
-## Before 0.10.0
+## Before 0.11.0
 
 ### Features
 
