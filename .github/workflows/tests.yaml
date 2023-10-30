@@ -17,8 +17,6 @@ jobs:
         exclude:
           - os: macos-latest  # Segmentation fault on github actions that we can not reproduce in the wild
             python-version: '3.8'
-          - os: macos-latest  # TODO: Incompatible with torch version specification in pyproject.toml, torch <1.13 does not support py3.11
-            python-version: '3.11'
 
     runs-on: ${{ matrix.os }}
 
