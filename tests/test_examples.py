@@ -29,7 +29,6 @@ core_examples = [  # Run locally and on github actions
     "basic_usage/analyse",
     "experimental/expert_priors_for_architecture_and_hyperparameters",
     "efficiency/multi_fidelity",
-    "template/priorband_template.py",
 ]
 all_examples = core_examples + [  # Run on github actions
     "basic_usage/architecture_and_hyperparameters",

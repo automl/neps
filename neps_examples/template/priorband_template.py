@@ -1,17 +1,31 @@
-"""
-This code is not runnable but should serve as a guide to a successful neps run
-using priorband as a searcher.
+""" Boilerplate code to optimize a simple PyTorch model using PriorBand.
 
-Steps:
-1. Create search space with a fidelity parameter.
-2. Create run_pipeline which includes:
-    a. Load the checkpoints if they exist from previous_pipeline_directory.
-    b. Train or continue training the model.
-    c. Save the model in the new checkpoint which should be located in
-        pipeline_directory (current).
-    d. Return the loss or the info dictionary.
-3. Use neps.run and specify "priorband" as the searcher.
+NOTE!!! This code is not meant to be executed. 
+It is only to serve as a template to help interface NePS with an existing ML/DL pipeline.
+
+
+The following script is designed as a template for using `PriorBand` from NePS. 
+It describes the crucial components that a user needs to provide in order to interface PriorBand.
+
+The 2 crucial components are:
+* The search space, called the `pipeline_space` in NePS
+  * This defines the set of hyperparameters that the optimizer will search over
+  * This declaration also allows injecting priors in the form of defaults per hyperparameter
+* The `run_pipeline` function
+  * This function is called by the optimizer and is responsible for running the pipeline
+  * The function should at the minimum expect the hyperparameters as keyword arguments
+  * The function should return the loss of the pipeline as a float
+    * If the return value is a dictionary, it should have a key called "loss" with the loss as a float
+
+
+Overall, running an optimizer from NePS involves 4 clear steps:
+1. Importing neccessary packages including neps.
+2. Designing the search space as a dictionary.
+3. Creating the run_pipeline and returning the loss and other wanted metrics.
+4. Using neps run with the optimizer of choice.
 """
+
+
 import logging
 
 import torch
@@ -22,71 +36,98 @@ import neps
 from neps.utils.common import load_checkpoint, save_checkpoint
 
 
-class my_model(nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-        self.linear1 = nn.Linear(in_features=784, out_features=392)
-        self.linear2 = nn.Linear(in_features=392, out_features=196)
-
-    def forward(self, x):
-        x = F.relu(self.linear1(x))
-        x = self.linear2(x)
-
-        return x
+logger = logging.getLogger("neps_template.run")
 
 
 def pipeline_space() -> dict:
     # Create the search space based on NEPS parameters and return the dictionary.
-    # IMPORTANT: The search space should have default values for all parameters
-    #   which will be used as priors in the priorband search.
+    # IMPORTANT:
     space = dict(
-        weight_decay=neps.FloatParameter(lower=1e-5, upper=1e-2, default=5e-4, log=True),
-        lr=neps.FloatParameter(lower=1e-5, upper=1e-2, default=1e-3, log=True),
-        optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),
-        epochs=neps.IntegerParameter(lower=2, upper=10, is_fidelity=True),
+        lr=neps.FloatParameter(
+            lower=1e-5, 
+            upper=1e-2,
+            log=True,      # If True, the search space is sampled in log space
+            default=1e-3,  # a non-None value here acts as the mode of the prior distribution
+        ),
+        wd=neps.FloatParameter(
+            lower=0,
+            upper=1e-1,
+            log=True,      
+            default=1e-3,
+        ),
+        epoch=neps.IntegerParameter(
+            lower=1,
+            upper=10,
+            is_fidelity=True  # IMPORTANT to set this to True for the fidelity parameter
+        ),
     )
     return space
 
 
-# NOTE: The order of the arguments in the run_pipeline function is important.
-def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
-    # 1. Create your model and the optimizer according to the coniguration
+def run_pipeline(
+        pipeline_directory,           # The directory where the config is saved
+        previous_pipeline_directory,  # The directory of the config's immediate lower fidelity 
+        **config                      # The hyperparameters to be used in the pipeline
+    ) -> dict | float:
+
+    # Defining the model
+    #  Can define outside the function or import from a file, package, etc.
+    class my_model(nn.Module):  
+        def __init__(self) -> None:
+            super().__init__()
+            self.linear1 = nn.Linear(in_features=224, out_features=512)
+            self.linear2 = nn.Linear(in_features=512, out_features=10)
+
+        def forward(self, x):
+            x = F.relu(self.linear1(x))
+            x = self.linear2(x)
+            return x
+    
+    # Instantiates the model
     model = my_model()
 
-    if config["optimizer"] == "Adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
-        )
-    elif config["optimizer"] == "SGD":
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
-        )
-    else:
-        raise ValueError(
-            "Optimizer choices are defined differently in the pipeline_space"
-        )
+    # IMPORTANT: Extracting hyperparameters from passed config
+    learning_rate = config["lr"]
+    weight_decay = config["wd"]
 
-    # 2. Load the checkpoints if they exist from previous_pipeline_directory
-    loaded_values = load_checkpoint(
-        previous_pipeline_directory=previous_pipeline_directory,
-        model=model,
-        optimizer=optimizer,
+    # Initializing the optimizer
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=learning_rate, weight_decay=weight_decay
     )
 
-    if loaded_values is not None:
-        epoch_already_trained = loaded_values["epochs"]
+    ## Checkpointing
+    # loading the checkpoint if it exists
+    previous_state = load_checkpoint(  # predefined function from neps
+        previous_pipeline_directory=previous_pipeline_directory,
+        model=model,          # relies of pass-by-reference
+        optimizer=optimizer,  # relies of pass-by-reference
+    )
+    # adjusting run budget based on checkpoint
+    if previous_state is not None:
+        epoch_already_trained = previous_state["epochs"]
         # + Anything else saved in the checkpoint.
     else:
         epoch_already_trained = 0
         # + Anything else with default value.
 
-    # 3. Train or continue training the model based on the specified checkpoint
-    max_epochs = config["epochs"]
-    for epoch in range(epoch_already_trained, max_epochs):
-        val_loss = 0
-        print(f"The validation loss at epoch {epoch} is {val_loss}")
+    # Extracting target epochs from config
+    max_epochs = config.fidelity.value if config.has_fidelity else None 
+    if max_epochs is None:
+        raise ValueError("The fidelity parameter is not defined in the config.")
+    
+    # User TODO:
+    #  Load relevant data for training and validation
 
-    # 4. Save the checkpoint data in the current directory
+    # Actual model training
+    for epoch in range(epoch_already_trained, max_epochs):
+
+        # Training loop
+        ...
+        # Validation loop
+        ...
+        logger.info(f"Epoch: {epoch}, Loss: {...}, Val. acc.: {...}")
+
+    # Save the checkpoint data in the current directory
     save_checkpoint(
         pipeline_directory=pipeline_directory,
         values_to_save={"epochs": max_epochs},
@@ -94,23 +135,23 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
         optimizer=optimizer,
     )
 
-    # 5. Return a dictionary with the results, or a single float value (loss)
+    # Return a dictionary with the results, or a single float value (loss)
     return {
-        "loss": val_loss,
+        "loss": ...,
         "info_dict": {
-            "train_accuracy": 0.92,
-            "test_accuracy": 0.72,
+            "train_accuracy": ...,
+            "test_accuracy": ...,
         },
     }
+# end of run_pipeline
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
 
     neps.run(
-        run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space(),
+        run_pipeline=run_pipeline,  # User TODO (defined above)     
+        pipeline_space=pipeline_space(),  # User TODO (defined above)
         root_directory="results",
-        max_evaluations_total=15,
-        searcher="priorband",
+        max_evaluations_total=25,  # total number of times `run_pipeline` is called
+        searcher="priorband",  # "priorband_bo" for longer budgets, and set `initial_design_size``
     )
