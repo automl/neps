@@ -21,33 +21,8 @@ By completing this tutorial, you will:
 - Build a comprehensive run pipeline to train and evaluate models.
 - Utilize TensorBoard to visualize and compare performance metrics of different
   model configurations.
-
-3- Setup
---------
-Before we begin, ensure you have the necessary dependencies installed. To install
-the 'NePS' package, use the following command:
-
-```bash
-pip install neural-pipeline-search
-```
-
-Additionally, note that 'NePS' does not include 'torchvision' as a dependency.
-You can install it with this command:
-
-```bash
-pip install torchvision
-```
-
-Make sure to download the torchvision version that fits with your pytorch
-version. More info on this link:
-
-https://pypi.org/project/torchvision/
-
-These dependencies ensure you have everything you need for this tutorial.
-
 """
 
-import argparse
 import logging
 import random
 import time
@@ -112,10 +87,16 @@ def MNIST(
 
     # Create DataLoaders for training, validation, and test datasets.
     train_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=train_sampler
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        sampler=train_sampler,
     )
     val_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=valid_sampler
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        sampler=valid_sampler,
     )
     test_dataloader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
@@ -326,22 +307,12 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
 if __name__ == "__main__":
     """
-    When running this code without any arguments, it will by default
-    run bayesian optimization with 10 evaluations of 9 epochs each:
+    This code will run bayesian optimization with 10 evaluations of 9 epochs.
 
     ```bash
     python neps_tblogger_tutorial.py
     ```
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--max_evaluations_total",
-        type=int,
-        default=10,
-        help="Number of different configs to train",
-    )
-    args = parser.parse_args()
-
     start_time = time.time()
 
     set_seed(112)
@@ -356,7 +327,7 @@ if __name__ == "__main__":
         run_pipeline=run_pipeline_BO,
         pipeline_space=pipeline_space_BO(),
         root_directory="bayesian_optimization",
-        max_evaluations_total=args.max_evaluations_total,
+        max_evaluations_total=10,
         searcher="bayesian_optimization",
         # By default, NePS runs 10 random configurations before sampling
         # from the acquisition function. We will change this behavior with
@@ -380,7 +351,7 @@ if __name__ == "__main__":
 
     Double-check the directory path you've provided; if you're not seeing
     any visualizations and have followed the tutorial closely, there
-    might be an error in the directory specification. Remember that
+    might be an error in the directory specification. Note that
     TensorBoard runs in the command line without checking if the directory
     actually exists.
     """
@@ -388,16 +359,3 @@ if __name__ == "__main__":
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
     logging.info(f"Execution time: {execution_time} seconds")
-
-    """
-    After your first run, you can continue with more experiments by
-    uncommenting line 361 and running the following command in your terminal:
-
-    ```bash:
-    python neps_tblogger_tutorial.py --max_evaluations_total 15
-    ```
-
-    This adds five more configurations to your search and turns off tblogger.
-    By default, tblogger is on, but you can control it with `tblogger.enable()`
-    or `tblogger.disable()` in your code."
-    """
