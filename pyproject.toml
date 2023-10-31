@@ -97,6 +97,7 @@ line_length = 90
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m 'core_examples or yaml_api'"
 markers = ["all_examples", "core_examples", "regression_all", "metahyper", "yaml_api"]
+filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
 files = ["neps"]

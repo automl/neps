@@ -21,8 +21,33 @@ By completing this tutorial, you will:
 - Build a comprehensive run pipeline to train and evaluate models.
 - Utilize TensorBoard to visualize and compare performance metrics of different
   model configurations.
+
+3- Setup
+--------
+Before we begin, ensure you have the necessary dependencies installed. To install
+the 'NePS' package, use the following command:
+
+```bash
+pip install neural-pipeline-search
+```
+
+Additionally, note that 'NePS' does not include 'torchvision' as a dependency.
+You can install it with this command:
+
+```bash
+pip install torchvision
+```
+
+Make sure to download the torchvision version that fits with your pytorch
+version. More info on this link:
+
+https://pypi.org/project/torchvision/
+
+These dependencies ensure you have everything you need for this tutorial.
+
 """
 
+import argparse
 import logging
 import random
 import time
@@ -56,7 +81,7 @@ Each step will be covered in detail thourghout the code
 """
 
 #############################################################
-# 1 Definig the seeds for reproducibility
+# Definig the seeds for reproducibility
 
 
 def set_seed(seed=123):
@@ -66,11 +91,11 @@ def set_seed(seed=123):
 
 
 #############################################################
-# 2 Prepare the input data. For this tutorial we use the MNIST dataset.
+# Prepare the input data. For this tutorial we use the MNIST dataset.
 
 
 def MNIST(
-    batch_size: int = 32, n_train: int = 8192, n_valid: int = 1024
+    batch_size: int = 32, n_train_size: float = 0.9
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
@@ -82,21 +107,16 @@ def MNIST(
 
     # Create a random subset of the training dataset for validation.
     # We also opted on reducing the dataset sizes for faster training.
-    train_sampler = SubsetRandomSampler(range(n_train))
-    valid_sampler = SubsetRandomSampler(range(n_train, n_train + n_valid))
+    train_size = int(n_train_size * len(train_dataset))
+    train_sampler = SubsetRandomSampler(range(train_size))
+    valid_sampler = SubsetRandomSampler(range(train_size, len(train_dataset)))
 
     # Create DataLoaders for training, validation, and test datasets.
     train_dataloader = DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        sampler=train_sampler,
+        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=train_sampler
     )
     val_dataloader = DataLoader(
-        dataset=train_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        sampler=valid_sampler,
+        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=valid_sampler
     )
     test_dataloader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
@@ -106,7 +126,7 @@ def MNIST(
 
 
 #############################################################
-# 3 Design small MLP model to be able to represent the input data.
+# Design small MLP model to be able to represent the input data.
 
 
 class MLP(nn.Module):
@@ -127,7 +147,7 @@ class MLP(nn.Module):
 
 
 #############################################################
-# 4 Define the training step. Return the validation error and
+# Define the training step. Return the validation error and
 # misclassified images.
 
 
@@ -203,7 +223,7 @@ def training(
 
 
 #############################################################
-# 5 Design the pipeline search spaces.
+# Design the pipeline search spaces.
 
 
 def pipeline_space_BO() -> dict:
@@ -217,7 +237,7 @@ def pipeline_space_BO() -> dict:
 
 
 #############################################################
-# 6 Implement the pipeline run search.
+# Implement the pipeline run search.
 
 
 def run_pipeline_BO(lr, optim, weight_decay):
@@ -237,7 +257,7 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
     # Load the MNIST dataset for training, validation, and testing.
     train_loader, validation_loader, test_loader = MNIST(
-        batch_size=64, n_train=4096, n_valid=512
+        batch_size=64, n_train_size=0.9
     )
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
@@ -303,16 +323,26 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
 
 #############################################################
-# 6 Running neps with BO as the searcher.
+# Running neps with BO as the searcher.
 
 if __name__ == "__main__":
     """
-    This code will run bayesian optimization with 10 evaluations of 9 epochs.
+    When running this code without any arguments, it will by default
+    run bayesian optimization with 10 evaluations of 9 epochs each:
 
     ```bash
     python neps_tblogger_tutorial.py
     ```
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--max_evaluations_total",
+        type=int,
+        default=10,
+        help="Number of different configs to train",
+    )
+    args = parser.parse_args()
+
     start_time = time.time()
 
     set_seed(112)
@@ -327,7 +357,7 @@ if __name__ == "__main__":
         run_pipeline=run_pipeline_BO,
         pipeline_space=pipeline_space_BO(),
         root_directory="bayesian_optimization",
-        max_evaluations_total=10,
+        max_evaluations_total=max_evaluations_total,
         searcher="bayesian_optimization",
         # By default, NePS runs 10 random configurations before sampling
         # from the acquisition function. We will change this behavior with
@@ -351,7 +381,7 @@ if __name__ == "__main__":
 
     Double-check the directory path you've provided; if you're not seeing
     any visualizations and have followed the tutorial closely, there
-    might be an error in the directory specification. Note that
+    might be an error in the directory specification. Remember that
     TensorBoard runs in the command line without checking if the directory
     actually exists.
     """
@@ -359,3 +389,17 @@ if __name__ == "__main__":
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
     logging.info(f"Execution time: {execution_time} seconds")
+
+    """
+    After your first run, you can continue with more experiments by
+    uncommenting `tblogger.enable()` before `neps.run()`and running 
+    the following command in your terminal:
+
+    ```bash:
+    python neps_tblogger_tutorial.py --max_evaluations_total 15
+    ```
+
+    This adds five more configurations to your search and turns off tblogger.
+    By default, tblogger is on, but you can control it with `tblogger.enable()`
+    or `tblogger.disable()` in your code."
+    """
