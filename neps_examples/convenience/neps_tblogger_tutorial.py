@@ -47,7 +47,6 @@ These dependencies ensure you have everything you need for this tutorial.
 
 """
 
-import argparse
 import logging
 import random
 import time
@@ -95,7 +94,7 @@ def set_seed(seed=123):
 
 
 def MNIST(
-    batch_size: int = 32, n_train_size: float = 0.9
+    batch_size: int = 256, n_train_size: float = 0.9
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
@@ -226,7 +225,7 @@ def training(
 # Design the pipeline search spaces.
 
 
-def pipeline_space_BO() -> dict:
+def pipeline_space() -> dict:
     pipeline = dict(
         lr=neps.FloatParameter(lower=1e-5, upper=1e-1, log=True),
         optim=neps.CategoricalParameter(choices=["Adam", "SGD"]),
@@ -240,7 +239,7 @@ def pipeline_space_BO() -> dict:
 # Implement the pipeline run search.
 
 
-def run_pipeline_BO(lr, optim, weight_decay):
+def run_pipeline(lr, optim, weight_decay):
     # Create the network model.
     model = MLP()
 
@@ -334,15 +333,6 @@ if __name__ == "__main__":
     python neps_tblogger_tutorial.py
     ```
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--max_evaluations_total",
-        type=int,
-        default=3,  
-        help="Number of different configs to train",
-    )
-    args = parser.parse_args()
-
     start_time = time.time()
 
     set_seed(112)
@@ -351,14 +341,16 @@ if __name__ == "__main__":
     # To check the status of tblogger:
     # tblogger.get_status()
 
-    # tblogger.disable()
+    run_args = dict(
+        run_pipeline=run_pipeline,
+        pipeline_space=pipeline_space(),
+        root_directory="output",
+        searcher="random_search",
+    )
 
     neps.run(
-        run_pipeline=run_pipeline_BO,
-        pipeline_space=pipeline_space_BO(),
-        root_directory="output",
-        max_evaluations_total=args.max_evaluations_total,
-        searcher="random_search",
+        **run_args,
+        max_evaluations_total=2,
     )
 
     """
@@ -382,20 +374,19 @@ if __name__ == "__main__":
     actually exists.
     """
 
+    # Disables tblogger for the continued run
+    tblogger.disable()
+
+    
+    neps.run(
+        **run_args,
+        max_evaluations_total=3,  # continues the previous run for 1 more evaluation
+    )
+
+    """
+    This second run of one more configuration will not add to the tensorboard logs.
+    """
+
     end_time = time.time()  # Record the end time
     execution_time = end_time - start_time
-    logging.info(f"Execution time: {execution_time} seconds")
-
-    """
-    After your first run, you can continue with more experiments by
-    uncommenting `tblogger.enable()` before `neps.run()`and running 
-    the following command in your terminal:
-
-    ```bash:
-    python neps_tblogger_tutorial.py --max_evaluations_total 10
-    ```
-
-    This adds seven more configurations to your search and turns off tblogger.
-    By default, tblogger is on, but you can control it with `tblogger.enable()`
-    or `tblogger.disable()` in your code."
-    """
+    logging.info(f"Execution time: {execution_time} seconds\n")
