@@ -292,7 +292,6 @@ def run_pipeline_BO(lr, optim, weight_decay):
         tblogger.log(
             loss=loss,
             current_epoch=i,
-            write_summary_incumbent=True,
             extra_data={
                 "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
                 "miss_img": tblogger.image_logging(image=miss_img, counter=2, seed=2),
@@ -358,8 +357,7 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space_BO(),
         root_directory="bayesian_optimization",
         max_evaluations_total=args.max_evaluations_total,
-        searcher="bo_prior",
-        searcher_path="my_yaml",
+        searcher="bayesian_optimization",
         # By default, NePS runs 10 random configurations before sampling
         # from the acquisition function. We will change this behavior with
         # the following keyword argument.
