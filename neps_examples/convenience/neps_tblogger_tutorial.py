@@ -253,7 +253,7 @@ def run_pipeline_BO(lr, optim, weight_decay):
             "Optimizer choices are defined differently in the pipeline_space"
         )
 
-    max_epochs = 9
+    max_epochs = 2  # Epochs to train the model, can be parameterized as fidelity
 
     # Load the MNIST dataset for training, validation, and testing.
     train_loader, validation_loader, test_loader = MNIST(
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_evaluations_total",
         type=int,
-        default=10,
+        default=3,  
         help="Number of different configs to train",
     )
     args = parser.parse_args()
@@ -356,13 +356,9 @@ if __name__ == "__main__":
     neps.run(
         run_pipeline=run_pipeline_BO,
         pipeline_space=pipeline_space_BO(),
-        root_directory="bayesian_optimization",
-        max_evaluations_total=max_evaluations_total,
-        searcher="bayesian_optimization",
-        # By default, NePS runs 10 random configurations before sampling
-        # from the acquisition function. We will change this behavior with
-        # the following keyword argument.
-        initial_design_size=5,
+        root_directory="output",
+        max_evaluations_total=args.max_evaluations_total,
+        searcher="random_search",
     )
 
     """
@@ -371,7 +367,7 @@ if __name__ == "__main__":
     run the following command on the file created by neps root_directory.
 
     ```bash:
-    tensorboard --logdir bayesian_optimization
+    tensorboard --logdir output
     ```
 
     To be able to check the visualization of tensorboard make sure to
@@ -396,10 +392,10 @@ if __name__ == "__main__":
     the following command in your terminal:
 
     ```bash:
-    python neps_tblogger_tutorial.py --max_evaluations_total 15
+    python neps_tblogger_tutorial.py --max_evaluations_total 10
     ```
 
-    This adds five more configurations to your search and turns off tblogger.
+    This adds seven more configurations to your search and turns off tblogger.
     By default, tblogger is on, but you can control it with `tblogger.enable()`
     or `tblogger.disable()` in your code."
     """
