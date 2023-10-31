@@ -7,13 +7,12 @@ Steps:
 2. Create run_pipeline which includes:
     a. Load the checkpoints if they exist from previous_pipeline_directory.
     b. Train or continue training the model.
-    c. Save the model in the new checkpoint which should be located in 
+    c. Save the model in the new checkpoint which should be located in
         pipeline_directory (current).
     d. Return the loss or the info dictionary.
 3. Use neps.run and specify "priorband" as the searcher.
 """
 import logging
-import os
 
 import torch
 import torch.nn as nn
@@ -41,12 +40,10 @@ def pipeline_space() -> dict:
     # IMPORTANT: The search space should have default values for all parameters
     #   which will be used as priors in the priorband search.
     space = dict(
-        weight_decay=neps.FloatParameter(
-            lower=1e-5, upper=1e-2, default=5e-4, log=True
-        ),
+        weight_decay=neps.FloatParameter(lower=1e-5, upper=1e-2, default=5e-4, log=True),
         lr=neps.FloatParameter(lower=1e-5, upper=1e-2, default=1e-3, log=True),
         optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),
-        epochs=neps.IntegerParameter(lower=2, upper=10, log=True, is_fidelity=True),
+        epochs=neps.IntegerParameter(lower=2, upper=10, is_fidelity=True),
     )
     return space
 
@@ -87,6 +84,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
     max_epochs = config["epochs"]
     for epoch in range(epoch_already_trained, max_epochs):
         val_loss = 0
+        print(f"The validation loss at epoch {epoch} is {val_loss}")
 
     # 4. Save the checkpoint data in the current directory
     save_checkpoint(

@@ -35,7 +35,7 @@ Additionally, note that 'NePS' does not include 'torchvision' as a dependency.
 You can install it with this command:
 
 ```bash
-pip install torchvision==0.14.0
+pip install torchvision
 ```
 
 Make sure to download the torchvision version that fits with your pytorch
@@ -99,12 +99,10 @@ def MNIST(
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
-        root="./data", train=True, transform=transforms.ToTensor(),
-        download=True
+        root="./data", train=True, transform=transforms.ToTensor(), download=True
     )
     test_dataset = torchvision.datasets.MNIST(
-        root="./data", train=False, transform=transforms.ToTensor(),
-        download=True
+        root="./data", train=False, transform=transforms.ToTensor(), download=True
     )
 
     # Create a random subset of the training dataset for validation.
@@ -114,12 +112,10 @@ def MNIST(
 
     # Create DataLoaders for training, validation, and test datasets.
     train_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False,
-        sampler=train_sampler
+        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=train_sampler
     )
     val_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False,
-        sampler=valid_sampler
+        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=valid_sampler
     )
     test_dataloader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
@@ -139,7 +135,7 @@ class MLP(nn.Module):
         self.linear2 = nn.Linear(in_features=392, out_features=196)
         self.linear3 = nn.Linear(in_features=196, out_features=10)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         # Flattening the grayscaled image from 1x28x28 (CxWxH) to 784.
         x = x.view(x.size(0), -1)
         x = F.relu(self.linear1(x))
@@ -248,13 +244,9 @@ def run_pipeline_BO(lr, optim, weight_decay):
     model = MLP()
 
     if optim == "Adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=lr, weight_decay=weight_decay
-        )
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     elif optim == "SGD":
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=lr, weight_decay=weight_decay
-        )
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
     else:
         raise ValueError(
             "Optimizer choices are defined differently in the pipeline_space"
@@ -292,17 +284,16 @@ def run_pipeline_BO(lr, optim, weight_decay):
 
         # The following line will result in:
 
-        # 1 Incumbent trajectory (best performance regardless of the
-        #   fidelity budget, if the searcher was fidelity dependent).
-        # 2 Loss curves of each of the configs at each epoch.
-        # 3 lr_decay curve at each epoch.
-        # 4 The wrongly classified images by the model.
-        # 5 first two layer_gradients passed as scalar configs.
+        # 1 Loss curves of each of the configs at each epoch.
+        # 2 lr_decay curve at each epoch.
+        # 3 The wrongly classified images by the model.
+        # 4 first two layer_gradients passed as scalar configs.
 
         tblogger.log(
             loss=loss,
             current_epoch=i,
-            data={
+            write_summary_incumbent=True,
+            extra_data={
                 "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
                 "miss_img": tblogger.image_logging(image=miss_img, counter=2, seed=2),
                 "layer_gradient1": tblogger.scalar_logging(value=mean_gradient[0]),
@@ -367,7 +358,8 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space_BO(),
         root_directory="bayesian_optimization",
         max_evaluations_total=args.max_evaluations_total,
-        searcher="bayesian_optimization",
+        searcher="bo_prior",
+        searcher_path="my_yaml",
         # By default, NePS runs 10 random configurations before sampling
         # from the acquisition function. We will change this behavior with
         # the following keyword argument.
@@ -401,7 +393,7 @@ if __name__ == "__main__":
 
     """
     After your first run, you can continue with more experiments by
-    uncommenting line 363 and running the following command in your terminal:
+    uncommenting line 361 and running the following command in your terminal:
 
     ```bash:
     python neps_tblogger_tutorial.py --max_evaluations_total 15

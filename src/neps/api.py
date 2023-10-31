@@ -6,10 +6,9 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 import ConfigSpace as CS
-from typing_extensions import Literal
 
 import metahyper
 from metahyper import instance_from_map
@@ -84,14 +83,11 @@ def _post_evaluation_hook_function(
                 f"Finished evaluating config {config_id}"
                 f" -- new best with loss {float(loss) :.3f}"
             )
-            if tblogger.logger_bool:
-                tblogger.tracking_incumbent_api(best_loss=loss)
 
         else:
             logger.info(f"Finished evaluating config {config_id}")
-            # Track the incumbent from the best loss
-            if tblogger.logger_bool:
-                tblogger.tracking_incumbent_api(best_loss=best_loss)
+
+        tblogger.end_of_config()
 
     return _post_evaluation_hook
 

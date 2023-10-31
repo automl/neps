@@ -4,7 +4,6 @@ import glob
 import os
 import random
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import torch
@@ -97,7 +96,7 @@ def save_checkpoint(
 
 def load_lightning_checkpoint(
     previous_pipeline_directory: Path | str, checkpoint_dir: Path | str
-) -> Tuple[str | None, dict | None]:
+) -> tuple[str | None, dict | None]:
     """
     Load the latest checkpoint file from the specified directory.
 
@@ -116,7 +115,7 @@ def load_lightning_checkpoint(
     """
     if previous_pipeline_directory:
         # Search for possible checkpoints to continue training
-        ckpt_files = glob.glob(str(checkpoint_dir / "*.ckpt"))
+        ckpt_files = glob.glob(str(Path(checkpoint_dir) / "*.ckpt"))
 
         if ckpt_files:
             # Load the checkpoint and retrieve necessary data
@@ -152,8 +151,8 @@ def get_initial_directory(pipeline_directory: Path) -> Path:
         if previous_pipeline_directory_id.exists():
             # Get and join to the previous path according to the id
             with open(previous_pipeline_directory_id) as config_id_file:
-                id = config_id_file.read()
-                pipeline_directory = optim_result_dir / f"config_{id}"
+                config_id = config_id_file.read()
+                pipeline_directory = optim_result_dir / f"config_{config_id}"
         else:
             # Initial directory found
             return pipeline_directory
@@ -173,7 +172,7 @@ def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) ->
     """
 
     if searcher_path:
-        user_yaml_path = os.path.join(searcher_path, f"{searcher}.yaml")
+        user_yaml_path = os.path.join(Path(searcher_path), f"{searcher}.yaml")
 
         if not os.path.exists(user_yaml_path):
             raise FileNotFoundError(
