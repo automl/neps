@@ -4,7 +4,9 @@ from typing import Any, Sequence
 
 import numpy as np
 import pandas as pd
+import torch
 
+from ...optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ...search_spaces.search_space import SearchSpace
 
 
@@ -25,6 +27,14 @@ def continuous_to_tabular(
             result[hp_name].value = closest
 
     return result
+
+def normalize_vectorize_config(
+    config: SearchSpace, ignore_fidelity: bool=True
+) -> np.ndarray:
+    _new_vector = []
+    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity).items():
+        _new_vector.extend(hp_list)
+    return np.array(_new_vector)
 
 
 class MFObservedData:
@@ -83,6 +93,11 @@ class MFObservedData:
     @property
     def seen_config_ids(self) -> list:
         return self.df.index.levels[0].to_list()
+    
+    @property
+    def seen_budget_levels(self) -> list:
+        # Considers pending and error budgets as seen
+        return self.df.index.levels[1].to_list()
 
     @property
     def completed_runs(self):
@@ -231,17 +246,114 @@ class MFObservedData:
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
         return lc
 
-    def get_training_data_4DyHPO(self, df: pd.DataFrame):
+    def get_training_data_4DyHPO(
+        self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
+    ):
         configs = []
         learning_curves = []
         performance = []
         for idx, row in df.iterrows():
             config_id = idx[0]
             budget_id = idx[1]
-            configs.append(row[self.config_col])
+            if pipeline_space.has_tabular:
+                _row = pd.Series([row[self.config_col]], index=[config_id])
+                _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
+                configs.append(_row.values[0])
+            else:
+                configs.append(row[self.config_col])
             performance.append(row[self.perf_col])
             learning_curves.append(self.extract_learning_curve(config_id, budget_id))
         return configs, learning_curves, performance
+
+    def get_tokenized_data(self, df: pd.DataFrame):
+        idxs = df.index.values
+        idxs = np.array([list(idx)[::-1] for idx in idxs])
+        idxs[:, 0] += 1  # all fidelity IDs begin with 0 in NePS
+        performances = df.perf.values
+        configs = df.config.values
+        configs = np.array([normalize_vectorize_config(c) for c in configs])
+
+        return configs, idxs, performances 
+
+    def tokenize(self, df: pd.DataFrame, as_tensor: bool = False):
+        """Function to format data for PFN."""
+        configs = np.array([normalize_vectorize_config(c) for c in df])
+        fidelity = np.array([c.fidelity.value for c in df]).reshape(-1, 1)
+        idx = df.index.values.reshape(-1, 1)
+
+        data = np.hstack([fidelity, idx, configs])
+
+        if as_tensor:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            data = torch.Tensor(data).to(device)
+        return data
+    
+    @property
+    def token_ids(self) -> np.ndarray:
+        return self.df.index.values
+
+
+
+class TabularSearchSpace:
+    tabular = True
+
+    def __init__(self, tabular_df: pd.DataFrame, base_search_space: SearchSpace):
+        # IMPORTANT: TO WORK WITH TABULAR SEARCH SPACE OVER MULTIPLE RESTARTS (OWERWRITE=FALSE)
+        # SEEDS MUST BE SET MANUALLY OUTSIDE NEPS OPTIMIZERS  
+        # Otherwise generated permutations will not be consistent over different runs
+        if tabular_df is not None:
+            place_holder_config = base_search_space.sample()
+            self.table = TabularSearchSpace.convert_tabular(tabular_df, place_holder_config)
+            self.index_permutation = np.random.permutation(self.table.index)
+        else:
+            self.tabular = False
+
+    @staticmethod
+    def __build_min_fidelity_config(row, config: SearchSpace):
+        result = config.copy()
+        for hp_name in config.keys():
+            if not config[hp_name].is_fidelity:
+                # dynamic type casting to the target value
+                # this is only necessary if the dtypes of the dataframe is not set correctly
+                # otherwise: value = row[hp_name] # is sufficient
+                value = type(result[hp_name].value)(row[hp_name])
+                result[hp_name].value = value
+            else:
+                result[hp_name].value = result.fidelity.lower
+        return result
+
+    @staticmethod
+    def convert_tabular(tabular_benchmark: pd.DataFrame,
+                        placeholder_config: SearchSpace):
+
+        config_keys = []
+        for hp_name, hp in placeholder_config.items():
+            if not hp.is_fidelity:
+                config_keys.append(hp_name)
+
+        df = tabular_benchmark.loc[:, config_keys].copy(deep=True)
+        samples = df.groupby(level=0).first()
+
+        samples["configs"] = samples.apply(
+            lambda x: TabularSearchSpace.__build_min_fidelity_config(x, config=placeholder_config), axis=1)
+
+        samples.index = samples.index.astype(int, copy=True)
+        samples.sort_index(inplace=True)
+
+        samples.drop(config_keys, inplace=True, axis=1)
+
+        return samples
+
+    def sample(self, index_from: int,
+               config: SearchSpace | List[SearchSpace] | None = None,
+               n: int | None = None):
+        n = n if n is not None else 1
+        if self.tabular:
+            return self.table.loc[self.index_permutation[index_from:index_from + n], :].values.tolist()
+        elif n > 1 and not isinstance(config, list):
+            return [config.sample() for _ in range(n)]
+        else:
+            return config
 
 
 if __name__ == "__main__":

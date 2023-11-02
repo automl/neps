@@ -18,12 +18,15 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
-from .mf_bo import MFEIDeepModel, MFEIModel
-from .utils import MFObservedData, continuous_to_tabular
+from .mf_bo import FreezeThawModel, PFNSurrogate
+# MFEIDeepModel, MFEIModel
+from .utils import MFObservedData, TabularSearchSpace
+import pandas as pd
+from timeit import default_timer as timer
 
 
 class MFEIBO(BaseOptimizer):
-    """Base class for MF-BO algorithms that use DyHPO like acquisition and budgeting."""
+    """Base class for MF-BO algorithms that use DyHPO-like acquisition and budgeting."""
 
     acquisition: str = "MFEI"
 
@@ -48,12 +51,13 @@ class MFEIBO(BaseOptimizer):
         graph_kernels: list = None,
         hp_kernels: list = None,
         acquisition: str | BaseAcquisition = acquisition,
+        acquisition_args: dict = None,
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
-        model_policy: Any = MFEIDeepModel,
+        acquisition_sampler_args: dict = None,
+        model_policy: Any = FreezeThawModel,
         initial_design_fraction: float = 0.75,
         initial_design_size: int = 10,
         initial_design_budget: int = None,
-        tabular_space: dict | SearchSpace | None = None,
     ):
         """Initialise
 
@@ -82,6 +86,7 @@ class MFEIBO(BaseOptimizer):
             ignore_errors=ignore_errors,
             logger=logger,
         )
+        self.raw_tabular_space = None  # placeholder, can be populated using pre_load_hook
         self._budget_list: list[int | float] = []
         self.step_size: int | float = step_size
         self.min_budget = self.pipeline_space.fidelity.lower
@@ -92,14 +97,10 @@ class MFEIBO(BaseOptimizer):
         self._initial_design_size, self._initial_design_budget = self._set_initial_design(
             initial_design_size, initial_design_budget, self._initial_design_fraction
         )
-
-        self.tabular_space = (
-            SearchSpace(**{}) if tabular_space is None else SearchSpace(**tabular_space)
-        )
-
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
+        self.surrogate_model_name = surrogate_model
 
         self.use_priors = use_priors
         self.total_fevals: int = 0
@@ -110,7 +111,7 @@ class MFEIBO(BaseOptimizer):
         )
 
         # Preparing model
-        graph_kernels, hp_kernels = get_kernels(
+        self.graph_kernels, self.hp_kernels = get_kernels(
             pipeline_space=pipeline_space,
             domain_se_kernel=domain_se_kernel,
             graph_kernels=graph_kernels,
@@ -120,46 +121,67 @@ class MFEIBO(BaseOptimizer):
         self.surrogate_model_args = (
             {} if surrogate_model_args is None else surrogate_model_args
         )
-        self.surrogate_model_args.update(
-            dict(
-                # domain_se_kernel=domain_se_kernel,
-                hp_kernels=hp_kernels,
-                graph_kernels=graph_kernels,
-            )
-        )
-        if not self.surrogate_model_args["hp_kernels"]:
-            raise ValueError("No kernels are provided!")
-        if "vectorial_features" not in self.surrogate_model_args:
-            self.surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
+        self._prep_model_args(self.hp_kernels, self.graph_kernels, pipeline_space)
+        
+        # TODO: do we create a model policy map?
+        if surrogate_model in ["deep_gp", "gp"]:
+            model_policy = FreezeThawModel
+        elif surrogate_model == "pfn":
+            model_policy = PFNSurrogate
+        else:
+            raise ValueError("Invalid model option selected!")
 
-        # Temporary fix due to different data
-        # preprocessing pipelines of `deep_gp` and `gp`
-        # TODO: Remove this in a future iteration (karibbov)
-        if surrogate_model == "deep_gp":
-            model_policy = MFEIDeepModel
-        elif surrogate_model == "gp":
-            model_policy = MFEIModel
         # The surrogate model is initalized here
         self.model_policy = model_policy(
             pipeline_space=pipeline_space,
             surrogate_model=surrogate_model,
             surrogate_model_args=self.surrogate_model_args,
         )
+        self.acquisition_args = ({} if acquisition_args is None else acquisition_args)
+        self.acquisition_args.update({
+            "pipeline_space": self.pipeline_space,
+            "surrogate_model_name": self.surrogate_model_name,
+        })
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
             name="acquisition function",
+            kwargs=self.acquisition_args,
         )
-
+        self.acquisition_sampler_args = (
+            {} if acquisition_sampler_args is None else acquisition_sampler_args
+        )
+        self.acquisition_sampler_args.update({
+                "patience": self.patience, 
+                "pipeline_space": self.pipeline_space
+        })
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
             name="acquisition sampler function",
-            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
+            kwargs=self.acquisition_sampler_args,
         )
         self.count = 0
+        self.load_df = None
+        self.time_df = pd.DataFrame()
+
+    def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
+        if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
+            # setup for GP implemented in NePS
+            self.surrogate_model_args.update(
+                dict(
+                    # domain_se_kernel=domain_se_kernel,
+                    hp_kernels=hp_kernels,
+                    graph_kernels=graph_kernels,
+                )
+            )
+            if not self.surrogate_model_args["hp_kernels"]:
+                raise ValueError("No kernels are provided!")
+            # if "vectorial_features" not in self.surrogate_model_args:
+            self.surrogate_model_args["vectorial_features"] = (
+                pipeline_space.raw_tabular_space.get_vectorial_dim() 
+                if pipeline_space.has_tabular else pipeline_space.get_vectorial_dim()
+            )
 
     def _set_initial_design(
         self,
@@ -201,7 +223,7 @@ class MFEIBO(BaseOptimizer):
         return _initial_design_size, _initial_design_budget
 
     def get_budget_level(self, config: SearchSpace) -> int:
-        return int((config.fidelity.value - config.fidelity.lower) / self.step_size)
+        return int(np.ceil((config.fidelity.value - config.fidelity.lower) / self.step_size))
 
     def get_budget_value(self, budget_level: int | float) -> int | float:
         if isinstance(self.pipeline_space.fidelity, IntegerParameter):
@@ -230,19 +252,18 @@ class MFEIBO(BaseOptimizer):
         """
         if len(self.observed_configs.df) == 0:
             return 0
-        _df = self.observed_configs.get_learning_curves()
-        # budgets are columns now in _df
-        budget_used = 0
+            
+        n_configs = len(self.observed_configs.seen_config_ids)
+        total_budget_level = sum(self.observed_configs.seen_budget_levels)
+        total_initial_budget_spent = n_configs * self.pipeline_space.fidelity.lower
+        total_budget_spent = (total_initial_budget_spent +
+                              total_budget_level * self.step_size)
 
-        for idx in _df.index:
-            # finds the budget steps taken per config excluding first min_budget step
-            _n = (~_df.loc[idx].isna()).sum() - 1  # budget_id starts from 0
-            budget_used += self.get_budget_value(_n)
-
-        return budget_used
+        return total_budget_spent
 
     def is_init_phase(self, budget_based: bool = True) -> bool:
         if budget_based:
+            # TODO: what does this variable and condition do? (karibbov)
             if self.total_budget_spent() < self._initial_design_budget:
                 return True
         else:
@@ -265,45 +286,102 @@ class MFEIBO(BaseOptimizer):
             previous_results (dict[str, ConfigResult]): [description]
             pending_evaluations (dict[str, ConfigResult]): [description]
         """
+        start = timer()
+        self.observed_configs = MFObservedData(
+            columns=["config", "perf", "learning_curves"],
+            index_names=["config_id", "budget_id"],
+        )
+        end = timer()
+        init_df_time = end - start
 
         # previous optimization run exists and needs to be loaded
-        self._load_previous_observations(previous_results)
+        start = timer()
+        data_ = self._load_previous_observations(previous_results)
+        end = timer()
+        load_time = end - start
         self.total_fevals = len(previous_results) + len(pending_evaluations)
 
         # account for pending evaluations
+        start = timer()
         self._handle_pending_evaluations(pending_evaluations)
+        end = timer()
+        handle_pending_time = end - start
 
+        start = timer()
         # an aesthetic choice more than a functional choice
         self.observed_configs.df.sort_index(
             level=self.observed_configs.df.index.names, inplace=True
         )
+        end = timer()
+        sort_df_time = end - start
 
+        start = timer()
         # TODO: can we do better than keeping a copy of the observed configs?
-        self.model_policy.observed_configs = deepcopy(self.observed_configs)
+        # TODO: can we not hide this in load_results and have something that pops out 
+        #   more, like a set_state or policy_args
+        self.model_policy.observed_configs = self.observed_configs
+        end = timer()
+        observed_configs_time = end - start
         # fit any model/surrogates
-        if not self.is_init_phase():
+        start = timer()
+        init_phase = self.is_init_phase()
+        end = timer()
+        init_time = end - start
+        fit_time = 0
+        if not init_phase:
+            start = timer()
             self._fit_models()
+            end = timer()
+            fit_time = end - start
+        curr_id = len(self.observed_configs.df)
+
+        data={"id": curr_id,
+              "load_time": load_time,
+              "init_df_time": init_df_time,
+               "handle_pending_time": handle_pending_time,
+               "sort_df_time": sort_df_time,
+               "observed_configs_time": observed_configs_time,
+               "init_time": init_time,
+               "update_model_time": fit_time}
+        data.update(data_)
+        if hasattr(self.model_policy, "time_data"):
+            data.update(self.model_policy.time_data)
+        # print(data)
+        self.load_df = pd.DataFrame(data, index=[curr_id])
+
+    @classmethod
+    def _get_config_id_split(cls, config_id: str) -> tuple[str, str]:
+        # assumes config IDs of the format `[unique config int ID]_[int rung ID]`
+        ids = config_id.split("_")
+        _config, _budget = ids[0], ids[1]
+        return _config, _budget
 
     def _load_previous_observations(self, previous_results):
-        for config_id, config_val in previous_results.items():
-            _config, _budget_level = config_id.split("_")
-            perf = self.get_loss(config_val.result)
-            lc = self.get_learning_curve(config_val.result)
 
-            index = (int(_config), int(_budget_level))
-            self.observed_configs.add_data([config_val.config, perf, lc], index=index)
+        def index_data_split(config_id: str, config_val):
+            _config_id, _budget_id = MFEIBO._get_config_id_split(config_id)
+            index = int(_config_id), int(_budget_id)
+            _data = [config_val.config,
+                     self.get_loss(config_val.result),
+                     self.get_learning_curve(config_val.result)]
+            return index, _data
 
-            if not np.isclose(
-                self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
-            ):
-                self.observed_configs.update_data(
-                    {
-                        self.observed_configs.config_col: config_val.config,
-                        self.observed_configs.perf_col: perf,
-                        self.observed_configs.lc_col_name: lc,
-                    },
-                    index=index,
-                )
+        add_time = 0
+        collect_time = 0
+        if len(previous_results) > 0:
+            start = timer()
+            index_row = [tuple(index_data_split(config_id, config_val))
+                         for config_id, config_val in previous_results.items()]
+            indices, rows = zip(*index_row)
+            end = timer()
+            collect_time = end - start
+            start = timer()
+            self.observed_configs.add_data(data=list(rows), index=list(indices))
+            end = timer()
+            add_time = end - start
+        data = {"add_time": add_time,
+                "collect_time": collect_time}
+        return data
 
     def _handle_pending_evaluations(self, pending_evaluations):
         for config_id, config_val in pending_evaluations.items():
@@ -328,12 +406,17 @@ class MFEIBO(BaseOptimizer):
     def _fit_models(self):
         # TODO: Once done with development catch the model update exceptions
         # and skip model based suggestions if failed (karibbov)
+        self._prep_model_args(self.hp_kernels, self.graph_kernels, self.pipeline_space)
+        self.model_policy.set_state(self.pipeline_space, self.surrogate_model_args)
         self.model_policy.update_model()
         self.acquisition.set_state(
-            self.model_policy.surrogate_model, self.observed_configs, self.step_size
+            self.pipeline_space, 
+            self.model_policy.surrogate_model,
+            self.observed_configs,
+            self.step_size
         )
         self.acquisition_sampler.set_state(
-            self.pipeline_space, self.observed_configs, self.step_size, self.tabular_space
+            self.pipeline_space, self.observed_configs, self.step_size
         )
 
     def _randomly_promote(self) -> tuple[SearchSpace, int]:
@@ -368,6 +451,7 @@ class MFEIBO(BaseOptimizer):
         Returns:
             [type]: [description]
         """
+        time_data = {}
         config_id = None
         previous_config_id = None
         if self.is_init_phase(budget_based=False):
@@ -376,8 +460,6 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            # Convert continuous into tabular if the space is tabular
-            config = continuous_to_tabular(config, self.tabular_space)
             config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
         elif self.is_init_phase(budget_based=True) or self._model_update_failed:
@@ -392,40 +474,51 @@ class MFEIBO(BaseOptimizer):
             self.count += 1
             # main acquisition call here after initial design is turned off
             self.logger.info("acquiring...")
-            samples = self.acquisition_sampler.sample()
-
-            # Get the learning curves if the surrogate model requires it
-            sample_lcs = []
-            if hasattr(
-                self.acquisition.surrogate_model, "set_prediction_learning_curves"
-            ):
-                for idx in samples.index:
-                    if idx in self.observed_configs.df.index.levels[0]:
-                        budget_level = self.get_budget_level(samples[idx]) - 1
-                        lc = self.observed_configs.extract_learning_curve(
-                            idx, budget_level
-                        )
-                    else:
-                        lc = [0.0]
-                    sample_lcs.append(lc)
-                self.acquisition.surrogate_model.set_prediction_learning_curves(
-                    sample_lcs
-                )
-
-            eis = self.acquisition.eval(  # type: ignore[attr-defined]
-                x=samples.to_list(), asscalar=True
+            # generates candidate samples for acquisition calculation
+            # TODO: handle tabular grid inputs
+            start = timer()
+            samples = self.acquisition_sampler.sample(
+                set_new_sample_fidelity=self.pipeline_space.fidelity.lower
+            )  # fidelity values here should be the observations or min. fidelity
+            end = timer()
+            sampler_time = end - start
+            # calculating acquisition function values for the candidate samples
+            start = timer()
+            acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
+                x=samples, asscalar=True
             )
-            # maximizing EI
-            _ids = np.argsort(eis)[-1]
-            # samples should have new configs with fidelities set to as required by
-            # the acquisition sampler
-            config = samples.iloc[_ids]
-            _config_id = samples.index[_ids]
-
+            end = timer()
+            acq_fn_eval = end - start
+            # maximizing acquisition function
+            _idx = np.argsort(acq)[-1]
+            # extracting the config ID for the selected maximizer
+            _config_id = samples.index[_samples.index.values[_idx]]
+            # `_samples` should have new configs with fidelities set to as required
+            # NOTE: len(samples) need not be equal to len(_samples) as `samples` contain
+            # all (partials + new) configurations obtained from the sampler, but
+            # in `_samples`, configs are removed that have reached maximum epochs allowed
+            # NOTE: `samples` and `_samples` should share the same index values, hence, 
+            # avoid using `.iloc` and work with `.loc` on pandas DataFrame/Series
+            config = samples.loc[_config_id]
+            config.fidelity.value = _samples.loc[_config_id].fidelity.value
+            time_data = {"total_sampler_time": sampler_time,
+                         "total_acq_fn_eval_time": acq_fn_eval}
+        # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
             config_id = f"{_config_id}_{self.get_budget_level(config)}"
             previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
         else:
-            config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
+            config_id = (
+                f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
+            )
+        
+        time_data.update(self.acquisition_sampler.time_data)
+        time_data.update(self.acquisition.time_data)
+
+        curr_id = len(self.observed_configs.df)
+        concat_df = pd.concat([self.load_df, pd.DataFrame(time_data, index=[curr_id])], axis=1)
+        self.time_df = self.time_df.append(concat_df)
+
+        self.time_df.to_csv("time_data.csv")
 
         return config.hp_values(), config_id, previous_config_id

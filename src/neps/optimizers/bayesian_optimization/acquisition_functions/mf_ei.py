@@ -2,41 +2,108 @@
 from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.distributions import Normal
 
+from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
+from ....search_spaces.search_space import SearchSpace
 from ...multi_fidelity.utils import MFObservedData
 from .ei import ComprehensiveExpectedImprovement
+
+from timeit import default_timer as timer
 
 
 class MFEI(ComprehensiveExpectedImprovement):
     def __init__(
         self,
+        pipeline_space: SearchSpace,
+        surrogate_model_name: str = None,
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
         log_ei: bool = False,
     ):
         super().__init__(augmented_ei, xi, in_fill, log_ei)
+        self.pipeline_space = pipeline_space
+        self.surrogate_model_name = surrogate_model_name
         self.surrogate_model = None
         self.observations = None
         self.b_step = None
+        self.time_data = {}
 
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
-    def preprocess(self, x: Iterable) -> Tuple[Iterable, Iterable]:
+    # def _preprocess_tabular(self, x: pd.Series) -> pd.Series:
+    #     if len(x) == 0:
+    #         return x
+    #     # extract fid name
+    #     _x = x.loc[0].hp_values()
+    #     _x.pop("id")
+    #     fid_name = list(_x.keys())[0]
+    #     for i in x.index.values:
+    #         # extracting actual HPs from the tabular space
+    #         _config = self.pipeline_space.custom_grid_table.loc[x.loc[i]["id"].value].to_dict()
+    #         # updating fidelities as per the candidate set passed
+    #         _config.update({fid_name: x.loc[i][fid_name].value})
+    #         # placeholder config from the raw tabular space
+    #         config = self.pipeline_space.raw_tabular_space.sample(
+    #             patience=100, 
+    #             user_priors=True, 
+    #             ignore_fidelity=True  # True allows fidelity to appear in the sample
+    #         )
+    #         # copying values from table to placeholder config of type SearchSpace
+    #         config.load_from(_config)
+    #         # replacing the ID in the candidate set with the actual HPs of the config
+    #         x.loc[i] = config
+    #     return x
+
+    def preprocess(self, x: pd.Series) -> Tuple[Iterable, Iterable]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
         required by the multi-fidelity Expected Improvement acquisition function.
         """
         budget_list = []
+
+        if self.pipeline_space.has_tabular:
+            # preprocess tabular space differently
+            # expected input: IDs pertaining to the tabular data
+            # expected output: IDs pertaining to current observations and set of HPs
+            # x = self._preprocess_tabular(x)
+            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
+        start = timer()
+        indices_to_drop = []
+        for i, config in x.items():
+            target_fidelity = config.fidelity.lower
+            if i <= max(self.observations.seen_config_ids):
+                # IMPORTANT to set the fidelity at which EI will be calculated only for
+                # the partial configs that have been observed already
+                target_fidelity = config.fidelity.value + self.b_step
+                config.fidelity.value = min(
+                    target_fidelity, config.fidelity.upper
+                )  # to respect the bounded fidelity
+            else:
+                config.fidelity.value = target_fidelity
+
+            if np.isclose(target_fidelity, config.fidelity.value):
+                # the fidelity was set the configuration will be considered
+                budget_list.append(self.get_budget_level(config))
+            else:
+                # the fidelity was not set, the configuration will be dropped
+                indices_to_drop.append(i)
+        end = timer()
+        set_fidelities_time = end - start
+
+        # Drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
+        start = timer()
         performances = self.observations.get_best_performance_for_each_budget()
-
-        for _x in x:
-            budget_list.append(self.get_budget_level(_x))
-
+        end = timer()
+        get_perfs_time = end - start
+        start = timer()
         inc_list = []
         for budget_level in budget_list:
             if budget_level in performances.index:
@@ -44,24 +111,107 @@ class MFEI(ComprehensiveExpectedImprovement):
             else:
                 inc = self.observations.get_best_seen_performance()
             inc_list.append(inc)
+        end = timer()
+        build_inc_list_time = end - start
+        self.time_data = {"acq_set_partial_fidelities_time": set_fidelities_time,
+                          "acq_build_inc_list_time": build_inc_list_time}
 
         return x, torch.Tensor(inc_list)
+    
+    def preprocess_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
+        x, inc_list = self.preprocess(x)
+        return x.values.tolist(), inc_list
+    
+    def preprocess_deep_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
+        x, inc_list = self.preprocess(x)
+        start = timer()
+        x_lcs = []
+        for idx in x.index:
+            if idx in self.observations.df.index.levels[0]:
+                budget_level = max(0, self.get_budget_level(x[idx]) - 1)
+                lc = self.observations.extract_learning_curve(
+                    idx, budget_level
+                )
+            else:
+                # TODO: comment to explain why this is needed (karibbov)
+                # initialize a learning curve with a place holder
+                # This is later padded accordingly for the Conv1D layer
+                lc = [0.0]
+            x_lcs.append(lc)
+        self.surrogate_model.set_prediction_learning_curves(x_lcs)
+        end = timer()
+        set_lcs_time = end - start
+        self.time_data["acq_setting_lcs_time"] = set_lcs_time
+        return x.values.tolist(), inc_list
+
+    def preprocess_pfn(self, x: Iterable) -> Tuple[Iterable, Iterable, Iterable]:
+        """Prepares the configurations for appropriate EI calculation.
+
+        Takes a set of points and computes the budget and incumbent for each point, as
+        required by the multi-fidelity Expected Improvement acquisition function.
+        """
+        _x, inc_list = self.preprocess(x.copy())
+        _x_tok = self.observations.tokenize(_x, as_tensor=True)
+        len_partial = len(self.observations.seen_config_ids)
+        z_min = x[0].fidelity.lower
+        # converting fidelity to the discrete budget level
+        # STRICT ASSUMPTION: fidelity is the first dimension
+        _x_tok[:len_partial, 0] = (_x_tok[:len_partial, 0] + self.b_step - z_min) / self.b_step
+        return _x_tok, _x, inc_list
 
     def eval(
-        self, x: Iterable, asscalar: bool = False
+        self, x: pd.Series, asscalar: bool = False
+    ) -> Tuple[np.ndarray, pd.Series]:
+        # _x = x.copy()  # preprocessing needs to change the reference x Series so we don't copy here
+        if self.surrogate_model_name == "pfn":
+            _x_tok, _x, inc_list = self.preprocess_pfn(x.copy())  # IMPORTANT change from vanilla-EI
+            ei = self.eval_pfn_ei(_x_tok, inc_list)
+        elif self.surrogate_model_name == "deep_gp":
+            _x, inc_list = self.preprocess_deep_gp(x.copy())  # IMPORTANT change from vanilla-EI
+            ei = self.eval_gp_ei(_x, inc_list)
+            _x = pd.Series(_x, index=np.arange(len(_x)))
+        else:
+            _x, inc_list = self.preprocess_gp(x.copy())  # IMPORTANT change from vanilla-EI
+            ei = self.eval_gp_ei(_x, inc_list)
+            _x = pd.Series(_x, index=np.arange(len(_x)))
+        
+        if ei.is_cuda:
+            ei = ei.cpu()
+        if len(x) > 1 and asscalar:
+            return ei.detach().numpy(), _x
+        else:
+            return ei.detach().numpy().item(), _x
+
+    def eval_pfn_ei(
+        self, x: Iterable, inc_list: Iterable
+    ) -> Union[np.ndarray, torch.Tensor, float]:
+        """PFN-EI modified to preprocess samples and accept list of incumbents."""
+        # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
+        # _x = x.copy()
+        ei = self.surrogate_model.get_ei(x.to(self.surrogate_model.device), inc_list)
+        if len(ei.shape) == 2:
+            ei = ei.flatten()
+        return ei
+
+    def eval_gp_ei(
+        self, x: Iterable, inc_list: Iterable
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
-        x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
-
+        # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
         _x = x.copy()
+        start = timer()
         try:
             mu, cov = self.surrogate_model.predict(_x)
         except ValueError as e:
             raise e
+        
+        end = timer()
+        surr_predict_time = end - start
+        start = timer()
             # return -1.0  # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
 
-        mu_star = inc_list  # IMPORTANT change from vanilla-EI
+        mu_star = inc_list.to(mu.device)  # IMPORTANT change from vanilla-EI
 
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
         # u = (mu - mu_star - self.xi) / std
@@ -83,20 +233,22 @@ class MFEI(ComprehensiveExpectedImprovement):
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
                 sigma_n + torch.diag(cov)
             )
-        if isinstance(_x, list) and asscalar:
-            return ei.detach().numpy()
-        if asscalar:
-            ei = ei.detach().numpy().item()
+        end = timer()
+        compute_ei_time = end - start
+        self.time_data.update({"acq_surrogate_predict_time": surr_predict_time,
+                               "acq_compute_ei_time": compute_ei_time})
         return ei
 
     def set_state(
         self,
+        pipeline_space: SearchSpace,
         surrogate_model: Any,
         observations: MFObservedData,
         b_step: Union[int, float],
         **kwargs,
     ):
         # overload to select incumbent differently through observations
+        self.pipeline_space = pipeline_space
         self.surrogate_model = surrogate_model
         self.observations = observations
         self.b_step = b_step

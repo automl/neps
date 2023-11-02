@@ -2,16 +2,28 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import numpy as np
+import pandas as pd
+import torch
 
 from metahyper import instance_from_map
 
 from ..bayesian_optimization.models import SurrogateModelMapping
+from ..multi_fidelity.utils import normalize_vectorize_config
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
+from ..utils import map_real_hyperparameters_from_tabular_ids
 
-"""Base class for multi-fidelity Bayesian optimization for SH-based algorithms."""
+from pfns4hpo.bar_distribution import BarDistribution
+
+from timeit import default_timer as timer
 
 
 class MFBOBase:
+    """ Designed to work with model-based search on SH-based multi-fidelity algorithms.
+    
+    Requires certain strict assumptions about fidelities and rung maps.
+    """
+
     def _fit_models(self):
         """Performs necessary procedures to build and use models."""
 
@@ -173,137 +185,100 @@ class MFBOBase:
         return config
 
 
-class ModelBase:
-    """A policy for sampling configuration, i.e. the default for SH / hyperband
+class FreezeThawModel:
+    """ Designed to work with model search in unit step multi-fidelity algorithms."""
 
-    Args:
-        SamplingPolicy ([type]): [description]
-    """
-
-    def __init__(
-        self,
-        pipeline_space,
-        surrogate_model: str = "gp",
-        surrogate_model_args: dict = None,
-    ):
-        self.pipeline_space = pipeline_space
-
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            surrogate_model,
-            name="surrogate model",
-            kwargs=surrogate_model_args if surrogate_model_args is not None else {},
-        )
-
-    def _fantasize_pending(self, train_x, train_y, pending_x):
-        if len(pending_x) == 0:
-            return train_x, train_y
-        # fit model on finished evaluations
-        self.surrogate_model.fit(train_x, train_y)
-        # hallucinating: predict for the pending evaluations
-        _y, _ = self.surrogate_model.predict(pending_x)
-        _y = _y.detach().numpy().tolist()
-        # appending to training data
-        train_x.extend(pending_x)
-        train_y.extend(_y)
-        return train_x, train_y
-
-    def update_model(self, train_x, train_y, pending_x, decay_t=None):
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
-        self.surrogate_model.fit(train_x, train_y)
-        return self.surrogate_model, decay_t
-
-
-class MFEIModel(ModelBase):
-    def __init__(self, *args, **kwargs):
-        self.num_train_configs = 0
-        self.observed_configs = kwargs.get("observed_configs", None)
-        super().__init__(*args, **kwargs)
-
-    def _fantasize_pending(self, *args, **kwargs):  # pylint: disable=unused-argument
-        pending_configs = []
-
-        # Select configs that are neither pending nor resulted in error
-        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
-
-        # Get the config, performance values for the maximum budget runs that are completed
-        max_budget_samples = completed_configs.sort_index().groupby(level=0).last()
-        max_budget_configs = max_budget_samples[
-            self.observed_configs.config_col
-        ].to_list()
-        max_budget_perf = max_budget_samples[self.observed_configs.perf_col].to_list()
-
-        pending_condition = self.observed_configs.pending_condition
-        if pending_condition.any():
-            # TODO: Unique might not work here replace this (karibbov)
-            pending_configs = (
-                self.observed_configs.df[pending_condition]
-                .loc[(), self.observed_configs.config_col]
-                .unique()
-                .to_list()
-            )
-        return super()._fantasize_pending(
-            max_budget_configs, max_budget_perf, pending_configs
-        )
-
-    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
-        if train_x is None:
-            train_x = []
-        if train_y is None:
-            train_y = []
-        if pending_x is None:
-            pending_x = []
-
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
-        self.surrogate_model.fit(train_x, train_y)
-
-        return self.surrogate_model, decay_t
-
-
-class MFEIDeepModel(ModelBase):
     def __init__(
         self,
         pipeline_space,
         surrogate_model: str = "deep_gp",
         surrogate_model_args: dict = None,
-    ):
+    ):        
+        self.time_data = {}
+        self.observed_configs = None
         self.pipeline_space = pipeline_space
-
-        surrogate_model_args = (
+        self.surrogate_model_name = surrogate_model
+        self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
+        if self.surrogate_model_name in ["deep_gp", "pfn"]:
+            self.surrogate_model_args.update({"pipeline_space": pipeline_space})
 
-        if surrogate_model == "deep_gp":
-            surrogate_model_args.update({"pipeline_space": pipeline_space})
-
-        super().__init__(pipeline_space, surrogate_model, surrogate_model_args)
+        # instantiate the surrogate model
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            self.surrogate_model_name,
+            name="surrogate model",
+            kwargs=self.surrogate_model_args,
+        )
 
     def _fantasize_pending(self, train_x, train_y, pending_x):
         # Select configs that are neither pending nor resulted in error
         completed_configs = self.observed_configs.completed_runs.copy(deep=True)
+        start = timer()
+        # IMPORTANT: preprocess observations to get appropriate training data
         train_x, train_lcs, train_y = self.observed_configs.get_training_data_4DyHPO(
-            completed_configs
+            completed_configs, self.pipeline_space
         )
-
+        end = timer()
+        prep_t_data_time = end - start
+        self.time_data["prep_t_data_time"] = prep_t_data_time
         pending_condition = self.observed_configs.pending_condition
-
         if pending_condition.any():
             pending_configs = self.observed_configs.df.loc[pending_condition]
             pending_x, pending_lcs, _ = self.observed_configs.get_training_data_4DyHPO(
                 pending_configs
             )
-            self.surrogate_model.fit(train_x, train_y, train_lcs)
-            _y, _ = self.surrogate_model.predict(pending_x, pending_lcs)
+            self._fit(train_x, train_y, train_lcs)
+            _y, _ = self._predict(pending_x, pending_lcs)
             _y = _y.tolist()
 
             train_x.extend(pending_x)
             train_y.extend(_y)
             train_lcs.extend(pending_lcs)
+
         return train_x, train_y, train_lcs
+
+    def _fit(self, train_x, train_y, train_lcs):
+        if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
+            self.surrogate_model.fit(train_x, train_y)
+        elif self.surrogate_model_name in ["deep_gp", "pfn"]:
+            self.surrogate_model.fit(train_x, train_y, train_lcs)
+        else:
+            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
+            raise ValueError(
+                f"Surrogate model {self.surrogate_model_name} not supported!"
+            )
+            
+    def _predict(self, test_x, test_lcs):
+        if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
+            self.surrogate_model.predict(test_x)
+        elif self.surrogate_model_name in ["deep_gp", "pfn"]:
+            self.surrogate_model.predict(test_x, test_lcs)
+        else:
+            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
+            raise ValueError(
+                f"Surrogate model {self.surrogate_model_name} not supported!"
+            )
+
+    def set_state(self, pipeline_space, surrogate_model_args, **kwargs):
+        self.pipeline_space = pipeline_space
+        self.surrogate_model_args = (
+            surrogate_model_args if surrogate_model_args is not None else {}
+        )
+        # only to handle tabular spaces
+        if self.pipeline_space.has_tabular:
+            if self.surrogate_model_name in ["deep_gp", "pfn"]:
+                self.surrogate_model_args.update({
+                    "pipeline_space": self.pipeline_space.raw_tabular_space
+                })
+            # instantiate the surrogate model, again, with the new pipeline space
+            self.surrogate_model = instance_from_map(
+                SurrogateModelMapping,
+                self.surrogate_model_name,
+                name="surrogate model",
+                kwargs=self.surrogate_model_args,
+            )
 
     def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
         if train_x is None:
@@ -315,9 +290,79 @@ class MFEIDeepModel(ModelBase):
 
         if decay_t is None:
             decay_t = len(train_x)
-
+        start = timer()
         train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
+        end = timer()
+        fantasize_time = end - start
         # print(train_x, train_y, train_lcs)
-        self.surrogate_model.fit(train_x, train_y, train_lcs)
+        start = timer()
+        self._fit(train_x, train_y, train_lcs)
+
+        end = timer()
+
+        _time_data = {}
+        if self.surrogate_model_name in ["deep_gp"]:
+            _time_data = self.surrogate_model.time_data
+        fit_time = end - start
+        self.time_data["fantasize_time"] = fantasize_time
+        self.time_data["complete_fit_time"] = fit_time
+        self.time_data.update(_time_data)
 
         return self.surrogate_model, decay_t
+
+
+class PFNSurrogate(FreezeThawModel):
+    """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.train_x = None
+        self.train_y = None
+
+    def _fit(self, *args):
+        assert self.surrogate_model_name == "pfn"
+        self.preprocess_training_set()
+        self.surrogate_model.fit(self.train_x, self.train_y)
+
+    def preprocess_training_set(self):
+        _configs = self.observed_configs.df.config.values.copy()
+
+        # onlf if tabular space is present
+        if self.pipeline_space.has_tabular:
+            # placeholder index, will be driooed
+            _idxs = np.arange(len(_configs))
+            # mapping the (id, epoch) space of tabular configs to the actual HPs
+            _configs = map_real_hyperparameters_from_tabular_ids(
+                pd.Series(_configs, index=_idxs), self.pipeline_space
+            ).values
+        
+        device = self.surrogate_model.device
+        # TODO: fix or make consistent with `tokenize``
+        configs, idxs, performances = self.observed_configs.get_tokenized_data(
+            self.observed_configs.df.copy().assign(config=_configs)
+        )
+        # TODO: account for fantasization
+        self.train_x = torch.Tensor(np.hstack([idxs, configs])).to(device)
+        self.train_y = torch.Tensor(performances).to(device)
+
+    def preprocess_test_set(self, test_x):
+        _len = len(self.observed_configs.all_configs_list())
+        device = self.surrogate_model.device
+
+        new_idxs = np.arange(_len, len(test_x))
+        base_fidelity = np.array([1] * len(new_idxs))
+        new_token_ids = np.hstack((
+            new_idxs.T.reshape(-1, 1), base_fidelity.T.reshape(-1, 1)
+        ))
+        # the following operation takes each element in the array and stacks it vertically
+        # in this case, should convert a (n,) array to (n, 2) by flattening the elements
+        existing_token_ids = np.vstack(self.observed_configs.token_ids).astype(int)
+        token_ids = np.vstack((existing_token_ids, new_token_ids))
+
+        configs = np.array([normalize_vectorize_config(c) for c in test_x])
+        test_x = torch.Tensor(np.hstack([token_ids, configs])).to(device)
+        return test_x
+
+    def _predict(self, test_x, test_lcs):
+        assert self.surrogate_model_name == "pfn"
+        test_x = self.preprocess_test_set(test_x)
+        return self.surrogate_model.predict(self.train_x, self.train_y, test_x)

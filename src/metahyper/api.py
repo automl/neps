@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 from neps.plot.tensorboard_eval import tblogger
 
@@ -206,16 +206,29 @@ def _check_max_evaluations(
 
     return evaluation_count >= max_evaluations
 
+from timeit import default_timer as timer
 
-def _sample_config(optimization_dir, sampler, serializer, logger):
+def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks):
     # First load the results and state of the optimizer
+    logger.info("Metahyper: Started collecting previous and pending data")
+    start = timer()
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger, do_lock=False
     )
+    end = timer()
+    logger.info("Metahyper: Finished collecting previous and pending data")
+    logger.info(f"took {end - start} seconds")
 
     base_result_directory = optimization_dir / "results"
 
     logger.debug("Sampling a new configuration")
+    
+    for hook in pre_load_hooks:
+        # executes operations on the sampler before setting its state
+        # can be used for setting custom constraints on the optimizer state
+        # for example, can be used to input custom grid of configs, meta learning 
+        # information for surrogate building, any non-stationary auxiliary information
+        sampler = hook(sampler)
     sampler.load_results(previous_results, pending_configs)
     config, config_id, previous_config_id = sampler.get_config_and_ids()
 
@@ -338,6 +351,7 @@ def run(
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
+    pre_load_hooks: List=[],
 ):
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:
@@ -392,7 +406,9 @@ def run(
                         config,
                         pipeline_directory,
                         previous_pipeline_directory,
-                    ) = _sample_config(optimization_dir, sampler, serializer, logger)
+                    ) = _sample_config(
+                        optimization_dir, sampler, serializer, logger, pre_load_hooks
+                    )
                 if tblogger.logger_init_bool or tblogger.logger_bool:
                     # This block manages configuration data, potentially for TensorBoard.
                     # Captures details during sampling; initial config always captured.

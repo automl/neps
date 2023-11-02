@@ -109,6 +109,7 @@ def run(
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
+    pre_load_hooks: List=[],
     searcher: Literal[
         "default",
         "bayesian_optimization",
@@ -154,6 +155,7 @@ def run(
             supress any error and will use given loss value instead. default: None
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
+        pre_load_hooks: List of functions that will be called before load_results().
         searcher: Which optimizer to use. This is usually only needed by neps developers.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
@@ -213,7 +215,7 @@ def run(
             else:
                 new_pipeline_space[key] = value
         pipeline_space = new_pipeline_space
-
+        
         # Transform to neps internal representation of the pipeline space
         pipeline_space = SearchSpace(**pipeline_space)
     except TypeError as e:
@@ -256,4 +258,5 @@ def run(
         post_evaluation_hook=_post_evaluation_hook_function(
             loss_value_on_error, ignore_errors
         ),
+        pre_load_hooks=pre_load_hooks,
     )
