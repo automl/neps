@@ -6,10 +6,9 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal, List
 
 import ConfigSpace as CS
-from typing_extensions import Literal
 
 import metahyper
 from metahyper import instance_from_map
@@ -18,6 +17,7 @@ from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .utils.common import get_searcher_data
 from .utils.result_utils import get_loss
 
 
@@ -83,14 +83,11 @@ def _post_evaluation_hook_function(
                 f"Finished evaluating config {config_id}"
                 f" -- new best with loss {float(loss) :.3f}"
             )
-            if tblogger.logger_bool:
-                tblogger.tracking_incumbent_api(best_loss=loss)
 
         else:
             logger.info(f"Finished evaluating config {config_id}")
-            # Track the incumbent from the best loss
-            if tblogger.logger_bool:
-                tblogger.tracking_incumbent_api(best_loss=best_loss)
+
+        tblogger.end_of_config()
 
     return _post_evaluation_hook
 
@@ -115,10 +112,13 @@ def run(
         "bayesian_optimization",
         "random_search",
         "hyperband",
-        "hyperband_custom_default",
+        "priorband",
         "mobster",
+        "asha",
+        "regularized_evolution",
     ]
     | BaseOptimizer = "default",
+    searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -157,6 +157,8 @@ def run(
             supress any error and will use given cost value instead. default: None
         pre_load_hooks: List of functions that will be called before load_results().
         searcher: Which optimizer to use. This is usually only needed by neps developers.
+        searcher_path: The path to the user created searcher. None when the user
+            is using NePS designed searchers.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -222,41 +224,101 @@ def run(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if searcher == "default" or searcher is None:
-        if pipeline_space.has_fidelity:
-            searcher = "hyperband"
-            if hasattr(pipeline_space, "has_prior") and pipeline_space.has_prior:
-                searcher = "hyperband_custom_default"
-        else:
-            searcher = "bayesian_optimization"
-        logger.info(f"Running {searcher} as the searcher")
+    user_defined_searcher = False
 
-    searcher_kwargs.update(
+    if searcher_path is not None:
+        # The users has their own custom searcher.
+        logging.info("Preparing to run user created searcher")
+
+        config = get_searcher_data(searcher, searcher_path)
+        user_defined_searcher = True
+    else:
+        if searcher in ["default", None]:
+            # NePS decides the searcher according to the pipeline space.
+            if pipeline_space.has_prior:
+                searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
+            else:
+                searcher = (
+                    "hyperband"
+                    if pipeline_space.has_fidelity
+                    else "bayesian_optimization"
+                )
+        else:
+            # Users choose one of NePS searchers.
+            user_defined_searcher = True
+
+        # Fetching the searcher data, throws an error when the searcher is not found
+        config = get_searcher_data(searcher)
+
+    searcher_alg = config["searcher_init"]["algorithm"]
+    searcher_config = config["searcher_kwargs"]
+
+    logger.info(f"Running {searcher} as the searcher")
+    logger.info(f"Algorithm: {searcher_alg}")
+
+    # Used to create the yaml holding information about the searcher.
+    # Also important for testing and debugging the api.
+    searcher_info = {
+        "searcher_name": searcher,
+        "searcher_alg": searcher_alg,
+        "user_defined_searcher": user_defined_searcher,
+        "searcher_args_user_modified": False,
+    }
+
+    # Updating searcher arguments from searcher_kwargs
+    for key, value in searcher_kwargs.items():
+        if user_defined_searcher:
+            if key not in searcher_config or searcher_config[key] != value:
+                searcher_config[key] = value
+                logger.info(
+                    f"Updating the current searcher argument '{key}'"
+                    f" with the value '{value}'"
+                )
+            else:
+                logger.info(
+                    f"The searcher argument '{key}' has the same"
+                    f" value '{value}' as default."
+                )
+            searcher_info["searcher_args_user_modified"] = True
+        else:
+            # No searcher argument updates when NePS decides the searcher.
+            logger.info(35 * "=" + "WARNING" + 35 * "=")
+            logger.info("CHANGINE ARGUMENTS ONLY WORKS WHEN SEARCHER IS DEFINED")
+            logger.info(
+                f"The searcher argument '{key}' will not change to '{value}'"
+                f" because NePS chose the searcher"
+            )
+            searcher_info["searcher_args_user_modified"] = False
+
+    searcher_config.update(
         {
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
         }
     )
-    searcher = instance_from_map(SearcherMapping, searcher, "searcher", as_class=True)(
+    searcher_instance = instance_from_map(
+        SearcherMapping, searcher_alg, "searcher", as_class=True
+    )(
         pipeline_space=pipeline_space,
         budget=max_cost_total,  # TODO: use max_cost_total everywhere
-        **searcher_kwargs,
+        **searcher_config,
     )
 
     metahyper.run(
         run_pipeline,
-        searcher,
+        searcher_instance,
+        searcher_info,
         root_directory,
-        development_stage_id=development_stage_id,
-        task_id=task_id,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
-        overwrite_optimization_dir=overwrite_working_directory,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+        development_stage_id=development_stage_id,
+        task_id=task_id,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook_function(
             loss_value_on_error, ignore_errors
         ),
+        overwrite_optimization_dir=overwrite_working_directory,
         pre_load_hooks=pre_load_hooks,
     )

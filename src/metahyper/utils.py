@@ -63,7 +63,7 @@ class YamlSerializer:
         with open(path) as file_stream:
             return yaml.full_load(file_stream)
 
-    def dump(self, data: Any, path: Path | str, add_suffix=True):
+    def dump(self, data: Any, path: Path | str, add_suffix=True, sort_keys=True):
         if self.PRE_SERIALIZE:
             data = get_data_representation(data)
         path = str(path)
@@ -71,7 +71,7 @@ class YamlSerializer:
             path = path + self.SUFFIX
         with open(path, "w") as file_stream:
             try:
-                return yaml.safe_dump(data, file_stream)
+                return yaml.safe_dump(data, file_stream, sort_keys=sort_keys)
             except yaml.representer.RepresenterError as e:
                 raise TypeError(
                     "You should return objects that are JSON-serializable. The object "

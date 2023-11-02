@@ -37,6 +37,7 @@ all_examples = core_examples + [  # Run on github actions
     "experimental/hierarchical_architecture_hierarchical_GP",
     "convenience/logging_additional_info",
     "convenience/working_directory_per_pipeline",
+    "convenience/neps_tblogger_tutorial",
 ]
 
 

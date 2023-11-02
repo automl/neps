@@ -24,7 +24,7 @@ Consider running `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` .
 Then finally create the environment and activate it
 
 ```bash
-conda create -n neps python=3.7.5
+conda create -n neps python=3.10
 conda activate neps
 ```
 
@@ -46,7 +46,14 @@ to your `.zshrc` / `.bashrc` or alternatively simply running the export manually
 
 ## 3. Install the neps Package Using poetry
 
-Inside the main directory of neps run
+Clone the repository, e.g.,
+
+```bash
+git clone https://github.com/automl/neps.git
+cd neps
+```
+
+Then, inside the main directory of neps run
 
 ```bash
 poetry install

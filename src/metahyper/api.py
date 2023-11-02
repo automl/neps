@@ -12,8 +12,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List
 
-from neps.plot.tensorboard_eval import tblogger
-
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
 
@@ -28,6 +26,28 @@ class ConfigResult:
 
     def __lt__(self, other):
         return self.result["loss"] < other.result["loss"]
+
+
+class ConfigInRun:
+    config: Any | None = None
+    config_id: str | None = None
+    pipeline_directory: Path | str | None = None
+    previous_pipeline_directory: Path | str | None = None
+    optimization_dir: Path | str | None = None
+
+    @staticmethod
+    def store_in_run_data(
+        config,
+        config_id,
+        pipeline_directory,
+        previous_pipeline_directory,
+        optimization_dir,
+    ):
+        ConfigInRun.config = config
+        ConfigInRun.config_id = config_id
+        ConfigInRun.pipeline_directory = Path(pipeline_directory)
+        ConfigInRun.previous_pipeline_directory = previous_pipeline_directory
+        ConfigInRun.optimization_dir = Path(optimization_dir)
 
 
 class Sampler(ABC):
@@ -206,18 +226,12 @@ def _check_max_evaluations(
 
     return evaluation_count >= max_evaluations
 
-from timeit import default_timer as timer
 
 def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks):
     # First load the results and state of the optimizer
-    logger.info("Metahyper: Started collecting previous and pending data")
-    start = timer()
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger, do_lock=False
     )
-    end = timer()
-    logger.info("Metahyper: Finished collecting previous and pending data")
-    logger.info(f"took {end - start} seconds")
 
     base_result_directory = optimization_dir / "results"
 
@@ -229,6 +243,7 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
         # for example, can be used to input custom grid of configs, meta learning 
         # information for surrogate building, any non-stationary auxiliary information
         sampler = hook(sampler)
+    
     sampler.load_results(previous_results, pending_configs)
     config, config_id, previous_config_id = sampler.get_config_and_ids()
 
@@ -237,7 +252,10 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
 
     if pending_configs_free:
         logger.warning(
-            f"There are {len(pending_configs_free)} configs that were sampled, but have no worker assigned. Sometimes this is due to a delay in the filesystem communication, but most likely some configs crashed during their execution or a jobtime-limit was reached."
+            f"There are {len(pending_configs_free)} configs that were sampled, but "
+            "have no worker assigned. Sometimes this is due to a delay in the filesystem "
+            "communication, but most likely some configs crashed during their execution "
+            "or a jobtime-limit was reached."
         )
 
     if previous_config_id is not None:
@@ -342,6 +360,7 @@ def _evaluate_config(
 def run(
     evaluation_fn,
     sampler: Sampler,
+    sampler_info: dict,
     optimization_dir,
     max_evaluations_total=None,
     max_evaluations_per_run=None,
@@ -368,12 +387,18 @@ def run(
         shutil.rmtree(optimization_dir)
 
     sampler_state_file = optimization_dir / ".optimizer_state.yaml"
+    sampler_info_file = optimization_dir / ".optimizer_info.yaml"
     base_result_directory = optimization_dir / "results"
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
     decision_lock_file = optimization_dir / ".decision_lock"
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
+
+    # Check if the directory already exists
+    if not Path(sampler_info_file).exists():
+        # Write the sampler_info to a YAML file
+        serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
 
     evaluations_in_this_run = 0
     while True:
@@ -409,19 +434,14 @@ def run(
                     ) = _sample_config(
                         optimization_dir, sampler, serializer, logger, pre_load_hooks
                     )
-                if tblogger.logger_init_bool or tblogger.logger_bool:
-                    # This block manages configuration data, potentially for TensorBoard.
-                    # Captures details during sampling; initial config always captured.
-                    # In later rounds, captures if `logger_bool` is True; stops if False.
-                    # Initial details gathered for `run_pipeline` pre-TensorBoard decision.
-                    tblogger.config_track_init_api(
-                        config_id=config_id,
-                        config=config,
-                        config_working_directory=pipeline_directory,
-                        config_previous_directory=previous_pipeline_directory,
-                        optim_path=optimization_dir,
+                    # Storing the config details in ConfigInRun
+                    ConfigInRun.store_in_run_data(
+                        config,
+                        config_id,
+                        pipeline_directory,
+                        previous_pipeline_directory,
+                        optimization_dir,
                     )
-                    tblogger.logger_init_bool = False
 
                 config_lock_file = pipeline_directory / ".config_lock"
                 config_lock_file.touch(exist_ok=True)

@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import math
 import os
-import warnings
 from pathlib import Path
 
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
+
+from metahyper.api import ConfigInRun
+
+from ..status.status import get_summary_dict
+from ..utils.common import get_initial_directory
 
 
 class SummaryWriter_(SummaryWriter):
@@ -49,48 +53,31 @@ class tblogger:
     optim_path: Path | None = None
     config_previous_directory: Path | None = None
 
-    logger_init_bool: bool = True
-    """logger_init_bool is only used once to capture configuration data
-    for the first configuration, and then turned false for the entire run."""
+    disable_logging: bool = False
 
     logger_bool: bool = False
     """logger_bool is true only if tblogger.log is used by the user, this
     allows to always capturing the configuration data."""
 
-    disable_logging: bool = False
-    """disable_logging is a hard switch to disable the logging feature
-    if it was turned true."""
-
     loss: float | None = None
     current_epoch: int | None = None
-    scalar_accuracy_mode: bool = False
-    hparam_accuracy_mode: bool = False
 
-    incum_tracker: int | None = None
-    incum_val: float | None = None
+    write_incumbent: bool | None = None
 
     config_writer: SummaryWriter_ | None = None
     summary_writer: SummaryWriter_ | None = None
 
     @staticmethod
-    def config_track_init_api(
-        config_id: str,
-        config: dict,
-        config_working_directory: Path,
-        optim_path: Path,
-        config_previous_directory: Path | None = None,
-    ) -> None:
+    def _initiate_internal_configurations() -> None:
         """
         Track the Configuration space data from the way handled by neps metahyper
         '_sample_config' to keep in sync with config ids and directories NePS is
         operating on.
         """
-
-        tblogger.config = config
-        tblogger.config_id = config_id
-        tblogger.config_working_directory = config_working_directory
-        tblogger.optim_path = optim_path
-        tblogger.config_previous_directory = config_previous_directory
+        tblogger.config_working_directory = ConfigInRun.pipeline_directory
+        tblogger.config_previous_directory = ConfigInRun.previous_pipeline_directory
+        tblogger.optim_path = ConfigInRun.optimization_dir
+        tblogger.config = ConfigInRun.config
 
     @staticmethod
     def _is_initialized() -> bool:
@@ -100,65 +87,42 @@ class tblogger:
     @staticmethod
     def _initialize_writers() -> None:
         # This code runs only once per config, to assign that config a config_writer.
-        if tblogger.config_previous_directory is None:
+        if (
+            tblogger.config_previous_directory is None
+            and tblogger.config_working_directory
+        ):
             # If no fidelities are there yet, define the writer via the config_id
+            tblogger.config_id = str(tblogger.config_working_directory).rsplit(
+                "/", maxsplit=1
+            )[-1]
             tblogger.config_writer = SummaryWriter_(
                 tblogger.config_working_directory / "tbevents"
             )
             return
-        while not tblogger._is_initialized():
-            # Ensure proper directory for TensorBoard data appending.
-            # Search for the first fidelity directory to store tfevent files.
-
-            prev_dir_id_from_init = (
-                tblogger.config_working_directory / "previous_config.id"
+        # Searching for the initial directory where tensorboard events are stored.
+        if tblogger.config_working_directory:
+            init_dir = get_initial_directory(
+                pipeline_directory=tblogger.config_working_directory
             )
-            if tblogger.config_previous_directory is not None:
-                get_tbevent_dir = tblogger.config_previous_directory / "tbevents"
-            else:
-                warnings.warn(
-                    "There should be a previous config directory at this stage."
-                    "Prone to failure"
-                )
-
-            # This should execute when having Config_x_1 and Config_x_0
-            if os.path.exists(get_tbevent_dir):
-                # When tfevents directory is detected => we are at the first
-                # fidelity directory, create writer.
-                with open(prev_dir_id_from_init) as file:
-                    contents = file.read()
-                    tblogger.config_id = contents
-                tblogger.config_writer = SummaryWriter_(
-                    tblogger.config_previous_directory / "tbevents"
-                )
+            tblogger.config_id = str(init_dir).rsplit("/", maxsplit=1)[-1]
+            if os.path.exists(init_dir / "tbevents"):
+                tblogger.config_writer = SummaryWriter_(init_dir / "tbevents")
                 return
-
-            # This should execute when having Config_x_y and Config_x_y where y > 0
-            if tblogger.config_previous_directory is not None:
-                prev_dir_id_from_prev = (
-                    tblogger.config_previous_directory / "previous_config.id"
-                )
             else:
-                warnings.warn(
-                    "There should be a previous config directory at this stage."
-                    "Prone to failure"
-                )
-
-            if os.path.exists(prev_dir_id_from_prev):
-                # To get the new previous config directory
-                with open(prev_dir_id_from_prev) as file:
-                    contents = file.read()
-                    tblogger.config_id = contents
-                    tblogger.config_working_directory = tblogger.config_previous_directory
-                    tblogger.config_previous_directory = (
-                        tblogger.optim_path / "results" / f"config_{contents}"
-                    )
-            else:
-                # If no tbevents found after traversing all config directories,
-                # raise an error to prevent indefinite 'while 1' loop.
                 raise FileNotFoundError(
-                    "'tbevents' was not found in the directory of the initial fidelity."
+                    "'tbevents' was not found in the initial directory of the configuration."
                 )
+
+    @staticmethod
+    def end_of_config():
+        if tblogger.config_writer:
+            # Close and reset previous config writers for consistent logging.
+            # Prevent conflicts by reinitializing writers when logging ongoing.
+            tblogger.config_writer.close()
+            tblogger.config_writer = None
+
+        if tblogger.write_incumbent:
+            tblogger._tracking_incumbent_api()
 
     @staticmethod
     def _make_grid(images: torch.Tensor, nrow: int, padding: int = 2) -> torch.Tensor:
@@ -167,14 +131,14 @@ class tblogger:
 
         Args:
             images (torch.Tensor): The input batch of images with shape
-                                (batch_size, num_channels, height, width).
+                (batch_size, num_channels, height, width).
             nrow (int): The number of rows on the grid.
             padding (int, optional): The padding between images in the grid.
-                                Default is 2.
+                Default is 2.
 
         Returns:
             torch.Tensor: A grid of images with shape:
-                        (num_channels, total_height, total_width)
+                (num_channels, total_height, total_width)
         """
         batch_size, num_channels, height, width = images.size()
         x_mapping = min(nrow, batch_size)
@@ -201,7 +165,7 @@ class tblogger:
         return grid
 
     @staticmethod
-    def scalar_logging(value: float) -> tuple:
+    def scalar_logging(value: float) -> tuple[str, float]:
         """
         Prepare a scalar value for logging.
 
@@ -209,7 +173,7 @@ class tblogger:
             value (float): The scalar value to be logged.
 
         Returns:
-            tuple: A tuple containing the logging mode and the value for logging.
+            Tuple: A tuple containing the logging mode and the value for logging.
                 The tuple format is (logging_mode, value).
         """
         logging_mode = "scalar"
@@ -239,15 +203,15 @@ class tblogger:
             image (torch.Tensor): Image tensor to be logged.
             counter (int): Counter value associated with the images.
             resize_images (list of int, optional): List of integers for image
-                                                sizes after resizing (default: None).
+                sizes after resizing (default: None).
             random_images (bool, optional): Images are randomly selected
-                                        if True (default: True).
+                if True (default: True).
             num_images (int, optional): Number of images to log (default: 20).
             seed (int or np.random.RandomState or None, optional): Seed value
                 or RandomState instance to control randomness (default: None).
 
         Returns:
-            tuple: A tuple containing the logging mode and all the necessary
+            Tuple: A tuple containing the logging mode and all the necessary
             parameters for image logging.
                 Tuple: (logging_mode, img_tensor, counter, resize_images,
                                 random_images, num_images, seed).
@@ -273,14 +237,10 @@ class tblogger:
             value (float or int): The scalar value to be logged. Default is None.
 
         Note:
-            If the tag is 'Loss' and scalar_accuracy_mode is True, the tag will
-            be changed to 'Accuracy', and the value will be transformed accordingly.
-
             The function relies on the _initialize_writers to ensure the
             TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
-                - tblogger.scalar_accuracy_mode (bool)
                 - tblogger.config_writer (SummaryWriter_)
                 - tblogger.config_id (str)
 
@@ -290,14 +250,10 @@ class tblogger:
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
 
-        if tag == "Loss" and tblogger.scalar_accuracy_mode:
-            tag = "Accuracy"
-            value = (1 - value) * 100
-
         # Just an extra safety measure
         if tblogger.config_writer is not None:
             tblogger.config_writer.add_scalar(
-                tag="Config_" + str(tblogger.config_id) + "/" + tag,
+                tag=str(tblogger.config_id) + "/" + tag,
                 scalar_value=value,
                 global_step=tblogger.current_epoch,
             )
@@ -325,9 +281,9 @@ class tblogger:
             image (torch.Tensor): Image tensor to be logged.
             counter (int): Counter value associated with the images.
             resize_images (list of int, optional): List of integers for image
-                                                sizes after resizing (default: None).
+                sizes after resizing (default: None).
             random_images (bool, optional): Images are randomly selected
-                                        if True (default: True).
+                if True (default: True).
             num_images (int, optional): Number of images to log (default: 20).
             seed (int or np.random.RandomState or None, optional): Seed value
                 or RandomState instance to control randomness (default: None).
@@ -350,7 +306,7 @@ class tblogger:
         if resize_images is None:
             resize_images = [32, 32]
 
-        if tblogger.current_epoch % counter == 0:
+        if tblogger.current_epoch and tblogger.current_epoch % counter == 0:
             # Log every multiple of "counter"
 
             if num_images > len(image):
@@ -381,7 +337,7 @@ class tblogger:
             # Just an extra safety measure
             if tblogger.config_writer is not None:
                 tblogger.config_writer.add_image(
-                    tag="Config_" + str(tblogger.config_id) + "/" + tag,
+                    tag=str(tblogger.config_id) + "/" + tag,
                     img_tensor=img_grid,
                     global_step=tblogger.current_epoch,
                 )
@@ -402,7 +358,6 @@ class tblogger:
             TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
-                - tblogger.hparam_accuracy_mode (bool)
                 - tblogger.loss (float)
                 - tblogger.config_writer (SummaryWriter_)
                 - tblogger.config (dict)
@@ -415,13 +370,8 @@ class tblogger:
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
 
-        if tblogger.hparam_accuracy_mode:
-            # Changes the loss to accuracy and logs in accuracy terms.
-            str_name = "Accuracy"
-            str_value = (1 - tblogger.loss) * 100
-        else:
-            str_name = "Loss"
-            str_value = tblogger.loss
+        str_name = "Loss"
+        str_value = tblogger.loss
 
         values = {str_name: str_value}
         # Just an extra safety measure
@@ -438,55 +388,29 @@ class tblogger:
             )
 
     @staticmethod
-    def tracking_incumbent_api(best_loss: float) -> None:
+    def _tracking_incumbent_api() -> None:
         """
         Track the incumbent (best) loss and log it in the TensorBoard summary.
 
-        Args:
-            best_loss (float): The best loss value to be tracked, according
-            to the _post_hook_function of NePS.
-
         Note:
             The function relies on the following global variables:
-                - tblogger.config_writer (SummaryWriter_)
                 - tblogger.optim_path (str)
-                - tblogger.incum_tracker (int)
-                - tblogger.incum_val (float)
                 - tblogger.summary_writer (SummaryWriter_)
 
             The function logs the incumbent trajectory in TensorBoard.
-
-            It increments the incumbent tracker based on occurrences of
-            "Config ID" in the 'all_losses_and_configs.txt' file.
         """
-        if tblogger.config_writer:
-            # Close and reset previous config writers for consistent logging.
-            # Prevent conflicts by reinitializing writers when logging ongoing.
-            tblogger.config_writer.close()
-            tblogger.config_writer = None
+        summary_dict = get_summary_dict(tblogger.optim_path, add_details=True)
 
-        file_path = str(tblogger.optim_path) + "/all_losses_and_configs.txt"
-        tblogger.incum_tracker = 0
-        if os.path.exists(file_path):
-            with open(file_path) as f:
-                # Count "Config ID" occurrences to track completed configurations.
-                tblogger.incum_tracker = sum(line.count("Config ID") for line in f)
-        else:
-            raise FileExistsError(
-                "all_losses_and_configs.txt does not exist in the optimization directory"
-            )
+        incum_tracker = summary_dict["num_evaluated_configs"]
+        incum_val = summary_dict["best_loss"]
 
-        tblogger.incum_val = float(best_loss)
-
-        logdir = str(tblogger.optim_path) + "/summary"
-
-        if tblogger.summary_writer is None:
-            tblogger.summary_writer = SummaryWriter_(logdir)
+        if tblogger.summary_writer is None and tblogger.optim_path:
+            tblogger.summary_writer = SummaryWriter_(tblogger.optim_path / "summary")
 
         tblogger.summary_writer.add_scalar(
             tag="Summary/Incumbent_graph",
-            scalar_value=tblogger.incum_val,
-            global_step=tblogger.incum_tracker,
+            scalar_value=incum_val,
+            global_step=incum_tracker,
         )
 
         # Frequent writer open/close creates new 'tfevent' files due to
@@ -536,59 +460,55 @@ class tblogger:
     def log(
         loss: float,
         current_epoch: int,
-        writer_scalar: bool = True,
-        writer_hparam: bool = True,
-        scalar_accuracy_mode: bool = False,
-        hparam_accuracy_mode: bool = False,
-        data: dict | None = None,
+        writer_config_scalar: bool = True,
+        writer_config_hparam: bool = True,
+        write_summary_incumbent: bool = False,
+        extra_data: dict | None = None,
     ) -> None:
         """
         Log experiment data to the logger, including scalar values,
         hyperparameters, and images.
 
         Args:
-            loss (float): Current loss value in training.
+            loss (float): Current loss value.
             current_epoch (int): Current epoch of the experiment
-                                (used as the global step).
+                (used as the global step).
             writer_scalar (bool, optional): Displaying the loss or accuracy
-                                        curve on tensorboard (default: True)
+                curve on tensorboard (default: True)
             writer_hparam (bool, optional): Write hyperparameters logging of
-                                        the configs (default: True).
-            scalar_accuracy_mode (bool, optional): Interpret 'loss' as 'accuracy'
-                                                and change value (default: False).
-            hparam_accuracy_mode (bool, optional): Interpret 'loss' as 'accuracy'
-                                                and change value (default: False).
-            data (dict, optional): Additional experiment data for logging.
+                the configs (default: True).
+            extra_data (dict, optional): Additional experiment data for logging.
         """
-        tblogger.current_epoch = current_epoch
-        tblogger.loss = loss
-        tblogger.scalar_accuracy_mode = scalar_accuracy_mode
-        tblogger.hparam_accuracy_mode = hparam_accuracy_mode
-
         if tblogger.disable_logging:
             tblogger.logger_bool = False
             return
 
         tblogger.logger_bool = True
 
-        if writer_scalar:
+        tblogger.current_epoch = current_epoch
+        tblogger.loss = loss
+        tblogger.write_incumbent = write_summary_incumbent
+
+        tblogger._initiate_internal_configurations()
+
+        if writer_config_scalar:
             tblogger._write_scalar_config(tag="Loss", value=loss)
 
-        if writer_hparam:
+        if writer_config_hparam:
             tblogger._write_hparam_config()
 
-        if data is not None:
-            for key in data:
-                if data[key][0] == "scalar":
-                    tblogger._write_scalar_config(tag=str(key), value=data[key][1])
+        if extra_data is not None:
+            for key in extra_data:
+                if extra_data[key][0] == "scalar":
+                    tblogger._write_scalar_config(tag=str(key), value=extra_data[key][1])
 
-                elif data[key][0] == "image":
+                elif extra_data[key][0] == "image":
                     tblogger._write_image_config(
                         tag=str(key),
-                        image=data[key][1],
-                        counter=data[key][2],
-                        resize_images=data[key][3],
-                        random_images=data[key][4],
-                        num_images=data[key][5],
-                        seed=data[key][6],
+                        image=extra_data[key][1],
+                        counter=extra_data[key][2],
+                        resize_images=extra_data[key][3],
+                        random_images=extra_data[key][4],
+                        num_images=extra_data[key][5],
+                        seed=extra_data[key][6],
                     )
