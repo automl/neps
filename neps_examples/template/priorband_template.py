@@ -99,8 +99,8 @@ def run_pipeline(
     # loading the checkpoint if it exists
     previous_state = load_checkpoint(  # predefined function from neps
         previous_pipeline_directory=previous_pipeline_directory,
-        model=model,          # relies of pass-by-reference
-        optimizer=optimizer,  # relies of pass-by-reference
+        model=model,          # relies on pass-by-reference
+        optimizer=optimizer,  # relies on pass-by-reference
     )
     # adjusting run budget based on checkpoint
     if previous_state is not None:
