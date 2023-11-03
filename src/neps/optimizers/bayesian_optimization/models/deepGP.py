@@ -17,8 +17,6 @@ from ....search_spaces.search_space import (
     SearchSpace,
 )
 
-from timeit import default_timer as timer
-
 
 def count_non_improvement_steps(root_directory: Path | str) -> int:
     root_directory = Path(root_directory)
@@ -173,7 +171,6 @@ class DeepGP:
         refine_epochs: int = 50,
         **kwargs,  # pylint: disable=unused-argument
     ):  
-        self.time_data = {}
         self.surrogate_model_fit_args = (
             surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
         )
@@ -230,7 +227,6 @@ class DeepGP:
             model, likelihood, mll - The GP model, the likelihood and
                 the marginal likelihood.
         """
-        start = timer()
         train_x = torch.ones(train_size, train_size).to(self.device)
         train_y = torch.ones(train_size).to(self.device)
 
@@ -239,8 +235,6 @@ class DeepGP:
             train_x=train_x, train_y=train_y, likelihood=likelihood
         ).to(self.device)
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model).to(self.device)
-        end = timer()
-        self.time_data["model_init_time"] = end - start
         return model, likelihood, mll
 
     def __preprocess_search_space(self, pipeline_space: SearchSpace):
@@ -392,7 +386,6 @@ class DeepGP:
         patience: int = 10,
         perf_patience: int = 10,
     ):
-        start = timer()
         self.__reset_xy(
             x_train,
             y_train,
@@ -400,18 +393,12 @@ class DeepGP:
             normalize_y=normalize_y,
             normalize_budget=normalize_budget,
         )
-        end = timer()
-        self.time_data["model_prep_data_time"] = end - start
-        start = timer()
         self.model, self.likelihood, self.mll = self.__initialize_gp_model(len(y_train))
         self.nn = NeuralFeatureExtractor(self.input_size, **self.nn_args)
-        end = timer()
-        self.time_data["model_reinit_time"] = end - start
         self.model.to(self.device)
         self.likelihood.to(self.device)
         self.nn.to(self.device)
 
-        start = timer()
         if self.checkpointing and self.checkpoint_path.exists():
             non_improvement_steps = count_non_improvement_steps(self.root_dir)
             # If checkpointing and patience is not exhausted load a partial model
@@ -420,12 +407,9 @@ class DeepGP:
                 self.load_checkpoint()
             self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
         self.logger.debug(f"N Epochs for the full training: {n_epochs}")
-        end = timer()
-        self.time_data["model_load_time"] = end - start
 
         initial_state = self.get_state()
         try:
-            start = timer()
             self.__train_model(
                 self.x_train,
                 self.train_budgets,
@@ -437,13 +421,8 @@ class DeepGP:
                 early_stopping=early_stopping,
                 patience=patience,
             )
-            end = timer()
-            self.time_data["model_train_time"] = end - start
-            start = timer()
             if self.checkpointing:
                 self.save_checkpoint()
-            end = timer()
-            self.time_data["model_save_time"] = end - start 
         except gpytorch.utils.errors.NotPSDError:
             self.logger.info("Model training failed loading the untrained model")
             self.load_checkpoint(initial_state)

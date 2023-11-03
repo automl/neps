@@ -22,7 +22,6 @@ from .mf_bo import FreezeThawModel, PFNSurrogate
 # MFEIDeepModel, MFEIModel
 from .utils import MFObservedData, TabularSearchSpace
 import pandas as pd
-from timeit import default_timer as timer
 
 
 class MFEIBO(BaseOptimizer):
@@ -33,7 +32,7 @@ class MFEIBO(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        budget: int,
+        budget: int = None,
         step_size: int | float = 1,
         optimal_assignment: bool = False,  # pylint: disable=unused-argument
         use_priors: bool = False,
@@ -163,7 +162,6 @@ class MFEIBO(BaseOptimizer):
         )
         self.count = 0
         self.load_df = None
-        self.time_df = pd.DataFrame()
 
     def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
@@ -286,68 +284,31 @@ class MFEIBO(BaseOptimizer):
             previous_results (dict[str, ConfigResult]): [description]
             pending_evaluations (dict[str, ConfigResult]): [description]
         """
-        start = timer()
         self.observed_configs = MFObservedData(
             columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
         )
-        end = timer()
-        init_df_time = end - start
 
         # previous optimization run exists and needs to be loaded
-        start = timer()
-        data_ = self._load_previous_observations(previous_results)
-        end = timer()
-        load_time = end - start
+        self._load_previous_observations(previous_results)
         self.total_fevals = len(previous_results) + len(pending_evaluations)
 
         # account for pending evaluations
-        start = timer()
         self._handle_pending_evaluations(pending_evaluations)
-        end = timer()
-        handle_pending_time = end - start
 
-        start = timer()
         # an aesthetic choice more than a functional choice
         self.observed_configs.df.sort_index(
             level=self.observed_configs.df.index.names, inplace=True
         )
-        end = timer()
-        sort_df_time = end - start
 
-        start = timer()
         # TODO: can we do better than keeping a copy of the observed configs?
         # TODO: can we not hide this in load_results and have something that pops out 
         #   more, like a set_state or policy_args
         self.model_policy.observed_configs = self.observed_configs
-        end = timer()
-        observed_configs_time = end - start
         # fit any model/surrogates
-        start = timer()
         init_phase = self.is_init_phase()
-        end = timer()
-        init_time = end - start
-        fit_time = 0
         if not init_phase:
-            start = timer()
             self._fit_models()
-            end = timer()
-            fit_time = end - start
-        curr_id = len(self.observed_configs.df)
-
-        data={"id": curr_id,
-              "load_time": load_time,
-              "init_df_time": init_df_time,
-               "handle_pending_time": handle_pending_time,
-               "sort_df_time": sort_df_time,
-               "observed_configs_time": observed_configs_time,
-               "init_time": init_time,
-               "update_model_time": fit_time}
-        data.update(data_)
-        if hasattr(self.model_policy, "time_data"):
-            data.update(self.model_policy.time_data)
-        # print(data)
-        self.load_df = pd.DataFrame(data, index=[curr_id])
 
     @classmethod
     def _get_config_id_split(cls, config_id: str) -> tuple[str, str]:
@@ -366,22 +327,11 @@ class MFEIBO(BaseOptimizer):
                      self.get_learning_curve(config_val.result)]
             return index, _data
 
-        add_time = 0
-        collect_time = 0
         if len(previous_results) > 0:
-            start = timer()
             index_row = [tuple(index_data_split(config_id, config_val))
                          for config_id, config_val in previous_results.items()]
             indices, rows = zip(*index_row)
-            end = timer()
-            collect_time = end - start
-            start = timer()
             self.observed_configs.add_data(data=list(rows), index=list(indices))
-            end = timer()
-            add_time = end - start
-        data = {"add_time": add_time,
-                "collect_time": collect_time}
-        return data
 
     def _handle_pending_evaluations(self, pending_evaluations):
         for config_id, config_val in pending_evaluations.items():
@@ -451,7 +401,6 @@ class MFEIBO(BaseOptimizer):
         Returns:
             [type]: [description]
         """
-        time_data = {}
         config_id = None
         previous_config_id = None
         if self.is_init_phase(budget_based=False):
@@ -475,20 +424,13 @@ class MFEIBO(BaseOptimizer):
             # main acquisition call here after initial design is turned off
             self.logger.info("acquiring...")
             # generates candidate samples for acquisition calculation
-            # TODO: handle tabular grid inputs
-            start = timer()
             samples = self.acquisition_sampler.sample(
                 set_new_sample_fidelity=self.pipeline_space.fidelity.lower
             )  # fidelity values here should be the observations or min. fidelity
-            end = timer()
-            sampler_time = end - start
             # calculating acquisition function values for the candidate samples
-            start = timer()
             acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples, asscalar=True
             )
-            end = timer()
-            acq_fn_eval = end - start
             # maximizing acquisition function
             _idx = np.argsort(acq)[-1]
             # extracting the config ID for the selected maximizer
@@ -501,8 +443,6 @@ class MFEIBO(BaseOptimizer):
             # avoid using `.iloc` and work with `.loc` on pandas DataFrame/Series
             config = samples.loc[_config_id]
             config.fidelity.value = _samples.loc[_config_id].fidelity.value
-            time_data = {"total_sampler_time": sampler_time,
-                         "total_acq_fn_eval_time": acq_fn_eval}
         # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
             config_id = f"{_config_id}_{self.get_budget_level(config)}"
@@ -511,14 +451,6 @@ class MFEIBO(BaseOptimizer):
             config_id = (
                 f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
             )
-        
-        time_data.update(self.acquisition_sampler.time_data)
-        time_data.update(self.acquisition.time_data)
-
         curr_id = len(self.observed_configs.df)
-        concat_df = pd.concat([self.load_df, pd.DataFrame(time_data, index=[curr_id])], axis=1)
-        self.time_df = self.time_df.append(concat_df)
-
-        self.time_df.to_csv("time_data.csv")
 
         return config.hp_values(), config_id, previous_config_id

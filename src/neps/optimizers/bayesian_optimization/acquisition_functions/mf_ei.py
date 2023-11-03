@@ -11,8 +11,6 @@ from ....search_spaces.search_space import SearchSpace
 from ...multi_fidelity.utils import MFObservedData
 from .ei import ComprehensiveExpectedImprovement
 
-from timeit import default_timer as timer
-
 
 class MFEI(ComprehensiveExpectedImprovement):
     def __init__(
@@ -30,7 +28,6 @@ class MFEI(ComprehensiveExpectedImprovement):
         self.surrogate_model = None
         self.observations = None
         self.b_step = None
-        self.time_data = {}
 
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
@@ -73,7 +70,6 @@ class MFEI(ComprehensiveExpectedImprovement):
             # expected output: IDs pertaining to current observations and set of HPs
             # x = self._preprocess_tabular(x)
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
-        start = timer()
         indices_to_drop = []
         for i, config in x.items():
             target_fidelity = config.fidelity.lower
@@ -93,17 +89,11 @@ class MFEI(ComprehensiveExpectedImprovement):
             else:
                 # the fidelity was not set, the configuration will be dropped
                 indices_to_drop.append(i)
-        end = timer()
-        set_fidelities_time = end - start
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
 
-        start = timer()
         performances = self.observations.get_best_performance_for_each_budget()
-        end = timer()
-        get_perfs_time = end - start
-        start = timer()
         inc_list = []
         for budget_level in budget_list:
             if budget_level in performances.index:
@@ -111,10 +101,6 @@ class MFEI(ComprehensiveExpectedImprovement):
             else:
                 inc = self.observations.get_best_seen_performance()
             inc_list.append(inc)
-        end = timer()
-        build_inc_list_time = end - start
-        self.time_data = {"acq_set_partial_fidelities_time": set_fidelities_time,
-                          "acq_build_inc_list_time": build_inc_list_time}
 
         return x, torch.Tensor(inc_list)
     
@@ -124,7 +110,6 @@ class MFEI(ComprehensiveExpectedImprovement):
     
     def preprocess_deep_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
-        start = timer()
         x_lcs = []
         for idx in x.index:
             if idx in self.observations.df.index.levels[0]:
@@ -139,9 +124,6 @@ class MFEI(ComprehensiveExpectedImprovement):
                 lc = [0.0]
             x_lcs.append(lc)
         self.surrogate_model.set_prediction_learning_curves(x_lcs)
-        end = timer()
-        set_lcs_time = end - start
-        self.time_data["acq_setting_lcs_time"] = set_lcs_time
         return x.values.tolist(), inc_list
 
     def preprocess_pfn(self, x: Iterable) -> Tuple[Iterable, Iterable, Iterable]:
@@ -199,15 +181,10 @@ class MFEI(ComprehensiveExpectedImprovement):
         """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
         # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
         _x = x.copy()
-        start = timer()
         try:
             mu, cov = self.surrogate_model.predict(_x)
         except ValueError as e:
             raise e
-        
-        end = timer()
-        surr_predict_time = end - start
-        start = timer()
             # return -1.0  # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
 
@@ -233,10 +210,6 @@ class MFEI(ComprehensiveExpectedImprovement):
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
                 sigma_n + torch.diag(cov)
             )
-        end = timer()
-        compute_ei_time = end - start
-        self.time_data.update({"acq_surrogate_predict_time": surr_predict_time,
-                               "acq_compute_ei_time": compute_ei_time})
         return ei
 
     def set_state(

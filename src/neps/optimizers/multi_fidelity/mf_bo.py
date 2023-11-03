@@ -15,8 +15,6 @@ from ..utils import map_real_hyperparameters_from_tabular_ids
 
 from pfns4hpo.bar_distribution import BarDistribution
 
-from timeit import default_timer as timer
-
 
 class MFBOBase:
     """ Designed to work with model-based search on SH-based multi-fidelity algorithms.
@@ -193,8 +191,7 @@ class FreezeThawModel:
         pipeline_space,
         surrogate_model: str = "deep_gp",
         surrogate_model_args: dict = None,
-    ):        
-        self.time_data = {}
+    ):
         self.observed_configs = None
         self.pipeline_space = pipeline_space
         self.surrogate_model_name = surrogate_model
@@ -215,14 +212,10 @@ class FreezeThawModel:
     def _fantasize_pending(self, train_x, train_y, pending_x):
         # Select configs that are neither pending nor resulted in error
         completed_configs = self.observed_configs.completed_runs.copy(deep=True)
-        start = timer()
         # IMPORTANT: preprocess observations to get appropriate training data
         train_x, train_lcs, train_y = self.observed_configs.get_training_data_4DyHPO(
             completed_configs, self.pipeline_space
         )
-        end = timer()
-        prep_t_data_time = end - start
-        self.time_data["prep_t_data_time"] = prep_t_data_time
         pending_condition = self.observed_configs.pending_condition
         if pending_condition.any():
             pending_configs = self.observed_configs.df.loc[pending_condition]
@@ -290,23 +283,8 @@ class FreezeThawModel:
 
         if decay_t is None:
             decay_t = len(train_x)
-        start = timer()
         train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
-        end = timer()
-        fantasize_time = end - start
-        # print(train_x, train_y, train_lcs)
-        start = timer()
         self._fit(train_x, train_y, train_lcs)
-
-        end = timer()
-
-        _time_data = {}
-        if self.surrogate_model_name in ["deep_gp"]:
-            _time_data = self.surrogate_model.time_data
-        fit_time = end - start
-        self.time_data["fantasize_time"] = fantasize_time
-        self.time_data["complete_fit_time"] = fit_time
-        self.time_data.update(_time_data)
 
         return self.surrogate_model, decay_t
 
