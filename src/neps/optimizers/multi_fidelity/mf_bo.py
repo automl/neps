@@ -13,8 +13,6 @@ from ..multi_fidelity.utils import normalize_vectorize_config
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 from ..utils import map_real_hyperparameters_from_tabular_ids
 
-from pfns4hpo.bar_distribution import BarDistribution
-
 
 class MFBOBase:
     """ Designed to work with model-based search on SH-based multi-fidelity algorithms.
