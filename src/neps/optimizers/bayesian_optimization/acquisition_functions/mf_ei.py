@@ -46,8 +46,8 @@ class MFEI(ComprehensiveExpectedImprovement):
     #         _config.update({fid_name: x.loc[i][fid_name].value})
     #         # placeholder config from the raw tabular space
     #         config = self.pipeline_space.raw_tabular_space.sample(
-    #             patience=100, 
-    #             user_priors=True, 
+    #             patience=100,
+    #             user_priors=True,
     #             ignore_fidelity=True  # True allows fidelity to appear in the sample
     #         )
     #         # copying values from table to placeholder config of type SearchSpace
@@ -77,18 +77,17 @@ class MFEI(ComprehensiveExpectedImprovement):
                 # IMPORTANT to set the fidelity at which EI will be calculated only for
                 # the partial configs that have been observed already
                 target_fidelity = config.fidelity.value + self.b_step
-                config.fidelity.value = min(
-                    target_fidelity, config.fidelity.upper
-                )  # to respect the bounded fidelity
+
+                if np.less_equal(target_fidelity, config.fidelity.upper):
+                    # only consider the configs with fidelity lower than the max fidelity
+                    config.fidelity.value = target_fidelity
+                    budget_list.append(self.get_budget_level(config))
+                else:
+                    # if the target_fidelity higher than the max drop the configuration
+                    indices_to_drop.append(i)
             else:
                 config.fidelity.value = target_fidelity
-
-            if np.isclose(target_fidelity, config.fidelity.value):
-                # the fidelity was set the configuration will be considered
                 budget_list.append(self.get_budget_level(config))
-            else:
-                # the fidelity was not set, the configuration will be dropped
-                indices_to_drop.append(i)
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
@@ -103,22 +102,19 @@ class MFEI(ComprehensiveExpectedImprovement):
             inc_list.append(inc)
 
         return x, torch.Tensor(inc_list)
-    
+
     def preprocess_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
         return x.values.tolist(), inc_list
-    
+
     def preprocess_deep_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
         x_lcs = []
         for idx in x.index:
             if idx in self.observations.df.index.levels[0]:
-                budget_level = max(0, self.get_budget_level(x[idx]) - 1)
-                lc = self.observations.extract_learning_curve(
-                    idx, budget_level
-                )
+                budget_level = self.get_budget_level(x[idx])
+                lc = self.observations.extract_learning_curve(idx, budget_level)
             else:
-                # TODO: comment to explain why this is needed (karibbov)
                 # initialize a learning curve with a place holder
                 # This is later padded accordingly for the Conv1D layer
                 lc = [0.0]
@@ -138,25 +134,31 @@ class MFEI(ComprehensiveExpectedImprovement):
         z_min = x[0].fidelity.lower
         # converting fidelity to the discrete budget level
         # STRICT ASSUMPTION: fidelity is the first dimension
-        _x_tok[:len_partial, 0] = (_x_tok[:len_partial, 0] + self.b_step - z_min) / self.b_step
+        _x_tok[:len_partial, 0] = (
+            _x_tok[:len_partial, 0] + self.b_step - z_min
+        ) / self.b_step
         return _x_tok, _x, inc_list
 
-    def eval(
-        self, x: pd.Series, asscalar: bool = False
-    ) -> Tuple[np.ndarray, pd.Series]:
+    def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         # _x = x.copy()  # preprocessing needs to change the reference x Series so we don't copy here
         if self.surrogate_model_name == "pfn":
-            _x_tok, _x, inc_list = self.preprocess_pfn(x.copy())  # IMPORTANT change from vanilla-EI
+            _x_tok, _x, inc_list = self.preprocess_pfn(
+                x.copy()
+            )  # IMPORTANT change from vanilla-EI
             ei = self.eval_pfn_ei(_x_tok, inc_list)
         elif self.surrogate_model_name == "deep_gp":
-            _x, inc_list = self.preprocess_deep_gp(x.copy())  # IMPORTANT change from vanilla-EI
+            _x, inc_list = self.preprocess_deep_gp(
+                x.copy()
+            )  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x, inc_list)
             _x = pd.Series(_x, index=np.arange(len(_x)))
         else:
-            _x, inc_list = self.preprocess_gp(x.copy())  # IMPORTANT change from vanilla-EI
+            _x, inc_list = self.preprocess_gp(
+                x.copy()
+            )  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x, inc_list)
             _x = pd.Series(_x, index=np.arange(len(_x)))
-        
+
         if ei.is_cuda:
             ei = ei.cpu()
         if len(x) > 1 and asscalar:

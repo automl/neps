@@ -2,7 +2,6 @@
 # type: ignore
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any
 
 import numpy as np
@@ -19,9 +18,9 @@ from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
 )
 from ..bayesian_optimization.kernels.get_kernels import get_kernels
 from .mf_bo import FreezeThawModel, PFNSurrogate
+
 # MFEIDeepModel, MFEIModel
-from .utils import MFObservedData, TabularSearchSpace
-import pandas as pd
+from .utils import MFObservedData
 
 
 class MFEIBO(BaseOptimizer):
@@ -96,9 +95,11 @@ class MFEIBO(BaseOptimizer):
         self._initial_design_size, self._initial_design_budget = self._set_initial_design(
             initial_design_size, initial_design_budget, self._initial_design_fraction
         )
+        # TODO: Write use cases for these parameters
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
+
         self.surrogate_model_name = surrogate_model
 
         self.use_priors = use_priors
@@ -121,8 +122,8 @@ class MFEIBO(BaseOptimizer):
             {} if surrogate_model_args is None else surrogate_model_args
         )
         self._prep_model_args(self.hp_kernels, self.graph_kernels, pipeline_space)
-        
-        # TODO: do we create a model policy map?
+
+        # TODO: Better solution than branching based on the surrogate name is needed
         if surrogate_model in ["deep_gp", "gp"]:
             model_policy = FreezeThawModel
         elif surrogate_model == "pfn":
@@ -136,11 +137,13 @@ class MFEIBO(BaseOptimizer):
             surrogate_model=surrogate_model,
             surrogate_model_args=self.surrogate_model_args,
         )
-        self.acquisition_args = ({} if acquisition_args is None else acquisition_args)
-        self.acquisition_args.update({
-            "pipeline_space": self.pipeline_space,
-            "surrogate_model_name": self.surrogate_model_name,
-        })
+        self.acquisition_args = {} if acquisition_args is None else acquisition_args
+        self.acquisition_args.update(
+            {
+                "pipeline_space": self.pipeline_space,
+                "surrogate_model_name": self.surrogate_model_name,
+            }
+        )
         self.acquisition = instance_from_map(
             AcquisitionMapping,
             acquisition,
@@ -150,10 +153,9 @@ class MFEIBO(BaseOptimizer):
         self.acquisition_sampler_args = (
             {} if acquisition_sampler_args is None else acquisition_sampler_args
         )
-        self.acquisition_sampler_args.update({
-                "patience": self.patience, 
-                "pipeline_space": self.pipeline_space
-        })
+        self.acquisition_sampler_args.update(
+            {"patience": self.patience, "pipeline_space": self.pipeline_space}
+        )
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
@@ -161,7 +163,6 @@ class MFEIBO(BaseOptimizer):
             kwargs=self.acquisition_sampler_args,
         )
         self.count = 0
-        self.load_df = None
 
     def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
@@ -177,8 +178,9 @@ class MFEIBO(BaseOptimizer):
                 raise ValueError("No kernels are provided!")
             # if "vectorial_features" not in self.surrogate_model_args:
             self.surrogate_model_args["vectorial_features"] = (
-                pipeline_space.raw_tabular_space.get_vectorial_dim() 
-                if pipeline_space.has_tabular else pipeline_space.get_vectorial_dim()
+                pipeline_space.raw_tabular_space.get_vectorial_dim()
+                if pipeline_space.has_tabular
+                else pipeline_space.get_vectorial_dim()
             )
 
     def _set_initial_design(
@@ -221,7 +223,9 @@ class MFEIBO(BaseOptimizer):
         return _initial_design_size, _initial_design_budget
 
     def get_budget_level(self, config: SearchSpace) -> int:
-        return int(np.ceil((config.fidelity.value - config.fidelity.lower) / self.step_size))
+        return int(
+            np.ceil((config.fidelity.value - config.fidelity.lower) / self.step_size)
+        )
 
     def get_budget_value(self, budget_level: int | float) -> int | float:
         if isinstance(self.pipeline_space.fidelity, IntegerParameter):
@@ -250,18 +254,20 @@ class MFEIBO(BaseOptimizer):
         """
         if len(self.observed_configs.df) == 0:
             return 0
-            
+
         n_configs = len(self.observed_configs.seen_config_ids)
         total_budget_level = sum(self.observed_configs.seen_budget_levels)
         total_initial_budget_spent = n_configs * self.pipeline_space.fidelity.lower
-        total_budget_spent = (total_initial_budget_spent +
-                              total_budget_level * self.step_size)
+        total_budget_spent = (
+            total_initial_budget_spent + total_budget_level * self.step_size
+        )
 
         return total_budget_spent
 
     def is_init_phase(self, budget_based: bool = True) -> bool:
         if budget_based:
-            # TODO: what does this variable and condition do? (karibbov)
+            # Check if we are still in the initial design phase based on
+            # either the budget spent so far or the number of configurations evaluated
             if self.total_budget_spent() < self._initial_design_budget:
                 return True
         else:
@@ -302,7 +308,7 @@ class MFEIBO(BaseOptimizer):
         )
 
         # TODO: can we do better than keeping a copy of the observed configs?
-        # TODO: can we not hide this in load_results and have something that pops out 
+        # TODO: can we not hide this in load_results and have something that pops out
         #   more, like a set_state or policy_args
         self.model_policy.observed_configs = self.observed_configs
         # fit any model/surrogates
@@ -318,18 +324,21 @@ class MFEIBO(BaseOptimizer):
         return _config, _budget
 
     def _load_previous_observations(self, previous_results):
-
         def index_data_split(config_id: str, config_val):
             _config_id, _budget_id = MFEIBO._get_config_id_split(config_id)
             index = int(_config_id), int(_budget_id)
-            _data = [config_val.config,
-                     self.get_loss(config_val.result),
-                     self.get_learning_curve(config_val.result)]
+            _data = [
+                config_val.config,
+                self.get_loss(config_val.result),
+                self.get_learning_curve(config_val.result),
+            ]
             return index, _data
 
         if len(previous_results) > 0:
-            index_row = [tuple(index_data_split(config_id, config_val))
-                         for config_id, config_val in previous_results.items()]
+            index_row = [
+                tuple(index_data_split(config_id, config_val))
+                for config_id, config_val in previous_results.items()
+            ]
             indices, rows = zip(*index_row)
             self.observed_configs.add_data(data=list(rows), index=list(indices))
 
@@ -360,10 +369,10 @@ class MFEIBO(BaseOptimizer):
         self.model_policy.set_state(self.pipeline_space, self.surrogate_model_args)
         self.model_policy.update_model()
         self.acquisition.set_state(
-            self.pipeline_space, 
+            self.pipeline_space,
             self.model_policy.surrogate_model,
             self.observed_configs,
-            self.step_size
+            self.step_size,
         )
         self.acquisition_sampler.set_state(
             self.pipeline_space, self.observed_configs, self.step_size
@@ -439,8 +448,10 @@ class MFEIBO(BaseOptimizer):
             # NOTE: len(samples) need not be equal to len(_samples) as `samples` contain
             # all (partials + new) configurations obtained from the sampler, but
             # in `_samples`, configs are removed that have reached maximum epochs allowed
-            # NOTE: `samples` and `_samples` should share the same index values, hence, 
+            # NOTE: `samples` and `_samples` should share the same index values, hence,
             # avoid using `.iloc` and work with `.loc` on pandas DataFrame/Series
+
+            # Is this "config = _samples.loc[_config_id]"?
             config = samples.loc[_config_id]
             config.fidelity.value = _samples.loc[_config_id].fidelity.value
         # generating correct IDs
@@ -448,9 +459,6 @@ class MFEIBO(BaseOptimizer):
             config_id = f"{_config_id}_{self.get_budget_level(config)}"
             previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
         else:
-            config_id = (
-                f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
-            )
-        curr_id = len(self.observed_configs.df)
+            config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
 
         return config.hp_values(), config_id, previous_config_id
