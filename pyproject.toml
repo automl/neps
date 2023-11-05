@@ -17,7 +17,7 @@ authors = [
     "Frank Hutter",
 ]
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 homepage = "https://github.com/automl/neps"
 repository = "https://github.com/automl/neps"
 documentation = "https://automl.github.io/neps/"
