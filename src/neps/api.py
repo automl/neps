@@ -238,7 +238,7 @@ def run(
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
     searcher_info = {
-        "searcher_name": searcher,
+        "searcher_name": str(searcher),
         "searcher_alg": searcher_alg,
         "user_defined_searcher": user_defined_searcher,
         "searcher_args_user_modified": False,

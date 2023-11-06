@@ -21,7 +21,14 @@ class FreezeThawSampler(AcquisitionSampler):
         self.b_step = None
         self.n = None
         self.pipeline_space = None
+        # args to manage tabular spaces/grid
         self.is_tabular = False
+        self.sample_full_table = None
+        self.set_sample_full_tabular(True)  # sets flag that samples full table
+
+    def set_sample_full_tabular(self, flag: bool=False):
+        if self.is_tabular:
+            self.sample_full_table = flag
 
     def _sample_new(
         self, index_from: int, n: int = None, ignore_fidelity: bool = False
@@ -119,8 +126,11 @@ class FreezeThawSampler(AcquisitionSampler):
             _n = n if n is not None else self.SAMPLES_TO_DRAW
             _partial_ids = {conf["id"].value for conf in partial_configs}
             _all_ids = set(self.pipeline_space.custom_grid_table.index.values)
-            # accounting for unseen configs only
-            _n = min(_n, len(_all_ids - _partial_ids))
+
+            # accounting for unseen configs only, samples remaining table if flag is set
+            max_n = len(_all_ids) + 1 if self.sample_full_table else _n
+            _n = min(max_n, len(_all_ids - _partial_ids))
+            
             _new_configs = np.random.choice(
                 list(_all_ids - _partial_ids), size=_n, replace=False
             )
