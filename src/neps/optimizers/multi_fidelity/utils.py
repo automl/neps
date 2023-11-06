@@ -243,7 +243,7 @@ class MFObservedData:
     def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
         # reduce budget_id to discount the current validation loss
         # both during training and prediction phase
-        budget_id = budget_id - 1
+        budget_id = max(0, budget_id - 1)
         if self.lc_col_name in self.df.columns:
             lc = self.df.loc[(config_id, budget_id), self.lc_col_name]
         else:
