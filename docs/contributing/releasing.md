@@ -59,7 +59,7 @@ mike deploy 0.9.0 latest -up
 
 To publish to PyPI:
 
-1. Get publishing rights, e.g., asking Danny or Maciej.
+1. Get publishing rights, e.g., asking Danny or Maciej or Neeratyoy.
 1. Be careful, once on PyPI we can not change things.
 1. Run
 
