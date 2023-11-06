@@ -267,8 +267,8 @@ class MFObservedData:
 
     def get_tokenized_data(self, df: pd.DataFrame):
         idxs = df.index.values
-        idxs = np.array([list(idx)[::-1] for idx in idxs])
-        idxs[:, 0] += 1  # all fidelity IDs begin with 0 in NePS
+        idxs = np.array([list(idx) for idx in idxs])
+        idxs[:, 1] += 1  # all fidelity IDs begin with 0 in NePS
         performances = df.perf.values
         configs = df.config.values
         configs = np.array([normalize_vectorize_config(c) for c in configs])
@@ -281,7 +281,7 @@ class MFObservedData:
         fidelity = np.array([c.fidelity.value for c in df]).reshape(-1, 1)
         idx = df.index.values.reshape(-1, 1)
 
-        data = np.hstack([fidelity, idx, configs])
+        data = np.hstack([idx, fidelity, configs])
 
         if as_tensor:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -13,7 +13,7 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-    SAMPLES_TO_DRAW = 3  # number of random samples to draw at lowest fidelity
+    SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -106,7 +106,7 @@ class FreezeThawSampler(AcquisitionSampler):
             _partial_ids = set([conf["id"].value for conf in partial_configs])
             _all_ids = set(self.pipeline_space.custom_grid_table.index.values)
             # accounting for unseen configs only
-            _n = max(_n, len(_all_ids - _partial_ids))
+            _n = min(_n, len(_all_ids - _partial_ids))
             _new_configs = np.random.choice(list(_all_ids - _partial_ids), size=_n, replace=False)
             new_configs = [self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=False
@@ -115,7 +115,7 @@ class FreezeThawSampler(AcquisitionSampler):
                 config["id"].value = _new_configs[i]
                 config.fidelity.value = self.pipeline_space.fidelity.lower
             new_configs = pd.Series(
-                new_configs, 
+                new_configs,
                 index=np.arange(len(partial_configs), len(partial_configs) + len(new_configs))
             )
 

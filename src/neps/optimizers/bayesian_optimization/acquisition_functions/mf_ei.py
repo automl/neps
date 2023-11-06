@@ -137,8 +137,8 @@ class MFEI(ComprehensiveExpectedImprovement):
         len_partial = len(self.observations.seen_config_ids)
         z_min = x[0].fidelity.lower
         # converting fidelity to the discrete budget level
-        # STRICT ASSUMPTION: fidelity is the first dimension
-        _x_tok[:len_partial, 0] = (_x_tok[:len_partial, 0] + self.b_step - z_min) / self.b_step
+        # STRICT ASSUMPTION: fidelity is the second dimension
+        _x_tok[:len_partial, 1] = (_x_tok[:len_partial, 1] + self.b_step - z_min) / self.b_step
         return _x_tok, _x, inc_list
 
     def eval(
