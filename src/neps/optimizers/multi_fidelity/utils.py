@@ -1,3 +1,4 @@
+# type: ignore
 from __future__ import annotations
 
 from typing import Any, Sequence
@@ -28,8 +29,9 @@ def continuous_to_tabular(
 
     return result
 
+
 def normalize_vectorize_config(
-    config: SearchSpace, ignore_fidelity: bool=True
+    config: SearchSpace, ignore_fidelity: bool = True
 ) -> np.ndarray:
     _new_vector = []
     for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity).items():
@@ -93,7 +95,7 @@ class MFObservedData:
     @property
     def seen_config_ids(self) -> list:
         return self.df.index.levels[0].to_list()
-    
+
     @property
     def seen_budget_levels(self) -> list:
         # Considers pending and error budgets as seen
@@ -239,6 +241,9 @@ class MFObservedData:
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
     def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+        # reduce budget_id to discount the current validation loss
+        # both during training and prediction phase
+        budget_id = max(0, budget_id - 1)
         if self.lc_col_name in self.df.columns:
             lc = self.df.loc[(config_id, budget_id), self.lc_col_name]
         else:
@@ -273,7 +278,7 @@ class MFObservedData:
         configs = df.config.values
         configs = np.array([normalize_vectorize_config(c) for c in configs])
 
-        return configs, idxs, performances 
+        return configs, idxs, performances
 
     def tokenize(self, df: pd.DataFrame, as_tensor: bool = False):
         """Function to format data for PFN."""
@@ -287,73 +292,10 @@ class MFObservedData:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             data = torch.Tensor(data).to(device)
         return data
-    
+
     @property
     def token_ids(self) -> np.ndarray:
         return self.df.index.values
-
-
-
-class TabularSearchSpace:
-    tabular = True
-
-    def __init__(self, tabular_df: pd.DataFrame, base_search_space: SearchSpace):
-        # IMPORTANT: TO WORK WITH TABULAR SEARCH SPACE OVER MULTIPLE RESTARTS (OWERWRITE=FALSE)
-        # SEEDS MUST BE SET MANUALLY OUTSIDE NEPS OPTIMIZERS  
-        # Otherwise generated permutations will not be consistent over different runs
-        if tabular_df is not None:
-            place_holder_config = base_search_space.sample()
-            self.table = TabularSearchSpace.convert_tabular(tabular_df, place_holder_config)
-            self.index_permutation = np.random.permutation(self.table.index)
-        else:
-            self.tabular = False
-
-    @staticmethod
-    def __build_min_fidelity_config(row, config: SearchSpace):
-        result = config.copy()
-        for hp_name in config.keys():
-            if not config[hp_name].is_fidelity:
-                # dynamic type casting to the target value
-                # this is only necessary if the dtypes of the dataframe is not set correctly
-                # otherwise: value = row[hp_name] # is sufficient
-                value = type(result[hp_name].value)(row[hp_name])
-                result[hp_name].value = value
-            else:
-                result[hp_name].value = result.fidelity.lower
-        return result
-
-    @staticmethod
-    def convert_tabular(tabular_benchmark: pd.DataFrame,
-                        placeholder_config: SearchSpace):
-
-        config_keys = []
-        for hp_name, hp in placeholder_config.items():
-            if not hp.is_fidelity:
-                config_keys.append(hp_name)
-
-        df = tabular_benchmark.loc[:, config_keys].copy(deep=True)
-        samples = df.groupby(level=0).first()
-
-        samples["configs"] = samples.apply(
-            lambda x: TabularSearchSpace.__build_min_fidelity_config(x, config=placeholder_config), axis=1)
-
-        samples.index = samples.index.astype(int, copy=True)
-        samples.sort_index(inplace=True)
-
-        samples.drop(config_keys, inplace=True, axis=1)
-
-        return samples
-
-    def sample(self, index_from: int,
-               config: SearchSpace | List[SearchSpace] | None = None,
-               n: int | None = None):
-        n = n if n is not None else 1
-        if self.tabular:
-            return self.table.loc[self.index_permutation[index_from:index_from + n], :].values.tolist()
-        elif n > 1 and not isinstance(config, list):
-            return [config.sample() for _ in range(n)]
-        else:
-            return config
 
 
 if __name__ == "__main__":
