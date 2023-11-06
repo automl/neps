@@ -294,7 +294,6 @@ class DeepGP:
         # Get max learning_curve length
         max_length = 0
         for lc in learning_curves:
-            lc.pop()
             length = len(lc)
             if length > max_length:
                 max_length = length
