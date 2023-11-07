@@ -94,7 +94,9 @@ def set_seed(seed=123):
 
 
 def MNIST(
-    batch_size: int = 256, n_train_size: float = 0.9
+    batch_size: int = 256,
+    n_train_size: float = 0.9,
+    data_reduction_factor: float = 0.3,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
@@ -104,11 +106,14 @@ def MNIST(
         root="./data", train=False, transform=transforms.ToTensor(), download=True
     )
 
-    # Create a random subset of the training dataset for validation.
-    # We also opted on reducing the dataset sizes for faster training.
-    train_size = int(n_train_size * len(train_dataset))
+    # Determine the size of the reduced training dataset for faster training
+    # and calculate the size of the training subset from the reduced dataset
+    reduced_dataset_train = int(data_reduction_factor * len(train_dataset))
+    train_size = int(n_train_size * reduced_dataset_train)
+
+    # Create a random sampler for the training and validation data
     train_sampler = SubsetRandomSampler(range(train_size))
-    valid_sampler = SubsetRandomSampler(range(train_size, len(train_dataset)))
+    valid_sampler = SubsetRandomSampler(range(train_size, reduced_dataset_train))
 
     # Create DataLoaders for training, validation, and test datasets.
     train_dataloader = DataLoader(
@@ -131,9 +136,9 @@ def MNIST(
 class MLP(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.linear1 = nn.Linear(in_features=784, out_features=392)
-        self.linear2 = nn.Linear(in_features=392, out_features=196)
-        self.linear3 = nn.Linear(in_features=196, out_features=10)
+        self.linear1 = nn.Linear(in_features=784, out_features=196)
+        self.linear2 = nn.Linear(in_features=196, out_features=98)
+        self.linear3 = nn.Linear(in_features=98, out_features=10)
 
     def forward(self, x: torch.Tensor):
         # Flattening the grayscaled image from 1x28x28 (CxWxH) to 784.
@@ -256,7 +261,7 @@ def run_pipeline(lr, optim, weight_decay):
 
     # Load the MNIST dataset for training, validation, and testing.
     train_loader, validation_loader, test_loader = MNIST(
-        batch_size=64, n_train_size=0.9
+        batch_size=96, n_train_size=0.9, data_reduction_factor=0.3
     )
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
@@ -287,7 +292,7 @@ def run_pipeline(lr, optim, weight_decay):
         # 1 Loss curves of each of the configs at each epoch.
         # 2 lr_decay curve at each epoch.
         # 3 The wrongly classified images by the model.
-        # 4 first two layer_gradients passed as scalar configs.
+        # 4 First two layer_gradients passed as scalar configs.
 
         tblogger.log(
             loss=loss,
@@ -377,7 +382,6 @@ if __name__ == "__main__":
     # Disables tblogger for the continued run
     tblogger.disable()
 
-    
     neps.run(
         **run_args,
         max_evaluations_total=3,  # continues the previous run for 1 more evaluation
