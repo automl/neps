@@ -9,12 +9,14 @@ import numpy as np
 import torch
 import yaml
 
+from metahyper.api import ConfigInRun
+
 from ..optimizers.info import SearcherConfigs
 
 
 def load_checkpoint(
-    previous_pipeline_directory: Path | str,
-    checkpoint_name: str = "checkpoint.pth",
+    directory: Path | str | None = None,
+    checkpoint_name: str = "checkpoint",
     model: torch.nn.Module | None = None,
     optimizer: torch.optim.Optimizer | None = None,
 ) -> dict | None:
@@ -22,8 +24,7 @@ def load_checkpoint(
     Load a checkpoint and return the model state_dict and checkpoint values.
 
     Args:
-        previous_pipeline_directory (Path or str): Directory where the checkpoint
-            is located.
+        directory (Path or str, optional): Directory where the checkpoint is located.
         checkpoint_name (str, optional): The name of the checkpoint file. Default
             is "checkpoint.pth".
         model (torch.nn.Module, optional): The PyTorch model to load. Default is
@@ -35,7 +36,18 @@ def load_checkpoint(
         Union[dict, None]: A dictionary containing the checkpoint values, or None if
         the checkpoint file does not exist hence no checkpointing was previously done.
     """
-    checkpoint_path = f"{previous_pipeline_directory}/{checkpoint_name}"
+    # Check if the user did not provide a specific pipeline directory
+    # or if the provided pipeline directory does not exist.
+    if directory is None:
+        # If not provided, use the pipeline directory from ConfigInRun
+        directory = ConfigInRun.previous_pipeline_directory
+
+    # If the pipeline directory remains None even in ConfigInRun, return None.
+    # Otherwise, create a Path object using the provided or ConfigInRun value.
+    if directory:
+        directory = Path(directory)
+
+    checkpoint_path = f"{directory}/{checkpoint_name}.pth"
 
     if not os.path.exists(checkpoint_path):
         return None
@@ -55,8 +67,8 @@ def load_checkpoint(
 
 
 def save_checkpoint(
-    pipeline_directory: Path | str,
-    checkpoint_name: str = "checkpoint.pth",
+    directory: Path | str | None = None,
+    checkpoint_name: str = "checkpoint",
     values_to_save: dict | None = None,
     model: torch.nn.Module | None = None,
     optimizer: torch.optim.Optimizer | None = None,
@@ -65,8 +77,7 @@ def save_checkpoint(
     Save a checkpoint including model state_dict and optimizer state_dict to a file.
 
     Args:
-        pipeline_directory (Path or str): Directory where the checkpoint will be
-            saved.
+        directory (Path or str): Directory where the checkpoint will be saved.
         values_to_save (dict, optional): Additional values to save in the checkpoint.
             Default is None.
         model (torch.nn.Module, optional): The PyTorch model to save. Default is
@@ -76,7 +87,11 @@ def save_checkpoint(
         checkpoint_name (str, optional): The name of the checkpoint file. Default
             is "checkpoint.pth".
     """
-    checkpoint_path = f"{pipeline_directory}/{checkpoint_name}"
+    if directory is None:
+        directory = ConfigInRun.pipeline_directory
+
+    directory = Path(directory)
+    checkpoint_path = f"{directory}/{checkpoint_name}.pth"
 
     saved_dict = {}
 
@@ -95,7 +110,7 @@ def save_checkpoint(
 
 
 def load_lightning_checkpoint(
-    previous_pipeline_directory: Path | str, checkpoint_dir: Path | str
+    checkpoint_dir: Path | str, previous_pipeline_directory: Path | str | None = None
 ) -> tuple[str | None, dict | None]:
     """
     Load the latest checkpoint file from the specified directory.
@@ -105,7 +120,7 @@ def load_lightning_checkpoint(
     checkpoint data.
 
     Args:
-        previous_pipeline_directory (Union[Path, str]): The previous pipeline directory.
+        previous_pipeline_directory (Union[Path, str, None]): The previous pipeline directory.
         checkpoint_dir (Union[Path, str]): The directory where checkpoint files are stored.
 
     Returns:
@@ -113,9 +128,19 @@ def load_lightning_checkpoint(
         and the loaded checkpoint data (dict). Returns (None, None) if no checkpoint files
         are found in the directory.
     """
+    if previous_pipeline_directory is None:
+        previous_pipeline_directory = ConfigInRun.previous_pipeline_directory
+
     if previous_pipeline_directory:
         # Search for possible checkpoints to continue training
         ckpt_files = glob.glob(str(Path(checkpoint_dir) / "*.ckpt"))
+
+        if len(ckpt_files) > 1:
+            raise ValueError(
+                "The number of checkpoint files is more than expected (1) "
+                "which makes if difficult to find the correct file."
+                " Please save other checkpoint files in a different directory."
+            )
 
         if ckpt_files:
             # Load the checkpoint and retrieve necessary data
@@ -130,17 +155,22 @@ def load_lightning_checkpoint(
         return None, None
 
 
-def get_initial_directory(pipeline_directory: Path) -> Path:
+def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     """
     Find the initial directory based on its existence and the presence of
     the "previous_config.id" file.
 
     Args:
-        pipeline_directory (Path): The starting directory to search from.
+        pipeline_directory (Union[Path, str, None]): The current config directory.
 
     Returns:
         Path: The initial directory.
     """
+    if pipeline_directory is None:
+        pipeline_directory = ConfigInRun.pipeline_directory
+
+    pipeline_directory = Path(pipeline_directory)
+
     while True:
         # Get the id of the previous directory
         previous_pipeline_directory_id = pipeline_directory / "previous_config.id"

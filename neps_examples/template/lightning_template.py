@@ -1,18 +1,32 @@
-"""
-This code is not runnable but should serve as a guide to a successful neps run
-using using pytorch lightning and priorband as a searcher.
+""" Boilerplate code to optimize a simple PyTorch Lightning model.
 
-Steps:
-1. Create search space with a fidelity parameter.
-2. Create run_pipeline which includes:
-    A. Start by getting the initial directory, which will be used to store TensorBoard
-       event files and checkpoint files.
-    B. Initialize the lightning model.
-    C. Create the TensorBoard logger and the checkpoint callback.
-    D. Check for any existing checkpoint files and load checkpoint data.
-    E. Create a PyTorch Lightning Trainer.
-    F. Train the model, calculate metrics, and test the model.
-3. Use neps.run and specify "priorband" as the searcher.
+NOTE!!! This code is not meant to be executed.
+It is only to serve as a template to help interface NePS with an existing ML/DL pipeline.
+
+
+The following script describes the crucial components that a user needs to provide
+in order to interface with Lightning.
+
+The 3 crucial components are:
+* The search space, called the `pipeline_space` in NePS
+  * This defines the set of hyperparameters that the optimizer will search over
+  * This declaration also allows injecting priors in the form of defaults per hyperparameter
+* The `lightning module`
+  * This defines the training, validation, and testing of the model
+  * This distributes the hyperparameters
+  * This can be used to create the Dataloaders for training, validation, and testing
+* The `run_pipeline` function
+  * This function is called by the optimizer and is responsible for running the pipeline
+  * The function should at the minimum expect the hyperparameters as keyword arguments
+  * The function should return the loss of the pipeline as a float
+    * If the return value is a dictionary, it should have a key called "loss" with the loss as a float
+
+Overall, running an optimizer from NePS with Lightning involves 5 clear steps:
+1. Importing neccessary packages including NePS and Lightning.
+2. Designing the search space as a dictionary.
+3. Creating the LightningModule with the required parameters
+4. Creating the run_pipeline and returning the loss and other wanted metrics.
+5. Using neps run with the optimizer of choice.
 
 For a more detailed guide, please refer to:
 https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_x_lightning.py
@@ -27,20 +41,27 @@ from lightning.pytorch.loggers import TensorBoardLogger
 import neps
 from neps.utils.common import get_initial_directory, load_lightning_checkpoint
 
-# 1. Create the pipeline_space
+logger = logging.getLogger("neps_template.run")
 
 
 def pipeline_space() -> dict:
-    # Define a dictionary to represent the hyperparameter search space
+    # Create the search space based on NEPS parameters and return the dictionary.
+    # IMPORTANT:
     space = dict(
-        lr=neps.FloatParameter(lower=1e-5, upper=1e-2, log=True, default=1e-3),
+        lr=neps.FloatParameter(
+            lower=1e-5,
+            upper=1e-2,
+            log=True,  # If True, the search space is sampled in log space
+            default=1e-3,  # a non-None value here acts as the mode of the prior distribution
+        ),
         optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),
-        epochs=neps.IntegerParameter(lower=1, upper=9, log=False, is_fidelity=True),
+        epochs=neps.IntegerParameter(
+            lower=1,
+            upper=9,
+            is_fidelity=True,  # IMPORTANT to set this to True for the fidelity parameter
+        ),
     )
     return space
-
-
-# 2. Create the lightning module
 
 
 class LitModel(L.LightningModule):
@@ -49,8 +70,8 @@ class LitModel(L.LightningModule):
 
         self.save_hyperparameters(configuration)
 
-        # You can now define your criterion, transforms, model layers, and
-        # metrics obtained during trainig that configuration
+        # You can now define your criterion, data transforms, model layers, and
+        # metrics obtained during training
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Forward pass function
@@ -87,33 +108,34 @@ class LitModel(L.LightningModule):
     # https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_x_lightning.py
 
 
-# 3. Define the run pipeline function
-
-
-def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
-    # A. Start by getting the initial directory which will be used to store tensorboard
+def run_pipeline(
+    pipeline_directory,  # The directory where the config is saved
+    previous_pipeline_directory,  # The directory of the config's immediate lower fidelity
+    **config,  # The hyperparameters to be used in the pipeline
+) -> dict | float:
+    # Start by getting the initial directory which will be used to store tensorboard
     # event files and checkpoint files
     init_dir = get_initial_directory(pipeline_directory)
     checkpoint_dir = init_dir / "checkpoints"
     tensorboard_dir = init_dir / "tensorboard"
 
-    # B. Create the model
+    # Create the model
     model = LitModel(config)
 
-    # C. Create the TensorBoard logger and the checkpoint callback
+    # Create the TensorBoard logger and the checkpoint callback
     logger = TensorBoardLogger(
         save_dir=tensorboard_dir, name="data", version="logs", default_hp_metric=False
     )
     checkpoint_callback = ModelCheckpoint(dirpath=checkpoint_dir)
 
-    # D. Checking for any checkpoint files and checkpoint data returns None if
+    # Checking for any checkpoint files and checkpoint data, returns None if
     # no checkpoint files exist.
     checkpoint_path, checkpoint_data = load_lightning_checkpoint(
         previous_pipeline_directory=previous_pipeline_directory,
         checkpoint_dir=checkpoint_dir,
     )
 
-    # E. Create a PyTorch Lightning Trainer
+    # Create a PyTorch Lightning Trainer
     epochs = config["epochs"]
 
     trainer = L.Trainer(
@@ -122,7 +144,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
         callbacks=[checkpoint_callback],
     )
 
-    # F. Train, test, and their corresponding metrics
+    # Train, test, and get their corresponding metrics
     if checkpoint_path:
         trainer.fit(model, ckpt_path=checkpoint_path)
     else:
@@ -132,6 +154,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
     trainer.test(model)
     test_loss = trainer.logged_metrics.get("test_loss", None)
 
+    # Return a dictionary with the results, or a single float value (loss)
     return {
         "loss": val_loss,
         "info_dict": {
@@ -140,15 +163,13 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
     }
 
 
-# 4. Define the neps.run function with the searcher as the argument
+# end of run_pipeline
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
     neps.run(
-        run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space(),
+        run_pipeline=run_pipeline,  # User TODO (defined above)
+        pipeline_space=pipeline_space(),  # User TODO (defined above)
         root_directory="results",
-        max_evaluations_total=15,
-        searcher="priorband",
+        max_evaluations_total=25,  # total number of times `run_pipeline` is called
+        searcher="priorband",  # "priorband_bo" for longer budgets, and set `initial_design_size``
     )
