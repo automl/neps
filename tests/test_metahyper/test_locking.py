@@ -3,11 +3,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from more_itertools import first_true
 
 
 @pytest.mark.metahyper
+@pytest.mark.summary_csv
 def test_filelock() -> None:
     """Test that the filelocking method of parallelization works as intended."""
     # Note: Not using tmpdir
@@ -70,3 +72,25 @@ def test_filelock() -> None:
     finally:
         if results_dir.exists():
             shutil.rmtree(results_dir)
+
+
+@pytest.mark.summary_csv
+def test_summary_csv():
+    # Testing the csv files output.
+    try:
+        summary_dir = Path("results") / "hyperparameters_example" / "summary_csv"
+        assert summary_dir.is_dir()
+
+        run_data_df = pd.read_csv(summary_dir / "run_data.csv")
+        run_data_df.set_index("Description", inplace=True)
+        num_evaluated_configs_csv = run_data_df.loc["num_evaluated_configs", "Value"]
+        assert num_evaluated_configs_csv == 15
+
+        config_data_df = pd.read_csv(summary_dir / "config_data.csv")
+        assert config_data_df.shape[0] == 15
+        assert (config_data_df["Status"] == "Complete").all()
+    except Exception as e:
+        raise e
+    finally:
+        if summary_dir.exists():
+            shutil.rmtree(summary_dir)

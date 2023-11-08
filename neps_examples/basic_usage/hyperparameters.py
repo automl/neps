@@ -25,5 +25,6 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
+    post_run_summary=True,
     max_evaluations_total=15,
 )

@@ -17,6 +17,7 @@ from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .status.status import post_run_csv
 from .utils.common import get_searcher_data
 from .utils.result_utils import get_loss
 
@@ -97,6 +98,7 @@ def run(
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     root_directory: str | Path,
     overwrite_working_directory: bool = False,
+    post_run_summary: bool = False,
     development_stage_id=None,
     task_id=None,
     max_evaluations_total: int | None = None,
@@ -135,6 +137,8 @@ def run(
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a run_pipeline function.
+        post_run_summary: If true, creates csv files after the worker is done,
+            holding summary information about the configs and results.
         development_stage_id: ID for the current development stage. Only needed if
             you work with multiple development stages.
         task_id: ID for the current task. Only needed if you work with multiple
@@ -319,3 +323,6 @@ def run(
         ),
         overwrite_optimization_dir=overwrite_working_directory,
     )
+
+    if post_run_summary is not None:
+        post_run_csv(root_directory=root_directory, logger=logger)
