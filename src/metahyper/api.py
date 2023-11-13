@@ -108,6 +108,65 @@ class Configuration:
         raise NotImplementedError
 
 
+def _process_sampler_info(
+    serializer: YamlSerializer,
+    sampler_info: dict,
+    sampler_info_file: str | Path,
+    logger=None,
+):
+    """
+    This function is called by the metahyper before sampling and training happens.
+    It performs checks on the optimizer's YAML data file to ensure data integrity
+    and applies sanity checks for potential user errors when running NePS.
+
+    The function utilizes a file-locking mechanism using the `Locker` class to ensure
+    thread safety, preventing potential conflicts when multiple threads access the file
+    simultaneously.
+
+    Parameters:
+        - serializer: The YAML serializer object used for loading and dumping data.
+        - sampler_info: The dictionary containing information for the optimizer.
+        - sampler_info_file: The path to the YAML file storing optimizer data if available.
+        - logger: An optional logger object for logging messages (default is 'neps').
+
+    Note:
+        - The file-locking mechanism is employed to avoid potential errors in multiple threads.
+        - The `Locker` class and `YamlSerializer` should be appropriately defined or imported.
+        - Ensure that potential side effects or dependencies are considered when using this function.
+    """
+    if logger is None:
+        logger = logging.getLogger("neps")
+
+    yaml_locker = Locker(sampler_info_file, logger.getChild("_locker"))
+
+    should_break = False
+    while not should_break:
+        if yaml_locker.acquire_lock():
+            try:
+                optimizer_data = serializer.load(sampler_info_file)
+                if optimizer_data is None:
+                    # If the file is empty or doesn't exist, write the sampler_info
+                    serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+                else:
+                    # Exclude 'searcher_name' from the comparison
+                    excluded_key = "searcher_name"
+                    sampler_info_copy = sampler_info.copy()
+                    optimizer_data_copy = optimizer_data.copy()
+                    sampler_info_copy.pop(excluded_key, None)
+                    optimizer_data_copy.pop(excluded_key, None)
+
+                    if sampler_info_copy != optimizer_data_copy:
+                        raise ValueError(
+                            f"The sampler_info in the file {sampler_info_file} is not valid. "
+                            f"Expected: {sampler_info_copy}, Found: {optimizer_data_copy}"
+                        )
+            except Exception as e:
+                raise RuntimeError(f"Error during data saving: {e}") from e
+            finally:
+                yaml_locker.release_lock()
+                should_break = True
+
+
 def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
     optimization_dir = Path(optimization_dir)
     base_result_directory = optimization_dir / "results"
@@ -383,10 +442,7 @@ def run(
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
 
-    # Check if the directory already exists
-    if not Path(sampler_info_file).exists():
-        # Write the sampler_info to a YAML file
-        serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+    _process_sampler_info(serializer, sampler_info, sampler_info_file, logger)
 
     evaluations_in_this_run = 0
     while True:
