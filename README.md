@@ -47,29 +47,33 @@ In code, the usage pattern can look like this:
 
 ```python
 import neps
-import logging
 
+# 1. Define a function that accepts hyperparameters and returns the validation error
+def run_pipeline(learning_rate: float, num_epochs: int, optimizer: str, num_layers: int):
 
-# 1. Define a function that accepts hyperparameters and computes the validation error
-def run_pipeline(hyperparameter_a: float, hyperparameter_b: int):
-    validation_error = -hyperparameter_a * hyperparameter_b
+    # create your model
+    model = MyModel(num_layers)
+    # train and evaluate the model with your training pipeline
+    validation_error = train_and_eval_model(model, learning_rate, num_epochs, optimizer)
     return validation_error
-
 
 # 2. Define a search space of hyperparameters; use the same names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(lower=0, upper=1),
-    hyperparameter_b=neps.IntegerParameter(lower=1, upper=100),
+    learning_rate=neps.FloatParameter(lower=0.0, upper=1.0, log=True), # If True, the search space is sampled in log space
+    num_epochs=neps.IntegerParameter(lower=10, upper=100, is_fidelity=True), # # Mark 'is_fidelity' as true for a multi-fidelity approach
+    optimizer=neps.CategoricalParameter(["adam", "sgd", "rmsprop"]),
+    num_layers=neps.IntegerParameter(lower=3, upper=10) # Architectural Hyperparameter
 )
 
-# 3. Call neps.run to optimize run_pipeline over pipeline_space
-logging.basicConfig(level=logging.INFO)
-neps.run(
-    run_pipeline=run_pipeline,
-    pipeline_space=pipeline_space,
-    root_directory="usage_example",
-    max_evaluations_total=5,
-)
+if __name__=="__main__":
+    # 3. Run the NePS optimization
+    neps.run(
+        run_pipeline=run_pipeline,
+        pipeline_space=pipeline_space,
+        root_directory="path/to/save/results", # Replace with the actual path
+        max_evaluations_total=100,
+        searcher="hyperband" # Optional: specifies the search strategy. If not set NePS decides based on your data.
+    )
 ```
 
 For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
