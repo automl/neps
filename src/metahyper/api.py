@@ -111,7 +111,8 @@ class Configuration:
 def _process_sampler_info(
     serializer: YamlSerializer,
     sampler_info: dict,
-    sampler_info_file: str | Path,
+    sampler_info_file: Path,
+    decision_locker: Locker,
     logger=None,
 ):
     """
@@ -127,6 +128,7 @@ def _process_sampler_info(
         - serializer: The YAML serializer object used for loading and dumping data.
         - sampler_info: The dictionary containing information for the optimizer.
         - sampler_info_file: The path to the YAML file storing optimizer data if available.
+        - decision_locker: The Locker file to use during multi-thread communication.
         - logger: An optional logger object for logging messages (default is 'neps').
 
     Note:
@@ -137,18 +139,12 @@ def _process_sampler_info(
     if logger is None:
         logger = logging.getLogger("neps")
 
-    yaml_locker = Locker(sampler_info_file, logger.getChild("_locker"))
-
     should_break = False
     while not should_break:
-        if yaml_locker.acquire_lock():
+        if decision_locker.acquire_lock():
             try:
-                optimizer_data = serializer.load(sampler_info_file)
-                if optimizer_data is None:
-                    # If the file is empty or doesn't exist, write the sampler_info
-                    serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
-                else:
-                    # Exclude 'searcher_name' from the comparison
+                if sampler_info_file.exists():
+                    optimizer_data = serializer.load(sampler_info_file)
                     excluded_key = "searcher_name"
                     sampler_info_copy = sampler_info.copy()
                     optimizer_data_copy = optimizer_data.copy()
@@ -160,10 +156,13 @@ def _process_sampler_info(
                             f"The sampler_info in the file {sampler_info_file} is not valid. "
                             f"Expected: {sampler_info_copy}, Found: {optimizer_data_copy}"
                         )
+                else:
+                    # If the file is empty or doesn't exist, write the sampler_info
+                    serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
             except Exception as e:
                 raise RuntimeError(f"Error during data saving: {e}") from e
             finally:
-                yaml_locker.release_lock()
+                decision_locker.release_lock()
                 should_break = True
 
 
@@ -442,7 +441,9 @@ def run(
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
 
-    _process_sampler_info(serializer, sampler_info, sampler_info_file, logger)
+    _process_sampler_info(
+        serializer, sampler_info, sampler_info_file, decision_locker, logger
+    )
 
     evaluations_in_this_run = 0
     while True:
