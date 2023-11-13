@@ -47,6 +47,7 @@ In code, the usage pattern can look like this:
 
 ```python
 import neps
+import logging
 
 # 1. Define a function that accepts hyperparameters and returns the validation error
 def run_pipeline(learning_rate: float, num_epochs: int, optimizer: str, num_layers: int):
@@ -67,6 +68,7 @@ pipeline_space = dict(
 
 if __name__=="__main__":
     # 3. Run the NePS optimization
+    logging.basicConfig(level=logging.INFO)
     neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
