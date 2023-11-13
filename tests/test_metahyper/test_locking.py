@@ -81,7 +81,7 @@ def test_summary_csv():
         summary_dir = Path("results") / "hyperparameters_example" / "summary_csv"
         assert summary_dir.is_dir()
 
-        run_data_df = pd.read_csv(summary_dir / "run_data.csv")
+        run_data_df = pd.read_csv(summary_dir / "run_status.csv")
         run_data_df.set_index("Description", inplace=True)
         num_evaluated_configs_csv = run_data_df.loc["num_evaluated_configs", "Value"]
         assert num_evaluated_configs_csv == 15

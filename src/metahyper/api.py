@@ -204,7 +204,6 @@ def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
                     shutil.rmtree(str(config_dir))
                 except Exception:  # The worker doesn't need to crash for this
                     logger.exception(f"Can't delete {config_dir}")
-
     return previous_paths, pending_paths
 
 
@@ -272,7 +271,6 @@ def _check_max_evaluations(
     continue_until_max_evaluation_completed,
 ):
     logger.debug("Checking if max evaluations is reached")
-
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger
     )
