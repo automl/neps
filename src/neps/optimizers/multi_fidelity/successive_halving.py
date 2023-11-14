@@ -37,7 +37,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        budget: int,
+        budget: int = None,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",

@@ -5,6 +5,8 @@ from typing import Callable
 
 from .ei import ComprehensiveExpectedImprovement
 from .mf_ei import MFEI
+from .ucb import UpperConfidenceBound, MF_UCB
+
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
@@ -29,5 +31,13 @@ AcquisitionMapping: dict[str, Callable] = {
         MFEI,
         in_fill="best",
         augmented_ei=False,
+    ),
+    "UCB": partial(
+        UpperConfidenceBound,
+        maximize=False,
+    ),
+    "MF-UCB": partial(
+        MF_UCB,
+        maximize=False,
     ),
 }
