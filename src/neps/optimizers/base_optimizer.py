@@ -92,3 +92,6 @@ class BaseOptimizer(metahyper.Sampler):
             learning_curve_on_error=self.learning_curve_on_error,
             ignore_errors=self.ignore_errors,
         )
+
+    def whoami(self):
+        return type(self).__name__

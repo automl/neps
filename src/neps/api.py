@@ -206,14 +206,16 @@ def run(
     
     if isinstance(searcher, BaseOptimizer):
         searcher_instance = searcher
-        searcher_alg = "custom"
+        searcher_name = "custom"
+        searcher_alg = searcher.whoami()
         user_defined_searcher = True
     else:
-        (
-            searcher_instance,
-            searcher_alg,
-            searcher_config,
-            searcher_info,
+        (   
+            searcher_name,
+            searcher_instance, 
+            searcher_alg, 
+            searcher_config, 
+            searcher_info, 
             user_defined_searcher
         ) = _run_args(
             pipeline_space=pipeline_space,
@@ -230,7 +232,7 @@ def run(
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
     searcher_info = {
-        "searcher_name": str(searcher),
+        "searcher_name": searcher_name,
         "searcher_alg": searcher_alg,
         "user_defined_searcher": user_defined_searcher,
         "searcher_args_user_modified": False,
@@ -414,4 +416,4 @@ def _run_args(
         **searcher_config,
     )
     
-    return searcher_instance, searcher_alg, searcher_config, searcher_info, user_defined_searcher
+    return searcher, searcher_instance, searcher_alg, searcher_config, searcher_info, user_defined_searcher
