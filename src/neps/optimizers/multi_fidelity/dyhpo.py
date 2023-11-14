@@ -205,7 +205,7 @@ class MFEIBO(BaseOptimizer):
             initial_design_size is None
             or _initial_design_size * self.min_budget > _initial_design_budget
         ):
-            # if the initial design budget is less than the budget spend on sampling
+            # if the initial design budget is less than the budget spent on sampling
             # the initial design at the minimum budget (fidelity)
             # 2 choices here:
             #    1. Reduce initial_design_size

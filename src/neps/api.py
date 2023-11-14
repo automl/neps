@@ -210,25 +210,17 @@ def run(
         user_defined_searcher = True
     else:
         (
-            searcher_instance, 
-            searcher_alg, 
-            searcher_config, 
-            searcher_info, 
+            searcher_instance,
+            searcher_alg,
+            searcher_config,
+            searcher_info,
             user_defined_searcher
         ) = _run_args(
-            run_pipeline=run_pipeline,
             pipeline_space=pipeline_space,
-            overwrite_working_directory=overwrite_working_directory,
-            development_stage_id=development_stage_id,
-            task_id=task_id,
-            max_evaluations_total=max_evaluations_total,
-            max_evaluations_per_run=max_evaluations_per_run,
-            continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
             max_cost_total=max_cost_total,
             ignore_errors=ignore_errors,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
-            pre_load_hooks=pre_load_hooks,
             logger=logger,
             searcher=searcher,
             searcher_path=searcher_path,
@@ -300,19 +292,11 @@ def run(
 
 
 def _run_args(
-    run_pipeline: Callable,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
-    overwrite_working_directory: bool = False,
-    development_stage_id=None,
-    task_id=None,
-    max_evaluations_total: int | None = None,
-    max_evaluations_per_run: int | None = None,
-    continue_until_max_evaluation_completed: bool = False,
     max_cost_total: int | float | None = None,
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
-    pre_load_hooks: List=[],
     logger=None,
     searcher: Literal[
         "default",
