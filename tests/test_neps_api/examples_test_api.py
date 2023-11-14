@@ -1,6 +1,8 @@
 import logging
 
 import neps
+from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
+from neps.search_spaces.search_space import SearchSpace
 
 pipeline_space_fidelity_priors = dict(
     val1=neps.FloatParameter(lower=-10, upper=10, default=1),
@@ -79,4 +81,17 @@ neps.run(
     root_directory="hyperband_neps_decided",
     max_evaluations_total=1,
     eta=2,
+)
+
+# Testing neps when the user creates their own custom searcher
+search_space = SearchSpace(**pipeline_space_fidelity)
+my_custom_searcher = BayesianOptimization(
+    pipeline_space=search_space, initial_design_size=5
+)
+neps.run(
+    run_pipeline=run_pipeline,
+    pipeline_space=pipeline_space_not_fidelity,
+    root_directory="bo_custom_created",
+    max_evaluations_total=1,
+    searcher=my_custom_searcher,
 )

@@ -59,6 +59,12 @@ expected_dicts = {
         "user_defined_searcher": False,
         "searcher_args_user_modified": False,
     },
+    "bo_custom_created": {
+        "searcher_name": "custom",
+        "searcher_alg": "BayesianOptimization",
+        "user_defined_searcher": True,
+        "searcher_args_user_modified": False,
+    },
 }
 
 
