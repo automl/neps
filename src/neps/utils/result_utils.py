@@ -72,6 +72,7 @@ def get_learning_curve(
             learning_curve_on_error = [learning_curve_on_error]
         return learning_curve_on_error
     elif isinstance(result, dict):
-        return result["learning_curve"]
+        return result["info_dict"]["learning_curve"]
+        # return result["learning_curve"]
     else:
         return float(result)

@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
@@ -227,7 +227,7 @@ def _check_max_evaluations(
     return evaluation_count >= max_evaluations
 
 
-def _sample_config(optimization_dir, sampler, serializer, logger):
+def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks):
     # First load the results and state of the optimizer
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger, do_lock=False
@@ -236,6 +236,14 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
     base_result_directory = optimization_dir / "results"
 
     logger.debug("Sampling a new configuration")
+    
+    for hook in pre_load_hooks:
+        # executes operations on the sampler before setting its state
+        # can be used for setting custom constraints on the optimizer state
+        # for example, can be used to input custom grid of configs, meta learning 
+        # information for surrogate building, any non-stationary auxiliary information
+        sampler = hook(sampler)
+    
     sampler.load_results(previous_results, pending_configs)
     config, config_id, previous_config_id = sampler.get_config_and_ids()
 
@@ -244,7 +252,10 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
 
     if pending_configs_free:
         logger.warning(
-            f"There are {len(pending_configs_free)} configs that were sampled, but have no worker assigned. Sometimes this is due to a delay in the filesystem communication, but most likely some configs crashed during their execution or a jobtime-limit was reached."
+            f"There are {len(pending_configs_free)} configs that were sampled, but "
+            "have no worker assigned. Sometimes this is due to a delay in the filesystem "
+            "communication, but most likely some configs crashed during their execution "
+            "or a jobtime-limit was reached."
         )
 
     if previous_config_id is not None:
@@ -359,6 +370,7 @@ def run(
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
+    pre_load_hooks: List=[],
 ):
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:
@@ -419,7 +431,9 @@ def run(
                         config,
                         pipeline_directory,
                         previous_pipeline_directory,
-                    ) = _sample_config(optimization_dir, sampler, serializer, logger)
+                    ) = _sample_config(
+                        optimization_dir, sampler, serializer, logger, pre_load_hooks
+                    )
                     # Storing the config details in ConfigInRun
                     ConfigInRun.store_in_run_data(
                         config,

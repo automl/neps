@@ -9,6 +9,7 @@ from itertools import product
 
 import ConfigSpace as CS
 import numpy as np
+import pandas as pd
 
 from ..utils.common import has_instance
 from . import (
@@ -68,7 +69,6 @@ class SearchSpace(collections.abc.Mapping):
         self.has_prior = False
         for key, hyperparameter in hyperparameters.items():
             self.hyperparameters[key] = hyperparameter
-
             # Only integer / float parameters can be fidelities, so check these
             if hyperparameter.is_fidelity:
                 if self.fidelity is not None:
@@ -77,7 +77,7 @@ class SearchSpace(collections.abc.Mapping):
                         " but multiple were given. (Hint: check you pipeline space for "
                         "multiple is_fidelity=True)"
                     )
-                elif not isinstance(hyperparameter, FloatParameter):
+                if not isinstance(hyperparameter, FloatParameter):
                     raise ValueError(
                         "neps only suport float and integer fidelity parameters"
                     )
@@ -88,6 +88,38 @@ class SearchSpace(collections.abc.Mapping):
                 self.has_prior = True
             elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
+        
+        # Variables for tabular bookkeeping
+        self.custom_grid_table = None
+        self.raw_tabular_space = None
+        self.has_tabular = None
+
+    def set_custom_grid_space(
+        self,
+        grid_table: pd.Series | pd.DataFrame,
+        raw_space: SearchSpace | CS.ConfigurationSpace
+    ):
+        """Set a custom grid space for the search space.
+
+        This function is used to set a custom grid space for the pipeline space. 
+        NOTE: Only to be used if a custom set of hyperparameters from the search space 
+        is to be sampled or used for acquisition functions. 
+        WARNING: The type check and the table format requirement is loose and 
+        can break certain components.
+        """
+        self.custom_grid_table: pd.DataFrame | pd.Series = grid_table
+        self.raw_tabular_space = (
+            SearchSpace(**raw_space)
+            if not isinstance(raw_space, SearchSpace) else raw_space
+        )
+        if self.custom_grid_table is None or self.raw_tabular_space is None:
+            raise ValueError(
+                "Both grid_table and raw_space must be set!\n"
+                "A table or list of fixed configs must be supported with a " 
+                "continuous space representing the type and bounds of each "
+                "hyperparameter for accurate modeling."
+            )
+        self.has_tabular = True
 
     @property
     def has_fidelity(self):
@@ -122,6 +154,13 @@ class SearchSpace(collections.abc.Mapping):
                 raise ValueError(
                     f"Could not sample valid config for {hp_name} in {patience} tries!"
                 )
+
+        if sample.has_tabular:
+            # each configuration does not need to carry the tabular data
+            sample.has_tabular = False
+            sample.custom_grid_table = None
+            sample.raw_tabular_space = None
+
         return sample
 
     def mutate(
@@ -252,9 +291,9 @@ class SearchSpace(collections.abc.Mapping):
             hp = ConstantParameter(value=value)
         else:
             raise NotImplementedError("Adding hps is supported only by value")
-        self._add_hyperparameter(name, hp)
+        self.add_hyperparameter(name, hp)
 
-    def _add_hyperparameter(self, name=None, hp=None):
+    def add_hyperparameter(self, name=None, hp=None):
         if name is None:
             id_new_hp = len(self.hyperparameters)
             while str(id_new_hp) in self.hyperparameters:
