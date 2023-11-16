@@ -50,18 +50,26 @@ import neps
 import logging
 
 # 1. Define a function that accepts hyperparameters and returns the validation error
-def run_pipeline(hyperparameter_a: float, hyperparameter_b: int, hyperparameter_c: str, architectual_parameter: int):
+def run_pipeline(hyperparameter_a: float, hyperparameter_b: int,
+                 hyperparameter_c: str, architectual_parameter: int):
     # create your model
     model = MyModel(architectual_parameter)
     # train and evaluate the model with your training pipeline
-    validation_error = train_and_eval_model(model, hyperparameter_a, hyperparameter_b, hyperparameter_c)
+    validation_error = train_and_eval_model(model, hyperparameter_a,
+                                            hyperparameter_b, hyperparameter_c)
 
     return validation_error
 
 # 2. Define a search space of hyperparameters; use the same names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(lower=0.0, upper=1.0, log=True), # If True, the search space is sampled in log space.
-    hyperparameter_b=neps.IntegerParameter(lower=1, upper=100, is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
+    hyperparameter_a=neps.FloatParameter(
+        lower=0.0,
+        upper=1.0,
+        log=True), # If True, the search space is sampled in log space.
+    hyperparameter_b=neps.IntegerParameter(
+        lower=1,
+        upper=100,
+        is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
     hyperparameter_c=neps.CategoricalParameter(["a", "b", "c"]),
     architectual_parameter=neps.IntegerParameter(lower=512, upper=1024)
 )
@@ -74,7 +82,8 @@ if __name__=="__main__":
         pipeline_space=pipeline_space,
         root_directory="path/to/save/results", # Replace with the actual path.
         max_evaluations_total=100,
-        searcher="hyperband" # Optional specifies the search strategy, otherwise NePs decides based on your data.
+        searcher="hyperband" # Optional specifies the search strategy,
+        # otherwise NePs decides based on your data.
     )
 ```
 
