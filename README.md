@@ -19,11 +19,13 @@ For efficiency and convenience NePS allows you to
 
 Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.py) for maximum efficiency!
 
-## Note
+### Note
 
 As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
 
-## Installation
+## Getting Started
+
+### 1. Installation
 
 Using pip
 
@@ -31,7 +33,7 @@ Using pip
 pip install neural-pipeline-search
 ```
 
-## Usage
+### 2. Basic Usage
 
 Using `neps` always follows the same pattern:
 
