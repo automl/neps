@@ -298,8 +298,8 @@ def run_pipeline(lr, optim, weight_decay):
             loss=loss,
             current_epoch=i,
             write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
-            writer_config_scalar=True,  # Set to True for a live loss trajectory for each config.
-            writer_config_hparam=True,  # Set to True for live parallel coordinate, scatter plot matrix, and table view.
+            writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
+            writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
             # Appending extra data
             extra_data={
                 "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
