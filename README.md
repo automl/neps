@@ -23,10 +23,6 @@ Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.
 
 As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
 
-## Documentation
-
-Please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
-
 ## Installation
 
 Using pip
@@ -62,14 +58,14 @@ def run_pipeline(hyperparameter_a: float, hyperparameter_b: int,
 
 # 2. Define a search space of hyperparameters; use the same names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(
-        lower=0.0,
-        upper=1.0,
-        log=True), # If True, the search space is sampled in log space.
     hyperparameter_b=neps.IntegerParameter(
         lower=1,
         upper=100,
         is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
+    hyperparameter_a=neps.FloatParameter(
+        lower=0.0,
+        upper=1.0,
+        log=True), # If True, the search space is sampled in log space.
     hyperparameter_c=neps.CategoricalParameter(["a", "b", "c"]),
     architectual_parameter=neps.IntegerParameter(lower=512, upper=1024)
 )
@@ -86,8 +82,10 @@ if __name__=="__main__":
         # otherwise NePs decides based on your data.
     )
 ```
+.
+## Documentation
 
-For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
+For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples)
 
 ## Analysing runs
 
