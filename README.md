@@ -27,7 +27,7 @@ As indicated with the `v0.x.x` version number, NePS is early stage code and APIs
 
 ### 1. Installation
 
-Using pip
+Using pip:
 
 ```bash
 pip install neural-pipeline-search
@@ -37,9 +37,9 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
-1. Define a search space `pipeline_space` of architectures/hyperparameters
-1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
+  1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
+  1. Define a search space `pipeline_space` of architectures/hyperparameters
+  1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
