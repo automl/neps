@@ -17,7 +17,7 @@ from ..utils.result_utils import get_loss
 def get_summary_dict(
     root_directory: str | Path, add_details: bool = False
 ) -> dict[str, Any]:
-    """Create dict that summarizes a run.
+    """Create a dict that summarizes a run.
 
     Args:
         root_directory: The root directory given to neps.run.
@@ -131,7 +131,7 @@ def _initiate_summary_csv(
     logger: logging.Logger,
 ) -> tuple[Path, Path, Locker]:
     """
-    Initialize summary CSV files and an associated locker for file access control.
+    Initializes a summary CSV and an associated locker for file access control.
 
     Args:
         root_directory (str | Path): The root directory where the summary CSV directory,
@@ -256,7 +256,7 @@ def _save_data_to_csv(
     run_data_df: pd.DataFrame,
 ) -> None:
     """
-    Save data to CSV files while acquiring a lock for data integrity.
+    Save data as a CSV while acquiring a lock for data integrity.
 
     Args:
         config_data_file_path (Path | str): The path to the CSV file for configuration data.
