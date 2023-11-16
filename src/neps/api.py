@@ -37,7 +37,7 @@ def _post_evaluation_hook_function(
         working_directory = Path(config_working_directory, "../../")
         loss = get_loss(result, loss_value_on_error, ignore_errors)
 
-        # 1. write all configs and losses
+        # 1. Write all configs and losses
         all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
 
         def write_loss_and_config(file_handle, loss_, config_id_, config_):
@@ -49,7 +49,7 @@ def _post_evaluation_hook_function(
         with all_configs_losses.open("a", encoding="utf-8") as f:
             write_loss_and_config(f, loss, config_id, config)
 
-        # No need to handle best loss cases if an error occurred
+        # no need to handle best loss cases if an error occurred
         if result == "error":
             return
 
@@ -59,7 +59,7 @@ def _post_evaluation_hook_function(
             logger.info(f"Finished evaluating config {config_id}")
             return
 
-        # 2. Write best losses / configs
+        # 2. Write best losses/configs
         best_loss_trajectory_file = Path(working_directory, "best_loss_trajectory.txt")
         best_loss_config_trajectory_file = Path(
             working_directory, "best_loss_with_config_trajectory.txt"
@@ -126,9 +126,9 @@ def run(
     """Run a neural pipeline search.
 
     To parallelize:
-        In order to run a neural pipeline search with multiple processes or machines,
+        To run a neural pipeline search with multiple processes or machines,
         simply call run(.) multiple times (optionally on different machines). Make sure
-        that root_directory points to the same folder on the same filesystem, otherwise
+        that root_directory points to the same folder on the same filesystem, otherwise,
         the multiple calls to run(.) will be independent.
 
     Args:
@@ -138,7 +138,7 @@ def run(
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a run_pipeline function.
-        post_run_summary: If true, creates csv files after the worker is done,
+        post_run_summary: If True, creates a csv file after each worker is done,
             holding summary information about the configs and results.
         development_stage_id: ID for the current development stage. Only needed if
             you work with multiple development stages.
@@ -242,10 +242,10 @@ def run(
         "searcher_args_user_modified": False,
     }
 
-    # Check to verify if the target directory contains history of another optimizer state
+    # Check to verify if the target directory contains the history of another optimizer state
     # This check is performed only when the `searcher` is built during the run
     if isinstance(searcher, BaseOptimizer):
-        # This check is not strict when a user-defined nep.optimizer is provided
+        # This check is not strict when a user-defined neps.optimizer is provided
         logger.warn(
             "An instantiated optimizer is provided. The safety checks of NePS will be "
             "skipped. Accurate continuation of runs can no longer be guaranteed!"
@@ -269,7 +269,7 @@ def run(
             else:
                 # No searcher argument updates when NePS decides the searcher.
                 logger.info(35 * "=" + "WARNING" + 35 * "=")
-                logger.info("CHANGINE ARGUMENTS ONLY WORKS WHEN SEARCHER IS DEFINED")
+                logger.info("CHANGING ARGUMENTS ONLY WORK WHEN SEARCHER IS DEFINED")
                 logger.info(
                     f"The searcher argument '{key}' will not change to '{value}'"
                     f" because NePS chose the searcher"
