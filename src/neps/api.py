@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Callable, Literal, List
+from typing import Callable, List, Literal
 
 import ConfigSpace as CS
 
@@ -17,7 +17,7 @@ from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
-from .utils.common import get_searcher_data
+from .utils.common import get_searcher_data, get_value
 from .utils.result_utils import get_loss
 
 
@@ -94,8 +94,10 @@ def _post_evaluation_hook_function(
 
 def run(
     run_pipeline: Callable,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
     root_directory: str | Path,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
+    | CS.ConfigurationSpace
+    | None = None,
     overwrite_working_directory: bool = False,
     development_stage_id=None,
     task_id=None,
@@ -106,7 +108,7 @@ def run(
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
-    pre_load_hooks: List=[],
+    pre_load_hooks: List = [],
     searcher: Literal[
         "default",
         "bayesian_optimization",
@@ -200,24 +202,30 @@ def run(
         )
         max_cost_total = searcher_kwargs["budget"]
         del searcher_kwargs["budget"]
-    
+
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using root directory {root_directory}")
-    
+
+    # Used to create the yaml holding information about the searcher.
+    # Also important for testing and debugging the api.
+    searcher_info = {
+        "searcher_name": "",
+        "searcher_alg": "",
+        "searcher_selection_source": "",
+        "searcher_modified_arguments": {},
+    }
+
     if isinstance(searcher, BaseOptimizer):
         searcher_instance = searcher
-        searcher_name = "custom"
-        searcher_alg = searcher.whoami()
-        user_defined_searcher = True
+        searcher_info["searcher_name"] = "custom"
+        searcher_info["searcher_alg"] = searcher.whoami()
+        searcher_info["searcher_selection_source"] = "Custom-BaseOptimizer"
     else:
-        (   
-            searcher_name,
-            searcher_instance, 
-            searcher_alg, 
-            searcher_config, 
-            searcher_info, 
-            user_defined_searcher
+        (
+            searcher_instance,
+            searcher_info,
         ) = _run_args(
+            searcher_info=searcher_info,
             pipeline_space=pipeline_space,
             max_cost_total=max_cost_total,
             ignore_errors=ignore_errors,
@@ -229,51 +237,17 @@ def run(
             **searcher_kwargs,
         )
 
-    # Used to create the yaml holding information about the searcher.
-    # Also important for testing and debugging the api.
-    searcher_info = {
-        "searcher_name": searcher_name,
-        "searcher_alg": searcher_alg,
-        "user_defined_searcher": user_defined_searcher,
-        "searcher_args_user_modified": False,
-    }
-
     # Check to verify if the target directory contains history of another optimizer state
     # This check is performed only when the `searcher` is built during the run
-    if isinstance(searcher, BaseOptimizer):
-        # This check is not strict when a user-defined nep.optimizer is provided
-        logger.warn(
-            "An instantiated optimizer is provided. The safety checks of NePS will be "
-            "skipped. Accurate continuation of runs can no longer be guaranteed!"
+    if not isinstance(searcher, (BaseOptimizer, str)):
+        raise ValueError(
+            f"Unrecognized `searcher` of type {type(searcher)}. Not str or BaseOptimizer."
         )
-    elif isinstance(searcher, str):
-        # Updating searcher arguments from searcher_kwargs
-        for key, value in searcher_kwargs.items():
-            if user_defined_searcher:
-                if key not in searcher_config or searcher_config[key] != value:
-                    searcher_config[key] = value
-                    logger.info(
-                        f"Updating the current searcher argument '{key}'"
-                        f" with the value '{value}'"
-                    )
-                else:
-                    logger.info(
-                        f"The searcher argument '{key}' has the same"
-                        f" value '{value}' as default."
-                    )
-                searcher_info["searcher_args_user_modified"] = True
-            else:
-                # No searcher argument updates when NePS decides the searcher.
-                logger.info(35 * "=" + "WARNING" + 35 * "=")
-                logger.info("CHANGINE ARGUMENTS ONLY WORKS WHEN SEARCHER IS DEFINED")
-                logger.info(
-                    f"The searcher argument '{key}' will not change to '{value}'"
-                    f" because NePS chose the searcher"
-                )
-                searcher_info["searcher_args_user_modified"] = False
-    else:
-        raise ValueError(f"Unrecognized `searcher`. Not str or BaseOptimizer.")
-    
+    elif isinstance(searcher, BaseOptimizer):
+        logger.warning(
+            "An instantiated optimizer is provided. All kwargs are not supported"
+        )
+
     metahyper.run(
         run_pipeline,
         searcher_instance,
@@ -294,7 +268,10 @@ def run(
 
 
 def _run_args(
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | CS.ConfigurationSpace,
+    searcher_info: dict,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
+    | CS.ConfigurationSpace
+    | None = None,
     max_cost_total: int | float | None = None,
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
@@ -313,8 +290,13 @@ def _run_args(
     | BaseOptimizer = "default",
     searcher_path: Path | str | None = None,
     **searcher_kwargs,
-) -> None:
+) -> tuple[BaseOptimizer, dict]:
     try:
+        # Raising an issue if pipeline_space is None
+        if pipeline_space is None:
+            raise ValueError(
+                "The choice of searcher requires a pipeline space to be provided"
+            )
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
             pipeline_space = pipeline_space_from_configspace(pipeline_space)
@@ -328,21 +310,19 @@ def _run_args(
             else:
                 new_pipeline_space[key] = value
         pipeline_space = new_pipeline_space
-        
+
         # Transform to neps internal representation of the pipeline space
         pipeline_space = SearchSpace(**pipeline_space)
     except TypeError as e:
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    user_defined_searcher = False
-
     if isinstance(searcher, str) and searcher_path is not None:
         # The users has their own custom searcher.
         logging.info("Preparing to run user created searcher")
 
         config = get_searcher_data(searcher, searcher_path)
-        user_defined_searcher = True
+        searcher_info["searcher_selection_source"] = "Custom-User_Yaml"
     else:
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
@@ -354,42 +334,46 @@ def _run_args(
                     if pipeline_space.has_fidelity
                     else "bayesian_optimization"
                 )
+            searcher_info[
+                "searcher_selection_source"
+            ] = "Default_Searcher-NePS_Decision_Tree"
         else:
             # Users choose one of NePS searchers.
-            user_defined_searcher = True
+            searcher_info["searcher_selection_source"] = "Default_Searcher-User_Choice"
         # Fetching the searcher data, throws an error when the searcher is not found
         config = get_searcher_data(searcher)
 
     searcher_alg = config["searcher_init"]["algorithm"]
-    searcher_config = {} if config["searcher_kwargs"] is None else config["searcher_kwargs"]
+    searcher_config = (
+        {} if config["searcher_kwargs"] is None else config["searcher_kwargs"]
+    )
 
     logger.info(f"Running {searcher} as the searcher")
     logger.info(f"Algorithm: {searcher_alg}")
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
-    searcher_info = {
-        "searcher_name": searcher,
-        "searcher_alg": searcher_alg,
-        "user_defined_searcher": user_defined_searcher,
-        "searcher_args_user_modified": False,
-    }
+    searcher_info["searcher_name"] = searcher
+    searcher_info["searcher_alg"] = searcher_alg
 
     # Updating searcher arguments from searcher_kwargs
     for key, value in searcher_kwargs.items():
-        if user_defined_searcher:
+        if (
+            searcher_info["searcher_selection_source"] == "Default_Searcher-User_Choice"
+            or searcher_info["searcher_selection_source"] == "Custom-User_Yaml"
+        ):
             if key not in searcher_config or searcher_config[key] != value:
                 searcher_config[key] = value
                 logger.info(
                     f"Updating the current searcher argument '{key}'"
-                    f" with the value '{value}'"
+                    f" with the value '{get_value(value)}'"
                 )
+                searcher_info["searcher_modified_arguments"][key] = get_value(value)
             else:
                 logger.info(
                     f"The searcher argument '{key}' has the same"
-                    f" value '{value}' as default."
+                    f" value '{get_value(value)}' as default."
                 )
-            searcher_info["searcher_args_user_modified"] = True
         else:
             # No searcher argument updates when NePS decides the searcher.
             logger.info(35 * "=" + "WARNING" + 35 * "=")
@@ -398,7 +382,6 @@ def _run_args(
                 f"The searcher argument '{key}' will not change to '{value}'"
                 f" because NePS chose the searcher"
             )
-            searcher_info["searcher_args_user_modified"] = False
 
     searcher_config.update(
         {
@@ -407,7 +390,7 @@ def _run_args(
             "ignore_errors": ignore_errors,
         }
     )
-    
+
     searcher_instance = instance_from_map(
         SearcherMapping, searcher_alg, "searcher", as_class=True
     )(
@@ -415,5 +398,8 @@ def _run_args(
         budget=max_cost_total,  # TODO: use max_cost_total everywhere
         **searcher_config,
     )
-    
-    return searcher, searcher_instance, searcher_alg, searcher_config, searcher_info, user_defined_searcher
+
+    return (
+        searcher_instance,
+        searcher_info,
+    )
