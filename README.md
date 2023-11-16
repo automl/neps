@@ -46,13 +46,11 @@ import neps
 import logging
 
 # 1. Define a function that accepts hyperparameters and returns the validation error
-def run_pipeline(hyperparameter_a: float, hyperparameter_b: int,
-                 hyperparameter_c: str, architectual_parameter: int):
+def run_pipeline(hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str):
     # create your model
-    model = MyModel(architectual_parameter)
+    model = MyModel(architecture_parameter)
     # train and evaluate the model with your training pipeline
-    validation_error = train_and_eval_model(model, hyperparameter_a,
-                                            hyperparameter_b, hyperparameter_c)
+    validation_error = train_and_eval_model(model, hyperparameter_a, hyperparameter_b)
 
     return validation_error
 
@@ -66,8 +64,7 @@ pipeline_space = dict(
         lower=0.0,
         upper=1.0,
         log=True), # If True, the search space is sampled in log space.
-    hyperparameter_c=neps.CategoricalParameter(["a", "b", "c"]),
-    architectual_parameter=neps.IntegerParameter(lower=512, upper=1024)
+    architecture_parameter=neps.CategoricalParameter(["option_a", "option_b", "option_c"]),
 )
 
 if __name__=="__main__":
@@ -82,7 +79,7 @@ if __name__=="__main__":
         # otherwise NePs decides based on your data.
     )
 ```
-.
+
 ## Documentation
 
 For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples)
