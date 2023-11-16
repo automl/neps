@@ -241,9 +241,9 @@ def _get_dataframes_from_summary(
     }
 
     df_run_data = pd.DataFrame.from_dict(
-        additional_data, orient="index", columns=["Value"]
+        additional_data, orient="index", columns=["value"]
     )
-    df_run_data.index.name = "Description"
+    df_run_data.index.name = "description"
 
     return df_config_data, df_run_data
 
@@ -272,9 +272,9 @@ def _save_data_to_csv(
     while not should_break:
         if locker.acquire_lock():
             try:
-                pending_configs = run_data_df.loc["num_pending_configs", "Value"]
+                pending_configs = run_data_df.loc["num_pending_configs", "value"]
                 pending_configs_with_worker = run_data_df.loc[
-                    "num_pending_configs_with_worker", "Value"
+                    "num_pending_configs_with_worker", "value"
                 ]
                 # Represents the last worker
                 if int(pending_configs) == 0 and int(pending_configs_with_worker) == 0:
@@ -286,13 +286,13 @@ def _save_data_to_csv(
 
                 if run_data_file_path.exists():
                     prev_run_data_df = pd.read_csv(run_data_file_path)
-                    prev_run_data_df.set_index("Description", inplace=True)
+                    prev_run_data_df.set_index("description", inplace=True)
 
                     num_evaluated_configs_csv = prev_run_data_df.loc[
-                        "num_evaluated_configs", "Value"
+                        "num_evaluated_configs", "value"
                     ]
                     num_evaluated_configs_run = run_data_df.loc[
-                        run_data_df.index == "num_evaluated_configs", "Value"
+                        run_data_df.index == "num_evaluated_configs", "value"
                     ]
                     # checks if the current worker has more evaluated configs than the previous
                     if int(num_evaluated_configs_csv) < int(num_evaluated_configs_run):
