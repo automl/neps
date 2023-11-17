@@ -3,8 +3,23 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from more_itertools import first_true
+
+
+def launch_example_processes(n_workers: int=3) -> list:
+    processes = []
+    for _ in range(n_workers):
+        processes.append(
+            subprocess.Popen(  # pylint: disable=consider-using-with
+                "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
+                stdout=subprocess.PIPE,
+                shell=True,
+                text=True,
+            )
+        )
+    return processes
 
 
 @pytest.mark.metahyper
@@ -24,23 +39,9 @@ def test_filelock() -> None:
     results_dir = Path("results") / "hyperparameters_example" / "results"
     try:
         assert not results_dir.exists()
-
-        # Launch both processes
-        p1 = subprocess.Popen(  # pylint: disable=consider-using-with
-            "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
-            stdout=subprocess.PIPE,
-            shell=True,
-            text=True,
-        )
-        p2 = subprocess.Popen(  # pylint: disable=consider-using-with
-            "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
-            stdout=subprocess.PIPE,
-            shell=True,
-            text=True,
-        )
-
         # Wait for them
-        for p in (p1, p2):
+        p_list = launch_example_processes(n_workers=2)
+        for p in p_list:
             p.wait()
             out, _ = p.communicate()
             lines = out.splitlines()
@@ -69,4 +70,29 @@ def test_filelock() -> None:
         raise e
     finally:
         if results_dir.exists():
-            shutil.rmtree(results_dir)
+            shutil.rmtree(results_dir.parent)
+
+
+@pytest.mark.summary_csv
+def test_summary_csv():
+    # Testing the csv files output.
+    summary_dir = Path("results") / "hyperparameters_example" / "summary_csv"
+    try:
+        if not summary_dir.exists():
+            p_list = launch_example_processes(n_workers=2)
+            for p in p_list:
+                p.wait()
+        assert summary_dir.is_dir()
+        run_data_df = pd.read_csv(summary_dir / "run_status.csv")
+        run_data_df.set_index("description", inplace=True)
+        num_evaluated_configs_csv = run_data_df.loc["num_evaluated_configs", "value"]
+        assert num_evaluated_configs_csv == 15
+
+        config_data_df = pd.read_csv(summary_dir / "config_data.csv")
+        assert config_data_df.shape[0] == 15
+        assert (config_data_df["Status"] == "Complete").all()
+    except Exception as e:
+        raise e
+    finally:
+        if summary_dir.exists():
+            shutil.rmtree(summary_dir.parent)
