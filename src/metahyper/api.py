@@ -323,9 +323,9 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
                    previous_results, pending_configs, pending_paths):
 
     base_result_directory = optimization_dir / "results"
-    logger.info(previous_results)
-    logger.info(pending_configs)
-    logger.info(pending_paths)
+    logger.debug(f"Previous results: {previous_results}")
+    logger.debug(f"Pending configs: {pending_configs}")
+    logger.debug(f"Pending paths: {pending_paths}")
 
     logger.debug("Sampling a new configuration")
 
@@ -612,8 +612,8 @@ def run(
         serializer.dump(config_metadata, pipeline_directory / "metadata")
 
         # Update previous_results manually
-        config_o = serializer.load_config(pipeline_directory / "config")
-        config_res = ConfigResult(config_o, result, config_metadata)
+        config_ = serializer.load_config(pipeline_directory / "config")
+        config_res = ConfigResult(config_, result, config_metadata)
         previous_results[config_id] = config_res
 
         # 3. Anything the user might want to do after the evaluation
