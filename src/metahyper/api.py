@@ -139,31 +139,31 @@ def _process_sampler_info(
     if logger is None:
         logger = logging.getLogger("neps")
 
-    should_break = False
-    while not should_break:
-        if decision_locker.acquire_lock():
-            try:
-                if sampler_info_file.exists():
-                    optimizer_data = serializer.load(sampler_info_file)
-                    excluded_key = "searcher_name"
-                    sampler_info_copy = sampler_info.copy()
-                    optimizer_data_copy = optimizer_data.copy()
-                    sampler_info_copy.pop(excluded_key, None)
-                    optimizer_data_copy.pop(excluded_key, None)
+    # should_break = False
+    # while not should_break:
+        # if decision_locker.acquire_lock():
+    try:
+        if sampler_info_file.exists():
+            optimizer_data = serializer.load(sampler_info_file)
+            excluded_key = "searcher_name"
+            sampler_info_copy = sampler_info.copy()
+            optimizer_data_copy = optimizer_data.copy()
+            sampler_info_copy.pop(excluded_key, None)
+            optimizer_data_copy.pop(excluded_key, None)
 
-                    if sampler_info_copy != optimizer_data_copy:
-                        raise ValueError(
-                            f"The sampler_info in the file {sampler_info_file} is not valid. "
-                            f"Expected: {sampler_info_copy}, Found: {optimizer_data_copy}"
-                        )
-                else:
-                    # If the file is empty or doesn't exist, write the sampler_info
-                    serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
-            except Exception as e:
-                raise RuntimeError(f"Error during data saving: {e}") from e
-            finally:
-                decision_locker.release_lock()
-                should_break = True
+            if sampler_info_copy != optimizer_data_copy:
+                raise ValueError(
+                    f"The sampler_info in the file {sampler_info_file} is not valid. "
+                    f"Expected: {sampler_info_copy}, Found: {optimizer_data_copy}"
+                )
+        else:
+            # If the file is empty or doesn't exist, write the sampler_info
+            serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+    except Exception as e:
+        raise RuntimeError(f"Error during data saving: {e}") from e
+    # finally:
+        #     decision_locker.release_lock()
+        #     should_break = True
 
 
 def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
@@ -221,12 +221,12 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
     if logger is None:
         logger = logging.getLogger("metahyper")
 
-    if do_lock:
-        decision_lock_file = optimization_dir / ".decision_lock"
-        decision_lock_file.touch(exist_ok=True)
-        decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
-        while not decision_locker.acquire_lock():
-            time.sleep(2)
+    # if do_lock:
+    #     decision_lock_file = optimization_dir / ".decision_lock"
+    #     decision_lock_file.touch(exist_ok=True)
+    #     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
+    #     while not decision_locker.acquire_lock():
+    #         time.sleep(2)
 
     if serializer is None:
         serializer = YamlSerializer()
@@ -242,10 +242,10 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
     for config_id, (config_dir, config_file) in pending_paths.items():
         pending_configs[config_id] = serializer.load_config(config_file)
 
-        config_lock_file = config_dir / ".config_lock"
-        config_locker = Locker(config_lock_file, logger.getChild("_locker"))
-        if config_locker.acquire_lock():
-            pending_configs_free[config_id] = pending_configs[config_id]
+        # config_lock_file = config_dir / ".config_lock"
+        # config_locker = Locker(config_lock_file, logger.getChild("_locker"))
+        # if config_locker.acquire_lock():
+        #     pending_configs_free[config_id] = pending_configs[config_id]
 
     logger.debug(
         f"Read in {len(previous_results)} previous results and "
@@ -258,9 +258,42 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
         f"and pending_configs_free={pending_configs_free}, "
     )
 
-    if do_lock:
-        decision_locker.release_lock()
+    # if do_lock:
+    #     decision_locker.release_lock()
     return previous_results, pending_configs, pending_configs_free
+
+def read_single(optimization_dir: Path | str, serializer=None, logger=None, do_lock=True):
+    optimization_dir = Path(optimization_dir)
+
+    if logger is None:
+        logger = logging.getLogger("metahyper")
+
+    if serializer is None:
+        serializer = YamlSerializer()
+
+    previous_paths, pending_paths = _load_sampled_paths(
+        optimization_dir, serializer, logger
+    )
+    previous_results, pending_configs, pending_configs_free = {}, {}, {}
+
+    for config_id, (config_dir, _, _) in previous_paths.items():
+        previous_results[config_id] = _read_config_result(config_dir, serializer)
+
+    for config_id, (config_dir, config_file) in pending_paths.items():
+        pending_configs[config_id] = serializer.load_config(config_file)
+
+    logger.debug(
+        f"Read in {len(previous_results)} previous results and "
+        f"{len(pending_configs)} pending evaluations "
+        f"({len(pending_configs_free)} without a worker)"
+    )
+    logger.debug(
+        f"Read in previous_results={previous_results}, "
+        f"pending_configs={pending_configs}, "
+        f"and pending_configs_free={pending_configs_free}, "
+    )
+
+    return previous_results, pending_configs, pending_configs_free, pending_paths
 
 
 def _check_max_evaluations(
@@ -269,50 +302,68 @@ def _check_max_evaluations(
     serializer,
     logger,
     continue_until_max_evaluation_completed,
+    previous_results,
+    pending_configs,
 ):
     logger.debug("Checking if max evaluations is reached")
-    previous_results, pending_configs, pending_configs_free = read(
-        optimization_dir, serializer, logger
-    )
+    # OH
+    # previous_results, pending_configs, pending_configs_free = read(
+    #     optimization_dir, serializer, logger
+    # )
     evaluation_count = len(previous_results)
 
     # Taking into account pending evaluations
     if not continue_until_max_evaluation_completed:
-        evaluation_count += len(pending_configs) - len(pending_configs_free)
+        evaluation_count += len(pending_configs)
 
     return evaluation_count >= max_evaluations
 
 
-def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks):
-    # First load the results and state of the optimizer
-    previous_results, pending_configs, pending_configs_free = read(
-        optimization_dir, serializer, logger, do_lock=False
-    )
+def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks,
+                   previous_results, pending_configs, pending_paths):
 
     base_result_directory = optimization_dir / "results"
+    logger.info(previous_results)
+    logger.info(pending_configs)
+    logger.info(pending_paths)
 
     logger.debug("Sampling a new configuration")
-    
+
     for hook in pre_load_hooks:
         # executes operations on the sampler before setting its state
         # can be used for setting custom constraints on the optimizer state
-        # for example, can be used to input custom grid of configs, meta learning 
+        # for example, can be used to input custom grid of configs, meta learning
         # information for surrogate building, any non-stationary auxiliary information
         sampler = hook(sampler)
-    
-    sampler.load_results(previous_results, pending_configs)
-    config, config_id, previous_config_id = sampler.get_config_and_ids()
+
+    if not pending_paths:
+        sampler.load_results(previous_results, pending_configs)
+        config, config_id, previous_config_id = sampler.get_config_and_ids()
+    else:
+        # Handle Pending configuration before moving on to sampling new
+        # This will be the case when a run is terminated prematurely and
+        # Still had a sampled but not yet evaluated config from the previous run
+        config_id = list(pending_paths.keys())[0]
+        # Read into dictionary form since the eval function expects only a dictionary
+        config = pending_configs.pop(config_id).hp_values()
+        pipeline_directory = base_result_directory / f"config_{config_id}"
+        prev_config_directory = pipeline_directory / "previous_config.id"
+        if prev_config_directory.exists():
+            previous_config_id = prev_config_directory.read_text()
+            previous_pipeline_directory = base_result_directory / f"config_{previous_config_id}"
+        else:
+            previous_pipeline_directory = None
+        (config_dir, _) = pending_paths.pop(config_id)
+
+        logger.warning(f"Found a not yet evaluated config in {config_dir}\n"
+                       f"Evaluating this config before starting the optimizer")
+        return (config_id,
+                config,
+                pipeline_directory,
+                previous_pipeline_directory)
 
     pipeline_directory = base_result_directory / f"config_{config_id}"
     pipeline_directory.mkdir(exist_ok=True)
-
-    if pending_configs_free:
-        logger.warning(
-            f"There are {len(pending_configs_free)} configs that were sampled, but "
-            "have no worker assigned. Sometimes this is due to a delay in the filesystem "
-            "communication, but most likely some configs crashed during their execution "
-            "or a jobtime-limit was reached."
-        )
 
     if previous_config_id is not None:
         previous_config_id_file = pipeline_directory / "previous_config.id"
@@ -447,15 +498,24 @@ def run(
     base_result_directory = optimization_dir / "results"
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
-    decision_lock_file = optimization_dir / ".decision_lock"
-    decision_lock_file.touch(exist_ok=True)
-    decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
+    # decision_lock_file = optimization_dir / ".decision_lock"
+    # decision_lock_file.touch(exist_ok=True)
+    # decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
 
     _process_sampler_info(
-        serializer, sampler_info, sampler_info_file, decision_locker, logger
+        serializer, sampler_info, sampler_info_file, None, logger
+    )
+
+    previous_results, pending_configs, _, pending_paths = read_single(
+        optimization_dir, serializer, logger, do_lock=False
     )
 
     evaluations_in_this_run = 0
+
+    # Read the state file from the previous run
+    # with sampler.using_state(sampler_state_file, serializer):
+    if sampler_state_file.exists():
+        sampler.load_state(serializer.load(sampler_state_file))
     while True:
         if max_evaluations_total is not None and _check_max_evaluations(
             optimization_dir,
@@ -463,6 +523,8 @@ def run(
             serializer,
             logger,
             continue_until_max_evaluation_completed,
+            previous_results,
+            pending_configs
         ):
             logger.info("Maximum total evaluations is reached, shutting down")
             break
@@ -474,90 +536,95 @@ def run(
             logger.info("Maximum evaluations per run is reached, shutting down")
             break
 
-        if decision_locker.acquire_lock():
-            try:
-                with sampler.using_state(sampler_state_file, serializer):
-                    if sampler.budget is not None:
-                        if sampler.used_budget >= sampler.budget:
-                            logger.info("Maximum budget reached, shutting down")
-                            break
-                    (
-                        config_id,
-                        config,
-                        pipeline_directory,
-                        previous_pipeline_directory,
-                    ) = _sample_config(
-                        optimization_dir, sampler, serializer, logger, pre_load_hooks
-                    )
-                    # Storing the config details in ConfigInRun
-                    ConfigInRun.store_in_run_data(
-                        config,
-                        config_id,
-                        pipeline_directory,
-                        previous_pipeline_directory,
-                        optimization_dir,
-                    )
+        # if decision_locker.acquire_lock():
+        # try:
 
-                config_lock_file = pipeline_directory / ".config_lock"
-                config_lock_file.touch(exist_ok=True)
-                config_locker = Locker(config_lock_file, logger.getChild("_locker"))
-                config_lock_acquired = config_locker.acquire_lock()
-            finally:
-                decision_locker.release_lock()
+        if sampler.budget is not None:
+            if sampler.used_budget >= sampler.budget:
+                logger.info("Maximum budget reached, shutting down")
+                break
+        (
+            config_id,
+            config,
+            pipeline_directory,
+            previous_pipeline_directory,
+        ) = _sample_config(
+            optimization_dir, sampler, serializer, logger, pre_load_hooks,
+            previous_results, pending_configs, pending_paths
+        )
+        # Storing the config details in ConfigInRun
+        ConfigInRun.store_in_run_data(
+            config,
+            config_id,
+            pipeline_directory,
+            previous_pipeline_directory,
+            optimization_dir,
+        )
 
-            if config_lock_acquired:
-                try:
-                    # 1. First, we evaluate the config
-                    result, metadata = _evaluate_config(
-                        config_id,
-                        config,
-                        pipeline_directory,
-                        evaluation_fn,
-                        previous_pipeline_directory,
-                        logger,
-                    )
+        #     config_lock_file = pipeline_directory / ".config_lock"
+        #     config_lock_file.touch(exist_ok=True)
+        #     config_locker = Locker(config_lock_file, logger.getChild("_locker"))
+        #     config_lock_acquired = config_locker.acquire_lock()
+        # finally:
+        #     decision_locker.release_lock()
 
-                    # 2. Then, we now dump all information to disk:
-                    serializer.dump(result, pipeline_directory / "result")
+        # if config_lock_acquired:
+    #     try:
+        # 1. First, we evaluate the config
+        result, metadata = _evaluate_config(
+            config_id,
+            config,
+            pipeline_directory,
+            evaluation_fn,
+            previous_pipeline_directory,
+            logger,
+        )
 
-                    if result != "error":
-                        # Updating the global budget
-                        if "cost" in result:
-                            eval_cost = float(result["cost"])
-                            account_for_cost = result.get("account_for_cost", True)
-                            if account_for_cost:
-                                with decision_locker.acquire_force(time_step=1):
-                                    with sampler.using_state(
-                                        sampler_state_file, serializer
-                                    ):
-                                        sampler.used_budget += eval_cost
+        # 2. Then, we now dump all information to disk:
+        serializer.dump(result, pipeline_directory / "result")
 
-                            metadata["budget"] = {
-                                "max": sampler.budget,
-                                "used": sampler.used_budget,
-                                "eval_cost": eval_cost,
-                                "account_for_cost": account_for_cost,
-                            }
-                        elif sampler.budget is not None:
-                            raise ValueError(
-                                "The evaluation function result should contain "
-                                "a 'cost' field when used with a budget"
-                            )
+        if result != "error":
+            # Updating the global budget
+            if "cost" in result:
+                eval_cost = float(result["cost"])
+                account_for_cost = result.get("account_for_cost", True)
+                if account_for_cost:
+                    # with decision_locker.acquire_force(time_step=1):
+                        # with sampler.using_state(
+                        #     sampler_state_file, serializer
+                        # ):
+                    sampler.used_budget += eval_cost
 
-                    config_metadata = serializer.load(pipeline_directory / "metadata")
-                    config_metadata.update(metadata)
-                    serializer.dump(config_metadata, pipeline_directory / "metadata")
+                metadata["budget"] = {
+                    "max": sampler.budget,
+                    "used": sampler.used_budget,
+                    "eval_cost": eval_cost,
+                    "account_for_cost": account_for_cost,
+                }
+            elif sampler.budget is not None:
+                raise ValueError(
+                    "The evaluation function result should contain "
+                    "a 'cost' field when used with a budget"
+                )
 
-                    # 3. Anything the user might want to do after the evaluation
-                    if post_evaluation_hook is not None:
-                        post_evaluation_hook(
-                            config, config_id, pipeline_directory, result, logger
-                        )
-                    else:
-                        logger.info(f"Finished evaluating config {config_id}")
-                finally:
-                    config_locker.release_lock()
+        config_metadata = serializer.load(pipeline_directory / "metadata")
+        config_metadata.update(metadata)
+        serializer.dump(config_metadata, pipeline_directory / "metadata")
 
-                evaluations_in_this_run += 1
+        # Update previous_results manually
+        config_o = serializer.load_config(pipeline_directory / "config")
+        config_res = ConfigResult(config_o, result, config_metadata)
+        previous_results[config_id] = config_res
+
+        # 3. Anything the user might want to do after the evaluation
+        if post_evaluation_hook is not None:
+            post_evaluation_hook(
+                config, config_id, pipeline_directory, result, logger
+            )
         else:
-            time.sleep(3)
+            logger.info(f"Finished evaluating config {config_id}")
+
+        # Write Optimizer state file
+        serializer.dump(sampler.get_state(), sampler_state_file)
+        # finally:
+        #     config_locker.release_lock()
