@@ -16,7 +16,8 @@ from metahyper import instance_from_map
 from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
-from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace, \
+    pipeline_space_from_yaml
 from .status.status import post_run_csv
 from .utils.common import get_searcher_data
 from .utils.result_utils import get_loss
@@ -204,22 +205,22 @@ def run(
         )
         max_cost_total = searcher_kwargs["budget"]
         del searcher_kwargs["budget"]
-    
+
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using root directory {root_directory}")
-    
+
     if isinstance(searcher, BaseOptimizer):
         searcher_instance = searcher
         searcher_name = "custom"
         searcher_alg = searcher.whoami()
         user_defined_searcher = True
     else:
-        (   
+        (
             searcher_name,
-            searcher_instance, 
-            searcher_alg, 
-            searcher_config, 
-            searcher_info, 
+            searcher_instance,
+            searcher_alg,
+            searcher_config,
+            searcher_info,
             user_defined_searcher
         ) = _run_args(
             pipeline_space=pipeline_space,
@@ -277,7 +278,7 @@ def run(
                 searcher_info["searcher_args_user_modified"] = False
     else:
         raise ValueError(f"Unrecognized `searcher`. Not str or BaseOptimizer.")
-    
+
     metahyper.run(
         run_pipeline,
         searcher_instance,
@@ -325,6 +326,9 @@ def _run_args(
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
             pipeline_space = pipeline_space_from_configspace(pipeline_space)
+        # Support pipeline space as YAML file
+        elif isinstance(pipeline_space, str):
+            pipeline_space = pipeline_space_from_yaml(pipeline_space)
 
         # Support pipeline space as mix of ConfigurationSpace and neps parameters
         new_pipeline_space: dict[str, Parameter] = dict()
@@ -335,7 +339,7 @@ def _run_args(
             else:
                 new_pipeline_space[key] = value
         pipeline_space = new_pipeline_space
-        
+
         # Transform to neps internal representation of the pipeline space
         pipeline_space = SearchSpace(**pipeline_space)
     except TypeError as e:
@@ -414,7 +418,7 @@ def _run_args(
             "ignore_errors": ignore_errors,
         }
     )
-    
+
     searcher_instance = instance_from_map(
         SearcherMapping, searcher_alg, "searcher", as_class=True
     )(
@@ -422,5 +426,5 @@ def _run_args(
         budget=max_cost_total,  # TODO: use max_cost_total everywhere
         **searcher_config,
     )
-    
+
     return searcher, searcher_instance, searcher_alg, searcher_config, searcher_info, user_defined_searcher

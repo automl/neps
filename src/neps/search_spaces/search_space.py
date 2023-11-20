@@ -10,6 +10,7 @@ from itertools import product
 import ConfigSpace as CS
 import numpy as np
 import pandas as pd
+import yaml
 
 from ..utils.common import has_instance
 from . import (
@@ -61,6 +62,83 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
+def pipeline_space_from_yaml(yaml_file_path):
+    """
+    Reads configuration details from a YAML file and creates a dictionary of parameters.
+
+    Args:
+    yaml_file_path (str): Path to the YAML file containing configuration details.
+
+    Returns:
+    dict: A dictionary with parameter names as keys and parameter objects as values.
+
+    Raises:
+    KeyError: If any mandatory configuration for a parameter is missing in the YAML file.
+    ValueError: If an unknown parameter type is encountered.
+    ValueError: If YAML file is incorrectly constructed
+    """
+    # Load the YAML file
+    try:
+        with open(yaml_file_path, 'r') as file:
+            config = yaml.safe_load(file)
+    except yaml.YAMLError as e:
+        raise ValueError(f"The file at {yaml_file_path} is not a valid YAML file.") from e
+
+    # check for key config_space
+    if 'config_space' not in config:
+        raise ValueError(
+            "The YAML file is incorrectly constructed: 'config_space' key is missing.")
+
+    # Initialize the pipeline space
+    pipeline_space = {}
+    # Iterate over the items in the YAML configuration
+    for name, details in config['config_space'].items():
+        try:
+            param_type = details['type']
+            # Handle different parameter types
+            if param_type == 'int':
+                pipeline_space[name] = IntegerParameter(
+                    lower=details['lower'],
+                    upper=details['upper'],
+                    log=details.get('log', False),
+                    is_fidelity=details.get('is_fidelity', False),
+                    default=details.get('default', None),
+                    default_confidence=details.get('default_confidence', 'low')
+            )
+            elif param_type == 'float':
+                pipeline_space[name] = FloatParameter(
+                    lower=details['lower'],
+                    upper=details['upper'],
+                    log=details.get('log', False),
+                    is_fidelity=details.get('is_fidelity', False),
+                    default=details.get('default', None),
+                    default_confidence=details.get('default_confidence', 'low')
+                )
+            elif param_type == 'cat':
+                pipeline_space[name] = CategoricalParameter(
+                    choices=details['choices'],
+                    is_fidelity=details.get('is_fidelity', False),
+                    default=details.get('default', None),
+                    default_confidence=details.get('default_confidence', 'low')
+
+                )
+            elif param_type == 'const':
+                pipeline_space[name] = ConstantParameter(
+                    value=details['value'],
+                    is_fidelity=details.get('is_fidelity', False)
+                )
+            else:
+                # Handle unknown parameter types
+                supported_types = ['const', 'cat', 'int', 'float']
+                raise ValueError(f"Unknown parameter type '{param_type}' for '{name}'. "
+                                 f"Supported types are: {', '.join(supported_types)}")
+        except KeyError as e:
+            # Handle missing mandatory arguments
+            raise KeyError(f"Mandatory configuration '{e.args[0]}' missing for parameter '{name}' in YAML file.")
+
+    return pipeline_space
+
+
 class SearchSpace(collections.abc.Mapping):
     def __init__(self, **hyperparameters):
         self.hyperparameters = OrderedDict()
@@ -88,7 +166,7 @@ class SearchSpace(collections.abc.Mapping):
                 self.has_prior = True
             elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
-        
+
         # Variables for tabular bookkeeping
         self.custom_grid_table = None
         self.raw_tabular_space = None
@@ -101,10 +179,10 @@ class SearchSpace(collections.abc.Mapping):
     ):
         """Set a custom grid space for the search space.
 
-        This function is used to set a custom grid space for the pipeline space. 
-        NOTE: Only to be used if a custom set of hyperparameters from the search space 
-        is to be sampled or used for acquisition functions. 
-        WARNING: The type check and the table format requirement is loose and 
+        This function is used to set a custom grid space for the pipeline space.
+        NOTE: Only to be used if a custom set of hyperparameters from the search space
+        is to be sampled or used for acquisition functions.
+        WARNING: The type check and the table format requirement is loose and
         can break certain components.
         """
         self.custom_grid_table: pd.DataFrame | pd.Series = grid_table
@@ -115,7 +193,7 @@ class SearchSpace(collections.abc.Mapping):
         if self.custom_grid_table is None or self.raw_tabular_space is None:
             raise ValueError(
                 "Both grid_table and raw_space must be set!\n"
-                "A table or list of fixed configs must be supported with a " 
+                "A table or list of fixed configs must be supported with a "
                 "continuous space representing the type and bounds of each "
                 "hyperparameter for accurate modeling."
             )
