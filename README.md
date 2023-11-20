@@ -19,29 +19,27 @@ For efficiency and convenience NePS allows you to
 
 Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.py) for maximum efficiency!
 
-## Note
+### Note
 
 As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
 
-## Documentation
+## Getting Started
 
-Please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
+### 1. Installation
 
-## Installation
-
-Using pip
+Using pip:
 
 ```bash
 pip install neural-pipeline-search
 ```
 
-## Usage
+### 2. Basic Usage
 
 Using `neps` always follows the same pattern:
 
-1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
-1. Define a search space `pipeline_space` of architectures/hyperparameters
-1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
+  1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
+  1. Define a search space `pipeline_space` of architectures/hyperparameters
+  1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
@@ -49,21 +47,36 @@ In code, the usage pattern can look like this:
 import neps
 import logging
 
-# 1. Define a function that accepts hyperparameters and returns the validation error
-def run_pipeline(hyperparameter_a: float, hyperparameter_b: int, hyperparameter_c: str, architectual_parameter: int):
-    # create your model
-    model = MyModel(architectual_parameter)
-    # train and evaluate the model with your training pipeline
-    validation_error = train_and_eval_model(model, hyperparameter_a, hyperparameter_b, hyperparameter_c)
 
-    return validation_error
+# 1. Define a function that accepts hyperparameters and computes the validation error
+def run_pipeline(
+    hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
+    ) -> dict:
+    # Create your model
+    model = MyModel(architecture_parameter)
+
+    # Train and evaluate the model with your training pipeline
+    validation_error, test_error = train_and_eval(model, hyperparameter_a, hyperparameter_b)
+
+    return {
+        "loss": validation_error,
+        "info_dict": {
+            "test_error": test_error
+            # + Other metrics
+        }
+    }
 
 # 2. Define a search space of hyperparameters; use the same names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(lower=0.0, upper=1.0, log=True), # If True, the search space is sampled in log space.
-    hyperparameter_b=neps.IntegerParameter(lower=1, upper=100, is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
-    hyperparameter_c=neps.CategoricalParameter(["a", "b", "c"]),
-    architectual_parameter=neps.IntegerParameter(lower=512, upper=1024)
+    hyperparameter_b=neps.IntegerParameter(
+        lower=1,
+        upper=100,
+        is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
+    hyperparameter_a=neps.FloatParameter(
+        lower=0.0,
+        upper=1.0,
+        log=True), # If True, the search space is sampled in log space.
+    architecture_parameter=neps.CategoricalParameter(["option_a", "option_b", "option_c"]),
 )
 
 if __name__=="__main__":
@@ -74,11 +87,14 @@ if __name__=="__main__":
         pipeline_space=pipeline_space,
         root_directory="path/to/save/results", # Replace with the actual path.
         max_evaluations_total=100,
-        searcher="hyperband" # Optional specifies the search strategy, otherwise NePs decides based on your data.
+        searcher="hyperband" # Optional specifies the search strategy,
+        # otherwise NePs decides based on your data.
     )
 ```
 
-For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
+## Documentation
+
+For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples)
 
 ## Analysing runs
 

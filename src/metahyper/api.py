@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
@@ -108,6 +108,64 @@ class Configuration:
         raise NotImplementedError
 
 
+def _process_sampler_info(
+    serializer: YamlSerializer,
+    sampler_info: dict,
+    sampler_info_file: Path,
+    decision_locker: Locker,
+    logger=None,
+):
+    """
+    This function is called by the metahyper before sampling and training happens.
+    It performs checks on the optimizer's YAML data file to ensure data integrity
+    and applies sanity checks for potential user errors when running NePS.
+
+    The function utilizes a file-locking mechanism using the `Locker` class to ensure
+    thread safety, preventing potential conflicts when multiple threads access the file
+    simultaneously.
+
+    Parameters:
+        - serializer: The YAML serializer object used for loading and dumping data.
+        - sampler_info: The dictionary containing information for the optimizer.
+        - sampler_info_file: The path to the YAML file storing optimizer data if available.
+        - decision_locker: The Locker file to use during multi-thread communication.
+        - logger: An optional logger object for logging messages (default is 'neps').
+
+    Note:
+        - The file-locking mechanism is employed to avoid potential errors in multiple threads.
+        - The `Locker` class and `YamlSerializer` should be appropriately defined or imported.
+        - Ensure that potential side effects or dependencies are considered when using this function.
+    """
+    if logger is None:
+        logger = logging.getLogger("neps")
+
+    should_break = False
+    while not should_break:
+        if decision_locker.acquire_lock():
+            try:
+                if sampler_info_file.exists():
+                    optimizer_data = serializer.load(sampler_info_file)
+                    excluded_key = "searcher_name"
+                    sampler_info_copy = sampler_info.copy()
+                    optimizer_data_copy = optimizer_data.copy()
+                    sampler_info_copy.pop(excluded_key, None)
+                    optimizer_data_copy.pop(excluded_key, None)
+
+                    if sampler_info_copy != optimizer_data_copy:
+                        raise ValueError(
+                            f"The sampler_info in the file {sampler_info_file} is not valid. "
+                            f"Expected: {sampler_info_copy}, Found: {optimizer_data_copy}"
+                        )
+                else:
+                    # If the file is empty or doesn't exist, write the sampler_info
+                    serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+            except Exception as e:
+                raise RuntimeError(f"Error during data saving: {e}") from e
+            finally:
+                decision_locker.release_lock()
+                should_break = True
+
+
 def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
     optimization_dir = Path(optimization_dir)
     base_result_directory = optimization_dir / "results"
@@ -146,7 +204,6 @@ def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
                     shutil.rmtree(str(config_dir))
                 except Exception:  # The worker doesn't need to crash for this
                     logger.exception(f"Can't delete {config_dir}")
-
     return previous_paths, pending_paths
 
 
@@ -214,7 +271,6 @@ def _check_max_evaluations(
     continue_until_max_evaluation_completed,
 ):
     logger.debug("Checking if max evaluations is reached")
-
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger
     )
@@ -227,7 +283,7 @@ def _check_max_evaluations(
     return evaluation_count >= max_evaluations
 
 
-def _sample_config(optimization_dir, sampler, serializer, logger):
+def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks):
     # First load the results and state of the optimizer
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger, do_lock=False
@@ -236,6 +292,14 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
     base_result_directory = optimization_dir / "results"
 
     logger.debug("Sampling a new configuration")
+    
+    for hook in pre_load_hooks:
+        # executes operations on the sampler before setting its state
+        # can be used for setting custom constraints on the optimizer state
+        # for example, can be used to input custom grid of configs, meta learning 
+        # information for surrogate building, any non-stationary auxiliary information
+        sampler = hook(sampler)
+    
     sampler.load_results(previous_results, pending_configs)
     config, config_id, previous_config_id = sampler.get_config_and_ids()
 
@@ -244,7 +308,10 @@ def _sample_config(optimization_dir, sampler, serializer, logger):
 
     if pending_configs_free:
         logger.warning(
-            f"There are {len(pending_configs_free)} configs that were sampled, but have no worker assigned. Sometimes this is due to a delay in the filesystem communication, but most likely some configs crashed during their execution or a jobtime-limit was reached."
+            f"There are {len(pending_configs_free)} configs that were sampled, but "
+            "have no worker assigned. Sometimes this is due to a delay in the filesystem "
+            "communication, but most likely some configs crashed during their execution "
+            "or a jobtime-limit was reached."
         )
 
     if previous_config_id is not None:
@@ -359,6 +426,7 @@ def run(
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
+    pre_load_hooks: List=[],
 ):
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:
@@ -383,10 +451,9 @@ def run(
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
 
-    # Check if the directory already exists
-    if not Path(sampler_info_file).exists():
-        # Write the sampler_info to a YAML file
-        serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+    _process_sampler_info(
+        serializer, sampler_info, sampler_info_file, decision_locker, logger
+    )
 
     evaluations_in_this_run = 0
     while True:
@@ -419,7 +486,9 @@ def run(
                         config,
                         pipeline_directory,
                         previous_pipeline_directory,
-                    ) = _sample_config(optimization_dir, sampler, serializer, logger)
+                    ) = _sample_config(
+                        optimization_dir, sampler, serializer, logger, pre_load_hooks
+                    )
                     # Storing the config details in ConfigInRun
                     ConfigInRun.store_in_run_data(
                         config,

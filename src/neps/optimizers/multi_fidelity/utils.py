@@ -1,10 +1,13 @@
+# type: ignore
 from __future__ import annotations
 
 from typing import Any, Sequence
 
 import numpy as np
 import pandas as pd
+import torch
 
+from ...optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ...search_spaces.search_space import SearchSpace
 
 
@@ -25,6 +28,15 @@ def continuous_to_tabular(
             result[hp_name].value = closest
 
     return result
+
+
+def normalize_vectorize_config(
+    config: SearchSpace, ignore_fidelity: bool = True
+) -> np.ndarray:
+    _new_vector = []
+    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity).items():
+        _new_vector.extend(hp_list)
+    return np.array(_new_vector)
 
 
 class MFObservedData:
@@ -83,6 +95,11 @@ class MFObservedData:
     @property
     def seen_config_ids(self) -> list:
         return self.df.index.levels[0].to_list()
+
+    @property
+    def seen_budget_levels(self) -> list:
+        # Considers pending and error budgets as seen
+        return self.df.index.levels[1].to_list()
 
     @property
     def completed_runs(self):
@@ -224,6 +241,9 @@ class MFObservedData:
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
     def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+        # reduce budget_id to discount the current validation loss
+        # both during training and prediction phase
+        budget_id = max(0, budget_id - 1)
         if self.lc_col_name in self.df.columns:
             lc = self.df.loc[(config_id, budget_id), self.lc_col_name]
         else:
@@ -231,17 +251,51 @@ class MFObservedData:
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
         return lc
 
-    def get_training_data_4DyHPO(self, df: pd.DataFrame):
+    def get_training_data_4DyHPO(
+        self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
+    ):
         configs = []
         learning_curves = []
         performance = []
         for idx, row in df.iterrows():
             config_id = idx[0]
             budget_id = idx[1]
-            configs.append(row[self.config_col])
+            if pipeline_space.has_tabular:
+                _row = pd.Series([row[self.config_col]], index=[config_id])
+                _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
+                configs.append(_row.values[0])
+            else:
+                configs.append(row[self.config_col])
             performance.append(row[self.perf_col])
             learning_curves.append(self.extract_learning_curve(config_id, budget_id))
         return configs, learning_curves, performance
+
+    def get_tokenized_data(self, df: pd.DataFrame):
+        idxs = df.index.values
+        idxs = np.array([list(idx) for idx in idxs])
+        idxs[:, 1] += 1  # all fidelity IDs begin with 0 in NePS
+        performances = df.perf.values
+        configs = df.config.values
+        configs = np.array([normalize_vectorize_config(c) for c in configs])
+
+        return configs, idxs, performances
+
+    def tokenize(self, df: pd.DataFrame, as_tensor: bool = False):
+        """Function to format data for PFN."""
+        configs = np.array([normalize_vectorize_config(c) for c in df])
+        fidelity = np.array([c.fidelity.value for c in df]).reshape(-1, 1)
+        idx = df.index.values.reshape(-1, 1)
+
+        data = np.hstack([idx, fidelity, configs])
+
+        if as_tensor:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            data = torch.Tensor(data).to(device)
+        return data
+
+    @property
+    def token_ids(self) -> np.ndarray:
+        return self.df.index.values
 
 
 if __name__ == "__main__":

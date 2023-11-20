@@ -170,7 +170,7 @@ class DeepGP:
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = 50,
         **kwargs,  # pylint: disable=unused-argument
-    ):
+    ):  
         self.surrogate_model_fit_args = (
             surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
         )
@@ -191,6 +191,7 @@ class DeepGP:
 
         if neural_network_args is None:
             neural_network_args = {}
+        self.nn_args = neural_network_args
 
         self.device = (
             torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -234,7 +235,6 @@ class DeepGP:
             train_x=train_x, train_y=train_y, likelihood=likelihood
         ).to(self.device)
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model).to(self.device)
-
         return model, likelihood, mll
 
     def __preprocess_search_space(self, pipeline_space: SearchSpace):
@@ -254,7 +254,6 @@ class DeepGP:
         # add 1 for budget
         self.input_size = parameter_count
         self.continuous_params_size = self.input_size - len(self.categories)
-
         self.min_fidelity = pipeline_space.fidelity.lower
         self.max_fidelity = pipeline_space.fidelity.upper
 
@@ -393,7 +392,8 @@ class DeepGP:
             normalize_y=normalize_y,
             normalize_budget=normalize_budget,
         )
-
+        self.model, self.likelihood, self.mll = self.__initialize_gp_model(len(y_train))
+        self.nn = NeuralFeatureExtractor(self.input_size, **self.nn_args)
         self.model.to(self.device)
         self.likelihood.to(self.device)
         self.nn.to(self.device)
@@ -420,7 +420,8 @@ class DeepGP:
                 early_stopping=early_stopping,
                 patience=patience,
             )
-            self.save_checkpoint()
+            if self.checkpointing:
+                self.save_checkpoint()
         except gpytorch.utils.errors.NotPSDError:
             self.logger.info("Model training failed loading the untrained model")
             self.load_checkpoint(initial_state)
@@ -440,7 +441,7 @@ class DeepGP:
         patience: int = 10,
     ):
         if optimizer_args is None:
-            optimizer_args = {"lr": 0.1}
+            optimizer_args = {"lr": 0.001}
 
         self.model.train()
         self.likelihood.train()
@@ -576,12 +577,12 @@ class DeepGP:
 
             preds = self.likelihood(self.model(projected_test_x))
 
-        means = preds.mean.detach()
+        means = preds.mean.detach().cpu()
 
         if self.normalize_y:
             means = (means + self.min_y) * (self.max_y - self.min_y)
 
-        cov = torch.diag(torch.pow(preds.stddev.detach(), 2))
+        cov = torch.diag(torch.pow(preds.stddev.detach(), 2)).cpu()
 
         return means, cov
 
