@@ -6,6 +6,6 @@
 
 3. Navigate to [convenience](convenience) for examples highlighting utilities that add extra features to NePS. Discover tensorboard compatibility and its integration, explore the compatibility with PyTorch Lightning, and understand file management within the run pipeline function used in NePS.
 
-4. Navigate to into experimental examples tailored for NePS contributors. These examples provide insights and practices for experimental scenarios.
+4. Navigate to into [experimental](experimental) examples tailored for NePS contributors. These examples provide insights and practices for experimental scenarios.
 
 5. Navigate to [template](template) to find a basic fill-in template to kickstart your hyperparameter search with NePS. Use this template as a foundation for your projects, saving time and ensuring a structured starting point.
