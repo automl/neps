@@ -12,7 +12,7 @@ from typing import Counter as CounterType
 import networkx as nx
 import torch
 from networkx.algorithms.dag import lexicographical_topological_sort
-from path import Path
+from pathlib import Path
 from torch import nn
 
 from ...utils.common import AttrDict
