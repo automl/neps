@@ -10,7 +10,7 @@ from .gp_hierarchy import ComprehensiveGPHierarchy
 try:
     from .deepGP import DeepGP
 except ImportError as e:
-    DeepGP = MissingDependencyError(libname="neps", dep="gpytorch", install_group="gpytorch", cause=e)
+    DeepGP = MissingDependencyError(libname="neps", dep="gpytorch", install_group="deepgp", cause=e)
 
 try:
     from .pfn import PFN_SURROGATE  # only if available locally
