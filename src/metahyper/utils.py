@@ -48,6 +48,21 @@ def get_data_representation(data: Any):
         return data
 
 
+class MissingDependencyError(Exception):
+    def __init__(self, dep: str, cause: Exception, *args: Any):
+        super().__init__(dep, cause, *args)
+        self.dep = dep
+        self.__cause__ = cause  # This is what `raise a from b` does
+
+    def __str__(self) -> str:
+        return (
+            f"Some required dependency-({self.dep}) to use this optional feature is "
+            f"missing. Please, include neps[experimental] dependency group in your "
+            f"installation of neps to be able to use all the optional features."
+            f" Otherwise, just install ({self.dep})"
+        )
+
+
 class YamlSerializer:
     SUFFIX = ".yaml"
     PRE_SERIALIZE = True
@@ -140,9 +155,7 @@ def instance_from_map(
     else:
         raise ValueError(f"Object {request} invalid key for {name}")
 
-    # The case for MissingDependencyError,
-    # but can't import it here due to circular import risk
-    if isinstance(instance, Exception):
+    if isinstance(instance, MissingDependencyError):
         raise instance
 
     # Check if the request is a class if it is mandatory

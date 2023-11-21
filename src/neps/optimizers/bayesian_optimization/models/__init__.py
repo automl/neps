@@ -1,4 +1,5 @@
-from ....utils.common import MissingDependencyError
+from metahyper.utils import MissingDependencyError
+
 from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
 
@@ -16,7 +17,5 @@ SurrogateModelMapping = {
     "deep_gp": DeepGP,
     "gp": ComprehensiveGP,
     "gp_hierarchy": ComprehensiveGPHierarchy,
-    "pfn": PFN_SURROGATE
+    "pfn": PFN_SURROGATE,
 }
-
-
