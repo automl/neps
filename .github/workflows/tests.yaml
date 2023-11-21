@@ -37,7 +37,7 @@ jobs:
           poetry-version: 1.3.2
 
       - name: Run poetry install
-        run: poetry install
+        run: poetry install --extras "gpytorch torchvision"
 
       - name: Run pytest
         timeout-minutes: 15
