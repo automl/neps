@@ -4,7 +4,6 @@ import glob
 import os
 import random
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import torch
@@ -89,6 +88,11 @@ def save_checkpoint(
             is "checkpoint.pth".
     """
     if directory is None:
+        if ConfigInRun.pipeline_directory is None:
+            raise ValueError(
+                "The pipeline directory is not set in `ConfigInRun`. Please"
+                " provide a `directory=` to `save_checkpoint()`."
+            )
         directory = ConfigInRun.pipeline_directory
 
     directory = Path(directory)
@@ -268,21 +272,6 @@ def set_rnd_state(state: dict):
     if torch.cuda.is_available() and "torch_cuda_seed_state" in state:
         torch.cuda.set_rng_state_all(
             [torch.ByteTensor(dev) for dev in state["torch_cuda_seed_state"]]
-        )
-
-
-class MissingDependencyError(Exception):
-    def __init__(self, dep: str, cause: Exception, *args: Any):
-        super().__init__(dep, cause, *args)
-        self.dep = dep
-        self.__cause__ = cause  # This is what `raise a from b` does
-
-    def __str__(self) -> str:
-        return (
-            f"Some required dependency-({self.dep}) to use this optional feature is "
-            f"missing. Please, include neps[experimental] dependency group in your "
-            f"installation of neps to be able to use all the optional features."
-            f" Otherwise, just install ({self.dep})"
         )
 
 
