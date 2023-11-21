@@ -97,7 +97,7 @@ def instance_from_map(
     name: str = "mapping",
     allow_any: bool = True,
     as_class: bool = False,
-    kwargs: dict = None,
+    kwargs: dict | None = None,
 ):
     """Get an instance of an class from a mapping.
 
@@ -139,6 +139,11 @@ def instance_from_map(
         instance = request
     else:
         raise ValueError(f"Object {request} invalid key for {name}")
+
+    # The case for MissingDependencyError,
+    # but can't import it here due to circular import risk
+    if isinstance(instance, Exception):
+        raise instance
 
     # Check if the request is a class if it is mandatory
     if (args_dict or as_class) and not is_partial_class(instance):
