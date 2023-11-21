@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 class MissingDependencyError(Exception):
     """Used whenever an optional dependancy is missing."""
 
