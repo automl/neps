@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Callable, Literal, List
+from typing import Callable, List, Literal
 
 import ConfigSpace as CS
 
@@ -296,7 +296,7 @@ def run(
         pre_load_hooks=pre_load_hooks,
     )
 
-    if post_run_csv:
+    if post_run_summary:
         post_run_csv(root_directory, logger)
 
 
