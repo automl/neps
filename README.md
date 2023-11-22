@@ -1,3 +1,5 @@
+# NOTE: A custom version of NePS that is meant to be run only in single-worker mode.
+
 # Neural Pipeline Search (NePS)
 
 [![PyPI version](https://img.shields.io/pypi/v/neural-pipeline-search?color=informational)](https://pypi.org/project/neural-pipeline-search/)
