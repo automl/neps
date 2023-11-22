@@ -320,12 +320,12 @@ def _check_max_evaluations(
 
 
 def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks,
-                   previous_results, pending_configs, pending_paths):
+                   previous_results, pending_configs, pending_paths_free):
 
     base_result_directory = optimization_dir / "results"
     logger.debug(f"Previous results: {previous_results}")
     logger.debug(f"Pending configs: {pending_configs}")
-    logger.debug(f"Pending paths: {pending_paths}")
+    logger.debug(f"Pending paths: {pending_paths_free}")
 
     logger.debug("Sampling a new configuration")
 
@@ -336,14 +336,14 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
         # information for surrogate building, any non-stationary auxiliary information
         sampler = hook(sampler)
 
-    if not pending_paths:
+    if not pending_paths_free:
         sampler.load_results(previous_results, pending_configs)
         config, config_id, previous_config_id = sampler.get_config_and_ids()
     else:
         # Handle Pending configuration before moving on to sampling new
         # This will be the case when a run is terminated prematurely and
         # Still had a sampled but not yet evaluated config from the previous run
-        config_id = list(pending_paths.keys())[0]
+        config_id = list(pending_paths_free.keys())[0]
         # Read into dictionary form since the eval function expects only a dictionary
         config = pending_configs.pop(config_id).hp_values()
         pipeline_directory = base_result_directory / f"config_{config_id}"
@@ -353,7 +353,7 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
             previous_pipeline_directory = base_result_directory / f"config_{previous_config_id}"
         else:
             previous_pipeline_directory = None
-        (config_dir, _) = pending_paths.pop(config_id)
+        (config_dir, _) = pending_paths_free.pop(config_id)
 
         logger.warning(f"Found a not yet evaluated config in {config_dir}\n"
                        f"Evaluating this config before starting the optimizer")
@@ -506,7 +506,7 @@ def run(
         serializer, sampler_info, sampler_info_file, None, logger
     )
 
-    previous_results, pending_configs, _, pending_paths = read_single(
+    previous_results, pending_configs, _, pending_paths_free = read_single(
         optimization_dir, serializer, logger, do_lock=False
     )
 
@@ -550,7 +550,7 @@ def run(
             previous_pipeline_directory,
         ) = _sample_config(
             optimization_dir, sampler, serializer, logger, pre_load_hooks,
-            previous_results, pending_configs, pending_paths
+            previous_results, pending_configs, pending_paths_free
         )
         # Storing the config details in ConfigInRun
         ConfigInRun.store_in_run_data(
