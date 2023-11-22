@@ -54,11 +54,11 @@ Currently, this creates one plot that shows the best error value across the numb
 
 #### Introduction
 
-[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments, offering the ability to observe losses and metrics throughout the model training process while also providing visual representations of model architectures. In NePS, we use this powerful tool to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model and the search using tensorboard's HParam plugin.
+[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments, offering the ability to observe losses and metrics throughout the model training process. In NePS, we use this powerful tool to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
 
-#### `tblogger.log` Function
+#### The Logging Function
 
-Logs information to TensorBoard for visualizing the hyperparameter optimization process.
+The `tblogger.log` function is invoked within the model's training loop to facilitate logging of key metrics.
 
 - **Signature:**
 ```python
@@ -76,15 +76,18 @@ tblogger.log(
     - `loss` (float): The loss value to be logged.
     - `current_epoch` (int): The current epoch or iteration number.
     - `write_summary_incumbent` (bool, optional): Set to `True` for a live incumbent trajectory.
-    - `writer_config_scalar` (bool, optional): Set to `True` for a live loss trajectory for each configuration.
-    - `writer_config_hparam` (bool, optional): Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+    - `write_config_scalar` (bool, optional): Set to `True` for a live loss trajectory for each configuration.
+    - `write_config_hparam` (bool, optional): Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
     - `extra_data` (dict, optional): Additional data to be logged, provided as a dictionary.
 
-#### `extra_data` Dictionray Content Type
+#### Extra Custom Logging
 
-There exist specific functions to be used with the extra_data argument in NePS which are the following:
+NePS provides dedicated functions for customized logging using the `extra_data` argument. 
+Note: Name the dictionary keys as the names of the values you want to log and pass one of the following functions as the values for a successful logging process.
 
-1- Extra Scalar Logging
+##### 1- Extra Scalar Logging
+
+Logs new scalar data during training. Uses `current_epoch` from the log function as its `global_step`.
 
 - **Signature:**
 ```python
@@ -93,7 +96,9 @@ tblogger.scalar_logging(value: float)
 - **Parameters:**
     - `value` (float): Any scalar value to be logged at the current epoch of `tblogger.log` function.
 
-2- Extra Image Logging
+##### 2- Extra Image Logging
+
+Logs images during training. Images can be resized, randomly selected, and a specified number can be logged at specified intervals. Uses `current_epoch` from the log function as its `global_step`.
 
 - **Signature:**
 ```python
@@ -109,7 +114,7 @@ tblogger.image_logging(
 
 - **Parameters:**
     - `image` (torch.Tensor): Image tensor to be logged.
-    - `counter` (int): Log image at every multiple of counter.
+    - `counter` (int): Log images every counter epochs (i.e., when current_epoch % counter equals 0).
     - `resize_images` (list of int, optional): List of integers for image sizes after resizing (default: [32, 32]).
     - `random_images` (bool, optional): Images are randomly selected if True (default: True).
     - `num_images` (int, optional): Number of images to log (default: 20).
@@ -121,7 +126,7 @@ For illustration purposes, we will employ a straightforward example involving th
 
 To begin, we'll set up the required imports, establish a seed for reproducibility, and download the necessary training and testing datasets.
 
-```python
+```py linenums="1"
 import logging
 import random
 from typing import Tuple
@@ -145,9 +150,11 @@ def set_seed(seed=123):
     np.random.seed(seed)
     random.seed(seed)
 
+
 # Prepare the input data. For this tutorial we use the MNIST dataset.
 def MNIST(
-    batch_size: int = 256,
+    batch_size: int = 128,
+    data_reduction_factor: float = 0.2,
 ) -> Tuple[DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
@@ -157,15 +164,28 @@ def MNIST(
         root="./data", train=False, transform=transforms.ToTensor(), download=True
     )
 
+    # Determine the size of the reduced training dataset for faster training
+    reduced_train_size = int(data_reduction_factor * len(train_dataset))
+    reduced_test_size = int(data_reduction_factor * len(test_dataset))
+
+    # Create a subset of the training dataset based on the reduction factor
+    reduced_train_dataset = torch.utils.data.Subset(
+        train_dataset, range(reduced_train_size)
+    )
+    reduced_test_dataset = torch.utils.data.Subset(
+        test_dataset, range(reduced_test_size)
+    )
+
     # Create DataLoaders for training, validation, and test datasets.
     train_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False
+        dataset=reduced_train_dataset, batch_size=batch_size, shuffle=False
     )
     test_dataloader = DataLoader(
-        dataset=test_dataset, batch_size=batch_size, shuffle=False
+        dataset=reduced_test_dataset, batch_size=batch_size, shuffle=False
     )
 
     return train_dataloader, test_dataloader
+
 
 # Designing a model to be able to represent the input data.
 class MLP(nn.Module):
@@ -183,12 +203,12 @@ class MLP(nn.Module):
         x = self.linear3(x)
 
         return x
-    
+
 ```
 
-Now, we begin constructing our hyperparameter search algorithm with NePS, guided by three fundamental pillars: the pipeline space, the run_pipeline function, and the neps.run command.
+Now, we begin constructing our hyperparameter search algorithm with NePS, guided by the three fundamental pillars: the pipeline space, the run_pipeline function, and the neps.run command.
 
-```python
+```py linenums="1" hl_lines="55-72"
 # Desinging the pipeline space
 def pipeline_space() -> dict:
     search_space = dict(
@@ -199,25 +219,30 @@ def pipeline_space() -> dict:
 
     return search_space
 
+
 # Designing the run_pipeline
 def run_pipeline(**config) -> dict:
-	# Create the model
+    # Create the model
     model = MLP()
 
-    max_epochs = 10  # Epochs to train the model, can be parameterized as fidelity
+    # Epochs to train the model, can be parameterized as fidelity
+    max_epochs = 2
 
     # Load the MNIST dataset for training, validation, and testing.
     train_loader, _ = MNIST(batch_size=config["batch_size"])
 
     # Define the optimizer, criterion, and a scheduler for the learning rate
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=config["lr"], weight_decay=config["weight_decay"]
+        model.parameters(),
+        lr=config["lr"],
+        weight_decay=config["weight_decay"],
     )
     criterion = nn.CrossEntropyLoss()
     scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
 
     # Create the training loop
     for i in range(max_epochs):
+        total_loss = 0.0
         incorrect_images = []
         for x, y in train_loader:
             optimizer.zero_grad()
@@ -230,32 +255,44 @@ def run_pipeline(**config) -> dict:
             incorrect_mask = predicted_labels != y
             incorrect_images.append(x[incorrect_mask])
 
+            total_loss += loss.item()
+
+        # Calculate average loss for the epoch
+        avg_loss = total_loss / len(train_loader)
+
         if len(incorrect_images) > 0:
             incorrect_images = torch.cat(incorrect_images, dim=0)
-        
+
         ################## Tensorboard Logging Start ##################
         tblogger.log(
-            loss=loss,
+            loss=avg_loss,
             current_epoch=i,
-            write_summary_incumbent=True,  # Set to `True` for a live incumbent trajectory.
-            writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
-            writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+            write_summary_incumbent=True,
+            writer_config_scalar=True,
+            writer_config_hparam=True,
             # Appending extra data
             extra_data={
-                "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
-                "miss_img": tblogger.image_logging(image=incorrect_images, counter=2, seed=2),
+                "lr_decay": tblogger.scalar_logging(
+                    value=scheduler.get_last_lr()[0]
+                ),
+                "miss_img": tblogger.image_logging(
+                    image=incorrect_images, seed=2
+                ),
             },
         )
         ################## Tensorboard Logging End ##################
         scheduler.step()
-    
+        
+        print(f"  Epoch {i + 1} / {max_epochs} Train Error: {avg_loss} ")
+
     # Retrieve and return the information from the run pipeline.
     return {
         "loss": loss,
-        "info_dict":{
+        "info_dict": {
             "cost": max_epochs,
-        }    
+        },
     }
+
 
 # Running the search with bayesian optimization.
 if __name__ == "__main__":
@@ -269,6 +306,7 @@ if __name__ == "__main__":
         searcher="bayesian_optimization",
         max_evaluations_total=20,
     )
+
 ```
 
 #### Visualization Results
