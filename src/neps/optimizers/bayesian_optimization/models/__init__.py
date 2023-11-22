@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-from metahyper.utils import MissingDependencyError
-=======
 from metahyper.exceptions import MissingDependencyError
->>>>>>> b1982b8 (fix(dependacy): Check for specific Error)
 
 from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
