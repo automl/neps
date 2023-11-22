@@ -88,6 +88,11 @@ def save_checkpoint(
             is "checkpoint.pth".
     """
     if directory is None:
+        if ConfigInRun.pipeline_directory is None:
+            raise ValueError(
+                "The pipeline directory is not set in `ConfigInRun`. Please"
+                " provide a `directory=` to `save_checkpoint()`."
+            )
         directory = ConfigInRun.pipeline_directory
 
     directory = Path(directory)

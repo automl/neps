@@ -8,6 +8,8 @@ from typing import Any, Callable
 
 import yaml
 
+from metahyper.exceptions import MissingDependencyError
+
 
 def non_empty_file(file_path: Path) -> bool:
     return file_path.exists() and file_path.stat().st_size != 0
@@ -108,7 +110,7 @@ def is_partial_class(obj):
 
 def instance_from_map(
     mapping: dict[str, Any],
-    request: str | list | tuple | Any,
+    request: str | list | tuple | Any | MissingDependencyError,
     name: str = "mapping",
     allow_any: bool = True,
     as_class: bool = False,
@@ -130,6 +132,10 @@ def instance_from_map(
         ValueError: if the request is invalid (not a string if allow_any is False),
             or invalid key.
     """
+    if isinstance(request, MissingDependencyError):
+        # This happens when some optional dependancy is missing, the error
+        # message will signal to the user what to do
+        raise request
 
     # Split arguments of the form (request, kwargs)
     args_dict = kwargs or {}
@@ -155,9 +161,12 @@ def instance_from_map(
     else:
         raise ValueError(f"Object {request} invalid key for {name}")
 
+<<<<<<< HEAD
     if isinstance(instance, MissingDependencyError):
         raise instance
 
+=======
+>>>>>>> b1982b8 (fix(dependacy): Check for specific Error)
     # Check if the request is a class if it is mandatory
     if (args_dict or as_class) and not is_partial_class(instance):
         raise ValueError(
