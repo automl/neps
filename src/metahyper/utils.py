@@ -141,8 +141,6 @@ def instance_from_map(
     else:
         raise ValueError(f"Object {request} invalid key for {name}")
 
-    print(instance, type(instance), request)
-
     if isinstance(instance, MissingDependencyError):
         # This happens when some optional dependancy is missing, the error
         # message will signal to the user what to do
