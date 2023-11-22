@@ -31,6 +31,6 @@ class MissingDependencyError(Exception):
             msg += (
                 f"Please install with {self.libname}[{self.install_group}] "
                 f"to be able to use all the optional features. Otherwise, "
-                f" just install ({self.dep})"
+                f" just install '{self.dep}'"
             )
         return msg

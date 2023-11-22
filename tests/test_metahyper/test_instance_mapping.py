@@ -3,7 +3,6 @@ import pytest
 from metahyper.exceptions import MissingDependencyError
 from metahyper.utils import instance_from_map
 
-
 @pytest.mark.parametrize(
     "err",
     [
@@ -21,4 +20,4 @@ from metahyper.utils import instance_from_map
 @pytest.mark.metahyper
 def test_missing_dependancy_gets_flagged(err: MissingDependencyError) -> None:
     with pytest.raises(MissingDependencyError, match=err.dep):
-        instance_from_map(mapping={}, request=err)
+        instance_from_map(mapping={"missing_module": err}, request="missing_module")
