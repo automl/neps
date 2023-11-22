@@ -170,7 +170,7 @@ class DeepGP:
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = 50,
         **kwargs,  # pylint: disable=unused-argument
-    ):  
+    ):
         self.surrogate_model_fit_args = (
             surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
         )
@@ -203,6 +203,12 @@ class DeepGP:
         self.model, self.likelihood, self.mll = self.__initialize_gp_model(
             neural_network_args.get("n_layers", 2)
         )
+
+        if self.surrogate_model_fit_args.get("perf_patience", -1) is None:
+            # To replicate how the original DyHPO implementation handles the
+            # no_improvement_threshold
+            self.surrogate_model_fit_args["perf_patience"] = int(self.max_fidelity +
+                                                                 0.2 * self.max_fidelity)
 
         # build the neural network
         self.nn = NeuralFeatureExtractor(self.input_size, **neural_network_args)
@@ -369,6 +375,7 @@ class DeepGP:
         y_train: list[float],
         learning_curves: list[list[float]],
     ):
+        self.logger.info(f"FIT ARGS: {self.surrogate_model_fit_args}")
         self._fit(x_train, y_train, learning_curves, **self.surrogate_model_fit_args)
 
     def _fit(
