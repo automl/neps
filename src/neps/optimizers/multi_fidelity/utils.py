@@ -79,6 +79,7 @@ class MFObservedData:
 
         self.config_idx = index_names[0]
         self.budget_idx = index_names[1]
+        self.index_names = index_names
 
         index = pd.MultiIndex.from_tuples([], names=index_names)
 
@@ -128,11 +129,9 @@ class MFObservedData:
             index_list = index
             data_list = data
 
-        # making a pd.MultiIndex index with correct names
-        index_list = pd.MultiIndex.from_tuples(index_list, names=self.df.index.names)
-
         if not self.df.index.isin(index_list).any():
-            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index_list)
+            index = pd.MultiIndex.from_tuples(index_list, names=self.index_names)
+            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index)
             self.df = _df.copy() if self.df.empty else pd.concat((self.df, _df))
         elif error:
             raise ValueError(
