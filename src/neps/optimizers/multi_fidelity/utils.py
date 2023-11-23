@@ -79,6 +79,7 @@ class MFObservedData:
 
         self.config_idx = index_names[0]
         self.budget_idx = index_names[1]
+        self.index_names = index_names
 
         index = pd.MultiIndex.from_tuples([], names=index_names)
 
@@ -127,10 +128,10 @@ class MFObservedData:
         else:
             index_list = index
             data_list = data
-
         if not self.df.index.isin(index_list).any():
-            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index_list)
-            self.df = pd.concat((self.df, _df))
+            index = pd.MultiIndex.from_tuples(index_list, names=self.index_names)
+            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index)
+            self.df = pd.concat((self.df, _df), names=self.index_names)
         elif error:
             raise ValueError(
                 f"Data with at least one of the given indices already "
