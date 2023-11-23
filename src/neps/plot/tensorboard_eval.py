@@ -306,7 +306,7 @@ class tblogger:
         if resize_images is None:
             resize_images = [32, 32]
 
-        if tblogger.current_epoch and tblogger.current_epoch % counter == 0:
+        if tblogger.current_epoch >= 0 and tblogger.current_epoch % counter == 0:
             # Log every multiple of "counter"
 
             if num_images > len(image):

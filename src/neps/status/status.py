@@ -339,3 +339,6 @@ def post_run_csv(root_directory: str | Path, logger=None) -> None:
         df_config_data,
         df_run_data,
     )
+
+def get_run_summary_csv(root_directory: str | Path):
+    post_run_csv(root_directory=root_directory)
