@@ -50,7 +50,7 @@ python -m neps.plot ROOT_DIRECTORY
 
 Currently, this creates one plot that shows the best error value across the number of evaluations.
 
-### 2. Tensorboard
+### 2. TensorBoard
 
 #### Introduction
 
@@ -83,7 +83,10 @@ tblogger.log(
 #### Extra Custom Logging
 
 NePS provides dedicated functions for customized logging using the `extra_data` argument. 
-Note: Name the dictionary keys as the names of the values you want to log and pass one of the following functions as the values for a successful logging process.
+
+!!! note "Custom Logging Instructions"
+
+    Name the dictionary keys as the names of the values you want to log and pass one of the following functions as the values for a successful logging process.
 
 ##### 1- Extra Scalar Logging
 
@@ -120,7 +123,7 @@ tblogger.image_logging(
     - `num_images` (int, optional): Number of images to log (default: 20).
     - `seed` (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control randomness and reproducibility (default: None).
 
-#### MNIST Example
+#### Logging Example
 
 For illustration purposes, we will employ a straightforward example involving the tuning of hyperparameters for a model utilized in the classification of the MNIST dataset provided by [torchvision](https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html).
 
@@ -228,7 +231,7 @@ def run_pipeline(**config) -> dict:
     # Epochs to train the model, can be parameterized as fidelity
     max_epochs = 2
 
-    # Load the MNIST dataset for training, validation, and testing.
+    # Load the MNIST dataset for training.
     train_loader, _ = MNIST(batch_size=config["batch_size"])
 
     # Define the optimizer, criterion, and a scheduler for the learning rate
@@ -238,7 +241,7 @@ def run_pipeline(**config) -> dict:
         weight_decay=config["weight_decay"],
     )
     criterion = nn.CrossEntropyLoss()
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.75)
 
     # Create the training loop
     for i in range(max_epochs):
@@ -263,7 +266,7 @@ def run_pipeline(**config) -> dict:
         if len(incorrect_images) > 0:
             incorrect_images = torch.cat(incorrect_images, dim=0)
 
-        ################## Tensorboard Logging Start ##################
+        ################## TensorBoard Logging Start ##################
         tblogger.log(
             loss=avg_loss,
             current_epoch=i,
@@ -280,7 +283,7 @@ def run_pipeline(**config) -> dict:
                 ),
             },
         )
-        ################## Tensorboard Logging End ##################
+        ################## TensorBoard Logging End ##################
         scheduler.step()
         
         print(f"  Epoch {i + 1} / {max_epochs} Train Error: {avg_loss} ")
@@ -294,7 +297,7 @@ def run_pipeline(**config) -> dict:
     }
 
 
-# Running the search with bayesian optimization.
+# Running the search with random search.
 if __name__ == "__main__":
     set_seed(112)
     logging.basicConfig(level=logging.INFO)
@@ -303,10 +306,41 @@ if __name__ == "__main__":
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space(),
         root_directory="results/mnist_logging_example",
-        searcher="bayesian_optimization",
-        max_evaluations_total=20,
+        searcher="random_search",
+        max_evaluations_total=5,
     )
 
 ```
 
 #### Visualization Results
+
+The following command will open a local host for TensorBoard visualizations, allowing you to view them either in real-time or after the run is complete.
+
+```bash
+tensorboard --logdir path/to/root_directory
+```
+
+!!! Note
+    The annotations within the images provide insights into when and how each graph is triggered.
+
+This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided to the `tblogger.log` function. 
+
+![scalar_loggings](doc_images/tensorboard/tblogger_scalar.jpg)
+
+This image represents visualizations related to logged images during training. It could include snapshots of input data, model predictions, or any other image-related information. In our case, we use images to depict instances of incorrect predictions made by the model.
+
+![image_loggings](doc_images/tensorboard/tblogger_image.jpg)
+
+The following images showcase visualizations related to hyperparameter logging in TensorBoard. These plots include three different views, providing insights into the relationship between different hyperparameters and their impact on the model.
+
+In the table view, you can explore hyperparameter configurations across five different trials. The table displays various hyperparameter values alongside corresponding evaluation metrics.
+
+![hparam_loggings1](doc_images/tensorboard/tblogger_hparam1.jpg)
+
+The parallel coordinate plot offers a holistic perspective on hyperparameter configurations. By presenting multiple hyperparameters simultaneously, this view allows you to observe the interactions between variables, providing insights into their combined influence on the model.
+
+![hparam_loggings2](doc_images/tensorboard/tblogger_hparam2.jpg)
+
+The scatter plot matrix view provides an in-depth analysis of pairwise relationships between different hyperparameters. By visualizing correlations and patterns, this view aids in identifying key interactions that may influence the model's performance.
+
+![hparam_loggings3](doc_images/tensorboard/tblogger_hparam3.jpg)

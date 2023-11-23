@@ -27,6 +27,9 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.superfences
   - attr_list
+  - admonition
+  - attr_list
+  - md_in_html
 
 extra:
   version:
