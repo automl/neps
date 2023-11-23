@@ -287,16 +287,20 @@ def run_pipeline(lr, optim, weight_decay):
 
         ###################### Start Tensorboard Logging ######################
 
-        # The following line will result in:
+        # The following tblogge` will result in:
 
-        # 1 Loss curves of each of the configs at each epoch.
-        # 2 lr_decay curve at each epoch.
-        # 3 The wrongly classified images by the model.
-        # 4 First two layer_gradients passed as scalar configs.
+        # 1. Loss curves of each configuration at each epoch.
+        # 2. Decay curve of the learning rate at each epoch.
+        # 3. Wrongly classified images by the model.
+        # 4. First two layer gradients passed as scalar configs.
 
         tblogger.log(
             loss=loss,
             current_epoch=i,
+            write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
+            writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
+            writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+            # Appending extra data
             extra_data={
                 "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
                 "miss_img": tblogger.image_logging(image=miss_img, counter=2, seed=2),

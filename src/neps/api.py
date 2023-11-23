@@ -17,6 +17,7 @@ from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
 from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .status.status import post_run_csv
 from .utils.common import get_searcher_data, get_value
 from .utils.result_utils import get_loss
 
@@ -36,7 +37,7 @@ def _post_evaluation_hook_function(
         working_directory = Path(config_working_directory, "../../")
         loss = get_loss(result, loss_value_on_error, ignore_errors)
 
-        # 1. write all configs and losses
+        # 1. Write all configs and losses
         all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
 
         def write_loss_and_config(file_handle, loss_, config_id_, config_):
@@ -48,7 +49,7 @@ def _post_evaluation_hook_function(
         with all_configs_losses.open("a", encoding="utf-8") as f:
             write_loss_and_config(f, loss, config_id, config)
 
-        # No need to handle best loss cases if an error occurred
+        # no need to handle best loss cases if an error occurred
         if result == "error":
             return
 
@@ -58,7 +59,7 @@ def _post_evaluation_hook_function(
             logger.info(f"Finished evaluating config {config_id}")
             return
 
-        # 2. Write best losses / configs
+        # 2. Write best losses/configs
         best_loss_trajectory_file = Path(working_directory, "best_loss_trajectory.txt")
         best_loss_config_trajectory_file = Path(
             working_directory, "best_loss_with_config_trajectory.txt"
@@ -99,6 +100,7 @@ def run(
     | CS.ConfigurationSpace
     | None = None,
     overwrite_working_directory: bool = False,
+    post_run_summary: bool = False,
     development_stage_id=None,
     task_id=None,
     max_evaluations_total: int | None = None,
@@ -126,9 +128,9 @@ def run(
     """Run a neural pipeline search.
 
     To parallelize:
-        In order to run a neural pipeline search with multiple processes or machines,
+        To run a neural pipeline search with multiple processes or machines,
         simply call run(.) multiple times (optionally on different machines). Make sure
-        that root_directory points to the same folder on the same filesystem, otherwise
+        that root_directory points to the same folder on the same filesystem, otherwise,
         the multiple calls to run(.) will be independent.
 
     Args:
@@ -138,6 +140,8 @@ def run(
             synchronize multiple calls to run(.) for parallelization.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a run_pipeline function.
+        post_run_summary: If True, creates a csv file after each worker is done,
+            holding summary information about the configs and results.
         development_stage_id: ID for the current development stage. Only needed if
             you work with multiple development stages.
         task_id: ID for the current task. Only needed if you work with multiple
@@ -265,6 +269,9 @@ def run(
         overwrite_optimization_dir=overwrite_working_directory,
         pre_load_hooks=pre_load_hooks,
     )
+
+    if post_run_summary:
+        post_run_csv(root_directory, logger)
 
 
 def _run_args(
