@@ -131,7 +131,7 @@ class FreezeThawSampler(AcquisitionSampler):
             # accounting for unseen configs only, samples remaining table if flag is set
             max_n = len(_all_ids) + 1 if self.sample_full_table else _n
             _n = min(max_n, len(_all_ids - _partial_ids))
-            
+
             _new_configs = np.random.choice(
                 list(_all_ids - _partial_ids), size=_n, replace=False
             )
@@ -180,3 +180,4 @@ class FreezeThawSampler(AcquisitionSampler):
             and self.pipeline_space.custom_grid_table is not None
         ):
             self.is_tabular = True
+            self.set_sample_full_tabular(True)

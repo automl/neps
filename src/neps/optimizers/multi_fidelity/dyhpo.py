@@ -294,7 +294,6 @@ class MFEIBO(BaseOptimizer):
             columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
         )
-
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(previous_results)
         self.total_fevals = len(previous_results) + len(pending_evaluations)
@@ -306,7 +305,6 @@ class MFEIBO(BaseOptimizer):
         self.observed_configs.df.sort_index(
             level=self.observed_configs.df.index.names, inplace=True
         )
-
         # TODO: can we do better than keeping a copy of the observed configs?
         # TODO: can we not hide this in load_results and have something that pops out
         #   more, like a set_state or policy_args
