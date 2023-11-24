@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import time
 
 from metahyper import ConfigResult, instance_from_map
 
@@ -290,6 +291,7 @@ class MFEIBO(BaseOptimizer):
             previous_results (dict[str, ConfigResult]): [description]
             pending_evaluations (dict[str, ConfigResult]): [description]
         """
+        start = time.time()
         self.observed_configs = MFObservedData(
             columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
@@ -313,6 +315,9 @@ class MFEIBO(BaseOptimizer):
         init_phase = self.is_init_phase()
         if not init_phase:
             self._fit_models()
+        print("-" * 50)
+        print(f"| Total time for `load_results()`: {time.time()-start:.2f}s")
+        print("-" * 50)
 
     @classmethod
     def _get_config_id_split(cls, config_id: str) -> tuple[str, str]:
@@ -431,13 +436,22 @@ class MFEIBO(BaseOptimizer):
             # main acquisition call here after initial design is turned off
             self.logger.info("acquiring...")
             # generates candidate samples for acquisition calculation
+            start = time.time()
             samples = self.acquisition_sampler.sample(
                 set_new_sample_fidelity=self.pipeline_space.fidelity.lower
             )  # fidelity values here should be the observations or min. fidelity
+            print("-" * 50)
+            print(f"| Total time for acq. sampling: {time.time()-start:.2f}s")
+            print("-" * 50)
+
+            start = time.time()
             # calculating acquisition function values for the candidate samples
             acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples, asscalar=True
             )
+            print("-" * 50)
+            print(f"| Total time for acq. eval: {time.time()-start:.2f}s")
+            print("-" * 50)
             # maximizing acquisition function
             _idx = np.argsort(acq)[-1]
             # extracting the config ID for the selected maximizer
