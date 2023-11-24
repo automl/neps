@@ -159,29 +159,6 @@ class FreezeThawSampler(AcquisitionSampler):
         print(f"| freeze-thaw:sample:new_configs_set_fidelity: {time.time()-start:.2f}s")
         print("-" * 50)
 
-        # TODO: @heri, @samir, verify correctness of fidelity set for partial configs 
-        # throughout the acquisition computation and for any inadvertent update of the 
-        # original observations owing to pass-by-reference
-
-        # Deep copy configs for fidelity updates
-        # partial_configs_list = []
-        # index_list = []
-        # breakpoint()
-        # start = time.time()
-        # for idx, config in partial_configs.items():
-        #     _config = deepcopy(config)
-        #     partial_configs_list.append(_config)
-        #     index_list.append(idx)
-        # # partial_configs_list = [deepcopy(config) for config in partial_configs.values()]
-        # # index_list = list(partial_configs.keys())
-        # print("-" * 50)
-        # print(f"| freeze-thaw:sample:partial_configs_set_fidelity: {time.time()-start:.2f}s")
-        # print("-" * 50)
-        # # We build a new series of partial configs to avoid
-        # # incrementing fidelities multiple times due to pass-by-reference
-        # partial_configs = pd.Series(partial_configs_list, index=index_list)
-        # configs = pd.concat([partial_configs, new_configs])
-
         start = time.time()
         configs = pd.concat([deepcopy(partial_configs), new_configs])
         print("-" * 50)
