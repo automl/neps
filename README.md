@@ -58,7 +58,7 @@ def run_pipeline(
     # Train and evaluate the model with your training pipeline
     validation_error, test_error = train_and_eval(model, hyperparameter_a, hyperparameter_b)
 
-    return {
+    return { # dict or float(validation error)
         "loss": validation_error,
         "info_dict": {
             "test_error": test_error
@@ -70,11 +70,11 @@ def run_pipeline(
 pipeline_space = dict(
     hyperparameter_b=neps.IntegerParameter(
         lower=1,
-        upper=100,
+        upper=42,
         is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
     hyperparameter_a=neps.FloatParameter(
-        lower=0.0,
-        upper=1.0,
+        lower=0.001,
+        upper=0.1,
         log=True), # If True, the search space is sampled in log space.
     architecture_parameter=neps.CategoricalParameter(["option_a", "option_b", "option_c"]),
 )
