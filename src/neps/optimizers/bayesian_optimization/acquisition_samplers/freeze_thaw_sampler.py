@@ -59,8 +59,6 @@ class FreezeThawSampler(AcquisitionSampler):
             patience > 0 and n > 0
         ), "Patience and SAMPLES_TO_DRAW must be larger than 0"
 
-        import pudb; pudb.set_trace()
-
         existing_configs = self.observations.all_configs_list()
         new_configs = []
         for _ in range(n):
