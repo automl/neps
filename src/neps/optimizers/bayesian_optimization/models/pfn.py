@@ -31,10 +31,12 @@ class PFN_SURROGATE:
         pipeline_space: SearchSpace,
         logger=None,
         surrogate_model_fit_args: dict = None,
+        model_name: str = None,
         minimize: bool = True,
         **kwargs,  # pylint: disable=unused-argument
     ):
         self.minimize = minimize
+        self.model_name = model_name
         self.__preprocess_search_space(pipeline_space)
         # set the categories array for the encoder
         self.categories_array = np.array(self.categories)
@@ -45,7 +47,7 @@ class PFN_SURROGATE:
         # self.device = torch.device("cpu")
 
         # build the neural network
-        self.nn = pfns4hpo.PFN_MODEL("lcnet_prior_10feat_1M_24M").to(self.device)
+        self.nn = pfns4hpo.PFN_MODEL(model_name).to(self.device)
 
         self.logger = logger or logging.getLogger("neps")
 
