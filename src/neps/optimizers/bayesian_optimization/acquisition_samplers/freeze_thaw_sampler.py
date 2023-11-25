@@ -14,7 +14,7 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-    
+
     SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
@@ -115,7 +115,7 @@ class FreezeThawSampler(AcquisitionSampler):
 
         _n = n if n is not None else self.SAMPLES_TO_DRAW
         if self.is_tabular:
-            # handles tabular data such that the entire unseen set of configs from the 
+            # handles tabular data such that the entire unseen set of configs from the
             # table is considered to be the new set of candidates
             _partial_ids = {conf["id"].value for conf in partial_configs}
             _all_ids = set(list(self.pipeline_space.custom_grid_table.keys()))
@@ -134,7 +134,7 @@ class FreezeThawSampler(AcquisitionSampler):
             _configs = [deepcopy(placeholder_config) for _id in _new_configs]
             for _i, val in enumerate(_new_configs):
                 _configs[_i]["id"].value = val
-            
+
             print("-" * 50)
             print(f"| freeze-thaw:sample:new_configs_extraction: {time.time()-start:.2f}s")
             print("-" * 50)
@@ -149,7 +149,11 @@ class FreezeThawSampler(AcquisitionSampler):
             new_configs = self._sample_new(
                 index_from=self.observations.next_config_id(), n=_n, ignore_fidelity=False
             )
-        
+            # Continuous benchmarks need to deepcopy individual configs here,
+            # because in contrast to tabular benchmarks
+            # they are not reset in every sampling step
+            partial_configs = pd.Series([deepcopy(p_config_) for idx, p_config_ in partial_configs.items()], index=partial_configs.index)
+
         # Updating fidelity values
         start = time.time()
         if set_new_sample_fidelity is not None:
