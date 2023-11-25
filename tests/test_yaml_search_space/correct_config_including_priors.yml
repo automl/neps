@@ -1,0 +1,23 @@
+search_space:
+  learning_rate:
+    lower: 0.00001
+    upper: 0.1
+    log: true
+    default: 0.001
+    default_confidence: high
+
+  num_epochs:
+    lower: 3
+    upper: 30
+    is_fidelity: True
+    default: 10
+    default_confidence: medium
+
+  optimizer:
+    choices: ["adam", "sgd", "rmsprop"]
+    default: "sgd"
+    default_confidence: medium
+
+  dropout_rate:
+    value: 0.5
+    is_fidelity: true

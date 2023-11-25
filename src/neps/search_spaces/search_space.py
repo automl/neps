@@ -74,67 +74,71 @@ def pipeline_space_from_yaml(yaml_file_path):
 
     Raises:
     KeyError: If any mandatory configuration for a parameter is missing in the YAML file.
+    ValueError: If lower and upper are not the same type of value
+    ValueError: if choices is not a list
     ValueError: If an unknown parameter type is encountered.
     ValueError: If YAML file is incorrectly constructed
     """
     # Load the YAML file
     try:
-        with open(yaml_file_path, 'r') as file:
+        with open(yaml_file_path) as file:
             config = yaml.safe_load(file)
     except yaml.YAMLError as e:
         raise ValueError(f"The file at {yaml_file_path} is not a valid YAML file.") from e
 
     # check for key config_space
-    if 'config_space' not in config:
+    if "search_space" not in config:
         raise ValueError(
-            "The YAML file is incorrectly constructed: 'config_space' key is missing.")
+            "The YAML file is incorrectly constructed: 'config_space' key is missing."
+        )
 
     # Initialize the pipeline space
     pipeline_space = {}
     # Iterate over the items in the YAML configuration
-    for name, details in config['config_space'].items():
-        try:
-            param_type = details['type']
-            # Handle different parameter types
-            if param_type == 'int':
-                pipeline_space[name] = IntegerParameter(
-                    lower=details['lower'],
-                    upper=details['upper'],
-                    log=details.get('log', False),
-                    is_fidelity=details.get('is_fidelity', False),
-                    default=details.get('default', None),
-                    default_confidence=details.get('default_confidence', 'low')
-            )
-            elif param_type == 'float':
-                pipeline_space[name] = FloatParameter(
-                    lower=details['lower'],
-                    upper=details['upper'],
-                    log=details.get('log', False),
-                    is_fidelity=details.get('is_fidelity', False),
-                    default=details.get('default', None),
-                    default_confidence=details.get('default_confidence', 'low')
-                )
-            elif param_type == 'cat':
-                pipeline_space[name] = CategoricalParameter(
-                    choices=details['choices'],
-                    is_fidelity=details.get('is_fidelity', False),
-                    default=details.get('default', None),
-                    default_confidence=details.get('default_confidence', 'low')
-
-                )
-            elif param_type == 'const':
-                pipeline_space[name] = ConstantParameter(
-                    value=details['value'],
-                    is_fidelity=details.get('is_fidelity', False)
-                )
+    for name, details in config["search_space"].items():
+        if "lower" in details and "upper" in details:
+            # Determine if it's an integer or float range parameter
+            if isinstance(details["lower"], int) and isinstance(details["upper"], int):
+                param_type = IntegerParameter
+            elif isinstance(details["lower"], float) and isinstance(
+                details["upper"], float
+            ):
+                param_type = FloatParameter
             else:
-                # Handle unknown parameter types
-                supported_types = ['const', 'cat', 'int', 'float']
-                raise ValueError(f"Unknown parameter type '{param_type}' for '{name}'. "
-                                 f"Supported types are: {', '.join(supported_types)}")
-        except KeyError as e:
-            # Handle missing mandatory arguments
-            raise KeyError(f"Mandatory configuration '{e.args[0]}' missing for parameter '{name}' in YAML file.")
+                raise ValueError(
+                    f"Inconsistent types for 'lower' and 'upper' in '{name}'. "
+                    f"Both must be either integers or floats."
+                )
+
+            pipeline_space[name] = param_type(
+                lower=details["lower"],
+                upper=details["upper"],
+                log=details.get("log", False),
+                is_fidelity=details.get("is_fidelity", False),
+                default=details.get("default", None),
+                default_confidence=details.get("default_confidence", "low"),
+            )
+        elif "choices" in details:
+            # Categorical parameter
+            if not isinstance(details["choices"], list):
+                raise ValueError(f"The 'choices' for '{name}' must be a list.")
+            pipeline_space[name] = CategoricalParameter(
+                choices=details["choices"],
+                is_fidelity=details.get("is_fidelity", False),
+                default=details.get("default", None),
+                default_confidence=details.get("default_confidence", "low"),
+            )
+        elif "value" in details:
+            # Constant parameter
+            pipeline_space[name] = ConstantParameter(
+                value=details["value"], is_fidelity=details.get("is_fidelity", False)
+            )
+        else:
+            # Handle unknown parameter types
+            raise KeyError(
+                f"Unsupported parameter format for '{name}'. "
+                f"Expected keys not found in {details}."
+            )
 
     return pipeline_space
 
@@ -175,7 +179,7 @@ class SearchSpace(collections.abc.Mapping):
     def set_custom_grid_space(
         self,
         grid_table: pd.Series | pd.DataFrame,
-        raw_space: SearchSpace | CS.ConfigurationSpace
+        raw_space: SearchSpace | CS.ConfigurationSpace,
     ):
         """Set a custom grid space for the search space.
 
@@ -188,7 +192,8 @@ class SearchSpace(collections.abc.Mapping):
         self.custom_grid_table: pd.DataFrame | pd.Series = grid_table
         self.raw_tabular_space = (
             SearchSpace(**raw_space)
-            if not isinstance(raw_space, SearchSpace) else raw_space
+            if not isinstance(raw_space, SearchSpace)
+            else raw_space
         )
         if self.custom_grid_table is None or self.raw_tabular_space is None:
             raise ValueError(
@@ -279,7 +284,7 @@ class SearchSpace(collections.abc.Mapping):
                 new_config[hp_name] = hp.mutate(**kwargs)
                 break
             except Exception as e:
-                self.logger.warning(f"{hp_name} FAILED!")
+                self.logger.warning(f"{hp_name} FAILED! Error: {e}")
                 continue
         return new_config
 
