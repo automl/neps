@@ -37,9 +37,9 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-  1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
-  1. Define a search space `pipeline_space` of architectures/hyperparameters
-  1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
+1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
+1. Define a search space `pipeline_space` of architectures/hyperparameters
+1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
@@ -51,43 +51,46 @@ import logging
 # 1. Define a function that accepts hyperparameters and computes the validation error
 def run_pipeline(
     hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
-    ) -> dict:
+) -> dict:
     # Create your model
     model = MyModel(architecture_parameter)
 
     # Train and evaluate the model with your training pipeline
-    validation_error, test_error = train_and_eval(model, hyperparameter_a, hyperparameter_b)
+    validation_error, test_error = train_and_eval(
+        model, hyperparameter_a, hyperparameter_b
+    )
 
-    return { # dict or float(validation error)
+    return {  # dict or float(validation error)
         "loss": validation_error,
         "info_dict": {
             "test_error": test_error
             # + Other metrics
-        }
+        },
     }
+
 
 # 2. Define a search space of hyperparameters; use the same names as in run_pipeline
 pipeline_space = dict(
     hyperparameter_b=neps.IntegerParameter(
-        lower=1,
-        upper=42,
-        is_fidelity=True), # Mark 'is_fidelity' as true for a multi-fidelity approach.
+        lower=1, upper=42, is_fidelity=True
+    ),  # Mark 'is_fidelity' as true for a multi-fidelity approach.
     hyperparameter_a=neps.FloatParameter(
-        lower=0.001,
-        upper=0.1,
-        log=True), # If True, the search space is sampled in log space.
-    architecture_parameter=neps.CategoricalParameter(["option_a", "option_b", "option_c"]),
+        lower=0.001, upper=0.1, log=True
+    ),  # If True, the search space is sampled in log space.
+    architecture_parameter=neps.CategoricalParameter(
+        ["option_a", "option_b", "option_c"]
+    ),
 )
 
-if __name__=="__main__":
+if __name__ == "__main__":
     # 3. Run the NePS optimization
     logging.basicConfig(level=logging.INFO)
     neps.run(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space,
-        root_directory="path/to/save/results", # Replace with the actual path.
+        root_directory="path/to/save/results",  # Replace with the actual path.
         max_evaluations_total=100,
-        searcher="hyperband" # Optional specifies the search strategy,
+        searcher="hyperband"  # Optional specifies the search strategy,
         # otherwise NePs decides based on your data.
     )
 ```
