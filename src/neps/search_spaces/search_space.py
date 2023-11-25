@@ -74,10 +74,10 @@ def pipeline_space_from_yaml(yaml_file_path):
 
     Raises:
     KeyError: If any mandatory configuration for a parameter is missing in the YAML file.
-    ValueError: If lower and upper are not the same type of value
+    TypeError: If lower and upper are not the same type of value
     ValueError: if choices is not a list
-    ValueError: If an unknown parameter type is encountered.
-    ValueError: If YAML file is incorrectly constructed
+    KeyError: If an unknown parameter type is encountered.
+    KeyError: If YAML file is incorrectly constructed
     """
     # Load the YAML file
     try:
@@ -86,16 +86,24 @@ def pipeline_space_from_yaml(yaml_file_path):
     except yaml.YAMLError as e:
         raise ValueError(f"The file at {yaml_file_path} is not a valid YAML file.") from e
 
-    # check for key config_space
+    # check for key search_space
     if "search_space" not in config:
-        raise ValueError(
-            "The YAML file is incorrectly constructed: 'config_space' key is missing."
+        raise KeyError(
+            "The YAML file is incorrectly constructed: the 'search_space:' "
+            "reference is missing at the top of the file."
         )
 
     # Initialize the pipeline space
     pipeline_space = {}
     # Iterate over the items in the YAML configuration
     for name, details in config["search_space"].items():
+        if not (isinstance(name, str) and isinstance(details, dict)):
+            raise KeyError(
+                f"Invalid format for {name} in YAML file. "
+                f"Expected 'name' as string and corresponding 'details' as a dictionary. "
+                f"Found 'name' type: {type(name).__name__}, 'details' type:"
+                f" {type(details).__name__}."
+            )
         if "lower" in details and "upper" in details:
             # Determine if it's an integer or float range parameter
             if isinstance(details["lower"], int) and isinstance(details["upper"], int):
@@ -105,7 +113,7 @@ def pipeline_space_from_yaml(yaml_file_path):
             ):
                 param_type = FloatParameter
             else:
-                raise ValueError(
+                raise TypeError(
                     f"Inconsistent types for 'lower' and 'upper' in '{name}'. "
                     f"Both must be either integers or floats."
                 )
@@ -136,8 +144,12 @@ def pipeline_space_from_yaml(yaml_file_path):
         else:
             # Handle unknown parameter types
             raise KeyError(
-                f"Unsupported parameter format for '{name}'. "
+                f"Unsupported parameter format for '{name}'."
                 f"Expected keys not found in {details}."
+                "Supported parameters:"
+                "Float and Integer: Expected keys: 'lower', 'upper'"
+                "Categorical: Expected keys: 'choices'"
+                "Constant: Expected keys: 'value'"
             )
 
     return pipeline_space

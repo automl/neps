@@ -19,11 +19,14 @@ def test_correct_yaml_file():
     assert pipeline_space["learning_rate"].default is None
     assert pipeline_space["learning_rate"].default_confidence_score == 0.5
     assert isinstance(pipeline_space["num_epochs"], IntegerParameter)
+    assert pipeline_space["num_epochs"].lower == 3
+    assert pipeline_space["num_epochs"].upper == 30
     assert pipeline_space["num_epochs"].log is False
     assert pipeline_space["num_epochs"].is_fidelity is True
     assert pipeline_space["num_epochs"].default is None
     assert pipeline_space["num_epochs"].default_confidence_score == 0.5
     assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
+    assert pipeline_space["optimizer"].choices == ["adam", "sgd", "rmsprop"]
     assert pipeline_space["optimizer"].is_fidelity is False
     assert pipeline_space["optimizer"].default is None
     assert pipeline_space["optimizer"].default_confidence_score == 2
@@ -47,11 +50,14 @@ def test_correct_including_priors_yaml_file():
     assert pipeline_space["learning_rate"].default == 0.001
     assert pipeline_space["learning_rate"].default_confidence_score == 0.125
     assert isinstance(pipeline_space["num_epochs"], IntegerParameter)
+    assert pipeline_space["num_epochs"].lower == 3
+    assert pipeline_space["num_epochs"].upper == 30
     assert pipeline_space["num_epochs"].log is False
     assert pipeline_space["num_epochs"].is_fidelity is True
     assert pipeline_space["num_epochs"].default == 10
     assert pipeline_space["num_epochs"].default_confidence_score == 0.25
     assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
+    assert pipeline_space["optimizer"].choices == ["adam", "sgd", "rmsprop"]
     assert pipeline_space["optimizer"].is_fidelity is False
     assert pipeline_space["optimizer"].default == "sgd"
     assert pipeline_space["optimizer"].default_confidence_score == 4
@@ -78,7 +84,9 @@ def test_yaml_file_with_missing_key():
 def test_yaml_file_with_inconsistent_types():
     """Test the function with a YAML file having inconsistent types for
     'lower' and 'upper'."""
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         pipeline_space_from_yaml(
             "tests/test_yaml_search_space/inconsistent_types_config.yml"
         )
+
+
