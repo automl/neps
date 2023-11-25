@@ -88,5 +88,3 @@ def test_yaml_file_with_inconsistent_types():
         pipeline_space_from_yaml(
             "tests/test_yaml_search_space/inconsistent_types_config.yml"
         )
-
-
