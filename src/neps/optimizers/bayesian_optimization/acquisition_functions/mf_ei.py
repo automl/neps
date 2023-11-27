@@ -112,7 +112,6 @@ class MFEI(ComprehensiveExpectedImprovement):
         return _x_tok, _x, inc_list
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
-        # _x = x.copy()  # preprocessing needs to change the reference x Series so we don't copy here
         if self.surrogate_model_name == "pfn":
             _x_tok, _x, inc_list = self.preprocess_pfn(
                 x.copy()
@@ -141,8 +140,6 @@ class MFEI(ComprehensiveExpectedImprovement):
         self, x: Iterable, inc_list: Iterable
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """PFN-EI modified to preprocess samples and accept list of incumbents."""
-        # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
-        # _x = x.copy()
         ei = self.surrogate_model.get_ei(x.to(self.surrogate_model.device), inc_list)
         if len(ei.shape) == 2:
             ei = ei.flatten()
@@ -152,7 +149,6 @@ class MFEI(ComprehensiveExpectedImprovement):
         self, x: Iterable, inc_list: Iterable
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
-        # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
         _x = x.copy()
         try:
             mu, cov = self.surrogate_model.predict(_x)
