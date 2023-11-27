@@ -8,7 +8,7 @@ import pytest
 from more_itertools import first_true
 
 
-def launch_example_processes(n_workers: int=3) -> list:
+def launch_example_processes(n_workers: int = 3) -> list:
     processes = []
     for _ in range(n_workers):
         processes.append(
@@ -90,7 +90,7 @@ def test_summary_csv():
 
         config_data_df = pd.read_csv(summary_dir / "config_data.csv")
         assert config_data_df.shape[0] == 15
-        assert (config_data_df["Status"] == "Complete").all()
+        assert (config_data_df["status"] == "complete").all()
     except Exception as e:
         raise e
     finally:
