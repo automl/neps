@@ -449,6 +449,7 @@ class MFEIBO(BaseOptimizer):
             acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples, asscalar=True
             )
+
             print("-" * 50)
             print(f"| Total time for acq. eval: {time.time()-start:.2f}s")
             print("-" * 50)
@@ -472,5 +473,4 @@ class MFEIBO(BaseOptimizer):
             previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
         else:
             config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
-
         return config.hp_values(), config_id, previous_config_id

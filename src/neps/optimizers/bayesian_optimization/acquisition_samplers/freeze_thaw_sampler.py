@@ -152,7 +152,10 @@ class FreezeThawSampler(AcquisitionSampler):
             # Continuous benchmarks need to deepcopy individual configs here,
             # because in contrast to tabular benchmarks
             # they are not reset in every sampling step
-            partial_configs = pd.Series([deepcopy(p_config_) for idx, p_config_ in partial_configs.items()], index=partial_configs.index)
+            partial_configs = pd.Series(
+                [deepcopy(p_config_) for idx, p_config_ in partial_configs.items()], 
+                index=partial_configs.index
+            )
 
         # Updating fidelity values
         start = time.time()

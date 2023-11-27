@@ -39,11 +39,9 @@ class MFEI(ComprehensiveExpectedImprovement):
         required by the multi-fidelity Expected Improvement acquisition function.
         """
         budget_list = []
-
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
-            # expected input: IDs pertaining to the tabular data
-            # expected output: IDs pertaining to current observations and set of HPs
+            # expected input: IDs pertaining to the tabular data   
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
         indices_to_drop = []
         for i, config in x.items():
@@ -75,12 +73,11 @@ class MFEI(ComprehensiveExpectedImprovement):
             else:
                 inc = self.observations.get_best_seen_performance()
             inc_list.append(inc)
-
         return x, torch.Tensor(inc_list)
 
     def preprocess_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
-        return x.values.tolist(), inc_list
+        return x, inc_list
 
     def preprocess_deep_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
@@ -131,8 +128,7 @@ class MFEI(ComprehensiveExpectedImprovement):
             _x, inc_list = self.preprocess_gp(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
-            ei = self.eval_gp_ei(_x, inc_list)
-            _x = pd.Series(_x, index=np.arange(len(_x)))
+            ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
 
         if ei.is_cuda:
             ei = ei.cpu()
