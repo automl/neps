@@ -102,9 +102,8 @@ profile = 'black'
 line_length = 90
 
 [tool.pytest.ini_options]
-addopts = "--basetemp ./tests_tmpdir -m 'core_examples or yaml_api or yaml_search_space'"
-markers = ["all_examples", "core_examples", "regression_all", "metahyper", "yaml_api", "summary_csv",
-    "yaml_search_space"]
+addopts = "--basetemp ./tests_tmpdir -m 'core_examples or yaml_api'"
+markers = ["all_examples", "core_examples", "regression_all", "metahyper", "yaml_api", "summary_csv"]
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]

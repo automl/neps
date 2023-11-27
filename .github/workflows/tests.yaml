@@ -41,4 +41,4 @@ jobs:
 
       - name: Run pytest
         timeout-minutes: 15
-        run: poetry run pytest -m "all_examples or metahyper or summary_csv"
+        run: poetry run pytest -m "all_examples or metahyper or summary_csv or yaml_api"

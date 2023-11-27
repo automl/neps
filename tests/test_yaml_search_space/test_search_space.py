@@ -4,7 +4,7 @@ from neps import CategoricalParameter, ConstantParameter, FloatParameter, Intege
 from neps.search_spaces.search_space import pipeline_space_from_yaml
 
 
-@pytest.mark.yaml_search_space
+@pytest.mark.yaml_api
 def test_correct_yaml_file():
     """Test the function with a correctly formatted YAML file."""
     pipeline_space = pipeline_space_from_yaml(
@@ -35,7 +35,7 @@ def test_correct_yaml_file():
     assert pipeline_space["dropout_rate"].is_fidelity is False
 
 
-@pytest.mark.yaml_search_space
+@pytest.mark.yaml_api
 def test_correct_including_priors_yaml_file():
     """Test the function with a correctly formatted YAML file."""
     pipeline_space = pipeline_space_from_yaml(
@@ -66,21 +66,21 @@ def test_correct_including_priors_yaml_file():
     assert pipeline_space["dropout_rate"].is_fidelity is True
 
 
-@pytest.mark.yaml_search_space
+@pytest.mark.yaml_api
 def test_incorrect_yaml_file():
     """Test the function with an incorrectly formatted YAML file."""
     with pytest.raises(ValueError):
         pipeline_space_from_yaml("tests/test_yaml_search_space/incorrect_config.txt")
 
 
-@pytest.mark.yaml_search_space
+@pytest.mark.yaml_api
 def test_yaml_file_with_missing_key():
     """Test the function with a YAML file missing a required key."""
     with pytest.raises(KeyError):
         pipeline_space_from_yaml("tests/test_yaml_search_space/missing_key_config.yml")
 
 
-@pytest.mark.yaml_search_space
+@pytest.mark.yaml_api
 def test_yaml_file_with_inconsistent_types():
     """Test the function with a YAML file having inconsistent types for
     'lower' and 'upper'."""
