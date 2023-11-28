@@ -32,7 +32,7 @@ class MFEI(ComprehensiveExpectedImprovement):
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
-    def preprocess(self, x: pd.Series) -> Tuple[Iterable, Iterable]:
+    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -41,7 +41,7 @@ class MFEI(ComprehensiveExpectedImprovement):
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
-            # expected input: IDs pertaining to the tabular data   
+            # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
         indices_to_drop = []
         for i, config in x.items():
@@ -75,11 +75,11 @@ class MFEI(ComprehensiveExpectedImprovement):
             inc_list.append(inc)
         return x, torch.Tensor(inc_list)
 
-    def preprocess_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
+    def preprocess_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         x, inc_list = self.preprocess(x)
         return x, inc_list
 
-    def preprocess_deep_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
+    def preprocess_deep_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         x, inc_list = self.preprocess(x)
         x_lcs = []
         for idx in x.index:
@@ -92,9 +92,9 @@ class MFEI(ComprehensiveExpectedImprovement):
                 lc = [0.0]
             x_lcs.append(lc)
         self.surrogate_model.set_prediction_learning_curves(x_lcs)
-        return x.values.tolist(), inc_list
+        return x, inc_list
 
-    def preprocess_pfn(self, x: Iterable) -> Tuple[Iterable, Iterable, Iterable]:
+    def preprocess_pfn(self, x: pd.Series) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -121,8 +121,7 @@ class MFEI(ComprehensiveExpectedImprovement):
             _x, inc_list = self.preprocess_deep_gp(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
-            ei = self.eval_gp_ei(_x, inc_list)
-            _x = pd.Series(_x, index=np.arange(len(_x)))
+            ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
         else:
             _x, inc_list = self.preprocess_gp(
                 x.copy()
