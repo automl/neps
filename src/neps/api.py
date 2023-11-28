@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Callable, List, Literal
+from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
 
@@ -110,7 +110,7 @@ def run(
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
-    pre_load_hooks: List = [],
+    pre_load_hooks: Iterable | None = None,
     searcher: Literal[
         "default",
         "bayesian_optimization",
@@ -171,7 +171,6 @@ def run(
     Raises:
         ValueError: If deprecated argument working_directory is used.
         ValueError: If root_directory is None.
-        TypeError: If pipeline_space has invalid type.
 
 
     Example:
@@ -207,6 +206,9 @@ def run(
         max_cost_total = searcher_kwargs["budget"]
         del searcher_kwargs["budget"]
 
+    if pre_load_hooks is None:
+        pre_load_hooks = []
+
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.run using root directory {root_directory}")
 
@@ -215,15 +217,17 @@ def run(
     searcher_info = {
         "searcher_name": "",
         "searcher_alg": "",
-        "searcher_selection_source": "",
-        "searcher_modified_arguments": {},
+        "searcher_selection": "",
+        "neps_decision_tree": True,
+        "searcher_args": {},
     }
 
     if isinstance(searcher, BaseOptimizer):
         searcher_instance = searcher
-        searcher_info["searcher_name"] = "custom"
+        searcher_info["searcher_name"] = "baseoptimizer"
         searcher_info["searcher_alg"] = searcher.whoami()
-        searcher_info["searcher_selection_source"] = "Custom-BaseOptimizer"
+        searcher_info["searcher_selection"] = "user-instantiation"
+        searcher_info["neps_decision_tree"] = False
     else:
         (
             searcher_instance,
@@ -248,8 +252,10 @@ def run(
             f"Unrecognized `searcher` of type {type(searcher)}. Not str or BaseOptimizer."
         )
     elif isinstance(searcher, BaseOptimizer):
-        logger.warning(
-            "An instantiated optimizer is provided. All kwargs are not supported"
+        # This check is not strict when a user-defined neps.optimizer is provided
+        logger.warn(
+            "An instantiated optimizer is provided. The safety checks of NePS will be "
+            "skipped. Accurate continuation of runs can no longer be guaranteed!"
         )
 
     metahyper.run(
@@ -329,7 +335,8 @@ def _run_args(
         logging.info("Preparing to run user created searcher")
 
         config = get_searcher_data(searcher, searcher_path)
-        searcher_info["searcher_selection_source"] = "Custom-User_Yaml"
+        searcher_info["searcher_selection"] = "user-yaml"
+        searcher_info["neps_decision_tree"] = False
     else:
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
@@ -341,12 +348,11 @@ def _run_args(
                     if pipeline_space.has_fidelity
                     else "bayesian_optimization"
                 )
-            searcher_info[
-                "searcher_selection_source"
-            ] = "Default_Searcher-NePS_Decision_Tree"
+            searcher_info["searcher_selection"] = "neps-default"
         else:
             # Users choose one of NePS searchers.
-            searcher_info["searcher_selection_source"] = "Default_Searcher-User_Choice"
+            searcher_info["neps_decision_tree"] = False
+            searcher_info["searcher_selection"] = "neps-default"
         # Fetching the searcher data, throws an error when the searcher is not found
         config = get_searcher_data(searcher)
 
@@ -365,17 +371,13 @@ def _run_args(
 
     # Updating searcher arguments from searcher_kwargs
     for key, value in searcher_kwargs.items():
-        if (
-            searcher_info["searcher_selection_source"] == "Default_Searcher-User_Choice"
-            or searcher_info["searcher_selection_source"] == "Custom-User_Yaml"
-        ):
+        if not searcher_info["neps_decision_tree"]:
             if key not in searcher_config or searcher_config[key] != value:
                 searcher_config[key] = value
                 logger.info(
                     f"Updating the current searcher argument '{key}'"
                     f" with the value '{get_value(value)}'"
                 )
-                searcher_info["searcher_modified_arguments"][key] = get_value(value)
             else:
                 logger.info(
                     f"The searcher argument '{key}' has the same"
@@ -389,6 +391,8 @@ def _run_args(
                 f"The searcher argument '{key}' will not change to '{value}'"
                 f" because NePS chose the searcher"
             )
+
+    searcher_info["searcher_args"] = get_value(searcher_config)
 
     searcher_config.update(
         {

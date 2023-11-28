@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Iterable
 
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
@@ -156,6 +156,9 @@ def _process_sampler_info(
                 else:
                     # If the file is empty or doesn't exist, write the sampler_info
                     serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+            except ValueError as ve:
+                # Handle specific value error
+                raise ve
             except Exception as e:
                 raise RuntimeError(f"Error during data saving: {e}") from e
             finally:
@@ -423,7 +426,7 @@ def run(
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
-    pre_load_hooks: List = [],
+    pre_load_hooks: Iterable | None = None,
 ):
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:

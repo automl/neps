@@ -21,94 +21,10 @@ def use_tmpdir(tmp_path, request):
 def no_logs_gte_error(caplog):
     yield
     errors = [
-        record
-        for record in caplog.get_records("call")
-        if record.levelno >= logging.ERROR
+        record for record in caplog.get_records("call") if record.levelno >= logging.ERROR
     ]
     assert not errors
 
-
-# Expected outcomes of the optimizer YAML according to different cases of neps.run
-# all based on the examples in tests/test_neps_api/examples_test_api.py
-expected_dicts = {
-    "priorband_bo_user_decided": {
-        "searcher_name": "priorband_bo",
-        "searcher_alg": "priorband",
-        "searcher_selection_source": "Default_Searcher-User_Choice",
-        "searcher_modified_arguments": {
-            "initial_design_size": 5,
-        },
-    },
-    "bo_user_decided": {
-        "searcher_name": "bayesian_optimization",
-        "searcher_alg": "bayesian_optimization",
-        "searcher_selection_source": "Default_Searcher-User_Choice",
-        "searcher_modified_arguments": {
-            "surrogate_model": "ComprehensiveGPHierarchy",
-            "surrogate_model_args": {
-                "graph_kernels": [
-                    "WeisfeilerLehman",
-                    "WeisfeilerLehman",
-                    "WeisfeilerLehman",
-                    "WeisfeilerLehman",
-                    "WeisfeilerLehman",
-                ],
-                "hp_kernels": [],
-                "verbose": False,
-                "hierarchy_consider": [0, 1, 2, 3],
-                "d_graph_features": 0,
-                "vectorial_features": None,
-            },
-        },
-    },
-    "priorband_neps_decided": {
-        "searcher_name": "priorband",
-        "searcher_alg": "priorband",
-        "searcher_selection_source": "Default_Searcher-NePS_Decision_Tree",
-        "searcher_modified_arguments": {},
-    },
-    "bo_neps_decided": {
-        "searcher_name": "bayesian_optimization",
-        "searcher_alg": "bayesian_optimization",
-        "searcher_selection_source": "Default_Searcher-NePS_Decision_Tree",
-        "searcher_modified_arguments": {},
-    },
-    "pibo_neps_decided": {
-        "searcher_name": "pibo",
-        "searcher_alg": "bayesian_optimization",
-        "searcher_selection_source": "Default_Searcher-NePS_Decision_Tree",
-        "searcher_modified_arguments": {},
-    },
-    "hyperband_neps_decided": {
-        "searcher_name": "hyperband",
-        "searcher_alg": "hyperband",
-        "searcher_selection_source": "Default_Searcher-NePS_Decision_Tree",
-        "searcher_modified_arguments": {},
-    },
-    "bo_custom_created": {
-        "searcher_name": "custom",
-        "searcher_alg": "BayesianOptimization",
-        "searcher_selection_source": "Custom-BaseOptimizer",
-        "searcher_modified_arguments": {},
-    },
-    "hyperband_custom_created": {
-        "searcher_name": "custom",
-        "searcher_alg": "Hyperband",
-        "searcher_selection_source": "Custom-BaseOptimizer",
-        "searcher_modified_arguments": {},
-    },
-    "user_yaml_bo": {
-        "searcher_name": "optimizer_test",
-        "searcher_alg": "bayesian_optimization",
-        "searcher_selection_source": "Custom-User_Yaml",
-        "searcher_modified_arguments": {
-            "initial_design_size": 5,
-        },
-    },
-}
-
-
-# Run locally and on github actions
 
 testing_scripts = [
     "default_neps",
@@ -117,6 +33,7 @@ testing_scripts = [
 ]
 
 examples_folder = Path(__file__, "..", "testing_scripts").resolve()
+solution_folder = Path(__file__, "..", "solution_yamls").resolve()
 neps_api_example_script = [
     examples_folder / f"{example}.py" for example in testing_scripts
 ]
@@ -147,7 +64,10 @@ def test_default_examples(tmp_path):
         with open(str(info_yaml_path)) as yaml_config:
             loaded_data = yaml.safe_load(yaml_config)
 
-        assert loaded_data == expected_dicts[folder_name]
+        with open(str(solution_folder / (folder_name + ".yaml"))) as solution_yaml:
+            expected_data = yaml.safe_load(solution_yaml)
+
+        assert loaded_data == expected_data
 
 
 @pytest.mark.neps_api
@@ -175,7 +95,10 @@ def test_baseoptimizer_examples(tmp_path):
         with open(str(info_yaml_path)) as yaml_config:
             loaded_data = yaml.safe_load(yaml_config)
 
-        assert loaded_data == expected_dicts[folder_name]
+        with open(str(solution_folder / (folder_name + ".yaml"))) as solution_yaml:
+            expected_data = yaml.safe_load(solution_yaml)
+
+        assert loaded_data == expected_data
 
 
 @pytest.mark.neps_api
@@ -201,4 +124,7 @@ def test_user_created_yaml_examples(tmp_path):
         with open(str(info_yaml_path)) as yaml_config:
             loaded_data = yaml.safe_load(yaml_config)
 
-        assert loaded_data == expected_dicts[folder_name]
+        with open(str(solution_folder / (folder_name + ".yaml"))) as solution_yaml:
+            expected_data = yaml.safe_load(solution_yaml)
+
+        assert loaded_data == expected_data
