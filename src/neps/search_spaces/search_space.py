@@ -88,7 +88,7 @@ class SearchSpace(collections.abc.Mapping):
                 self.has_prior = True
             elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
-        
+
         # Variables for tabular bookkeeping
         self.custom_grid_table = None
         self.raw_tabular_space = None
@@ -101,10 +101,10 @@ class SearchSpace(collections.abc.Mapping):
     ):
         """Set a custom grid space for the search space.
 
-        This function is used to set a custom grid space for the pipeline space. 
-        NOTE: Only to be used if a custom set of hyperparameters from the search space 
-        is to be sampled or used for acquisition functions. 
-        WARNING: The type check and the table format requirement is loose and 
+        This function is used to set a custom grid space for the pipeline space.
+        NOTE: Only to be used if a custom set of hyperparameters from the search space
+        is to be sampled or used for acquisition functions.
+        WARNING: The type check and the table format requirement is loose and
         can break certain components.
         """
         self.custom_grid_table: pd.DataFrame | pd.Series = grid_table
@@ -115,7 +115,7 @@ class SearchSpace(collections.abc.Mapping):
         if self.custom_grid_table is None or self.raw_tabular_space is None:
             raise ValueError(
                 "Both grid_table and raw_space must be set!\n"
-                "A table or list of fixed configs must be supported with a " 
+                "A table or list of fixed configs must be supported with a "
                 "continuous space representing the type and bounds of each "
                 "hyperparameter for accurate modeling."
             )
@@ -366,7 +366,14 @@ class SearchSpace(collections.abc.Mapping):
             self.hyperparameters[name].load_from(config[name])
 
     def copy(self):
-        return deepcopy(self)
+        _copy = deepcopy(self)
+
+        if _copy.has_tabular:
+            # each configuration does not need to carry the tabular data
+            _copy.has_tabular = False
+            _copy.custom_grid_table = None
+            _copy.raw_tabular_space = None
+        return _copy
 
     def sample_default_configuration(
         self, patience: int = 1, ignore_fidelity=True, ignore_missing_defaults=False
