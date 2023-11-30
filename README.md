@@ -110,3 +110,7 @@ NePS does not cover your use-case? Have a look at [some alternatives](https://au
 ## Contributing
 
 Please see the [documentation for contributors](https://automl.github.io/neps/latest/contributing/).
+
+## Citations
+
+Please have a look at our [documentation on citations](docs/citations.md)

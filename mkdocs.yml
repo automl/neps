@@ -44,6 +44,7 @@ nav:
   - Analysing Runs: 'analyse.md'
   - Parallelization: 'parallelization.md'
   - Alternatives: 'alternatives.md'
+  - Citations: 'citations.md'
   - Contributing:
       - Introduction: "contributing/README.md"
       - Installation for Contributors: "contributing/installation.md"

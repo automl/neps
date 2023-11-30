@@ -323,7 +323,7 @@ tensorboard --logdir path/to/root_directory
 !!! Note
     The annotations within the images provide insights into when and how each graph is triggered.
 
-This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided to the `tblogger.log` function. 
+This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided via the `extra_data` argument in the `tblogger.log` function. 
 
 ![scalar_loggings](doc_images/tensorboard/tblogger_scalar.jpg)
 
