@@ -39,8 +39,8 @@ classifiers = [
   "Topic :: System :: Distributed Computing",
 ]
 packages = [
-    { include = "neps", from = "src" },
-    { include = "metahyper", from = "src" },
+    { include = "neps" },
+    { include = "metahyper", from = "neps"},
     { include = "neps_examples" },
 ]
 
