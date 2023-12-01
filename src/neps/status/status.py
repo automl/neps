@@ -295,7 +295,7 @@ def _save_data_to_csv(
                         run_data_df.index == "num_evaluated_configs", "value"
                     ]
                     # checks if the current worker has more evaluated configs than the previous
-                    if int(num_evaluated_configs_csv) < int(num_evaluated_configs_run):
+                    if int(num_evaluated_configs_csv) < int(num_evaluated_configs_run.iloc[0]):
                         config_data_df = config_data_df.sort_values(
                             by="result.loss", ascending=True
                         )
