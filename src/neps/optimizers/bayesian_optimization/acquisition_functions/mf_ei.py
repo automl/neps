@@ -203,23 +203,6 @@ class MFEI(ComprehensiveExpectedImprovement):
 
 
 class MFEI_AtMax(MFEI):
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        surrogate_model_name: str = None,
-        augmented_ei: bool = False,
-        xi: float = 0.0,
-        in_fill: str = "best",
-        log_ei: bool = False,
-    ):
-        super().__init__(
-            pipeline_space,
-            surrogate_model_name,
-            augmented_ei,
-            xi,
-            in_fill,
-            log_ei
-        )
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.

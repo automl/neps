@@ -148,3 +148,39 @@ class MF_UCB(UpperConfidenceBound):
             )
 
         return ucb, _x
+
+
+class MF_UCB_AtMax(MF_UCB):
+
+    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+        """Prepares the configurations for appropriate EI calculation.
+
+        Takes a set of points and computes the budget and incumbent for each point.
+        Unlike the base class MFEI, sets the target fidelity to be max budget and the 
+        incumbent choice to be the max seen across history for all candidates.
+        """
+        budget_list = []
+        if self.pipeline_space.has_tabular:
+            # preprocess tabular space differently
+            # expected input: IDs pertaining to the tabular data
+            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
+
+        indices_to_drop = []
+        betas = []
+        for i, config in x.items():
+            target_fidelity = config.fidelity.upper  # change from MFEI
+
+            if config.fidelity.value == target_fidelity:
+                # if the target_fidelity already reached, drop the configuration
+                indices_to_drop.append(i)
+            else:
+                config.fidelity.value = target_fidelity
+                budget_list.append(self.get_budget_level(config))
+
+            # CAN ADAPT BETA PER-SAMPLE HERE
+            betas.append(self.beta)
+
+        # drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
+        return x, torch.Tensor(betas)

@@ -6,7 +6,7 @@ from typing import Callable
 from .ei import ComprehensiveExpectedImprovement
 from .mf_ei import MFEI, MFEI_AtMax
 from .ucb import UpperConfidenceBound
-from .mf_ucb import MF_UCB
+from .mf_ucb import MF_UCB, MF_UCB_AtMax
 
 
 AcquisitionMapping: dict[str, Callable] = {
@@ -44,6 +44,10 @@ AcquisitionMapping: dict[str, Callable] = {
     ),
     "MF-UCB": partial(
         MF_UCB,
+        maximize=False,
+    ),
+    "MF-UCB-max": partial(
+        MF_UCB_AtMax,
         maximize=False,
     ),
 }
