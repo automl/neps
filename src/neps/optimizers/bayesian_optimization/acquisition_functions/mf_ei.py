@@ -124,15 +124,19 @@ class MFEI(ComprehensiveExpectedImprovement):
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
-        else:
+        elif self.surrogate_model_name == "gp":
             _x, inc_list = self.preprocess_gp(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
+        else:
+            raise ValueError(
+                f"Unrecognized surrogate model name: {self.surrogate_model_name}"
+            )
 
         if ei.is_cuda:
             ei = ei.cpu()
-        if len(x) > 1 and asscalar:
+        if len(_x) > 1 and asscalar:
             return ei.detach().numpy(), _x
         else:
             return ei.detach().numpy().item(), _x

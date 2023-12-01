@@ -5,7 +5,8 @@ from typing import Callable
 
 from .ei import ComprehensiveExpectedImprovement
 from .mf_ei import MFEI, MFEI_AtMax
-from .ucb import UpperConfidenceBound, MF_UCB
+from .ucb import UpperConfidenceBound
+from .mf_ucb import MF_UCB
 
 
 AcquisitionMapping: dict[str, Callable] = {
