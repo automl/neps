@@ -113,4 +113,6 @@ Please see the [documentation for contributors](https://automl.github.io/neps/la
 
 ## Citations
 
-Please have a look at our [documentation on citations](docs/citations.md)
+Please consider citing us if you use our tool!
+
+Refer to our [documentation on citations](docs/citations.md).
