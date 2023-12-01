@@ -1,6 +1,6 @@
 # Citation of The Software
 
-For citing the software, please refer to the following:
+For citing NePS, please refer to the following:
 
 ## APA Style
 
@@ -23,7 +23,7 @@ year = {2023}
 
 # Citation of Papers
 
-For citing the papers, please refer to the following:
+If you have used [PriorBand](https://openreview.net/forum?id=uoiwugtpCH) as the optimizer, please use the bibtex below:
 
 ## PriorBand
 
@@ -38,6 +38,8 @@ keywords = {}
 ```
 
 ## Hierarchichal NAS with Context-free Grammars
+
+If you have used the context-free grammar search space and the graph kernels implemented in NePS for the paper [Hierarchical NAS](https://openreview.net/forum?id=Hpt1i5j6wh), please use the bibtex below:
 
 ```bibtex
 @inproceedings{schrodi2023hierarchical,
