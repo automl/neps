@@ -1,5 +1,4 @@
-from neps.metahyper.utils import MissingDependencyError
-
+from ....metahyper.utils import MissingDependencyError
 from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
 

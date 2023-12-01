@@ -5,15 +5,13 @@ from abc import abstractmethod
 from copy import deepcopy
 from typing import Any
 
-import neps.metahyper as metahyper
-
-from ..metahyper.api import ConfigResult
+from ..metahyper.api import ConfigResult, Sampler
 from ..search_spaces.search_space import SearchSpace
 from ..utils.common import get_rnd_state, set_rnd_state
 from ..utils.result_utils import get_cost, get_learning_curve, get_loss
 
 
-class BaseOptimizer(metahyper.Sampler):
+class BaseOptimizer(Sampler):
     """Base sampler class. Implements all the low-level work."""
 
     def __init__(
