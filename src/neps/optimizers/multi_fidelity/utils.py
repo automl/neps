@@ -243,7 +243,13 @@ class MFObservedData:
     def get_partial_configs_at_max_seen(self):
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
-    def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+    def extract_learning_curve(
+        self, config_id: int, budget_id: int | None = None
+    ) -> list[float]:
+        if budget_id is None:
+            # extracting the last recorded budget ID for the given config ID
+            budget_id = max(self.df.loc[config_id].index.get_level_values("budget_id").values)
+
         # reduce budget_id to discount the current validation loss
         # both during training and prediction phase
         budget_id = max(0, budget_id - 1)

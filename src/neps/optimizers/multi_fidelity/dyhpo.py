@@ -462,11 +462,16 @@ class MFEIBO(BaseOptimizer):
             # all (partials + new) configurations obtained from the sampler, but
             # in `_samples`, configs are removed that have reached maximum epochs allowed
             # NOTE: `samples` and `_samples` should share the same index values, hence,
-            # avoid using `.iloc` and work with `.loc` on pandas DataFrame/Series
+            # avoid using `.iloc` and work with `.loc` on these pandas DataFrame/Series
 
-            # Is this "config = _samples.loc[_config_id]"?
+            # assigning config hyperparameters
             config = samples.loc[_config_id]
-            config.fidelity.value = _samples.loc[_config_id].fidelity.value
+            # setting the fidelity appropriately
+            config.fidelity.value = (
+                config.fidelity.value
+                if _idx > max(self.observed_configs.seen_config_ids)
+                else config.fidelity.value + self.step_size  # ONE-STEP FIDELITY QUERY
+            )
         # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
             config_id = f"{_config_id}_{self.get_budget_level(config)}"

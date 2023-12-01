@@ -4,7 +4,7 @@ from functools import partial
 from typing import Callable
 
 from .ei import ComprehensiveExpectedImprovement
-from .mf_ei import MFEI
+from .mf_ei import MFEI, MFEI_AtMax
 from .ucb import UpperConfidenceBound, MF_UCB
 
 
@@ -29,6 +29,11 @@ AcquisitionMapping: dict[str, Callable] = {
     ),
     "MFEI": partial(
         MFEI,
+        in_fill="best",
+        augmented_ei=False,
+    ),
+    "MFEI-max": partial(
+        MFEI_AtMax,
         in_fill="best",
         augmented_ei=False,
     ),
