@@ -260,6 +260,9 @@ class MFObservedData:
             # extracting the last recorded budget ID for the given config ID
             budget_id = max(self.df.loc[config_id].index.get_level_values("budget_id").values)
 
+        # For the first epoch we have no learning curve available
+        if budget_id == 0:
+            return []
         # reduce budget_id to discount the current validation loss
         # both during training and prediction phase
         budget_id = max(0, budget_id - 1)
