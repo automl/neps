@@ -7,7 +7,7 @@ import torch
 from torch.distributions import Normal
 
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
-from ....search_spaces.search_space import SearchSpace
+from ....search_spaces.search_space import IntegerParameter, SearchSpace
 from ...multi_fidelity.utils import MFObservedData
 from .ei import ComprehensiveExpectedImprovement
 
@@ -234,5 +234,82 @@ class MFEI_AtMax(MFEI):
         # create the same incumbent for all candidates
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         inc_list = [inc_value] * len(x.index.values)
+
+        return x, torch.Tensor(inc_list)
+
+
+class MFEI_Dyna(MFEI):
+
+    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+        """Prepares the configurations for appropriate EI calculation.
+
+        Takes a set of points and computes the budget and incumbent for each point.
+        Unlike the base class MFEI, sets the target fidelity to be max budget and the 
+        incumbent choice to be the max seen across history for all candidates.
+        """
+        budget_list = []
+        if self.pipeline_space.has_tabular:
+            # preprocess tabular space differently
+            # expected input: IDs pertaining to the tabular data
+            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
+
+        # find the maximum observed steps per config to obtain the running pseudo_z_max
+        max_z_level_per_x = self.observations.get_max_observed_fidelity_level_per_config()
+        pseudo_z_level_max = max_z_level_per_x.max()
+        # find the fidelity step at which the best seen performance was recorded
+        z_inc_level = self.observations.get_budget_level_for_best_performance()
+        # retrieving actual fidelity values from budget level
+        z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
+        pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+
+        def update_fidelity_new(config):
+            # for all new configs, extrapolate till the fidelity where incumbent peaked
+            z_extrapolate = z_inc + self.b_step
+            z_extrapolate = (
+                int(z_extrapolate) 
+                if isinstance(self.pipeline_space.fidelity, IntegerParameter) 
+                else float(z_extrapolate)
+            )
+            config.fidelity.value = z_extrapolate
+            return config
+
+        # set fidelity for new configs
+        _new_config_ids = (x.index > max(self.observations.seen_config_ids))
+        x.loc[_new_config_ids] = x[_new_config_ids].apply(update_fidelity_new)
+
+        def update_fidelity_partial(config):
+            # for all partial configs, extraploate conditionally:
+            if config.fidelity.value > z_inc:
+                # if more steps observed than incumbent score, extrapolate till max history
+                z_extrapolate = pseudo_z_max + self.b_step
+            else:
+                # if lesser, extrapolate till incumbent score
+                z_extrapolate = z_inc + self.b_step
+
+            z_extrapolate = (
+                int(z_extrapolate)
+                if isinstance(self.pipeline_space.fidelity, IntegerParameter) 
+                else float(z_extrapolate)
+            )
+            config.fidelity.value = z_extrapolate
+            return config
+
+        # collect IDs for partial configurations
+        _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
+        # filter for configurations that reached max budget
+        indices_to_drop = [
+            _x.index.value
+            for _x in x.loc[_partial_config_ids]
+            if _x.fidelity.value == self.pipeline_space.fidelity.upper
+        ]
+        # set fidelity for all partial configs
+        x.loc[_partial_config_ids] = x[_partial_config_ids].apply(update_fidelity_partial)
+
+        # create the same incumbent for all candidates
+        inc_value = min(self.observations.get_best_performance_for_each_budget())
+        inc_list = [inc_value] * len(x.index.values)
+
+        # drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
 
         return x, torch.Tensor(inc_list)

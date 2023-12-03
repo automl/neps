@@ -186,7 +186,7 @@ class MF_UCB_AtMax(MF_UCB):
         return x, torch.Tensor(betas)
 
 
-class MF_UCB_Dyna(MF_UCB_AtMax):
+class MF_UCB_Dyna(MF_UCB):
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
