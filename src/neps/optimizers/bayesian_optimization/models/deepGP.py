@@ -213,6 +213,8 @@ class DeepGP:
         # build the neural network
         self.nn = NeuralFeatureExtractor(self.input_size, **neural_network_args)
 
+        self.best_state = None
+
         self.logger = logger or logging.getLogger("neps")
 
     def __initialize_gp_model(
@@ -440,7 +442,7 @@ class DeepGP:
                 patience=patience,
             )
             if self.checkpointing:
-                self.save_checkpoint()
+                self.save_checkpoint(self.best_state)
         except gpytorch.utils.errors.NotPSDError:
             self.logger.info("Model training failed loading the untrained model")
             self.load_checkpoint(initial_state)
@@ -549,6 +551,7 @@ class DeepGP:
             if average_loss < min_avg_loss_val:
                 min_avg_loss_val = average_loss
                 count_down = patience
+                self.best_state = self.get_state()
             elif early_stopping:
                 self.logger.debug(
                     f"No improvement over the minimum loss value of {min_avg_loss_val} "
