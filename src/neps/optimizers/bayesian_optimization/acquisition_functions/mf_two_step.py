@@ -5,7 +5,7 @@ from typing import Any, Tuple, Union
 from ....search_spaces.search_space import SearchSpace
 from ...multi_fidelity.utils import MFObservedData
 from .base_acquisition import BaseAcquisition
-from .mf_ei import MFEI_Dyna
+from .mf_ei import MFEI, MFEI_Dyna
 from .mf_ucb import MF_UCB_Dyna
 
 
@@ -36,7 +36,7 @@ class MF_TwoStep(BaseAcquisition):
         """
         super().__init__()
         # Acquisition 1: For trimming down partial candidate set
-        self.acq_partial_filter = MDEI_Dyna_PartialFilter(  # defined below
+        self.acq_partial_filter = MFEI_Dyna_PartialFilter(  # defined below
             pipeline_space=pipeline_space,
             surrogate_model_name=surrogate_model_name,
             augmented_ei=augmented_ei,
@@ -157,6 +157,32 @@ class MF_TwoStep(BaseAcquisition):
         acq_combined = acq_combined.reindex(acq.index, fill_value=-np.inf)
         acq = acq_combined.values
         return acq, _samples
+
+
+class MFEI_PartialFilter(MFEI):
+    """Custom redefinition of MF-EI with Dynamic extrapolation length to adjust incumbents.
+    """
+
+    def preprocess_inc_list(self, **kwargs) -> list:
+        # the assertion exists to forcibly check the call to the super().preprocess()
+        # this function overload should only affect the operation inside it
+        assert "budget_list" in kwargs, "Requires the length of the candidate set."
+        # we still need this as placeholder for the new candidate set
+        # in this class we only work on the partial candidate set
+        inc_list = super().preprocess_inc_list(budget_list=kwargs["budget_list"])
+
+        n_partial = len(self.observations.seen_config_ids)
+
+        # NOTE: Here we set the incumbent for EI calculation for each config to the
+        # maximum it has seen, in a bid to get an expected improvement over its previous
+        # observed score. This could act as a filter to diverging configurations even if
+        # their overall score relative to the incumbent can be high.
+        inc_list_partial = self.observations.get_best_performance_per_config()
+        
+        # updating incumbent for EI computation for the partial configs
+        inc_list[:n_partial] = inc_list_partial
+
+        return inc_list
 
 
 class MDEI_Dyna_PartialFilter(MFEI_Dyna):
