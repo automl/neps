@@ -122,6 +122,7 @@ class MF_TwoStep(BaseAcquisition):
 
         # for partial candidate set
         acq, _samples = self.acq_partial_filter.eval(x, asscalar=True)
+        # TODO: weigh the acq value based on max seen for each config
         # drop new configurations
         acq[_samples.index.values > max_seen_id] = 0  # to ignore in the argmax of the acquisition function
         # find configs not in top-N_NEW set as per acquisition value
