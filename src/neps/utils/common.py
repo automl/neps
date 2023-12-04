@@ -4,6 +4,7 @@ import glob
 import os
 import random
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -229,6 +230,17 @@ def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) ->
             data = yaml.safe_load(file)
 
     return data
+
+
+def get_value(obj: Any):
+    if isinstance(obj, (str, int, float, bool, type(None))):
+        return obj
+    elif isinstance(obj, dict):
+        return {key: get_value(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [get_value(item) for item in obj]
+    else:
+        return obj.__name__
 
 
 def has_instance(collection, *types):

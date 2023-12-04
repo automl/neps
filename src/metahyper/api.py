@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Iterable
 
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
@@ -124,17 +124,14 @@ def _process_sampler_info(
     thread safety, preventing potential conflicts when multiple threads access the file
     simultaneously.
 
-    Parameters:
+    Args:
         - serializer: The YAML serializer object used for loading and dumping data.
         - sampler_info: The dictionary containing information for the optimizer.
         - sampler_info_file: The path to the YAML file storing optimizer data if available.
         - decision_locker: The Locker file to use during multi-thread communication.
         - logger: An optional logger object for logging messages (default is 'neps').
-
     Note:
         - The file-locking mechanism is employed to avoid potential errors in multiple threads.
-        - The `Locker` class and `YamlSerializer` should be appropriately defined or imported.
-        - Ensure that potential side effects or dependencies are considered when using this function.
     """
     if logger is None:
         logger = logging.getLogger("neps")
@@ -159,6 +156,9 @@ def _process_sampler_info(
                 else:
                     # If the file is empty or doesn't exist, write the sampler_info
                     serializer.dump(sampler_info, sampler_info_file, sort_keys=False)
+            except ValueError as ve:
+                # Handle specific value error
+                raise ve
             except Exception as e:
                 raise RuntimeError(f"Error during data saving: {e}") from e
             finally:
@@ -292,14 +292,14 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
     base_result_directory = optimization_dir / "results"
 
     logger.debug("Sampling a new configuration")
-    
+
     for hook in pre_load_hooks:
         # executes operations on the sampler before setting its state
         # can be used for setting custom constraints on the optimizer state
-        # for example, can be used to input custom grid of configs, meta learning 
+        # for example, can be used to input custom grid of configs, meta learning
         # information for surrogate building, any non-stationary auxiliary information
         sampler = hook(sampler)
-    
+
     sampler.load_results(previous_results, pending_configs)
     config, config_id, previous_config_id = sampler.get_config_and_ids()
 
@@ -426,7 +426,7 @@ def run(
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
-    pre_load_hooks: List=[],
+    pre_load_hooks: Iterable | None = None,
 ):
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:
@@ -451,6 +451,7 @@ def run(
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
 
+    # Configuring the .optimizer_info.yaml file
     _process_sampler_info(
         serializer, sampler_info, sampler_info_file, decision_locker, logger
     )

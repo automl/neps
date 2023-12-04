@@ -7,7 +7,7 @@ from neps.search_spaces.search_space import (
 )
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_correct_yaml_files():
     def test_correct_yaml_file(path):
         """Test the function with a correctly formatted YAML file."""
@@ -63,7 +63,7 @@ def test_correct_yaml_files():
     )
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_correct_including_priors_yaml_file():
     """Test the function with a correctly formatted YAML file."""
     pipeline_space = pipeline_space_from_yaml(
@@ -94,7 +94,7 @@ def test_correct_including_priors_yaml_file():
     assert pipeline_space["dropout_rate"].is_fidelity is True
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_incorrect_yaml_file():
     """Test the function with an incorrectly formatted YAML file."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
@@ -102,7 +102,7 @@ def test_incorrect_yaml_file():
     assert str(excinfo.value.exception_type == "ValueError")
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_yaml_file_with_missing_key():
     """Test the function with a YAML file missing a required key."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
@@ -110,7 +110,7 @@ def test_yaml_file_with_missing_key():
     assert str(excinfo.value.exception_type == "KeyError")
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_yaml_file_with_inconsistent_types():
     """Test the function with a YAML file having inconsistent types for
     'lower' and 'upper'."""
@@ -121,7 +121,7 @@ def test_yaml_file_with_inconsistent_types():
     assert str(excinfo.value.exception_type == "TypeError")
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_yaml_file_including_wrong_types():
     """Test the function with a YAML file that defines the wrong but existing type
     int to float as an optional argument"""
@@ -132,7 +132,7 @@ def test_yaml_file_including_wrong_types():
     assert str(excinfo.value.exception_type == "TypeError")
 
 
-@pytest.mark.yaml_api
+@pytest.mark.neps_api
 def test_yaml_file_including_unkown_types():
     """Test the function with a YAML file that defines an unknown type as an optional
     argument"""
