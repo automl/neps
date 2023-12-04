@@ -283,12 +283,16 @@ class DeepGP:
         return encoding
 
     def __extract_budgets(
-        self, x_train: list[SearchSpace], normalized: bool = True
+        self, x_train: list[SearchSpace],
+        normalized: bool = True,
+        use_min_budget: bool = False
     ) -> np.ndarray:
+
+        min_budget = self.min_fidelity if use_min_budget else 0
         budgets = np.array([config.fidelity.value for config in x_train], dtype=np.single)
-        if normalized:
-            normalized_budgets = (budgets - self.min_fidelity) / (
-                self.max_fidelity - self.min_fidelity
+        if normalized and use_min_budget:
+            normalized_budgets = (budgets - min_budget) / (
+                self.max_fidelity - min_budget
             )
             budgets = normalized_budgets
         return budgets
@@ -323,14 +327,18 @@ class DeepGP:
         learning_curves: list[list[float]],
         normalize_y: bool = False,
         normalize_budget: bool = True,
+        use_min_budget: bool = False,
     ):
         self.normalize_budget = (  # pylint: disable=attribute-defined-outside-init
             normalize_budget
         )
+        self.use_min_budget = (  # pylint: disable=attribute-defined-outside-init
+            use_min_budget
+        )
         self.normalize_y = normalize_y  # pylint: disable=attribute-defined-outside-init
 
         x_train, train_budgets, learning_curves = self._preprocess_input(
-            x_train, learning_curves, normalize_budget
+            x_train, learning_curves, normalize_budget, use_min_budget
         )
 
         y_train = self._preprocess_y(y_train, normalize_y)
@@ -349,8 +357,9 @@ class DeepGP:
         x: list[SearchSpace],
         learning_curves: list[list[float]],
         normalize_budget: bool = True,
+        use_min_budget: bool = False
     ):
-        budgets = self.__extract_budgets(x, normalize_budget)
+        budgets = self.__extract_budgets(x, normalize_budget, use_min_budget)
         learning_curves = self.__preprocess_learning_curves(learning_curves)
 
         x = np.array([self.__encode_config(config) for config in x], dtype=np.single)
@@ -386,6 +395,7 @@ class DeepGP:
         learning_curves: list[list[float]],
         normalize_y: bool = False,
         normalize_budget: bool = True,
+        use_min_budget: bool = False,
         n_epochs: int = 1000,
         batch_size: int = 64,
         optimizer_args: dict | None = None,
@@ -399,6 +409,7 @@ class DeepGP:
             learning_curves,
             normalize_y=normalize_y,
             normalize_budget=normalize_budget,
+            use_min_budget=use_min_budget
         )
         self.model, self.likelihood, self.mll = self.__initialize_gp_model(len(y_train))
         self.nn = NeuralFeatureExtractor(self.input_size, **self.nn_args)
@@ -566,7 +577,7 @@ class DeepGP:
         if learning_curves is None:
             learning_curves = self.prediction_learning_curves
         x_test, test_budgets, learning_curves = self._preprocess_input(
-            x, learning_curves, self.normalize_budget
+            x, learning_curves, self.normalize_budget, self.use_min_budget
         )
 
         self.model.eval()
