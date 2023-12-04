@@ -38,7 +38,6 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
         Takes a set of points and computes the budget and incumbent for each point, as
         required by the multi-fidelity Expected Improvement acquisition function.
         """
-        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
@@ -75,7 +74,6 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
     def preprocess_gp(
             self, x: pd.Series, surrogate_name: str = "gp"
         ) -> Tuple[pd.Series, torch.Tensor]:
-        breakpoint()
         if surrogate_name == "gp":
             x, inc_list = self.preprocess(x)
             return x, inc_list
@@ -128,7 +126,6 @@ class MF_UCB_AtMax(MF_UCB):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
-        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
@@ -165,7 +162,6 @@ class MF_UCB_Dyna(MF_UCB):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
-        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
