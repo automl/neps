@@ -27,6 +27,27 @@ def test_correct_yaml_files():
         assert pipeline_space["num_epochs"].is_fidelity is True
         assert pipeline_space["num_epochs"].default is None
         assert pipeline_space["num_epochs"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["batch_size"], IntegerParameter)
+        assert pipeline_space["batch_size"].lower == 100
+        assert pipeline_space["batch_size"].upper == 30000
+        assert pipeline_space["batch_size"].log is True
+        assert pipeline_space["batch_size"].is_fidelity is False
+        assert pipeline_space["batch_size"].default is None
+        assert pipeline_space["batch_size"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["sec_learning_rate"], FloatParameter)
+        assert pipeline_space["sec_learning_rate"].lower == 3.3e-5
+        assert pipeline_space["sec_learning_rate"].upper == 0.1
+        assert pipeline_space["sec_learning_rate"].log is False
+        assert pipeline_space["sec_learning_rate"].is_fidelity is False
+        assert pipeline_space["sec_learning_rate"].default is None
+        assert pipeline_space["sec_learning_rate"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["parameter_ex"], FloatParameter)
+        assert pipeline_space["parameter_ex"].lower == 3.3e-5
+        assert pipeline_space["parameter_ex"].upper == 32.0
+        assert pipeline_space["parameter_ex"].log is False
+        assert pipeline_space["parameter_ex"].is_fidelity is False
+        assert pipeline_space["parameter_ex"].default is None
+        assert pipeline_space["parameter_ex"].default_confidence_score == 0.5
         assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
         assert pipeline_space["optimizer"].choices == ["adam", "sgd", "rmsprop"]
         assert pipeline_space["optimizer"].is_fidelity is False

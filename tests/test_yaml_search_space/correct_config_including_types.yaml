@@ -6,10 +6,27 @@ search_space:
     log: true
 
   num_epochs:
-    type: int
+    type: integer
     lower: 3
     upper: 30
     is_fidelity: True
+
+  batch_size:
+    type: "int"
+    lower: 10^2
+    upper: 3 * 10^4
+    log: true
+    is_fidelity: false
+
+  sec_learning_rate:
+    type: "float"
+    lower: 3.3e-5
+    upper: 1E-1
+
+  parameter_ex:
+    type: float
+    lower: 3.3 x 10^-5
+    upper: 3.2*10^1
 
   optimizer:
     type: cat

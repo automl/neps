@@ -146,18 +146,19 @@ def pipeline_space_from_yaml(yaml_file_path):
                     if not isinstance(details["lower"], int) or not isinstance(
                         details["upper"], int
                     ):
-                        # for numbers like 1e2
-                        details["lower"] = int(
-                            convert_scientific_notation(details["lower"])
-                        )
-                        details["upper"] = int(
-                            convert_scientific_notation(details["upper"])
-                        )
-                    else:
-                        raise TypeError(
-                            f"'lower' and 'upper' must be integer for "
-                            f"integer parameter '{name}'."
-                        )
+                        try:
+                            # for numbers like 1e2 and 10^
+                            details["lower"] = int(
+                                convert_scientific_notation(details["lower"])
+                            )
+                            details["upper"] = int(
+                                convert_scientific_notation(details["upper"])
+                            )
+                        except ValueError as e:
+                            raise TypeError(
+                                f"'lower' and 'upper' must be integer for "
+                                f"integer parameter '{name}'."
+                            ) from e
 
                 pipeline_space[name] = IntegerParameter(
                     lower=details["lower"],
@@ -178,14 +179,19 @@ def pipeline_space_from_yaml(yaml_file_path):
                     if not isinstance(details["lower"], float) or not isinstance(
                         details["upper"], float
                     ):
-                        # for numbers like 1e-5
-                        details["lower"] = convert_scientific_notation(details["lower"])
-                        details["upper"] = convert_scientific_notation(details["upper"])
-                    else:
-                        raise TypeError(
-                            f"'lower' and 'upper' must be integer for "
-                            f"integer parameter '{name}'."
-                        )
+                        try:
+                            # for numbers like 1e-5 and 10^
+                            details["lower"] = convert_scientific_notation(
+                                details["lower"]
+                            )
+                            details["upper"] = convert_scientific_notation(
+                                details["upper"]
+                            )
+                        except ValueError as e:
+                            raise TypeError(
+                                f"'lower' and 'upper' must be integer for "
+                                f"integer parameter '{name}'."
+                            ) from e
 
                 pipeline_space[name] = FloatParameter(
                     lower=details["lower"],
@@ -243,7 +249,7 @@ def convert_scientific_notation(value, show_usage_flag=False):
 
     e_notation_pattern = r"^-?\d+(\.\d+)?[eE]-?\d+$"
     # Pattern for '10^' style notation, with optional base and multiplication symbol
-    ten_power_notation_pattern = r"^(-?\d+)?(\.\d+)?\*?10\^(-?\d+)$"
+    ten_power_notation_pattern = r"^(-?\d+)?(\.\d+)?[xX*]?10\^(-?\d+)$"
 
     if isinstance(value, str):
         # Remove all whitespace from the string
@@ -260,7 +266,7 @@ def convert_scientific_notation(value, show_usage_flag=False):
                 if decimal:
                     base = base + decimal
                 base = float(base) if base else 1  # Default to 1 if base is empty
-                value = base * (10 ** float(exponent))
+                value = format(base * (10 ** float(exponent)), "e")
                 if show_usage_flag is True:
                     return float(value), True
                 else:
