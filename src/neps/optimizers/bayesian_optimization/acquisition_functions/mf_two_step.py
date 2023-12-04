@@ -185,7 +185,7 @@ class MFEI_PartialFilter(MFEI):
         return inc_list
 
 
-class MDEI_Dyna_PartialFilter(MFEI_Dyna):
+class MFEI_Dyna_PartialFilter(MFEI_Dyna):
     """Custom redefinition of MF-EI with Dynamic extrapolation length to adjust incumbents.
     """
 
