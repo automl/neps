@@ -7,6 +7,7 @@ from .ei import ComprehensiveExpectedImprovement
 from .mf_ei import MFEI, MFEI_AtMax, MFEI_Dyna
 from .ucb import UpperConfidenceBound
 from .mf_ucb import MF_UCB, MF_UCB_AtMax, MF_UCB_Dyna
+from .mf_two_step import MF_TwoStep
 
 
 AcquisitionMapping: dict[str, Callable] = {
@@ -59,4 +60,8 @@ AcquisitionMapping: dict[str, Callable] = {
         MF_UCB_Dyna,
         maximize=False,
     ),
+    "MF_TwoStep": partial(
+        MF_TwoStep,
+        maximize=False,
+    )
 }

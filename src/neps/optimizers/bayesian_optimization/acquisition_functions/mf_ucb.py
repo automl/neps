@@ -7,10 +7,11 @@ import torch
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ....search_spaces.search_space import IntegerParameter, SearchSpace
 from ...multi_fidelity.utils import MFObservedData
+from .mf_ei import MFStepBase
 from .ucb import UpperConfidenceBound
 
 
-class MF_UCB(UpperConfidenceBound):
+class MF_UCB(MFStepBase, UpperConfidenceBound):
     def __init__(self,
         pipeline_space: SearchSpace,
         surrogate_model_name: str = None,
@@ -31,29 +32,13 @@ class MF_UCB(UpperConfidenceBound):
         self.observations = None
         self.b_step = None
 
-    def set_state(
-        self,
-        pipeline_space: SearchSpace,
-        surrogate_model: Any,
-        observations: MFObservedData,
-        b_step: Union[int, float],
-        **kwargs,
-    ):
-        # overload to select incumbent differently through observations
-        self.pipeline_space = pipeline_space
-        self.surrogate_model = surrogate_model
-        self.observations = observations
-        self.b_step = b_step
-
-    def get_budget_level(self, config) -> int:
-        return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
-
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
         required by the multi-fidelity Expected Improvement acquisition function.
         """
+        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
@@ -90,6 +75,7 @@ class MF_UCB(UpperConfidenceBound):
     def preprocess_gp(
             self, x: pd.Series, surrogate_name: str = "gp"
         ) -> Tuple[pd.Series, torch.Tensor]:
+        breakpoint()
         if surrogate_name == "gp":
             x, inc_list = self.preprocess(x)
             return x, inc_list
@@ -111,23 +97,6 @@ class MF_UCB(UpperConfidenceBound):
             raise ValueError(
                 f"Unrecognized surrogate model name: {surrogate_name}"
             )
-
-    def preprocess_pfn(self, x: pd.Series) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
-        """Prepares the configurations for appropriate EI calculation.
-
-        Takes a set of points and computes the budget and incumbent for each point, as
-        required by the multi-fidelity Expected Improvement acquisition function.
-        """
-        _x, inc_list = self.preprocess(x.copy())
-        _x_tok = self.observations.tokenize(_x, as_tensor=True)
-        len_partial = len(self.observations.seen_config_ids)
-        z_min = x[0].fidelity.lower
-        # converting fidelity to the discrete budget level
-        # STRICT ASSUMPTION: fidelity is the second dimension
-        _x_tok[:len_partial, 1] = (
-            _x_tok[:len_partial, 1] + self.b_step - z_min
-        ) / self.b_step
-        return _x_tok, _x, inc_list
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         if self.surrogate_model_name == "pfn":
@@ -159,6 +128,7 @@ class MF_UCB_AtMax(MF_UCB):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
+        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
@@ -195,6 +165,7 @@ class MF_UCB_Dyna(MF_UCB):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
+        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently

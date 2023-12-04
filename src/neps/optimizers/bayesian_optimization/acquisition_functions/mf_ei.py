@@ -9,73 +9,36 @@ from torch.distributions import Normal
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ....search_spaces.search_space import IntegerParameter, SearchSpace
 from ...multi_fidelity.utils import MFObservedData
+from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
 
 
-class MFEI(ComprehensiveExpectedImprovement):
-    def __init__(
+class MFStepBase(BaseAcquisition):
+    """A class holding common operations that can be inherited.
+    
+    WARNING: Unsafe use of self attributes, can break if not used correctly.
+    """
+    def set_state(
         self,
         pipeline_space: SearchSpace,
-        surrogate_model_name: str = None,
-        augmented_ei: bool = False,
-        xi: float = 0.0,
-        in_fill: str = "best",
-        log_ei: bool = False,
+        surrogate_model: Any,
+        observations: MFObservedData,
+        b_step: Union[int, float],
+        **kwargs,
     ):
-        super().__init__(augmented_ei, xi, in_fill, log_ei)
+        # overload to select incumbent differently through observations
         self.pipeline_space = pipeline_space
-        self.surrogate_model_name = surrogate_model_name
-        self.surrogate_model = None
-        self.observations = None
-        self.b_step = None
+        self.surrogate_model = surrogate_model
+        self.observations = observations
+        self.b_step = b_step
+        return
 
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
-    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
-        """Prepares the configurations for appropriate EI calculation.
-
-        Takes a set of points and computes the budget and incumbent for each point, as
-        required by the multi-fidelity Expected Improvement acquisition function.
-        """
-        budget_list = []
-        if self.pipeline_space.has_tabular:
-            # preprocess tabular space differently
-            # expected input: IDs pertaining to the tabular data
-            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
-        indices_to_drop = []
-        for i, config in x.items():
-            target_fidelity = config.fidelity.lower
-            if i <= max(self.observations.seen_config_ids):
-                # IMPORTANT to set the fidelity at which EI will be calculated only for
-                # the partial configs that have been observed already
-                target_fidelity = config.fidelity.value + self.b_step
-
-                if np.less_equal(target_fidelity, config.fidelity.upper):
-                    # only consider the configs with fidelity lower than the max fidelity
-                    config.fidelity.value = target_fidelity
-                    budget_list.append(self.get_budget_level(config))
-                else:
-                    # if the target_fidelity higher than the max drop the configuration
-                    indices_to_drop.append(i)
-            else:
-                config.fidelity.value = target_fidelity
-                budget_list.append(self.get_budget_level(config))
-
-        # Drop unused configs
-        x.drop(labels=indices_to_drop, inplace=True)
-
-        performances = self.observations.get_best_performance_for_each_budget()
-        inc_list = []
-        for budget_level in budget_list:
-            if budget_level in performances.index:
-                inc = performances[budget_level]
-            else:
-                inc = self.observations.get_best_seen_performance()
-            inc_list.append(inc)
-        return x, torch.Tensor(inc_list)
-
+    
     def preprocess_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+        breakpoint()
         x, inc_list = self.preprocess(x)
         return x, inc_list
 
@@ -111,11 +74,89 @@ class MFEI(ComprehensiveExpectedImprovement):
         _x_tok[:len_partial, 1] = (
             _x_tok[:len_partial, 1] + self.b_step - z_min
         ) / self.b_step
-        return _x_tok, _x, inc_list
+        return _x, _x_tok, inc_list
+
+
+class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        surrogate_model_name: str = None,
+        augmented_ei: bool = False,
+        xi: float = 0.0,
+        in_fill: str = "best",
+        log_ei: bool = False,
+    ):
+        super().__init__(augmented_ei, xi, in_fill, log_ei)
+        self.pipeline_space = pipeline_space
+        self.surrogate_model_name = surrogate_model_name
+        self.surrogate_model = None
+        self.observations = None
+        self.b_step = None
+    
+    def preprocess_inc_list(self, **kwargs) -> list:
+        assert "budget_list" in kwargs, "Requires a list of query step for candidate set."
+        budget_list = kwargs["budget_list"]
+        performances = self.observations.get_best_performance_for_each_budget()
+        inc_list = []
+        for budget_level in budget_list:
+            if budget_level in performances.index:
+                inc = performances[budget_level]
+            else:
+                inc = self.observations.get_best_seen_performance()
+            inc_list.append(inc)
+        return inc_list
+
+    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+        """Prepares the configurations for appropriate EI calculation.
+
+        Takes a set of points and computes the budget and incumbent for each point, as
+        required by the multi-fidelity Expected Improvement acquisition function.
+        """
+        breakpoint()
+        budget_list = []
+        if self.pipeline_space.has_tabular:
+            # preprocess tabular space differently
+            # expected input: IDs pertaining to the tabular data
+            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
+        indices_to_drop = []
+        for i, config in x.items():
+            target_fidelity = config.fidelity.lower
+            if i <= max(self.observations.seen_config_ids):
+                # IMPORTANT to set the fidelity at which EI will be calculated only for
+                # the partial configs that have been observed already
+                target_fidelity = config.fidelity.value + self.b_step
+
+                if np.less_equal(target_fidelity, config.fidelity.upper):
+                    # only consider the configs with fidelity lower than the max fidelity
+                    config.fidelity.value = target_fidelity
+                    budget_list.append(self.get_budget_level(config))
+                else:
+                    # if the target_fidelity higher than the max drop the configuration
+                    indices_to_drop.append(i)
+            else:
+                config.fidelity.value = target_fidelity
+                budget_list.append(self.get_budget_level(config))
+
+        # Drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
+        performances = self.observations.get_best_performance_for_each_budget()
+        inc_list = []
+        for budget_level in budget_list:
+            if budget_level in performances.index:
+                inc = performances[budget_level]
+            else:
+                inc = self.observations.get_best_seen_performance()
+            inc_list.append(inc)
+
+        inc_list = self.preprocess_inc_list(budget_list=budget_list)
+
+        return x, torch.Tensor(inc_list)
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         if self.surrogate_model_name == "pfn":
-            _x_tok, _x, inc_list = self.preprocess_pfn(
+            _x, _x_tok, inc_list = self.preprocess_pfn(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_pfn_ei(_x_tok, inc_list)
@@ -186,23 +227,15 @@ class MFEI(ComprehensiveExpectedImprovement):
             )
         return ei
 
-    def set_state(
-        self,
-        pipeline_space: SearchSpace,
-        surrogate_model: Any,
-        observations: MFObservedData,
-        b_step: Union[int, float],
-        **kwargs,
-    ):
-        # overload to select incumbent differently through observations
-        self.pipeline_space = pipeline_space
-        self.surrogate_model = surrogate_model
-        self.observations = observations
-        self.b_step = b_step
-        return
-
 
 class MFEI_AtMax(MFEI):
+
+    def preprocess_inc_list(self, **kwargs) -> list:
+        assert "len_x" in kwargs, "Requires the length of the candidate set."
+        len_x = kwargs["len_x"]
+        inc_value = min(self.observations.get_best_performance_for_each_budget())
+        inc_list = [inc_value] * len_x
+        return inc_list
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
@@ -211,6 +244,7 @@ class MFEI_AtMax(MFEI):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
+        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
@@ -232,13 +266,14 @@ class MFEI_AtMax(MFEI):
         x.drop(labels=indices_to_drop, inplace=True)
 
         # create the same incumbent for all candidates
-        inc_value = min(self.observations.get_best_performance_for_each_budget())
-        inc_list = [inc_value] * len(x.index.values)
+        # inc_value = min(self.observations.get_best_performance_for_each_budget())
+        # inc_list = [inc_value] * len(x.index.values)
+        inc_list = self.preprocess_inc_list(len_x=len(x.index.values))
 
         return x, torch.Tensor(inc_list)
 
 
-class MFEI_Dyna(MFEI):
+class MFEI_Dyna(MFEI_AtMax):
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
@@ -247,6 +282,7 @@ class MFEI_Dyna(MFEI):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
+        breakpoint()
         budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
@@ -306,8 +342,9 @@ class MFEI_Dyna(MFEI):
         x.loc[_partial_config_ids] = x[_partial_config_ids].apply(update_fidelity_partial)
 
         # create the same incumbent for all candidates
-        inc_value = min(self.observations.get_best_performance_for_each_budget())
-        inc_list = [inc_value] * len(x.index.values)
+        # inc_value = min(self.observations.get_best_performance_for_each_budget())
+        # inc_list = [inc_value] * len(x.index.values)
+        inc_list = self.preprocess_inc_list(len_x=len(x.index.values))
 
         # drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
