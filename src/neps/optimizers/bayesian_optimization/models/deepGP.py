@@ -17,12 +17,11 @@ from ....search_spaces.search_space import (
     SearchSpace,
 )
 
+def get_optimizer_losses(root_directory: Path | str) -> list[float]:
 
-def count_non_improvement_steps(root_directory: Path | str) -> int:
-    root_directory = Path(root_directory)
 
     all_losses_file = root_directory / "all_losses_and_configs.txt"
-    best_loss_fiel = root_directory / "best_loss_trajectory.txt"
+
 
     # Read all losses from the file in the order they are explored
     losses = [
@@ -30,18 +29,16 @@ def count_non_improvement_steps(root_directory: Path | str) -> int:
         for line in all_losses_file.read_text(encoding="utf-8").splitlines()
         if "Loss: " in line
     ]
+    return losses
+
+def get_best_loss(root_directory: Path | str) -> float:
+    root_directory = Path(root_directory)
+    best_loss_fiel = root_directory / "best_loss_trajectory.txt"
+
     # Get the best seen loss value
     best_loss = float(best_loss_fiel.read_text(encoding="utf-8").splitlines()[-1].strip())
 
-    # Count the non-improvement
-    count = 0
-    for loss in reversed(losses):
-        if np.greater(loss, best_loss):
-            count += 1
-        else:
-            break
-
-    return count
+    return best_loss
 
 
 class NeuralFeatureExtractor(nn.Module):
@@ -169,11 +166,13 @@ class DeepGP:
         root_directory: Path | str | None = None,
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = 50,
+        n_initial_full_trainings: int = 10,
         **kwargs,  # pylint: disable=unused-argument
     ):
         self.surrogate_model_fit_args = (
             surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
         )
+        self.n_initial_full_trainings = n_initial_full_trainings
 
         self.checkpointing = checkpointing
         self.refine_epochs = refine_epochs
@@ -420,12 +419,11 @@ class DeepGP:
         self.nn.to(self.device)
 
         if self.checkpointing and self.checkpoint_path.exists():
-            non_improvement_steps = count_non_improvement_steps(self.root_dir)
+            # non_improvement_steps = count_non_improvement_steps(self.root_dir)
             # If checkpointing and patience is not exhausted load a partial model
-            if non_improvement_steps < perf_patience:
+            if self.__is_refine(perf_patience):
                 n_epochs = self.refine_epochs
                 self.load_checkpoint()
-            self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
         self.logger.debug(f"N Epochs for the full training: {n_epochs}")
 
         initial_state = self.get_state()
@@ -664,6 +662,33 @@ class DeepGP:
 
     def delete_checkpoint(self):
         self.checkpoint_path.unlink(missing_ok=True)
+
+    def __is_refine(self, perf_patience: int):
+        losses = get_optimizer_losses(self.root_dir)
+
+        best_loss = get_best_loss(self.root_dir)
+
+        total_optimizer_steps = len(losses)
+
+        # Count the non-improvement
+        non_improvement_steps = 0
+        for loss in reversed(losses):
+            if np.greater(loss, best_loss):
+                non_improvement_steps += 1
+            else:
+                break
+
+        self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
+
+        return ((non_improvement_steps < perf_patience)
+                and (self.n_initial_full_trainings <= total_optimizer_steps))
+
+
+    @staticmethod
+    def __count_non_improvement_steps(losses: list[float], best_loss:float) -> int:
+
+
+        return count
 
 
 if __name__ == "__main__":
