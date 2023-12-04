@@ -16,8 +16,11 @@ from metahyper import instance_from_map
 from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
-from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace, \
-    pipeline_space_from_yaml
+from .search_spaces.search_space import (
+    SearchSpace,
+    pipeline_space_from_configspace,
+    pipeline_space_from_yaml,
+)
 from .status.status import post_run_csv
 from .utils.common import get_searcher_data, get_value
 from .utils.result_utils import get_loss
@@ -418,4 +421,3 @@ def _run_args(
         searcher_instance,
         searcher_info,
     )
-
