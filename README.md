@@ -5,23 +5,26 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-NePS helps deep learning experts to optimize the hyperparameters and/or architecture of their deep learning pipeline with:
+Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization and neural architecture search. This library is designed to assist researchers and deep learning practitioners in efficiently tuning hyperparameters and exploring neural network architectures to achieve optimal model performance.
 
-- Hyperparameter Optimization (HPO) ([example](neps_examples/basic_usage/hyperparameters.py))
-- Neural Architecture Search (NAS) ([example](neps_examples/basic_usage/architecture.py), [paper](https://openreview.net/forum?id=Ok58hMNXIQ))
-- Joint Architecture and Hyperparameter Search (JAHS) ([example](neps_examples/basic_usage/architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=_HLcjaVlqJ))
+## Key Features
 
-For efficiency and convenience NePS allows you to
+In addition to the common features offered by traditional HPO and NAS libraries, NePS stands out with the following key features:
 
-- Add your intuition as priors for the search ([example HPO](neps_examples/efficiency/expert_priors_for_hyperparameters.py), [example JAHS](neps_examples/experimental/expert_priors_for_architecture_and_hyperparameters.py), [paper](https://openreview.net/forum?id=MMAeCXIa89), [paper](https://openreview.net/forum?id=uoiwugtpCH))
-- Utilize low fidelity (e.g., low epoch) evaluations to focus on promising configurations ([example](neps_examples/efficiency/multi_fidelity.py), [paper](https://openreview.net/forum?id=uoiwugtpCH))
-- Trivially parallelize across machines ([example](neps_examples/efficiency/parallelization.md), [documentation](https://automl.github.io/neps/latest/parallelization/))
+1. [**Hyperparameter Optimization (HPO) With Prior Knowledge:**](neps_examples/template/priorband_template.py) 
+    - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to leverage their prior knowledge within the search space.
 
-Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.py) for maximum efficiency!
+2. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py) 
+    - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures.
 
-### Note
+3. [**Easy Parallelization:**](https://automl.github.io/neps/latest/parallelization/) 
+    - NePS simplifies the parallelization of optimization tasks. Whether experiments are running on a single machine or a distributed computing environment.
 
-As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
+4. [**Resume Runs After Termination:**](https://automl.github.io/neps/latest/parallelization/) 
+    - NePS allows users to easily resume optimization runs after termination, providing a convenient and efficient workflow for long-running experiments.
+
+5. [**Seamless User Code Integration:**](neps_examples/template/) 
+    - NePS's modular design ensures flexibility and extensibility. Integrate NePS effortlessly into existing machine learning workflows.
 
 ## Getting Started
 
@@ -32,6 +35,8 @@ Using pip:
 ```bash
 pip install neural-pipeline-search
 ```
+
+> Note: As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
 
 ### 2. Basic Usage
 
