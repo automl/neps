@@ -244,6 +244,26 @@ class DeepGP:
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model).to(self.device)
         return model, likelihood, mll
 
+    def __is_refine(self, perf_patience: int):
+        losses = get_optimizer_losses(self.root_dir)
+
+        best_loss = get_best_loss(self.root_dir)
+
+        total_optimizer_steps = len(losses)
+
+        # Count the non-improvement
+        non_improvement_steps = 0
+        for loss in reversed(losses):
+            if np.greater(loss, best_loss):
+                non_improvement_steps += 1
+            else:
+                break
+
+        self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
+
+        return ((non_improvement_steps < perf_patience)
+                and (self.n_initial_full_trainings <= total_optimizer_steps))
+
     def __preprocess_search_space(self, pipeline_space: SearchSpace):
         self.categories = []
         self.categorical_hps = []
@@ -291,7 +311,7 @@ class DeepGP:
 
         min_budget = self.min_fidelity if use_min_budget else 0
         budgets = np.array([config.fidelity.value for config in x_train], dtype=np.single)
-        if normalized and use_min_budget:
+        if normalized:
             normalized_budgets = (budgets - min_budget) / (
                 self.max_fidelity - min_budget
             )
@@ -419,7 +439,6 @@ class DeepGP:
         self.nn.to(self.device)
 
         if self.checkpointing and self.checkpoint_path.exists():
-            # non_improvement_steps = count_non_improvement_steps(self.root_dir)
             # If checkpointing and patience is not exhausted load a partial model
             if self.__is_refine(perf_patience):
                 n_epochs = self.refine_epochs
@@ -662,33 +681,6 @@ class DeepGP:
 
     def delete_checkpoint(self):
         self.checkpoint_path.unlink(missing_ok=True)
-
-    def __is_refine(self, perf_patience: int):
-        losses = get_optimizer_losses(self.root_dir)
-
-        best_loss = get_best_loss(self.root_dir)
-
-        total_optimizer_steps = len(losses)
-
-        # Count the non-improvement
-        non_improvement_steps = 0
-        for loss in reversed(losses):
-            if np.greater(loss, best_loss):
-                non_improvement_steps += 1
-            else:
-                break
-
-        self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
-
-        return ((non_improvement_steps < perf_patience)
-                and (self.n_initial_full_trainings <= total_optimizer_steps))
-
-
-    @staticmethod
-    def __count_non_improvement_steps(losses: list[float], best_loss:float) -> int:
-
-
-        return count
 
 
 if __name__ == "__main__":
