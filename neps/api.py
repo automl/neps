@@ -251,7 +251,7 @@ def run(
         )
     elif isinstance(searcher, BaseOptimizer):
         # This check is not strict when a user-defined neps.optimizer is provided
-        logger.warn(
+        logger.warning(
             "An instantiated optimizer is provided. The safety checks of NePS will be "
             "skipped. Accurate continuation of runs can no longer be guaranteed!"
         )
