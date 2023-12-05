@@ -70,10 +70,11 @@ https://github.com/automl/ConfigSpace
 - **Expected Arguments:**
   - `lower`: The minimum value of the parameter.
   - `upper`: The maximum value of the parameter.
+  - **Accepted Values:** Int or Float depending on the specific parameter type one wishes to use.
 - **Optional Arguments:**
   - `type`: Specifies the data type of the parameter.
     - **Accepted Values**: 'int', 'integer', or 'float'.
-    - **Note:** If type is not specified e and 10^ notation gets converted to float
+    - **Note:** If type is not specified e notation gets converted to float
   - `log`: Boolean that indicates if the parameter uses a logarithmic scale (default: False)
     - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
   - `is_fidelity`: Boolean that marks the parameter as a fidelity parameter (default: False).
@@ -87,7 +88,7 @@ https://github.com/automl/ConfigSpace
 ### Categorical Parameter
 
 - **Expected Arguments:**
-  - `choices`: A list of discrete options that the parameter can take.
+  - `choices`: A list of discrete options(int | float | str) that the parameter can take.
 - **Optional Arguments:**
   - `type`: Specifies the data type of the parameter.
     - Accepted Values: 'cat' or 'categorical'.
@@ -102,7 +103,7 @@ https://github.com/automl/ConfigSpace
 ### ConstantParameter
 
 - **Expected Arguments:**
-  - `value`: The fixed value for the parameter.
+  - `value`: The fixed value(int | float | str) for the parameter.
 - **Optional Arguments:**
   - `type`: Specifies the data type of the parameter.
     - Accepted Values: 'const' or 'constant'.
@@ -130,7 +131,9 @@ When working with YAML files, it's essential to understand how the format interp
 1. **Numbers:**
 
    - Unquoted numeric values are interpreted as integers or floating-point numbers, depending on their format.
-   - Example: `123` is an integer, `4.56` is a float, `1e3` is a float in exponential form.
+   - Example: `123` is an integer, `4.56` is a float, `1e3` can be either an integer or a floating-point number,
+     depending on the type specified by the user. By default, 1e3 is treated as a floating-point number.
+     This interpretation is unique to our system.
 
 1. **Empty Strings:**
 

@@ -2,7 +2,7 @@ search_space:
   learning_rate:
     type: float
     lower: 0.00001
-    upper: 0.1
+    upper: 1e-1
     log: true
 
   num_epochs:
@@ -13,24 +13,19 @@ search_space:
 
   batch_size:
     type: "int"
-    lower: 10^2
-    upper: 3 * 10^4
+    lower: 1e2
+    upper: 3E4
     log: true
     is_fidelity: false
 
   sec_learning_rate:
     type: "float"
     lower: 3.3e-5
-    upper: 1E-1
-
-  parameter_ex:
-    type: float
-    lower: 3.3 x 10^-5
-    upper: 3.2*10^1
+    upper: 1.5E-1
 
   optimizer:
     type: cat
-    choices: ["adam", "sgd", "rmsprop"]
+    choices: [2, "sgd", 10E-3]
 
   dropout_rate:
     type: const

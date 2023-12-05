@@ -2,16 +2,13 @@ import re
 
 
 def convert_scientific_notation(value, show_usage_flag=False):
-    """Check if the value is a string that matches scientific ^ or e (specially numbers
-    like 3.3e-5 with a float value in front, which yaml can not interpret directly as
-    float)
-    and convert it to float."""
+    """Check if the value is a string that matches scientific e notation and convert it
+    to float. (specially numbers like 3.3e-5 with a float value in front, which yaml
+    can not interpret directly as float)."""
 
     e_notation_pattern = r"^-?\d+(\.\d+)?[eE]-?\d+$"
-    # Pattern for '10^' style notation, with optional base and multiplication symbol
-    ten_power_notation_pattern = r"^(-?\d+)?(\.\d+)?[xX*]?10\^(-?\d+)$"
 
-    flag = False  # Check if e or 10^notation was detected
+    flag = False  # Check if e notation was detected
 
     if isinstance(value, str):
         # Remove all whitespace from the string
@@ -20,16 +17,6 @@ def convert_scientific_notation(value, show_usage_flag=False):
         # check for e notation
         if re.match(e_notation_pattern, value_no_space):
             flag = True
-        else:
-            # check for 10^ notation
-            match = re.match(ten_power_notation_pattern, value_no_space)
-            if match:
-                base, decimal, exponent = match.groups()
-                if decimal:
-                    base = base + decimal
-                base = float(base) if base else 1  # Default to 1 if base is empty
-                value = format(base * (10 ** float(exponent)), "e")
-                flag = True
 
     if show_usage_flag is True:
         return float(value), flag
@@ -165,6 +152,20 @@ def validate_param_details(name, param_type, details):
     param_type = param_type.lower()
     # init parameter by checking type
     if param_type in ("int", "integer"):
+        # check if all keys are allowed
+        check_allowed_keys(
+            name,
+            details,
+            {
+                "lower",
+                "upper",
+                "type",
+                "log",
+                "is_fidelity",
+                "default",
+                "default_confidence",
+            },
+        )
         # Check Integer Parameter
         if "lower" not in details or "upper" not in details:
             raise KeyError(
@@ -182,8 +183,8 @@ def validate_param_details(name, param_type, details):
                 # check if one value format is e or 10^ and if its an integer
                 if flag_lower or flag_upper:
                     if lower == int(lower) and upper == int(upper):
-                        details["lower"] = lower
-                        details["upper"] = upper
+                        details["lower"] = int(lower)
+                        details["upper"] = int(upper)
                     else:
                         raise ValueError()
                 else:
@@ -193,8 +194,32 @@ def validate_param_details(name, param_type, details):
                     f"'lower' and 'upper' must be integer for "
                     f"integer parameter '{name}'."
                 ) from e
+        if "default" in details:
+            if not isinstance(details["default"], int):
+                default = convert_scientific_notation(details["default"])
+                if default == int(default):
+                    details["default"] = int(default)
+                else:
+                    raise TypeError(
+                        f"default value {details['default']} "
+                        f"must be integer for integer parameter {name}"
+                    )
 
     elif param_type == "float":
+        # check if all keys are allowed
+        check_allowed_keys(
+            name,
+            details,
+            {
+                "lower",
+                "upper",
+                "type",
+                "log",
+                "is_fidelity",
+                "default",
+                "default_confidence",
+            },
+        )
         # Check Float Parameter
         if "lower" not in details or "upper" not in details:
             raise KeyError(
@@ -212,18 +237,66 @@ def validate_param_details(name, param_type, details):
                     f"'lower' and 'upper' must be integer for "
                     f"integer parameter '{name}'."
                 ) from e
+        if "default" in details:
+            if not isinstance(details["default"], float):
+                try:
+                    details["default"] = convert_scientific_notation(details["default"])
+                except ValueError as e:
+                    raise TypeError(
+                        f" 'default' must be float for float parameter " f"{name} "
+                    ) from e
 
     elif param_type in ("cat", "categorical"):
+        # check if all keys are allowed
+        check_allowed_keys(
+            name,
+            details,
+            {"choices", "type", "is_fidelity", "default", "default_confidence"},
+        )
         # Check Categorical parameter
         if "choices" not in details:
             raise KeyError(f"Missing key 'choices' for categorical " f"parameter {name}")
         if not isinstance(details["choices"], (list, tuple)):
             raise TypeError(f"The 'choices' for '{name}' must be a list or tuple.")
-
+        for i, element in enumerate(details["choices"]):
+            try:
+                converted_value, e_flag = convert_scientific_notation(
+                    element, show_usage_flag=True
+                )
+                if e_flag:
+                    details["choices"][
+                        i
+                    ] = converted_value  # Replace the element at the same position
+            except ValueError:
+                pass  # If a ValueError occurs, simply continue to the next element
+        if "default" in details:
+            e_flag = False
+            try:
+                # check if e notation, if then convert to number
+                default, e_flag = convert_scientific_notation(
+                    details["default"], show_usage_flag=True
+                )
+            except ValueError:
+                pass
+            if e_flag is True:
+                details["default"] = default
     elif param_type in ("const", "constant"):
+        # check if all keys are allowed
+        check_allowed_keys(name, details, {"value", "type", "is_fidelity"})
         # Check Constant parameter
         if "value" not in details:
             raise KeyError(f"Missing key 'value' for constant parameter " f"{name}")
+        else:
+            e_flag = False
+            try:
+                converted_value, e_flag = convert_scientific_notation(
+                    details["value"], show_usage_flag=True
+                )
+            except ValueError:
+                pass
+            if e_flag:
+                details["value"] = converted_value
+
     else:
         # Handle unknown parameter types
         raise TypeError(
@@ -235,3 +308,13 @@ def validate_param_details(name, param_type, details):
             "For constant parameter: const, constant\n"
         )
     return param_type
+
+
+def check_allowed_keys(name, my_dict, allowed_keys):
+    """
+    Checks if all keys in 'my_dict' are contained in the set 'allowed_keys'.
+    If an unallowed key is found, an exception is raised.
+    """
+    for key in my_dict:
+        if key not in allowed_keys:
+            raise KeyError(f"This key is not allowed: '{key}' for parameter '{name}'")

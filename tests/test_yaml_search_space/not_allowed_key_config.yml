@@ -7,7 +7,7 @@ search_space:
     type: "float" # Optional, as neps infers type from 'lower' and 'upper'
     lower: 1.7
     upper: 42.0
-    log: true # Optional, default: False
+    log: true
 
   categorical_name1:
     choices: [0, 1]
@@ -19,7 +19,7 @@ search_space:
   integer_name1:
     lower: 32
     upper: 128
-    is_fidelity: True # Optional, default: False
+    fidelity: True # error, fidelity instead of is_fidelity
 
   integer_name2:
     lower: -5

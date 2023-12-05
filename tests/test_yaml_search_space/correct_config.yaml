@@ -3,6 +3,7 @@ search_space:
     lower: 0.00001
     upper: 0.1
     log: TRUE
+    is_fidelity: off
 
   num_epochs:
     lower: -3
@@ -11,21 +12,20 @@ search_space:
     is_fidelity: on
   batch_size:
     type: int
-    lower: 10^2
-    upper: 3 * 10^4
-    log: true
+    lower: 1E2
+    upper: 3e4
+    log: on
     is_fidelity: FALSE
 
   sec_learning_rate:
     lower: 3.3e-5
-    upper: 1E-1
-
-  parameter_ex:
-    lower: 3.3 x 10^-5
-    upper: 3.2*10^1
+    upper: 1.5E-1
 
   optimizer:
-    choices: ["adam", "sgd", "rmsprop"]
+    choices: [2, "sgd", 10e-3]
 
   dropout_rate:
     value: 0.5
+
+  constant_value:
+    value: 1e3

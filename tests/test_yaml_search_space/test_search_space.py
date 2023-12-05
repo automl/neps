@@ -36,20 +36,13 @@ def test_correct_yaml_files():
         assert pipeline_space["batch_size"].default_confidence_score == 0.5
         assert isinstance(pipeline_space["sec_learning_rate"], FloatParameter)
         assert pipeline_space["sec_learning_rate"].lower == 3.3e-5
-        assert pipeline_space["sec_learning_rate"].upper == 0.1
+        assert pipeline_space["sec_learning_rate"].upper == 0.15
         assert pipeline_space["sec_learning_rate"].log is False
         assert pipeline_space["sec_learning_rate"].is_fidelity is False
         assert pipeline_space["sec_learning_rate"].default is None
         assert pipeline_space["sec_learning_rate"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["parameter_ex"], FloatParameter)
-        assert pipeline_space["parameter_ex"].lower == 3.3e-5
-        assert pipeline_space["parameter_ex"].upper == 32.0
-        assert pipeline_space["parameter_ex"].log is False
-        assert pipeline_space["parameter_ex"].is_fidelity is False
-        assert pipeline_space["parameter_ex"].default is None
-        assert pipeline_space["parameter_ex"].default_confidence_score == 0.5
         assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
-        assert pipeline_space["optimizer"].choices == ["adam", "sgd", "rmsprop"]
+        assert pipeline_space["optimizer"].choices == [2, "sgd", 10e-3]
         assert pipeline_space["optimizer"].is_fidelity is False
         assert pipeline_space["optimizer"].default is None
         assert pipeline_space["optimizer"].default_confidence_score == 2
@@ -75,7 +68,7 @@ def test_correct_including_priors_yaml_file():
     assert pipeline_space["learning_rate"].upper == 0.1
     assert pipeline_space["learning_rate"].log is True
     assert pipeline_space["learning_rate"].is_fidelity is False
-    assert pipeline_space["learning_rate"].default == 0.001
+    assert pipeline_space["learning_rate"].default == 3.3e-2
     assert pipeline_space["learning_rate"].default_confidence_score == 0.125
     assert isinstance(pipeline_space["num_epochs"], IntegerParameter)
     assert pipeline_space["num_epochs"].lower == 3
@@ -85,13 +78,13 @@ def test_correct_including_priors_yaml_file():
     assert pipeline_space["num_epochs"].default == 10
     assert pipeline_space["num_epochs"].default_confidence_score == 0.5
     assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
-    assert pipeline_space["optimizer"].choices == ["adam", "sgd", "rmsprop"]
+    assert pipeline_space["optimizer"].choices == ["adam", 90e-3, "rmsprop"]
     assert pipeline_space["optimizer"].is_fidelity is False
-    assert pipeline_space["optimizer"].default == "sgd"
+    assert pipeline_space["optimizer"].default == 90e-3
     assert pipeline_space["optimizer"].default_confidence_score == 4
     assert isinstance(pipeline_space["dropout_rate"], ConstantParameter)
-    assert pipeline_space["dropout_rate"].value == 0.5
-    assert pipeline_space["dropout_rate"].is_fidelity is True
+    assert pipeline_space["dropout_rate"].value == 1e3
+    assert pipeline_space["dropout_rate"].default == 1e3
 
 
 @pytest.mark.neps_api
@@ -141,3 +134,14 @@ def test_yaml_file_including_unkown_types():
             "tests/test_yaml_search_space/config_including_unknown_types.yaml"
         )
     assert str(excinfo.value.exception_type == "TypeError")
+
+
+@pytest.mark.neps_api
+def test_yaml_file_including_not_allowed_parameter_keys():
+    """Test the function with a YAML file that defines an unknown type as an optional
+    argument"""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(
+            "tests/test_yaml_search_space/not_allowed_key_config.yml"
+        )
+    assert str(excinfo.value.exception_type == "KeyError")

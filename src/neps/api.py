@@ -102,6 +102,7 @@ def run(
     root_directory: str | Path,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
     | str
+    | Path
     | CS.ConfigurationSpace
     | None = None,
     overwrite_working_directory: bool = False,
