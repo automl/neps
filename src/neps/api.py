@@ -101,6 +101,7 @@ def run(
     run_pipeline: Callable,
     root_directory: str | Path,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
+    | str
     | CS.ConfigurationSpace
     | None = None,
     overwrite_working_directory: bool = False,

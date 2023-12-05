@@ -6,7 +6,7 @@ search_space:
     log: true
 
   num_epochs:
-    type: cat
+    type: int
     lower: 3
     upper: 30
     is_fidelity: True

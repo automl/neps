@@ -2,19 +2,19 @@ search_space:
   learning_rate:
     lower: 0.00001
     upper: 0.1
-    log: true
+    log: TRUE
 
   num_epochs:
-    lower: 3
+    lower: -3
     upper: 30
     log: false
-    is_fidelity: True
+    is_fidelity: on
   batch_size:
     type: int
     lower: 10^2
     upper: 3 * 10^4
     log: true
-    is_fidelity: false
+    is_fidelity: FALSE
 
   sec_learning_rate:
     lower: 3.3e-5

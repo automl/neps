@@ -11,12 +11,11 @@ search_space:
     upper: 30
     is_fidelity: True
     default: 10
-    default_confidence: medium
 
   optimizer:
-    choices: ["adam", "sgd", "rmsprop"]
-    default: "sgd"
-    default_confidence: medium
+    choices: [adam, sgd, rmsprop]
+    default: sgd
+    default_confidence: "medium"
 
   dropout_rate:
     value: 0.5

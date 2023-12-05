@@ -7,7 +7,7 @@ search_space:
 
   num_epochs:
     type: integer
-    lower: 3
+    lower: -3
     upper: 30
     is_fidelity: True
 

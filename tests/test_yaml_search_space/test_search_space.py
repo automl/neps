@@ -21,7 +21,7 @@ def test_correct_yaml_files():
         assert pipeline_space["learning_rate"].default is None
         assert pipeline_space["learning_rate"].default_confidence_score == 0.5
         assert isinstance(pipeline_space["num_epochs"], IntegerParameter)
-        assert pipeline_space["num_epochs"].lower == 3
+        assert pipeline_space["num_epochs"].lower == -3
         assert pipeline_space["num_epochs"].upper == 30
         assert pipeline_space["num_epochs"].log is False
         assert pipeline_space["num_epochs"].is_fidelity is True
@@ -83,7 +83,7 @@ def test_correct_including_priors_yaml_file():
     assert pipeline_space["num_epochs"].log is False
     assert pipeline_space["num_epochs"].is_fidelity is True
     assert pipeline_space["num_epochs"].default == 10
-    assert pipeline_space["num_epochs"].default_confidence_score == 0.25
+    assert pipeline_space["num_epochs"].default_confidence_score == 0.5
     assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
     assert pipeline_space["optimizer"].choices == ["adam", "sgd", "rmsprop"]
     assert pipeline_space["optimizer"].is_fidelity is False

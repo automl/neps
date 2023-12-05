@@ -3,7 +3,6 @@ from __future__ import annotations
 import collections.abc
 import pprint
 import random
-import re
 from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
@@ -23,6 +22,10 @@ from . import (
 )
 from .architecture.graph import Graph
 from .parameter import Parameter
+from .yaml_search_space_utils import (
+    SearchSpaceFromYamlFileError,
+    deduce_and_validate_param_type,
+)
 
 
 def pipeline_space_from_configspace(
@@ -118,48 +121,12 @@ def pipeline_space_from_yaml(yaml_file_path):
 
         # Iterate over the items in the YAML configuration
         for name, details in config["search_space"].items():
-            if not (isinstance(name, str) and isinstance(details, dict)):
-                raise KeyError(
-                    f"Invalid format for {name} in YAML file. "
-                    f"Expected 'name' as string and corresponding 'details' as a "
-                    f"dictionary. Found 'name' type: {type(name).__name__}, 'details' "
-                    f"type: {type(details).__name__}."
-                )
-
             # get parameter type
-            param_type, type_provided = (
-                (details["type"], True)
-                if "type" in details
-                else (deduce_param_type(name, details), False)
-            )
-            param_type = param_type.lower()
-            print("create parameter")
+            param_type = deduce_and_validate_param_type(name, details)
+
             # init parameter by checking type
             if param_type in ("int", "integer"):
                 # Integer Parameter
-                if type_provided:
-                    if "lower" not in details or "upper" not in details:
-                        raise KeyError(
-                            f"Missing 'lower' or 'upper' for integer "
-                            f"parameter '{name}'."
-                        )
-                    if not isinstance(details["lower"], int) or not isinstance(
-                        details["upper"], int
-                    ):
-                        try:
-                            # for numbers like 1e2 and 10^
-                            details["lower"] = int(
-                                convert_scientific_notation(details["lower"])
-                            )
-                            details["upper"] = int(
-                                convert_scientific_notation(details["upper"])
-                            )
-                        except ValueError as e:
-                            raise TypeError(
-                                f"'lower' and 'upper' must be integer for "
-                                f"integer parameter '{name}'."
-                            ) from e
-
                 pipeline_space[name] = IntegerParameter(
                     lower=details["lower"],
                     upper=details["upper"],
@@ -170,29 +137,6 @@ def pipeline_space_from_yaml(yaml_file_path):
                 )
             elif param_type == "float":
                 # Float Parameter
-                if type_provided:
-                    if "lower" not in details or "upper" not in details:
-                        raise KeyError(
-                            f"Missing key 'lower' or 'upper' for float "
-                            f"parameter '{name}'."
-                        )
-                    if not isinstance(details["lower"], float) or not isinstance(
-                        details["upper"], float
-                    ):
-                        try:
-                            # for numbers like 1e-5 and 10^
-                            details["lower"] = convert_scientific_notation(
-                                details["lower"]
-                            )
-                            details["upper"] = convert_scientific_notation(
-                                details["upper"]
-                            )
-                        except ValueError as e:
-                            raise TypeError(
-                                f"'lower' and 'upper' must be integer for "
-                                f"integer parameter '{name}'."
-                            ) from e
-
                 pipeline_space[name] = FloatParameter(
                     lower=details["lower"],
                     upper=details["upper"],
@@ -203,14 +147,6 @@ def pipeline_space_from_yaml(yaml_file_path):
                 )
             elif param_type in ("cat", "categorical"):
                 # Categorical parameter
-                if type_provided:
-                    if "choices" not in details:
-                        raise KeyError(
-                            f"Missing key 'choices' for categorical " f"parameter {name}"
-                        )
-                if not isinstance(details["choices"], list):
-                    raise TypeError(f"The 'choices' for '{name}' must be a list.")
-
                 pipeline_space[name] = CategoricalParameter(
                     choices=details["choices"],
                     is_fidelity=details.get("is_fidelity", False),
@@ -219,17 +155,11 @@ def pipeline_space_from_yaml(yaml_file_path):
                 )
             elif param_type in ("const", "constant"):
                 # Constant parameter
-                if type_provided:
-                    if "value" not in details:
-                        raise KeyError(
-                            f"Missing key 'value' for constant parameter " f"{name}"
-                        )
-
                 pipeline_space[name] = ConstantParameter(
                     value=details["value"], is_fidelity=details.get("is_fidelity", False)
                 )
             else:
-                # Handle unknown parameter types
+                # Handle unknown parameter type
                 raise TypeError(
                     f"Unsupported parameter type{details['type']} for '{name}'.\n"
                     f"Supported Types for argument type are:\n"
@@ -241,130 +171,6 @@ def pipeline_space_from_yaml(yaml_file_path):
     except (KeyError, TypeError, ValueError) as e:
         raise SearchSpaceFromYamlFileError(e) from e
     return pipeline_space
-
-
-def convert_scientific_notation(value, show_usage_flag=False):
-    """Check if the value is a string that matches scientific ^
-    and convert it to float."""
-
-    e_notation_pattern = r"^-?\d+(\.\d+)?[eE]-?\d+$"
-    # Pattern for '10^' style notation, with optional base and multiplication symbol
-    ten_power_notation_pattern = r"^(-?\d+)?(\.\d+)?[xX*]?10\^(-?\d+)$"
-
-    if isinstance(value, str):
-        # Remove all whitespace from the string
-        value_no_space = value.replace(" ", "")
-        if re.match(e_notation_pattern, value_no_space):
-            if show_usage_flag is True:
-                return float(value), True
-            else:
-                return float(value)
-        else:
-            match = re.match(ten_power_notation_pattern, value_no_space)
-            if match:
-                base, decimal, exponent = match.groups()
-                if decimal:
-                    base = base + decimal
-                base = float(base) if base else 1  # Default to 1 if base is empty
-                value = format(base * (10 ** float(exponent)), "e")
-                if show_usage_flag is True:
-                    return float(value), True
-                else:
-                    return float(value)
-    if show_usage_flag is True:
-        return float(value), False
-    else:
-        return float(value)
-
-
-class SearchSpaceFromYamlFileError(Exception):
-    """
-    Exception raised for errors occurring during the initialization of the search space
-    from a YAML file.
-
-    Attributes:
-        exception_type (str): The type of the original exception.
-        message (str): A detailed message that includes the type of the original exception
-                       and the error description.
-
-    Args:
-        exception (Exception): The original exception that was raised during the
-                                initialization of the search space from the YAML file.
-
-    Example Usage:
-        try:
-            # Code to initialize search space from YAML file
-        except (KeyError, TypeError, ValueError) as e:
-            raise SearchSpaceFromYamlFileError(e)
-    """
-
-    def __init__(self, exception):
-        self.exception_type = type(exception).__name__
-        self.message = (
-            f"Error occurred during initialization of search space from "
-            f"YAML file.\n {self.exception_type}: {exception}"
-        )
-        super().__init__(self.message)
-
-
-def deduce_param_type(name, details):
-    """
-    Deduces the parameter type based on the provided details.
-
-    This function analyzes the provided details dictionary to determine the type of
-    parameter. It supports identifying integer, float, categorical, and constant
-    parameter types.
-
-    Args:
-        name (str): The name of the parameter.
-        details (dict): A dictionary containing parameter specifications.
-
-    Returns:
-        str: The deduced parameter type ('int', 'float', 'categorical', or 'constant').
-
-    Raises:
-        TypeError: If the parameter type cannot be deduced from the details, or if the
-        provided details have inconsistent types for expected keys.
-
-    Example:
-        param_type = deduce_param_type('example_param', {'lower': 0, 'upper': 10})
-    """
-    if "lower" in details and "upper" in details:
-        # Determine if it's an integer or float range parameter
-        if isinstance(details["lower"], int) and isinstance(details["upper"], int):
-            param_type = "int"
-        elif isinstance(details["lower"], float) and isinstance(details["upper"], float):
-            param_type = "float"
-        else:
-            details["lower"], flag_lower = convert_scientific_notation(
-                details["lower"], show_usage_flag=True
-            )
-            details["upper"], flag_upper = convert_scientific_notation(
-                details["upper"], show_usage_flag=True
-            )
-            # check if one value is 10^format to convert it to float
-            if flag_lower or flag_upper:
-                param_type = "float"
-            else:
-                raise TypeError(
-                    f"Inconsistent types for 'lower' and 'upper' in '{name}'. "
-                    f"Both must be either integers or floats."
-                )
-
-        return param_type
-    elif "choices" in details:
-        return "categorical"
-    elif "value" in details:
-        return "constant"
-    else:
-        raise TypeError(
-            f"Unable to deduce parameter type from {name} "
-            f"with details {details}\n"
-            "Supported parameters:\n"
-            "Float and Integer: Expected keys: 'lower', 'upper'\n"
-            "Categorical: Expected keys: 'choices'\n"
-            "Constant: Expected keys: 'value'"
-        )
 
 
 class SearchSpace(collections.abc.Mapping):
