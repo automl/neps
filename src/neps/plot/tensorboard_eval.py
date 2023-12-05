@@ -2,10 +2,18 @@ from __future__ import annotations
 
 import math
 import os
+import warnings
 from pathlib import Path
 
 import numpy as np
 import torch
+
+# Remove this once we support pytorch > 2.1.0
+# https://github.com/automl/neps/issues/26
+warnings.filterwarnings(
+    "ignore", category=DeprecationWarning, module="torch.utils.tensorboard"
+)
+
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
 
