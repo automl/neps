@@ -318,7 +318,7 @@ def _run_args(
         if isinstance(pipeline_space, CS.ConfigurationSpace):
             pipeline_space = pipeline_space_from_configspace(pipeline_space)
         # Support pipeline space as YAML file
-        elif isinstance(pipeline_space, str):
+        elif isinstance(pipeline_space, (str, Path)):
             pipeline_space = pipeline_space_from_yaml(pipeline_space)
 
         # Support pipeline space as mix of ConfigurationSpace and neps parameters

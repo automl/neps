@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from neps.search_spaces.search_space import (
     SearchSpaceFromYamlFileError,
@@ -94,7 +96,9 @@ def test_correct_including_priors_yaml_file():
 def test_incorrect_yaml_file():
     """Test the function with an incorrectly formatted YAML file."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml("tests/test_yaml_search_space/incorrect_config.txt")
+        pipeline_space_from_yaml(
+            Path("tests/test_yaml_search_space/incorrect_config.txt")
+        )
     assert str(excinfo.value.exception_type == "ValueError")
 
 
@@ -117,7 +121,7 @@ def test_yaml_file_with_inconsistent_types():
     assert str(excinfo.value.exception_type == "TypeError")
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/inconsistent_types_config2.yml"
+            Path("tests/test_yaml_search_space/inconsistent_types_config2.yml")
         )
     assert str(excinfo.value.exception_type == "TypeError")
 

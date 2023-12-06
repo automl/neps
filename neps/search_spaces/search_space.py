@@ -76,7 +76,8 @@ def pipeline_space_from_yaml(yaml_file_path):
     maps parameter names to their respective configuration objects.
 
     Args:
-        yaml_file_path (str): Path to the YAML file containing parameter configurations.
+        yaml_file_path (Union[str, Path]): Path to the YAML file containing parameter
+        configurations.
 
     Returns:
         dict: A dictionary where keys are parameter names and values are parameter
@@ -109,7 +110,7 @@ def pipeline_space_from_yaml(yaml_file_path):
                 config = yaml.safe_load(file)
         except yaml.YAMLError as e:
             raise ValueError(
-                f"The file at {yaml_file_path} is not a valid YAML file."
+                f"The file at {str(yaml_file_path)} is not a valid YAML file."
             ) from e
 
         # check for init key search_space
