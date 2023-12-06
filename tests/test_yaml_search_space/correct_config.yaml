@@ -1,31 +1,32 @@
 search_space:
-  learning_rate:
+  param_float1:
     lower: 0.00001
     upper: 0.1
     log: TRUE
     is_fidelity: off
 
-  num_epochs:
+  param_int1:
     lower: -3
     upper: 30
     log: false
     is_fidelity: on
-  batch_size:
+  param_int2:
     type: int
     lower: 1E2
     upper: 3e4
-    log: on
+    log: ON
     is_fidelity: FALSE
 
-  sec_learning_rate:
+  param_float2:
     lower: 3.3e-5
     upper: 1.5E-1
 
-  optimizer:
+  param_cat:
     choices: [2, "sgd", 10e-3]
 
-  dropout_rate:
+  param_const1:
     value: 0.5
 
-  constant_value:
+  param_const2:
     value: 1e3
+    is_fidelity: TRUE

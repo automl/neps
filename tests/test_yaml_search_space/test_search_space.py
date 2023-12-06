@@ -1,10 +1,10 @@
 import pytest
-
-from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
 from neps.search_spaces.search_space import (
     SearchSpaceFromYamlFileError,
     pipeline_space_from_yaml,
 )
+
+from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
 
 
 @pytest.mark.neps_api
@@ -13,42 +13,45 @@ def test_correct_yaml_files():
         """Test the function with a correctly formatted YAML file."""
         pipeline_space = pipeline_space_from_yaml(path)
         assert isinstance(pipeline_space, dict)
-        assert isinstance(pipeline_space["learning_rate"], FloatParameter)
-        assert pipeline_space["learning_rate"].lower == 0.00001
-        assert pipeline_space["learning_rate"].upper == 0.1
-        assert pipeline_space["learning_rate"].log is True
-        assert pipeline_space["optimizer"].is_fidelity is False
-        assert pipeline_space["learning_rate"].default is None
-        assert pipeline_space["learning_rate"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["num_epochs"], IntegerParameter)
-        assert pipeline_space["num_epochs"].lower == -3
-        assert pipeline_space["num_epochs"].upper == 30
-        assert pipeline_space["num_epochs"].log is False
-        assert pipeline_space["num_epochs"].is_fidelity is True
-        assert pipeline_space["num_epochs"].default is None
-        assert pipeline_space["num_epochs"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["batch_size"], IntegerParameter)
-        assert pipeline_space["batch_size"].lower == 100
-        assert pipeline_space["batch_size"].upper == 30000
-        assert pipeline_space["batch_size"].log is True
-        assert pipeline_space["batch_size"].is_fidelity is False
-        assert pipeline_space["batch_size"].default is None
-        assert pipeline_space["batch_size"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["sec_learning_rate"], FloatParameter)
-        assert pipeline_space["sec_learning_rate"].lower == 3.3e-5
-        assert pipeline_space["sec_learning_rate"].upper == 0.15
-        assert pipeline_space["sec_learning_rate"].log is False
-        assert pipeline_space["sec_learning_rate"].is_fidelity is False
-        assert pipeline_space["sec_learning_rate"].default is None
-        assert pipeline_space["sec_learning_rate"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
-        assert pipeline_space["optimizer"].choices == [2, "sgd", 10e-3]
-        assert pipeline_space["optimizer"].is_fidelity is False
-        assert pipeline_space["optimizer"].default is None
-        assert pipeline_space["optimizer"].default_confidence_score == 2
-        assert isinstance(pipeline_space["dropout_rate"], ConstantParameter)
-        assert pipeline_space["dropout_rate"].value == 0.5
-        assert pipeline_space["dropout_rate"].is_fidelity is False
+        assert isinstance(pipeline_space["param_float1"], FloatParameter)
+        assert pipeline_space["param_float1"].lower == 0.00001
+        assert pipeline_space["param_float1"].upper == 0.1
+        assert pipeline_space["param_float1"].log is True
+        assert pipeline_space["param_float1"].is_fidelity is False
+        assert pipeline_space["param_float1"].default is None
+        assert pipeline_space["param_float1"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["param_int1"], IntegerParameter)
+        assert pipeline_space["param_int1"].lower == -3
+        assert pipeline_space["param_int1"].upper == 30
+        assert pipeline_space["param_int1"].log is False
+        assert pipeline_space["param_int1"].is_fidelity is True
+        assert pipeline_space["param_int1"].default is None
+        assert pipeline_space["param_int1"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["param_int2"], IntegerParameter)
+        assert pipeline_space["param_int2"].lower == 100
+        assert pipeline_space["param_int2"].upper == 30000
+        assert pipeline_space["param_int2"].log is True
+        assert pipeline_space["param_int2"].is_fidelity is False
+        assert pipeline_space["param_int2"].default is None
+        assert pipeline_space["param_int2"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["param_float2"], FloatParameter)
+        assert pipeline_space["param_float2"].lower == 3.3e-5
+        assert pipeline_space["param_float2"].upper == 0.15
+        assert pipeline_space["param_float2"].log is False
+        assert pipeline_space["param_float2"].is_fidelity is False
+        assert pipeline_space["param_float2"].default is None
+        assert pipeline_space["param_float2"].default_confidence_score == 0.5
+        assert isinstance(pipeline_space["param_cat"], CategoricalParameter)
+        assert pipeline_space["param_cat"].choices == [2, "sgd", 10e-3]
+        assert pipeline_space["param_cat"].is_fidelity is False
+        assert pipeline_space["param_cat"].default is None
+        assert pipeline_space["param_cat"].default_confidence_score == 2
+        assert isinstance(pipeline_space["param_const1"], ConstantParameter)
+        assert pipeline_space["param_const1"].value == 0.5
+        assert pipeline_space["param_const1"].is_fidelity is False
+        assert isinstance(pipeline_space["param_const2"], ConstantParameter)
+        assert pipeline_space["param_const2"].value == 1e3
+        assert pipeline_space["param_const2"].is_fidelity is True
 
     test_correct_yaml_file("tests/test_yaml_search_space/correct_config.yaml")
     test_correct_yaml_file(
