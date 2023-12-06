@@ -105,7 +105,8 @@ class PFN_SURROGATE:
         x_train = self.train_x if x_train is None else x_train
         y_train = self.train_y if y_train is None else ((1 - y_train) if self.minimize else y_train)
         logits = self.nn(x_train=x_train, y_train=y_train, x_test=x_test)  # torch.Size([x_train.shape[0], 1, 10000])
-        return self.nn.model.criterion.ei(logits, best_f=((1 - inc.to(self.device)) if self.minimize else inc))
+        scores = self.nn.model.criterion.ei(logits, best_f=((1 - inc.to(self.device)) if self.minimize else inc))
+        return scores
 
 
 if __name__ == "__main__":
