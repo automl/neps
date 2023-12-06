@@ -1,6 +1,7 @@
 search_space:
   learning_rate:
-    lower: "string"  # Lower is now a string
+    type: int
+    lower: 2.3  # float
     upper: 1e3
     log: true
 

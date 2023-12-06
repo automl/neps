@@ -112,6 +112,11 @@ def test_yaml_file_with_inconsistent_types():
             "tests/test_yaml_search_space/inconsistent_types_config.yml"
         )
     assert str(excinfo.value.exception_type == "TypeError")
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(
+            "tests/test_yaml_search_space/inconsistent_types_config2.yml"
+        )
+    assert str(excinfo.value.exception_type == "TypeError")
 
 
 @pytest.mark.neps_api

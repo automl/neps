@@ -68,35 +68,38 @@ def pipeline_space_from_configspace(
 
 def pipeline_space_from_yaml(yaml_file_path):
     """
-    Reads configuration details from a YAML file and creates a dictionary of parameters.
+    Reads configuration details from a YAML file and constructs a pipeline space
+    dictionary.
 
-    This function parses a YAML file to extract configuration details and organizes them
-    into a dictionary. Each key in the dictionary corresponds to a parameter name, and
-    the value is an object representing the parameter configuration.
+    This function extracts parameter configurations from a YAML file, validating and
+    translating them into corresponding parameter objects. The resulting dictionary
+    maps parameter names to their respective configuration objects.
 
     Args:
-        yaml_file_path (str): Path to the YAML file containing configuration details.
+        yaml_file_path (str): Path to the YAML file containing parameter configurations.
 
     Returns:
-        dict: A dictionary with parameter names as keys and parameter objects as values.
+        dict: A dictionary where keys are parameter names and values are parameter
+              objects (like IntegerParameter, FloatParameter, etc.).
 
     Raises:
-        SearchSpaceFromYamlFileError: Wraps and re-raises exceptions (KeyError, TypeError,
-        ValueError) that occur during the initialization of the search space from the YAML
-        file. This custom exception class provides additional context about the error,
-        enhancing diagnostic clarity and simplifying error handling for function callers.
-        It includes the type of the original exception and a descriptive message, thereby
-        localizing error handling to this specific function and preventing the propagation
-        of these generic exceptions.
+        SearchSpaceFromYamlFileError: This custom exception is raised if there are issues
+        with the YAML file's format or contents. It encapsulates underlying exceptions
+        (KeyError, TypeError, ValueError) that occur during the processing of the YAML
+        file. This approach localizes error handling, providing clearer context and
+        diagnostics. The raised exception includes the type of the original error and
+        a descriptive message.
 
     Note:
-        The YAML file must be structured correctly with appropriate keys and values for
-        each parameter type. The function validates the structure and content of the YAML
-        file, raising specific errors for missing mandatory configuration details, type
-        mismatches, and unknown parameter types.
+        The YAML file should be properly structured with valid keys and values as per the
+        expected parameter types. The function employs modular validation and type
+        deduction logic, ensuring each parameter's configuration adheres to expected
+        formats and constraints. Any deviation results in an appropriately raised error,
+        which is then captured by SearchSpaceFromYamlFileError for streamlined error
+        handling.
 
     Example:
-        Given a YAML file 'config.yaml', call the function as follows:
+        To use this function with a YAML file 'config.yaml', you can do:
         pipeline_space = pipeline_space_from_yaml('config.yaml')
     """
     try:
