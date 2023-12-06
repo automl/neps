@@ -6,6 +6,7 @@ import random
 from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
+from pathlib import Path
 
 import ConfigSpace as CS
 import numpy as np
@@ -66,7 +67,11 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(yaml_file_path):
+def pipeline_space_from_yaml(
+    yaml_file_path: str | Path,
+) -> dict[
+    str, FloatParameter | IntegerParameter | CategoricalParameter | ConstantParameter
+]:
     """
     Reads configuration details from a YAML file and constructs a pipeline space
     dictionary.
@@ -76,7 +81,7 @@ def pipeline_space_from_yaml(yaml_file_path):
     maps parameter names to their respective configuration objects.
 
     Args:
-        yaml_file_path (Union[str, Path]): Path to the YAML file containing parameter
+        yaml_file_path (str | Path): Path to the YAML file containing parameter
         configurations.
 
     Returns:
