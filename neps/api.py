@@ -98,11 +98,8 @@ def _post_evaluation_hook_function(
 def run(
     run_pipeline: Callable,
     root_directory: str | Path,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
-    | str
-    | Path
-    | CS.ConfigurationSpace
-    | None = None,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | str | Path |
+                    CS.ConfigurationSpace | None = None,
     overwrite_working_directory: bool = False,
     post_run_summary: bool = False,
     development_stage_id=None,

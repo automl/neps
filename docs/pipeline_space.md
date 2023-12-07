@@ -25,7 +25,7 @@ Create a YAML file (e.g., search_space.yaml) with the parameter definitions foll
 ```yaml
 search_space: # important to start with
   learning_rate:
-    lower: 2e-3 # or 2*10^-3
+    lower: 2e-3
     upper: 0.1
     log: true
 
@@ -63,90 +63,90 @@ configspace.add_hyperparameter(
 For additional information on ConfigSpace and its features, please visit the following link:
 https://github.com/automl/ConfigSpace
 
-# Supported HyperParameter Types using a YAML File
+## Supported Hyperparameter Types using a YAML File
 
-### FloatParameter and IntegerParameter
+### Float/Integer Parameter
 
 - **Expected Arguments:**
-  - `lower`: The minimum value of the parameter.
-  - `upper`: The maximum value of the parameter.
-  - **Accepted Values:** Int or Float depending on the specific parameter type one wishes to use.
+    - `lower`: The minimum value of the parameter.
+    - `upper`: The maximum value of the parameter.
+    - Accepted Values: Int or Float depending on the specific parameter type one wishes to use.
 - **Optional Arguments:**
-  - `type`: Specifies the data type of the parameter.
-    - **Accepted Values**: 'int', 'integer', or 'float'.
-    - **Note:** If type is not specified e notation gets converted to float
-  - `log`: Boolean that indicates if the parameter uses a logarithmic scale (default: False)
-    - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
-  - `is_fidelity`: Boolean that marks the parameter as a fidelity parameter (default: False).
-  - `default`: Sets a prior central value for the parameter (default: None).
-    - **Note:** Currently, if you define a prior for one parameter, you must do so for all your variables.
-  - `default_confidence`: Specifies the confidence level of the default value,
-    indicating how strongly the prior
-    should be considered (default: "low").
-    - **Accepted Values**: 'low', 'medium', or 'high'.
+    - `type`: Specifies the data type of the parameter.
+        - Accepted Values: 'int', 'integer', or 'float'.
+        - Note: If type is not specified e notation gets converted to float
+    - `log`: Boolean that indicates if the parameter uses a logarithmic scale (default: False)
+        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
+    - `is_fidelity`: Boolean that marks the parameter as a fidelity parameter (default: False).
+    - `default`: Sets a prior central value for the parameter (default: None).
+        - Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
+    - `default_confidence`: Specifies the confidence level of the default value,
+      indicating how strongly the prior
+      should be considered (default: "low").
+        - Accepted Values: 'low', 'medium', or 'high'.
 
 ### Categorical Parameter
 
 - **Expected Arguments:**
-  - `choices`: A list of discrete options(int | float | str) that the parameter can take.
+    - `choices`: A list of discrete options(int | float | str) that the parameter can take.
 - **Optional Arguments:**
-  - `type`: Specifies the data type of the parameter.
-    - Accepted Values: 'cat' or 'categorical'.
-  - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
-    - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
-  - `default`: Sets a prior central value for the parameter (default: None).
-    - **Note:** Currently, if you define a prior for one parameter, you must do so for all your variables.
-  - `default_confidence`: Specifies the confidence level of the default value,
-    indicating how strongly the prior
-    should be considered (default: "low").
+    - `type`: Specifies the data type of the parameter.
+        - Accepted Values: 'cat' or 'categorical'.
+    - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
+        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
+    - `default`: Sets a prior central value for the parameter (default: None).
+        - Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
+    - `default_confidence`: Specifies the confidence level of the default value,
+      indicating how strongly the prior
+      should be considered (default: "low").
 
-### ConstantParameter
+### Constant Parameter
 
 - **Expected Arguments:**
-  - `value`: The fixed value(int | float | str) for the parameter.
+    - `value`: The fixed value(int | float | str) for the parameter.
 - **Optional Arguments:**
-  - `type`: Specifies the data type of the parameter.
-    - Accepted Values: 'const' or 'constant'.
-  - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
+    - `type`: Specifies the data type of the parameter.
+        - Accepted Values: 'const' or 'constant'.
+    - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
 
-## Important Note on YAML Data Type Interpretation
+### Important Note on YAML Data Type Interpretation
 
 When working with YAML files, it's essential to understand how the format interprets different data types:
 
 1. **Strings in Quotes:**
 
-   - Any value enclosed in single (`'`) or double (`"`) quotes is treated as a string.
-   - Example: `"true"`, `'123'` are read as strings.
+    - Any value enclosed in single (`'`) or double (`"`) quotes is treated as a string.
+    - Example: `"true"`, `'123'` are read as strings.
 
-1. **Boolean Interpretation:**
+2. **Boolean Interpretation:**
 
-   - Specific unquoted values are interpreted as booleans. This includes:
-     - `true`, `True`, `TRUE`
-     - `false`, `False`, `FALSE`
-     - `on`, `On`, `ON`
-     - `off`, `Off`, `OFF`
-     - `yes`, `Yes`, `YES`
-     - `no`, `No`, `NO`
+    -  Specific unquoted values are interpreted as booleans. This includes:
+        - `true`, `True`, `TRUE`
+        - `false`, `False`, `FALSE`
+        - `on`, `On`, `ON`
+        - `off`, `Off`, `OFF`
+        - `yes`, `Yes`, `YES`
+        - `no`, `No`, `NO`
 
-1. **Numbers:**
+3. **Numbers:**
 
-   - Unquoted numeric values are interpreted as integers or floating-point numbers, depending on their format.
-   - Example: `123` is an integer, `4.56` is a float, `1e3` can be either an integer or a floating-point number,
-     depending on the type specified by the user. By default, 1e3 is treated as a floating-point number.
-     This interpretation is unique to our system.
+    - Unquoted numeric values are interpreted as integers or floating-point numbers, depending on their format.
+    - Example: `123` is an integer, `4.56` is a float, `1e3` can be either an integer or a floating-point number,
+      depending on the type specified by the user. By default, 1e3 is treated as a floating-point number.
+      This interpretation is unique to our system.
 
-1. **Empty Strings:**
+4. **Empty Strings:**
 
-   - An empty string `""` or a key with no value is always treated as `null` in YAML.
+    - An empty string `""` or a key with no value is always treated as `null` in YAML.
 
-1. **Unquoted Non-Boolean, Non-Numeric Strings:**
+5. **Unquoted Non-Boolean, Non-Numeric Strings:**
 
-   - Unquoted values that don't match boolean patterns or numeric formats are treated as strings.
-   - Example: `example` is a string.
+    - Unquoted values that don't match boolean patterns or numeric formats are treated as strings.
+    - Example: `example` is a string.
 
 Remember to use appropriate quotes and formats to ensure values are interpreted as intended.
 
-# Supported ArchitectureParameter Types
+## Supported ArchitectureParameter Types
 
 **Note**: The definition of Search Space from a YAML file is limited to supporting only Hyperparameter Types.
 
