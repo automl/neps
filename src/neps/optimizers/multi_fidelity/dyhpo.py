@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import pandas as pd
 import time
 
 from metahyper import ConfigResult, instance_from_map
@@ -449,14 +450,15 @@ class MFEIBO(BaseOptimizer):
             acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples, asscalar=True
             )
+            acq = pd.Series(acq, index=_samples.index)
 
             print("-" * 50)
             print(f"| Total time for acq. eval: {time.time()-start:.2f}s")
             print("-" * 50)
             # maximizing acquisition function
-            _idx = np.argsort(acq)[-1]
+            best_idx = acq.sort_values().index[-1]
             # extracting the config ID for the selected maximizer
-            _config_id = samples.index[_samples.index.values[_idx]]
+            _config_id = best_idx  # samples.index[_samples.index.values[_idx]]
             # `_samples` should have new configs with fidelities set to as required
             # NOTE: len(samples) need not be equal to len(_samples) as `samples` contain
             # all (partials + new) configurations obtained from the sampler, but
@@ -467,12 +469,13 @@ class MFEIBO(BaseOptimizer):
             # assigning config hyperparameters
             config = samples.loc[_config_id]
             # IMPORTANT: setting the fidelity appropriately
+
             config.fidelity.value = (
                 config.fidelity.lower
-                if _idx > max(self.observed_configs.seen_config_ids)
+                if best_idx > max(self.observed_configs.seen_config_ids)
                 else (
                     self.get_budget_value(
-                        self.observed_configs.get_max_observed_fidelity_level_per_config().loc[_idx]
+                        self.observed_configs.get_max_observed_fidelity_level_per_config().loc[best_idx]
                      ) + self.step_size  # ONE-STEP FIDELITY QUERY
                 )
             )

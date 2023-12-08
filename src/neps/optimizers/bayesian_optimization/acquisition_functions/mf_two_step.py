@@ -118,10 +118,10 @@ class MF_TwoStep(BaseAcquisition):
         acq.loc[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # result of first round of filtering of new candidates
-        acq_new_mask = pd.Series({
-            idx: val for _i, (idx, val) in enumerate(_samples.items()) if acq[_i] > 0
-        })
 
+        acq_new_mask = pd.Series({
+            idx: val for idx, val in _samples.items() if acq.loc[idx] > 0
+        })
         # for partial candidate set
         acq, _samples = self.acq_partial_filter.eval(x, asscalar=True)
         acq = pd.Series(acq, index=_samples.index)
@@ -137,7 +137,7 @@ class MF_TwoStep(BaseAcquisition):
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # result of first round of filtering of partial candidates
         acq_partial_mask = pd.Series({
-            idx: val for _i, (idx, val) in enumerate(_samples.items()) if acq[_i] > 0
+            idx: val for idx, val in _samples.items() if acq.loc[idx] > 0
         })
 
         eligible_set = set(
@@ -160,12 +160,16 @@ class MF_TwoStep(BaseAcquisition):
         # NOTE: setting to -np.inf works as MF-UCB here is max.(-LCB) instead of min.(LCB)
         acq_combined = acq_combined.reindex(acq.index, fill_value=-np.inf)
         acq = acq_combined.values
-
+        
         return acq, _samples
     
     def _weigh_partial_acq_scores(self, acq: pd.Series) -> pd.Series:
         # find the best performance per configuration seen
         inc_list_partial = self.observations.get_best_performance_per_config()
+
+        # removing any config indicey that have not made it till here
+        _idx_drop = [_i for _i in inc_list_partial.index if _i not in acq.index]
+        inc_list_partial.drop(labels=_idx_drop, inplace=True)
 
         # normalize the scores based on relative best seen performance per config
         _inc, _max = inc_list_partial.min(), inc_list_partial.max()

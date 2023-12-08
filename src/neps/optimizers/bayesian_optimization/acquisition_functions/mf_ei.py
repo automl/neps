@@ -301,17 +301,17 @@ class MFEI_Dyna(MFEI_AtMax):
         _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
         # filter for configurations that reached max budget
         indices_to_drop = [
-            _x.index.value
-            for _x in x.loc[_partial_config_ids]
+            _idx
+            for _idx, _x in x.loc[_partial_config_ids].items()
             if _x.fidelity.value == self.pipeline_space.fidelity.upper
         ]
+        # drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
         # set fidelity for all partial configs
         x = x.apply(update_fidelity)
 
         # create the same incumbent for all candidates
         inc_list = self.preprocess_inc_list(len_x=len(x.index.values))
-
-        # drop unused configs
-        x.drop(labels=indices_to_drop, inplace=True)
 
         return x, torch.Tensor(inc_list)

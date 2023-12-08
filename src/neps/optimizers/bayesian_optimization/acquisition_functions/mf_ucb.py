@@ -57,15 +57,16 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
                     # only consider the configs with fidelity lower than the max fidelity
                     config.fidelity.value = target_fidelity
                     budget_list.append(self.get_budget_level(config))
+                    # CAN ADAPT BETA PER-SAMPLE HERE
+                    betas.append(self.beta)
                 else:
                     # if the target_fidelity higher than the max drop the configuration
                     indices_to_drop.append(i)
             else:
                 config.fidelity.value = target_fidelity
                 budget_list.append(self.get_budget_level(config))
-
-             # CAN ADAPT BETA PER-SAMPLE HERE
-            betas.append(self.beta)
+                # CAN ADAPT BETA PER-SAMPLE HERE
+                betas.append(self.beta)
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
@@ -156,8 +157,8 @@ class MF_UCB_AtMax(MF_UCB):
                 config.fidelity.value = target_fidelity
                 budget_list.append(self.get_budget_level(config))
 
-            # CAN ADAPT BETA PER-SAMPLE HERE
-            betas.append(self.beta)
+                # CAN ADAPT BETA PER-SAMPLE HERE
+                betas.append(self.beta)
 
         # drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
@@ -174,7 +175,6 @@ class MF_UCB_Dyna(MF_UCB):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the 
         incumbent choice to be the max seen across history for all candidates.
         """
-        budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
             # expected input: IDs pertaining to the tabular data
@@ -205,17 +205,17 @@ class MF_UCB_Dyna(MF_UCB):
         _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
         # filter for configurations that reached max budget
         indices_to_drop = [
-            _x.index.value
-            for _x in x.loc[_partial_config_ids]
+            _idx
+            for _idx, _x in x.loc[_partial_config_ids].items()
             if _x.fidelity.value == self.pipeline_space.fidelity.upper
         ]
+        # drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
         # set fidelity for all partial configs
         x = x.apply(update_fidelity)
 
         # CAN ADAPT BETA PER-SAMPLE HERE
         betas = [self.beta] * len(x)  # TODO: have tighter order check to Pd.Series index
-
-        # drop unused configs
-        x.drop(labels=indices_to_drop, inplace=True)
 
         return x, torch.Tensor(betas)
