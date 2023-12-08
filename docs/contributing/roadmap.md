@@ -1,43 +1,33 @@
 # Roadmap
 
-## Before 0.10.0
-
-### Features
-
-- Utility to get best HPs and architecture to pass to run_pipeline
-- Plot in hours / days, but also show grid corresponding to 1x and 5x etc.
-
-### Fixes
-
-- Do not plot log y axis per default
-
-### Documentation
-
-- Fill up the core documentation pages
-
 ## Before 0.11.0
 
 ### Features
 
-- Evolution as acq sampler
+- Allow yaml based input of search space and the target function source to `neps.run`
 - Generate plot after each evaluation
+- Support conditionals in ConfigSpace input
+- Support logging of optimizer state details
 
 ### Fixes
 
 - Open never closes (talk to Nils)
 - Deadlock in ASHA-like optimizers (talk to Neeratyoy)
+- Extra metahyper sample in [issue 42](https://github.com/automl/neps/issues/42)
+- Tighter type check in search space
+- Unify MFObservedData class for both Hyperband-like fidelities and one-step fidelities
 
 ### Documentation
 
-- Document summary function
+- Improved documentation on all basic usage
+- Improved README on github that links to the documentations
+- Adequate examples targeting different user groups
 
 ### Refactoring
 
 - Merge GP and hierarchical GP
 - Merge gpytorch branch
 - Rethink summary/status API
-- Utility to get incumbent losses over time
-- Restructure folder structure
 - Improve placement of \_post_evaluation_hook_function
 - maintained vs unmaintained optimizers
 - Read and sample at the same time metahyper
@@ -66,9 +56,9 @@
 - Print search space upon run
 - Add comprehensive regression tests to run manually on the cluster on each version release
 - Utility to generate code for best architecture
-- 3.11 support
-- Deprecate 3.7
 - Core Feature set in terms of research
+- Modular plug-and-play of BoTorch acquisition functions
+- Exploring gradient-based HPO in the NePS framework
 
 ### Fixes
 
