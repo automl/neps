@@ -99,7 +99,7 @@ def test_incorrect_yaml_file():
         pipeline_space_from_yaml(
             Path("tests/test_yaml_search_space/incorrect_config.txt")
         )
-    assert str(excinfo.value.exception_type == "ValueError")
+    assert excinfo.value.exception_type == "ValueError"
 
 
 @pytest.mark.neps_api
@@ -107,7 +107,7 @@ def test_yaml_file_with_missing_key():
     """Test the function with a YAML file missing a required key."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml("tests/test_yaml_search_space/missing_key_config.yml")
-    assert str(excinfo.value.exception_type == "KeyError")
+    assert excinfo.value.exception_type == "KeyError"
 
 
 @pytest.mark.neps_api
@@ -123,7 +123,7 @@ def test_yaml_file_with_inconsistent_types():
         pipeline_space_from_yaml(
             Path("tests/test_yaml_search_space/inconsistent_types_config2.yml")
         )
-    assert str(excinfo.value.exception_type == "TypeError")
+    assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api
@@ -134,7 +134,7 @@ def test_yaml_file_including_wrong_types():
         pipeline_space_from_yaml(
             "tests/test_yaml_search_space/config_including_wrong_types.yaml"
         )
-    assert str(excinfo.value.exception_type == "TypeError")
+    assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api
@@ -145,7 +145,7 @@ def test_yaml_file_including_unkown_types():
         pipeline_space_from_yaml(
             "tests/test_yaml_search_space/config_including_unknown_types.yaml"
         )
-    assert str(excinfo.value.exception_type == "TypeError")
+    assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api
@@ -156,4 +156,4 @@ def test_yaml_file_including_not_allowed_parameter_keys():
         pipeline_space_from_yaml(
             "tests/test_yaml_search_space/not_allowed_key_config.yml"
         )
-    assert str(excinfo.value.exception_type == "KeyError")
+    assert excinfo.value.exception_type == "KeyError"

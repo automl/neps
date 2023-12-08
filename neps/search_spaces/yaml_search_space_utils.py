@@ -3,9 +3,8 @@ from __future__ import annotations
 import re
 
 
-def convert_scientific_notation(
-    value: str | int | float, show_usage_flag=False
-) -> float | (float, bool):
+def convert_scientific_notation(value: str | int | float, show_usage_flag=False) \
+                                -> float | (float, bool):
     """
     Convert a given value to a float if it's a string that matches scientific e notation.
     This is especially useful for numbers like "3.3e-5" which YAML parsers may not
@@ -171,7 +170,7 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
     elif "value" in details:
         param_type = "constant"
     else:
-        raise TypeError(
+        raise KeyError(
             f"Unable to deduce parameter type from {name} "
             f"with details {details}\n"
             "Supported parameters:\n"
