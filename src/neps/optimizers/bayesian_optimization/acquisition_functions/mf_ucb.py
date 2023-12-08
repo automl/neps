@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -96,18 +96,29 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
                 f"Unrecognized surrogate model name: {surrogate_name}"
             )
 
+    def eval_pfn_ucb(
+        self, x: Iterable, beta: float=(1-.682)/2
+    ) -> Union[np.ndarray, torch.Tensor, float]:
+        """PFN-UCB modified to preprocess samples and accept list of incumbents."""
+        ucb = self.surrogate_model.get_ucb(
+            x_test=x.to(self.surrogate_model.device),
+            beta=beta  # TODO: extend to have different betas for each candidates in x
+        )
+        if len(ucb.shape) == 2:
+            ucb = ucb.flatten()
+        return ucb
+    
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         if self.surrogate_model_name == "pfn":
-            _x_tok, _x, inc_list = self.preprocess_pfn(
+            _x, _x_tok, _ = self.preprocess_pfn(
                 x.copy()
-            )  # IMPORTANT change from vanilla-EI
-            raise NotImplementedError
-            # ei = self.eval_pfn_ei(_x_tok, inc_list)
+            )
+            ucb = self.eval_pfn_ucb(_x_tok)
         elif self.surrogate_model_name in ["deep_gp", "gp"]:
             _x, betas = self.preprocess_gp(
                 x.copy(),
                 self.surrogate_model_name
-            )  # IMPORTANT change from vanilla-EI
+            )
             ucb = super().eval(_x.values.tolist(), betas, asscalar)
         else:
             raise ValueError(

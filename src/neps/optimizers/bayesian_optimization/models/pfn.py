@@ -48,7 +48,6 @@ class PFN_SURROGATE:
 
         # build the neural network
         self.nn = pfns4hpo.PFN_MODEL(model_name).to(self.device)
-
         self.logger = logger or logging.getLogger("neps")
 
     def __preprocess_search_space(self, pipeline_space: SearchSpace):
@@ -94,11 +93,32 @@ class PFN_SURROGATE:
         return mean, cov
 
     @torch.no_grad()
-    def get_ucb(self, x_train, y_train, x_test, beta):
-        logits = self.nn(x_train=x_train, y_train=(1 - y_train) if self.minimize else y_train, x_test=x_test)
-        ucb = self.nn.model.criterion.ucb(logits, rest_prob=beta, maximize=True)
-        # TODO: check for LCB
-        return (1 - ucb) if self.minimize else ucb
+    def get_ucb(self, x_test, beta: float=(1-.682)/2, x_train: torch.Tensor=None, y_train: torch.Tensor=None):
+        # y values are always transformed for maximizing
+        x_train = self.train_x if x_train is None else x_train
+        y_train = self.train_y if y_train is None else ((1 - y_train) if self.minimize else y_train)
+        logits = self.nn(x_train=x_train, y_train=y_train, x_test=x_test)
+        ucb = self.nn.model.criterion.ucb(
+            logits=logits,
+            best_f=None,
+            rest_prob=beta,
+            maximize=True
+        )
+        return ucb
+    
+    @torch.no_grad()
+    def get_lcb(self, x_test, beta: float=(1-.682)/2, x_train: torch.Tensor=None, y_train: torch.Tensor=None):
+        # y values are always transformed for maximizing
+        x_train = self.train_x if x_train is None else x_train
+        y_train = self.train_y if y_train is None else ((1 - y_train) if self.minimize else y_train)
+        logits = self.nn(x_train=x_train, y_train=y_train, x_test=x_test)
+        lcb = self.nn.model.criterion.ucb(
+            logits=logits,
+            best_f=None,
+            rest_prob=beta,
+            maximize=False  # IMPORTANT to be False, should calculate the LCB using the lower-bound ICDF as per beta
+        )
+        return lcb
 
     @torch.no_grad()
     def get_ei(self, x_test, inc, x_train=None, y_train=None):
