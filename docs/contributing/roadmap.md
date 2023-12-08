@@ -1,12 +1,12 @@
 # Roadmap
 
-## Before 0.11.0
+## Before 0.12.0
 
 ### Features
 
 - Allow yaml based input of search space and the target function source to `neps.run`
 - Generate plot after each evaluation
-- Support conditionals in ConfigSpace input
+- Support conditionals in ConfigSpace search space
 - Support logging of optimizer state details
 
 ### Fixes
