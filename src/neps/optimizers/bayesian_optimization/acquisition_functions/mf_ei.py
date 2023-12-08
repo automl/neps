@@ -139,15 +139,7 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
 
-        performances = self.observations.get_best_performance_for_each_budget()
-        inc_list = []
-        for budget_level in budget_list:
-            if budget_level in performances.index:
-                inc = performances[budget_level]
-            else:
-                inc = self.observations.get_best_seen_performance()
-            inc_list.append(inc)
-
+        # Collecting incumbent list per configuration
         inc_list = self.preprocess_inc_list(budget_list=budget_list)
 
         return x, torch.Tensor(inc_list)
@@ -263,8 +255,6 @@ class MFEI_AtMax(MFEI):
         x.drop(labels=indices_to_drop, inplace=True)
 
         # create the same incumbent for all candidates
-        # inc_value = min(self.observations.get_best_performance_for_each_budget())
-        # inc_list = [inc_value] * len(x.index.values)
         inc_list = self.preprocess_inc_list(len_x=len(x.index.values))
 
         return x, torch.Tensor(inc_list)
@@ -291,37 +281,17 @@ class MFEI_Dyna(MFEI_AtMax):
         # find the fidelity step at which the best seen performance was recorded
         z_inc_level = self.observations.get_budget_level_for_best_performance()
         # retrieving actual fidelity values from budget level
+        ## marker 1
         z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
+        ## marker 2
         pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
 
-        def update_fidelity_new(config):
-            # for all new configs, extrapolate till the fidelity where incumbent peaked
-            z_extrapolate = z_inc + self.b_step
-            z_extrapolate = (
-                int(z_extrapolate) 
-                if isinstance(self.pipeline_space.fidelity, IntegerParameter) 
-                else float(z_extrapolate)
-            )
-            config.fidelity.value = z_extrapolate
-            return config
-
-        # set fidelity for new configs
-        _new_config_ids = (x.index > max(self.observations.seen_config_ids))
-        x.loc[_new_config_ids] = x[_new_config_ids].apply(update_fidelity_new)
-
-        def update_fidelity_partial(config):
-            # for all partial configs, extraploate conditionally:
-            if config.fidelity.value > z_inc:
-                # if more steps observed than incumbent score, extrapolate till max history
-                z_extrapolate = pseudo_z_max + self.b_step
-            else:
-                # if lesser, extrapolate till incumbent score
-                z_extrapolate = z_inc + self.b_step
-
-            z_extrapolate = (
-                int(z_extrapolate)
-                if isinstance(self.pipeline_space.fidelity, IntegerParameter) 
-                else float(z_extrapolate)
+        def update_fidelity(config):
+            # for all configs, set the min(max(current fidelity + step, z_inc), pseudo_z_max)
+            ## that is, choose the next highest marker from 1 and 2
+            z_extrapolate = min(
+                max(config.fidelity.value + self.b_step, z_inc),
+                pseudo_z_max
             )
             config.fidelity.value = z_extrapolate
             return config
@@ -335,11 +305,9 @@ class MFEI_Dyna(MFEI_AtMax):
             if _x.fidelity.value == self.pipeline_space.fidelity.upper
         ]
         # set fidelity for all partial configs
-        x.loc[_partial_config_ids] = x[_partial_config_ids].apply(update_fidelity_partial)
+        x = x.apply(update_fidelity)
 
         # create the same incumbent for all candidates
-        # inc_value = min(self.observations.get_best_performance_for_each_budget())
-        # inc_list = [inc_value] * len(x.index.values)
         inc_list = self.preprocess_inc_list(len_x=len(x.index.values))
 
         # drop unused configs
