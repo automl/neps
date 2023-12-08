@@ -466,11 +466,15 @@ class MFEIBO(BaseOptimizer):
 
             # assigning config hyperparameters
             config = samples.loc[_config_id]
-            # setting the fidelity appropriately
+            # IMPORTANT: setting the fidelity appropriately
             config.fidelity.value = (
-                config.fidelity.value
+                config.fidelity.lower
                 if _idx > max(self.observed_configs.seen_config_ids)
-                else config.fidelity.value + self.step_size  # ONE-STEP FIDELITY QUERY
+                else (
+                    self.get_budget_value(
+                        self.observed_configs.get_max_observed_fidelity_level_per_config().loc[_idx]
+                     ) + self.step_size  # ONE-STEP FIDELITY QUERY
+                )
             )
         # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
