@@ -11,6 +11,7 @@ from .mf_ei import MFStepBase
 from .ucb import UpperConfidenceBound
 
 
+# NOTE: the order of inheritance is important
 class MF_UCB(MFStepBase, UpperConfidenceBound):
     def __init__(self,
         pipeline_space: SearchSpace,

@@ -108,12 +108,14 @@ class MF_TwoStep(BaseAcquisition):
 
         # for new candidate set
         acq, _samples = self.acq_new_filter.eval(x, asscalar=True)
+        acq = pd.Series(acq, index=_samples.index)
         # drop partial configurations
-        acq[_samples.index.values <= max_seen_id] = 0
-        # find configs not in top-N_NEW set as per acquisition value
-        not_top_new_idx = acq.argsort()[::-1][self.N_NEW:]  # sorts in ascending-flips-leaves out top-N_NEW
+        acq.loc[_samples.index.values <= max_seen_id] = 0
+        # NOTE: setting to 0 works as EI-based AF returns > 0
+        # find configs not in top-N_NEW set as per acquisition value, to be dropped
+        not_top_new_idx = acq.sort_values().index[:-self.N_NEW]  # len(acq) - N_NEW
         # drop these configurations
-        acq[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
+        acq.loc[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # result of first round of filtering of new candidates
         acq_new_mask = pd.Series({
@@ -122,14 +124,16 @@ class MF_TwoStep(BaseAcquisition):
 
         # for partial candidate set
         acq, _samples = self.acq_partial_filter.eval(x, asscalar=True)
-        # TODO: weigh the acq value based on max seen for each config
+        acq = pd.Series(acq, index=_samples.index)
+        # weigh the acq value based on max seen for each config
+        acq = self._weigh_partial_acq_scores(acq=acq)
         # drop new configurations
-        acq[_samples.index.values > max_seen_id] = 0  # to ignore in the argmax of the acquisition function
+        acq.loc[_samples.index.values > max_seen_id] = 0  # to ignore in the argmax of the acquisition function
         # find configs not in top-N_NEW set as per acquisition value
         _top_n_partial = min(self.N_PARTIAL, total_seen_id)
-        not_top_new_idx = acq.argsort()[::-1][_top_n_partial:]  # sorts in ascending-flips-leaves out top-N_PARTIAL
+        not_top_new_idx = acq.sort_values().index[:-_top_n_partial]  # acq.argsort()[::-1][_top_n_partial:]  # sorts in ascending-flips-leaves out top-N_PARTIAL
         # drop these configurations
-        acq[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
+        acq.loc[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # result of first round of filtering of partial candidates
         acq_partial_mask = pd.Series({
@@ -146,7 +150,6 @@ class MF_TwoStep(BaseAcquisition):
         # for combined selection
         acq, _samples = self.acq_combined.eval(x, asscalar=True)
         acq = pd.Series(acq, index=_samples.index)
-
         # applying mask from step-1 to make final selection among (N_NEW + N_PARTIAL)
         mask = acq.index.isin(eligible_set)
         # NOTE: setting to -np.inf works as MF-UCB here is max.(-LCB) instead of min.(LCB)
@@ -157,7 +160,24 @@ class MF_TwoStep(BaseAcquisition):
         # NOTE: setting to -np.inf works as MF-UCB here is max.(-LCB) instead of min.(LCB)
         acq_combined = acq_combined.reindex(acq.index, fill_value=-np.inf)
         acq = acq_combined.values
+
         return acq, _samples
+    
+    def _weigh_partial_acq_scores(self, acq: pd.Series) -> pd.Series:
+        # find the best performance per configuration seen
+        inc_list_partial = self.observations.get_best_performance_per_config()
+
+        # normalize the scores based on relative best seen performance per config
+        _inc, _max = inc_list_partial.min(), inc_list_partial.max()
+        inc_list_partial = (inc_list_partial - _inc) / (_max - _inc) if _inc < _max else inc_list_partial
+
+        # calculate weights per candidate
+        weights = pd.Series(1 - inc_list_partial, index=inc_list_partial.index)
+
+        # scaling the acquisition score with weights
+        acq = acq * weights
+
+        return acq
 
 
 class MFEI_PartialFilter(MFEI):
@@ -179,7 +199,6 @@ class MFEI_PartialFilter(MFEI):
         # observed score. This could act as a filter to diverging configurations even if
         # their overall score relative to the incumbent can be high.
         inc_list_partial = self.observations.get_best_performance_per_config()
-        
         # updating incumbent for EI computation for the partial configs
         inc_list[:n_partial] = inc_list_partial
 
@@ -205,7 +224,7 @@ class MFEI_Dyna_PartialFilter(MFEI_Dyna):
         # observed score. This could act as a filter to diverging configurations even if
         # their overall score relative to the incumbent can be high.
         inc_list_partial = self.observations.get_best_performance_per_config()
-        
+
         # updating incumbent for EI computation for the partial configs
         inc_list[:n_partial] = inc_list_partial
 

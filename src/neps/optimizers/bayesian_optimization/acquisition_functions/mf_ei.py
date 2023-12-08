@@ -76,6 +76,7 @@ class MFStepBase(BaseAcquisition):
         return _x, _x_tok, inc_list
 
 
+# NOTE: the order of inheritance is important
 class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
     def __init__(
         self,
