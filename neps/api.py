@@ -11,6 +11,7 @@ from typing import Callable, Iterable, Literal
 import ConfigSpace as CS
 
 from .metahyper import instance_from_map, metahyper_run
+from .metahyper.run_file_names import Filenamings
 from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
@@ -36,7 +37,9 @@ def _post_evaluation_hook_function(
         loss = get_loss(result, loss_value_on_error, ignore_errors)
 
         # 1. Write all configs and losses
-        all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
+        all_configs_losses = Path(
+            working_directory, Filenamings.root_file_all_losses_w_configs
+        )
 
         def write_loss_and_config(file_handle, loss_, config_id_, config_):
             file_handle.write(f"Loss: {loss_}\n")
@@ -58,9 +61,11 @@ def _post_evaluation_hook_function(
             return
 
         # 2. Write best losses/configs
-        best_loss_trajectory_file = Path(working_directory, "best_loss_trajectory.txt")
+        best_loss_trajectory_file = Path(
+            working_directory, Filenamings.root_file_best_loss_traj
+        )
         best_loss_config_trajectory_file = Path(
-            working_directory, "best_loss_with_config_trajectory.txt"
+            working_directory, Filenamings.root_file_config_w_best_loss_traj
         )
 
         if not best_loss_trajectory_file.exists():

@@ -8,6 +8,7 @@ import pandas as pd
 
 from ..metahyper import ConfigResult, read
 from ..metahyper._locker import Locker
+from ..metahyper.run_file_names import Filenamings
 from ..search_spaces.search_space import SearchSpace
 from ..utils.result_utils import get_loss
 
@@ -144,13 +145,13 @@ def _initiate_summary_csv(
     multi-threaded or multi-process environment.
     """
     root_directory = Path(root_directory)
-    summary_csv_directory = Path(root_directory / "summary_csv")
+    summary_csv_directory = Path(root_directory / Filenamings.root_directory_summary_csv)
     summary_csv_directory.mkdir(parents=True, exist_ok=True)
 
-    csv_config_data = summary_csv_directory / "config_data.csv"
-    csv_run_data = summary_csv_directory / "run_status.csv"
+    csv_config_data = summary_csv_directory / Filenamings.summary_file_config_result
+    csv_run_data = summary_csv_directory / Filenamings.summary_file_run_status
 
-    csv_lock_file = summary_csv_directory / ".csv_lock"
+    csv_lock_file = summary_csv_directory / Filenamings.summary_file_locker
     csv_lock_file.touch(exist_ok=True)
     csv_locker = Locker(csv_lock_file, logger.getChild("_locker"))
 

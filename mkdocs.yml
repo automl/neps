@@ -36,6 +36,7 @@ nav:
       - Installation for Contributors: "contributing/installation.md"
       - Checks and Tests: "contributing/tests.md"
       - Managing Dependencies: "contributing/dependencies.md"
+      - Filenaming: "contributing/filenamings.md"
       - Releasing a New Version: "contributing/releasing.md"
       - Documentation: "contributing/documentation.md"
       - Roadmap: "contributing/roadmap.md"
