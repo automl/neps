@@ -92,7 +92,7 @@ Please see the [documentation for contributors](https://automl.github.io/neps/la
 
 Please consider citing us if you use our tool!
 
-Refer to our [documentation on citations](docs/citations.md).
+Refer to our [documentation on citations](https://automl.github.io/neps/latest/citations/).
 
 ## Alternatives
 
