@@ -505,6 +505,7 @@ class DeepGP:
                     f"the minimum average loss of {min_avg_loss_val} and "
                     f"the final average loss of {average_loss}"
                 )
+                self.load_checkpoint(self.best_state)
                 break
 
             n_examples_batch = x_train.size(dim=0)
