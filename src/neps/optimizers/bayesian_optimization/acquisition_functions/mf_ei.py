@@ -68,11 +68,12 @@ class MFStepBase(BaseAcquisition):
         _x_tok = self.observations.tokenize(_x, as_tensor=True)
         len_partial = len(self.observations.seen_config_ids)
         z_min = x[0].fidelity.lower
+        z_max = x[0].fidelity.upper
         # converting fidelity to the discrete budget level
         # STRICT ASSUMPTION: fidelity is the second dimension
         _x_tok[:len_partial, 1] = (
             _x_tok[:len_partial, 1] + self.b_step - z_min
-        ) / self.b_step
+        ) / (z_max + self.b_step - z_min)
         return _x, _x_tok, inc_list
 
 
