@@ -5,7 +5,12 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization and neural architecture search. This library is designed to assist researchers and deep learning practitioners in efficiently tuning hyperparameters and exploring neural network architectures to achieve optimal model performance.
+Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization (HPO) and neural architecture search (NAS) with its primary goal: enable HPO adoption in practice for deep learners!
+
+NePS houses recently published and some more well-established algorithms that are all capable of being run massively parallel on any distributed setup, with tools to analyze runs, restart runs, etc.
+
+Read our documentation and the following document for how to use NePS!
+
 
 ## Key Features
 
