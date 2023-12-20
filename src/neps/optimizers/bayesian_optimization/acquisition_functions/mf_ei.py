@@ -73,7 +73,8 @@ class MFStepBase(BaseAcquisition):
         # STRICT ASSUMPTION: fidelity is the second dimension
         _x_tok[:len_partial, 1] = (
             _x_tok[:len_partial, 1] + self.b_step - z_min
-        ) / (z_max + self.b_step - z_min)
+        ) / self.b_step
+        _x_tok[:, 1] = _x_tok[:, 1] / z_max
         return _x, _x_tok, inc_list
 
 
