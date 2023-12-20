@@ -17,10 +17,13 @@ Take a look at our [documentation](https://automl.github.io/neps/latest/) and co
 In addition to the common features offered by traditional HPO and NAS libraries, NePS stands out with the following key features:
 
 1. [**Hyperparameter Optimization (HPO) With Prior Knowledge:**](neps_examples/template/priorband_template.py) 
-    - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to leverage their prior knowledge within the search space.
+    - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
+        - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
+        - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051)
 
 2. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py) 
-    - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures.
+    - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
+        - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
 
 3. [**Easy Parallelization:**](https://automl.github.io/neps/latest/parallelization/) 
     - NePS simplifies the parallelization of optimization tasks. Whether experiments are running on a single machine or a distributed computing environment.
