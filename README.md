@@ -9,7 +9,7 @@ Welcome to NePS, a powerful and flexible Python library for hyperparameter optim
 
 NePS houses recently published and some more well-established algorithms that are all capable of being run massively parallel on any distributed setup, with tools to analyze runs, restart runs, etc.
 
-Read our documentation and the following document for how to use NePS!
+Take a look at our [documentation](https://automl.github.io/neps/latest/) and continue following through current README for instructions on how to use NePS!
 
 
 ## Key Features
