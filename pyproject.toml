@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "neural-pipeline-search"
-version = "v0.10.0"
+version = "v0.11.0"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     "Danny Stoll <stolld@cs.uni-freiburg.de>",
@@ -39,8 +39,8 @@ classifiers = [
   "Topic :: System :: Distributed Computing",
 ]
 packages = [
-    { include = "neps", from = "src" },
-    { include = "metahyper", from = "src" },
+    { include = "neps" },
+    { include = "metahyper", from = "neps"},
     { include = "neps_examples" },
 ]
 
@@ -102,8 +102,8 @@ profile = 'black'
 line_length = 90
 
 [tool.pytest.ini_options]
-addopts = "--basetemp ./tests_tmpdir -m 'core_examples or yaml_api'"
-markers = ["all_examples", "core_examples", "regression_all", "metahyper", "yaml_api", "summary_csv"]
+addopts = "--basetemp ./tests_tmpdir -m 'neps_api or core_examples'"
+markers = ["all_examples", "core_examples", "regression_all", "metahyper", "neps_api", "summary_csv"]
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
