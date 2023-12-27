@@ -9,6 +9,9 @@ from neps.search_spaces.search_space import (
 from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
 
 
+BASE_PATH = "tests/test_yaml_search_space/"
+
+
 @pytest.mark.neps_api
 def test_correct_yaml_files():
     def test_correct_yaml_file(path):
@@ -55,9 +58,9 @@ def test_correct_yaml_files():
         assert pipeline_space["param_const2"].value == 1e3
         assert pipeline_space["param_const2"].is_fidelity is True
 
-    test_correct_yaml_file("tests/test_yaml_search_space/correct_config.yaml")
+    test_correct_yaml_file(BASE_PATH + "correct_config.yaml")
     test_correct_yaml_file(
-        "tests/test_yaml_search_space/correct_config_including_types" ".yaml"
+        BASE_PATH + "correct_config_including_types.yaml"
     )
 
 
@@ -65,7 +68,7 @@ def test_correct_yaml_files():
 def test_correct_including_priors_yaml_file():
     """Test the function with a correctly formatted YAML file."""
     pipeline_space = pipeline_space_from_yaml(
-        "tests/test_yaml_search_space/correct_config_including_priors.yml"
+        BASE_PATH + "correct_config_including_priors.yml"
     )
     assert isinstance(pipeline_space, dict)
     assert isinstance(pipeline_space["learning_rate"], FloatParameter)
@@ -97,7 +100,7 @@ def test_incorrect_yaml_file():
     """Test the function with an incorrectly formatted YAML file."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            Path("tests/test_yaml_search_space/incorrect_config.txt")
+            Path(BASE_PATH + "incorrect_config.txt")
         )
     assert excinfo.value.exception_type == "ValueError"
 
@@ -106,7 +109,7 @@ def test_incorrect_yaml_file():
 def test_yaml_file_with_missing_key():
     """Test the function with a YAML file missing a required key."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml("tests/test_yaml_search_space/missing_key_config.yml")
+        pipeline_space_from_yaml(BASE_PATH + "missing_key_config.yml")
     assert excinfo.value.exception_type == "KeyError"
 
 
@@ -116,12 +119,12 @@ def test_yaml_file_with_inconsistent_types():
     'lower' and 'upper'."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/inconsistent_types_config.yml"
+            BASE_PATH + "inconsistent_types_config.yml"
         )
     assert str(excinfo.value.exception_type == "TypeError")
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            Path("tests/test_yaml_search_space/inconsistent_types_config2.yml")
+            Path(BASE_PATH + "inconsistent_types_config2.yml")
         )
     assert excinfo.value.exception_type == "TypeError"
 
@@ -132,7 +135,7 @@ def test_yaml_file_including_wrong_types():
     int to float as an optional argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/config_including_wrong_types.yaml"
+            BASE_PATH + "config_including_wrong_types.yaml"
         )
     assert excinfo.value.exception_type == "TypeError"
 
@@ -143,7 +146,7 @@ def test_yaml_file_including_unkown_types():
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/config_including_unknown_types.yaml"
+            BASE_PATH + "config_including_unknown_types.yaml"
         )
     assert excinfo.value.exception_type == "TypeError"
 
@@ -154,6 +157,6 @@ def test_yaml_file_including_not_allowed_parameter_keys():
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/not_allowed_key_config.yml"
+            BASE_PATH + "not_allowed_key_config.yml"
         )
     assert excinfo.value.exception_type == "KeyError"
