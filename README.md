@@ -19,13 +19,19 @@ For efficiency and convenience NePS allows you to
 
 Or [all of the above](neps_examples/efficiency/multi_fidelity_and_expert_priors.py) for maximum efficiency!
 
-## Note
+## Recent publications
 
-As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
+* [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370), NeurIPS 2023
+* [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842), NeurIPS 2023
+* [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051), ICLR 2022
 
 ## Documentation
 
 Please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples).
+
+## Note
+
+As indicated with the `v0.x.x` version number, NePS is early-stage code and APIs might change in the future.
 
 ## Installation
 
@@ -78,10 +84,16 @@ For more details and features please have a look at our [documentation](https://
 
 See our [documentation on analysing runs](https://automl.github.io/neps/latest/analyse).
 
-## Alternatives
-
-NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/latest/alternatives).
-
 ## Contributing
 
 Please see the [documentation for contributors](https://automl.github.io/neps/latest/contributing/).
+
+## Citations
+
+Please consider citing us if you use our tool!
+
+Refer to our [documentation on citations](https://automl.github.io/neps/latest/citations/).
+
+## Alternatives
+
+NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/latest/alternatives).

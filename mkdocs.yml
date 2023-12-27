@@ -29,6 +29,7 @@ nav:
   - The neps.run Function: 'neps_run.md'
   - Analysing Runs: 'analyse.md'
   - Parallelization: 'parallelization.md'
+  - Citations: 'citations.md'
   - Alternatives: 'alternatives.md'
   - Contributing:
       - Introduction: "contributing/README.md"
