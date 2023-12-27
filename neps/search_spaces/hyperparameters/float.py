@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import math
 from copy import deepcopy
+from typing import Literal
 
 import numpy as np
 import scipy.stats
-from typing_extensions import Literal
 
 from .numerical import NumericalParameter
 
@@ -37,7 +37,6 @@ class FloatParameter(NumericalParameter):
 
         if self.lower >= self.upper:
             raise ValueError("Float parameter: bounds error (lower >= upper).")
-
         self.log = log
 
         if self.log:

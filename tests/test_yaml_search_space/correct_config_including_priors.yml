@@ -1,0 +1,22 @@
+search_space:
+  learning_rate:
+    lower: 0.00001
+    upper: 0.1
+    log: true
+    default: 3.3E-2
+    default_confidence: high
+
+  num_epochs:
+    lower: 3
+    upper: 30
+    is_fidelity: True
+    default: 1e1
+
+  optimizer:
+    choices: [adam, 90E-3, rmsprop]
+    default: 90E-3
+    default_confidence: "medium"
+
+  dropout_rate:
+    value: 1E3
+    is_fidelity: true

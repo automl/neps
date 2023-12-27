@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import random
 from copy import copy, deepcopy
-from typing import Iterable
+from typing import Iterable, Literal
 
 import numpy as np
 import numpy.typing as npt
-from typing_extensions import Literal
 
 from ..parameter import Parameter
 
@@ -32,9 +31,7 @@ class CategoricalParameter(Parameter):
         self.upper = default
         self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]
         self.has_prior = self.default is not None
-
         self.is_fidelity = is_fidelity
-
         self.choices = list(choices)
         self.num_choices = len(self.choices)
         self.probabilities: list[npt.NDArray] = list(

@@ -1,0 +1,20 @@
+search_space:
+  learning_rate:
+    type: int
+    lower: 0.00001
+    upper: 0.1
+    log: true
+
+  num_epochs:
+    type: int
+    lower: 3
+    upper: 30
+    is_fidelity: True
+
+  optimizer:
+    type: cat
+    choices: ["adam", "sgd", "rmsprop"]
+
+  dropout_rate:
+    type: const
+    value: 0.5

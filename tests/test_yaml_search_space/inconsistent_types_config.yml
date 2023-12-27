@@ -1,0 +1,17 @@
+search_space:
+  learning_rate:
+    lower: "string"  # Lower is now a string
+    upper: 1e3
+    log: true
+
+  num_epochs:
+    lower: 3
+    upper: 30
+    is_fidelity: True
+
+  optimizer:
+    choices: ["adam", "sgd", "rmsprop"]
+
+  dropout_rate:
+    value: 0.5
+    is_fidelity: True

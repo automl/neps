@@ -6,10 +6,12 @@ import random
 from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
+from pathlib import Path
 
 import ConfigSpace as CS
 import numpy as np
 import pandas as pd
+import yaml
 
 from ..utils.common import has_instance
 from . import (
@@ -21,6 +23,10 @@ from . import (
 )
 from .architecture.graph import Graph
 from .parameter import Parameter
+from .yaml_search_space_utils import (
+    SearchSpaceFromYamlFileError,
+    deduce_and_validate_param_type,
+)
 
 
 def pipeline_space_from_configspace(
@@ -61,6 +67,121 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
+def pipeline_space_from_yaml(
+    yaml_file_path: str | Path,
+) -> dict[
+    str, FloatParameter | IntegerParameter | CategoricalParameter | ConstantParameter
+]:
+    """
+    Reads configuration details from a YAML file and constructs a pipeline space
+    dictionary.
+
+    This function extracts parameter configurations from a YAML file, validating and
+    translating them into corresponding parameter objects. The resulting dictionary
+    maps parameter names to their respective configuration objects.
+
+    Args:
+        yaml_file_path (str | Path): Path to the YAML file containing parameter
+        configurations.
+
+    Returns:
+        dict: A dictionary where keys are parameter names and values are parameter
+              objects (like IntegerParameter, FloatParameter, etc.).
+
+    Raises:
+        SearchSpaceFromYamlFileError: This custom exception is raised if there are issues
+        with the YAML file's format or contents. It encapsulates underlying exceptions
+        (KeyError, TypeError, ValueError) that occur during the processing of the YAML
+        file. This approach localizes error handling, providing clearer context and
+        diagnostics. The raised exception includes the type of the original error and
+        a descriptive message.
+
+    Note:
+        The YAML file should be properly structured with valid keys and values as per the
+        expected parameter types. The function employs modular validation and type
+        deduction logic, ensuring each parameter's configuration adheres to expected
+        formats and constraints. Any deviation results in an appropriately raised error,
+        which is then captured by SearchSpaceFromYamlFileError for streamlined error
+        handling.
+
+    Example:
+        To use this function with a YAML file 'config.yaml', you can do:
+        pipeline_space = pipeline_space_from_yaml('config.yaml')
+    """
+    try:
+        # try to load the YAML file
+        try:
+            with open(yaml_file_path) as file:
+                config = yaml.safe_load(file)
+        except yaml.YAMLError as e:
+            raise ValueError(
+                f"The file at {str(yaml_file_path)} is not a valid YAML file."
+            ) from e
+
+        # check for init key search_space
+        if "search_space" not in config:
+            raise KeyError(
+                "The YAML file is incorrectly constructed: the 'search_space:' "
+                "reference is missing at the top of the file."
+            )
+
+        # Initialize the pipeline space
+        pipeline_space = {}
+
+        # Iterate over the items in the YAML configuration
+        for name, details in config["search_space"].items():
+            # get parameter type
+            param_type = deduce_and_validate_param_type(name, details)
+
+            # init parameter by checking type
+            if param_type in ("int", "integer"):
+                # Integer Parameter
+                pipeline_space[name] = IntegerParameter(
+                    lower=details["lower"],
+                    upper=details["upper"],
+                    log=details.get("log", False),
+                    is_fidelity=details.get("is_fidelity", False),
+                    default=details.get("default", None),
+                    default_confidence=details.get("default_confidence", "low"),
+                )
+            elif param_type == "float":
+                # Float Parameter
+                pipeline_space[name] = FloatParameter(
+                    lower=details["lower"],
+                    upper=details["upper"],
+                    log=details.get("log", False),
+                    is_fidelity=details.get("is_fidelity", False),
+                    default=details.get("default", None),
+                    default_confidence=details.get("default_confidence", "low"),
+                )
+            elif param_type in ("cat", "categorical"):
+                # Categorical parameter
+                pipeline_space[name] = CategoricalParameter(
+                    choices=details["choices"],
+                    is_fidelity=details.get("is_fidelity", False),
+                    default=details.get("default", None),
+                    default_confidence=details.get("default_confidence", "low"),
+                )
+            elif param_type in ("const", "constant"):
+                # Constant parameter
+                pipeline_space[name] = ConstantParameter(
+                    value=details["value"], is_fidelity=details.get("is_fidelity", False)
+                )
+            else:
+                # Handle unknown parameter type
+                raise TypeError(
+                    f"Unsupported parameter type{details['type']} for '{name}'.\n"
+                    f"Supported Types for argument type are:\n"
+                    "For integer parameter: int, integer\n"
+                    "For float parameter: float\n"
+                    "For categorical parameter: cat, categorical\n"
+                    "For constant parameter: const, constant\n"
+                )
+    except (KeyError, TypeError, ValueError) as e:
+        raise SearchSpaceFromYamlFileError(e) from e
+    return pipeline_space
+
+
 class SearchSpace(collections.abc.Mapping):
     def __init__(self, **hyperparameters):
         self.hyperparameters = OrderedDict()
@@ -88,7 +209,7 @@ class SearchSpace(collections.abc.Mapping):
                 self.has_prior = True
             elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
-        
+
         # Variables for tabular bookkeeping
         self.custom_grid_table = None
         self.raw_tabular_space = None
@@ -97,25 +218,26 @@ class SearchSpace(collections.abc.Mapping):
     def set_custom_grid_space(
         self,
         grid_table: pd.Series | pd.DataFrame,
-        raw_space: SearchSpace | CS.ConfigurationSpace
+        raw_space: SearchSpace | CS.ConfigurationSpace,
     ):
         """Set a custom grid space for the search space.
 
-        This function is used to set a custom grid space for the pipeline space. 
-        NOTE: Only to be used if a custom set of hyperparameters from the search space 
-        is to be sampled or used for acquisition functions. 
-        WARNING: The type check and the table format requirement is loose and 
+        This function is used to set a custom grid space for the pipeline space.
+        NOTE: Only to be used if a custom set of hyperparameters from the search space
+        is to be sampled or used for acquisition functions.
+        WARNING: The type check and the table format requirement is loose and
         can break certain components.
         """
         self.custom_grid_table: pd.DataFrame | pd.Series = grid_table
         self.raw_tabular_space = (
             SearchSpace(**raw_space)
-            if not isinstance(raw_space, SearchSpace) else raw_space
+            if not isinstance(raw_space, SearchSpace)
+            else raw_space
         )
         if self.custom_grid_table is None or self.raw_tabular_space is None:
             raise ValueError(
                 "Both grid_table and raw_space must be set!\n"
-                "A table or list of fixed configs must be supported with a " 
+                "A table or list of fixed configs must be supported with a "
                 "continuous space representing the type and bounds of each "
                 "hyperparameter for accurate modeling."
             )
@@ -201,7 +323,7 @@ class SearchSpace(collections.abc.Mapping):
                 new_config[hp_name] = hp.mutate(**kwargs)
                 break
             except Exception as e:
-                self.logger.warning(f"{hp_name} FAILED!")
+                self.logger.warning(f"{hp_name} FAILED! Error: {e}")
                 continue
         return new_config
 
@@ -440,8 +562,8 @@ class SearchSpace(collections.abc.Mapping):
         return pprint.pformat(self.hyperparameters)
 
     def is_equal_value(self, other, include_fidelity=True, on_decimal=8):
-        # This does NOT check that the entire SearchSpace is equal (and thus it is not a dunder method),
-        # but only checks the configuration
+        # This does NOT check that the entire SearchSpace is equal (and thus it is
+        # not a dunder method), but only checks the configuration
         if self.hyperparameters.keys() != other.hyperparameters.keys():
             return False
 
