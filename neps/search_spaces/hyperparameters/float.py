@@ -37,6 +37,12 @@ class FloatParameter(NumericalParameter):
 
         if self.lower >= self.upper:
             raise ValueError("Float parameter: bounds error (lower >= upper).")
+        if not isinstance(log, bool):
+            raise TypeError(
+                "Expected 'self.log' to be a boolean, but got type: {}".format(
+                    type(log).__name__
+                )
+            )
         self.log = log
 
         if self.log:
