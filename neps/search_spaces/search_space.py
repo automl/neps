@@ -204,8 +204,13 @@ class SearchSpace(collections.abc.Mapping):
                     )
                 self.fidelity = hyperparameter
 
-            # Check if defaults exists to construct prior from
-            if hasattr(hyperparameter, "default") and hyperparameter.default is not None:
+            # Check if defaults exists to construct prior from, except of
+            # ConstantParameter because default gets init always by the given value
+            if (
+                hasattr(hyperparameter, "default")
+                and hyperparameter.default is not None
+                and not isinstance(hyperparameter, ConstantParameter)
+            ):
                 self.has_prior = True
             elif hasattr(hyperparameter, "has_prior") and hyperparameter.has_prior:
                 self.has_prior = True
