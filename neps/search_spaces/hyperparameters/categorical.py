@@ -46,7 +46,12 @@ class CategoricalParameter(Parameter):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.choices == other.choices and self.value == other.value
+        return (self.choices == other.choices
+                and self.value == other.value
+                and self.is_fidelity == other.is_fidelity
+                and self.default == other.default
+                and self.default_confidence_score == other.default_confidence_score
+                )
 
     def __repr__(self):
         return f"<Categorical, choices: {self.choices}, value: {self.value}>"

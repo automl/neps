@@ -51,7 +51,10 @@ class FloatParameter(NumericalParameter):
             self.lower == other.lower
             and self.upper == other.upper
             and self.log == other.log
+            and self.is_fidelity == other.is_fidelity
             and self.value == other.value
+            and self.default == other.default
+            and self.default_confidence_score == other.default_confidence_score
         )
 
     def __repr__(self):
