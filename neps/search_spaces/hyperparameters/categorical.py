@@ -39,6 +39,19 @@ class CategoricalParameter(Parameter):
         )
         self.value: None | float | int | str = None
 
+        # Check if 'default' is in 'choices'
+        if default is not None and default not in self.choices:
+            raise ValueError(
+                f"Default value {default} is not in the provided choices {self.choices}"
+            )
+
+        # Check if 'is_fidelity' is a boolean
+        if not isinstance(is_fidelity, bool):
+            raise TypeError(
+                f"Expected 'is_fidelity' to be a boolean, but got type: "
+                f"{type(is_fidelity).__name__}"
+            )
+
     @property
     def id(self):
         return self.value
@@ -46,12 +59,13 @@ class CategoricalParameter(Parameter):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return (self.choices == other.choices
-                and self.value == other.value
-                and self.is_fidelity == other.is_fidelity
-                and self.default == other.default
-                and self.default_confidence_score == other.default_confidence_score
-                )
+        return (
+            self.choices == other.choices
+            and self.value == other.value
+            and self.is_fidelity == other.is_fidelity
+            and self.default == other.default
+            and self.default_confidence_score == other.default_confidence_score
+        )
 
     def __repr__(self):
         return f"<Categorical, choices: {self.choices}, value: {self.value}>"

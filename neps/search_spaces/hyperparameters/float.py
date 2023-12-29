@@ -49,17 +49,15 @@ class FloatParameter(NumericalParameter):
                     f" upper={self.upper}"
                 )
 
-        if not isinstance(log, bool):
-            raise TypeError(
-                f"Expected 'log' to be a boolean, but got type: {type(log).__name__}"
-            )
-
-        if not isinstance(log, bool):
-            raise TypeError(
-                "Expected 'self.log' to be a boolean, but got type: {}".format(
-                    type(log).__name__
+        # Validate 'log' and 'is_fidelity' types to prevent configuration errors
+        # from the YAML input
+        for param, value in {"log": log, "is_fidelity": is_fidelity}.items():
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"Expected '{param}' to be a boolean, but got type: "
+                    f"{type(value).__name__}"
                 )
-            )
+
         self.log = log
 
         if self.log:

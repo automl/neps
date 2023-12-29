@@ -109,9 +109,48 @@ def test_yaml_file_including_not_allowed_parameter_keys():
 
 
 @pytest.mark.neps_api
-def test_yaml_file_default_parameter_in_range():
+def test_yaml_file_default_parameter_not_in_range():
     """Test if the default value outside the specified range is
     correctly identified and handled."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "default_not_in_range_config.yaml")
+    assert excinfo.value.exception_type == "ValueError"
+
+
+@pytest.mark.neps_api
+def test_float_log_not_boolean():
+    """Test if an exception is raised when the 'log' attribute is not a boolean."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "not_boolean_type_log_config.yaml")
+    assert excinfo.value.exception_type == "TypeError"
+
+
+@pytest.mark.neps_api
+def test_float_is_fidelity_not_boolean():
+    """Test if an exception is raised when for FloatParameter the 'is_fidelity'
+    attribute is not a boolean."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(
+            BASE_PATH + "not_boolean_type_is_fidelity_float_config.yaml"
+        )
+    assert excinfo.value.exception_type == "TypeError"
+
+
+@pytest.mark.neps_api
+def test_cat_is_fidelity_not_boolean():
+    """Test if an exception is raised when for CategoricalParameter the 'is_fidelity'
+    attribute is not boolean."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(
+            BASE_PATH + "not_boolean_type_is_fidelity_cat_config.yaml"
+        )
+    assert excinfo.value.exception_type == "TypeError"
+
+
+@pytest.mark.neps_api
+def test_categorical_default_value_not_in_choices():
+    """Test if a ValueError is raised when the default value is not in the choices
+    for a CategoricalParameter."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "default_value_not_in_choices_config.yaml")
     assert excinfo.value.exception_type == "ValueError"
