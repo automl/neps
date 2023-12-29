@@ -8,7 +8,6 @@ from neps.search_spaces.search_space import (
 
 from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
 
-
 BASE_PATH = "tests/test_yaml_search_space/"
 
 
@@ -34,9 +33,7 @@ def test_correct_yaml_files():
         assert const2.__eq__(pipeline_space["param_const2"]) is True
 
     test_correct_yaml_file(BASE_PATH + "correct_config.yaml")
-    test_correct_yaml_file(
-        BASE_PATH + "correct_config_including_types.yaml"
-    )
+    test_correct_yaml_file(BASE_PATH + "correct_config_including_types.yaml")
 
 
 @pytest.mark.neps_api
@@ -60,9 +57,7 @@ def test_correct_including_priors_yaml_file():
 def test_incorrect_yaml_file():
     """Test the function with an incorrectly formatted YAML file."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            Path(BASE_PATH + "incorrect_config.txt")
-        )
+        pipeline_space_from_yaml(Path(BASE_PATH + "incorrect_config.txt"))
     assert excinfo.value.exception_type == "ValueError"
 
 
@@ -79,14 +74,10 @@ def test_yaml_file_with_inconsistent_types():
     """Test the function with a YAML file having inconsistent types for
     'lower' and 'upper'."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            BASE_PATH + "inconsistent_types_config.yml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "inconsistent_types_config.yml")
     assert str(excinfo.value.exception_type == "TypeError")
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            Path(BASE_PATH + "inconsistent_types_config2.yml")
-        )
+        pipeline_space_from_yaml(Path(BASE_PATH + "inconsistent_types_config2.yml"))
     assert excinfo.value.exception_type == "TypeError"
 
 
@@ -95,9 +86,7 @@ def test_yaml_file_including_wrong_types():
     """Test the function with a YAML file that defines the wrong but existing type
     int to float as an optional argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            BASE_PATH + "config_including_wrong_types.yaml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "config_including_wrong_types.yaml")
     assert excinfo.value.exception_type == "TypeError"
 
 
@@ -106,9 +95,7 @@ def test_yaml_file_including_unkown_types():
     """Test the function with a YAML file that defines an unknown type as an optional
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            BASE_PATH + "config_including_unknown_types.yaml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "config_including_unknown_types.yaml")
     assert excinfo.value.exception_type == "TypeError"
 
 
@@ -117,7 +104,14 @@ def test_yaml_file_including_not_allowed_parameter_keys():
     """Test the function with a YAML file that defines an unknown type as an optional
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            BASE_PATH + "not_allowed_key_config.yml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "not_allowed_key_config.yml")
     assert excinfo.value.exception_type == "KeyError"
+
+
+@pytest.mark.neps_api
+def test_yaml_file_default_parameter_in_range():
+    """Test if the default value outside the specified range is
+    correctly identified and handled."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "default_not_in_range_config.yaml")
+    assert excinfo.value.exception_type == "ValueError"

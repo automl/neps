@@ -36,7 +36,24 @@ class FloatParameter(NumericalParameter):
         self.upper = float(upper)
 
         if self.lower >= self.upper:
-            raise ValueError("Float parameter: bounds error (lower >= upper).")
+            raise ValueError(
+                f"Float parameter: bounds error (lower >= upper). Actual values: "
+                f"lower={self.lower}, upper={self.upper}"
+            )
+
+        if self.default is not None:
+            if not self.lower <= self.default <= self.upper:
+                raise ValueError(
+                    f"Float parameter: default bounds error. Expected lower <= default"
+                    f" <= upper, but got lower={self.lower}, default={self.default},"
+                    f" upper={self.upper}"
+                )
+
+        if not isinstance(log, bool):
+            raise TypeError(
+                f"Expected 'log' to be a boolean, but got type: {type(log).__name__}"
+            )
+
         if not isinstance(log, bool):
             raise TypeError(
                 "Expected 'self.log' to be a boolean, but got type: {}".format(
