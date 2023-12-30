@@ -1,0 +1,26 @@
+search_space:
+  float_name1:
+    lower: 3e-5
+    upper: 0.1
+
+  float_name2:
+    type: "float" # Optional, as neps infers type from 'lower' and 'upper'
+    lower: 1.7
+    upper: 42.0
+    log: true # Optional, default: False
+
+  categorical_name1:
+    choices: [0, 1]
+
+  categorical_name2:
+    type: cat
+    choices: ["a", "b", "c"]
+
+  integer_name1:
+    lower: 32
+    upper: 128
+    is_fidelity: True # Optional, default: False
+
+  integer_name2:
+    lower: -5
+    upper: 5

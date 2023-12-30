@@ -14,7 +14,11 @@ from .metahyper import instance_from_map, metahyper_run
 from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
-from .search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
+from .search_spaces.search_space import (
+    SearchSpace,
+    pipeline_space_from_configspace,
+    pipeline_space_from_yaml,
+)
 from .status.status import post_run_csv
 from .utils.common import get_searcher_data, get_value
 from .utils.result_utils import get_loss
@@ -94,9 +98,8 @@ def _post_evaluation_hook_function(
 def run(
     run_pipeline: Callable,
     root_directory: str | Path,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
-    | CS.ConfigurationSpace
-    | None = None,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | str | Path |
+                    CS.ConfigurationSpace | None = None,
     overwrite_working_directory: bool = False,
     post_run_summary: bool = False,
     development_stage_id=None,
@@ -311,6 +314,9 @@ def _run_args(
         # Support pipeline space as ConfigurationSpace definition
         if isinstance(pipeline_space, CS.ConfigurationSpace):
             pipeline_space = pipeline_space_from_configspace(pipeline_space)
+        # Support pipeline space as YAML file
+        elif isinstance(pipeline_space, (str, Path)):
+            pipeline_space = pipeline_space_from_yaml(pipeline_space)
 
         # Support pipeline space as mix of ConfigurationSpace and neps parameters
         new_pipeline_space: dict[str, Parameter] = dict()
