@@ -16,22 +16,22 @@ Take a look at our [documentation](https://automl.github.io/neps/latest/) and co
 
 In addition to the common features offered by traditional HPO and NAS libraries, NePS stands out with the following key features:
 
-1. [**Hyperparameter Optimization (HPO) With Prior Knowledge:**](neps_examples/template/priorband_template.py) 
+1. [**Hyperparameter Optimization (HPO) With Prior Knowledge:**](neps_examples/template/priorband_template.py)
     - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
         - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
         - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051)
 
-2. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py) 
+2. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py)
     - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
         - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
 
-3. [**Easy Parallelization:**](https://automl.github.io/neps/latest/parallelization/) 
+3. [**Easy Parallelization:**](https://automl.github.io/neps/latest/parallelization/)
     - NePS simplifies the parallelization of optimization tasks. Whether experiments are running on a single machine or a distributed computing environment.
 
-4. [**Resume Runs After Termination:**](https://automl.github.io/neps/latest/parallelization/) 
+4. [**Resume Runs After Termination:**](https://automl.github.io/neps/latest/parallelization/)
     - NePS allows users to easily resume optimization runs after termination, providing a convenient and efficient workflow for long-running experiments.
 
-5. [**Seamless User Code Integration:**](neps_examples/template/) 
+5. [**Seamless User Code Integration:**](neps_examples/template/)
     - NePS's modular design ensures flexibility and extensibility. Integrate NePS effortlessly into existing machine learning workflows.
 
 ## Getting Started
@@ -108,9 +108,26 @@ if __name__ == "__main__":
     )
 ```
 
+## Examples
+
+Discover how NePS works through these practical examples:
+
+* **Hyperparameter Optimization (HPO)**: Learn the essentials of hyperparameter optimization with NePS. [View Example](neps_examples/basic_usage/hyperparameters.py)
+
+* **Defining Search Space with YAML**: Explore how to define the search space for your neural network models using a YAML file. [View Example](neps_examples/basic_usage/defining_search_space)
+
+* **Architecture Search with Primitives**: Dive into architecture search using primitives in NePS. [View Example](neps_examples/basic_usage/architecture.py)
+
+* **Multi-Fidelity Optimization**: Understand how to leverage multi-fidelity optimization for efficient model tuning. [View Example](neps_examples/efficiency/multi_fidelity.py)
+
+* **Utilizing Expert Priors for Hyperparameters**: Learn how to incorporate expert priors for more efficient hyperparameter selection. [View Example](neps_examples/efficiency/expert_priors_for_hyperparameters.py)
+
+* **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
+
+
 ## Documentation
 
-For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/) and [examples](neps_examples)
+For more details and features please have a look at our [documentation](https://automl.github.io/neps/latest/)
 
 ## Analysing runs
 
