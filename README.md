@@ -25,10 +25,10 @@ In addition to the common features offered by traditional HPO and NAS libraries,
     - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
         - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
 
-3. [**Easy Parallelization:**](https://automl.github.io/neps/latest/parallelization/)
+3. [**Easy Parallelization:**](docs/parallelization.md)
     - NePS simplifies the parallelization of optimization tasks. Whether experiments are running on a single machine or a distributed computing environment.
 
-4. [**Resume Runs After Termination:**](https://automl.github.io/neps/latest/parallelization/)
+4. [**Resume Runs After Termination:**](docs/parallelization.md)
     - NePS allows users to easily resume optimization runs after termination, providing a convenient and efficient workflow for long-running experiments.
 
 5. [**Seamless User Code Integration:**](neps_examples/template/)
