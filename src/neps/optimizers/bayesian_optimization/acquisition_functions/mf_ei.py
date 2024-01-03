@@ -15,7 +15,7 @@ from .ei import ComprehensiveExpectedImprovement
 
 class MFStepBase(BaseAcquisition):
     """A class holding common operations that can be inherited.
-    
+
     WARNING: Unsafe use of self attributes, can break if not used correctly.
     """
     def set_state(
@@ -36,7 +36,7 @@ class MFStepBase(BaseAcquisition):
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
-    
+
     def preprocess_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         x, inc_list = self.preprocess(x)
         return x, inc_list
@@ -53,7 +53,7 @@ class MFStepBase(BaseAcquisition):
             else:
                 # initialize a learning curve with a placeholder
                 # This is later padded accordingly for the Conv1D layer
-                lc = [0.0]
+                lc = []
             x_lcs.append(lc)
         self.surrogate_model.set_prediction_learning_curves(x_lcs)
         return x, inc_list
@@ -95,7 +95,7 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
         self.surrogate_model = None
         self.observations = None
         self.b_step = None
-    
+
     def preprocess_inc_list(self, **kwargs) -> list:
         assert "budget_list" in kwargs, "Requires a list of query step for candidate set."
         budget_list = kwargs["budget_list"]
@@ -148,19 +148,21 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
         return x, torch.Tensor(inc_list)
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
+        # deepcopy
+        _x = pd.Series([x.loc[idx].copy() for idx in x.index.values], index=x.index)
         if self.surrogate_model_name == "pfn":
             _x, _x_tok, inc_list = self.preprocess_pfn(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_pfn_ei(_x_tok, inc_list)
-        elif self.surrogate_model_name == "deep_gp":
+        elif self.surrogate_model_name in ["deep_gp", "dpl"]:
             _x, inc_list = self.preprocess_deep_gp(
-                x.copy()
+                _x
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
         elif self.surrogate_model_name == "gp":
             _x, inc_list = self.preprocess_gp(
-                x.copy()
+                _x
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
         else:
@@ -234,7 +236,7 @@ class MFEI_AtMax(MFEI):
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point.
-        Unlike the base class MFEI, sets the target fidelity to be max budget and the 
+        Unlike the base class MFEI, sets the target fidelity to be max budget and the
         incumbent choice to be the max seen across history for all candidates.
         """
         budget_list = []
@@ -269,7 +271,7 @@ class MFEI_Dyna(MFEI_AtMax):
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point.
-        Unlike the base class MFEI, sets the target fidelity to be max budget and the 
+        Unlike the base class MFEI, sets the target fidelity to be max budget and the
         incumbent choice to be the max seen across history for all candidates.
         """
         budget_list = []

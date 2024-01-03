@@ -79,7 +79,7 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
         if surrogate_name == "gp":
             x, inc_list = self.preprocess(x)
             return x, inc_list
-        elif surrogate_name == "deep_gp":
+        elif surrogate_name in ["deep_gp", "dpl"]:
             x, inc_list = self.preprocess(x)
             x_lcs = []
             for idx in x.index:
@@ -89,7 +89,7 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
                 else:
                     # initialize a learning curve with a placeholder
                     # This is later padded accordingly for the Conv1D layer
-                    lc = [0.0]
+                    lc = []
                 x_lcs.append(lc)
             self.surrogate_model.set_prediction_learning_curves(x_lcs)
             return x, inc_list
@@ -109,7 +109,7 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
         if len(ucb.shape) == 2:
             ucb = ucb.flatten()
         return ucb
-    
+
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         if self.surrogate_model_name == "pfn":
             _x, _x_tok, _ = self.preprocess_pfn(
@@ -136,7 +136,7 @@ class MF_UCB_AtMax(MF_UCB):
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point.
-        Unlike the base class MFEI, sets the target fidelity to be max budget and the 
+        Unlike the base class MFEI, sets the target fidelity to be max budget and the
         incumbent choice to be the max seen across history for all candidates.
         """
         budget_list = []
@@ -172,7 +172,7 @@ class MF_UCB_Dyna(MF_UCB):
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point.
-        Unlike the base class MFEI, sets the target fidelity to be max budget and the 
+        Unlike the base class MFEI, sets the target fidelity to be max budget and the
         incumbent choice to be the max seen across history for all candidates.
         """
         if self.pipeline_space.has_tabular:
@@ -200,7 +200,7 @@ class MF_UCB_Dyna(MF_UCB):
             )
             config.fidelity.value = z_extrapolate
             return config
-        
+
         # collect IDs for partial configurations
         _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
         # filter for configurations that reached max budget

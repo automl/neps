@@ -126,7 +126,7 @@ class MFEIBO(BaseOptimizer):
         self._prep_model_args(self.hp_kernels, self.graph_kernels, pipeline_space)
 
         # TODO: Better solution than branching based on the surrogate name is needed
-        if surrogate_model in ["deep_gp", "gp"]:
+        if surrogate_model in ["deep_gp", "gp", "dpl"]:
             model_policy = FreezeThawModel
         elif surrogate_model == "pfn":
             model_policy = PFNSurrogate
