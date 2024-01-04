@@ -268,6 +268,18 @@ class FreezeThawModel:
         self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
+        if self.surrogate_model_name == "dpl":
+            self.surrogate_model_args.update(
+                {"pipeline_space": self.pipeline_space,
+                 "observed_data": self.observed_configs}
+            )
+            self.surrogate_model = instance_from_map(
+                SurrogateModelMapping,
+                self.surrogate_model_name,
+                name="surrogate model",
+                kwargs=self.surrogate_model_args,
+            )
+
         # only to handle tabular spaces
         if self.pipeline_space.has_tabular:
             if self.surrogate_model_name in ["deep_gp", "pfn"]:
@@ -276,8 +288,8 @@ class FreezeThawModel:
                 )
             elif self.surrogate_model_name == "dpl":
                 self.surrogate_model_args.update(
-                    {"pipeline_space": self.pipeline_space.raw_tabular_space,
-                     "observed_data": self.observed_configs}
+                    {"pipeline_space": self.pipeline_space,
+                    "observed_data": self.observed_configs}
                 )
             # instantiate the surrogate model, again, with the new pipeline space
             self.surrogate_model = instance_from_map(

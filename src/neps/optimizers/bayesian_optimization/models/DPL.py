@@ -234,10 +234,16 @@ class PowerLawSurrogate:
         model_configs: list[dict[str, Any]] | None = None,
         refine_batch_size: int | None = None
     ):
-        self.pipeline_space = pipeline_space.copy()
+        if pipeline_space.has_tabular:
+            self.cover_pipeline_space = pipeline_space
+            self.real_pipeline_space = pipeline_space.raw_tabular_space
+        else:
+            self.cover_pipeline_space = pipeline_space
+            self.real_pipeline_space = pipeline_space
+        # self.pipeline_space = pipeline_space
+        
         self.observed_data = observed_data
-        self.__preprocess_search_space(self.pipeline_space)
-
+        self.__preprocess_search_space(self.real_pipeline_space)
         self.seeds = list(range(n_models))
         self.model_configs = [dict(
             nr_initial_features=self.input_size, **default_model_config)] * n_models if not model_configs else model_configs
@@ -766,7 +772,7 @@ class PowerLawSurrogate:
         new_config_df = self.observed_data.df.loc[existing_index_map, :].copy(deep=True)
 
         new_configs, new_lcs, new_y = self.observed_data.get_training_data_4DyHPO(
-            new_config_df, self.pipeline_space)
+            new_config_df, self.cover_pipeline_space)
 
         return new_configs, new_lcs, new_y
 
