@@ -241,10 +241,10 @@ class PowerLawSurrogate:
             self.cover_pipeline_space = pipeline_space
             self.real_pipeline_space = pipeline_space
         # self.pipeline_space = pipeline_space
-        
+
         self.observed_data = observed_data
         self.__preprocess_search_space(self.real_pipeline_space)
-        self.seeds = list(range(n_models))
+        self.seeds = np.random.choice(100, n_models, replace=False)
         self.model_configs = [dict(
             nr_initial_features=self.input_size, **default_model_config)] * n_models if not model_configs else model_configs
         self.model_classes = [MODEL_MAPPING[default_model_class]] * n_models \
@@ -545,10 +545,9 @@ class PowerLawSurrogate:
                        weight_new_point: bool,
                        optimizer_args: dict[str, Any]):
 
-        # Seeds conflict with neps sampling randomization
-        # seed = self.seeds[model_index]
-        # torch.manual_seed(seed)
-        # np.random.seed(seed)
+        seed = self.seeds[model_index]
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
         model = self.models[model_index]
 
@@ -660,14 +659,13 @@ class PowerLawSurrogate:
         if learning_curves is None:
             learning_curves = self.prediction_learning_curves
 
-        x_test, prediction_budgets, learning_curves = self._preprocess_input(
-            x, learning_curves, self.normalize_budget, self.use_min_budget, self.padding_type
-        )
-
         if real_budgets is None:
             # Get the list of budgets the configs are evaluated for
             real_budgets = [len(lc) + 1 for lc in learning_curves]
 
+        x_test, prediction_budgets, learning_curves = self._preprocess_input(
+            x, learning_curves, self.normalize_budget, self.use_min_budget, self.padding_type
+        )
         # preprocess the list of budgets the configs are evaluated for
         real_budgets = np.array(real_budgets, dtype=np.single)
         real_budgets = self.__normalize_budgets(real_budgets,

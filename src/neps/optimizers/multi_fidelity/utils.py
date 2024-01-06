@@ -8,6 +8,8 @@ import pandas as pd
 import time
 import torch
 
+from copy import deepcopy
+
 from ...optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ...search_spaces.search_space import SearchSpace
 
@@ -56,6 +58,7 @@ class MFObservedData:
     default_config_col = "config"
     default_perf_col = "perf"
     default_lc_col = "learning_curves"
+    # TODO: deepcopy all the mutable outputs from the dataframe
 
     def __init__(
         self,
@@ -271,7 +274,7 @@ class MFObservedData:
         else:
             lcs = self.get_learning_curves()
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
-        return lc
+        return deepcopy(lc)
 
     def get_training_data_4DyHPO(
         self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
