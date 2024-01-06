@@ -189,17 +189,17 @@ class PowerLawSurrogate:
     # fit params
     default_lr = 0.001
     default_batch_size = 64
-    default_nr_epochs = 1000
-    default_refine_epochs = 50
+    default_nr_epochs = 250
+    default_refine_epochs = 20
     default_early_stopping = False
     default_early_stopping_patience = 10
 
     # init params
     default_n_initial_full_trainings = 10
     default_n_models = 5
-    default_model_config = dict(nr_units=200,
-                                nr_layers=3,
-                                use_learning_curve=True,
+    default_model_config = dict(nr_units=128,
+                                nr_layers=2,
+                                use_learning_curve=False,
                                 kernel_size=3,
                                 nr_filters=4,
                                 nr_cnn_layers=2)
@@ -367,8 +367,10 @@ class PowerLawSurrogate:
         for lc in learning_curves:
             if len(lc) == 0:
                 padding_value = init_value
-            else:
+            elif padding_type == "last":
                 padding_value = lc[-1]
+            else:
+                padding_value = 0.0
 
             padding_length = int(max_length - len(lc))
 
