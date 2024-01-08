@@ -8,6 +8,17 @@ theme:
   name: material
   icon:
     repo: fontawesome/brands/github
+  palette: 
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -16,6 +27,9 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.superfences
   - attr_list
+  - admonition
+  - attr_list
+  - md_in_html
 
 extra:
   version:
@@ -31,6 +45,7 @@ nav:
   - Parallelization: 'parallelization.md'
   - Citations: 'citations.md'
   - Alternatives: 'alternatives.md'
+  - Citations: 'citations.md'
   - Contributing:
       - Introduction: "contributing/README.md"
       - Installation for Contributors: "contributing/installation.md"
