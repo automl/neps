@@ -10,6 +10,7 @@ import time
 
 from metahyper import ConfigResult, instance_from_map
 
+from ...utils.common import EvaluationData, SimpleCSVWriter
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from ..base_optimizer import BaseOptimizer
 from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
@@ -23,6 +24,14 @@ from .mf_bo import FreezeThawModel, PFNSurrogate
 
 # MFEIDeepModel, MFEIModel
 from .utils import MFObservedData
+
+class AcqWriter(SimpleCSVWriter):
+    def set_data(self, sample_configs: pd.Series, acq_vals: pd.Series):
+        config_vals = pd.DataFrame([config.hp_values() for config in sample_configs], index=sample_configs.index)
+        if isinstance(acq_vals, pd.Series):
+            acq_vals.name = "Acq Value"
+        self.df = config_vals.join(acq_vals)
+        self.df = self.df.sort_values(by="Acq Value")
 
 
 class MFEIBO(BaseOptimizer):
@@ -165,6 +174,8 @@ class MFEIBO(BaseOptimizer):
             kwargs=self.acquisition_sampler_args,
         )
         self.count = 0
+
+        self.evaluation_data = EvaluationData()
 
     def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
@@ -465,6 +476,15 @@ class MFEIBO(BaseOptimizer):
             # in `_samples`, configs are removed that have reached maximum epochs allowed
             # NOTE: `samples` and `_samples` should share the same index values, hence,
             # avoid using `.iloc` and work with `.loc` on these pandas DataFrame/Series
+
+            acq_writer = AcqWriter("Acq_values")
+            if hasattr(self.acquisition, "mu"):
+                acq = pd.DataFrame({"Acq Value": acq.values,
+                                    "preds": self.acquisition.mu,
+                                    "incumbents": self.acquisition.mu_star,
+                                    "std": self.acquisition.std}, index=_samples.index)
+            acq_writer.set_data(_samples, acq)
+            self.evaluation_data.data_dict["acq"] = acq_writer
 
             # assigning config hyperparameters
             config = samples.loc[_config_id]

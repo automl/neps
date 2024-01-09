@@ -365,6 +365,10 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
     pipeline_directory = base_result_directory / f"config_{config_id}"
     pipeline_directory.mkdir(exist_ok=True)
 
+    # write some extra data per configuration if the optimizer has any
+    if hasattr(sampler, "evaluation_data"):
+        sampler.evaluation_data.write_all(pipeline_directory)
+
     if previous_config_id is not None:
         previous_config_id_file = pipeline_directory / "previous_config.id"
         previous_config_id_file.write_text(previous_config_id)  # TODO: Get rid of this

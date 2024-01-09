@@ -1,4 +1,5 @@
 # type: ignore
+from pathlib import Path
 from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
@@ -6,11 +7,14 @@ import pandas as pd
 import torch
 from torch.distributions import Normal
 
+from copy import deepcopy
+
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ....search_spaces.search_space import IntegerParameter, SearchSpace
 from ...multi_fidelity.utils import MFObservedData
 from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
+from ....utils.common import SimpleCSVWriter
 
 
 class MFStepBase(BaseAcquisition):
@@ -215,11 +219,18 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
             ucdf = gauss.cdf(u)
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf
+            # Clip ei if std == 0.0
+            ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
         if self.augmented_ei:
             sigma_n = self.surrogate_model.likelihood
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
                 sigma_n + torch.diag(cov)
             )
+
+        # Save data for writing
+        self.mu_star = mu_star.detach().numpy().tolist()
+        self.mu = mu.detach().numpy().tolist()
+        self.std = std.detach().numpy().tolist()
         return ei
 
 
