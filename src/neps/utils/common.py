@@ -314,7 +314,7 @@ class SimpleCSVWriter(DataWriter):
     def write_data(self, to_directory: Path):
         # self.df: pd.DataFrame = pd.DataFrame()
         path = to_directory / str(self.name + ".csv")
-        self.df.to_csv(path)
+        self.df.to_csv(path, float_format="%g")
 
 
 class SimpleJSONWriter(DataWriter):
