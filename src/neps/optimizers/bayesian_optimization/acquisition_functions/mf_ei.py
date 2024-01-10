@@ -220,7 +220,7 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf
             # Clip ei if std == 0.0
-            ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
+            # ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
         if self.augmented_ei:
             sigma_n = self.surrogate_model.likelihood
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
