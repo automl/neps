@@ -205,7 +205,7 @@ class PowerLawSurrogate:
                                 nr_cnn_layers=2)
 
     # fit+predict params
-    default_padding_type = "last"
+    default_padding_type = "zero"
     default_budget_normalize = True
     default_use_min_budget = False
     default_y_normalize = False
@@ -547,9 +547,11 @@ class PowerLawSurrogate:
                        weight_new_point: bool,
                        optimizer_args: dict[str, Any]):
 
-        seed = self.seeds[model_index]
-        torch.manual_seed(seed)
-        np.random.seed(seed)
+        # Setting seeds will interfere with SearchSpace random sampling
+        if self.cover_pipeline_space.has_tabular:
+            seed = self.seeds[model_index]
+            torch.manual_seed(seed)
+            np.random.seed(seed)
 
         model = self.models[model_index]
 
