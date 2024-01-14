@@ -279,6 +279,10 @@ class MFEI_AtMax(MFEI):
 
 
 class MFEI_Dyna(MFEI_AtMax):
+    """
+    Computes extrapolation length of curves to maximum fidelity seen.
+    Uses the global incumbent as the best score in EI computation.
+    """
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.

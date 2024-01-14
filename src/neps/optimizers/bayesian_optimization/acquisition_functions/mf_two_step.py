@@ -13,7 +13,7 @@ class MF_TwoStep(BaseAcquisition):
     """ 2-step acquisition: employs 3 different acquisition calls.
     """
 
-    # HYPER-PARAMETERS: Going with the Freeze-Thaw BO values
+    # HYPER-PARAMETERS: Going with the Freeze-Thaw BO (Swersky et al. 2014) values
     N_PARTIAL = 10
     N_NEW = 3
 
