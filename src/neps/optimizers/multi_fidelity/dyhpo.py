@@ -25,6 +25,7 @@ from .mf_bo import FreezeThawModel, PFNSurrogate
 # MFEIDeepModel, MFEIModel
 from .utils import MFObservedData
 
+
 class AcqWriter(SimpleCSVWriter):
     def set_data(self, sample_configs: pd.Series, acq_vals: pd.Series):
         config_vals = pd.DataFrame([config.hp_values() for config in sample_configs], index=sample_configs.index)

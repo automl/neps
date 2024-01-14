@@ -45,7 +45,7 @@ class MF_TwoStep(BaseAcquisition):
             log_ei=log_ei
         )        
         # Acquisition 2: For trimming down new candidate set
-        self.acq_new_filter = MFEI_Dyna(
+        self.acq_new_filter = MFEI(
             pipeline_space=pipeline_space,
             surrogate_model_name=surrogate_model_name,
             augmented_ei=augmented_ei,
@@ -53,7 +53,7 @@ class MF_TwoStep(BaseAcquisition):
             in_fill=in_fill,
             log_ei=log_ei
         )
-        # Acquisition 3: For final selection of winners from # Acquisition 1 & 2
+        # Acquisition 3: For final selection of winners from Acquisitions 1 & 2
         self.acq_combined = MF_UCB_Dyna(
             pipeline_space=pipeline_space,
             surrogate_model_name=surrogate_model_name,
@@ -173,7 +173,9 @@ class MF_TwoStep(BaseAcquisition):
 
         # normalize the scores based on relative best seen performance per config
         _inc, _max = inc_list_partial.min(), inc_list_partial.max()
-        inc_list_partial = (inc_list_partial - _inc) / (_max - _inc) if _inc < _max else inc_list_partial
+        inc_list_partial = (
+            (inc_list_partial - _inc) / (_max - _inc) if _inc < _max else inc_list_partial
+        )
 
         # calculate weights per candidate
         weights = pd.Series(1 - inc_list_partial, index=inc_list_partial.index)

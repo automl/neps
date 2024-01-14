@@ -220,7 +220,7 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf
             # Clip ei if std == 0.0
-            ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
+            # ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
         if self.augmented_ei:
             sigma_n = self.surrogate_model.likelihood
             ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
@@ -239,7 +239,9 @@ class MFEI_AtMax(MFEI):
     def preprocess_inc_list(self, **kwargs) -> list:
         assert "len_x" in kwargs, "Requires the length of the candidate set."
         len_x = kwargs["len_x"]
+        # finds global incumbent
         inc_value = min(self.observations.get_best_performance_for_each_budget())
+        # uses the best seen value as the incumbent in EI computation for all candidates
         inc_list = [inc_value] * len_x
         return inc_list
 
@@ -285,30 +287,38 @@ class MFEI_Dyna(MFEI_AtMax):
         Unlike the base class MFEI, sets the target fidelity to be max budget and the
         incumbent choice to be the max seen across history for all candidates.
         """
-        budget_list = []
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
             # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
 
-        # find the maximum observed steps per config to obtain the running pseudo_z_max
+        # find the maximum observed steps per config to obtain the current pseudo_z_max
         max_z_level_per_x = self.observations.get_max_observed_fidelity_level_per_config()
-        pseudo_z_level_max = max_z_level_per_x.max()
+        pseudo_z_level_max = max_z_level_per_x.max()  # highest seen fidelity step so far
         # find the fidelity step at which the best seen performance was recorded
         z_inc_level = self.observations.get_budget_level_for_best_performance()
         # retrieving actual fidelity values from budget level
-        ## marker 1
+        ## marker 1: the fidelity value at which the best seen performance was recorded
         z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
-        ## marker 2
+        ## marker 2: the maximum fidelity value recorded in observation history
         pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
 
+        # TODO: compare with this first draft logic
+        # def update_fidelity(config):
+        #     ### DO NOT DELETE THIS FUNCTION YET
+        #     # for all configs, set the min(max(current fidelity + step, z_inc), pseudo_z_max)
+        #     ## that is, choose the next highest marker from 1 and 2
+        #     z_extrapolate = min(
+        #         max(config.fidelity.value + self.b_step, z_inc),
+        #         pseudo_z_max
+        #     )
+        #     config.fidelity.value = z_extrapolate
+        #     return config
+
         def update_fidelity(config):
-            # for all configs, set the min(max(current fidelity + step, z_inc), pseudo_z_max)
-            ## that is, choose the next highest marker from 1 and 2
-            z_extrapolate = min(
-                max(config.fidelity.value + self.b_step, z_inc),
-                pseudo_z_max
-            )
+            # for all configs, set to pseudo_z_max
+            ## that is, choose the highest seen fidelity in observation history
+            z_extrapolate = pseudo_z_max
             config.fidelity.value = z_extrapolate
             return config
 

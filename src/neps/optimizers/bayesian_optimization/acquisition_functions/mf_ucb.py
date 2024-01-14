@@ -180,24 +180,33 @@ class MF_UCB_Dyna(MF_UCB):
             # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
 
-        # find the maximum observed steps per config to obtain the running pseudo_z_max
+        # find the maximum observed steps per config to obtain the current pseudo_z_max
         max_z_level_per_x = self.observations.get_max_observed_fidelity_level_per_config()
-        pseudo_z_level_max = max_z_level_per_x.max()
+        pseudo_z_level_max = max_z_level_per_x.max()  # highest seen fidelity step so far
         # find the fidelity step at which the best seen performance was recorded
         z_inc_level = self.observations.get_budget_level_for_best_performance()
         # retrieving actual fidelity values from budget level
-        ## marker 1
+        ## marker 1: the fidelity value at which the best seen performance was recorded
         z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
-        ## marker 2
+        ## marker 2: the maximum fidelity value recorded in observation history
         pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
 
+        # TODO: compare with this first draft logic
+        # def update_fidelity(config):
+        #     ### DO NOT DELETE THIS FUNCTION YET
+        #     # for all configs, set the min(max(current fidelity + step, z_inc), pseudo_z_max)
+        #     ## that is, choose the next highest marker from 1 and 2
+        #     z_extrapolate = min(
+        #         max(config.fidelity.value + self.b_step, z_inc),
+        #         pseudo_z_max
+        #     )
+        #     config.fidelity.value = z_extrapolate
+        #     return config
+
         def update_fidelity(config):
-            # for all configs, set the min(max(current fidelity + step, z_inc), pseudo_z_max)
-            ## that is, choose the next highest marker from 1 and 2
-            z_extrapolate = min(
-                max(config.fidelity.value + self.b_step, z_inc),
-                pseudo_z_max
-            )
+            # for all configs, set to pseudo_z_max
+            ## that is, choose the highest seen fidelity in observation history
+            z_extrapolate = pseudo_z_max
             config.fidelity.value = z_extrapolate
             return config
 
