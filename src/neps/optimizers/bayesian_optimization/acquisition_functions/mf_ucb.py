@@ -116,7 +116,7 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
                 x.copy()
             )
             ucb = self.eval_pfn_ucb(_x_tok)
-        elif self.surrogate_model_name in ["deep_gp", "gp"]:
+        elif self.surrogate_model_name in ["deep_gp", "gp", "dpl"]:
             _x, betas = self.preprocess_gp(
                 x.copy(),
                 self.surrogate_model_name
