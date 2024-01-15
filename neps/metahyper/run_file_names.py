@@ -39,7 +39,7 @@ class Filenamings:
 
     config_directory_tblogger = "tbevents"
     config_file_locker = ".config_lock"
-    config_file_config_details = "config"
-    config_file_metadata_details = "metadata"
-    config_file_result_details = "result"
+    config_file_config_details = "config.yaml"
+    config_file_metadata_details = "metadata.yaml"
+    config_file_result_details = "result.yaml"
     config_file_id_previous_config = "previous_config.id"
