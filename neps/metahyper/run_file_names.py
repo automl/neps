@@ -14,12 +14,12 @@ class Filenamings:
     associated file or directory.
 
     General:
-    - location_type_purpose
+    - LOCATION_TYPE_PURPOSE
 
     Example:
-    - root_directory_results (str): Represents the name of the result directory
+    - ROOT_DIRECTORY_RESULTS (str): Represents the name of the result directory
         located in the root directory.
-    - root_file_locker (str): Represents the name of the locker file located in
+    - ROOT_FILE_LOCKER (str): Represents the name of the locker file located in
         the root directory.
     """
 

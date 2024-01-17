@@ -12,7 +12,7 @@ In our design, we have adopted a naming convention for variables, which includes
 
 As an illustration:
 
-- `root_directory_results` (str): Represents the name of the result directory located in the root directory.
-- `root_file_locker` (str): Represents the name of the locker file located in the root directory.
+- `ROOT_DIRECTORY_RESULTS` (str): Represents the name of the result directory located in the root directory.
+- `ROOT_FILE_LOCKER` (str): Represents the name of the locker file located in the root directory.
 
 This structured approach enhances the clarity of file naming and facilitates seamless updates for contributors across different sections of the codebase.
