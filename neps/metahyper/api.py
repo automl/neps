@@ -178,7 +178,7 @@ def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
             continue
         config_id = config_dir.name[len("config_") :]
         config_file = config_dir / f"{Filenamings.CONFIG_FILE_CONFIG_DETAILS}"
-        result_file = config_dir / f"{Filenamings.CONFIG_FILE_CONFIG_DETAILS}"
+        result_file = config_dir / f"{Filenamings.CONFIG_FILE_RESULT_DETAILS}"
 
         if non_empty_file(result_file):
             previous_paths[config_id] = (config_dir, config_file, result_file)
