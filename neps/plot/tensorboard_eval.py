@@ -104,7 +104,7 @@ class tblogger:
                 "/", maxsplit=1
             )[-1]
             tblogger.config_writer = SummaryWriter_(
-                tblogger.config_working_directory / Filenamings.config_directory_tblogger
+                tblogger.config_working_directory / Filenamings.CONFIG_DIRECTORY_TBLOGGER
             )
             return
         # Searching for the initial directory where tensorboard events are stored.
@@ -113,9 +113,9 @@ class tblogger:
                 pipeline_directory=tblogger.config_working_directory
             )
             tblogger.config_id = str(init_dir).rsplit("/", maxsplit=1)[-1]
-            if os.path.exists(init_dir / Filenamings.config_directory_tblogger):
+            if os.path.exists(init_dir / Filenamings.CONFIG_DIRECTORY_TBLOGGER):
                 tblogger.config_writer = SummaryWriter_(
-                    init_dir / Filenamings.config_directory_tblogger
+                    init_dir / Filenamings.CONFIG_DIRECTORY_TBLOGGER
                 )
                 return
             else:
@@ -416,7 +416,7 @@ class tblogger:
 
         if tblogger.summary_writer is None and tblogger.optim_path:
             tblogger.summary_writer = SummaryWriter_(
-                tblogger.optim_path / Filenamings.root_directory_summary_tblogger
+                tblogger.optim_path / Filenamings.ROOT_DIRECTORY_SUMMARY_TBLOGGER
             )
 
         tblogger.summary_writer.add_scalar(

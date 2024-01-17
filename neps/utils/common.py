@@ -11,6 +11,7 @@ import torch
 import yaml
 
 from ..metahyper.api import ConfigInRun
+from ..metahyper.run_file_names import Filenamings
 from ..optimizers.info import SearcherConfigs
 
 
@@ -173,7 +174,9 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
     while True:
         # Get the id of the previous directory
-        previous_pipeline_directory_id = pipeline_directory / "previous_config.id"
+        previous_pipeline_directory_id = (
+            pipeline_directory / Filenamings.CONFIG_FILE_ID_PREVIOUS_CONFIG
+        )
 
         # Get the directory where all configs are saved
         optim_result_dir = pipeline_directory.parent

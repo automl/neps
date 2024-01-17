@@ -169,7 +169,7 @@ def _process_sampler_info(
 
 def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
     optimization_dir = Path(optimization_dir)
-    base_result_directory = optimization_dir / Filenamings.root_directory_results
+    base_result_directory = optimization_dir / Filenamings.ROOT_DIRECTORY_RESULTS
     logger.debug(f"Loading results from {base_result_directory}")
 
     previous_paths, pending_paths = {}, {}
@@ -177,8 +177,8 @@ def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
         if not config_dir.is_dir():
             continue
         config_id = config_dir.name[len("config_") :]
-        config_file = config_dir / f"{Filenamings.config_file_config_details}"
-        result_file = config_dir / f"{Filenamings.config_file_result_details}"
+        config_file = config_dir / f"{Filenamings.CONFIG_FILE_CONFIG_DETAILS}"
+        result_file = config_dir / f"{Filenamings.CONFIG_FILE_CONFIG_DETAILS}"
 
         if non_empty_file(result_file):
             previous_paths[config_id] = (config_dir, config_file, result_file)
@@ -210,9 +210,9 @@ def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
 
 def _read_config_result(result_dir: Path | str, serializer: YamlSerializer):
     result_dir = Path(result_dir)
-    config = serializer.load_config(result_dir / Filenamings.config_file_config_details)
-    result = serializer.load(result_dir / Filenamings.config_file_result_details)
-    metadata = serializer.load(result_dir / Filenamings.config_file_metadata_details)
+    config = serializer.load_config(result_dir / Filenamings.CONFIG_FILE_CONFIG_DETAILS)
+    result = serializer.load(result_dir / Filenamings.CONFIG_FILE_RESULT_DETAILS)
+    metadata = serializer.load(result_dir / Filenamings.CONFIG_FILE_METADATA_DETAILS)
     return ConfigResult(config, result, metadata)
 
 
@@ -223,7 +223,7 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
         logger = logging.getLogger("metahyper")
 
     if do_lock:
-        decision_lock_file = optimization_dir / Filenamings.root_file_locker
+        decision_lock_file = optimization_dir / Filenamings.ROOT_FILE_LOCKER
         decision_lock_file.touch(exist_ok=True)
         decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
         while not decision_locker.acquire_lock():
@@ -243,7 +243,7 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
     for config_id, (config_dir, config_file) in pending_paths.items():
         pending_configs[config_id] = serializer.load_config(config_file)
 
-        config_lock_file = config_dir / Filenamings.config_file_locker
+        config_lock_file = config_dir / Filenamings.CONFIG_FILE_LOCKER
         config_locker = Locker(config_lock_file, logger.getChild("_locker"))
         if config_locker.acquire_lock():
             pending_configs_free[config_id] = pending_configs[config_id]
@@ -290,7 +290,7 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
         optimization_dir, serializer, logger, do_lock=False
     )
 
-    base_result_directory = optimization_dir / Filenamings.root_directory_results
+    base_result_directory = optimization_dir / Filenamings.ROOT_DIRECTORY_RESULTS
 
     logger.debug("Sampling a new configuration")
 
@@ -317,12 +317,12 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
 
     if previous_config_id is not None:
         previous_config_id_file = (
-            pipeline_directory / Filenamings.config_file_id_previous_config
+            pipeline_directory / Filenamings.CONFIG_FILE_ID_PREVIOUS_CONFIG
         )
         previous_config_id_file.write_text(previous_config_id)  # TODO: Get rid of this
         serializer.dump(
             {"time_sampled": time.time(), "previous_config_id": previous_config_id},
-            pipeline_directory / Filenamings.config_file_metadata_details,
+            pipeline_directory / Filenamings.CONFIG_FILE_METADATA_DETAILS,
         )
         previous_pipeline_directory = Path(
             base_result_directory, f"config_{previous_config_id}"
@@ -330,12 +330,12 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
     else:
         serializer.dump(
             {"time_sampled": time.time()},
-            pipeline_directory / Filenamings.config_file_metadata_details,
+            pipeline_directory / Filenamings.CONFIG_FILE_METADATA_DETAILS,
         )
         previous_pipeline_directory = None
 
     # We want this to be the last action in sampling to catch potential crashes
-    serializer.dump(config, pipeline_directory / Filenamings.config_file_config_details)
+    serializer.dump(config, pipeline_directory / Filenamings.CONFIG_FILE_CONFIG_DETAILS)
 
     logger.debug(f"Sampled config {config_id}")
     return (
@@ -448,12 +448,12 @@ def metahyper_run(
         logger.warning("Overwriting working_directory")
         shutil.rmtree(optimization_dir)
 
-    sampler_state_file = optimization_dir / Filenamings.root_file_optimizer_state
-    sampler_info_file = optimization_dir / Filenamings.root_file_optimizer_info
-    base_result_directory = optimization_dir / Filenamings.root_directory_results
+    sampler_state_file = optimization_dir / Filenamings.ROOT_FILE_OPTIMIZER_STATE
+    sampler_info_file = optimization_dir / Filenamings.ROOT_FILE_OPTIMIZER_INFO
+    base_result_directory = optimization_dir / Filenamings.ROOT_DIRECTORY_RESULTS
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
-    decision_lock_file = optimization_dir / Filenamings.root_file_locker
+    decision_lock_file = optimization_dir / Filenamings.ROOT_FILE_LOCKER
     decision_lock_file.touch(exist_ok=True)
     decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
 
@@ -505,7 +505,7 @@ def metahyper_run(
                         optimization_dir,
                     )
 
-                config_lock_file = pipeline_directory / Filenamings.config_file_locker
+                config_lock_file = pipeline_directory / Filenamings.CONFIG_FILE_LOCKER
                 config_lock_file.touch(exist_ok=True)
                 config_locker = Locker(config_lock_file, logger.getChild("_locker"))
                 config_lock_acquired = config_locker.acquire_lock()
@@ -527,7 +527,7 @@ def metahyper_run(
                     # 2. Then, we now dump all information to disk:
                     serializer.dump(
                         result,
-                        pipeline_directory / Filenamings.config_file_result_details,
+                        pipeline_directory / Filenamings.CONFIG_FILE_RESULT_DETAILS,
                     )
 
                     if result != "error":
@@ -555,12 +555,12 @@ def metahyper_run(
                             )
 
                     config_metadata = serializer.load(
-                        pipeline_directory / Filenamings.config_file_metadata_details
+                        pipeline_directory / Filenamings.CONFIG_FILE_METADATA_DETAILS
                     )
                     config_metadata.update(metadata)
                     serializer.dump(
                         config_metadata,
-                        pipeline_directory / Filenamings.config_file_metadata_details,
+                        pipeline_directory / Filenamings.CONFIG_FILE_METADATA_DETAILS,
                     )
 
                     # 3. Anything the user might want to do after the evaluation

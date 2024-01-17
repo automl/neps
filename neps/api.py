@@ -38,7 +38,7 @@ def _post_evaluation_hook_function(
 
         # 1. Write all configs and losses
         all_configs_losses = Path(
-            working_directory, Filenamings.root_file_all_losses_w_configs
+            working_directory, Filenamings.ROOT_FILE_ALL_LOSSES_W_CONFIG
         )
 
         def write_loss_and_config(file_handle, loss_, config_id_, config_):
@@ -62,10 +62,10 @@ def _post_evaluation_hook_function(
 
         # 2. Write best losses/configs
         best_loss_trajectory_file = Path(
-            working_directory, Filenamings.root_file_best_loss_traj
+            working_directory, Filenamings.ROOT_FILE_BEST_LOSS_TRAJ
         )
         best_loss_config_trajectory_file = Path(
-            working_directory, Filenamings.root_file_config_w_best_loss_traj
+            working_directory, Filenamings.ROOT_FILE_CONFIG_W_BEST_LOSS_TRAJ
         )
 
         if not best_loss_trajectory_file.exists():
