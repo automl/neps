@@ -328,9 +328,9 @@ class MFEIBO(BaseOptimizer):
         init_phase = self.is_init_phase()
         if not init_phase:
             self._fit_models()
-        print("-" * 50)
-        print(f"| Total time for `load_results()`: {time.time()-start:.2f}s")
-        print("-" * 50)
+        # print("-" * 50)
+        # print(f"| Total time for `load_results()`: {time.time()-start:.2f}s")
+        # print("-" * 50)
 
     @classmethod
     def _get_config_id_split(cls, config_id: str) -> tuple[str, str]:
@@ -453,9 +453,9 @@ class MFEIBO(BaseOptimizer):
             samples = self.acquisition_sampler.sample(
                 set_new_sample_fidelity=self.pipeline_space.fidelity.lower
             )  # fidelity values here should be the observations or min. fidelity
-            print("-" * 50)
-            print(f"| Total time for acq. sampling: {time.time()-start:.2f}s")
-            print("-" * 50)
+            # print("-" * 50)
+            # print(f"| Total time for acq. sampling: {time.time()-start:.2f}s")
+            # print("-" * 50)
 
             start = time.time()
             # calculating acquisition function values for the candidate samples
@@ -464,9 +464,9 @@ class MFEIBO(BaseOptimizer):
             )
             acq = pd.Series(acq, index=_samples.index)
 
-            print("-" * 50)
-            print(f"| Total time for acq. eval: {time.time()-start:.2f}s")
-            print("-" * 50)
+            # print("-" * 50)
+            # print(f"| Total time for acq. eval: {time.time()-start:.2f}s")
+            # print("-" * 50)
             # maximizing acquisition function
             best_idx = acq.sort_values().index[-1]
             # extracting the config ID for the selected maximizer

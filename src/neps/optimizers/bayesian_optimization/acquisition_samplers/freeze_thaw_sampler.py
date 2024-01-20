@@ -109,9 +109,9 @@ class FreezeThawSampler(AcquisitionSampler):
         """Samples a new set and returns the total set of observed + new configs."""
         start = time.time()
         partial_configs = self.observations.get_partial_configs_at_max_seen()
-        print("-" * 50)
-        print(f"| freeze-thaw:get_partial_at_max_seen(): {time.time()-start:.2f}s")
-        print("-" * 50)
+        # print("-" * 50)
+        # print(f"| freeze-thaw:get_partial_at_max_seen(): {time.time()-start:.2f}s")
+        # print("-" * 50)
 
         _n = n if n is not None else self.SAMPLES_TO_DRAW
         if self.is_tabular:
@@ -135,9 +135,9 @@ class FreezeThawSampler(AcquisitionSampler):
             for _i, val in enumerate(_new_configs):
                 _configs[_i]["id"].value = val
 
-            print("-" * 50)
-            print(f"| freeze-thaw:sample:new_configs_extraction: {time.time()-start:.2f}s")
-            print("-" * 50)
+            # print("-" * 50)
+            # print(f"| freeze-thaw:sample:new_configs_extraction: {time.time()-start:.2f}s")
+            # print("-" * 50)
             new_configs = pd.Series(
                 _configs,
                 index=np.arange(
@@ -153,7 +153,7 @@ class FreezeThawSampler(AcquisitionSampler):
             # because in contrast to tabular benchmarks
             # they are not reset in every sampling step
             partial_configs = pd.Series(
-                [deepcopy(p_config_) for idx, p_config_ in partial_configs.items()], 
+                [deepcopy(p_config_) for idx, p_config_ in partial_configs.items()],
                 index=partial_configs.index
             )
 
@@ -162,15 +162,15 @@ class FreezeThawSampler(AcquisitionSampler):
         if set_new_sample_fidelity is not None:
             for config in new_configs:
                 config.fidelity.value = set_new_sample_fidelity
-        print("-" * 50)
-        print(f"| freeze-thaw:sample:new_configs_set_fidelity: {time.time()-start:.2f}s")
-        print("-" * 50)
+        # print("-" * 50)
+        # print(f"| freeze-thaw:sample:new_configs_set_fidelity: {time.time()-start:.2f}s")
+        # print("-" * 50)
 
         start = time.time()
         configs = pd.concat([deepcopy(partial_configs), new_configs])
-        print("-" * 50)
-        print(f"| freeze-thaw:sample:concat_configs: {time.time()-start:.2f}s")
-        print("-" * 50)
+        # print("-" * 50)
+        # print(f"| freeze-thaw:sample:concat_configs: {time.time()-start:.2f}s")
+        # print("-" * 50)
 
         return configs
 

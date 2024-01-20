@@ -294,9 +294,9 @@ class MFObservedData:
                 configs.append(row[self.config_col])
             performance.append(row[self.perf_col])
             learning_curves.append(self.extract_learning_curve(config_id, budget_id))
-        print("-" * 50)
-        print(f"| Time for `get_training_data_4DyHPO()`: {time.time()-start:.2f}s")
-        print("-" * 50)
+        # print("-" * 50)
+        # print(f"| Time for `get_training_data_4DyHPO()`: {time.time()-start:.2f}s")
+        # print("-" * 50)
         return configs, learning_curves, performance
 
     def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
