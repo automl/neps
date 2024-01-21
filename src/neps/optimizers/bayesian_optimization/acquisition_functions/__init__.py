@@ -4,7 +4,7 @@ from functools import partial
 from typing import Callable
 
 from .ei import ComprehensiveExpectedImprovement
-from .mf_ei import MFEI, MFEI_AtMax, MFEI_Dyna
+from .mf_ei import MFEI, MFEI_AtMax, MFEI_Dyna, MFEI_Random
 from .ucb import UpperConfidenceBound
 from .mf_ucb import MF_UCB, MF_UCB_AtMax, MF_UCB_Dyna
 from .mf_two_step import MF_TwoStep
@@ -41,6 +41,11 @@ AcquisitionMapping: dict[str, Callable] = {
     ),
     "MFEI-dyna": partial(
         MFEI_Dyna,
+        in_fill="best",
+        augmented_ei=False,
+    ),
+    "MFEI-random": partial(
+        MFEI_Random,
         in_fill="best",
         augmented_ei=False,
     ),

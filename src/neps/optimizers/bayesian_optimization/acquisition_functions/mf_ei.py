@@ -344,3 +344,86 @@ class MFEI_Dyna(MFEI_AtMax):
         inc_list = self.preprocess_inc_list(len_x=len(x.index.values))
 
         return x, torch.Tensor(inc_list)
+
+
+class MFEI_Random(MFEI):
+
+    BUDGET = 1000
+
+    def set_state(
+        self,
+        pipeline_space: SearchSpace,
+        surrogate_model: Any,
+        observations: MFObservedData,
+        b_step: Union[int, float],
+        **kwargs,
+    ):
+        # set RNG
+        self.rng = np.random.RandomState(seed=42)
+        for i in range(len(observations.completed_runs)):
+            self.rng.uniform(-4,0)
+            self.rng.randint(1,51)
+            
+        return super().set_state(pipeline_space, surrogate_model, observations, b_step)
+
+    def sample_horizon(self, steps_passed):
+        shortest = self.pipeline_space.fidelity.lower
+        longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
+        return self.rng.randint(shortest, longest+1)
+
+    def sample_threshold(self, f_inc):
+        lu = 10**self.rng.uniform(-4,0) # % of gap closed
+        return f_inc * (1 - lu)
+
+    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+        """Prepares the configurations for appropriate EI calculation.
+
+        Takes a set of points and computes the budget and incumbent for each point, as
+        required by the multi-fidelity Expected Improvement acquisition function.
+        """
+        if self.pipeline_space.has_tabular:
+            # preprocess tabular space differently
+            # expected input: IDs pertaining to the tabular data
+            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
+
+
+        indices_to_drop = []
+        inc_list = []
+
+        steps_passed = len(self.observations.completed_runs)
+        print(f"Steps acquired: {steps_passed}")
+
+        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold 
+        inc_value = min(self.observations.get_best_performance_for_each_budget())
+        # Extension: Add a random min improvement threshold to encourage high risk high gain
+        inc_value = self.sample_threshold(inc_value)
+        print(f"Threshold for EI: {inc_value}")
+
+        # Like MFEI: set fidelities to query using horizon as self.b_step
+        # Extension: Unlike DyHPO, we sample the horizon randomly over the full range
+        horizon = self.sample_horizon(steps_passed)
+        print(f"Horizon for EI: {horizon}")
+        for i, config in x.items():
+            if i <= max(self.observations.seen_config_ids):
+                current_fidelity = config.fidelity.value
+                if np.equal(config.fidelity.value, config.fidelity.upper):
+                    # this training run has ended, drop it from future selection
+                    indices_to_drop.append(i)
+                else:
+                    # a candidate partial training run to continue
+                    target_fidelity = config.fidelity.value + horizon
+                    config.fidelity.value = min(config.fidelity.value + horizon, config.fidelity.upper) # if horizon exceeds max, query at max
+                    inc_list.append(inc_value)
+            else:
+                # a candidate new training run that we would need to start
+                current_fidelity = 0
+                config.fidelity.value = horizon
+                inc_list.append(inc_value)
+            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
+        
+        # Drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
+        assert len(inc_list) == len(x)
+
+        return x, torch.Tensor(inc_list)
