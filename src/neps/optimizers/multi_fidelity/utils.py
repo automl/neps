@@ -260,8 +260,9 @@ class MFObservedData:
         self, config_id: int, budget_id: int | None = None
     ) -> list[float]:
         if budget_id is None:
-            # extracting the last recorded budget ID for the given config ID
-            budget_id = max(self.df.loc[config_id].index.get_level_values("budget_id").values)
+            # budget_id only None when predicting
+            # extract full observed learning curve for prediction pipeline
+            budget_id = max(self.df.loc[config_id].index.get_level_values("budget_id").values) + 1
 
         # For the first epoch we have no learning curve available
         if budget_id == 0:
