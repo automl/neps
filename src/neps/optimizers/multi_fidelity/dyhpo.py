@@ -480,10 +480,32 @@ class MFEIBO(BaseOptimizer):
 
             acq_writer = AcqWriter("Acq_values")
             if hasattr(self.acquisition, "mu"):
-                acq = pd.DataFrame({"Acq Value": acq.values,
-                                    "preds": self.acquisition.mu,
-                                    "incumbents": self.acquisition.mu_star,
-                                    "std": self.acquisition.std}, index=_samples.index)
+                # collect prediction learning_curves
+                lcs = []
+                # and tabular ids
+                tabular_ids = []
+                for idx in _samples.index:
+                    if self.acquisition_sampler.is_tabular:
+                        tabular_ids.append(samples[idx]["id"])
+                    if idx in self.observed_configs.df.index.levels[0]:
+                        # budget_level = self.get_budget_level(_samples[idx])
+                        # extracting the available/observed learning curve
+                        lc = self.observed_configs.extract_learning_curve(idx, budget_id=None)
+                    else:
+                        # initialize a learning curve with a placeholder
+                        # This is later padded accordingly for the Conv1D layer
+                        lc = []
+                    lcs.append(lc)
+
+                data = {"Acq Value": acq.values,
+                        "preds": self.acquisition.mu,
+                        "incumbents": self.acquisition.mu_star,
+                        "std": self.acquisition.std,
+                        "pred_learning_curves": lcs}
+                if self.acquisition_sampler.is_tabular:
+                    data["tabular_ids"] = tabular_ids
+
+                acq = pd.DataFrame(data, index=_samples.index)
             acq_writer.set_data(_samples, acq)
             self.evaluation_data.data_dict["acq"] = acq_writer
 
