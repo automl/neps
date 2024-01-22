@@ -1,5 +1,4 @@
 # type: ignore
-from pathlib import Path
 from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
@@ -7,14 +6,11 @@ import pandas as pd
 import torch
 from torch.distributions import Normal
 
-from copy import deepcopy
-
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ....search_spaces.search_space import IntegerParameter, SearchSpace
 from ...multi_fidelity.utils import MFObservedData
 from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
-from ....utils.common import SimpleCSVWriter
 
 
 class MFStepBase(BaseAcquisition):
@@ -363,7 +359,7 @@ class MFEI_Random(MFEI):
         for i in range(len(observations.completed_runs)):
             self.rng.uniform(-4,0)
             self.rng.randint(1,51)
-            
+
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
@@ -393,7 +389,7 @@ class MFEI_Random(MFEI):
         steps_passed = len(self.observations.completed_runs)
         print(f"Steps acquired: {steps_passed}")
 
-        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold 
+        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
         inc_value = self.sample_threshold(inc_value)
@@ -420,7 +416,7 @@ class MFEI_Random(MFEI):
                 config.fidelity.value = horizon
                 inc_list.append(inc_value)
             #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
-        
+
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
 
