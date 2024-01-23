@@ -486,7 +486,7 @@ class MFEIBO(BaseOptimizer):
                 tabular_ids = []
                 for idx in _samples.index:
                     if self.acquisition_sampler.is_tabular:
-                        tabular_ids.append(samples[idx]["id"])
+                        tabular_ids.append(samples[idx]["id"].value)
                     if idx in self.observed_configs.df.index.levels[0]:
                         # budget_level = self.get_budget_level(_samples[idx])
                         # extracting the available/observed learning curve
