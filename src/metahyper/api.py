@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import inspect
 import logging
 import shutil
@@ -11,6 +12,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List
+import zipfile
 
 from ._locker import Locker
 from .utils import YamlSerializer, find_files, non_empty_file
@@ -502,6 +504,13 @@ def run(
     base_result_directory = optimization_dir / "results"
     base_result_directory.mkdir(parents=True, exist_ok=True)
 
+    zip_filename = Path(optimization_dir / "results.zip")
+    # Extract previous results to load if it exists
+    if zip_filename.exists():
+        #  and not any(Path(base_result_directory).iterdir()):
+        shutil.unpack_archive(zip_filename, base_result_directory, "zip")
+        zip_filename.unlink()
+
     # decision_lock_file = optimization_dir / ".decision_lock"
     # decision_lock_file.touch(exist_ok=True)
     # decision_locker = Locker(decision_lock_file, logger.getChild("_locker"))
@@ -630,5 +639,20 @@ def run(
 
         # Write Optimizer state file
         serializer.dump(sampler.get_state(), sampler_state_file)
+        # Zip all the results
+        # zip_filename = Path(str(base_result_directory) + ".zip")
+        with zipfile.ZipFile(zip_filename, "a", zipfile.ZIP_DEFLATED) as zip_file:
+            for entry in base_result_directory.rglob("*"):
+                zip_file.write(entry, entry.relative_to(base_result_directory))
+        # remove results
+        shutil.rmtree(base_result_directory)
+        # create empty results directory
+        base_result_directory.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(zip_filename, "a", zipfile.ZIP_DEFLATED) as zip_file:
+        for entry in base_result_directory.rglob("*"):
+            zip_file.write(entry, entry.relative_to(base_result_directory))
+    # remove results
+    shutil.rmtree(base_result_directory)
         # finally:
         #     config_locker.release_lock()
