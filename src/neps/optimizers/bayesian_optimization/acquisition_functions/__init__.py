@@ -5,6 +5,7 @@ from typing import Callable
 
 from .ei import ComprehensiveExpectedImprovement
 from .mf_ei import MFEI, MFEI_AtMax, MFEI_Dyna, MFEI_Random
+from .mf_pi import MFPI, MFPI_AtMax, MFPI_Dyna, MFPI_Random
 from .ucb import UpperConfidenceBound
 from .mf_ucb import MF_UCB, MF_UCB_AtMax, MF_UCB_Dyna
 from .mf_two_step import MF_TwoStep
@@ -68,5 +69,25 @@ AcquisitionMapping: dict[str, Callable] = {
     "MF_TwoStep": partial(
         MF_TwoStep,
         maximize=False,
-    )
+    ),
+    "MFPI": partial(
+        MFPI,
+        in_fill="best",
+        augmented_ei=False,
+    ),
+    "MFPI-max": partial(
+        MFPI_AtMax,
+        in_fill="best",
+        augmented_ei=False,
+    ),
+    "MFPI-dyna": partial(
+        MFPI_Dyna,
+        in_fill="best",
+        augmented_ei=False,
+    ),
+    "MFPI-random": partial(
+        MFPI_Random,
+        in_fill="best",
+        augmented_ei=False,
+    ),
 }
