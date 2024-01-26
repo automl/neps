@@ -5,6 +5,7 @@ ONLY A LOCAL COPY ON THE CLUSTER WORKSPACE
 from __future__ import annotations
 
 import logging
+import psutil
 
 import gpytorch
 import numpy as np
@@ -129,6 +130,14 @@ class PFN_SURROGATE:
         scores = self.nn.model.criterion.ei(logits, best_f=((1 - inc) if self.minimize else inc))
         return scores
 
+    @torch.no_grad()
+    def get_pi(self, x_test, inc, x_train=None, y_train=None):
+        inc = inc.unsqueeze(1).to(self.device)
+        x_train = self.train_x if x_train is None else x_train
+        y_train = self.train_y if y_train is None else ((1 - y_train) if self.minimize else y_train)
+        logits = self.nn(x_train=x_train, y_train=y_train, x_test=x_test)  # torch.Size([x_train.shape[0], 1, 10000])
+        scores = self.nn.model.criterion.pi(logits.squeeze(), best_f=((1 - inc) if self.minimize else inc))
+        return scores
 
 if __name__ == "__main__":
     print(torch.version.__version__)
