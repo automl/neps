@@ -4,6 +4,7 @@ import inspect
 import logging
 import shutil
 import time
+import traceback
 import warnings
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -383,10 +384,15 @@ def _evaluate_config(
             )
             directory_params.append(previous_pipeline_directory)
 
-        result = evaluation_fn(
-            *directory_params,
-            **config,
-        )
+        try:
+            result = evaluation_fn(
+                *directory_params,
+                **config,
+            )
+        except Exception as e:
+            tb = traceback.format_exc()
+            logger.exception(f"{type(e).__name__}: {e}\n{tb}")
+            raise e
 
         # Ensuring the result have the correct format that can be exploited by other functions
         if isinstance(result, dict):
