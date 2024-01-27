@@ -391,7 +391,7 @@ def _evaluate_config(
             )
         except Exception as e:
             tb = traceback.format_exc()
-            logger.exception(f"{type(e).__name__}: {e}\n{tb}")
+            logger.exception(f"{tb}\n{type(e).__name__}: {e}")
             raise e
 
         # Ensuring the result have the correct format that can be exploited by other functions
