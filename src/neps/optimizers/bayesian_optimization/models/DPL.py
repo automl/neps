@@ -314,7 +314,7 @@ class PowerLawSurrogate:
         self.max_fidelity = pipeline_space.fidelity.upper
 
     def __encode_config(self, config: SearchSpace) -> np.ndarray:
-        categorical_encoding = np.zeros_like(self.categories_array)
+        categorical_encoding = np.zeros_like(self.categories_array, dtype=np.single)
         continuous_values = []
 
         for hp_name, hp in config.items():
