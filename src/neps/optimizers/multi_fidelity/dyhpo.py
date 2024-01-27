@@ -278,7 +278,7 @@ class MFEIBO(BaseOptimizer):
 
         return total_budget_spent
 
-    def is_init_phase(self, budget_based: bool = True) -> bool:
+    def is_init_phase(self, budget_based: bool = False) -> bool:
         if budget_based:
             # Check if we are still in the initial design phase based on
             # either the budget spent so far or the number of configurations evaluated
@@ -436,7 +436,7 @@ class MFEIBO(BaseOptimizer):
             )
             config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
-        elif self.is_init_phase(budget_based=True) or self._model_update_failed:
+        elif self.is_init_phase() or self._model_update_failed:
             # promote a config randomly if initial design size is satisfied but the
             # initial design budget has not been exhausted
             self.logger.info("promoting...")
