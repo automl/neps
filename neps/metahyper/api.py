@@ -49,6 +49,13 @@ class ConfigInRun:
         ConfigInRun.previous_pipeline_directory = previous_pipeline_directory
         ConfigInRun.optimization_dir = Path(optimization_dir)
 
+    @staticmethod
+    def empty_config_data():
+        ConfigInRun.config = None
+        ConfigInRun.config_id = None
+        ConfigInRun.pipeline_directory = None
+        ConfigInRun.previous_pipeline_directory = None
+
 
 class Sampler(ABC):
     # pylint: disable=no-self-use,unused-argument
@@ -164,6 +171,8 @@ def _process_sampler_info(
             finally:
                 decision_locker.release_lock()
                 should_break = True
+        else:
+            time.sleep(3)
 
 
 def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):
@@ -264,16 +273,14 @@ def read(optimization_dir: Path | str, serializer=None, logger=None, do_lock=Tru
 
 
 def _check_max_evaluations(
-    optimization_dir,
-    max_evaluations,
-    serializer,
+    previous_results,
+    pending_configs,
+    pending_configs_free,
     logger,
+    max_evaluations,
     continue_until_max_evaluation_completed,
 ):
     logger.debug("Checking if max evaluations is reached")
-    previous_results, pending_configs, pending_configs_free = read(
-        optimization_dir, serializer, logger
-    )
     evaluation_count = len(previous_results)
 
     # Taking into account pending evaluations
@@ -283,12 +290,16 @@ def _check_max_evaluations(
     return evaluation_count >= max_evaluations
 
 
-def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks):
-    # First load the results and state of the optimizer
-    previous_results, pending_configs, pending_configs_free = read(
-        optimization_dir, serializer, logger, do_lock=False
-    )
-
+def _sample_config(
+    previous_results,
+    pending_configs,
+    pending_configs_free,
+    optimization_dir,
+    sampler,
+    serializer,
+    logger,
+    pre_load_hooks,
+):
     base_result_directory = optimization_dir / "results"
 
     logger.debug("Sampling a new configuration")
@@ -458,25 +469,29 @@ def metahyper_run(
 
     evaluations_in_this_run = 0
     while True:
-        if max_evaluations_total is not None and _check_max_evaluations(
-            optimization_dir,
-            max_evaluations_total,
-            serializer,
-            logger,
-            continue_until_max_evaluation_completed,
-        ):
-            logger.info("Maximum total evaluations is reached, shutting down")
-            break
-
-        if (
-            max_evaluations_per_run is not None
-            and evaluations_in_this_run >= max_evaluations_per_run
-        ):
-            logger.info("Maximum evaluations per run is reached, shutting down")
-            break
-
         if decision_locker.acquire_lock():
             try:
+                previous_results, pending_configs, pending_configs_free = read(
+                    optimization_dir, serializer, logger, do_lock=False
+                )
+                if max_evaluations_total is not None and _check_max_evaluations(
+                    previous_results,
+                    pending_configs,
+                    pending_configs_free,
+                    logger,
+                    max_evaluations_total,
+                    continue_until_max_evaluation_completed,
+                ):
+                    logger.info("Maximum total evaluations is reached, shutting down")
+                    break
+
+                if (
+                    max_evaluations_per_run is not None
+                    and evaluations_in_this_run >= max_evaluations_per_run
+                ):
+                    logger.info("Maximum evaluations per run is reached, shutting down")
+                    break
+
                 with sampler.using_state(sampler_state_file, serializer):
                     if sampler.budget is not None:
                         if sampler.used_budget >= sampler.budget:
@@ -488,7 +503,14 @@ def metahyper_run(
                         pipeline_directory,
                         previous_pipeline_directory,
                     ) = _sample_config(
-                        optimization_dir, sampler, serializer, logger, pre_load_hooks
+                        previous_results,
+                        pending_configs,
+                        pending_configs_free,
+                        optimization_dir,
+                        sampler,
+                        serializer,
+                        logger,
+                        pre_load_hooks,
                     )
                     # Storing the config details in ConfigInRun
                     ConfigInRun.store_in_run_data(
@@ -556,6 +578,7 @@ def metahyper_run(
                         )
                     else:
                         logger.info(f"Finished evaluating config {config_id}")
+                    ConfigInRun.empty_config_data()
                 finally:
                     config_locker.release_lock()
 
