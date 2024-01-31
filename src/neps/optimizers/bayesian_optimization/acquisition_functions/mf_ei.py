@@ -357,7 +357,7 @@ class MFEI_Random(MFEI):
         # set RNG
         self.rng = np.random.RandomState(seed=42)
         for i in range(len(observations.completed_runs)):
-            self.rng.uniform(-4,0)
+            self.rng.uniform(-4,-1)
             self.rng.randint(1,51)
 
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
@@ -368,7 +368,7 @@ class MFEI_Random(MFEI):
         return self.rng.randint(shortest, longest+1)
 
     def sample_threshold(self, f_inc):
-        lu = 10**self.rng.uniform(-4,0) # % of gap closed
+        lu = 10**self.rng.uniform(-4,-1) # % of gap closed
         return f_inc * (1 - lu)
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
