@@ -87,11 +87,13 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
+        inc_normalization: bool = False,
         log_ei: bool = False,
     ):
         super().__init__(augmented_ei, xi, in_fill, log_ei)
         self.pipeline_space = pipeline_space
         self.surrogate_model_name = surrogate_model_name
+        self.inc_normalization = inc_normalization
         self.surrogate_model = None
         self.observations = None
         self.b_step = None
@@ -169,6 +171,9 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
             raise ValueError(
                 f"Unrecognized surrogate model name: {self.surrogate_model_name}"
             )
+
+        if self.inc_normalization:
+            ei = ei / inc_list
 
         if ei.is_cuda:
             ei = ei.cpu()
