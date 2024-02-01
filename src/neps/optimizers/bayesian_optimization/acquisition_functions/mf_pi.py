@@ -129,7 +129,17 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
     def eval_gp_pi(
         self, x: Iterable, inc_list: Iterable
     ) -> Union[np.ndarray, torch.Tensor, float]:
-        raise NotImplementedError
+        _x = x.copy()
+        try:
+            mu, cov = self.surrogate_model.predict(_x)
+        except ValueError as e:
+            raise e
+        std = torch.sqrt(torch.diag(cov))
+        mu_star = inc_list.to(mu.device)
+
+        gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
+        pi = gauss.cdf((mu - mu_star) / (std + 1E-9))
+        return pi
 
 
 class MFPI_AtMax(MFPI):
@@ -262,8 +272,8 @@ class MFPI_Random(MFPI):
         super().__init__(pipeline_space, surrogate_model_name, augmented_ei, xi, in_fill, log_ei)
         self.horizon = horizon
         self.threshold = threshold
-        
-        
+
+
 
     def set_state(
         self,
@@ -278,7 +288,7 @@ class MFPI_Random(MFPI):
         for i in range(len(observations.completed_runs)):
             self.rng.uniform(-4,-1)
             self.rng.randint(1,51)
-            
+
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
@@ -316,7 +326,7 @@ class MFPI_Random(MFPI):
         steps_passed = len(self.observations.completed_runs)
         print(f"Steps acquired: {steps_passed}")
 
-        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold 
+        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
         t_value = self.sample_threshold(inc_value)
@@ -344,7 +354,7 @@ class MFPI_Random(MFPI):
                 config.fidelity.value = horizon
                 inc_list.append(inc_value)
             #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
-        
+
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
 
@@ -370,7 +380,7 @@ class MFPI_Random_HiT(MFPI):
         for i in range(len(observations.completed_runs)):
             self.rng.uniform(-4,0)
             self.rng.randint(1,51)
-            
+
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
@@ -400,7 +410,7 @@ class MFPI_Random_HiT(MFPI):
         steps_passed = len(self.observations.completed_runs)
         print(f"Steps acquired: {steps_passed}")
 
-        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold 
+        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
         t_value = self.sample_threshold(inc_value)
@@ -428,7 +438,7 @@ class MFPI_Random_HiT(MFPI):
                 config.fidelity.value = horizon
                 inc_list.append(inc_value)
             #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
-        
+
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
 
