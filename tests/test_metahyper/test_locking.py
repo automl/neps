@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 from more_itertools import first_true
@@ -23,7 +24,7 @@ def launch_example_processes(n_workers: int = 3) -> list:
 
 
 @pytest.mark.metahyper
-def test_filelock() -> None:
+def test_filelock(n_workers=2) -> None:
     """Test that the filelocking method of parallelization works as intended."""
     # Note: Not using tmpdir
     #
@@ -40,11 +41,12 @@ def test_filelock() -> None:
     try:
         assert not results_dir.exists()
         # Wait for them
-        p_list = launch_example_processes(n_workers=2)
+        p_list = launch_example_processes(n_workers)
+        exit_codes = []
         for p in p_list:
-            p.wait()
             out, _ = p.communicate()
             lines = out.splitlines()
+            exit_codes.append(p.returncode)
 
             pending_re = r"#Pending configs with worker:\s+(\d+)"
             eval_re = r"#Evaluated configs:\s+(\d+)"
@@ -61,6 +63,9 @@ def test_filelock() -> None:
             # Make sure the evaluated configs and the ones pending add up to 15
             assert evaluated_configs + pending_configs == 15
 
+        # Make sure both processes don't fail
+        assert np.array_equal(exit_codes, np.zeros(n_workers))
+
         # Make sure there are 15 completed configurations
         expected = sorted(f"config_{i}" for i in range(1, 16))
         folders = sorted(f.name for f in results_dir.iterdir())
@@ -74,22 +79,33 @@ def test_filelock() -> None:
 
 
 @pytest.mark.summary_csv
-def test_summary_csv():
+def test_summary_csv(n_workers=2):
     # Testing the csv files output.
     summary_dir = Path("results") / "hyperparameters_example" / "summary_csv"
     try:
         if not summary_dir.exists():
-            p_list = launch_example_processes(n_workers=2)
+            p_list = launch_example_processes(n_workers)
+            exit_codes = []
             for p in p_list:
-                p.wait()
+                _, _ = p.communicate()
+                exit_codes.append(p.returncode)
+        # Make sure the directory is created
         assert summary_dir.is_dir()
+
+        # Make sure the exit codes are passing for both processes
+        assert np.array_equal(exit_codes, np.zeros(n_workers))
+
         run_data_df = pd.read_csv(summary_dir / "run_status.csv")
         run_data_df.set_index("description", inplace=True)
         num_evaluated_configs_csv = run_data_df.loc["num_evaluated_configs", "value"]
+        # Make sure all configs are evaluated (expected)
         assert num_evaluated_configs_csv == 15
 
         config_data_df = pd.read_csv(summary_dir / "config_data.csv")
+        # Make sure the total number of rows in our csv is equal to evaluated configs
         assert config_data_df.shape[0] == 15
+
+        # Make sure that the status of all config is complete, hence all are evaluated
         assert (config_data_df["status"] == "complete").all()
     except Exception as e:
         raise e
