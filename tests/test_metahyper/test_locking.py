@@ -1,3 +1,4 @@
+import concurrent.futures
 import re
 import shutil
 import subprocess
@@ -9,18 +10,14 @@ import pytest
 from more_itertools import first_true
 
 
-def launch_example_processes(n_workers: int = 3) -> list:
-    processes = []
-    for _ in range(n_workers):
-        processes.append(
-            subprocess.Popen(  # pylint: disable=consider-using-with
-                "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
-                stdout=subprocess.PIPE,
-                shell=True,
-                text=True,
-            )
-        )
-    return processes
+def run_worker():
+    command = "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse"
+
+    # Run the command and capture the output
+    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, text=True)
+
+    # Return stdout and return code
+    return result.stdout, result.returncode
 
 
 @pytest.mark.metahyper
@@ -40,30 +37,33 @@ def test_filelock(n_workers=2) -> None:
     results_dir = Path("results") / "hyperparameters_example" / "results"
     try:
         assert not results_dir.exists()
-        # Wait for them
-        p_list = launch_example_processes(n_workers)
         exit_codes = []
-        for p in p_list:
-            out, _ = p.communicate()
-            lines = out.splitlines()
-            exit_codes.append(p.returncode)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
+            # Submit each worker function to the concurrent executor
+            futures = [executor.submit(run_worker) for _ in range(n_workers)]
 
-            pending_re = r"#Pending configs with worker:\s+(\d+)"
-            eval_re = r"#Evaluated configs:\s+(\d+)"
+            for future in concurrent.futures.as_completed(futures):
+                stdout, return_code = future.result()
 
-            evaluated = first_true(re.match(eval_re, l) for l in lines)  # noqa
-            pending = first_true(re.match(pending_re, l) for l in lines)  # noqa
+                exit_codes.append(return_code)
+                lines = stdout.splitlines()
 
-            assert evaluated is not None
-            assert pending is not None
+                pending_re = r"#Pending configs with worker:\s+(\d+)"
+                eval_re = r"#Evaluated configs:\s+(\d+)"
 
-            evaluated_configs = int(evaluated.groups()[0])
-            pending_configs = int(pending.groups()[0])
+                evaluated = first_true(re.match(eval_re, l) for l in lines)  # noqa
+                pending = first_true(re.match(pending_re, l) for l in lines)  # noqa
 
-            # Make sure the evaluated configs and the ones pending add up to 15
-            assert evaluated_configs + pending_configs == 15
+                assert evaluated is not None
+                assert pending is not None
 
-        # Make sure both processes don't fail
+                evaluated_configs = int(evaluated.groups()[0])
+                pending_configs = int(pending.groups()[0])
+
+                # Make sure the evaluated configs and the ones pending add up to 15
+                assert evaluated_configs + pending_configs == 15
+
+        # Make sure all processes don't fail
         assert np.array_equal(exit_codes, np.zeros(n_workers))
 
         # Make sure there are 15 completed configurations
@@ -83,17 +83,26 @@ def test_summary_csv(n_workers=2):
     # Testing the csv files output.
     summary_dir = Path("results") / "hyperparameters_example" / "summary_csv"
     try:
-        if not summary_dir.exists():
-            p_list = launch_example_processes(n_workers)
-            exit_codes = []
-            for p in p_list:
-                _, _ = p.communicate()
-                exit_codes.append(p.returncode)
+        assert not summary_dir.exists()
+        exit_codes = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
+            # Submit each worker function to the concurrent executor
+            futures = [executor.submit(run_worker) for _ in range(n_workers)]
+
+            # Wait for all workers to complete
+            done, _ = concurrent.futures.wait(
+                futures, return_when=concurrent.futures.ALL_COMPLETED
+            )
+
+            for future in done:
+                _, return_code = future.result()
+                exit_codes.append(return_code)
+
+        # Make sure all processes don't fail
+        assert np.array_equal(exit_codes, np.zeros(n_workers))
+
         # Make sure the directory is created
         assert summary_dir.is_dir()
-
-        # Make sure the exit codes are passing for both processes
-        assert np.array_equal(exit_codes, np.zeros(n_workers))
 
         run_data_df = pd.read_csv(summary_dir / "run_status.csv")
         run_data_df.set_index("description", inplace=True)
