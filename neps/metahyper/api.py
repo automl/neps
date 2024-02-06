@@ -421,8 +421,6 @@ def metahyper_run(
     max_evaluations_total=None,
     max_evaluations_per_run=None,
     continue_until_max_evaluation_completed=False,
-    development_stage_id=None,
-    task_id=None,
     logger=None,
     post_evaluation_hook=None,
     overwrite_optimization_dir=False,
@@ -431,11 +429,6 @@ def metahyper_run(
     serializer = YamlSerializer(sampler.load_config)
     if logger is None:
         logger = logging.getLogger("metahyper")
-
-    if task_id is not None:
-        optimization_dir = Path(optimization_dir) / f"task_{task_id}"
-    if development_stage_id is not None:
-        optimization_dir = Path(optimization_dir) / f"dev_{development_stage_id}"
 
     optimization_dir = Path(optimization_dir)
     if overwrite_optimization_dir and optimization_dir.exists():

@@ -98,11 +98,13 @@ def _post_evaluation_hook_function(
 def run(
     run_pipeline: Callable,
     root_directory: str | Path,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
-    | str
-    | Path
-    | CS.ConfigurationSpace
-    | None = None,
+    pipeline_space: (
+        dict[str, Parameter | CS.ConfigurationSpace]
+        | str
+        | Path
+        | CS.ConfigurationSpace
+        | None
+    ) = None,
     overwrite_working_directory: bool = False,
     post_run_summary: bool = False,
     development_stage_id=None,
@@ -115,17 +117,19 @@ def run(
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
     pre_load_hooks: Iterable | None = None,
-    searcher: Literal[
-        "default",
-        "bayesian_optimization",
-        "random_search",
-        "hyperband",
-        "priorband",
-        "mobster",
-        "asha",
-        "regularized_evolution",
-    ]
-    | BaseOptimizer = "default",
+    searcher: (
+        Literal[
+            "default",
+            "bayesian_optimization",
+            "random_search",
+            "hyperband",
+            "priorband",
+            "mobster",
+            "asha",
+            "regularized_evolution",
+        ]
+        | BaseOptimizer
+    ) = "default",
     searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> None:
@@ -262,6 +266,11 @@ def run(
             "skipped. Accurate continuation of runs can no longer be guaranteed!"
         )
 
+    if task_id is not None:
+        root_directory = Path(root_directory) / f"task_{task_id}"
+    if development_stage_id is not None:
+        root_directory = Path(root_directory) / f"dev_{development_stage_id}"
+
     metahyper_run(
         run_pipeline,
         searcher_instance,
@@ -270,8 +279,6 @@ def run(
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
-        development_stage_id=development_stage_id,
-        task_id=task_id,
         logger=logger,
         post_evaluation_hook=_post_evaluation_hook_function(
             loss_value_on_error, ignore_errors
@@ -280,36 +287,37 @@ def run(
         pre_load_hooks=pre_load_hooks,
     )
 
-    if post_run_summary and development_stage_id:
-        optimization_dir = Path(root_directory) / f"dev_{development_stage_id}"
-        post_run_csv(optimization_dir, logger)
-    elif post_run_summary:
+    if post_run_summary:
         post_run_csv(root_directory, logger)
 
 
 def _run_args(
     searcher_info: dict,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
-    | str
-    | Path
-    | CS.ConfigurationSpace
-    | None = None,
+    pipeline_space: (
+        dict[str, Parameter | CS.ConfigurationSpace]
+        | str
+        | Path
+        | CS.ConfigurationSpace
+        | None
+    ) = None,
     max_cost_total: int | float | None = None,
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
     logger=None,
-    searcher: Literal[
-        "default",
-        "bayesian_optimization",
-        "random_search",
-        "hyperband",
-        "priorband",
-        "mobster",
-        "asha",
-        "regularized_evolution",
-    ]
-    | BaseOptimizer = "default",
+    searcher: (
+        Literal[
+            "default",
+            "bayesian_optimization",
+            "random_search",
+            "hyperband",
+            "priorband",
+            "mobster",
+            "asha",
+            "regularized_evolution",
+        ]
+        | BaseOptimizer
+    ) = "default",
     searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:
