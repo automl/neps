@@ -1,16 +1,23 @@
-# Initializing the Search Space
+# Initializing the Pipeline Space
 
-In NePS, defining the Search Space is one of two essential tasks. You can define it either through a Python dictionary
-,YAML file or ConfigSpace. This section provides examples and instructions for both methods.
+In NePS, a pivotal step is the definition of the search space, termed `pipeline_space`. This space can be structured
+through various approaches, including a Python dictionary, a YAML file, or ConfigSpace. Each of these methods allows
+you to specify a set of Parameter types, ranging from Float and Categorical to specialized Architecture Parameters.
+Whether you choose a dictionary, YAML file, or ConfigSpace, your selected method serves as a container or framework
+within which these parameters are defined and organized. This section not only guides you through the process of
+setting up your `pipeline_space` using these methods but also provides detailed instructions and examples on how to
+effectively incorporate various Parameter types, ensuring that NePS can utilize them in the optimization process.
 
-## Option 1: Using a Python Dictionary
 
-To define the Search Space using a Python dictionary, follow these steps:
+## Methods for Defining the NePS Pipeline Space
+### Option 1: Using a Python Dictionary
+
+To define the `pipeline_space` using a Python dictionary, follow these steps:
 
 Create a Python dictionary that specifies the parameters and their respective ranges. For example:
 
 ```python
-search_space = {
+pipeline_space = {
     "learning_rate": neps.FloatParameter(lower=0.00001, upper=0.1, log=True),
     "num_epochs": neps.IntegerParameter(lower=3, upper=30, is_fidelity=True),
     "optimizer": neps.CategoricalParameter(choices=["adam", "sgd", "rmsprop"]),
@@ -18,19 +25,19 @@ search_space = {
 }
 ```
 
-## Option 2: Using a YAML File
+### Option 2: Using a YAML File
 
-Create a YAML file (e.g., search_space.yaml) with the parameter definitions following this structure.
+Create a YAML file (e.g., pipeline_space.yaml) with the parameter definitions following this structure.
 
 ```yaml
-search_space: # important to start with
+pipeline_space: # important to start with
   learning_rate:
     lower: 2e-3
     upper: 0.1
     log: true
 
   num_epochs:
-    type: int # or "integer"
+    type: int # or "integer", optional if u want to manually set this
     lower: 3
     upper: 30
     is_fidelity: True
@@ -43,13 +50,19 @@ search_space: # important to start with
 ...
 ```
 
-Ensure your YAML file starts with `search_space:`.
+Ensure your YAML file starts with `pipeline_space:`.
 This is the root key under which all parameter configurations are defined.
 
-## Option 3: Using ConfigSpace
+!!! note "Note"
+    The various types of parameters displayed in the Dictionary of Option 1 are here automatically determined by the
+    data. If desired, you have the option to define them manually by providing the argument `type`. For more details,
+    refer to the section on [Supported Hyperparameter Types](#supported-hyperparameter-types).
 
-For users familiar with the ConfigSpace library, can also define the Search Space through
-ConfigurationSpace()
+
+### Option 3: Using ConfigSpace
+
+For users familiar with the ConfigSpace library, can also define the `pipeline_space` through
+ConfigurationSpace().
 
 ```python
 from configspace import ConfigurationSpace, UniformFloatHyperparameter
@@ -60,10 +73,9 @@ configspace.add_hyperparameter(
 )
 ```
 
-For additional information on ConfigSpace and its features, please visit the following link:
-https://github.com/automl/ConfigSpace
-
-## Supported Hyperparameter Types using a YAML File
+For additional information on ConfigSpace and its features, please visit the following
+[link](https://github.com/automl/ConfigSpace).
+## Supported Hyperparameter Types
 
 ### Float/Integer Parameter
 
@@ -72,41 +84,49 @@ https://github.com/automl/ConfigSpace
     - `upper`: The maximum value of the parameter.
     - Accepted Values: Int or Float depending on the specific parameter type one wishes to use.
 - **Optional Arguments:**
-    - `type`: Specifies the data type of the parameter.
-        - Accepted Values: 'int', 'integer', or 'float'.
-        - Note: If type is not specified e notation gets converted to float
     - `log`: Boolean that indicates if the parameter uses a logarithmic scale (default: False)
-        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
+        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-data-type-interpretation)
     - `is_fidelity`: Boolean that marks the parameter as a fidelity parameter (default: False).
     - `default`: Sets a prior central value for the parameter (default: None).
-        - Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
+      > Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
     - `default_confidence`: Specifies the confidence level of the default value,
       indicating how strongly the prior
-      should be considered (default: "low").
+      should be considered (default: 'low').
         - Accepted Values: 'low', 'medium', or 'high'.
+    - `type`: Specifies the data type of the parameter.
+        - Accepted Values: 'int', 'integer', or 'float'.
+        > Note: If type is not specified e notation gets converted to float
+
+        !!! note "YAML Method Specific:"
+            The type argument, used to specify the data type of parameters as 'int', 'integer', or 'float',
+            is unique to defining the pipeline_space with a YAML file. This explicit specification of the parameter
+            type is not required when using a Python dictionary or ConfigSpace, as these methods inherently determine
+            the data types based on the syntax and structure of the code.
 
 ### Categorical Parameter
 
 - **Expected Arguments:**
-    - `choices`: A list of discrete options(int | float | str) that the parameter can take.
+    - `choices`: A list of discrete options (int | float | str) that the parameter can take.
 - **Optional Arguments:**
-    - `type`: Specifies the data type of the parameter.
-        - Accepted Values: 'cat' or 'categorical'.
     - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
-        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-string-and-boolean-interpretation)
+        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-data-type-interpretation)
     - `default`: Sets a prior central value for the parameter (default: None).
-        - Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
+      > Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
     - `default_confidence`: Specifies the confidence level of the default value,
       indicating how strongly the prior
       should be considered (default: "low").
+      - `type`: Specifies the data type of the parameter.
+        - Accepted Values: 'cat' or 'categorical'.
+        > Note: Yaml Method Specific
 
 ### Constant Parameter
 
 - **Expected Arguments:**
-    - `value`: The fixed value(int | float | str) for the parameter.
+    - `value`: The fixed value (int | float | str) for the parameter.
 - **Optional Arguments:**
     - `type`: Specifies the data type of the parameter.
         - Accepted Values: 'const' or 'constant'.
+      > Note: Yaml Method Specific
     - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
 
 ### Important Note on YAML Data Type Interpretation
@@ -131,9 +151,8 @@ When working with YAML files, it's essential to understand how the format interp
 3. **Numbers:**
 
     - Unquoted numeric values are interpreted as integers or floating-point numbers, depending on their format.
-    - Example: `123` is an integer, `4.56` is a float, `1e3` can be either an integer or a floating-point number,
-      depending on the type specified by the user. By default, 1e3 is treated as a floating-point number.
-      This interpretation is unique to our system.
+    - By default, when the 'type' is not specified, any number in scientific notation (e.g., 1e3) is interpreted as a
+   floating-point number. This interpretation is unique to our system.
 
 4. **Empty Strings:**
 
@@ -146,13 +165,17 @@ When working with YAML files, it's essential to understand how the format interp
 
 Remember to use appropriate quotes and formats to ensure values are interpreted as intended.
 
-## Supported ArchitectureParameter Types
+## Supported Architecture parameter Types
 
-**Note**: The definition of Search Space from a YAML file is limited to supporting only Hyperparameter Types.
-
-If you are interested in exploring Architecture, particularly Hierarchical parameters, you can find detailed examples and usage in the following resources:
+!!! note "Note"
+    The definition of `pipeline_space` from a YAML file is currently limited to supporting only Hyperparameter Types.
+!!! note "Note"
+    A comprehensive documentation for the Architecture parameter will be available soon.
+If you are interested in exploring Architecture, particularly Hierarchical parameters, you can find detailed examples
+and usage in the following resources:
 
 - [Basic Usage Examples](https://github.com/automl/neps/tree/master/neps_examples/basic_usage) - Basic usage
   examples that can help you understand the fundamentals of Architecture parameters.
 
-- [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced and experimental use cases, including Hierarchical parameters, check out this collection of examples.
+- [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced
+and experimental use cases, including Hierarchical parameters, check out this collection of examples.

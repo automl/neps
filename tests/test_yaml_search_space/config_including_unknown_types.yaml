@@ -1,4 +1,4 @@
-search_space:
+pipeline_space:
   learning_rate:
     type: numerical
     lower: 0.00001

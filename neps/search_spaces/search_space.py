@@ -118,10 +118,10 @@ def pipeline_space_from_yaml(
                 f"The file at {str(yaml_file_path)} is not a valid YAML file."
             ) from e
 
-        # check for init key search_space
-        if "search_space" not in config:
+        # check for init key pipeline_space
+        if "pipeline_space" not in config:
             raise KeyError(
-                "The YAML file is incorrectly constructed: the 'search_space:' "
+                "The YAML file is incorrectly constructed: the 'pipeline_space:' "
                 "reference is missing at the top of the file."
             )
 
@@ -129,7 +129,7 @@ def pipeline_space_from_yaml(
         pipeline_space = {}
 
         # Iterate over the items in the YAML configuration
-        for name, details in config["search_space"].items():
+        for name, details in config["pipeline_space"].items():
             # get parameter type
             param_type = deduce_and_validate_param_type(name, details)
 

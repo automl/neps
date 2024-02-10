@@ -98,11 +98,8 @@ def _post_evaluation_hook_function(
 def run(
     run_pipeline: Callable,
     root_directory: str | Path,
-    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
-    | str
-    | Path
-    | CS.ConfigurationSpace
-    | None = None,
+    pipeline_space: dict[str, Parameter | CS.ConfigurationSpace] | str | Path |
+                    CS.ConfigurationSpace | None = None,
     overwrite_working_directory: bool = False,
     post_run_summary: bool = False,
     development_stage_id=None,
@@ -280,18 +277,13 @@ def run(
         pre_load_hooks=pre_load_hooks,
     )
 
-    if post_run_summary and development_stage_id:
-        optimization_dir = Path(root_directory) / f"dev_{development_stage_id}"
-        post_run_csv(optimization_dir, logger)
-    elif post_run_summary:
+    if post_run_summary:
         post_run_csv(root_directory, logger)
 
 
 def _run_args(
     searcher_info: dict,
     pipeline_space: dict[str, Parameter | CS.ConfigurationSpace]
-    | str
-    | Path
     | CS.ConfigurationSpace
     | None = None,
     max_cost_total: int | float | None = None,

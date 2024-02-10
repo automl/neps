@@ -1,4 +1,4 @@
-search_space:
+pipeline_space:
   param_float1:
     type: float
     lower: 0.00001

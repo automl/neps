@@ -50,9 +50,10 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-1. Define a `run_pipeline` function that evaluates architectures/hyperparameters for your problem
-1. Define a search space `pipeline_space` of architectures/hyperparameters
-1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
+1. Define a `run_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
+   for your problem.
+2. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
+3. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
@@ -69,20 +70,20 @@ def run_pipeline(
     model = MyModel(architecture_parameter)
 
     # Train and evaluate the model with your training pipeline
-    validation_error, test_error = train_and_eval(
+    validation_error, training_error = train_and_eval(
         model, hyperparameter_a, hyperparameter_b
     )
 
     return {  # dict or float(validation error)
         "loss": validation_error,
         "info_dict": {
-            "test_error": test_error
+            "training_error": training_error
             # + Other metrics
         },
     }
 
 
-# 2. Define a search space of hyperparameters; use the same names as in run_pipeline
+# 2. Define a search space of parameters; use the same names for the parameters as in run_pipeline
 pipeline_space = dict(
     hyperparameter_b=neps.IntegerParameter(
         lower=1, upper=42, is_fidelity=True
@@ -111,19 +112,18 @@ if __name__ == "__main__":
 ## Examples
 
 Discover how NePS works through these practical examples:
+* **[Pipeline Space via YAML](neps_examples/basic_usage/defining_search_space)**: Explore how to define the `pipeline_space` using a
+  YAML file instead of a dictionary.
 
-* **Hyperparameter Optimization (HPO)**: Learn the essentials of hyperparameter optimization with NePS. [View Example](neps_examples/basic_usage/hyperparameters.py)
+* **[Hyperparameter Optimization (HPO)](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
 
-* **Defining Search Space with YAML**: Explore how to define the search space for your neural network models using a YAML file. [View Example](neps_examples/basic_usage/defining_search_space)
+* **[Architecture Search with Primitives](neps_examples/basic_usage/architecture.py)**: Dive into architecture search using primitives in NePS.
 
-* **Architecture Search with Primitives**: Dive into architecture search using primitives in NePS. [View Example](neps_examples/basic_usage/architecture.py)
+* **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
-* **Multi-Fidelity Optimization**: Understand how to leverage multi-fidelity optimization for efficient model tuning. [View Example](neps_examples/efficiency/multi_fidelity.py)
-
-* **Utilizing Expert Priors for Hyperparameters**: Learn how to incorporate expert priors for more efficient hyperparameter selection. [View Example](neps_examples/efficiency/expert_priors_for_hyperparameters.py)
+* **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
 * **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
-
 
 ## Documentation
 
