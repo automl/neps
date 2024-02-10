@@ -1,4 +1,4 @@
-search_space:
+pipeline_space:
   float_name1:
     lower: 3e-5
     upper: 0.1

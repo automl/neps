@@ -1,50 +1,60 @@
 ## Optimizer Configuration Options
 
-Before running the optimizer for your AutoML tasks, you have several configuration options to tailor the optimization process to your specific needs. These options allow you to customize the optimizer's behavior according to your preferences and requirements.
+Before running the optimizer for your AutoML tasks, you have several configuration options to tailor the optimization
+process to your specific needs. These options allow you to customize the optimizer's behavior according to your
+preferences and requirements.
 
 ### 1. Automatic Optimizer Selection
 
-If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `default` or `None` for the neps searcher. NePS will automatically choose the best optimizer based on the characteristics of your search space. This provides a hassle-free way to get started quickly.
+If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"default"` or `None`
+for the neps searcher. NePS will automatically choose the best optimizer based on the characteristics of your search
+space. This provides a hassle-free way to get started quickly.
 
-The optimizer selection is based on the following characteristics of your search space:
+The optimizer selection is based on the following characteristics of your `pipeline_space`:
 
 - If it has fidelity: `hyperband`
 - If it has both fidelity and a prior: `priorband`
 - If it has a prior: `pibo`
 - If it has neither: `bayesian_optimization`
 
-For example, running the following format, without specifying a searcher will choose an optimizer depending on the `pipeline_space` passed.
+For example, running the following format, without specifying a searcher will choose an optimizer depending on
+the `pipeline_space` passed.
 ```python
 neps.run(
     run_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,  
+    max_evaluations_total=25,
     # no searcher specified
 )
 ```
 
 ### 2. Choosing one of NePS Optimizers
 
-We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML tasks and use cases. For more details on the available default optimizers and the algorithms that can be called, please refer to the next section on [SearcherConfigs](#Searcher-Configurations).
+We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML
+tasks and use cases. For more details on the available default optimizers and the algorithms that can be called,
+please refer to the next section on [SearcherConfigs](#searcher-configurations).
 
 ```python
 neps.run(
     run_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,  
+    max_evaluations_total=25,
     # searcher specified, along with an argument
     searcher="bayesian_optimization",
     initial_design_size=5,
 )
 ```
 
-For more optimizers, please refer [here](#List-Available-Searchers) .
+For more optimizers, please refer [here](#list-available-searchers) .
 
 ### 3. Custom Optimizer Configuration via YAML
 
-For users who want more control over the optimizer's hyperparameters, you can create your own YAML configuration file. In this file, you can specify the hyperparameters for your preferred optimizer. To use this custom configuration, provide the path to your YAML file using the `searcher_path` parameter when running the optimizer. The library will then load your custom settings and use them for optimization.
+For users who want more control over the optimizer's hyperparameters, you can create your own YAML configuration file.
+In this file, you can specify the hyperparameters for your preferred optimizer. To use this custom configuration,
+provide the path to your YAML file using the `searcher_path` parameter when running the optimizer.
+The library will then load your custom settings and use them for optimization.
 
 Here's the format of a custom YAML (`custom_bo.yaml`) configuration using `Bayesian Optimization` as an example:
 
@@ -68,7 +78,7 @@ neps.run(
     run_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,  
+    max_evaluations_total=25,
     # searcher specified, along with an argument
     searcher_path = "custom/path/to/directory"
     # `custom_bo.yaml` should be in `searcher_path`
@@ -85,11 +95,11 @@ neps.run(
     run_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,  
+    max_evaluations_total=25,
     # searcher specified, along with an argument
     searcher_path = "custom/path/to/directory"
     # `custom_bo.yaml` should be in `searcher_path`
-    searcher="custom_bo",   
+    searcher="custom_bo",
     initial_design_size=5,        # overrides value in custom_bo.yaml
     random_interleave_prob: 0.25  # overrides value in custom_bo.yaml
 )
