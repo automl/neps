@@ -480,10 +480,12 @@ class tblogger:
             loss (float): Current loss value.
             current_epoch (int): Current epoch of the experiment
                 (used as the global step).
-            writer_scalar (bool, optional): Displaying the loss or accuracy
+            writer_config_scalar (bool, optional): Displaying the loss or accuracy
                 curve on tensorboard (default: True)
-            writer_hparam (bool, optional): Write hyperparameters logging of
+            writer_config_hparam (bool, optional): Write hyperparameters logging of
                 the configs (default: True).
+            write_summary_incumbent (bool, optional): Set to `True` for a live 
+                incumbent trajectory.
             extra_data (dict, optional): Additional experiment data for logging.
         """
         if tblogger.disable_logging:
