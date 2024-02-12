@@ -47,7 +47,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
-ConfigSpace = "^0.6"
+ConfigSpace = "^0.7"
 grakel = "^0.1"
 numpy = "^1"
 pandas = "^2"
