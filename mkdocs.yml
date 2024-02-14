@@ -47,7 +47,6 @@ nav:
   - Parallelization: 'parallelization.md'
   - Citations: 'citations.md'
   - Alternatives: 'alternatives.md'
-  - Citations: 'citations.md'
   - Contributing:
       - Introduction: "contributing/README.md"
       - Installation for Contributors: "contributing/installation.md"
