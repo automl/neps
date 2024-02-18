@@ -37,6 +37,11 @@ def get_model_and_optimizer(learning_rate):
     return model, optimizer
 
 
+# Important: Include the "pipeline_directory" and "previous_pipeline_directory" arguments
+# in your run_pipeline function. This grants access to NePS's folder system and is
+# critical for leveraging efficient multi-fidelity optimization strategies.
+
+
 def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch):
     model, optimizer = get_model_and_optimizer(learning_rate)
     checkpoint_name = "checkpoint.pth"

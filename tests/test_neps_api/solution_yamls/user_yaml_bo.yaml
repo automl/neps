@@ -1,0 +1,14 @@
+searcher_name: optimizer_test
+searcher_alg: bayesian_optimization
+searcher_selection: user-yaml
+neps_decision_tree: false
+searcher_args:
+  initial_design_size: 5
+  surrogate_model: gp
+  acquisition: EI
+  log_prior_weighted: false
+  acquisition_sampler: random
+  random_interleave_prob: 0.1
+  disable_priors: false
+  prior_confidence: high
+  sample_default_first: false

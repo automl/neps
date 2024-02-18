@@ -1,0 +1,29 @@
+searcher_name: bayesian_optimization
+searcher_alg: bayesian_optimization
+searcher_selection: neps-default
+neps_decision_tree: false
+searcher_args:
+  initial_design_size: 10
+  surrogate_model: ComprehensiveGPHierarchy
+  acquisition: EI
+  log_prior_weighted: false
+  acquisition_sampler: mutation
+  random_interleave_prob: 0.0
+  disable_priors: true
+  sample_default_first: false
+  surrogate_model_args:
+    graph_kernels:
+    - WeisfeilerLehman
+    - WeisfeilerLehman
+    - WeisfeilerLehman
+    - WeisfeilerLehman
+    - WeisfeilerLehman
+    hp_kernels: []
+    verbose: false
+    hierarchy_consider:
+    - 0
+    - 1
+    - 2
+    - 3
+    d_graph_features: 0
+    vectorial_features: null

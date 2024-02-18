@@ -353,7 +353,7 @@ if __name__ == "__main__":
     run_args = dict(
         run_pipeline=run_pipeline,
         pipeline_space=pipeline_space(),
-        root_directory="output",
+        root_directory="results/neps_tblogger_example",
         searcher="random_search",
     )
 
