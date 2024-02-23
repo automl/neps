@@ -2,11 +2,11 @@
 
 In NePS, a pivotal step is the definition of the search space, termed `pipeline_space`. This space can be structured
 through various approaches, including a Python dictionary, a YAML file, or ConfigSpace. Each of these methods allows
-you to specify a set of Parameter types, ranging from Float and Categorical to specialized Architecture Parameters.
+you to specify a set of parameter types, ranging from Float and Categorical to specialized architecture parameters.
 Whether you choose a dictionary, YAML file, or ConfigSpace, your selected method serves as a container or framework
 within which these parameters are defined and organized. This section not only guides you through the process of
 setting up your `pipeline_space` using these methods but also provides detailed instructions and examples on how to
-effectively incorporate various Parameter types, ensuring that NePS can utilize them in the optimization process.
+effectively incorporate various parameter types, ensuring that NePS can utilize them in the optimization process.
 
 
 ## Methods for Defining the NePS Pipeline Space
@@ -82,7 +82,7 @@ For additional information on ConfigSpace and its features, please visit the fol
 - **Expected Arguments:**
     - `lower`: The minimum value of the parameter.
     - `upper`: The maximum value of the parameter.
-    - Accepted Values: Int or Float depending on the specific parameter type one wishes to use.
+        - Accepted values: int or float depending on the specific parameter type one wishes to use.
 - **Optional Arguments:**
     - `log`: Boolean that indicates if the parameter uses a logarithmic scale (default: False)
         - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-data-type-interpretation)
@@ -92,9 +92,9 @@ For additional information on ConfigSpace and its features, please visit the fol
     - `default_confidence`: Specifies the confidence level of the default value,
       indicating how strongly the prior
       should be considered (default: 'low').
-        - Accepted Values: 'low', 'medium', or 'high'.
+        - Accepted values: 'low', 'medium', or 'high'.
     - `type`: Specifies the data type of the parameter.
-        - Accepted Values: 'int', 'integer', or 'float'.
+        - Accepted values: 'int', 'integer', or 'float'.
         > Note: If type is not specified e notation gets converted to float
 
         !!! note "YAML Method Specific:"
@@ -116,7 +116,7 @@ For additional information on ConfigSpace and its features, please visit the fol
       indicating how strongly the prior
       should be considered (default: "low").
       - `type`: Specifies the data type of the parameter.
-        - Accepted Values: 'cat' or 'categorical'.
+        - Accepted values: 'cat' or 'categorical'.
         > Note: Yaml Method Specific
 
 ### Constant Parameter
@@ -125,7 +125,7 @@ For additional information on ConfigSpace and its features, please visit the fol
     - `value`: The fixed value (int | float | str) for the parameter.
 - **Optional Arguments:**
     - `type`: Specifies the data type of the parameter.
-        - Accepted Values: 'const' or 'constant'.
+        - Accepted values: 'const' or 'constant'.
       > Note: Yaml Method Specific
     - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
 
@@ -168,14 +168,13 @@ Remember to use appropriate quotes and formats to ensure values are interpreted 
 ## Supported Architecture parameter Types
 
 !!! note "Note"
-    The definition of `pipeline_space` from a YAML file is currently limited to supporting only Hyperparameter Types.
+    The configuration of `pipeline_space` from a YAML file does not currently support architecture parameter types.
 !!! note "Note"
     A comprehensive documentation for the Architecture parameter will be available soon.
-If you are interested in exploring Architecture, particularly Hierarchical parameters, you can find detailed examples
-and usage in the following resources:
+    If you are interested in exploring architecture parameters, you can find detailed
+    examples and usage in the following resources:
 
-- [Basic Usage Examples](https://github.com/automl/neps/tree/master/neps_examples/basic_usage) - Basic usage
-  examples that can help you understand the fundamentals of Architecture parameters.
-
-- [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced
-and experimental use cases, including Hierarchical parameters, check out this collection of examples.
+    - [Basic Usage Examples](https://github.com/automl/neps/tree/master/neps_examples/basic_usage) - Basic usage
+        examples that can help you understand the fundamentals of Architecture parameters.
+    - [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced
+        and experimental use cases, including Hierarchical parameters, check out this collection of examples.

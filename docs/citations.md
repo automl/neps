@@ -1,31 +1,33 @@
-# Citation of The Software
+# Citations
+
+## Citation of The Software
 
 For citing NePS, please refer to the following:
 
-## APA Style
+### APA Style
 
 ```apa
-Stoll, D., Mallik, N., Schrodi, S., Janowski, M., Garibov, S., Abou Chakra, T., Hvarfner, C., Bergman, E., Binxin, R., Kober, N., Vallaeys, T., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.10.0) [Computer software]. https://github.com/automl/neps
+Stoll, D., Mallik, N., Schrodi, S., Janowski, M., Garibov, S., Abou Chakra, T., Rogalla, D., Bergman, E., Hvarfner, C., Binxin, R., Kober, N., Vallaeys, T., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.11.0) [Computer software]. https://github.com/automl/neps
 ```
 
-## BibTex Style
+### BibTex Style
 
 ```bibtex
 @software{Stoll_Neural_Pipeline_Search_2023,
-author = {Stoll, Danny and Mallik, Neeratyoy and Schrodi, Simon and Janowski, Maciej and Garibov, Samir and Abou Chakra, Tarek and Hvarfner, Carl and Bergman, Eddie and Binxin, Ru and Kober, Nils and Vallaeys, Théophane and Hutter, Frank},
+author = {Stoll, Danny and Mallik, Neeratyoy and Schrodi, Simon and Janowski, Maciej and Garibov, Samir and Abou Chakra, Tarek and Rogalla, Daniel and Bergman, Eddie and Hvarfner, Carl and Binxin, Ru and Kober, Nils and Vallaeys, Théophane and Hutter, Frank},
 month = oct,
 title = {{Neural Pipeline Search (NePS)}},
 url = {https://github.com/automl/neps},
-version = {0.10.0},
+version = {0.11.0},
 year = {2023}
 }
 ```
 
-# Citation of Papers
+## Citation of Papers
+
+### PriorBand
 
 If you have used [PriorBand](https://openreview.net/forum?id=uoiwugtpCH) as the optimizer, please use the bibtex below:
-
-## PriorBand
 
 ```bibtex
 @inproceedings{mallik2023priorband,
@@ -37,7 +39,7 @@ keywords = {}
 }
 ```
 
-## Hierarchichal NAS with Context-free Grammars
+### Hierarchichal NAS with Context-free Grammars
 
 If you have used the context-free grammar search space and the graph kernels implemented in NePS for the paper [Hierarchical NAS](https://openreview.net/forum?id=Hpt1i5j6wh), please use the bibtex below:
 

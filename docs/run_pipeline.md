@@ -1,19 +1,18 @@
 # The run_pipeline Function
 
-The `run_pipeline` function is crucial for NePS. It encapsulates the objective function to be minimized, which could
-range from a regular equation to a full training and evaluation pipeline for a neural network.
+## Introduction
 
-This function receives the configuration to be utilized from the parameters defined in the search space. Consequently,
-it executes the same set of instructions or equations based on the provided configuration to minimize the objective
-function.
+The `run_pipeline` function is crucial for NePS. It encapsulates the objective function to be minimized, which could range from a regular equation to a full training and evaluation pipeline for a neural network.
+
+This function receives the configuration to be utilized from the parameters defined in the search space. Consequently, it executes the same set of instructions or equations based on the provided configuration to minimize the objective function.
 
 We will show some basic usages and some functionalites this function would require for successful implementation.
 
-## General Implementation
+## Types of Returns
 
-Assuming the `pipeline_space` was already created (see
-[here](https://automl.github.io/neps/latest/pipeline_space/) for details). The `run_pipeline` function will resemble the
-following:
+### 1. Single Value
+
+Assuming the `pipeline_space` was already created (have a look at [pipeline space](https://automl.github.io/neps/latest/pipeline_space/) for more details). A `run_pipeline` function with an objective of minimizing the loss will resemble the following:
 
 ```python
 def run_pipeline(
@@ -28,22 +27,17 @@ def run_pipeline(
     return loss
 ```
 
-## Expected Returns
+### 2. Dictionary
 
-In this section, we will outline the key variables that are expected to be returned when utilizing the `run_pipeline`
-function.
+In this section, we will outline the special variables that are expected to be returned when the `run_pipeline` function returns a dictionary.
 
-### Loss
+#### Loss
 
-One crucial return variable is the `loss`. This metric serves as a fundamental indicator for the optimizer.
+One crucial return variable is the `loss`. This metric serves as a fundamental indicator for the optimizer. One option is to return a dictionary with the `loss` as a key, along with other user-chosen metrics.
 
 !!! note
 
-    Loss can be any value that is to be minimized by the objective function. We have chosen to label that as `loss`,
-    because of it's natural integration with neural networks common terminology.
-
-Additionally, the function can be modified to include other data in its return. One option is to return a dictionary
-with the `loss` as a key, along with other user-chosen metrics.
+    Loss can be any value that is to be minimized by the objective function.
 
 ```python
 def run_pipeline(
@@ -55,7 +49,7 @@ def run_pipeline(
     element_3 = config["element_3"]
 
     loss = element_1 - element_2 + element_3
-    reverse_loss = element_2 - element_1 - element_3
+    reverse_loss = -loss
 
     return {
         "loss": loss,
@@ -66,16 +60,14 @@ def run_pipeline(
     }
 ```
 
-### Cost
+#### Cost
 
-Along with the return of the `loss`, the `run_pipeline` function would optionally need to return a `cost` in certain
-cases. Specifically when the `max_cost_total` parameter is being utilized in the `neps.run` function.
+Along with the return of the `loss`, the `run_pipeline` function would optionally need to return a `cost` in certain cases. Specifically when the `max_cost_total` parameter is being utilized in the `neps.run` function.
 
 
 !!! note
 
-    `max_cost_total` sums the cost from all returned configuration results and checks whether the maximum allowed cost
-    has been reached (if so, the search will come to an end).
+    `max_cost_total` sums the cost from all returned configuration results and checks whether the maximum allowed cost has been reached (if so, the search will come to an end).
 
 ```python
 import neps
@@ -109,16 +101,13 @@ if __name__ == "__main__":
     )
 ```
 
-Each evaluation carries a cost of 2. Hence in this example, the Bayesian optimization search is set to perform 5
-evaluations.
+Each evaluation carries a cost of 2. Hence in this example, the Bayesian optimization search is set to perform 5 evaluations.
 
 ## Arguments for Convenience
 
-NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `run_pipeline`
-function for user convenience.
+NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `run_pipeline` function for user convenience.
 
-Regard an example to be run with a multi-fidelity searcher, some checkpointing would be advantageos such that one does
-not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
+Regard an example to be run with a multi-fidelity searcher, some checkpointing would be advantageos such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
 
 ```python
 def run_pipeline(
@@ -158,5 +147,4 @@ def run_pipeline(
     return loss
 ```
 
-This could allow the proper navigation to the trained models and further train them on higher fidelities without
-repeating the entire training process.
+This could allow the proper navigation to the trained models and further train them on higher fidelities without repeating the entire training process.
