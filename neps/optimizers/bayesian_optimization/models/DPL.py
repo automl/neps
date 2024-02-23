@@ -224,6 +224,10 @@ class PowerLawSurrogate:
         # IMPORTANT: For parallel runs lock the checkpoint file during the whole training
         checkpointing: bool = False,
         root_directory: Path | str | None = None,
+        # IMPORTANT: For parallel runs use a different checkpoint_file name for each
+        # IMPORTANT: surrogate. This makes sure that parallel runs don't override each
+        # IMPORTANT: others saved checkpoint. Although they will still have some conflicts due to
+        # IMPORTANT: global optimizer step tracking
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = default_refine_epochs,
         n_initial_full_trainings: int = default_n_initial_full_trainings,

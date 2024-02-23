@@ -164,6 +164,10 @@ class DeepGP:
         # IMPORTANT: hence, it is not suitable for multiprocessing settings
         checkpointing: bool = False,
         root_directory: Path | str | None = None,
+        # IMPORTANT: For parallel runs use a different checkpoint_file name for each
+        # IMPORTANT: surrogate. This makes sure that parallel runs don't override each
+        # IMPORTANT: others saved checkpoint. Although they will still have some conflicts due to
+        # IMPORTANT: global optimizer step tracking
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = 50,
         n_initial_full_trainings: int = 10,
