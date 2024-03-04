@@ -40,7 +40,7 @@ def test_filelock() -> None:
     try:
         assert not results_dir.exists()
         # Wait for them
-        p_list = launch_example_processes(n_workers=2)
+        p_list = launch_example_processes(n_workers=4)
         for p in p_list:
             p.wait()
             out, _ = p.communicate()
