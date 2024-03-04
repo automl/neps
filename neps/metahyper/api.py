@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import inspect
 import logging
 import shutil
@@ -270,9 +271,10 @@ def _check_max_evaluations(
     max_evaluations,
     serializer,
     logger,
-    continue_until_max_evaluation_completed,
+    continue_until_max_evaluation_completed
 ):
     logger.debug("Checking if max evaluations is reached")
+    #TODO: maybe not read everything again?
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger
     )
@@ -292,6 +294,9 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
     )
 
     base_result_directory = optimization_dir / "results"
+    logger.debug(f"Previous results: {previous_results}")
+    logger.debug(f"Pending configs: {pending_configs}")
+    logger.debug(f"Pending configs: {pending_configs_free}")
 
     logger.debug("Sampling a new configuration")
 
@@ -315,6 +320,9 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
             "communication, but most likely some configs crashed during their execution "
             "or a jobtime-limit was reached."
         )
+	# write some extra data per configuration if the optimizer has any
+    # if hasattr(sampler, "evaluation_data"):
+    #    sampler.evaluation_data.write_all(pipeline_directory)
 
     if previous_config_id is not None:
         previous_config_id_file = pipeline_directory / "previous_config.id"
@@ -452,6 +460,7 @@ def metahyper_run(
     )
 
     evaluations_in_this_run = 0
+
     while True:
         if max_evaluations_total is not None and _check_max_evaluations(
             optimization_dir,

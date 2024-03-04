@@ -60,7 +60,7 @@ class BaseOptimizer(Sampler):
         super().load_state(state)
 
     def load_config(self, config_dict):
-        config = deepcopy(self.pipeline_space)
+        config = self.pipeline_space.copy()
         config.load_from(config_dict)
         return config
 

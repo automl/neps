@@ -51,7 +51,6 @@ class CombineKernel:
     ):
         N = len(configs)
         K = torch.zeros(N, N) if self.combined_by == "sum" else torch.ones(N, N)
-
         gr1, x1 = extract_configs(configs)
 
         for i, k in enumerate(self.kernels):
