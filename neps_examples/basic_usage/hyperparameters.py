@@ -20,7 +20,7 @@ pipeline_space = dict(
     integer2=neps.IntegerParameter(lower=1, upper=1000, log=True),
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
