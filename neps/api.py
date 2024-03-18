@@ -273,6 +273,7 @@ def run(
         pipeline_space,
         max_cost_total,
         max_evaluations_total,
+        searcher
     )
 
     if pre_load_hooks is None:
