@@ -54,7 +54,6 @@ def get_run_args_from_yaml(path):
 
     # Flatten yaml file and ignore hierarchical structure, only consider parameters(keys)
     # with a value
-
     flat_config, special_configs = extract_leaf_keys(config)
 
     # Check if just neps arguments are provided
@@ -280,8 +279,8 @@ def check_run_args(settings):
 
 
 def check_essential_arguments(
-    run_pipeline, root_directory, pipeline_space, max_cost_total, max_evaluation_total
-):
+    run_pipeline, root_directory, pipeline_space, max_cost_total, max_evaluation_total,
+searcher):
     """
     Verifies that essential NEPS arguments are provided.
 
@@ -306,9 +305,11 @@ def check_essential_arguments(
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
     if not pipeline_space:
-        raise ValueError("'pipeline_space' is required but was not provided.")
+        if searcher is not Callable:
+            raise ValueError("'pipeline_space' is required but was not provided.")
     if not max_evaluation_total and not max_cost_total:
         raise ValueError(
             "'max_evaluation_total' or 'max_cost_total' is required but "
             "both were not provided."
         )
+

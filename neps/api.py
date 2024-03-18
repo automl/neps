@@ -219,6 +219,7 @@ def run(
         del searcher_kwargs["budget"]
     logger = logging.getLogger("neps")
 
+
     # if arguments via run_args provided overwrite them
     if run_args:
         logger.info(
