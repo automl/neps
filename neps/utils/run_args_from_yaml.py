@@ -2,8 +2,7 @@ import importlib.util
 import logging
 import sys
 from collections.abc import Callable
-from optimizers import BaseOptimizer
-
+from neps.optimizers.base_optimizer import BaseOptimizer
 import yaml
 
 logger = logging.getLogger("neps")
