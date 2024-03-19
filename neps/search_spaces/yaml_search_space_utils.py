@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 
 def convert_scientific_notation(value: str | int | float, show_usage_flag=False) \
-                                -> float | (float, bool):
+        -> float | (float, bool):
     """
     Convert a given value to a float if it's a string that matches scientific e notation.
     This is especially useful for numbers like "3.3e-5" which YAML parsers may not
@@ -156,6 +159,10 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
 
             # check if one value is e notation and if so convert it to float
             if flag_lower or flag_upper:
+                logger.info(
+                    f"Because of e notation, Parameter {name} gets "
+                    f"interpreted as float"
+                )
                 param_type = "float"
             else:
                 raise TypeError(

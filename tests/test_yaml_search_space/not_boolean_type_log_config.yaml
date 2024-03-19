@@ -1,0 +1,7 @@
+search_space:
+  param_float1:
+    lower: 0.00001
+    upper: 0.1
+    default: 0.001
+    log: falsee
+    is_fidelity: true

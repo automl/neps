@@ -15,7 +15,8 @@ class ConstantParameter(NumericalParameter):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.value == other.value
+        return (self.value == other.value
+                and self.is_fidelity == other.is_fidelity)
 
     def __repr__(self):
         return f"<Constant, value: {self.id}>"

@@ -8,6 +8,8 @@ from neps.search_spaces.search_space import (
 
 from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
 
+BASE_PATH = "tests/test_yaml_search_space/"
+
 
 @pytest.mark.neps_api
 def test_correct_yaml_files():
@@ -15,90 +17,47 @@ def test_correct_yaml_files():
         """Test the function with a correctly formatted YAML file."""
         pipeline_space = pipeline_space_from_yaml(path)
         assert isinstance(pipeline_space, dict)
-        assert isinstance(pipeline_space["param_float1"], FloatParameter)
-        assert pipeline_space["param_float1"].lower == 0.00001
-        assert pipeline_space["param_float1"].upper == 0.1
-        assert pipeline_space["param_float1"].log is True
-        assert pipeline_space["param_float1"].is_fidelity is False
-        assert pipeline_space["param_float1"].default is None
-        assert pipeline_space["param_float1"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["param_int1"], IntegerParameter)
-        assert pipeline_space["param_int1"].lower == -3
-        assert pipeline_space["param_int1"].upper == 30
-        assert pipeline_space["param_int1"].log is False
-        assert pipeline_space["param_int1"].is_fidelity is True
-        assert pipeline_space["param_int1"].default is None
-        assert pipeline_space["param_int1"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["param_int2"], IntegerParameter)
-        assert pipeline_space["param_int2"].lower == 100
-        assert pipeline_space["param_int2"].upper == 30000
-        assert pipeline_space["param_int2"].log is True
-        assert pipeline_space["param_int2"].is_fidelity is False
-        assert pipeline_space["param_int2"].default is None
-        assert pipeline_space["param_int2"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["param_float2"], FloatParameter)
-        assert pipeline_space["param_float2"].lower == 3.3e-5
-        assert pipeline_space["param_float2"].upper == 0.15
-        assert pipeline_space["param_float2"].log is False
-        assert pipeline_space["param_float2"].is_fidelity is False
-        assert pipeline_space["param_float2"].default is None
-        assert pipeline_space["param_float2"].default_confidence_score == 0.5
-        assert isinstance(pipeline_space["param_cat"], CategoricalParameter)
-        assert pipeline_space["param_cat"].choices == [2, "sgd", 10e-3]
-        assert pipeline_space["param_cat"].is_fidelity is False
-        assert pipeline_space["param_cat"].default is None
-        assert pipeline_space["param_cat"].default_confidence_score == 2
-        assert isinstance(pipeline_space["param_const1"], ConstantParameter)
-        assert pipeline_space["param_const1"].value == 0.5
-        assert pipeline_space["param_const1"].is_fidelity is False
-        assert isinstance(pipeline_space["param_const2"], ConstantParameter)
-        assert pipeline_space["param_const2"].value == 1e3
-        assert pipeline_space["param_const2"].is_fidelity is True
+        float1 = FloatParameter(0.00001, 0.1, True, False)
+        assert float1.__eq__(pipeline_space["param_float1"]) is True
+        int1 = IntegerParameter(-3, 30, False, True)
+        assert int1.__eq__(pipeline_space["param_int1"]) is True
+        int2 = IntegerParameter(100, 30000, True, False)
+        assert int2.__eq__(pipeline_space["param_int2"]) is True
+        float2 = FloatParameter(3.3e-5, 0.15, False, False)
+        assert float2.__eq__(pipeline_space["param_float2"]) is True
+        cat1 = CategoricalParameter([2, "sgd", 10e-3], False)
+        assert cat1.__eq__(pipeline_space["param_cat"]) is True
+        const1 = ConstantParameter(0.5, False)
+        assert const1.__eq__(pipeline_space["param_const1"]) is True
+        const2 = ConstantParameter(1e3, True)
+        assert const2.__eq__(pipeline_space["param_const2"]) is True
 
-    test_correct_yaml_file("tests/test_yaml_search_space/correct_config.yaml")
-    test_correct_yaml_file(
-        "tests/test_yaml_search_space/correct_config_including_types" ".yaml"
-    )
+    test_correct_yaml_file(BASE_PATH + "correct_config.yaml")
+    test_correct_yaml_file(BASE_PATH + "correct_config_including_types.yaml")
 
 
 @pytest.mark.neps_api
 def test_correct_including_priors_yaml_file():
     """Test the function with a correctly formatted YAML file."""
     pipeline_space = pipeline_space_from_yaml(
-        "tests/test_yaml_search_space/correct_config_including_priors.yml"
+        BASE_PATH + "correct_config_including_priors.yml"
     )
     assert isinstance(pipeline_space, dict)
-    assert isinstance(pipeline_space["learning_rate"], FloatParameter)
-    assert pipeline_space["learning_rate"].lower == 0.00001
-    assert pipeline_space["learning_rate"].upper == 0.1
-    assert pipeline_space["learning_rate"].log is True
-    assert pipeline_space["learning_rate"].is_fidelity is False
-    assert pipeline_space["learning_rate"].default == 3.3e-2
-    assert pipeline_space["learning_rate"].default_confidence_score == 0.125
-    assert isinstance(pipeline_space["num_epochs"], IntegerParameter)
-    assert pipeline_space["num_epochs"].lower == 3
-    assert pipeline_space["num_epochs"].upper == 30
-    assert pipeline_space["num_epochs"].log is False
-    assert pipeline_space["num_epochs"].is_fidelity is True
-    assert pipeline_space["num_epochs"].default == 10
-    assert pipeline_space["num_epochs"].default_confidence_score == 0.5
-    assert isinstance(pipeline_space["optimizer"], CategoricalParameter)
-    assert pipeline_space["optimizer"].choices == ["adam", 90e-3, "rmsprop"]
-    assert pipeline_space["optimizer"].is_fidelity is False
-    assert pipeline_space["optimizer"].default == 90e-3
-    assert pipeline_space["optimizer"].default_confidence_score == 4
-    assert isinstance(pipeline_space["dropout_rate"], ConstantParameter)
-    assert pipeline_space["dropout_rate"].value == 1e3
-    assert pipeline_space["dropout_rate"].default == 1e3
+    float1 = FloatParameter(0.00001, 0.1, True, False, 3.3e-2, "high")
+    assert float1.__eq__(pipeline_space["learning_rate"]) is True
+    int1 = IntegerParameter(3, 30, False, True, 10)
+    assert int1.__eq__(pipeline_space["num_epochs"]) is True
+    cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], False, 90e-3, "medium")
+    assert cat1.__eq__(pipeline_space["optimizer"]) is True
+    const1 = ConstantParameter(1e3, True)
+    assert const1.__eq__(pipeline_space["dropout_rate"]) is True
 
 
 @pytest.mark.neps_api
 def test_incorrect_yaml_file():
     """Test the function with an incorrectly formatted YAML file."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            Path("tests/test_yaml_search_space/incorrect_config.txt")
-        )
+        pipeline_space_from_yaml(Path(BASE_PATH + "incorrect_config.txt"))
     assert excinfo.value.exception_type == "ValueError"
 
 
@@ -106,7 +65,7 @@ def test_incorrect_yaml_file():
 def test_yaml_file_with_missing_key():
     """Test the function with a YAML file missing a required key."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml("tests/test_yaml_search_space/missing_key_config.yml")
+        pipeline_space_from_yaml(BASE_PATH + "missing_key_config.yml")
     assert excinfo.value.exception_type == "KeyError"
 
 
@@ -115,14 +74,10 @@ def test_yaml_file_with_inconsistent_types():
     """Test the function with a YAML file having inconsistent types for
     'lower' and 'upper'."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/inconsistent_types_config.yml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "inconsistent_types_config.yml")
     assert str(excinfo.value.exception_type == "TypeError")
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            Path("tests/test_yaml_search_space/inconsistent_types_config2.yml")
-        )
+        pipeline_space_from_yaml(Path(BASE_PATH + "inconsistent_types_config2.yml"))
     assert excinfo.value.exception_type == "TypeError"
 
 
@@ -131,9 +86,7 @@ def test_yaml_file_including_wrong_types():
     """Test the function with a YAML file that defines the wrong but existing type
     int to float as an optional argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/config_including_wrong_types.yaml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "config_including_wrong_types.yaml")
     assert excinfo.value.exception_type == "TypeError"
 
 
@@ -142,9 +95,7 @@ def test_yaml_file_including_unkown_types():
     """Test the function with a YAML file that defines an unknown type as an optional
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/config_including_unknown_types.yaml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "config_including_unknown_types.yaml")
     assert excinfo.value.exception_type == "TypeError"
 
 
@@ -153,7 +104,53 @@ def test_yaml_file_including_not_allowed_parameter_keys():
     """Test the function with a YAML file that defines an unknown type as an optional
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            "tests/test_yaml_search_space/not_allowed_key_config.yml"
-        )
+        pipeline_space_from_yaml(BASE_PATH + "not_allowed_key_config.yml")
     assert excinfo.value.exception_type == "KeyError"
+
+
+@pytest.mark.neps_api
+def test_yaml_file_default_parameter_not_in_range():
+    """Test if the default value outside the specified range is
+    correctly identified and handled."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "default_not_in_range_config.yaml")
+    assert excinfo.value.exception_type == "ValueError"
+
+
+@pytest.mark.neps_api
+def test_float_log_not_boolean():
+    """Test if an exception is raised when the 'log' attribute is not a boolean."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "not_boolean_type_log_config.yaml")
+    assert excinfo.value.exception_type == "TypeError"
+
+
+@pytest.mark.neps_api
+def test_float_is_fidelity_not_boolean():
+    """Test if an exception is raised when for FloatParameter the 'is_fidelity'
+    attribute is not a boolean."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(
+            BASE_PATH + "not_boolean_type_is_fidelity_float_config.yaml"
+        )
+    assert excinfo.value.exception_type == "TypeError"
+
+
+@pytest.mark.neps_api
+def test_cat_is_fidelity_not_boolean():
+    """Test if an exception is raised when for CategoricalParameter the 'is_fidelity'
+    attribute is not boolean."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(
+            BASE_PATH + "not_boolean_type_is_fidelity_cat_config.yaml"
+        )
+    assert excinfo.value.exception_type == "TypeError"
+
+
+@pytest.mark.neps_api
+def test_categorical_default_value_not_in_choices():
+    """Test if a ValueError is raised when the default value is not in the choices
+    for a CategoricalParameter."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "default_value_not_in_choices_config.yaml")
+    assert excinfo.value.exception_type == "ValueError"
