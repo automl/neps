@@ -221,15 +221,15 @@ def run(
 
     # if arguments via run_args provided overwrite them
     if run_args:
-        logger.info(
+        warnings.warn(
             "WARNING: Loading arguments from 'run_args'. Arguments directly provided "
             "to neps.run(...) will be not used!"
         )
 
         optim_settings = get_run_args_from_yaml(run_args)
 
-        # Update each argument based on optimization_settings, if not provided in yaml
-        # use default value, strict but will change in the future
+        # Update each argument based on optim_settings. If not key is not provided in yaml
+        # use default value. Currently strict but will change in the future.
         run_pipeline = optim_settings.get("run_pipeline", None)
         root_directory = optim_settings.get("root_directory", None)
         pipeline_space = optim_settings.get("pipeline_space", None)

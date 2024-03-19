@@ -1,7 +1,16 @@
 import pytest
+import neps
 from neps.utils.run_args_from_yaml import get_run_args_from_yaml
+from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
+from neps.search_spaces.search_space import SearchSpace
 
 BASE_PATH = "tests/test_yaml_run_args/"
+pipeline_space = dict(lr=neps.FloatParameter(lower=1.2, upper=4.2),
+                      epochs=neps.IntegerParameter(lower=1, upper=10))
+
+# This is needed for a test case where the argument 'searcher' is 'base_optimizer'.
+search_space = SearchSpace(**pipeline_space)
+base_optimizer = BayesianOptimization(pipeline_space=search_space)
 
 
 def run_pipeline():
@@ -24,12 +33,12 @@ def check_run_args(yaml_path_run_args, expected_output):
     Validates the loaded NEPS configuration against expected settings.
 
     Loads NEPS configuration settings from a specified YAML file and verifies
-    against expected settings, including function objects. Special handling is
-    applied to compare functions.
+    against expected settings, including function objects, dict and classes. Special
+    handling is applied to compare functions.
 
     Args:
-        yaml_path_run_args (str): The relative path to the YAML configuration file.
-        expected_output (dict): The expected NEPS configuration settings.
+        yaml_path_run_args (str): The path to the YAML configuration file.
+        expected_output (dict): The expected NePS configuration settings.
 
     Raises:
         AssertionError: If any configuration setting does not match the expected value.
@@ -38,17 +47,14 @@ def check_run_args(yaml_path_run_args, expected_output):
 
     def are_functions_equivalent(f1, f2):
         """
-        Compares two functions or lists of functions for equivalence based on their
-        bytecode.
+        Compares functions or lists of functions for equivalence by their bytecode,
+        useful when identical functions have different memory addresses. This method
+        identifies if functions, despite being distinct instances, perform identical
+        operations.
 
-        Determines if the provided functions or each function within the provided lists
-        have identical bytecode, implying they perform the same operations. This approach
-        is useful for comparing two different instances to assess if they originate from
-        the same root function.
-
-        Args:
-            f1: A function or list of functions.
-            f2: Another function or list of functions to compare against f1.
+        Parameters:
+        - func1: Function or list of functions to compare.
+        - func2: Function or list of functions to compare against func1.
 
         Returns:
             bool: True if the functions or all functions in the lists are equivalent,
@@ -63,7 +69,7 @@ def check_run_args(yaml_path_run_args, expected_output):
             )
         return f1.__code__.co_code == f2.__code__.co_code
 
-    # Remove and compare special function keys separately
+    # Compare keys with a function/list of functions as their values
     # Special because they include a module loading procedure by a path and the name of
     # the function
     for special_key in ["run_pipeline", "pre_load_hooks"]:
@@ -73,9 +79,16 @@ def check_run_args(yaml_path_run_args, expected_output):
             assert are_functions_equivalent(func_expected, func_output), (
                 f"Mismatch in {special_key} " f"function(s)"
             )
+    # Compare instances of a subclass of BaseOptimizer
+    if "searcher" in expected_output and not isinstance(expected_output["searcher"], str):
+        # 'searcher': BaseOptimizer()
+        optimizer_expected = expected_output.pop("searcher")
+        optimizer_output = output.pop("searcher", None)
+        assert isinstance(optimizer_output, type(optimizer_expected))
 
-    # Assert that the output matches the expected output
+    # Assert that the rest of the output dict matches the expected output dict
     assert output == expected_output, f"Expected {expected_output}, but got {output}"
+
 
 
 @pytest.mark.neps_api
@@ -154,20 +167,40 @@ def check_run_args(yaml_path_run_args, expected_output):
             },
         ),
         ("run_args_empty.yaml", {}),
+        ("run_args_optional_loading_format.yaml", {
+            "run_pipeline": run_pipeline,
+            "pipeline_space": pipeline_space,
+            "root_directory": "test_yaml",
+            "max_evaluations_total": 20,
+            "max_cost_total": 4.2,
+            "overwrite_working_directory": True,
+            "post_run_summary": False,
+            "development_stage_id": 9,
+            "max_evaluations_per_run": 5,
+            "continue_until_max_evaluation_completed": True,
+            "loss_value_on_error": 2.4,
+            "cost_value_on_error": 2.1,
+            "ignore_errors": False,
+            "searcher": base_optimizer,
+            "searcher_path": "/path/to/searcher",
+            "searcher_kwargs": {
+                "initial_design_size": 5,
+                "surrogate_model": "gp"
+            },
+            "pre_load_hooks": [hook1]
+
+        })
     ],
 )
 def test_yaml_config(yaml_path, expected_output):
     """
-    Parameterized test for verifying NEPS configuration loading from YAML.
-
-    Each test case supplies a YAML file path and expected configuration settings,
-    assessing the accuracy of the configuration loading functionality across various
-    scenarios. This includes tests for different levels of hierarchy in configuration
-    settings, as well as comparisons between partial and full definitions.
+    Tests NEPS configuration loading from run_args=YAML, comparing expected settings
+    against loaded ones. Covers hierarchical levels and partial/full of yaml
+    dict definitions.
 
     Args:
-        yaml_path (str): Path to the YAML file being tested.
-        expected_output (dict): Dictionary of the expected configuration settings.
+        yaml_path (str): Path to the YAML file.
+        expected_output (dict): Expected configuration settings.
     """
     check_run_args(yaml_path, expected_output)
 
@@ -185,18 +218,14 @@ def test_yaml_config(yaml_path, expected_output):
 )
 def test_yaml_failure_cases(yaml_path, expected_exception):
     """
-    Tests various error scenarios for loading NEPS configuration from YAML files.
+    Tests for expected exceptions when loading erroneous NEPS configurations from YAML.
 
-    This parameterized test function verifies that the `get_run_args_from_yaml` function
-    correctly raises the expected exceptions for different types of configuration errors.
-    Each test case simulates a common error scenario, including invalid types, missing
-    keys, and incorrect paths or names within the YAML files.
+    Each case checks if `get_run_args_from_yaml` raises the correct exception for errors
+    like invalid types, missing keys, and incorrect paths in YAML configurations.
 
     Args:
-        yaml_path (str): The path to the YAML file containing the erroneous configuration.
-        expected_exception (Exception): The type of exception expected to be raised.
-
-    The test ensures robust error handling within the configuration loading process.
+        yaml_path (str): Path to the error-containing YAML file.
+        expected_exception (Exception): Expected exception type.
     """
     with pytest.raises(expected_exception):
         get_run_args_from_yaml(BASE_PATH + yaml_path)

@@ -365,7 +365,7 @@ def check_run_args(settings):
         LOSS_VALUE_ON_ERROR: float,
         COST_VALUE_ON_ERROR: float,
         IGNORE_ERROR: bool,
-        SEARCHER: (str, Callable),
+        SEARCHER: (str, BaseOptimizer),
         SEARCHER_PATH: str,
         SEARCHER_KWARGS: dict,
     }
