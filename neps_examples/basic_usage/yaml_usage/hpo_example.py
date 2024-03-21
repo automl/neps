@@ -10,7 +10,7 @@ import neps
 
 """
 This script demonstrates the integration of a simple neural network training pipeline
-with NEPS for hyperparameter optimization, focusing on the MNIST dataset.
+with NePS for hyperparameter optimization, focusing on the MNIST dataset.
 
 - SimpleNN Class: A PyTorch neural network model that constructs a feedforward
   architecture based on input size, number of layers, and neurons per layer.
@@ -118,10 +118,10 @@ def training_pipeline(num_layers, num_neurons, epochs, learning_rate, optimizer)
 
 
 if __name__ == "__main__":
-    # Configure logging to display important messages from NEPS.
+    # Configure logging to display important messages from NePS.
     logging.basicConfig(level=logging.INFO)
 
-    # Run optimization using neps.run. Arguments can be provided directly to neps.run
+    # Run optimization using neps.run(...). Arguments can be provided directly to neps.run
     # or defined in a configuration file (e.g., "run_args.yaml") passed through
     # the run_args parameter.
     # At minimum, specify: neps.run(run_args="run_args.yaml").
