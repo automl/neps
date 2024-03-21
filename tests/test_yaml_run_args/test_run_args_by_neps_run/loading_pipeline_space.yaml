@@ -1,0 +1,30 @@
+run_args:
+  run_pipeline:
+    path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
+    name: run_pipeline
+  # Test Case
+  pipeline_space:
+    path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
+    name: "pipeline_space"
+  root_directory: "tests/test_yaml_run_args/test_run_args_by_neps_run/results"
+
+  max_evaluations_total: 1
+  max_cost_total:
+
+  monitoring:
+    overwrite_working_directory: True
+    post_run_summary: False
+    development_stage_id: None
+    task_id: None
+
+  parallelization_setup:
+    max_evaluations_per_run: None
+    continue_until_max_evaluation_completed:
+
+  search:
+    searcher: "bayesian_optimization"
+    searcher_kwargs:
+      initial_design_size: 5
+      surrogate_model: gp
+
+  pre_load_hooks: None

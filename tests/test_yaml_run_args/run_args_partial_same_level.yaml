@@ -1,0 +1,16 @@
+run_args:
+  pipeline_space:
+  root_directory: "test_yaml"
+  max_evaluations_total: 20
+  max_cost_total:
+  overwrite_working_directory: True
+  post_run_summary: False
+  development_stage_id: None
+  task_id: 4
+  max_evaluations_per_run: None
+  continue_until_max_evaluation_completed: True
+  loss_value_on_error: None
+  ignore_errors: True
+  searcher:
+  searcher_path:
+  pre_load_hooks: None
