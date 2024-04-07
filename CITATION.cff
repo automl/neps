@@ -13,10 +13,12 @@ authors:
     given-names: Samir
   - family-names: Abou Chakra
     given-names: Tarek
-  - family-names: Hvarfner
-    given-names: Carl
+  - family-names: Rogalla
+    given-names: Daniel
   - family-names: Bergman
     given-names: Eddie
+  - family-names: Hvarfner
+    given-names: Carl
   - family-names: Binxin
     given-names: Ru
   - family-names: Kober
@@ -26,6 +28,6 @@ authors:
   - family-names: Hutter
     given-names: Frank
 title: "Neural Pipeline Search (NePS)"
-version: 0.10.0
+version: 0.11.1
 date-released: 2023-10-25
 url: "https://github.com/automl/neps"

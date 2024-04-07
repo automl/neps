@@ -21,9 +21,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -41,4 +41,5 @@ jobs:
 
       - name: Run pytest
         timeout-minutes: 15
-        run: poetry run pytest -m "all_examples or metahyper or summary_csv"
+        run: poetry run pytest -m "all_examples or metahyper or neps_api or summary_csv"
+

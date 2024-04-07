@@ -1,0 +1,11 @@
+searcher_name: hyperband
+searcher_alg: hyperband
+searcher_selection: neps-default
+neps_decision_tree: true
+searcher_args:
+  eta: 3
+  initial_design_type: max_budget
+  use_priors: false
+  random_interleave_prob: 0.0
+  sample_default_first: false
+  sample_default_at_target: false

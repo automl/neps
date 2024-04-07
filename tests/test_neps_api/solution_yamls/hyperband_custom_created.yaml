@@ -1,0 +1,5 @@
+searcher_name: baseoptimizer
+searcher_alg: Hyperband
+searcher_selection: user-instantiation
+neps_decision_tree: false
+searcher_args: {}

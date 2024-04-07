@@ -1,0 +1,20 @@
+pipeline_space:
+  learning_rate:
+    type: numerical
+    lower: 0.00001
+    upper: 0.1
+    log: true
+
+  num_epochs:
+    type: numerical
+    lower: 3
+    upper: 30
+    is_fidelity: True
+
+  optimizer:
+    type: numerical
+    choices: ["adam", "sgd", "rmsprop"]
+
+  dropout_rate:
+    type: numerical
+    value: 0.5
