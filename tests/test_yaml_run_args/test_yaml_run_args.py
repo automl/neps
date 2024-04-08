@@ -8,10 +8,6 @@ BASE_PATH = "tests/test_yaml_run_args/"
 pipeline_space = dict(lr=neps.FloatParameter(lower=1.2, upper=4.2),
                       epochs=neps.IntegerParameter(lower=1, upper=10))
 
-# This is needed for a test case where the argument 'searcher' is 'base_optimizer'.
-search_space = SearchSpace(**pipeline_space)
-base_optimizer = BayesianOptimization(pipeline_space=search_space)
-
 
 def run_pipeline():
     """func to test loading of run_pipeline"""
@@ -181,7 +177,7 @@ def check_run_args(yaml_path_run_args, expected_output):
             "loss_value_on_error": 2.4,
             "cost_value_on_error": 2.1,
             "ignore_errors": False,
-            "searcher": base_optimizer,
+            "searcher": BayesianOptimization,
             "searcher_path": "/path/to/searcher",
             "searcher_kwargs": {
                 "initial_design_size": 5,

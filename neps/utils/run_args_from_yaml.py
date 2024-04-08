@@ -101,23 +101,32 @@ def get_run_args_from_yaml(path):
 
 def config_loader(path):
     """
-    Loads and parses a YAML configuration file.
+    Loads and parses a YAML configuration file. Checks if the loaded YAML starts with
+    'run_args' key.
 
     Args:
         path (str): The filesystem path to the YAML file to be loaded.
 
     Returns:
-        dict: The parsed YAML file as a dictionary.
+        dict: The parsed YAML file as a dictionary, specifically the content under
+        'run_args' key.
 
     Raises:
         ValueError: If the file cannot be parsed as YAML.
+        KeyError: If the 'run_args' key is not found at the top level of the YAML file.
     """
     try:
         with open(path) as file:
             config = yaml.safe_load(file)
     except yaml.YAMLError as e:
-        raise yaml.YAMLError(f"The file at {str(path)} is not a valid YAML file.") from e
-    return config
+        raise ValueError(f"The file at {path} is not a valid YAML file.") from e
+
+    # Check if 'run_args' is the top-level key in the loaded YAML
+    if 'run_args' not in config:
+        raise KeyError(f"The 'run_args' key is missing at the top level of the YAML "
+                       f"file: {path}")
+
+    return config['run_args']
 
 
 def extract_leaf_keys(d, special_keys=None):
