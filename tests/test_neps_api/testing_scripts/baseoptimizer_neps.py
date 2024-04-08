@@ -1,9 +1,10 @@
 import logging
 
-import neps
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from neps.optimizers.multi_fidelity.hyperband import Hyperband
 from neps.search_spaces.search_space import SearchSpace
+
+import neps
 
 pipeline_space_fidelity = dict(
     val1=neps.FloatParameter(lower=-10, upper=10),

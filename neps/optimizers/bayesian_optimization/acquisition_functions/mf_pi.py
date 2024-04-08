@@ -1,4 +1,5 @@
 # type: ignore
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Iterable, Tuple, Union
 
@@ -7,15 +8,14 @@ import pandas as pd
 import torch
 from torch.distributions import Normal
 
-from copy import deepcopy
-
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ....search_spaces.search_space import IntegerParameter, SearchSpace
+from ....utils.common import SimpleCSVWriter
 from ...multi_fidelity.utils import MFObservedData
 from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
-from ....utils.common import SimpleCSVWriter
 from .mf_ei import MFStepBase
+
 
 # NOTE: the order of inheritance is important
 class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
@@ -95,14 +95,10 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
             )  # IMPORTANT change from vanilla-EI
             pi = self.eval_pfn_pi(_x_tok, inc_list)
         elif self.surrogate_model_name in ["deep_gp", "dpl"]:
-            _x, inc_list = self.preprocess_deep_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
+            _x, inc_list = self.preprocess_deep_gp(_x)  # IMPORTANT change from vanilla-EI
             pi = self.eval_gp_pi(_x.values.tolist(), inc_list)
         elif self.surrogate_model_name == "gp":
-            _x, inc_list = self.preprocess_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
+            _x, inc_list = self.preprocess_gp(_x)  # IMPORTANT change from vanilla-EI
             pi = self.eval_gp_pi(_x.values.tolist(), inc_list)
         else:
             raise ValueError(
@@ -138,12 +134,11 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
         mu_star = inc_list.to(mu.device)
 
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
-        pi = gauss.cdf((mu - mu_star) / (std + 1E-9))
+        pi = gauss.cdf((mu - mu_star) / (std + 1e-9))
         return pi
 
 
 class MFPI_AtMax(MFPI):
-
     def preprocess_inc_list(self, **kwargs) -> list:
         assert "len_x" in kwargs, "Requires the length of the candidate set."
         len_x = kwargs["len_x"]
@@ -213,7 +208,9 @@ class MFPI_Dyna(MFPI_AtMax):
         ## marker 1: the fidelity value at which the best seen performance was recorded
         z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
         ## marker 2: the maximum fidelity value recorded in observation history
-        pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+        pseudo_z_max = (
+            self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+        )
 
         # TODO: compare with this first draft logic
         # def update_fidelity(config):
@@ -235,7 +232,7 @@ class MFPI_Dyna(MFPI_AtMax):
             return config
 
         # collect IDs for partial configurations
-        _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
+        _partial_config_ids = x.index <= max(self.observations.seen_config_ids)
         # filter for configurations that reached max budget
         indices_to_drop = [
             _idx
@@ -255,7 +252,6 @@ class MFPI_Dyna(MFPI_AtMax):
 
 
 class MFPI_Random(MFPI):
-
     BUDGET = 1000
 
     def __init__(
@@ -269,11 +265,11 @@ class MFPI_Random(MFPI):
         in_fill: str = "best",
         log_ei: bool = False,
     ):
-        super().__init__(pipeline_space, surrogate_model_name, augmented_ei, xi, in_fill, log_ei)
+        super().__init__(
+            pipeline_space, surrogate_model_name, augmented_ei, xi, in_fill, log_ei
+        )
         self.horizon = horizon
         self.threshold = threshold
-
-
 
     def set_state(
         self,
@@ -286,24 +282,24 @@ class MFPI_Random(MFPI):
         # set RNG
         self.rng = np.random.RandomState(seed=42)
         for i in range(len(observations.completed_runs)):
-            self.rng.uniform(-4,-1)
-            self.rng.randint(1,51)
+            self.rng.uniform(-4, -1)
+            self.rng.randint(1, 51)
 
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
-        if self.horizon == 'random':
+        if self.horizon == "random":
             shortest = self.pipeline_space.fidelity.lower
             longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
-            return self.rng.randint(shortest, longest+1)
-        elif self.horizon == 'max':
+            return self.rng.randint(shortest, longest + 1)
+        elif self.horizon == "max":
             return min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
         else:
             return int(self.horizon)
 
     def sample_threshold(self, f_inc):
-        if self.threshold == 'random':
-            lu = 10**self.rng.uniform(-4,-1) # % of gap closed
+        if self.threshold == "random":
+            lu = 10 ** self.rng.uniform(-4, -1)  # % of gap closed
         else:
             lu = float(self.threshold)
         return f_inc * (1 - lu)
@@ -318,7 +314,6 @@ class MFPI_Random(MFPI):
             # preprocess tabular space differently
             # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
-
 
         indices_to_drop = []
         inc_list = []
@@ -346,14 +341,16 @@ class MFPI_Random(MFPI):
                 else:
                     # a candidate partial training run to continue
                     target_fidelity = config.fidelity.value + horizon
-                    config.fidelity.value = min(config.fidelity.value + horizon, config.fidelity.upper) # if horizon exceeds max, query at max
+                    config.fidelity.value = min(
+                        config.fidelity.value + horizon, config.fidelity.upper
+                    )  # if horizon exceeds max, query at max
                     inc_list.append(inc_value)
             else:
                 # a candidate new training run that we would need to start
                 current_fidelity = 0
                 config.fidelity.value = horizon
                 inc_list.append(inc_value)
-            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
+            # print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
@@ -364,7 +361,6 @@ class MFPI_Random(MFPI):
 
 
 class MFPI_Random_HiT(MFPI):
-
     BUDGET = 1000
 
     def set_state(
@@ -378,18 +374,18 @@ class MFPI_Random_HiT(MFPI):
         # set RNG
         self.rng = np.random.RandomState(seed=42)
         for i in range(len(observations.completed_runs)):
-            self.rng.uniform(-4,0)
-            self.rng.randint(1,51)
+            self.rng.uniform(-4, 0)
+            self.rng.randint(1, 51)
 
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
         shortest = self.pipeline_space.fidelity.lower
         longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
-        return self.rng.randint(shortest, longest+1)
+        return self.rng.randint(shortest, longest + 1)
 
     def sample_threshold(self, f_inc):
-        lu = 10**self.rng.uniform(-4,0) # % of gap closed
+        lu = 10 ** self.rng.uniform(-4, 0)  # % of gap closed
         return f_inc * (1 - lu)
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
@@ -402,7 +398,6 @@ class MFPI_Random_HiT(MFPI):
             # preprocess tabular space differently
             # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
-
 
         indices_to_drop = []
         inc_list = []
@@ -430,14 +425,16 @@ class MFPI_Random_HiT(MFPI):
                 else:
                     # a candidate partial training run to continue
                     target_fidelity = config.fidelity.value + horizon
-                    config.fidelity.value = min(config.fidelity.value + horizon, config.fidelity.upper) # if horizon exceeds max, query at max
+                    config.fidelity.value = min(
+                        config.fidelity.value + horizon, config.fidelity.upper
+                    )  # if horizon exceeds max, query at max
                     inc_list.append(inc_value)
             else:
                 # a candidate new training run that we would need to start
                 current_fidelity = 0
                 config.fidelity.value = horizon
                 inc_list.append(inc_value)
-            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
+            # print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 import inspect
 import logging
+import os
 import shutil
 import time
 import warnings
@@ -269,10 +269,10 @@ def _check_max_evaluations(
     max_evaluations,
     serializer,
     logger,
-    continue_until_max_evaluation_completed
+    continue_until_max_evaluation_completed,
 ):
     logger.debug("Checking if max evaluations is reached")
-    #TODO: maybe not read everything again?
+    # TODO: maybe not read everything again?
     previous_results, pending_configs, pending_configs_free = read(
         optimization_dir, serializer, logger
     )
@@ -318,7 +318,7 @@ def _sample_config(optimization_dir, sampler, serializer, logger, pre_load_hooks
             "communication, but most likely some configs crashed during their execution "
             "or a jobtime-limit was reached."
         )
-	# write some extra data per configuration if the optimizer has any
+    # write some extra data per configuration if the optimizer has any
     # if hasattr(sampler, "evaluation_data"):
     #    sampler.evaluation_data.write_all(pipeline_directory)
 

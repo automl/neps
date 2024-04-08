@@ -1,6 +1,7 @@
+from typing import Any, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from typing import Any, Tuple, Union
 
 from ....search_spaces.search_space import SearchSpace
 from ...multi_fidelity.utils import MFObservedData
@@ -10,18 +11,18 @@ from .mf_ucb import MF_UCB_Dyna
 
 
 class MF_TwoStep(BaseAcquisition):
-    """ 2-step acquisition: employs 3 different acquisition calls.
-    """
+    """2-step acquisition: employs 3 different acquisition calls."""
 
     # HYPER-PARAMETERS: Going with the Freeze-Thaw BO (Swersky et al. 2014) values
     N_PARTIAL = 10
     N_NEW = 3
 
-    def __init__(self,
+    def __init__(
+        self,
         pipeline_space: SearchSpace,
         surrogate_model_name: str = None,
-        beta: float=1.0,
-        maximize: bool=False,
+        beta: float = 1.0,
+        maximize: bool = False,
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
@@ -42,8 +43,8 @@ class MF_TwoStep(BaseAcquisition):
             augmented_ei=augmented_ei,
             xi=xi,
             in_fill=in_fill,
-            log_ei=log_ei
-        )        
+            log_ei=log_ei,
+        )
         # Acquisition 2: For trimming down new candidate set
         self.acq_new_filter = MFEI(
             pipeline_space=pipeline_space,
@@ -51,14 +52,14 @@ class MF_TwoStep(BaseAcquisition):
             augmented_ei=augmented_ei,
             xi=xi,
             in_fill=in_fill,
-            log_ei=log_ei
+            log_ei=log_ei,
         )
         # Acquisition 3: For final selection of winners from Acquisitions 1 & 2
         self.acq_combined = MF_UCB_Dyna(
             pipeline_space=pipeline_space,
             surrogate_model_name=surrogate_model_name,
             beta=beta,
-            maximize=maximize
+            maximize=maximize,
         )
         self.pipeline_space = pipeline_space
         self.surrogate_model_name = surrogate_model_name
@@ -80,22 +81,13 @@ class MF_TwoStep(BaseAcquisition):
         self.observations = observations
         self.b_step = b_step
         self.acq_partial_filter.set_state(
-            self.pipeline_space,
-            self.surrogate_model,
-            self.observations,
-            self.b_step
+            self.pipeline_space, self.surrogate_model, self.observations, self.b_step
         )
         self.acq_new_filter.set_state(
-            self.pipeline_space,
-            self.surrogate_model,
-            self.observations,
-            self.b_step
+            self.pipeline_space, self.surrogate_model, self.observations, self.b_step
         )
         self.acq_combined.set_state(
-            self.pipeline_space,
-            self.surrogate_model,
-            self.observations,
-            self.b_step
+            self.pipeline_space, self.surrogate_model, self.observations, self.b_step
         )
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
@@ -113,38 +105,48 @@ class MF_TwoStep(BaseAcquisition):
         acq.loc[_samples.index.values <= max_seen_id] = 0
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # find configs not in top-N_NEW set as per acquisition value, to be dropped
-        not_top_new_idx = acq.sort_values().index[:-self.N_NEW]  # len(acq) - N_NEW
+        not_top_new_idx = acq.sort_values().index[: -self.N_NEW]  # len(acq) - N_NEW
         # drop these configurations
-        acq.loc[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
+        acq.loc[
+            not_top_new_idx
+        ] = 0  # to ignore in the argmax of the acquisition function
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # result of first round of filtering of new candidates
 
-        acq_new_mask = pd.Series({
-            idx: val for idx, val in _samples.items() if acq.loc[idx] > 0
-        })
+        acq_new_mask = pd.Series(
+            {idx: val for idx, val in _samples.items() if acq.loc[idx] > 0}
+        )
         # for partial candidate set
         acq, _samples = self.acq_partial_filter.eval(x, asscalar=True)
         acq = pd.Series(acq, index=_samples.index)
         # weigh the acq value based on max seen for each config
         acq = self._weigh_partial_acq_scores(acq=acq)
         # drop new configurations
-        acq.loc[_samples.index.values > max_seen_id] = 0  # to ignore in the argmax of the acquisition function
+        acq.loc[
+            _samples.index.values > max_seen_id
+        ] = 0  # to ignore in the argmax of the acquisition function
         # find configs not in top-N_NEW set as per acquisition value
         _top_n_partial = min(self.N_PARTIAL, total_seen_id)
-        not_top_new_idx = acq.sort_values().index[:-_top_n_partial]  # acq.argsort()[::-1][_top_n_partial:]  # sorts in ascending-flips-leaves out top-N_PARTIAL
+        not_top_new_idx = acq.sort_values().index[
+            :-_top_n_partial
+        ]  # acq.argsort()[::-1][_top_n_partial:]  # sorts in ascending-flips-leaves out top-N_PARTIAL
         # drop these configurations
-        acq.loc[not_top_new_idx] = 0  # to ignore in the argmax of the acquisition function
+        acq.loc[
+            not_top_new_idx
+        ] = 0  # to ignore in the argmax of the acquisition function
         # NOTE: setting to 0 works as EI-based AF returns > 0
         # result of first round of filtering of partial candidates
-        acq_partial_mask = pd.Series({
-            idx: val for idx, val in _samples.items() if acq.loc[idx] > 0
-        })
+        acq_partial_mask = pd.Series(
+            {idx: val for idx, val in _samples.items() if acq.loc[idx] > 0}
+        )
 
         eligible_set = set(
-            np.concatenate([
-                acq_partial_mask.index.values.tolist(),
-                acq_new_mask.index.values.tolist()
-            ])
+            np.concatenate(
+                [
+                    acq_partial_mask.index.values.tolist(),
+                    acq_new_mask.index.values.tolist(),
+                ]
+            )
         )
 
         # for combined selection
@@ -153,16 +155,20 @@ class MF_TwoStep(BaseAcquisition):
         # applying mask from step-1 to make final selection among (N_NEW + N_PARTIAL)
         mask = acq.index.isin(eligible_set)
         # NOTE: setting to -np.inf works as MF-UCB here is max.(-LCB) instead of min.(LCB)
-        acq[~mask] = -np.inf # will be ignored in the argmax of the acquisition function
-        acq_combined = pd.Series({
-            idx: acq.loc[idx] for idx, val in _samples.items() if acq.loc[idx] != -np.inf
-        })
+        acq[~mask] = -np.inf  # will be ignored in the argmax of the acquisition function
+        acq_combined = pd.Series(
+            {
+                idx: acq.loc[idx]
+                for idx, val in _samples.items()
+                if acq.loc[idx] != -np.inf
+            }
+        )
         # NOTE: setting to -np.inf works as MF-UCB here is max.(-LCB) instead of min.(LCB)
         acq_combined = acq_combined.reindex(acq.index, fill_value=-np.inf)
         acq = acq_combined.values
-        
+
         return acq, _samples
-    
+
     def _weigh_partial_acq_scores(self, acq: pd.Series) -> pd.Series:
         # find the best performance per configuration seen
         inc_list_partial = self.observations.get_best_performance_per_config()
@@ -187,8 +193,7 @@ class MF_TwoStep(BaseAcquisition):
 
 
 class MFEI_PartialFilter(MFEI):
-    """Custom redefinition of MF-EI with Dynamic extrapolation length to adjust incumbents.
-    """
+    """Custom redefinition of MF-EI with Dynamic extrapolation length to adjust incumbents."""
 
     def preprocess_inc_list(self, **kwargs) -> list:
         # the assertion exists to forcibly check the call to the super().preprocess()
@@ -212,8 +217,7 @@ class MFEI_PartialFilter(MFEI):
 
 
 class MFEI_Dyna_PartialFilter(MFEI_Dyna):
-    """Custom redefinition of MF-EI with Dynamic extrapolation length to adjust incumbents.
-    """
+    """Custom redefinition of MF-EI with Dynamic extrapolation length to adjust incumbents."""
 
     def preprocess_inc_list(self, **kwargs) -> list:
         # the assertion exists to forcibly check the call to the super().preprocess()
@@ -235,4 +239,3 @@ class MFEI_Dyna_PartialFilter(MFEI_Dyna):
         inc_list[:n_partial] = inc_list_partial
 
         return inc_list
-        

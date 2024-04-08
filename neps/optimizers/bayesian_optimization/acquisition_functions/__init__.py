@@ -6,10 +6,9 @@ from typing import Callable
 from .ei import ComprehensiveExpectedImprovement
 from .mf_ei import MFEI, MFEI_AtMax, MFEI_Dyna, MFEI_Random
 from .mf_pi import MFPI, MFPI_AtMax, MFPI_Dyna, MFPI_Random, MFPI_Random_HiT
-from .ucb import UpperConfidenceBound
-from .mf_ucb import MF_UCB, MF_UCB_AtMax, MF_UCB_Dyna
 from .mf_two_step import MF_TwoStep
-
+from .mf_ucb import MF_UCB, MF_UCB_AtMax, MF_UCB_Dyna
+from .ucb import UpperConfidenceBound
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
@@ -113,5 +112,5 @@ AcquisitionMapping: dict[str, Callable] = {
         MFPI_Random_HiT,
         in_fill="best",
         augmented_ei=False,
-    )
+    ),
 }

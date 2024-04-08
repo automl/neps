@@ -57,13 +57,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from neps.plot.tensorboard_eval import tblogger
 from torch.optim import lr_scheduler
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision.transforms import transforms
 
 import neps
-from neps.plot.tensorboard_eval import tblogger
 
 """
 Steps for a successful training pipeline:

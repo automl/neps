@@ -296,6 +296,7 @@ class DataWriter:
      and then write_data will be called with only the directory path as argument
      during the write process
     """
+
     def __init__(self, name: str):
         self.name = name
 
@@ -312,6 +313,7 @@ class EvaluationData:
     A class to store some data for a single evaluation (configuration)
      and write that data to its corresponding config folder
     """
+
     def __init__(self):
         self.data_dict: dict[str, DataWriter] = {}
 
@@ -336,10 +338,3 @@ class SimpleJSONWriter(DataWriter):
         path = to_directory / str(self.name + ".json")
         with open(path, "w") as file:
             json.dump(self.data, file)
-
-
-
-
-
-
-

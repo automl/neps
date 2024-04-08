@@ -17,6 +17,7 @@ ROOT_DIRECTORY
 ├── best_loss_trajectory.txt
 └── best_loss_with_config_trajectory.txt
 ```
+
 ## Summary CSV
 
 The argument `post_run_summary` in `neps.run` allows for the automatic generation of CSV files after a run is complete. The new root directory after utilizing this argument will look like the following:
@@ -50,11 +51,14 @@ ROOT_DIRECTORY
 
 The `tblogger.log` function is invoked within the model's training loop to facilitate logging of key metrics.
 
-!!! tip 
+!!! tip
 
-    The logger function is primarily designed for implementation within the `run_pipeline` function during the training of the neural network.
+```
+The logger function is primarily designed for implementation within the `run_pipeline` function during the training of the neural network.
+```
 
 - **Signature:**
+
 ```python
 tblogger.log(
     loss: float,
@@ -67,37 +71,42 @@ tblogger.log(
 ```
 
 - **Parameters:**
-    - `loss` (float): The loss value to be logged.
-    - `current_epoch` (int): The current epoch or iteration number.
-    - `write_config_scalar` (bool, optional): Set to `True` for a live loss trajectory for each configuration.
-    - `write_config_hparam` (bool, optional): Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
-    - `write_summary_incumbent` (bool, optional): Set to `True` for a live incumbent trajectory.
-    - `extra_data` (dict, optional): Additional data to be logged, provided as a dictionary.
+  - `loss` (float): The loss value to be logged.
+  - `current_epoch` (int): The current epoch or iteration number.
+  - `write_config_scalar` (bool, optional): Set to `True` for a live loss trajectory for each configuration.
+  - `write_config_hparam` (bool, optional): Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+  - `write_summary_incumbent` (bool, optional): Set to `True` for a live incumbent trajectory.
+  - `extra_data` (dict, optional): Additional data to be logged, provided as a dictionary.
 
 ### Extra Custom Logging
 
-NePS provides dedicated functions for customized logging using the `extra_data` argument. 
+NePS provides dedicated functions for customized logging using the `extra_data` argument.
 
 !!! note "Custom Logging Instructions"
 
-    Name the dictionary keys as the names of the values you want to log and pass one of the following functions as the values for a successful logging process.
+```
+Name the dictionary keys as the names of the values you want to log and pass one of the following functions as the values for a successful logging process.
+```
 
 #### 1- Extra Scalar Logging
 
 Logs new scalar data during training. Uses `current_epoch` from the log function as its `global_step`.
 
 - **Signature:**
+
 ```python
 tblogger.scalar_logging(value: float)
 ```
+
 - **Parameters:**
-    - `value` (float): Any scalar value to be logged at the current epoch of `tblogger.log` function.
+  - `value` (float): Any scalar value to be logged at the current epoch of `tblogger.log` function.
 
 #### 2- Extra Image Logging
 
 Logs images during training. Images can be resized, randomly selected, and a specified number can be logged at specified intervals. Uses `current_epoch` from the log function as its `global_step`.
 
 - **Signature:**
+
 ```python
 tblogger.image_logging(
     image: torch.Tensor,
@@ -110,12 +119,12 @@ tblogger.image_logging(
 ```
 
 - **Parameters:**
-    - `image` (torch.Tensor): Image tensor to be logged.
-    - `counter` (int): Log images every counter epochs (i.e., when current_epoch % counter equals 0).
-    - `resize_images` (list of int, optional): List of integers for image sizes after resizing (default: [32, 32]).
-    - `random_images` (bool, optional): Images are randomly selected if True (default: True).
-    - `num_images` (int, optional): Number of images to log (default: 20).
-    - `seed` (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control randomness and reproducibility (default: None).
+  - `image` (torch.Tensor): Image tensor to be logged.
+  - `counter` (int): Log images every counter epochs (i.e., when current_epoch % counter equals 0).
+  - `resize_images` (list of int, optional): List of integers for image sizes after resizing (default: \[32, 32\]).
+  - `random_images` (bool, optional): Images are randomly selected if True (default: True).
+  - `num_images` (int, optional): Number of images to log (default: 20).
+  - `seed` (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control randomness and reproducibility (default: None).
 
 ### Logging Example
 
@@ -124,17 +133,19 @@ For illustration purposes, we have employed a straightforward example involving 
 You can find this example [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py)
 
 !!! info "Important"
-    We have optimized the example for computational efficiency. If you wish to replicate the exact results showcased in the following section, we recommend the following modifications:
+We have optimized the example for computational efficiency. If you wish to replicate the exact results showcased in the following section, we recommend the following modifications:
 
-    1- Increase maximum epochs from 2 to 10
+```
+1- Increase maximum epochs from 2 to 10
 
-    2- Set the `write_summary_incumbent` argument to `True`
+2- Set the `write_summary_incumbent` argument to `True`
 
-    3- Change the searcher from `random_search` to `bayesian_optimization`
-    
-    4- Increase the maximum evaluations before disabling `tblogger` from 2 to 14
+3- Change the searcher from `random_search` to `bayesian_optimization`
 
-    5- Increase the maximum evaluations after disabling `tblogger` from 3 to 15
+4- Increase the maximum evaluations before disabling `tblogger` from 2 to 14
+
+5- Increase the maximum evaluations after disabling `tblogger` from 3 to 15
+```
 
 ### Visualization Results
 
@@ -144,7 +155,7 @@ The following command will open a local host for TensorBoard visualizations, all
 tensorboard --logdir path/to/root_directory
 ```
 
-This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided via the `extra_data` argument in the `tblogger.log` function. 
+This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided via the `extra_data` argument in the `tblogger.log` function.
 
 ![scalar_loggings](doc_images/tensorboard/tblogger_scalar.jpg)
 

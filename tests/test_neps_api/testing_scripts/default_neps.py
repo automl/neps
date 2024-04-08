@@ -1,10 +1,11 @@
 import logging
 
-import neps
-from neps.optimizers.bayesian_optimization.kernels import GraphKernelMapping
 from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
     ComprehensiveGPHierarchy,
 )
+
+import neps
+from neps.optimizers.bayesian_optimization.kernels import GraphKernelMapping
 
 pipeline_space_fidelity_priors = dict(
     val1=neps.FloatParameter(lower=-10, upper=10, default=1),

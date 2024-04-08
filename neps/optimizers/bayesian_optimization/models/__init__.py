@@ -1,7 +1,7 @@
 from ....metahyper.utils import MissingDependencyError
+from .DPL import PowerLawSurrogate
 from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
-from .DPL import PowerLawSurrogate
 
 try:
     from .deepGP import DeepGP

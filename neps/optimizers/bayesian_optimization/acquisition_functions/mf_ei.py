@@ -18,6 +18,7 @@ class MFStepBase(BaseAcquisition):
 
     WARNING: Unsafe use of self attributes, can break if not used correctly.
     """
+
     def set_state(
         self,
         pipeline_space: SearchSpace,
@@ -35,7 +36,6 @@ class MFStepBase(BaseAcquisition):
 
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
-
 
     def preprocess_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         x, inc_list = self.preprocess(x)
@@ -58,7 +58,9 @@ class MFStepBase(BaseAcquisition):
         self.surrogate_model.set_prediction_learning_curves(x_lcs)
         return x, inc_list
 
-    def preprocess_pfn(self, x: pd.Series) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
+    def preprocess_pfn(
+        self, x: pd.Series
+    ) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -158,14 +160,10 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_pfn_ei(_x_tok, inc_list)
         elif self.surrogate_model_name in ["deep_gp", "dpl"]:
-            _x, inc_list = self.preprocess_deep_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
+            _x, inc_list = self.preprocess_deep_gp(_x)  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
         elif self.surrogate_model_name == "gp":
-            _x, inc_list = self.preprocess_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
+            _x, inc_list = self.preprocess_gp(_x)  # IMPORTANT change from vanilla-EI
             ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
         else:
             raise ValueError(
@@ -236,7 +234,6 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
 
 
 class MFEI_AtMax(MFEI):
-
     def preprocess_inc_list(self, **kwargs) -> list:
         assert "len_x" in kwargs, "Requires the length of the candidate set."
         len_x = kwargs["len_x"]
@@ -306,7 +303,9 @@ class MFEI_Dyna(MFEI_AtMax):
         ## marker 1: the fidelity value at which the best seen performance was recorded
         z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
         ## marker 2: the maximum fidelity value recorded in observation history
-        pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+        pseudo_z_max = (
+            self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+        )
 
         # TODO: compare with this first draft logic
         # def update_fidelity(config):
@@ -328,7 +327,7 @@ class MFEI_Dyna(MFEI_AtMax):
             return config
 
         # collect IDs for partial configurations
-        _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
+        _partial_config_ids = x.index <= max(self.observations.seen_config_ids)
         # filter for configurations that reached max budget
         indices_to_drop = [
             _idx
@@ -348,7 +347,6 @@ class MFEI_Dyna(MFEI_AtMax):
 
 
 class MFEI_Random(MFEI):
-
     BUDGET = 1000
 
     def set_state(
@@ -362,18 +360,18 @@ class MFEI_Random(MFEI):
         # set RNG
         self.rng = np.random.RandomState(seed=42)
         for i in range(len(observations.completed_runs)):
-            self.rng.uniform(-4,-1)
-            self.rng.randint(1,51)
+            self.rng.uniform(-4, -1)
+            self.rng.randint(1, 51)
 
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
         shortest = self.pipeline_space.fidelity.lower
         longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
-        return self.rng.randint(shortest, longest+1)
+        return self.rng.randint(shortest, longest + 1)
 
     def sample_threshold(self, f_inc):
-        lu = 10**self.rng.uniform(-4,-1) # % of gap closed
+        lu = 10 ** self.rng.uniform(-4, -1)  # % of gap closed
         return f_inc * (1 - lu)
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
@@ -386,7 +384,6 @@ class MFEI_Random(MFEI):
             # preprocess tabular space differently
             # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
-
 
         indices_to_drop = []
         inc_list = []
@@ -413,14 +410,16 @@ class MFEI_Random(MFEI):
                 else:
                     # a candidate partial training run to continue
                     target_fidelity = config.fidelity.value + horizon
-                    config.fidelity.value = min(config.fidelity.value + horizon, config.fidelity.upper) # if horizon exceeds max, query at max
+                    config.fidelity.value = min(
+                        config.fidelity.value + horizon, config.fidelity.upper
+                    )  # if horizon exceeds max, query at max
                     inc_list.append(inc_value)
             else:
                 # a candidate new training run that we would need to start
                 current_fidelity = 0
                 config.fidelity.value = horizon
                 inc_list.append(inc_value)
-            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
+            # print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)

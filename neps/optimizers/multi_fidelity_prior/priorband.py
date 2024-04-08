@@ -5,7 +5,7 @@ from __future__ import annotations
 import typing
 
 import numpy as np
-from typing_extensions import Literal
+from typing import Literal
 
 from ...search_spaces.search_space import SearchSpace
 from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition

@@ -9,7 +9,7 @@ from .base_acquisition import BaseAcquisition
 
 
 class UpperConfidenceBound(BaseAcquisition):
-    def __init__(self, beta: float=1.0, maximize: bool=False):
+    def __init__(self, beta: float = 1.0, maximize: bool = False):
         """Upper Confidence Bound (UCB) acquisition function.
 
         Args:
@@ -35,7 +35,7 @@ class UpperConfidenceBound(BaseAcquisition):
 
     def eval(
         self, x: Iterable, betas: torch.Tensor | None = None, asscalar: bool = False
-    ) -> Union[np.ndarray, torch.Tensor, float]:
+    ) -> np.ndarray | torch.Tensor | float:
         try:
             mu, cov = self.surrogate_model.predict(x)
             std = torch.sqrt(torch.diag(cov))

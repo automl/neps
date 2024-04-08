@@ -13,11 +13,12 @@ from .ucb import UpperConfidenceBound
 
 # NOTE: the order of inheritance is important
 class MF_UCB(MFStepBase, UpperConfidenceBound):
-    def __init__(self,
+    def __init__(
+        self,
         pipeline_space: SearchSpace,
         surrogate_model_name: str = None,
-        beta: float=1.0,
-        maximize: bool=False
+        beta: float = 1.0,
+        maximize: bool = False,
     ):
         """Upper Confidence Bound (UCB) acquisition function.
 
@@ -74,8 +75,8 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
         return x, torch.Tensor(betas)
 
     def preprocess_gp(
-            self, x: pd.Series, surrogate_name: str = "gp"
-        ) -> Tuple[pd.Series, torch.Tensor]:
+        self, x: pd.Series, surrogate_name: str = "gp"
+    ) -> Tuple[pd.Series, torch.Tensor]:
         if surrogate_name == "gp":
             x, inc_list = self.preprocess(x)
             return x, inc_list
@@ -94,17 +95,15 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
             self.surrogate_model.set_prediction_learning_curves(x_lcs)
             return x, inc_list
         else:
-            raise ValueError(
-                f"Unrecognized surrogate model name: {surrogate_name}"
-            )
+            raise ValueError(f"Unrecognized surrogate model name: {surrogate_name}")
 
     def eval_pfn_ucb(
-        self, x: Iterable, beta: float=(1-.682)/2
+        self, x: Iterable, beta: float = (1 - 0.682) / 2
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """PFN-UCB modified to preprocess samples and accept list of incumbents."""
         ucb = self.surrogate_model.get_ucb(
             x_test=x.to(self.surrogate_model.device),
-            beta=beta  # TODO: extend to have different betas for each candidates in x
+            beta=beta,  # TODO: extend to have different betas for each candidates in x
         )
         if len(ucb.shape) == 2:
             ucb = ucb.flatten()
@@ -112,15 +111,10 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         if self.surrogate_model_name == "pfn":
-            _x, _x_tok, _ = self.preprocess_pfn(
-                x.copy()
-            )
+            _x, _x_tok, _ = self.preprocess_pfn(x.copy())
             ucb = self.eval_pfn_ucb(_x_tok)
         elif self.surrogate_model_name in ["deep_gp", "gp", "dpl"]:
-            _x, betas = self.preprocess_gp(
-                x.copy(),
-                self.surrogate_model_name
-            )
+            _x, betas = self.preprocess_gp(x.copy(), self.surrogate_model_name)
             ucb = super().eval(_x.values.tolist(), betas, asscalar)
         else:
             raise ValueError(
@@ -131,7 +125,6 @@ class MF_UCB(MFStepBase, UpperConfidenceBound):
 
 
 class MF_UCB_AtMax(MF_UCB):
-
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
@@ -167,7 +160,6 @@ class MF_UCB_AtMax(MF_UCB):
 
 
 class MF_UCB_Dyna(MF_UCB):
-
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
@@ -189,7 +181,9 @@ class MF_UCB_Dyna(MF_UCB):
         ## marker 1: the fidelity value at which the best seen performance was recorded
         z_inc = self.b_step * z_inc_level + self.pipeline_space.fidelity.lower
         ## marker 2: the maximum fidelity value recorded in observation history
-        pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+        pseudo_z_max = (
+            self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
+        )
 
         # TODO: compare with this first draft logic
         # def update_fidelity(config):
@@ -211,7 +205,7 @@ class MF_UCB_Dyna(MF_UCB):
             return config
 
         # collect IDs for partial configurations
-        _partial_config_ids = (x.index <= max(self.observations.seen_config_ids))
+        _partial_config_ids = x.index <= max(self.observations.seen_config_ids)
         # filter for configurations that reached max budget
         indices_to_drop = [
             _idx

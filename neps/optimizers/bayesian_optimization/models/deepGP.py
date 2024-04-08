@@ -17,11 +17,9 @@ from ....search_spaces.search_space import (
     SearchSpace,
 )
 
+
 def get_optimizer_losses(root_directory: Path | str) -> list[float]:
-
-
     all_losses_file = root_directory / "all_losses_and_configs.txt"
-
 
     # Read all losses from the file in the order they are explored
     losses = [
@@ -30,6 +28,7 @@ def get_optimizer_losses(root_directory: Path | str) -> list[float]:
         if "Loss: " in line
     ]
     return losses
+
 
 def get_best_loss(root_directory: Path | str) -> float:
     root_directory = Path(root_directory)
@@ -210,8 +209,9 @@ class DeepGP:
         if self.surrogate_model_fit_args.get("perf_patience", -1) is None:
             # To replicate how the original DyHPO implementation handles the
             # no_improvement_threshold
-            self.surrogate_model_fit_args["perf_patience"] = int(self.max_fidelity +
-                                                                 0.2 * self.max_fidelity)
+            self.surrogate_model_fit_args["perf_patience"] = int(
+                self.max_fidelity + 0.2 * self.max_fidelity
+            )
 
         # build the neural network
         self.nn = NeuralFeatureExtractor(self.input_size, **neural_network_args)
@@ -265,8 +265,9 @@ class DeepGP:
 
         self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
 
-        return ((non_improvement_steps < perf_patience)
-                and (self.n_initial_full_trainings <= total_optimizer_steps))
+        return (non_improvement_steps < perf_patience) and (
+            self.n_initial_full_trainings <= total_optimizer_steps
+        )
 
     def __preprocess_search_space(self, pipeline_space: SearchSpace):
         self.categories = []
@@ -308,17 +309,15 @@ class DeepGP:
         return encoding
 
     def __extract_budgets(
-        self, x_train: list[SearchSpace],
+        self,
+        x_train: list[SearchSpace],
         normalized: bool = True,
-        use_min_budget: bool = False
+        use_min_budget: bool = False,
     ) -> np.ndarray:
-
         min_budget = self.min_fidelity if use_min_budget else 0
         budgets = np.array([config.fidelity.value for config in x_train], dtype=np.single)
         if normalized:
-            normalized_budgets = (budgets - min_budget) / (
-                self.max_fidelity - min_budget
-            )
+            normalized_budgets = (budgets - min_budget) / (self.max_fidelity - min_budget)
             budgets = normalized_budgets
         return budgets
 
@@ -382,7 +381,7 @@ class DeepGP:
         x: list[SearchSpace],
         learning_curves: list[list[float]],
         normalize_budget: bool = True,
-        use_min_budget: bool = False
+        use_min_budget: bool = False,
     ):
         budgets = self.__extract_budgets(x, normalize_budget, use_min_budget)
         learning_curves = self.__preprocess_learning_curves(learning_curves)
@@ -434,7 +433,7 @@ class DeepGP:
             learning_curves,
             normalize_y=normalize_y,
             normalize_budget=normalize_budget,
-            use_min_budget=use_min_budget
+            use_min_budget=use_min_budget,
         )
         self.model, self.likelihood, self.mll = self.__initialize_gp_model(len(y_train))
         self.nn = NeuralFeatureExtractor(self.input_size, **self.nn_args)

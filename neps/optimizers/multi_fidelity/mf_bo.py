@@ -200,8 +200,10 @@ class FreezeThawModel:
             self.surrogate_model_args.update({"pipeline_space": pipeline_space})
         elif self.surrogate_model_name == "dpl":
             self.surrogate_model_args.update(
-                {"pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs}
+                {
+                    "pipeline_space": self.pipeline_space,
+                    "observed_data": self.observed_configs,
+                }
             )
 
         # instantiate the surrogate model
@@ -269,8 +271,10 @@ class FreezeThawModel:
         )
         if self.surrogate_model_name == "dpl":
             self.surrogate_model_args.update(
-                {"pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs}
+                {
+                    "pipeline_space": self.pipeline_space,
+                    "observed_data": self.observed_configs,
+                }
             )
             self.surrogate_model = instance_from_map(
                 SurrogateModelMapping,
@@ -287,8 +291,10 @@ class FreezeThawModel:
                 )
             elif self.surrogate_model_name == "dpl":
                 self.surrogate_model_args.update(
-                    {"pipeline_space": self.pipeline_space,
-                    "observed_data": self.observed_configs}
+                    {
+                        "pipeline_space": self.pipeline_space,
+                        "observed_data": self.observed_configs,
+                    }
                 )
             # instantiate the surrogate model, again, with the new pipeline space
             self.surrogate_model = instance_from_map(
@@ -299,8 +305,10 @@ class FreezeThawModel:
             )
         elif self.surrogate_model_name == "dpl":
             self.surrogate_model_args.update(
-                {"pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs}
+                {
+                    "pipeline_space": self.pipeline_space,
+                    "observed_data": self.observed_configs,
+                }
             )
             self.surrogate_model = instance_from_map(
                 SurrogateModelMapping,

@@ -16,7 +16,7 @@ Assuming the `pipeline_space` was already created (have a look at [pipeline spac
 
 ```python
 def run_pipeline(
-    **config,   # The hyperparameters to be used in the pipeline
+    **config,  # The hyperparameters to be used in the pipeline
 ):
     element_1 = config["element_1"]
     element_2 = config["element_2"]
@@ -37,7 +37,9 @@ One crucial return variable is the `loss`. This metric serves as a fundamental i
 
 !!! note
 
-    Loss can be any value that is to be minimized by the objective function.
+```
+Loss can be any value that is to be minimized by the objective function.
+```
 
 ```python
 def run_pipeline(
@@ -64,10 +66,11 @@ def run_pipeline(
 
 Along with the return of the `loss`, the `run_pipeline` function would optionally need to return a `cost` in certain cases. Specifically when the `max_cost_total` parameter is being utilized in the `neps.run` function.
 
-
 !!! note
 
-    `max_cost_total` sums the cost from all returned configuration results and checks whether the maximum allowed cost has been reached (if so, the search will come to an end).
+```
+`max_cost_total` sums the cost from all returned configuration results and checks whether the maximum allowed cost has been reached (if so, the search will come to an end).
+```
 
 ```python
 import neps
@@ -75,9 +78,8 @@ import logging
 
 
 def run_pipeline(
-    **config,   # The hyperparameters to be used in the pipeline
+    **config,  # The hyperparameters to be used in the pipeline
 ):
-
     element_1 = config["element_1"]
     element_2 = config["element_2"]
     element_3 = config["element_3"]
@@ -90,11 +92,12 @@ def run_pipeline(
         "cost": cost,
     }
 
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     neps.run(
         run_pipeline=run_pipeline,
-        pipeline_space=pipeline_space, # Assuming the pipeline space is defined
+        pipeline_space=pipeline_space,  # Assuming the pipeline space is defined
         root_directory="results/bo",
         max_cost_total=10,
         searcher="bayesian_optimization",
@@ -111,9 +114,9 @@ Regard an example to be run with a multi-fidelity searcher, some checkpointing w
 
 ```python
 def run_pipeline(
-    pipeline_directory,           # The directory where the config is saved
+    pipeline_directory,  # The directory where the config is saved
     previous_pipeline_directory,  # The directory of the immediate lower fidelity config
-    **config,                     # The hyperparameters to be used in the pipeline
+    **config,  # The hyperparameters to be used in the pipeline
 ):
     # Assume element3 is our fidelity element
     element_1 = config["element_1"]

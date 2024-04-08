@@ -11,27 +11,30 @@ NePS houses recently published and some more well-established algorithms that ar
 
 Take a look at our [documentation](https://automl.github.io/neps/latest/) and continue following through current README for instructions on how to use NePS!
 
-
 ## Key Features
 
 In addition to the common features offered by traditional HPO and NAS libraries, NePS stands out with the following key features:
 
 1. [**Hyperparameter Optimization (HPO) With Prior Knowledge:**](neps_examples/template/priorband_template.py)
-    - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
-        - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
-        - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051)
 
-2. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py)
-    - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
-        - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
+   - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
+     - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
+     - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051)
 
-3. [**Easy Parallelization and Resumption of Runs:**](docs/parallelization.md)
-      - NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
-   computing environments. It also allows users to conveniently resume these optimization tasks after completion to
-   ensure a seamless and efficient workflow for long-running experiments.
+1. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py)
 
-4. [**Seamless User Code Integration:**](neps_examples/template/)
-    - NePS's modular design ensures flexibility and extensibility. Integrate NePS effortlessly into existing machine learning workflows.
+   - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
+     - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
+
+1. [**Easy Parallelization and Resumption of Runs:**](docs/parallelization.md)
+
+   - NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
+     computing environments. It also allows users to conveniently resume these optimization tasks after completion to
+     ensure a seamless and efficient workflow for long-running experiments.
+
+1. [**Seamless User Code Integration:**](neps_examples/template/)
+
+   - NePS's modular design ensures flexibility and extensibility. Integrate NePS effortlessly into existing machine learning workflows.
 
 ## Getting Started
 
@@ -51,8 +54,8 @@ Using `neps` always follows the same pattern:
 
 1. Define a `run_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
    for your problem.
-2. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
-3. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
+1. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
+1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
@@ -111,18 +114,19 @@ if __name__ == "__main__":
 ## Examples
 
 Discover how NePS works through these practical examples:
-* **[Pipeline Space via YAML](neps_examples/basic_usage/defining_search_space)**: Explore how to define the `pipeline_space` using a
+
+- **[Pipeline Space via YAML](neps_examples/basic_usage/defining_search_space)**: Explore how to define the `pipeline_space` using a
   YAML file instead of a dictionary.
 
-* **[Hyperparameter Optimization (HPO)](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
+- **[Hyperparameter Optimization (HPO)](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
 
-* **[Architecture Search with Primitives](neps_examples/basic_usage/architecture.py)**: Dive into architecture search using primitives in NePS.
+- **[Architecture Search with Primitives](neps_examples/basic_usage/architecture.py)**: Dive into architecture search using primitives in NePS.
 
-* **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
+- **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
-* **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
+- **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
-* **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
+- **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
 
 ## Documentation
 

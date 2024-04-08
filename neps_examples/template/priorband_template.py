@@ -31,9 +31,9 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from neps.utils.common import load_checkpoint, save_checkpoint
 
 import neps
-from neps.utils.common import load_checkpoint, save_checkpoint
 
 logger = logging.getLogger("neps_template.run")
 

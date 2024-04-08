@@ -1,26 +1,24 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import logging
 import os
 import time
-from typing import List, Tuple, Any, Type
+from copy import deepcopy
+from pathlib import Path
+from typing import Any, List, Tuple, Type
 
 import numpy as np
-
-from scipy.stats import norm
-from pathlib import Path
 import torch
 import torch.nn as nn
+from scipy.stats import norm
 
-from neps.search_spaces.search_space import (
+from ....search_spaces.search_space import (
     CategoricalParameter,
     FloatParameter,
     IntegerParameter,
     SearchSpace,
 )
-
-from neps.optimizers.multi_fidelity.utils import MFObservedData
+from ...multi_fidelity.utils import MFObservedData
 
 
 # TODO: Move to utils
@@ -47,7 +45,6 @@ def get_best_loss(root_directory: Path | str) -> float:
 
 
 class ConditionedPowerLaw(nn.Module):
-
     def __init__(
         self,
         nr_initial_features=10,
@@ -75,7 +72,7 @@ class ConditionedPowerLaw(nn.Module):
             nr_cnn_layers: int
                 The number of cnn layers to be used.
         """
-        super(ConditionedPowerLaw, self).__init__()
+        super().__init__()
 
         self.use_learning_curve = use_learning_curve
         self.kernel_size = kernel_size
@@ -171,8 +168,8 @@ class ConditionedPowerLaw(nn.Module):
                 self.last_act_func(torch.cat((betas, betas))),
                 torch.pow(
                     predict_budgets,
-                    torch.mul(self.last_act_func(torch.cat((gammas, gammas))), -1)
-                )
+                    torch.mul(self.last_act_func(torch.cat((gammas, gammas))), -1),
+                ),
             ),
         )
 
@@ -181,7 +178,7 @@ class ConditionedPowerLaw(nn.Module):
 
 ModelClass = ConditionedPowerLaw
 
-MODEL_MAPPING: dict[str, Type[ModelClass]] = {"power_law": ConditionedPowerLaw}
+MODEL_MAPPING: dict[str, type[ModelClass]] = {"power_law": ConditionedPowerLaw}
 
 
 class PowerLawSurrogate:
@@ -197,12 +194,14 @@ class PowerLawSurrogate:
     # init params
     default_n_initial_full_trainings = 10
     default_n_models = 5
-    default_model_config = dict(nr_units=128,
-                                nr_layers=2,
-                                use_learning_curve=False,
-                                kernel_size=3,
-                                nr_filters=4,
-                                nr_cnn_layers=2)
+    default_model_config = dict(
+        nr_units=128,
+        nr_layers=2,
+        use_learning_curve=False,
+        kernel_size=3,
+        nr_filters=4,
+        nr_cnn_layers=2,
+    )
 
     # fit+predict params
     default_padding_type = "zero"
@@ -210,9 +209,9 @@ class PowerLawSurrogate:
     default_use_min_budget = False
     default_y_normalize = False
 
-
     # Defined in __init__(...)
     default_no_improvement_patience = ...
+
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -236,7 +235,7 @@ class PowerLawSurrogate:
         n_models: int = default_n_models,
         model_classes: list[str] | None = None,
         model_configs: list[dict[str, Any]] | None = None,
-        refine_batch_size: int | None = None
+        refine_batch_size: int | None = None,
     ):
         if pipeline_space.has_tabular:
             self.cover_pipeline_space = pipeline_space
@@ -249,25 +248,29 @@ class PowerLawSurrogate:
         self.observed_data = observed_data
         self.__preprocess_search_space(self.real_pipeline_space)
         self.seeds = np.random.choice(100, n_models, replace=False)
-        self.model_configs = [dict(
-            nr_initial_features=self.input_size, **default_model_config)] * n_models if not model_configs else model_configs
-        self.model_classes = [MODEL_MAPPING[default_model_class]] * n_models \
-            if not model_classes \
+        self.model_configs = (
+            [dict(nr_initial_features=self.input_size, **default_model_config)] * n_models
+            if not model_configs
+            else model_configs
+        )
+        self.model_classes = (
+            [MODEL_MAPPING[default_model_class]] * n_models
+            if not model_classes
             else [MODEL_MAPPING[m_class] for m_class in model_classes]
+        )
         self.device = "cpu"
-        self.models: list[ModelClass] = [self.__initialize_model(config,
-                                                                 self.model_classes[
-                                                                     index],
-                                                                 self.device)
-                                         for index, config in
-                                         enumerate(self.model_configs)]
+        self.models: list[ModelClass] = [
+            self.__initialize_model(config, self.model_classes[index], self.device)
+            for index, config in enumerate(self.model_configs)
+        ]
 
         self.checkpointing = checkpointing
         self.refine_epochs = refine_epochs
         self.refine_batch_size = refine_batch_size
         self.n_initial_full_trainings = n_initial_full_trainings
-        self.default_no_improvement_patience = int(self.max_fidelity +
-                                                   0.2 * self.max_fidelity)
+        self.default_no_improvement_patience = int(
+            self.max_fidelity + 0.2 * self.max_fidelity
+        )
 
         if checkpointing:
             assert (
@@ -283,8 +286,9 @@ class PowerLawSurrogate:
         if self.surrogate_model_fit_args.get("no_improvement_patience", None) is None:
             # To replicate how the original DPL implementation handles the
             # no_improvement_threshold
-            self.surrogate_model_fit_args["no_improvement_patience"] = (
-                self.default_no_improvement_patience)
+            self.surrogate_model_fit_args[
+                "no_improvement_patience"
+            ] = self.default_no_improvement_patience
 
         self.categories_array = np.array(self.categories)
 
@@ -335,21 +339,16 @@ class PowerLawSurrogate:
         encoding = np.concatenate([categorical_encoding, continuous_encoding])
         return encoding
 
-    def __normalize_budgets(self,
-                            budgets: np.ndarray,
-                            use_min_budget: bool) -> np.ndarray:
+    def __normalize_budgets(
+        self, budgets: np.ndarray, use_min_budget: bool
+    ) -> np.ndarray:
         min_budget = self.min_fidelity if use_min_budget else 0
-        normalized_budgets = (budgets - min_budget) / (
-            self.max_fidelity - min_budget
-        )
+        normalized_budgets = (budgets - min_budget) / (self.max_fidelity - min_budget)
         return normalized_budgets
 
     def __extract_budgets(
-        self, x_train: list[SearchSpace],
-        normalized: bool,
-        use_min_budget: bool
+        self, x_train: list[SearchSpace], normalized: bool, use_min_budget: bool
     ) -> np.ndarray:
-
         budgets = np.array([config.fidelity.value for config in x_train], dtype=np.single)
 
         if normalized:
@@ -398,7 +397,7 @@ class PowerLawSurrogate:
         normalize_y: bool = default_y_normalize,
         normalize_budget: bool = default_budget_normalize,
         use_min_budget: bool = default_use_min_budget,
-        padding_type: str = default_padding_type
+        padding_type: str = default_padding_type,
     ):
         self.normalize_budget = (  # pylint: disable=attribute-defined-outside-init
             normalize_budget
@@ -406,13 +405,15 @@ class PowerLawSurrogate:
         self.use_min_budget = (  # pylint: disable=attribute-defined-outside-init
             use_min_budget
         )
-        self.padding_type = (  # pylint: disable=attribute-defined-outside-init
-            padding_type
-        )
+        self.padding_type = padding_type  # pylint: disable=attribute-defined-outside-init
         self.normalize_y = normalize_y  # pylint: disable=attribute-defined-outside-init
 
         x_train, train_budgets, learning_curves = self._preprocess_input(
-            x_train, learning_curves, self.normalize_budget, self.use_min_budget, self.padding_type
+            x_train,
+            learning_curves,
+            self.normalize_budget,
+            self.use_min_budget,
+            self.padding_type,
         )
 
         y_train = self._preprocess_y(y_train, normalize_y)
@@ -432,7 +433,7 @@ class PowerLawSurrogate:
         learning_curves: list[list[float]],
         normalize_budget: bool,
         use_min_budget: bool,
-        padding_type: str
+        padding_type: str,
     ) -> [torch.tensor, torch.tensor, torch.tensor]:
         budgets = self.__extract_budgets(x, normalize_budget, use_min_budget)
         learning_curves = self.__preprocess_learning_curves(learning_curves, padding_type)
@@ -445,8 +446,7 @@ class PowerLawSurrogate:
 
         return x, budgets, learning_curves
 
-    def _preprocess_y(self, y_train: list[float],
-                      normalize_y: bool) -> torch.tensor:
+    def _preprocess_y(self, y_train: list[float], normalize_y: bool) -> torch.tensor:
         y_train_array = np.array(y_train, dtype=np.single)
         self.min_y = y_train_array.min()  # pylint: disable=attribute-defined-outside-init
         self.max_y = y_train_array.max()  # pylint: disable=attribute-defined-outside-init
@@ -472,8 +472,9 @@ class PowerLawSurrogate:
 
         self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
 
-        return ((non_improvement_steps < no_improvement_patience)
-                and (self.n_initial_full_trainings <= total_optimizer_steps))
+        return (non_improvement_steps < no_improvement_patience) and (
+            self.n_initial_full_trainings <= total_optimizer_steps
+        )
 
     def fit(
         self,
@@ -483,22 +484,22 @@ class PowerLawSurrogate:
     ):
         self._fit(x_train, y_train, learning_curves, **self.surrogate_model_fit_args)
 
-    def _fit(self,
-             x_train: list[SearchSpace],
-             y_train: list[float],
-             learning_curves: list[list[float]],
-             nr_epochs: int = default_nr_epochs,
-             batch_size: int = default_batch_size,
-             early_stopping: bool = default_early_stopping,
-             early_stopping_patience: int = default_early_stopping_patience,
-             no_improvement_patience: int = default_no_improvement_patience,
-             optimizer_args: dict[str, Any] | None = None,
-
-             normalize_y: bool = default_y_normalize,
-             normalize_budget: bool = default_budget_normalize,
-             use_min_budget: bool = default_use_min_budget,
-             padding_type: str = default_padding_type):
-
+    def _fit(
+        self,
+        x_train: list[SearchSpace],
+        y_train: list[float],
+        learning_curves: list[list[float]],
+        nr_epochs: int = default_nr_epochs,
+        batch_size: int = default_batch_size,
+        early_stopping: bool = default_early_stopping,
+        early_stopping_patience: int = default_early_stopping_patience,
+        no_improvement_patience: int = default_no_improvement_patience,
+        optimizer_args: dict[str, Any] | None = None,
+        normalize_y: bool = default_y_normalize,
+        normalize_budget: bool = default_budget_normalize,
+        use_min_budget: bool = default_use_min_budget,
+        padding_type: str = default_padding_type,
+    ):
         self.__reset_xy(
             x_train,
             y_train,
@@ -509,7 +510,11 @@ class PowerLawSurrogate:
             padding_type=padding_type,
         )
         # check when to refine
-        if self.checkpointing and self.__is_refine(no_improvement_patience) and self.checkpoint_path.exists():
+        if (
+            self.checkpointing
+            and self.__is_refine(no_improvement_patience)
+            and self.checkpoint_path.exists()
+        ):
             # self.__initialize_model()
             self.load_state()
             weight_new_point = True
@@ -522,35 +527,38 @@ class PowerLawSurrogate:
             optimizer_args = {"lr": self.default_lr}
 
         for model_index, model in enumerate(self.models):
-            self._train_a_model(model_index,
-                                self.x_train,
-                                self.train_budgets,
-                                self.y_train,
-                                self.learning_curves,
-                                nr_epochs=nr_epochs,
-                                batch_size=batch_size,
-                                early_stopping_patience=early_stopping_patience,
-                                early_stopping=early_stopping,
-                                weight_new_point=weight_new_point,
-                                optimizer_args=optimizer_args)
+            self._train_a_model(
+                model_index,
+                self.x_train,
+                self.train_budgets,
+                self.y_train,
+                self.learning_curves,
+                nr_epochs=nr_epochs,
+                batch_size=batch_size,
+                early_stopping_patience=early_stopping_patience,
+                early_stopping=early_stopping,
+                weight_new_point=weight_new_point,
+                optimizer_args=optimizer_args,
+            )
 
         # save model after training if checkpointing
         if self.checkpointing:
             self.save_state()
 
-    def _train_a_model(self,
-                       model_index: int,
-                       x_train: torch.tensor,
-                       train_budgets: torch.tensor,
-                       y_train: torch.tensor,
-                       learning_curves: torch.tensor,
-                       nr_epochs: int,
-                       batch_size: int,
-                       early_stopping_patience: int,
-                       early_stopping: bool,
-                       weight_new_point: bool,
-                       optimizer_args: dict[str, Any]):
-
+    def _train_a_model(
+        self,
+        model_index: int,
+        x_train: torch.tensor,
+        train_budgets: torch.tensor,
+        y_train: torch.tensor,
+        learning_curves: torch.tensor,
+        nr_epochs: int,
+        batch_size: int,
+        early_stopping_patience: int,
+        early_stopping: bool,
+        weight_new_point: bool,
+        optimizer_args: dict[str, Any],
+    ):
         # Setting seeds will interfere with SearchSpace random sampling
         if self.cover_pipeline_space.has_tabular:
             seed = self.seeds[model_index]
@@ -559,8 +567,8 @@ class PowerLawSurrogate:
 
         model = self.models[model_index]
 
-        optimizer = (
-            torch.optim.Adam(**dict({"params": model.parameters()}, **optimizer_args))
+        optimizer = torch.optim.Adam(
+            **dict({"params": model.parameters()}, **optimizer_args)
         )
 
         count_down = early_stopping_patience
@@ -575,7 +583,6 @@ class PowerLawSurrogate:
             new_x, new_b, new_lc, new_y = [torch.tensor([])] * 4
 
         for epoch in range(0, nr_epochs):
-
             if early_stopping and count_down == 0:
                 self.logger.info(
                     f"Epoch: {epoch - 1} surrogate training stops due to early "
@@ -626,13 +633,12 @@ class PowerLawSurrogate:
                 # Zero backprop gradients
                 optimizer.zero_grad(set_to_none=True)
 
-                outputs = model(batch_x, batch_budget, batch_budget,
-                                batch_lc)
+                outputs = model(batch_x, batch_budget, batch_budget, batch_lc)
                 loss = self.criterion(outputs, batch_y)
                 loss.backward()
                 optimizer.step()
 
-                total_scaled_loss += (loss.detach().item() * minibatch_size)
+                total_scaled_loss += loss.detach().item() * minibatch_size
 
             running_loss = total_scaled_loss / n_examples_batch
 
@@ -660,7 +666,7 @@ class PowerLawSurrogate:
         self,
         x: list[SearchSpace],
         learning_curves: list[list[float]] | None = None,
-        real_budgets: list[int | float] | None = None
+        real_budgets: list[int | float] | None = None,
     ) -> [torch.tensor, torch.tensor]:
         # Preprocess input
         # [print(_x.hp_values()) for _x in x]
@@ -672,12 +678,15 @@ class PowerLawSurrogate:
             real_budgets = [len(lc) + 1 for lc in learning_curves]
 
         x_test, prediction_budgets, learning_curves = self._preprocess_input(
-            x, learning_curves, self.normalize_budget, self.use_min_budget, self.padding_type
+            x,
+            learning_curves,
+            self.normalize_budget,
+            self.use_min_budget,
+            self.padding_type,
         )
         # preprocess the list of budgets the configs are evaluated for
         real_budgets = np.array(real_budgets, dtype=np.single)
-        real_budgets = self.__normalize_budgets(real_budgets,
-                                                self.use_min_budget)
+        real_budgets = self.__normalize_budgets(real_budgets, self.use_min_budget)
         real_budgets = torch.tensor(real_budgets).to(self.device)
 
         all_predictions = []
@@ -704,14 +713,18 @@ class PowerLawSurrogate:
 
         for model_index in range(checkpoint["n_models"]):
             self.models[model_index].load_state_dict(
-                checkpoint[f"model_{model_index}_state_dict"])
+                checkpoint[f"model_{model_index}_state_dict"]
+            )
             self.models[model_index].to(self.device)
 
     def get_state(self) -> dict[str, int | str | dict[str, Any]]:
         n_models = len(self.models)
-        model_states = {f"model_{model_index}_state_dict":
-                            deepcopy(self.models[model_index].state_dict())
-                        for model_index in range(n_models)}
+        model_states = {
+            f"model_{model_index}_state_dict": deepcopy(
+                self.models[model_index].state_dict()
+            )
+            for model_index in range(n_models)
+        }
 
         # get last point
         last_point = self.get_last_point()
@@ -724,7 +737,7 @@ class PowerLawSurrogate:
         all_losses_file = self.root_dir / "all_losses_and_configs.txt"
 
         if all_losses_file.exists():
-        # Read all losses from the file in the order they are explored
+            # Read all losses from the file in the order they are explored
             config_ids = [
                 str(line[11:])
                 for line in all_losses_file.read_text(encoding="utf-8").splitlines()
@@ -743,9 +756,9 @@ class PowerLawSurrogate:
                 self.checkpoint_path,
             )
         else:
-            assert ("last_point" in state and
-                    "n_models" in state), \
-                "The state dictionary is not complete"
+            assert (
+                "last_point" in state and "n_models" in state
+            ), "The state dictionary is not complete"
             torch.save(
                 state,
                 self.checkpoint_path,
@@ -768,8 +781,9 @@ class PowerLawSurrogate:
         else:
             index = len(config_ids) - 1
 
-        new_config_indices = [tuple(map(int, config_id.split("_"))) for config_id in
-                              config_ids[index:]]
+        new_config_indices = [
+            tuple(map(int, config_id.split("_"))) for config_id in config_ids[index:]
+        ]
 
         # Only include the points that exist in the observed data already
         # (not a use case for single worker runs)
@@ -778,13 +792,15 @@ class PowerLawSurrogate:
         new_config_df = self.observed_data.df.loc[existing_index_map, :].copy(deep=True)
 
         new_configs, new_lcs, new_y = self.observed_data.get_training_data_4DyHPO(
-            new_config_df, self.cover_pipeline_space)
+            new_config_df, self.cover_pipeline_space
+        )
 
         return new_configs, new_lcs, new_y
 
     @staticmethod
-    def __initialize_model(model_params: dict[str, Any], model_class: Type[ModelClass],
-                           device: str) -> ModelClass:
+    def __initialize_model(
+        model_params: dict[str, Any], model_class: type[ModelClass], device: str
+    ) -> ModelClass:
         model = model_class(**model_params)
         model.to(device)
         return model
@@ -792,18 +808,19 @@ class PowerLawSurrogate:
     def prep_new_point(self) -> [torch.tensor, torch.tensor, torch.tensor, torch.tensor]:
         new_point, new_lc, new_y = self.get_new_points()
 
-        new_x, new_b, new_lc = self._preprocess_input(new_point,
-                                                      new_lc,
-                                                      self.normalize_budget,
-                                                      self.use_min_budget,
-                                                      self.padding_type
+        new_x, new_b, new_lc = self._preprocess_input(
+            new_point,
+            new_lc,
+            self.normalize_budget,
+            self.use_min_budget,
+            self.padding_type,
         )
         new_y = self._preprocess_y(new_y, self.normalize_y)
 
         return new_x, new_b, new_lc, new_y
 
     def __get_mean_initial_value(self):
-        mean = self.observed_data.get_learning_curves().loc[:, 0].mean()
+        mean = self.observed_data.get_trajectories().loc[:, 0].mean()
 
         return mean
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 
 import numpy as np
-from typing_extensions import Literal
+from typing import Literal
 
 from ...metahyper import ConfigResult
 from ...search_spaces.search_space import SearchSpace

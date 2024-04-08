@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from typing_extensions import Literal
+from typing import Literal
 
 from ...metahyper import ConfigResult, instance_from_map
 from ...search_spaces.hyperparameters.categorical import (

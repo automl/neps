@@ -1,12 +1,12 @@
 # type: ignore
 from __future__ import annotations
 
+import time
 import warnings
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-import time
 
 from ....search_spaces.search_space import SearchSpace
 from ...multi_fidelity.utils import MFObservedData
@@ -14,7 +14,6 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-
     SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
@@ -28,7 +27,7 @@ class FreezeThawSampler(AcquisitionSampler):
         self.sample_full_table = None
         self.set_sample_full_tabular(True)  # sets flag that samples full table
 
-    def set_sample_full_tabular(self, flag: bool=False):
+    def set_sample_full_tabular(self, flag: bool = False):
         if self.is_tabular:
             self.sample_full_table = flag
 
@@ -154,7 +153,7 @@ class FreezeThawSampler(AcquisitionSampler):
             # they are not reset in every sampling step
             partial_configs = pd.Series(
                 [deepcopy(p_config_) for idx, p_config_ in partial_configs.items()],
-                index=partial_configs.index
+                index=partial_configs.index,
             )
 
         # Updating fidelity values

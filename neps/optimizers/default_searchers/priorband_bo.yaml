@@ -16,7 +16,7 @@ searcher_kwargs:
 
   # arguments for model
   model_based: true # crucial argument to set to allow model-search
-  modelling_type: joint 
+  modelling_type: joint
   initial_design_size: 10
   surrogate_model: gp  # or {"gp_hierarchy"}
   acquisition: EI  # or {"LogEI", "AEI"}

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from pathlib import Path
 from typing import Any
-import shutil
-import zipfile
 
 import pandas as pd
 
@@ -295,7 +294,9 @@ def _save_data_to_csv(
                         run_data_df.index == "num_evaluated_configs", "value"
                     ]
                     # checks if the current worker has more evaluated configs than the previous
-                    if int(num_evaluated_configs_csv) < int(num_evaluated_configs_run.iloc[0]):
+                    if int(num_evaluated_configs_csv) < int(
+                        num_evaluated_configs_run.iloc[0]
+                    ):
                         config_data_df = config_data_df.sort_values(
                             by="result.loss", ascending=True
                         )
@@ -318,10 +319,9 @@ def _save_data_to_csv(
 
 
 def post_run_csv(root_directory: str | Path, logger=None) -> None:
-
     root_directory = Path(root_directory)
     zip_filename = Path(root_directory / "results.zip")
-    base_result_directory =root_directory / "results"
+    base_result_directory = root_directory / "results"
 
     # Extract previous results to load if it exists
     if zip_filename.exists():
@@ -350,6 +350,7 @@ def post_run_csv(root_directory: str | Path, logger=None) -> None:
         df_config_data,
         df_run_data,
     )
+
 
 def get_run_summary_csv(root_directory: str | Path):
     post_run_csv(root_directory=root_directory)

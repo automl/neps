@@ -248,14 +248,18 @@ class SearchSpace(collections.abc.Mapping):
             )
         self.has_tabular = True
         # Updating `custom_grid_table` as a map for quick lookup with placeholder fidelity
-        placeholder_config = self.raw_tabular_space.sample(ignore_fidelity=True)  # sets fidelity as None
+        placeholder_config = self.raw_tabular_space.sample(
+            ignore_fidelity=True
+        )  # sets fidelity as None
         # `placeholder_config` allows to store map values as NePS SearchSpace type
         # and also create a placeholder for fideity value
         _map = {
             idx: deepcopy(placeholder_config)
             for idx in self.custom_grid_table.index.values
         }
-        _ = [v.load_from(self.custom_grid_table.loc[k].to_dict()) for k, v in _map.items()]
+        _ = [
+            v.load_from(self.custom_grid_table.loc[k].to_dict()) for k, v in _map.items()
+        ]
         self.custom_grid_table = _map
 
     @property
