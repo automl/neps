@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import typing
 from copy import deepcopy
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
-from typing_extensions import Literal
 
 from ...metahyper import ConfigResult
 from ...search_spaces.search_space import SearchSpace
@@ -100,6 +99,8 @@ class HyperbandBase(SuccessiveHalvingBase):
         # TODO: can we avoid copying full observation history
         bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
         bracket.observed_configs = self.observed_configs.copy()
+        # TODO: Do we NEED to copy here instead?
+        bracket.MFobserved_configs = self.MFobserved_configs
 
     # pylint: disable=no-self-use
     def clear_old_brackets(self):
@@ -302,7 +303,7 @@ class HyperbandCustomDefault(HyperbandWithPriors):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target
+            sample_default_at_target=sample_default_at_target,
         )
         self.sampling_args = {
             "inc": None,

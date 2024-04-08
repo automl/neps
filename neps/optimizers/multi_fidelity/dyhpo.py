@@ -6,12 +6,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import time
 
-
-from ...utils.common import EvaluationData, SimpleCSVWriter
 from ...metahyper import ConfigResult, instance_from_map
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
+from ...utils.common import EvaluationData, SimpleCSVWriter
 from ..base_optimizer import BaseOptimizer
 from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
 from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
@@ -28,11 +26,15 @@ from .utils import MFObservedData
 
 class AcqWriter(SimpleCSVWriter):
     def set_data(self, sample_configs: pd.Series, acq_vals: pd.Series):
-        config_vals = pd.DataFrame([config.hp_values() for config in sample_configs], index=sample_configs.index)
+        config_vals = pd.DataFrame(
+            [config.hp_values() for config in sample_configs], index=sample_configs.index
+        )
         if isinstance(acq_vals, pd.Series):
             acq_vals.name = "Acq Value"
+        # pylint: disable=attribute-defined-outside-init
         self.df = config_vals.join(acq_vals)
         self.df = self.df.sort_values(by="Acq Value")
+        # pylint: enable=attribute-defined-outside-init
 
 
 class MFEIBO(BaseOptimizer):
@@ -118,8 +120,11 @@ class MFEIBO(BaseOptimizer):
         self.total_fevals: int = 0
 
         self.observed_configs = MFObservedData(
-            columns=["config", "perf", "learning_curves"],
-            index_names=["config_id", "budget_id"],
+            config_id="config_id",
+            budget_id="budget_id",
+            config_col="config",
+            perf_col="perf",
+            learning_curve_col="learning_curves",
         )
 
         # Preparing model
@@ -304,10 +309,12 @@ class MFEIBO(BaseOptimizer):
             previous_results (dict[str, ConfigResult]): [description]
             pending_evaluations (dict[str, ConfigResult]): [description]
         """
-        start = time.time()
         self.observed_configs = MFObservedData(
-            columns=["config", "perf", "learning_curves"],
-            index_names=["config_id", "budget_id"],
+            config_id="config_id",
+            budget_id="budget_id",
+            config_col="config",
+            perf_col="perf",
+            learning_curve_col="learning_curves",
         )
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(previous_results)
@@ -328,9 +335,6 @@ class MFEIBO(BaseOptimizer):
         init_phase = self.is_init_phase()
         if not init_phase:
             self._fit_models()
-        # print("-" * 50)
-        # print(f"| Total time for `load_results()`: {time.time()-start:.2f}s")
-        # print("-" * 50)
 
     @classmethod
     def _get_config_id_split(cls, config_id: str) -> tuple[str, str]:
@@ -444,29 +448,21 @@ class MFEIBO(BaseOptimizer):
         else:
             if self.count == 0:
                 self.logger.info("\nPartial learning curves as initial design:\n")
-                self.logger.info(f"{self.observed_configs.get_learning_curves()}\n")
+                self.logger.info(f"{self.observed_configs.get_trajectories()}\n")
             self.count += 1
             # main acquisition call here after initial design is turned off
             self.logger.info("acquiring...")
             # generates candidate samples for acquisition calculation
-            start = time.time()
             samples = self.acquisition_sampler.sample(
                 set_new_sample_fidelity=self.pipeline_space.fidelity.lower
             )  # fidelity values here should be the observations or min. fidelity
-            # print("-" * 50)
-            # print(f"| Total time for acq. sampling: {time.time()-start:.2f}s")
-            # print("-" * 50)
 
-            start = time.time()
             # calculating acquisition function values for the candidate samples
             acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples, asscalar=True
             )
             acq = pd.Series(acq, index=_samples.index)
 
-            # print("-" * 50)
-            # print(f"| Total time for acq. eval: {time.time()-start:.2f}s")
-            # print("-" * 50)
             # maximizing acquisition function
             best_idx = acq.sort_values().index[-1]
             # extracting the config ID for the selected maximizer
@@ -519,8 +515,11 @@ class MFEIBO(BaseOptimizer):
                 if best_idx > max(self.observed_configs.seen_config_ids)
                 else (
                     self.get_budget_value(
-                        self.observed_configs.get_max_observed_fidelity_level_per_config().loc[best_idx]
-                     ) + self.step_size  # ONE-STEP FIDELITY QUERY
+                        self.observed_configs.get_max_observed_fidelity_level_per_config().loc[
+                            best_idx
+                        ]
+                    )
+                    + self.step_size  # ONE-STEP FIDELITY QUERY
                 )
             )
         # generating correct IDs
