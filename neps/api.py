@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import warnings
 from pathlib import Path
@@ -97,8 +98,8 @@ def _post_evaluation_hook_function(
 
 
 def run(
-    run_pipeline: Callable = None,
-    root_directory: str | Path = None,
+    run_pipeline: Callable | None = None,
+    root_directory: str | Path | None = None,
     pipeline_space: (
         dict[str, Parameter | CS.ConfigurationSpace]
         | str
@@ -106,7 +107,7 @@ def run(
         | CS.ConfigurationSpace
         | None
     ) = None,
-    run_args: str | Path = None,
+    run_args: str | Path | None = None,
     overwrite_working_directory: bool = False,
     post_run_summary: bool = False,
     development_stage_id=None,
@@ -237,28 +238,18 @@ def run(
             "overwrite_working_directory", False
         )
         post_run_summary = optim_settings.get("post_run_summary", False)
-        development_stage_id = optim_settings.get(
-            "development_stage_id", None
-        )
+        development_stage_id = optim_settings.get("development_stage_id", None)
         task_id = optim_settings.get("task_id", None)
-        max_evaluations_total = optim_settings.get(
-            "max_evaluations_total", None
-        )
-        max_evaluations_per_run = optim_settings.get(
-            "max_evaluations_per_run", None
-        )
+        max_evaluations_total = optim_settings.get("max_evaluations_total", None)
+        max_evaluations_per_run = optim_settings.get("max_evaluations_per_run", None)
         continue_until_max_evaluation_completed = optim_settings.get(
             "continue_until_max_evaluation_completed",
             False,
         )
         max_cost_total = optim_settings.get("max_cost_total", None)
         ignore_errors = optim_settings.get("ignore_errors", False)
-        loss_value_on_error = optim_settings.get(
-            "loss_value_on_error", None
-        )
-        cost_value_on_error = optim_settings.get(
-            "cost_value_on_error", None
-        )
+        loss_value_on_error = optim_settings.get("loss_value_on_error", None)
+        cost_value_on_error = optim_settings.get("cost_value_on_error", None)
         pre_load_hooks = optim_settings.get("pre_load_hooks", None)
         searcher = optim_settings.get("searcher", "default")
         searcher_path = optim_settings.get("searcher_path", None)
@@ -272,7 +263,8 @@ def run(
         pipeline_space,
         max_cost_total,
         max_evaluations_total,
-        searcher
+        searcher,
+        run_args,
     )
 
     if pre_load_hooks is None:
@@ -289,6 +281,18 @@ def run(
         "neps_decision_tree": True,
         "searcher_args": {},
     }
+
+    # special case if you load your own optimizer via run_args
+    if inspect.isclass(searcher):
+        if issubclass(searcher, BaseOptimizer):
+            search_space = pipeline_space_from_yaml(pipeline_space)
+            search_space = SearchSpace(**search_space)
+            searcher = searcher(search_space)
+        else:
+            # Raise an error if searcher is not a subclass of BaseOptimizer
+            raise TypeError(
+                "The provided searcher must be a class that inherits from BaseOptimizer."
+            )
 
     if isinstance(searcher, BaseOptimizer):
         searcher_instance = searcher

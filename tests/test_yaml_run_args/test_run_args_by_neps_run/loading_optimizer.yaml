@@ -2,6 +2,7 @@ run_args:
   run_pipeline:
     path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
     name: "run_pipeline"
+  pipeline_space: "tests/test_yaml_run_args/test_run_args_by_neps_run/search_space.yaml"
   root_directory: "tests/test_yaml_run_args/test_run_args_by_neps_run/results"
 
   max_evaluations_total: 1
@@ -20,7 +21,8 @@ run_args:
   search:
     # Test Case
     searcher:
-      path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
-      name: optimizer
+      path: "neps/optimizers/bayesian_optimization/optimizer.py"
+      name: BayesianOptimization
+
 
   pre_load_hooks: None

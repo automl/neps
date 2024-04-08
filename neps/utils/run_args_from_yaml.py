@@ -1,9 +1,9 @@
 import importlib.util
 import logging
 import sys
+import yaml
 from collections.abc import Callable
 from neps.optimizers.base_optimizer import BaseOptimizer
-import yaml
 
 logger = logging.getLogger("neps")
 
@@ -137,7 +137,7 @@ def extract_leaf_keys(d, special_keys=None):
             RUN_PIPELINE: None,
             PRE_LOAD_HOOKS: None,
             SEARCHER: None,
-            PIPELINE_SPACE: None
+            PIPELINE_SPACE: None,
         }
 
     leaf_keys = {}
@@ -173,8 +173,9 @@ def handle_special_argument_cases(settings, special_configs):
 
     """
     # Load the value of each key from a dictionary specifying "path" and "name".
-    process_config_key(settings, special_configs, [PIPELINE_SPACE, SEARCHER,
-                                                   RUN_PIPELINE])
+    process_config_key(
+        settings, special_configs, [PIPELINE_SPACE, SEARCHER, RUN_PIPELINE]
+    )
 
     if special_configs[SEARCHER_KWARGS] is not None:
         configs = {}
@@ -188,9 +189,7 @@ def handle_special_argument_cases(settings, special_configs):
 
     if special_configs[PRE_LOAD_HOOKS] is not None:
         # Loads the pre_load_hooks functions and add them in a list to settings.
-        settings[PRE_LOAD_HOOKS] = load_hooks_from_config(
-            special_configs[PRE_LOAD_HOOKS]
-        )
+        settings[PRE_LOAD_HOOKS] = load_hooks_from_config(special_configs[PRE_LOAD_HOOKS])
 
 
 def process_config_key(settings, special_configs, keys):
@@ -233,10 +232,13 @@ def process_config_key(settings, special_configs, keys):
                 if key == RUN_PIPELINE:
                     raise TypeError(
                         f"Value for {key} must be a dictionary, but got "
-                        f"{type(value).__name__}.")
+                        f"{type(value).__name__}."
+                    )
                 else:
-                    raise TypeError(f"Value for {key} must be a string or a dictionary, "
-                                    f"but got {type(value).__name__}.")
+                    raise TypeError(
+                        f"Value for {key} must be a string or a dictionary, "
+                        f"but got {type(value).__name__}."
+                    )
 
 
 def load_and_return_object(module_path, object_name):
@@ -341,7 +343,6 @@ def check_run_args(settings):
         LOSS_VALUE_ON_ERROR: float,
         COST_VALUE_ON_ERROR: float,
         IGNORE_ERROR: bool,
-        SEARCHER: (str, BaseOptimizer),
         SEARCHER_PATH: str,
         SEARCHER_KWARGS: dict,
     }
@@ -349,12 +350,21 @@ def check_run_args(settings):
         if param == DEVELOPMENT_STAGE_ID or param == TASK_ID:
             # this argument can be Any
             continue
-        if param == PRE_LOAD_HOOKS:
+        elif param == PRE_LOAD_HOOKS:
             # check if all items in pre_load_hooks are callable objects
             if not all(callable(item) for item in value):
                 raise TypeError("All items in 'pre_load_hooks' must be callable.")
+        elif param == SEARCHER:
+            if not (isinstance(param, str) or issubclass(param, BaseOptimizer)):
+                raise TypeError(
+                    "Parameter 'searcher' must be a string or a class that is a subclass "
+                    "of BaseOptimizer."
+                )
         else:
-            expected_type = expected_types[param]
+            try:
+                expected_type = expected_types[param]
+            except KeyError as e:
+                raise KeyError(f"{param} is not a valid argument of neps") from e
             if not isinstance(value, expected_type):
                 raise TypeError(
                     f"Parameter '{param}' expects a value of type {expected_type}, got "
@@ -363,8 +373,14 @@ def check_run_args(settings):
 
 
 def check_essential_arguments(
-    run_pipeline, root_directory, pipeline_space, max_cost_total, max_evaluation_total,
-    searcher):
+    run_pipeline,
+    root_directory,
+    pipeline_space,
+    max_cost_total,
+    max_evaluation_total,
+    searcher,
+    run_args,
+):
     """
     Validates essential NEPS configuration arguments.
 
@@ -389,8 +405,11 @@ def check_essential_arguments(
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
     if not pipeline_space:
-        if not isinstance(searcher, BaseOptimizer):
+        # handling special case for searcher instance, in which user doesn't have to
+        # provide the search_space because it's the argument of the searcher.
+        if run_args or not isinstance(searcher, BaseOptimizer):
             raise ValueError("'pipeline_space' is required but was not provided.")
+
     if not max_evaluation_total and not max_cost_total:
         raise ValueError(
             "'max_evaluation_total' or 'max_cost_total' is required but "
