@@ -9,3 +9,5 @@
 4. Navigate to into [experimental](experimental) examples tailored for NePS contributors. These examples provide insights and practices for experimental scenarios.
 
 5. Navigate to [template](template) to find a basic fill-in template to kickstart your hyperparameter search with NePS. Use this template as a foundation for your projects, saving time and ensuring a structured starting point.
+
+6. Navigate to [yaml_usage](yaml_usage) for insights on defining NePS configurations and search spaces with YAML files, streamlining the setup and execution of experiments.

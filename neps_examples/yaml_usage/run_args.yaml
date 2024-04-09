@@ -1,4 +1,7 @@
 run_args:
+  run_pipeline:
+    path: "hpo_example.py"
+    name: "training_pipeline"
   pipeline_space: "pipeline_space.yaml"
   root_directory: "example_run"
   max_evaluations_total: 20

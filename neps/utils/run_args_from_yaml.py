@@ -275,6 +275,10 @@ def load_and_return_object(module_path, object_name):
 
         # Dynamically import the module.
         spec = importlib.util.spec_from_file_location(module_name, module_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(
+                f"Could not load module spec for '{module_path}'. Make sure the module "
+                f"path is correct and the file is accessible.")
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module
         spec.loader.exec_module(module)

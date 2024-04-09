@@ -1,4 +1,10 @@
-optimization_settings:
+# You can create your own structure, ordering the keys for readability under substructures like 'budget'
+# 'monitoring' and so on
+run_args:
+  # Specify the file path for NePS to load your pipeline and the name of the function.
+  run_pipeline:
+    path: "hpo_example.py"
+    name: "training_pipeline"
   # Provide the path from which NePS can load the pipeline_space.
   pipeline_space: "pipeline_space.yaml"
 

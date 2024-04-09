@@ -20,14 +20,14 @@ with NePS for hyperparameter optimization, focusing on the MNIST dataset.
   the MNIST dataset. Supports Adam and SGD optimizers.
 
 - NEPS Integration: Shows how to automate hyperparameter tuning using NEPS. Configuration
-  settings are specified in a YAML file ('run_args.yaml'), which is passed to the NEPS
+  settings are specified in a YAML file ('run_args.yaml'), which is passed to the NePS
   optimization process via the `run_args` parameter.
 
 Usage:
 1. Define model architecture and training logic in `SimpleNN` and `training_pipeline`.
 2. Configure hyperparameters and optimization settings in 'run_args.yaml'.
-3. Launch optimization with NEPS by calling `neps.run`, specifying the training pipeline
-   and configuration file.
+3. Launch optimization with NePS by calling `neps.run`, specifying the training pipeline,
+    pipeline_space(pipeline_space.yaml) and configuration file(run_args.yaml).
 """
 
 
@@ -124,9 +124,5 @@ if __name__ == "__main__":
     # Run optimization using neps.run(...). Arguments can be provided directly to neps.run
     # or defined in a configuration file (e.g., "run_args.yaml") passed through
     # the run_args parameter.
-    # At minimum, specify: neps.run(run_args="run_args.yaml").
-
-    # Example: Provide 'run_pipeline' as an argument and the rest of the
-    # settings via run_args.
-    neps.run(run_pipeline=training_pipeline, run_args="run_args.yaml")
-    # neps.run(run_pipeline=training_pipeline, run_args="run_args_alternative.yaml")
+    # neps.run(run_args="run_args.yaml")
+    neps.run(run_args="run_args_alternative.yaml")
