@@ -405,6 +405,7 @@ def check_essential_arguments(
         max_cost_total: Max allowed total cost for experiments.
         max_evaluation_total: Max allowed evaluations.
         searcher: Optimizer for the configuration space.
+        run_args: A YAML file containing the configuration settings.
 
     Raises:
         ValueError: Missing or invalid essential arguments.

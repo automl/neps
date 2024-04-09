@@ -2,7 +2,6 @@ import pytest
 import neps
 from neps.utils.run_args_from_yaml import get_run_args_from_yaml
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from neps.search_spaces.search_space import SearchSpace
 
 BASE_PATH = "tests/test_yaml_run_args/"
 pipeline_space = dict(lr=neps.FloatParameter(lower=1.2, upper=4.2),
@@ -84,7 +83,6 @@ def check_run_args(yaml_path_run_args, expected_output):
 
     # Assert that the rest of the output dict matches the expected output dict
     assert output == expected_output, f"Expected {expected_output}, but got {output}"
-
 
 
 @pytest.mark.neps_api

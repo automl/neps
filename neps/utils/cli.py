@@ -4,7 +4,7 @@ import os
 import neps
 
 
-def init_config():
+def init_config(args):
     # Define the paths for the configuration files
     config_path = "config.yaml"
     search_space_path = "search_space.yaml"
