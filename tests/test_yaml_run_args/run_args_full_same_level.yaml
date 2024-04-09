@@ -1,6 +1,6 @@
 run_args:
   run_pipeline:
-    path: "tests/test_yaml_run_args/test_yaml_run_args.py"
+    path: "tests/test_yaml_run_args/test_yaml_run_args" # check if without .py also works
     name: "run_pipeline"
   pipeline_space: "pipeline_space.yaml"
   root_directory: "test_yaml"
@@ -22,5 +22,5 @@ run_args:
     surrogate_model: gp
   pre_load_hooks:
     hook1:
-      path: "tests/test_yaml_run_args/test_yaml_run_args.py"
+      path: "tests/test_yaml_run_args/test_yaml_run_args" # check if without .py also works
       name: hook1

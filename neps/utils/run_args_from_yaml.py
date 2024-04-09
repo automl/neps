@@ -101,23 +101,32 @@ def get_run_args_from_yaml(path):
 
 def config_loader(path):
     """
-    Loads and parses a YAML configuration file. Checks if the loaded YAML starts with
-    'run_args' key.
+    Loads a YAML file and returns the contents under the 'run_args' key.
+
+    Validates the existence and format of the YAML file and checks for the presence of
+    the 'run_args' as the only top level key. If any conditions are not met,
+    raises an
+    exception with a helpful message.
 
     Args:
-        path (str): The filesystem path to the YAML file to be loaded.
+        path (str): Path to the YAML file.
 
     Returns:
-        dict: The parsed YAML file as a dictionary, specifically the content under
-        'run_args' key.
+        dict: Contents under the 'run_args' key.
 
     Raises:
-        ValueError: If the file cannot be parsed as YAML.
-        KeyError: If the 'run_args' key is not found at the top level of the YAML file.
+        FileNotFoundError: If the file at 'path' does not exist.
+        ValueError: If the file is not a valid YAML.
+        KeyError: If 'run_args' key is missing.
+        KeyError: If 'run_args' is not the only top level key
     """
     try:
         with open(path) as file:
             config = yaml.safe_load(file)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"The specified file was not found: '{path}'."
+                                f" Please make sure that the path is correct and "
+                                f"try again.") from e
     except yaml.YAMLError as e:
         raise ValueError(f"The file at {path} is not a valid YAML file.") from e
 
@@ -125,6 +134,11 @@ def config_loader(path):
     if 'run_args' not in config:
         raise KeyError(f"The 'run_args' key is missing at the top level of the YAML "
                        f"file: {path}")
+    # Check if 'run_args' is the only top-level key, as it is supposed to be
+    if len(config) > 1:
+        raise KeyError(
+            f"The YAML file at '{path}' is incorrectly structured. All configurations "
+            f"must be under 'run_args'.")
 
     return config['run_args']
 
@@ -229,7 +243,7 @@ def process_config_key(settings, special_configs, keys):
                 # dict that should contain 'path' and 'name' for loading value
                 # (function, dict, class)
                 try:
-                    func = load_and_return_object(value["path"], value["name"])
+                    func = load_and_return_object(value["path"], value["name"], key)
                     settings[key] = func
                 except KeyError as e:
                     raise KeyError(
@@ -250,48 +264,62 @@ def process_config_key(settings, special_configs, keys):
                     )
 
 
-def load_and_return_object(module_path, object_name):
+def load_and_return_object(module_path, object_name, key):
     """
-    Dynamically imports an object from a specified module file path.
+    Dynamically loads an object from a given module file path.
 
-    This function can import various types of objects from a module, including
-    dictionaries, class instances, or functions. It does so by specifying the module's
-    file system path and the object's name within that module.
+    This function attempts to dynamically import an object by its name from a specified
+    module path. If the initial import fails, it retries with a '.py' extension appended
+    to the path.
 
     Args:
-        module_path (str): The file system path to the Python module.
-        object_name (str): The name of the object to import from the module.
+        module_path (str): File system path to the Python module.
+        object_name (str): Name of the object to import from the module.
+        key (str): Identifier for the argument causing the error, for enhanced error
+        feedback.
 
     Returns:
-        object: The imported object, which can be of any type (e.g., dict, function,
-        class).
+        object: The imported object from the module.
 
     Raises:
-        ImportError: If the module or object cannot be found.
-    """
-    try:
-        # Convert file system path to module path.
-        module_name = module_path.replace("/", ".").rstrip(".py")
+        ImportError: If the module or object cannot be found, with a message detailing
+        the issue.
+        """
+    def import_object(path):
+        try:
+            # Convert file system path to module path, removing '.py' if present.
+            module_name = path[:-3].replace("/", ".") if path.endswith(
+                '.py') else path.replace("/", ".")
 
-        # Dynamically import the module.
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(
-                f"Could not load module spec for '{module_path}'. Make sure the module "
-                f"path is correct and the file is accessible.")
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module
-        spec.loader.exec_module(module)
+            # Dynamically import the module.
+            spec = importlib.util.spec_from_file_location(module_name, path)
+            if spec is None or spec.loader is None:
+                return None  # Failed to load module spec.
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)
 
-        # Retrieve the object.
-        imported_object = getattr(module, object_name)
+            # Retrieve the object.
+            imported_object = getattr(module, object_name, None)
+            if imported_object is None:
+                return None  # Object not found in module.
+            return imported_object
+        except FileNotFoundError:
+            return None  # File not found.
 
-    except FileNotFoundError as exc:
-        raise ImportError(f"Module path '{module_path}' not found.") from exc
-    except AttributeError as exc:
-        raise ImportError(
-            f"Object '{object_name}' not found in module '{module_name}'."
-        ) from exc
+    # Attempt to import the object using the provided path.
+    imported_object = import_object(module_path)
+    if imported_object is None:
+        # If the object could not be imported, attempt again by appending '.py',
+        # if not already present.
+        if not module_path.endswith('.py'):
+            module_path += '.py'
+            imported_object = import_object(module_path)
+
+        if imported_object is None:
+            raise ImportError(f"Failed to import '{object_name}' for argument '{key}'. "
+                              f"Module path '{module_path}' not found or object does not "
+                              f"exist.")
 
     return imported_object
 
@@ -317,7 +345,8 @@ def load_hooks_from_config(pre_load_hooks_dict):
     loaded_hooks = []
     for hook_config in pre_load_hooks_dict.values():
         if "path" in hook_config and "name" in hook_config:
-            hook_func = load_and_return_object(hook_config["path"], hook_config["name"])
+            hook_func = load_and_return_object(hook_config["path"], hook_config[
+                "name"], PRE_LOAD_HOOKS)
             loaded_hooks.append(hook_func)
         else:
             raise KeyError(
