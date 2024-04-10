@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import typing
+from typing import Literal
 
 import numpy as np
-from typing import Literal
 
 from ...metahyper import ConfigResult
 from ...search_spaces.search_space import SearchSpace
@@ -238,7 +238,7 @@ class PriorBandAshaHB(PriorBandAsha):
                 config_map=bracket.config_map,
             )
             bracket.rung_promotions = bracket.promotion_policy.retrieve_promotions()
-            bracket.observed_configs = self.observed_configs.copy()
+            bracket.max_budget_configs = self.max_budget_configs.copy()
             bracket.rung_histories = self.rung_histories
 
     def load_results(

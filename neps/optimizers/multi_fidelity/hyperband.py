@@ -98,7 +98,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         # for the current SH bracket in HB
         # TODO: can we avoid copying full observation history
         bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
-        bracket.observed_configs = self.observed_configs.copy()
+        # bracket.max_budget_configs = self.max_budget_configs.copy()
         # TODO: Do we NEED to copy here instead?
         bracket.MFobserved_configs = self.MFobserved_configs
 
@@ -170,7 +170,7 @@ class Hyperband(HyperbandBase):
         base_rung_sizes = []  # sorted(self.config_map.values(), reverse=True)
         for bracket in self.sh_brackets.values():
             base_rung_sizes.append(sorted(bracket.config_map.values(), reverse=True)[0])
-        while end <= len(self.observed_configs):
+        while end <= len(self.max_budget_configs):
             # subsetting only this SH bracket from the history
             sh_bracket = self.sh_brackets[self.current_sh_bracket]
             sh_bracket.clean_rung_information()
@@ -178,14 +178,14 @@ class Hyperband(HyperbandBase):
             # correct SH bracket object to make the right budget calculations
             # pylint: disable=protected-access
             bracket_budget_used = sh_bracket._calc_budget_used_in_bracket(
-                deepcopy(self.observed_configs.rung.values[start:end])
+                deepcopy(self.max_budget_configs.rung.values[start:end])
             )
             # if budget used is less than the total SH budget then still an active bracket
             current_bracket_full_budget = sum(sh_bracket.full_rung_trace)
             if bracket_budget_used < current_bracket_full_budget:
                 # updating rung information of the current bracket
                 # pylint: disable=protected-access
-                sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
+                sh_bracket._get_rungs_state(self.max_budget_configs.iloc[start:end])
                 # extra call to use the updated rung member info to find promotions
                 # SyncPromotion signals a wait if a rung is full but with
                 # incomplete/pending evaluations, signals to starts a new SH bracket
@@ -210,7 +210,7 @@ class Hyperband(HyperbandBase):
         # updates rung info with the latest active, incomplete bracket
         sh_bracket = self.sh_brackets[self.current_sh_bracket]
         # pylint: disable=protected-access
-        sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
+        sh_bracket._get_rungs_state(self.max_budget_configs.iloc[start:end])
         sh_bracket._handle_promotions()
         # self._handle_promotion() need not be called as it is called by load_results()
 
@@ -380,7 +380,7 @@ class AsynchronousHyperband(HyperbandBase):
                 config_map=bracket.config_map,
             )
             bracket.rung_promotions = bracket.promotion_policy.retrieve_promotions()
-            bracket.observed_configs = self.observed_configs.copy()
+            bracket.max_budget_configs = self.max_budget_configs.copy()
 
     def _get_bracket_to_run(self):
         """Samples the ASHA bracket to run.

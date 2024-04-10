@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import typing
+from typing import Literal
 
 import numpy as np
-from typing import Literal
 
 from ...search_spaces.search_space import SearchSpace
 from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
@@ -34,7 +34,7 @@ class PriorBandBase:
         """Finds the distance to the nearest neighbour."""
         dist = lambda x: compute_config_dist(incumbent, x)
         # computing distance of incumbent from all seen points in history
-        distances = [dist(config) for config in self.observed_configs.config]
+        distances = [dist(config) for config in self.max_budget_configs.config]
         # ensuring the distances exclude 0 or the distance from itself
         distances = [d for d in distances if d > 0]
         return distances
@@ -47,14 +47,14 @@ class PriorBandBase:
 
     def find_incumbent(self, rung: int = None) -> SearchSpace:
         """Find the best performing configuration seen so far."""
-        rungs = self.observed_configs.rung.values
-        idxs = self.observed_configs.index.values
+        rungs = self.max_budget_configs.rung.values
+        idxs = self.max_budget_configs.index.values
         while rung is not None:
             # enters this scope is `rung` argument passed and not left empty or None
             if rung not in rungs:
                 self.logger.warn(f"{rung} not in {np.unique(idxs)}")
             # filtering by rung based on argument passed
-            idxs = self.observed_configs.rung.values == rung
+            idxs = self.max_budget_configs.rung.values == rung
             # checking width of current rung
             if len(idxs) < self.eta:
                 self.logger.warn(
@@ -63,9 +63,9 @@ class PriorBandBase:
         # extracting the incumbent configuration
         if len(idxs):
             # finding the config with the lowest recorded performance
-            _perfs = self.observed_configs.loc[idxs].perf.values
+            _perfs = self.max_budget_configs.loc[idxs].perf.values
             inc_idx = np.nanargmin([np.nan if t is None else t for t in _perfs])
-            inc = self.observed_configs.loc[idxs].iloc[inc_idx].config
+            inc = self.max_budget_configs.loc[idxs].iloc[inc_idx].config
         else:
             # THIS block should not ever execute, but for runtime anomalies, if no
             # incumbent can be extracted, the prior is treated as the incumbent
@@ -126,7 +126,9 @@ class PriorBandBase:
             resources += bracket.config_map[rung] * continuation_resources
 
         # find resources spent so far for all finished evaluations
-        resources_used = calc_total_resources_spent(self.observed_configs, self.rung_map)
+        resources_used = calc_total_resources_spent(
+            self.max_budget_configs, self.rung_map
+        )
 
         if resources_used >= resources and len(
             self.rung_histories[self.max_rung]["config"]
@@ -190,7 +192,7 @@ class PriorBandBase:
         if self.inc_style == "constant":
             return self._prior_to_incumbent_ratio_constant()
         elif self.inc_style == "decay":
-            resources = calc_total_resources_spent(self.observed_configs, self.rung_map)
+            resources = calc_total_resources_spent(self.max_budget_configs, self.rung_map)
             return self._prior_to_incumbent_ratio_decay(
                 resources, self.eta, self.min_budget, self.max_budget
             )
@@ -244,7 +246,7 @@ class PriorBandBase:
                 [
                     # `compute_scores` returns a tuple of scores resp. by prior and inc
                     compute_scores(
-                        self.observed_configs.loc[config_id].config, prior, inc
+                        self.max_budget_configs.loc[config_id].config, prior, inc
                     )
                     for config_id in top_configs
                 ]
