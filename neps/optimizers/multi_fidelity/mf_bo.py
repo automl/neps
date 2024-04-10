@@ -33,7 +33,7 @@ class MFBOBase:
         if self.pipeline_space.has_prior:
             # PriorBand + BO
             total_resources = calc_total_resources_spent(
-                self.observed_configs, self.rung_map
+                self.max_budget_configs, self.rung_map
             )
             decay_t = total_resources / self.max_budget
         else:
@@ -42,7 +42,7 @@ class MFBOBase:
 
         # extract pending configurations
         # doing this separately as `rung_histories` do not record pending configs
-        pending_df = self.observed_configs[self.observed_configs.perf.isna()]
+        pending_df = self.max_budget_configs[self.max_budget_configs.perf.isna()]
         if self.modelling_type == "rung":
             # collect only the finished configurations at the highest active `rung`
             # for training the surrogate and considering only those pending
@@ -58,7 +58,7 @@ class MFBOBase:
                 )
             self.logger.info(f"Building model at rung {rung}")
             # collecting finished evaluations at `rung`
-            train_df = self.observed_configs.loc[
+            train_df = self.max_budget_configs.loc[
                 self.rung_histories[rung]["config"]
             ].copy()
 
@@ -89,7 +89,7 @@ class MFBOBase:
             pending_x = []
             for rung in range(self.min_rung, self.max_rung + 1):
                 _ids = self.rung_histories[rung]["config"]
-                _x = deepcopy(self.observed_configs.loc[_ids].config.values.tolist())
+                _x = deepcopy(self.max_budget_configs.loc[_ids].config.values.tolist())
                 # update fidelity
                 fidelity = [self.rung_map[rung]] * len(_x)
                 _x = list(map(update_fidelity, _x, fidelity))
@@ -131,7 +131,7 @@ class MFBOBase:
             # builds a model across all fidelities with the fidelity as a dimension
             # in this case, calculate the total number of function evaluations spent
             # and in vanilla BO fashion use that to compare with the initital design size
-            resources = calc_total_resources_spent(self.observed_configs, self.rung_map)
+            resources = calc_total_resources_spent(self.max_budget_configs, self.rung_map)
             resources /= self.max_budget
             if resources < self.init_size:
                 return True
