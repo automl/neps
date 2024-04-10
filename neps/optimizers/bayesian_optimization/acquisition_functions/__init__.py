@@ -34,6 +34,14 @@ AcquisitionMapping: dict[str, Callable] = {
         in_fill="best",
         augmented_ei=False,
     ),
+    "UCB": partial(
+        UpperConfidenceBound,
+        maximize=False,
+    ),
+    "MF-UCB": partial(
+        MF_UCB,
+        maximize=False,
+    ),
     "MFEI-max": partial(
         MFEI_AtMax,
         in_fill="best",
@@ -45,22 +53,9 @@ AcquisitionMapping: dict[str, Callable] = {
         augmented_ei=False,
     ),
     "MFEI-random": partial(
-        MFPI_Random,  # code has been modified, rerun and use "MFEI-random2"!
+        MFPI_Random,
         in_fill="best",
         augmented_ei=False,
-    ),
-    "MFEI-random2": partial(
-        MFEI_Random,
-        in_fill="best",
-        augmented_ei=False,
-    ),
-    "UCB": partial(
-        UpperConfidenceBound,
-        maximize=False,
-    ),
-    "MF-UCB": partial(
-        MF_UCB,
-        maximize=False,
     ),
     "MF-UCB-max": partial(
         MF_UCB_AtMax,
@@ -84,13 +79,6 @@ AcquisitionMapping: dict[str, Callable] = {
         in_fill="best",
         augmented_ei=False,
     ),
-    "MFPI-thresh-max": partial(
-        MFPI_Random,
-        in_fill="best",
-        augmented_ei=False,
-        horizon="max",
-        threshold="random",
-    ),
     "MFPI-random-horizon": partial(
         MFPI_Random,
         in_fill="best",
@@ -108,9 +96,19 @@ AcquisitionMapping: dict[str, Callable] = {
         in_fill="best",
         augmented_ei=False,
     ),
-    "MFPI-random-hit": partial(
-        MFPI_Random_HiT,
-        in_fill="best",
-        augmented_ei=False,
-    ),
+
+# Further Potential Acquisition Functions
+
+#    "MFPI-thresh-max": partial(
+#        MFPI_Random,
+#        in_fill="best",
+#        augmented_ei=False,
+#        horizon="max",
+#        threshold="random",
+#    ),
+#    "MFPI-random-hit": partial(
+#        MFPI_Random_HiT,
+#        in_fill="best",
+#        augmented_ei=False,
+#    ),
 }

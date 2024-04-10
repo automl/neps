@@ -8,7 +8,7 @@ This concept also applies to resuming runs even after termination.
 Example:
 
 !!! note
-The following example assumes all necessary imports are included, in addition to already having defined the [pipeline_space](https://automl.github.io/neps/latest/pipeline_space/) and the [run_pipeline](https://automl.github.io/neps/latest/run_pipeline/) functions. One can apply the same idea on [this](https://github.com/automl/neps/blob/master/neps_examples/basic_usage/hyperparameters.py) example.
+    The following example assumes all necessary imports are included, in addition to already having defined the [pipeline_space](https://automl.github.io/neps/latest/pipeline_space/) and the [run_pipeline](https://automl.github.io/neps/latest/run_pipeline/) functions. One can apply the same idea on [this](https://github.com/automl/neps/blob/master/neps_examples/basic_usage/hyperparameters.py) example.
 
 ```python
 logging.basicConfig(level=logging.INFO)

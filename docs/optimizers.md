@@ -19,7 +19,6 @@ The optimizer selection is based on the following characteristics of your `pipel
 
 For example, running the following format, without specifying a searcher will choose an optimizer depending on
 the `pipeline_space` passed.
-
 ```python
 neps.run(
     run_pipeline=run_function,

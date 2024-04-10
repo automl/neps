@@ -5,24 +5,22 @@ This approach ensures flexibility and efficiency in evaluating different archite
 for your problem.
 
 ## The 3 Main Components
-
 1. **Define a [`run_pipeline`](https://automl.github.io/neps/latest/run_pipeline) Function**: This function is essential
-   for evaluating different configurations. You'll implement the specific logic for your problem within this function.
-   For detailed instructions on initializing and effectively using `run_pipeline`, refer to the guide.
+for evaluating different configurations. You'll implement the specific logic for your problem within this function.
+For detailed instructions on initializing and effectively using `run_pipeline`, refer to the guide.
 
-1. **Establish a [`pipeline_space`](https://automl.github.io/neps/latest/pipeline_space)**: Your search space for
-   defining parameters. You can structure this in various formats, including dictionaries, YAML, or ConfigSpace.
-   The guide offers insights into defining and configuring your search space.
+2. **Establish a [`pipeline_space`](https://automl.github.io/neps/latest/pipeline_space)**: Your search space for
+defining parameters. You can structure this in various formats, including dictionaries, YAML, or ConfigSpace.
+The guide offers insights into defining and configuring your search space.
 
-1. **Execute with [`neps.run`](https://automl.github.io/neps/latest/neps_run)**: Optimize your `run_pipeline` over
-   the `pipeline_space` using this function. For a thorough overview of the arguments and their explanations,
-   check out the detailed documentation.
+3. **Execute with [`neps.run`](https://automl.github.io/neps/latest/neps_run)**: Optimize your `run_pipeline` over
+the `pipeline_space` using this function. For a thorough overview of the arguments and their explanations,
+check out the detailed documentation.
 
 By following these steps and utilizing the extensive resources provided in the guides, you can tailor NePS to meet
 your specific requirements, ensuring a streamlined and effective optimization process.
 
 ## Basic Usage
-
 In code, the usage pattern can look like this:
 
 ```python
@@ -82,17 +80,22 @@ if __name__ == "__main__":
 
 Discover the features of NePS through these practical examples:
 
-- **[Hyperparameter Optimization (HPO)](https://github.com/automl/neps/blob/master/neps_examples/template/basic_template.py)**: Learn the essentials of
-  hyperparameter optimization with NePS.
+* **[Hyperparameter Optimization (HPO)](
+https://github.com/automl/neps/blob/master/neps_examples/template/basic_template.py)**: Learn the essentials of
+hyperparameter optimization with NePS.
 
-- **[Architecture Search with Primitives](https://github.com/automl/neps/tree/master/neps_examples/basic_usage/architecture.py)**: Dive into architecture search
-  using primitives in NePS.
+* **[Architecture Search with Primitives](
+https://github.com/automl/neps/tree/master/neps_examples/basic_usage/architecture.py)**: Dive into architecture search
+using primitives in NePS.
 
-- **[Multi-Fidelity Optimization](https://github.com/automl/neps/tree/master/neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage
-  multi-fidelity optimization for efficient model tuning.
+* **[Multi-Fidelity Optimization](
+https://github.com/automl/neps/tree/master/neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage
+multi-fidelity optimization for efficient model tuning.
 
-- **[Utilizing Expert Priors for Hyperparameters](https://github.com/automl/neps/blob/master/neps_examples/template/priorband_template.py)**:
-  Learn how to incorporate expert priors for more efficient hyperparameter selection.
+* **[Utilizing Expert Priors for Hyperparameters](
+https://github.com/automl/neps/blob/master/neps_examples/template/priorband_template.py)**:
+Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
-- **[Additional NePS Examples](https://github.com/automl/neps/tree/master/neps_examples/)**: Explore more examples, including various use cases and
-  advanced configurations in NePS.
+* **[Additional NePS Examples](
+https://github.com/automl/neps/tree/master/neps_examples/)**: Explore more examples, including various use cases and
+advanced configurations in NePS.
