@@ -1,4 +1,6 @@
 # type: ignore
+from copy import deepcopy
+from pathlib import Path
 from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
@@ -8,80 +10,15 @@ from torch.distributions import Normal
 
 from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from ....search_spaces.search_space import IntegerParameter, SearchSpace
+from ....utils.common import SimpleCSVWriter
 from ...multi_fidelity.utils import MFObservedData
 from .base_acquisition import BaseAcquisition
 from .ei import ComprehensiveExpectedImprovement
-
-
-class MFStepBase(BaseAcquisition):
-    """A class holding common operations that can be inherited.
-
-    WARNING: Unsafe use of self attributes, can break if not used correctly.
-    """
-
-    def set_state(
-        self,
-        pipeline_space: SearchSpace,
-        surrogate_model: Any,
-        observations: MFObservedData,
-        b_step: Union[int, float],
-        **kwargs,
-    ):
-        # overload to select incumbent differently through observations
-        self.pipeline_space = pipeline_space
-        self.surrogate_model = surrogate_model
-        self.observations = observations
-        self.b_step = b_step
-        return
-
-    def get_budget_level(self, config) -> int:
-        return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
-
-    def preprocess_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
-        x, inc_list = self.preprocess(x)
-        return x, inc_list
-
-    def preprocess_deep_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
-        x, inc_list = self.preprocess(x)
-        x_lcs = []
-        for idx in x.index:
-            if idx in self.observations.df.index.levels[0]:
-                # TODO: Samir, check if `budget_id=None` is okay?
-                # budget_level = self.get_budget_level(x[idx])
-                # extracting the available/observed learning curve
-                lc = self.observations.extract_learning_curve(idx, budget_id=None)
-            else:
-                # initialize a learning curve with a placeholder
-                # This is later padded accordingly for the Conv1D layer
-                lc = []
-            x_lcs.append(lc)
-        self.surrogate_model.set_prediction_learning_curves(x_lcs)
-        return x, inc_list
-
-    def preprocess_pfn(
-        self, x: pd.Series
-    ) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
-        """Prepares the configurations for appropriate EI calculation.
-
-        Takes a set of points and computes the budget and incumbent for each point, as
-        required by the multi-fidelity Expected Improvement acquisition function.
-        """
-        _x, inc_list = self.preprocess(x.copy())
-        _x_tok = self.observations.tokenize(_x, as_tensor=True)
-        len_partial = len(self.observations.seen_config_ids)
-        z_min = x[0].fidelity.lower
-        z_max = x[0].fidelity.upper
-        # converting fidelity to the discrete budget level
-        # STRICT ASSUMPTION: fidelity is the second dimension
-        _x_tok[:len_partial, 1] = (
-            _x_tok[:len_partial, 1] + self.b_step - z_min
-        ) / self.b_step
-        _x_tok[:, 1] = _x_tok[:, 1] / z_max
-        return _x, _x_tok, inc_list
+from .mf_ei import MFStepBase
 
 
 # NOTE: the order of inheritance is important
-class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
+class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
     def __init__(
         self,
         pipeline_space: SearchSpace,
@@ -89,13 +26,11 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
-        inc_normalization: bool = False,
         log_ei: bool = False,
     ):
         super().__init__(augmented_ei, xi, in_fill, log_ei)
         self.pipeline_space = pipeline_space
         self.surrogate_model_name = surrogate_model_name
-        self.inc_normalization = inc_normalization
         self.surrogate_model = None
         self.observations = None
         self.b_step = None
@@ -158,82 +93,52 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
             _x, _x_tok, inc_list = self.preprocess_pfn(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
-            ei = self.eval_pfn_ei(_x_tok, inc_list)
+            pi = self.eval_pfn_pi(_x_tok, inc_list)
         elif self.surrogate_model_name in ["deep_gp", "dpl"]:
             _x, inc_list = self.preprocess_deep_gp(_x)  # IMPORTANT change from vanilla-EI
-            ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
+            pi = self.eval_gp_pi(_x.values.tolist(), inc_list)
         elif self.surrogate_model_name == "gp":
             _x, inc_list = self.preprocess_gp(_x)  # IMPORTANT change from vanilla-EI
-            ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
+            pi = self.eval_gp_pi(_x.values.tolist(), inc_list)
         else:
             raise ValueError(
                 f"Unrecognized surrogate model name: {self.surrogate_model_name}"
             )
 
-        if self.inc_normalization:
-            ei = ei / inc_list
-
-        if ei.is_cuda:
-            ei = ei.cpu()
+        if pi.is_cuda:
+            pi = ei.cpu()
         if len(_x) > 1 and asscalar:
-            return ei.detach().numpy(), _x
+            return pi.detach().numpy(), _x
         else:
-            return ei.detach().numpy().item(), _x
+            return pi.detach().numpy().item(), _x
 
-    def eval_pfn_ei(
+    def eval_pfn_pi(
         self, x: Iterable, inc_list: Iterable
     ) -> Union[np.ndarray, torch.Tensor, float]:
-        """PFN-EI modified to preprocess samples and accept list of incumbents."""
-        ei = self.surrogate_model.get_ei(x.to(self.surrogate_model.device), inc_list)
-        if len(ei.shape) == 2:
-            ei = ei.flatten()
-        return ei
+        """PFN-PI modified to preprocess samples and accept list of incumbents."""
+        pi = self.surrogate_model.get_pi(x.to(self.surrogate_model.device), inc_list)
+        if len(pi.shape) == 2:
+            pi = pi.flatten()
+        print(f"Maximum PI: {pi.max()}")
+        return pi
 
-    def eval_gp_ei(
+    def eval_gp_pi(
         self, x: Iterable, inc_list: Iterable
     ) -> Union[np.ndarray, torch.Tensor, float]:
-        """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
         _x = x.copy()
         try:
             mu, cov = self.surrogate_model.predict(_x)
         except ValueError as e:
             raise e
-            # return -1.0  # in case of error. return ei of -1
         std = torch.sqrt(torch.diag(cov))
-
-        mu_star = inc_list.to(mu.device)  # IMPORTANT change from vanilla-EI
+        mu_star = inc_list.to(mu.device)
 
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
-        # u = (mu - mu_star - self.xi) / std
-        # ei = std * updf + (mu - mu_star - self.xi) * ucdf
-        if self.log_ei:
-            # we expect that f_min is in log-space
-            f_min = mu_star - self.xi
-            v = (f_min - mu) / std
-            ei = torch.exp(f_min) * gauss.cdf(v) - torch.exp(
-                0.5 * torch.diag(cov) + mu
-            ) * gauss.cdf(v - std)
-        else:
-            u = (mu_star - mu - self.xi) / std
-            ucdf = gauss.cdf(u)
-            updf = torch.exp(gauss.log_prob(u))
-            ei = std * updf + (mu_star - mu - self.xi) * ucdf
-            # Clip ei if std == 0.0
-            # ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
-        if self.augmented_ei:
-            sigma_n = self.surrogate_model.likelihood
-            ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
-                sigma_n + torch.diag(cov)
-            )
-
-        # Save data for writing
-        self.mu_star = mu_star.detach().numpy().tolist()
-        self.mu = mu.detach().numpy().tolist()
-        self.std = std.detach().numpy().tolist()
-        return ei
+        pi = gauss.cdf((mu - mu_star) / (std + 1e-9))
+        return pi
 
 
-class MFEI_AtMax(MFEI):
+class MFPI_AtMax(MFPI):
     def preprocess_inc_list(self, **kwargs) -> list:
         assert "len_x" in kwargs, "Requires the length of the candidate set."
         len_x = kwargs["len_x"]
@@ -247,7 +152,7 @@ class MFEI_AtMax(MFEI):
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point.
-        Unlike the base class MFEI, sets the target fidelity to be max budget and the
+        Unlike the base class MFPI, sets the target fidelity to be max budget and the
         incumbent choice to be the max seen across history for all candidates.
         """
         budget_list = []
@@ -276,7 +181,7 @@ class MFEI_AtMax(MFEI):
         return x, torch.Tensor(inc_list)
 
 
-class MFEI_Dyna(MFEI_AtMax):
+class MFPI_Dyna(MFPI_AtMax):
     """
     Computes extrapolation length of curves to maximum fidelity seen.
     Uses the global incumbent as the best score in EI computation.
@@ -346,8 +251,25 @@ class MFEI_Dyna(MFEI_AtMax):
         return x, torch.Tensor(inc_list)
 
 
-class MFEI_Random(MFEI):
+class MFPI_Random(MFPI):
     BUDGET = 1000
+
+    def __init__(
+        self,
+        pipeline_space: SearchSpace,
+        horizon: str = "random",
+        threshold: str = "random",
+        surrogate_model_name: str = None,
+        augmented_ei: bool = False,
+        xi: float = 0.0,
+        in_fill: str = "best",
+        log_ei: bool = False,
+    ):
+        super().__init__(
+            pipeline_space, surrogate_model_name, augmented_ei, xi, in_fill, log_ei
+        )
+        self.horizon = horizon
+        self.threshold = threshold
 
     def set_state(
         self,
@@ -366,12 +288,20 @@ class MFEI_Random(MFEI):
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
-        shortest = self.pipeline_space.fidelity.lower
-        longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
-        return self.rng.randint(shortest, longest + 1)
+        if self.horizon == "random":
+            shortest = self.pipeline_space.fidelity.lower
+            longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
+            return self.rng.randint(shortest, longest + 1)
+        elif self.horizon == "max":
+            return min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
+        else:
+            return int(self.horizon)
 
     def sample_threshold(self, f_inc):
-        lu = 10 ** self.rng.uniform(-4, -1)  # % of gap closed
+        if self.threshold == "random":
+            lu = 10 ** self.rng.uniform(-4, -1)  # % of gap closed
+        else:
+            lu = float(self.threshold)
         return f_inc * (1 - lu)
 
     def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
@@ -394,8 +324,93 @@ class MFEI_Random(MFEI):
         # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
-        inc_value = self.sample_threshold(inc_value)
-        print(f"Threshold for EI: {inc_value}")
+        t_value = self.sample_threshold(inc_value)
+        print(f"Threshold for PI: {inc_value - t_value}")
+        inc_value = t_value
+
+        # Like MFEI: set fidelities to query using horizon as self.b_step
+        # Extension: Unlike DyHPO, we sample the horizon randomly over the full range
+        horizon = self.sample_horizon(steps_passed)
+        print(f"Horizon for PI: {horizon}")
+        for i, config in x.items():
+            if i <= max(self.observations.seen_config_ids):
+                current_fidelity = config.fidelity.value
+                if np.equal(config.fidelity.value, config.fidelity.upper):
+                    # this training run has ended, drop it from future selection
+                    indices_to_drop.append(i)
+                else:
+                    # a candidate partial training run to continue
+                    target_fidelity = config.fidelity.value + horizon
+                    config.fidelity.value = min(
+                        config.fidelity.value + horizon, config.fidelity.upper
+                    )  # if horizon exceeds max, query at max
+                    inc_list.append(inc_value)
+            else:
+                # a candidate new training run that we would need to start
+                current_fidelity = 0
+                config.fidelity.value = horizon
+                inc_list.append(inc_value)
+            # print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
+
+        # Drop unused configs
+        x.drop(labels=indices_to_drop, inplace=True)
+
+        assert len(inc_list) == len(x)
+
+        return x, torch.Tensor(inc_list)
+
+
+class MFPI_Random_HiT(MFPI):
+    BUDGET = 1000
+
+    def set_state(
+        self,
+        pipeline_space: SearchSpace,
+        surrogate_model: Any,
+        observations: MFObservedData,
+        b_step: Union[int, float],
+        **kwargs,
+    ):
+        # set RNG
+        self.rng = np.random.RandomState(seed=42)
+        for i in range(len(observations.completed_runs)):
+            self.rng.uniform(-4, 0)
+            self.rng.randint(1, 51)
+
+        return super().set_state(pipeline_space, surrogate_model, observations, b_step)
+
+    def sample_horizon(self, steps_passed):
+        shortest = self.pipeline_space.fidelity.lower
+        longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
+        return self.rng.randint(shortest, longest + 1)
+
+    def sample_threshold(self, f_inc):
+        lu = 10 ** self.rng.uniform(-4, 0)  # % of gap closed
+        return f_inc * (1 - lu)
+
+    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+        """Prepares the configurations for appropriate EI calculation.
+
+        Takes a set of points and computes the budget and incumbent for each point, as
+        required by the multi-fidelity Expected Improvement acquisition function.
+        """
+        if self.pipeline_space.has_tabular:
+            # preprocess tabular space differently
+            # expected input: IDs pertaining to the tabular data
+            x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
+
+        indices_to_drop = []
+        inc_list = []
+
+        steps_passed = len(self.observations.completed_runs)
+        print(f"Steps acquired: {steps_passed}")
+
+        # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
+        inc_value = min(self.observations.get_best_performance_for_each_budget())
+        # Extension: Add a random min improvement threshold to encourage high risk high gain
+        t_value = self.sample_threshold(inc_value)
+        print(f"Threshold for EI: {inc_value - t_value}")
+        inc_value = t_value
 
         # Like MFEI: set fidelities to query using horizon as self.b_step
         # Extension: Unlike DyHPO, we sample the horizon randomly over the full range

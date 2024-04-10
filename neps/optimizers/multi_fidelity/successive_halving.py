@@ -5,10 +5,9 @@ from __future__ import annotations
 import random
 import typing
 from copy import deepcopy
+from typing import Literal
 
 import numpy as np
-import pandas as pd
-from typing_extensions import Literal
 
 from ...metahyper import ConfigResult
 from ...search_spaces.hyperparameters.categorical import (
@@ -22,6 +21,7 @@ from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
 from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
+from .utils import MFObservedData
 
 CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
@@ -102,8 +102,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
         self.sampling_policy = sampling_policy(
-            pipeline_space=self.pipeline_space,
-            logger=self.logger
+            pipeline_space=self.pipeline_space, logger=self.logger
         )
         self.promotion_policy = promotion_policy(self.eta)
 
@@ -132,9 +131,20 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.sampling_args: dict = {}
 
         self.fidelities = list(self.rung_map.values())
+
+        self.MFobserved_configs = MFObservedData(
+            config_id="config_id",
+            budget_id="budget_id",
+            config_col="config",
+            perf_col="perf",
+            auxiliary_cols=["rung"],
+        )
+        # TODO: replace with MFobserved_configs
         # stores the observations made and the corresponding fidelity explored
         # crucial data structure used for determining promotion candidates
-        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+        self.__max_observed_configs = None
+        self.history_length = 0
+        # self.max_budget_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
         # stores which configs occupy each rung at any time
         self.rung_members: dict = dict()  # stores config IDs per rung
         self.rung_members_performance: dict = dict()  # performances recorded per rung
@@ -155,6 +165,22 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self._enhance_priors()
         self.rung_histories = None
 
+    @property
+    def max_budget_configs(self):
+        """
+        Make this property dynamically dependent on self.MFobserved_configs. So the state
+        of the algo only depends on self.MFobserved_configs.
+        """
+        if self.__max_observed_configs is None or self.history_length != len(
+            self.MFobserved_configs.df
+        ):
+            self.__max_observed_configs = self.MFobserved_configs.copy_df(
+                df=self.MFobserved_configs.reduce_to_max_seen_budgets()
+            )
+            self.history_length = len(self.MFobserved_configs.df)
+
+        return self.__max_observed_configs
+
     @classmethod
     def _get_rung_trace(cls, rung_map: dict, config_map: dict) -> list[int]:
         """Lists the rung IDs in sequence of the flattened SH tree."""
@@ -164,9 +190,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return rung_trace
 
     def get_incumbent_score(self):
+        # budget_perf = self.MFobserved_configs.get_best_performance_for_each_budget()
+        # y_star = budget_perf[budget_perf.index.max]
+
+        # TODO: replace this with existing method
         y_star = np.inf  # minimizing optimizer
-        if len(self.observed_configs):
-            y_star = self.observed_configs.perf.values.min()
+        if len(self.max_budget_configs):
+            y_star = self.max_budget_configs.perf.values.min()
         return y_star
 
     def _get_rung_map(self, s: int = 0) -> dict:
@@ -219,52 +249,88 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def _load_previous_observations(
         self, previous_results: dict[str, ConfigResult]
     ) -> None:
-        for config_id, config_val in previous_results.items():
+        def index_data_split(config_id: str, config_val):
             _config, _rung = self._get_config_id_split(config_id)
             perf = self.get_loss(config_val.result)
-            if int(_config) in self.observed_configs.index:
-                # config already recorded in dataframe
-                rung_recorded = self.observed_configs.at[int(_config), "rung"]
-                if rung_recorded < int(_rung):
-                    # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.at[int(_config), "config"] = config_val.config
-                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = perf
-            else:
-                _df = pd.DataFrame(
-                    [[config_val.config, int(_rung), perf]],
-                    columns=self.observed_configs.columns,
-                    index=pd.Series(int(_config)),  # key for config_id
-                )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
-            # for efficiency, redefining the function to have the
-            # `rung_histories` assignment inside the for loop
-            # rung histories are collected only for `previous` and not `pending` configs
-            self.rung_histories[int(_rung)]["config"].append(int(_config))
-            self.rung_histories[int(_rung)]["perf"].append(perf)
+            index = int(_config), int(_rung)
+            _data = [config_val.config, perf, int(_rung)]
+            return index, _data
+
+        if len(previous_results) > 0:
+            index_row = [
+                tuple(index_data_split(config_id, config_val))
+                for config_id, config_val in previous_results.items()
+            ]
+            indices, rows = zip(*index_row)
+            self.MFobserved_configs.add_data(data=list(rows), index=list(indices))
+        # TODO: replace this with new optimized method
+        # for config_id, config_val in previous_results.items():
+        #     _config, _rung = self._get_config_id_split(config_id)
+        #     perf = self.get_loss(config_val.result)
+        #     if int(_config) in self.observed_configs.index:
+        #         # config already recorded in dataframe
+        #         rung_recorded = self.observed_configs.at[int(_config), "rung"]
+        #         if rung_recorded < int(_rung):
+        #             # config recorded for a lower rung but higher rung eval available
+        #             self.observed_configs.at[int(_config), "config"] = config_val.config
+        #             self.observed_configs.at[int(_config), "rung"] = int(_rung)
+        #             self.observed_configs.at[int(_config), "perf"] = perf
+        #     else:
+        #         _df = pd.DataFrame(
+        #             [[config_val.config, int(_rung), perf]],
+        #             columns=self.observed_configs.columns,
+        #             index=pd.Series(int(_config)),  # key for config_id
+        #         )
+        #         self.observed_configs = pd.concat(
+        #             (self.observed_configs, _df)
+        #         ).sort_index()
+        #     # for efficiency, redefining the function to have the
+        #     # `rung_histories` assignment inside the for loop
+        #     # rung histories are collected only for `previous` and not `pending` configs
+        #     self.rung_histories[int(_rung)]["config"].append(int(_config))
+        #     self.rung_histories[int(_rung)]["perf"].append(perf)
         return
 
     def _handle_pending_evaluations(
         self, pending_evaluations: dict[str, ConfigResult]
     ) -> None:
+        def index_data_split(config_id: str, config_val):
+            _config, _rung = self._get_config_id_split(config_id)
+            # perf = self.get_loss(config_val.result)
+            index = int(_config), int(_rung)
+            _data = [
+                # use `config_val` instead of `config_val.config`
+                # unlike `previous_results` case
+                config_val,
+                np.nan,
+                int(_rung),
+            ]
+            return index, _data
+
+        if len(pending_evaluations) > 0:
+            index_row = [
+                tuple(index_data_split(config_id, config_val))
+                for config_id, config_val in pending_evaluations.items()
+            ]
+            indices, rows = zip(*index_row)
+            self.MFobserved_configs.add_data(data=list(rows), index=list(indices))
+        # TODO: replace this
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
-        for config_id, config in pending_evaluations.items():
-            _config, _rung = self._get_config_id_split(config_id)
-            if int(_config) not in self.observed_configs.index:
-                _df = pd.DataFrame(
-                    [[config, int(_rung), np.nan]],
-                    columns=self.observed_configs.columns,
-                    index=pd.Series(int(_config)),  # key for config_id
-                )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
-            else:
-                self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                self.observed_configs.at[int(_config), "perf"] = np.nan
+        # for config_id, config in pending_evaluations.items():
+        #     _config, _rung = self._get_config_id_split(config_id)
+        #     if int(_config) not in self.observed_configs.index:
+        #         _df = pd.DataFrame(
+        #             [[config, int(_rung), np.nan]],
+        #             columns=self.observed_configs.columns,
+        #             index=pd.Series(int(_config)),  # key for config_id
+        #         )
+        #         self.observed_configs = pd.concat(
+        #             (self.observed_configs, _df)
+        #         ).sort_index()
+        #     else:
+        #         self.observed_configs.at[int(_config), "rung"] = int(_rung)
+        #         self.observed_configs.at[int(_config), "perf"] = np.nan
         return
 
     def clean_rung_information(self):
@@ -276,7 +342,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         """Collects info on configs at a rung and their performance there."""
         # to account for incomplete evaluations from being promoted --> working on a copy
         observed_configs = (
-            self.observed_configs.copy().dropna(inplace=False)
+            self.max_budget_configs.copy().dropna(inplace=False)
             if observed_configs is None
             else observed_configs
         )
@@ -290,6 +356,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # iterates over the list of explored configs and buckets them to respective
         # rungs depending on the highest fidelity it was evaluated at
         self.clean_rung_information()
+        # TODO: create a new method for this
         for _rung in observed_configs.rung.unique():
             idxs = observed_configs.rung == _rung
             self.rung_members[_rung] = observed_configs.index[idxs].values
@@ -331,7 +398,15 @@ class SuccessiveHalvingBase(BaseOptimizer):
             for rung in range(self.min_rung, self.max_rung + 1)
         }
 
-        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+        self.MFobserved_configs = MFObservedData(
+            config_id="config_id",
+            budget_id="budget_id",
+            config_col="config",
+            perf_col="perf",
+            auxiliary_cols=["rung"],
+        )
+
+        # self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
 
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(previous_results)
@@ -339,6 +414,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
         # account for pending evaluations
         self._handle_pending_evaluations(pending_evaluations)
+
+        # TODO: change this after testing
+        # Copy data into old format
+        # self.max_budget_configs = self.MFobserved_configs.copy_df(
+        #     df=self.MFobserved_configs.reduce_to_max_seen_budgets()
+        # )
 
         # process optimization state and bucket observations per rung
         self._get_rungs_state()
@@ -374,7 +455,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return config
 
     def _generate_new_config_id(self):
-        return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
+        return self.MFobserved_configs.next_config_id()
+        # TODO: replace this with existing
+        # return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
 
     def get_default_configuration(self):
         pass
@@ -403,7 +486,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         rung_to_promote = self.is_promotable()
         if rung_to_promote is not None:
             # promotes the first recorded promotable config in the argsort-ed rung
-            row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
+            # TODO: What to do with this?
+            row = self.max_budget_configs.iloc[self.rung_promotions[rung_to_promote][0]]
             config = deepcopy(row["config"])
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
@@ -417,7 +501,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             if (
                 self.use_priors
                 and self.sample_default_first
-                and len(self.observed_configs) == 0
+                and len(self.max_budget_configs) == 0
             ):
                 if self.sample_default_at_target:
                     # sets the default config to be evaluated at the target fidelity
@@ -501,15 +585,15 @@ class SuccessiveHalving(SuccessiveHalvingBase):
             start += 1
             end += 1
         # iterates over the different SH brackets which span start-end by index
-        while end <= len(self.observed_configs):
+        while end <= len(self.max_budget_configs):
             # for the SH bracket in start-end, calculate total SH budget used
             bracket_budget_used = self._calc_budget_used_in_bracket(
-                deepcopy(self.observed_configs.rung.values[start:end])
+                deepcopy(self.max_budget_configs.rung.values[start:end])
             )
             # if budget used is less than a SH bracket budget then still an active bracket
             if bracket_budget_used < sum(self.full_rung_trace):
                 # subsetting only this SH bracket from the history
-                self._get_rungs_state(self.observed_configs.iloc[start:end])
+                self._get_rungs_state(self.max_budget_configs.iloc[start:end])
                 # extra call to use the updated rung member info to find promotions
                 # SyncPromotion signals a wait if a rung is full but with
                 # incomplete/pending evaluations, and signals to starts a new SH bracket
@@ -527,7 +611,7 @@ class SuccessiveHalving(SuccessiveHalvingBase):
             end = start + self.config_map[self.min_rung]
 
         # updates rung info with the latest active, incomplete bracket
-        self._get_rungs_state(self.observed_configs.iloc[start:end])
+        self._get_rungs_state(self.max_budget_configs.iloc[start:end])
         # _handle_promotion() need not be called as it is called by load_results()
         return
 

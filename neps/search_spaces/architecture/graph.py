@@ -6,13 +6,13 @@ import random
 import sys
 import types
 from collections import Counter
+from pathlib import Path
 from typing import Callable
 from typing import Counter as CounterType
 
 import networkx as nx
 import torch
 from networkx.algorithms.dag import lexicographical_topological_sort
-from pathlib import Path
 from torch import nn
 
 from ...utils.common import AttrDict

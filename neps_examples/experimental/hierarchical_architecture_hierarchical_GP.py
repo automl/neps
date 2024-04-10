@@ -3,13 +3,13 @@ from __future__ import annotations
 import logging
 import time
 
+from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
+    ComprehensiveGPHierarchy,
+)
 from torch import nn
 
 import neps
 from neps.optimizers.bayesian_optimization.kernels import GraphKernelMapping
-from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
-    ComprehensiveGPHierarchy,
-)
 from neps.search_spaces.architecture import primitives as ops
 from neps.search_spaces.architecture import topologies as topos
 

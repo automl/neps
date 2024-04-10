@@ -18,11 +18,8 @@ from ....search_spaces.search_space import (
 )
 
 
-def count_non_improvement_steps(root_directory: Path | str) -> int:
-    root_directory = Path(root_directory)
-
+def get_optimizer_losses(root_directory: Path | str) -> list[float]:
     all_losses_file = root_directory / "all_losses_and_configs.txt"
-    best_loss_fiel = root_directory / "best_loss_trajectory.txt"
 
     # Read all losses from the file in the order they are explored
     losses = [
@@ -30,18 +27,17 @@ def count_non_improvement_steps(root_directory: Path | str) -> int:
         for line in all_losses_file.read_text(encoding="utf-8").splitlines()
         if "Loss: " in line
     ]
+    return losses
+
+
+def get_best_loss(root_directory: Path | str) -> float:
+    root_directory = Path(root_directory)
+    best_loss_fiel = root_directory / "best_loss_trajectory.txt"
+
     # Get the best seen loss value
     best_loss = float(best_loss_fiel.read_text(encoding="utf-8").splitlines()[-1].strip())
 
-    # Count the non-improvement
-    count = 0
-    for loss in reversed(losses):
-        if np.greater(loss, best_loss):
-            count += 1
-        else:
-            break
-
-    return count
+    return best_loss
 
 
 class NeuralFeatureExtractor(nn.Module):
@@ -167,13 +163,19 @@ class DeepGP:
         # IMPORTANT: hence, it is not suitable for multiprocessing settings
         checkpointing: bool = False,
         root_directory: Path | str | None = None,
+        # IMPORTANT: For parallel runs use a different checkpoint_file name for each
+        # IMPORTANT: surrogate. This makes sure that parallel runs don't override each
+        # IMPORTANT: others saved checkpoint. Although they will still have some conflicts due to
+        # IMPORTANT: global optimizer step tracking
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = 50,
+        n_initial_full_trainings: int = 10,
         **kwargs,  # pylint: disable=unused-argument
-    ):  
+    ):
         self.surrogate_model_fit_args = (
             surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
         )
+        self.n_initial_full_trainings = n_initial_full_trainings
 
         self.checkpointing = checkpointing
         self.refine_epochs = refine_epochs
@@ -204,8 +206,17 @@ class DeepGP:
             neural_network_args.get("n_layers", 2)
         )
 
+        if self.surrogate_model_fit_args.get("perf_patience", -1) is None:
+            # To replicate how the original DyHPO implementation handles the
+            # no_improvement_threshold
+            self.surrogate_model_fit_args["perf_patience"] = int(
+                self.max_fidelity + 0.2 * self.max_fidelity
+            )
+
         # build the neural network
         self.nn = NeuralFeatureExtractor(self.input_size, **neural_network_args)
+
+        self.best_state = None
 
         self.logger = logger or logging.getLogger("neps")
 
@@ -237,6 +248,27 @@ class DeepGP:
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model).to(self.device)
         return model, likelihood, mll
 
+    def __is_refine(self, perf_patience: int):
+        losses = get_optimizer_losses(self.root_dir)
+
+        best_loss = get_best_loss(self.root_dir)
+
+        total_optimizer_steps = len(losses)
+
+        # Count the non-improvement
+        non_improvement_steps = 0
+        for loss in reversed(losses):
+            if np.greater(loss, best_loss):
+                non_improvement_steps += 1
+            else:
+                break
+
+        self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
+
+        return (non_improvement_steps < perf_patience) and (
+            self.n_initial_full_trainings <= total_optimizer_steps
+        )
+
     def __preprocess_search_space(self, pipeline_space: SearchSpace):
         self.categories = []
         self.categorical_hps = []
@@ -258,9 +290,9 @@ class DeepGP:
         self.max_fidelity = pipeline_space.fidelity.upper
 
     def __encode_config(self, config: SearchSpace):
-        categorical_encoding = np.zeros_like(self.categories_array)
+        categorical_encoding = np.zeros_like(self.categories_array, dtype=np.single)
         continuous_values = []
-
+        # print(config.hp_values())
         for hp_name, hp in config.items():
             if hp.is_fidelity:
                 continue  # Ignore fidelity
@@ -268,6 +300,7 @@ class DeepGP:
                 label = hp.value
                 categorical_encoding[np.argwhere(self.categories_array == label)] = 1
             else:
+                # self.logger.info(f"{hp_name} Value: {hp.value} Normalized {hp.normalized().value}")
                 continuous_values.append(hp.normalized().value)
 
         continuous_encoding = np.array(continuous_values)
@@ -276,13 +309,15 @@ class DeepGP:
         return encoding
 
     def __extract_budgets(
-        self, x_train: list[SearchSpace], normalized: bool = True
+        self,
+        x_train: list[SearchSpace],
+        normalized: bool = True,
+        use_min_budget: bool = False,
     ) -> np.ndarray:
+        min_budget = self.min_fidelity if use_min_budget else 0
         budgets = np.array([config.fidelity.value for config in x_train], dtype=np.single)
         if normalized:
-            normalized_budgets = (budgets - self.min_fidelity) / (
-                self.max_fidelity - self.min_fidelity
-            )
+            normalized_budgets = (budgets - min_budget) / (self.max_fidelity - min_budget)
             budgets = normalized_budgets
         return budgets
 
@@ -316,14 +351,18 @@ class DeepGP:
         learning_curves: list[list[float]],
         normalize_y: bool = False,
         normalize_budget: bool = True,
+        use_min_budget: bool = False,
     ):
         self.normalize_budget = (  # pylint: disable=attribute-defined-outside-init
             normalize_budget
         )
+        self.use_min_budget = (  # pylint: disable=attribute-defined-outside-init
+            use_min_budget
+        )
         self.normalize_y = normalize_y  # pylint: disable=attribute-defined-outside-init
 
         x_train, train_budgets, learning_curves = self._preprocess_input(
-            x_train, learning_curves, normalize_budget
+            x_train, learning_curves, normalize_budget, use_min_budget
         )
 
         y_train = self._preprocess_y(y_train, normalize_y)
@@ -342,8 +381,9 @@ class DeepGP:
         x: list[SearchSpace],
         learning_curves: list[list[float]],
         normalize_budget: bool = True,
+        use_min_budget: bool = False,
     ):
-        budgets = self.__extract_budgets(x, normalize_budget)
+        budgets = self.__extract_budgets(x, normalize_budget, use_min_budget)
         learning_curves = self.__preprocess_learning_curves(learning_curves)
 
         x = np.array([self.__encode_config(config) for config in x], dtype=np.single)
@@ -369,6 +409,7 @@ class DeepGP:
         y_train: list[float],
         learning_curves: list[list[float]],
     ):
+        self.logger.info(f"FIT ARGS: {self.surrogate_model_fit_args}")
         self._fit(x_train, y_train, learning_curves, **self.surrogate_model_fit_args)
 
     def _fit(
@@ -378,6 +419,7 @@ class DeepGP:
         learning_curves: list[list[float]],
         normalize_y: bool = False,
         normalize_budget: bool = True,
+        use_min_budget: bool = False,
         n_epochs: int = 1000,
         batch_size: int = 64,
         optimizer_args: dict | None = None,
@@ -391,6 +433,7 @@ class DeepGP:
             learning_curves,
             normalize_y=normalize_y,
             normalize_budget=normalize_budget,
+            use_min_budget=use_min_budget,
         )
         self.model, self.likelihood, self.mll = self.__initialize_gp_model(len(y_train))
         self.nn = NeuralFeatureExtractor(self.input_size, **self.nn_args)
@@ -399,12 +442,10 @@ class DeepGP:
         self.nn.to(self.device)
 
         if self.checkpointing and self.checkpoint_path.exists():
-            non_improvement_steps = count_non_improvement_steps(self.root_dir)
             # If checkpointing and patience is not exhausted load a partial model
-            if non_improvement_steps < perf_patience:
+            if self.__is_refine(perf_patience):
                 n_epochs = self.refine_epochs
                 self.load_checkpoint()
-            self.logger.debug(f"No improvement for: {non_improvement_steps} evaulations")
         self.logger.debug(f"N Epochs for the full training: {n_epochs}")
 
         initial_state = self.get_state()
@@ -421,7 +462,7 @@ class DeepGP:
                 patience=patience,
             )
             if self.checkpointing:
-                self.save_checkpoint()
+                self.save_checkpoint(self.best_state)
         except gpytorch.utils.errors.NotPSDError:
             self.logger.info("Model training failed loading the untrained model")
             self.load_checkpoint(initial_state)
@@ -467,6 +508,7 @@ class DeepGP:
                     f"the minimum average loss of {min_avg_loss_val} and "
                     f"the final average loss of {average_loss}"
                 )
+                self.load_checkpoint(self.best_state)
                 break
 
             n_examples_batch = x_train.size(dim=0)
@@ -530,6 +572,7 @@ class DeepGP:
             if average_loss < min_avg_loss_val:
                 min_avg_loss_val = average_loss
                 count_down = patience
+                self.best_state = self.get_state()
             elif early_stopping:
                 self.logger.debug(
                     f"No improvement over the minimum loss value of {min_avg_loss_val} "
@@ -558,7 +601,7 @@ class DeepGP:
         if learning_curves is None:
             learning_curves = self.prediction_learning_curves
         x_test, test_budgets, learning_curves = self._preprocess_input(
-            x, learning_curves, self.normalize_budget
+            x, learning_curves, self.normalize_budget, self.use_min_budget
         )
 
         self.model.eval()

@@ -247,6 +247,20 @@ class SearchSpace(collections.abc.Mapping):
                 "hyperparameter for accurate modeling."
             )
         self.has_tabular = True
+        # Updating `custom_grid_table` as a map for quick lookup with placeholder fidelity
+        placeholder_config = self.raw_tabular_space.sample(
+            ignore_fidelity=True
+        )  # sets fidelity as None
+        # `placeholder_config` allows to store map values as NePS SearchSpace type
+        # and also create a placeholder for fideity value
+        _map = {
+            idx: deepcopy(placeholder_config)
+            for idx in self.custom_grid_table.index.values
+        }
+        _ = [
+            v.load_from(self.custom_grid_table.loc[k].to_dict()) for k, v in _map.items()
+        ]
+        self.custom_grid_table = _map
 
     @property
     def has_fidelity(self):
@@ -483,7 +497,14 @@ class SearchSpace(collections.abc.Mapping):
             self.hyperparameters[name].load_from(config[name])
 
     def copy(self):
-        return deepcopy(self)
+        _copy = deepcopy(self)
+
+        if _copy.has_tabular:
+            # each configuration does not need to carry the tabular data
+            _copy.has_tabular = False
+            _copy.custom_grid_table = None
+            _copy.raw_tabular_space = None
+        return _copy
 
     def sample_default_configuration(
         self, patience: int = 1, ignore_fidelity=True, ignore_missing_defaults=False

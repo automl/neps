@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import json
 import os
 import random
 from pathlib import Path
@@ -285,3 +286,55 @@ class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__dict__ = self
+
+
+class DataWriter:
+    """
+    A class to specify how to save/write a data to the folder by
+     implementing your own write_data function.
+     Use the set_attributes function to set all your necessary attributes and the data
+     and then write_data will be called with only the directory path as argument
+     during the write process
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def set_attributes(self, attribute_dict: dict[str, Any]):
+        for attribute_name, attribute in attribute_dict.items():
+            setattr(self, attribute_name, attribute)
+
+    def write_data(self, to_directory: Path):
+        raise NotImplementedError
+
+
+class EvaluationData:
+    """
+    A class to store some data for a single evaluation (configuration)
+     and write that data to its corresponding config folder
+    """
+
+    def __init__(self):
+        self.data_dict: dict[str, DataWriter] = {}
+
+    def write_all(self, directory: Path):
+        for _, data_writer in self.data_dict.items():
+            data_writer.write_data(directory)
+
+
+class SimpleCSVWriter(DataWriter):
+    def write_data(self, to_directory: Path):
+        # self.df: pd.DataFrame = pd.DataFrame()
+        path = to_directory / str(self.name + ".csv")
+        self.df.to_csv(path, float_format="%g")
+
+
+class SimpleJSONWriter(DataWriter):
+    def __init__(self):
+        self.data: dict[str, Any] = {}
+
+    def write_data(self, to_directory: Path):
+        # self.df: pd.DataFrame = pd.DataFrame()
+        path = to_directory / str(self.name + ".json")
+        with open(path, "w") as file:
+            json.dump(self.data, file)

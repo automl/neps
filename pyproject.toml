@@ -44,7 +44,6 @@ packages = [
     { include = "neps_examples" },
 ]
 
-
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
 ConfigSpace = "^0.7"

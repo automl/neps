@@ -484,7 +484,7 @@ class tblogger:
                 curve on tensorboard (default: True)
             writer_config_hparam (bool, optional): Write hyperparameters logging of
                 the configs (default: True).
-            write_summary_incumbent (bool, optional): Set to `True` for a live 
+            write_summary_incumbent (bool, optional): Set to `True` for a live
                 incumbent trajectory.
             extra_data (dict, optional): Additional experiment data for logging.
         """

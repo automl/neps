@@ -294,7 +294,9 @@ def _save_data_to_csv(
                         run_data_df.index == "num_evaluated_configs", "value"
                     ]
                     # checks if the current worker has more evaluated configs than the previous
-                    if int(num_evaluated_configs_csv) < num_evaluated_configs_run.iloc[0]:
+                    if int(num_evaluated_configs_csv) < int(
+                        num_evaluated_configs_run.iloc[0]
+                    ):
                         config_data_df = config_data_df.sort_values(
                             by="result.loss", ascending=True
                         )
@@ -319,6 +321,8 @@ def _save_data_to_csv(
 
 
 def post_run_csv(root_directory: str | Path, logger=None) -> None:
+    root_directory = Path(root_directory)
+
     if logger is None:
         logger = logging.getLogger("neps_status")
 

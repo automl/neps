@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from typing_extensions import Literal
+from typing import Literal
 
 from .float import FloatParameter
 
@@ -33,10 +33,10 @@ class IntegerParameter(FloatParameter):
 
     def __repr__(self):
         return f"<Integer, range: [{self.lower}, {self.upper}], value: {self.value}>"
-    
+
     def load_from(self, value):
         super().load_from(int(value))
-    
+
     def _set_float_hp_val(self):
         # IMPORTANT function to call wherever `self.float_hp` is used in this class
         self.float_hp.value = None if self.value is None else float(self.value)

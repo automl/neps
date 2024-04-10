@@ -37,9 +37,9 @@ import lightning as L
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
+from neps.utils.common import get_initial_directory, load_lightning_checkpoint
 
 import neps
-from neps.utils.common import get_initial_directory, load_lightning_checkpoint
 
 logger = logging.getLogger("neps_template.run")
 
