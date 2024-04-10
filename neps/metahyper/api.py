@@ -165,6 +165,8 @@ def _process_sampler_info(
             finally:
                 decision_locker.release_lock()
                 should_break = True
+        else:
+            time.sleep(2)
 
 
 def _load_sampled_paths(optimization_dir: Path | str, serializer, logger):

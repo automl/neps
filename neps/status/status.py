@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -316,6 +317,8 @@ def _save_data_to_csv(
             finally:
                 locker.release_lock()
                 should_break = True
+        else:
+            time.sleep(2)
 
 
 def post_run_csv(root_directory: str | Path, logger=None) -> None:
