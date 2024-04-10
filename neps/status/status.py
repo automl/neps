@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import time
 from pathlib import Path
 from typing import Any
@@ -323,14 +322,6 @@ def _save_data_to_csv(
 
 def post_run_csv(root_directory: str | Path, logger=None) -> None:
     root_directory = Path(root_directory)
-    zip_filename = Path(root_directory / "results.zip")
-    base_result_directory = root_directory / "results"
-
-    # Extract previous results to load if it exists
-    if zip_filename.exists():
-        #  and not any(Path(base_result_directory).iterdir()):
-        shutil.unpack_archive(zip_filename, base_result_directory, "zip")
-        zip_filename.unlink()
 
     if logger is None:
         logger = logging.getLogger("neps_status")
