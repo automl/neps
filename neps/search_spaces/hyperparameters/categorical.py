@@ -39,6 +39,12 @@ class CategoricalParameter(Parameter):
         )
         self.value: None | float | int | str = None
 
+        # Check if choices have valid types (float | int | str)
+        for choice in self.choices:
+            if not isinstance(choice, (float, int, str)):
+                raise TypeError(
+                    f'Choice "{choice}" is not of a valid type (float, int, str)')
+
         # Check if 'default' is in 'choices'
         if default is not None and default not in self.choices:
             raise ValueError(
