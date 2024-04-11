@@ -1,4 +1,4 @@
-search_space:
+pipeline_space:
   cat1:
     choices: ["a", "b", "c"]
     default: "d"
