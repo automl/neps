@@ -36,7 +36,7 @@ To define a budget, provide either or both of the following parameters:
     - **`max_cost_total`** (int, default: None): Prevents the initiation of new evaluations once this cost
       threshold is surpassed. This requires adding a cost value to the output of the `run_pipeline` function,
       for example, return {'loss': loss, 'cost': cost}. For more details, please refer
-      [here](https://automl.github/io/neps/latest/run_pipeline)
+      [here](https://automl.github.io/neps/latest/run_pipeline)
 
 ### Optional Arguments
 ##### Further Monitoring Options
