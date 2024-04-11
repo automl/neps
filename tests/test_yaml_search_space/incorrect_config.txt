@@ -1,4 +1,4 @@
-search_space    # : is missing
+pipeline_space    # : is missing
   learning_rate:
     lower: 0.00001
     upper: 0.1

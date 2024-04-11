@@ -1,6 +1,9 @@
 # Parallelization and Resuming Runs
 
-NePS utilizes files as a means of communication for implementing parallelization and resuming runs. As a result, when `neps.run` is called multiple times with the same `root_directory` in the file system, NePS will automatically load the optimizer state, allowing seamless parallelization of the run across different processes or machines. This concept also applies to resuming runs even after termination. 
+NePS utilizes files as a means of communication for implementing parallelization and resuming runs. As a result,
+when `neps.run` is called multiple times with the same `root_directory` in the file system, NePS will automatically
+load the optimizer state, allowing seamless parallelization of the run across different processes or machines.
+This concept also applies to resuming runs even after termination.
 
 Example:
 

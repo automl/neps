@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "neural-pipeline-search"
-version = "v0.11.0"
+version = "v0.11.1"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     "Danny Stoll <stolld@cs.uni-freiburg.de>",
@@ -47,7 +47,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
-ConfigSpace = "^0.6"
+ConfigSpace = "^0.7"
 grakel = "^0.1"
 numpy = "^1"
 pandas = "^2"

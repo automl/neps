@@ -1,4 +1,4 @@
-site_name: Neural Pipeline Search
+site_name: NePS
 docs_dir: docs
 repo_url: https://github.com/automl/neps
 repo_name: automl/neps
@@ -8,7 +8,8 @@ theme:
   name: material
   icon:
     repo: fontawesome/brands/github
-  palette: 
+
+  palette:
     # Palette toggle for light mode
     - scheme: default
       toggle:
@@ -36,16 +37,16 @@ extra:
     provider: mike
 
 nav:
-  - Introduction and Installation: 'README.md'
+  - Installation: 'installation.md'
   - Getting Started: 'getting_started.md'
   - The run_pipeline Function: 'run_pipeline.md'
   - The pipeline_space: 'pipeline_space.md'
   - The neps.run Function: 'neps_run.md'
+  - Optimizers: 'optimizers.md'
   - Analysing Runs: 'analyse.md'
   - Parallelization: 'parallelization.md'
   - Citations: 'citations.md'
   - Alternatives: 'alternatives.md'
-  - Citations: 'citations.md'
   - Contributing:
       - Introduction: "contributing/README.md"
       - Installation for Contributors: "contributing/installation.md"

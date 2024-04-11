@@ -1,4 +1,4 @@
-search_space:
+pipeline_space:
   learning_rate:
     lower: "string"  # Lower is now a string
     upper: 1e3

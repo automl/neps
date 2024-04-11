@@ -17,6 +17,28 @@ ROOT_DIRECTORY
 ├── best_loss_trajectory.txt
 └── best_loss_with_config_trajectory.txt
 ```
+## Summary CSV
+
+The argument `post_run_summary` in `neps.run` allows for the automatic generation of CSV files after a run is complete. The new root directory after utilizing this argument will look like the following:
+
+```
+ROOT_DIRECTORY
+├── results
+│  └── config_1
+│      ├── config.yaml
+│      ├── metadata.yaml
+│      └── result.yaml
+├── summary_csv
+│  ├── config_data.csv
+│  └── run_status.csv
+├── all_losses_and_configs.txt
+├── best_loss_trajectory.txt
+└── best_loss_with_config_trajectory.txt
+```
+
+- *`config_data.csv`*: Contains all configuration details in CSV format, ordered by ascending `loss`. Details include configuration hyperparameters, any returned result from the `run_pipeline` function, and metadata information.
+
+- *`run_status.csv`*: Provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
 
 ## TensorBoard Integration
 
@@ -37,9 +59,9 @@ The `tblogger.log` function is invoked within the model's training loop to facil
 tblogger.log(
     loss: float,
     current_epoch: int,
-    write_summary_incumbent: bool = False,
     write_config_scalar: bool = False,
     write_config_hparam: bool = True,
+    write_summary_incumbent: bool = False,
     extra_data: dict | None = None
 )
 ```
@@ -47,9 +69,9 @@ tblogger.log(
 - **Parameters:**
     - `loss` (float): The loss value to be logged.
     - `current_epoch` (int): The current epoch or iteration number.
-    - `write_summary_incumbent` (bool, optional): Set to `True` for a live incumbent trajectory.
     - `write_config_scalar` (bool, optional): Set to `True` for a live loss trajectory for each configuration.
     - `write_config_hparam` (bool, optional): Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+    - `write_summary_incumbent` (bool, optional): Set to `True` for a live incumbent trajectory.
     - `extra_data` (dict, optional): Additional data to be logged, provided as a dictionary.
 
 ### Extra Custom Logging
@@ -104,15 +126,15 @@ You can find this example [here](https://github.com/automl/neps/blob/master/neps
 !!! info "Important"
     We have optimized the example for computational efficiency. If you wish to replicate the exact results showcased in the following section, we recommend the following modifications:
 
-    1- Increase maximum epochs [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py#L260) from 2 to 10
+    1- Increase maximum epochs from 2 to 10
 
-    2- Set the `write_summary_incumbent` argument [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py#L300) to `True`
+    2- Set the `write_summary_incumbent` argument to `True`
 
-    3- Change the searcher [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py#L357) from `random_search` to `bayesian_optimization`
+    3- Change the searcher from `random_search` to `bayesian_optimization`
     
-    4- Increase the maximum evaluations [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py#L362) from 2 to 14
+    4- Increase the maximum evaluations before disabling `tblogger` from 2 to 14
 
-    5- Increase the maximum evaluations [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py#L391) from 3 to 15
+    5- Increase the maximum evaluations after disabling `tblogger` from 3 to 15
 
 ### Visualization Results
 
