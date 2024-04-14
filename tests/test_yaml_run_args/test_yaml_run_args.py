@@ -2,7 +2,7 @@ import pytest
 import neps
 from neps.utils.run_args_from_yaml import get_run_args_from_yaml
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from typing import Union, Callable
+from typing import Union, Callable, Dict, List
 
 BASE_PATH = "tests/test_yaml_run_args/"
 pipeline_space = dict(lr=neps.FloatParameter(lower=1.2, upper=4.2),
@@ -24,7 +24,7 @@ def hook2():
     return
 
 
-def check_run_args(yaml_path_run_args: str, expected_output: dict) -> None:
+def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
     """
     Validates the loaded NEPS configuration against expected settings.
 
@@ -41,8 +41,8 @@ def check_run_args(yaml_path_run_args: str, expected_output: dict) -> None:
     """
     output = get_run_args_from_yaml(BASE_PATH + yaml_path_run_args)
 
-    def are_functions_equivalent(f1: Union[Callable, list[Callable]],
-                                 f2: Union[Callable, list[Callable]]) -> bool:
+    def are_functions_equivalent(f1: Union[Callable, List[Callable]],
+                                 f2: Union[Callable, List[Callable]]) -> bool:
         """
         Compares functions or lists of functions for equivalence by their bytecode,
         useful when identical functions have different memory addresses. This method
@@ -188,7 +188,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: dict) -> None:
         })
     ],
 )
-def test_yaml_config(yaml_path: str, expected_output: dict) -> None:
+def test_yaml_config(yaml_path: str, expected_output: Dict) -> None:
     """
     Tests NePS configuration loading from run_args=YAML, comparing expected settings
     against loaded ones. Covers hierarchical levels and partial/full of yaml

@@ -3,7 +3,7 @@ import logging
 import sys
 import yaml
 from neps.optimizers.base_optimizer import BaseOptimizer
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict, Tuple, List
 
 logger = logging.getLogger("neps")
 
@@ -99,7 +99,7 @@ def get_run_args_from_yaml(path: str) -> dict:
     return settings
 
 
-def config_loader(path: str) -> dict:
+def config_loader(path: str) -> Dict:
     """
     Loads a YAML file and returns the contents under the 'run_args' key.
 
@@ -143,7 +143,7 @@ def config_loader(path: str) -> dict:
     return config['run_args']
 
 
-def extract_leaf_keys(d: dict, special_keys: dict = None) -> tuple[dict, dict]:
+def extract_leaf_keys(d: Dict, special_keys: Dict = None) -> Tuple[Dict, Dict]:
     """
     Recursive function to extract leaf keys and their values from a nested dictionary.
     Special keys (e.g. 'searcher_kwargs', 'run_pipeline') are also extracted if present
@@ -176,7 +176,7 @@ def extract_leaf_keys(d: dict, special_keys: dict = None) -> tuple[dict, dict]:
     return leaf_keys, special_keys
 
 
-def handle_special_argument_cases(settings: dict, special_configs: dict) -> None:
+def handle_special_argument_cases(settings: Dict, special_configs: Dict) -> None:
     """
     Process and integrate special configuration cases into the 'settings' dictionary.
 
@@ -215,7 +215,7 @@ def handle_special_argument_cases(settings: dict, special_configs: dict) -> None
         settings[PRE_LOAD_HOOKS] = load_hooks_from_config(special_configs[PRE_LOAD_HOOKS])
 
 
-def process_config_key(settings: dict, special_configs: dict, keys: list) -> None:
+def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> None:
     """
     Enhance 'settings' by adding keys and their corresponding values or loaded objects
     from 'special_configs'. Keys in 'special_configs' are processed to directly insert
@@ -324,7 +324,7 @@ def load_and_return_object(module_path: str, object_name: str, key: str) -> obje
     return imported_object
 
 
-def load_hooks_from_config(pre_load_hooks_dict: dict) -> list:
+def load_hooks_from_config(pre_load_hooks_dict: Dict) -> List:
     """
     Loads hook functions from configurations.
 
@@ -355,7 +355,7 @@ def load_hooks_from_config(pre_load_hooks_dict: dict) -> list:
     return loaded_hooks
 
 
-def check_run_args(settings: dict) -> None:
+def check_run_args(settings: Dict) -> None:
     """
     Validates the types of NePS configuration settings.
 
