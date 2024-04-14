@@ -2,7 +2,7 @@ import pytest
 import neps
 from neps.utils.run_args_from_yaml import get_run_args_from_yaml
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from typing import Union, Callable, Dict, List
+from typing import Union, Callable, Dict, List, Type
 
 BASE_PATH = "tests/test_yaml_run_args/"
 pipeline_space = dict(lr=neps.FloatParameter(lower=1.2, upper=4.2),
@@ -212,7 +212,7 @@ def test_yaml_config(yaml_path: str, expected_output: Dict) -> None:
         ("run_args_key_missing.yaml", KeyError),
     ],
 )
-def test_yaml_failure_cases(yaml_path: str, expected_exception: type[Exception]) -> None:
+def test_yaml_failure_cases(yaml_path: str, expected_exception: Type[Exception]) -> None:
     """
     Tests for expected exceptions when loading erroneous NePS configurations from YAML.
 
