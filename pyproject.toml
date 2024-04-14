@@ -176,6 +176,3 @@ enable = [
     'invalid-getnewargs-ex-returned','super-with-arguments','deprecated-class','invalid-class-object',
     'unused-private-member',
 ]
-
-[tool.poetry.scripts]
-neps = "neps.utils.cli:main"
