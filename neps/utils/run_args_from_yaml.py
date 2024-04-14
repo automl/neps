@@ -2,8 +2,8 @@ import importlib.util
 import logging
 import sys
 import yaml
-from collections.abc import Callable
 from neps.optimizers.base_optimizer import BaseOptimizer
+from typing import Callable, Optional
 
 logger = logging.getLogger("neps")
 
@@ -28,7 +28,7 @@ SEARCHER_KWARGS = "searcher_kwargs"
 MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
 
 
-def get_run_args_from_yaml(path):
+def get_run_args_from_yaml(path: str) -> dict:
     """
     Load and validate NEPS run arguments from a specified YAML configuration file
     provided via run_args.
@@ -99,7 +99,7 @@ def get_run_args_from_yaml(path):
     return settings
 
 
-def config_loader(path):
+def config_loader(path: str) -> dict:
     """
     Loads a YAML file and returns the contents under the 'run_args' key.
 
@@ -143,7 +143,7 @@ def config_loader(path):
     return config['run_args']
 
 
-def extract_leaf_keys(d, special_keys=None):
+def extract_leaf_keys(d: dict, special_keys: dict = None) -> tuple[dict, dict]:
     """
     Recursive function to extract leaf keys and their values from a nested dictionary.
     Special keys (e.g. 'searcher_kwargs', 'run_pipeline') are also extracted if present
@@ -176,7 +176,7 @@ def extract_leaf_keys(d, special_keys=None):
     return leaf_keys, special_keys
 
 
-def handle_special_argument_cases(settings, special_configs):
+def handle_special_argument_cases(settings: dict, special_configs: dict) -> None:
     """
     Process and integrate special configuration cases into the 'settings' dictionary.
 
@@ -215,7 +215,7 @@ def handle_special_argument_cases(settings, special_configs):
         settings[PRE_LOAD_HOOKS] = load_hooks_from_config(special_configs[PRE_LOAD_HOOKS])
 
 
-def process_config_key(settings, special_configs, keys):
+def process_config_key(settings: dict, special_configs: dict, keys: list) -> None:
     """
     Enhance 'settings' by adding keys and their corresponding values or loaded objects
     from 'special_configs'. Keys in 'special_configs' are processed to directly insert
@@ -264,7 +264,7 @@ def process_config_key(settings, special_configs, keys):
                     )
 
 
-def load_and_return_object(module_path, object_name, key):
+def load_and_return_object(module_path: str, object_name: str, key: str) -> object:
     """
     Dynamically loads an object from a given module file path.
 
@@ -324,7 +324,7 @@ def load_and_return_object(module_path, object_name, key):
     return imported_object
 
 
-def load_hooks_from_config(pre_load_hooks_dict):
+def load_hooks_from_config(pre_load_hooks_dict: dict) -> list:
     """
     Loads hook functions from configurations.
 
@@ -355,7 +355,7 @@ def load_hooks_from_config(pre_load_hooks_dict):
     return loaded_hooks
 
 
-def check_run_args(settings):
+def check_run_args(settings: dict) -> None:
     """
     Validates the types of NePS configuration settings.
 
@@ -415,19 +415,19 @@ def check_run_args(settings):
 
 
 def check_essential_arguments(
-    run_pipeline,
-    root_directory,
-    pipeline_space,
-    max_cost_total,
-    max_evaluation_total,
-    searcher,
-    run_args,
-):
+    run_pipeline: Optional[Callable],
+    root_directory: Optional[str],
+    pipeline_space: Optional[dict],
+    max_cost_total: Optional[int],
+    max_evaluation_total: Optional[int],
+    searcher: Optional[BaseOptimizer],
+    run_args: Optional[str],
+) -> None:
     """
     Validates essential NEPS configuration arguments.
 
     Ensures 'run_pipeline', 'root_directory', 'pipeline_space', and either
-    'max_cost_total' or 'max_evaluation_total' are provided for NEPS execution.
+    'max_cost_total' or 'max_evaluation_total' are provided for NePS execution.
     Raises ValueError with missing argument details. Additionally, checks 'searcher'
     is a BaseOptimizer if 'pipeline_space' is absent.
 
