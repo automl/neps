@@ -105,7 +105,7 @@ an example of how to structure your YAML configuration.
 ```yaml
 run_args:  # Essential starting key; everything under this key gets considered for configuration.
   run_pipeline:
-    path: "path/to/your/run_pipeline" # File path of the run_pipeline function
+    path: "path/to/your/run_pipeline.py" # File path of the run_pipeline function
     name: "name_of_your_run_pipeline" # Function name
   pipeline_space: "path/to/your/search_space.yaml" # Path of the search space yaml file
   root_directory: "neps_results"  # Output directory for results

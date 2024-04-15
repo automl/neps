@@ -124,5 +124,5 @@ if __name__ == "__main__":
     # Run optimization using neps.run(...). Arguments can be provided directly to neps.run
     # or defined in a configuration file (e.g., "run_args.yaml") passed through
     # the run_args parameter.
-    # neps.run(run_args="run_args.yaml")
-    neps.run(run_args="run_args_alternative.yaml")
+    neps.run(run_args="run_args.yaml")
+    # neps.run(run_args="run_args_alternative.yaml")
