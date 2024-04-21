@@ -186,6 +186,7 @@ Configure the searcher to either utilize a built-in searcher or integrate a cust
 
 For detailed examples and specific use case configurations,
 visit [here](https://github.com/automl/neps/tree/master/neps_examples/basic_usage/yaml_usage)
+
 ## Parallelization
 
 `neps.run` can be called multiple times with multiple processes or machines, to parallelize the optimization process.
