@@ -1,8 +1,8 @@
 # Configuring and Running Optimizations
 
-The `neps.run` function is the core of the NePS optimization process, where the search for the best hyperparameters
-and architectures takes place. This document outlines the arguments and options available within this function,
-providing a detailed guide to customize the optimization process to your specific needs.
+The `neps.run` function is the core interface for running Hyperparameter and/or architecture search using optimizers in NePS.
+
+This document breaks down the core arguments that allow users to control the optimization process in NePS. 
 
 ## Search Strategy
 At default NePS intelligently selects the most appropriate search strategy based on your defined configurations in

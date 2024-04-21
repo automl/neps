@@ -42,6 +42,10 @@ nav:
   - The run_pipeline Function: 'run_pipeline.md'
   - The pipeline_space: 'pipeline_space.md'
   - The neps.run Function: 'neps_run.md'
+  - Running NePS:
+      - Configuring NePS runs: "running_neps/configuring_runs.md"
+      - Declarative usage of NePS: "running_neps/declarative_usage.md"
+      - CLI to NePS: "running_neps/cli_usage.md"
   - Optimizers: 'optimizers.md'
   - Analysing Runs: 'analyse.md'
   - Parallelization: 'parallelization.md'
