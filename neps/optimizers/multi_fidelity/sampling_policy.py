@@ -10,10 +10,12 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ...metahyper import instance_from_map
+from neps.utils.common import instance_from_map
 from ...search_spaces.search_space import SearchSpace
 from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
-from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
 from ..bayesian_optimization.acquisition_functions.prior_weighted import (
     DecayingPriorWeightedAcquisition,
 )
@@ -169,7 +171,9 @@ class EnsemblePolicy(SamplingPolicy):
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 
-        self.logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
+        self.logger.info(
+            f"Sampling from {policy} with weights (i, p, r)={prob_weights}"
+        )
 
         if policy == "prior":
             config = self.pipeline_space.sample(
@@ -201,14 +205,18 @@ class EnsemblePolicy(SamplingPolicy):
                 # then sample with prior=True from that configuration
                 # since the defaults are treated as the prior
                 config = _inc.sample(
-                    patience=self.patience, user_priors=user_priors, ignore_fidelity=True
+                    patience=self.patience,
+                    user_priors=user_priors,
+                    ignore_fidelity=True,
                 )
             elif self.inc_type == "crossover":
                 # choosing the configuration for crossover with incumbent
                 # the weight distributed across prior adnd inc
                 _w_priors = 1 - self.policy_map["random"]
                 # re-calculate normalized score ratio for prior-inc
-                w_prior = np.clip(self.policy_map["prior"] / _w_priors, a_min=0, a_max=1)
+                w_prior = np.clip(
+                    self.policy_map["prior"] / _w_priors, a_min=0, a_max=1
+                )
                 w_inc = np.clip(self.policy_map["inc"] / _w_priors, a_min=0, a_max=1)
                 # calculating difference of prior and inc score
                 score_diff = np.abs(w_prior - w_inc)
@@ -227,7 +235,9 @@ class EnsemblePolicy(SamplingPolicy):
                 )
                 # sampling a configuration either randomly or from a prior
                 _config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=user_priors, ignore_fidelity=True
+                    patience=self.patience,
+                    user_priors=user_priors,
+                    ignore_fidelity=True,
                 )
                 # injecting hyperparameters from the sampled config into the incumbent
                 # TODO: ideally lower crossover prob overtime
@@ -541,9 +551,7 @@ class RandomPromotionDynamicPolicy(BaseDynamicModelPolicy):
             max_budget_configs, max_budget_perf, pending_configs
         )
 
-    def sample(
-        self, rand_promotion_prob=0.5, seed=777, is_promotion=False, **kwargs
-    ):  # pylint: disable=unused-argument
+    def sample(self, rand_promotion_prob=0.5, seed=777, is_promotion=False, **kwargs):  # pylint: disable=unused-argument
         promoted = False
         # np.random.seed(seed)
         if np.random.random_sample() < rand_promotion_prob:

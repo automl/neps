@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import collections.abc
 import pprint
 import random
 from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
 from pathlib import Path
+from typing import Mapping, Any
 
 import ConfigSpace as CS
 import numpy as np
@@ -165,7 +165,8 @@ def pipeline_space_from_yaml(
             elif param_type in ("const", "constant"):
                 # Constant parameter
                 pipeline_space[name] = ConstantParameter(
-                    value=details["value"], is_fidelity=details.get("is_fidelity", False)
+                    value=details["value"],
+                    is_fidelity=details.get("is_fidelity", False),
                 )
             else:
                 # Handle unknown parameter type
@@ -182,7 +183,7 @@ def pipeline_space_from_yaml(
     return pipeline_space
 
 
-class SearchSpace(collections.abc.Mapping):
+class SearchSpace(Mapping[str, Any]):
     def __init__(self, **hyperparameters):
         self.hyperparameters = OrderedDict()
 
@@ -478,7 +479,7 @@ class SearchSpace(collections.abc.Mapping):
     def serialize(self):
         return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
 
-    def load_from(self, config: dict):
+    def load_from(self, config: Mapping[str, Any]):
         for name in config.keys():
             self.hyperparameters[name].load_from(config[name])
 

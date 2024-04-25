@@ -6,11 +6,14 @@ from typing import Any
 
 import numpy as np
 
-from ...metahyper import ConfigResult, instance_from_map
+from neps.types import ConfigResult
+from neps.utils.common import instance_from_map
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from ..base_optimizer import BaseOptimizer
 from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
-from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
 from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
@@ -83,7 +86,9 @@ class MFEIBO(BaseOptimizer):
             ignore_errors=ignore_errors,
             logger=logger,
         )
-        self.raw_tabular_space = None  # placeholder, can be populated using pre_load_hook
+        self.raw_tabular_space = (
+            None  # placeholder, can be populated using pre_load_hook
+        )
         self._budget_list: list[int | float] = []
         self.step_size: int | float = step_size
         self.min_budget = self.pipeline_space.fidelity.lower
@@ -91,7 +96,10 @@ class MFEIBO(BaseOptimizer):
         self.max_budget = self.pipeline_space.fidelity.upper
 
         self._initial_design_fraction = initial_design_fraction
-        self._initial_design_size, self._initial_design_budget = self._set_initial_design(
+        (
+            self._initial_design_size,
+            self._initial_design_budget,
+        ) = self._set_initial_design(
             initial_design_size, initial_design_budget, self._initial_design_fraction
         )
         # TODO: Write use cases for these parameters
@@ -281,7 +289,7 @@ class MFEIBO(BaseOptimizer):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         """This is basically the fit method.
 

@@ -5,11 +5,12 @@ import os
 import re
 from itertools import chain
 from typing import Any
+from pathlib import Path
 
 import numpy as np
 import yaml
 
-from ..metahyper import read
+from neps.runtime import SharedState, Trial
 from .result_utils import get_loss
 
 
@@ -38,8 +39,12 @@ def read_tasks_and_dev_stages_from_disk(
             if not is_valid_dev_path(dev_dir_path):
                 continue
             dev_id = get_id_from_path(dev_dir_path)
-            # TODO: Perhaps use 2nd and 3rd argument as well
-            result, _, _ = read(dev_dir_path)
+
+            state = SharedState(Path(dev_dir_path))
+            with state.lock(poll=1, timeout=None):
+                refs = state.trial_refs()
+
+            result = {ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]}
             results[task_id][dev_id] = result
     return results
 
@@ -64,7 +69,11 @@ def read_user_prior_results_from_disk(path: str):
             continue
         # get name of the directory
         name = os.path.basename(prior_dir_path)
-        results[name], _, _ = read(prior_dir_path)
+        state = SharedState(Path(prior_dir_path))
+        with state.lock(poll=1, timeout=None):
+            refs = state.trial_refs()
+
+        results[name] = {ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]}
     return results
 
 
@@ -162,7 +171,13 @@ def summarize_results(
             #  TOOD: only use IDs if provided
             final_results = results[final_task_id][final_dev_id]
         else:
-            final_results, _, _ = read(seed_dir_path)
+            state = SharedState(Path(seed_dir_path))
+            with state.lock(poll=1, timeout=None):
+                refs = state.trial_refs()
+
+            final_results = {
+                ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]
+            }
 
         # This part is copied from neps.status()
         best_loss = float("inf")

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
-from ..metahyper import ConfigResult, read
-from ..metahyper._locker import Locker
 from ..search_spaces.search_space import SearchSpace
 from ..utils.result_utils import get_loss
+from neps.utils._locker import Locker
+from neps.runtime import ConfigResult, SharedState, Trial
 
 
 def get_summary_dict(
-    root_directory: str | Path, add_details: bool = False
+    root_directory: str | Path,
+    add_details: bool = False,
 ) -> dict[str, Any]:
     """Create a dict that summarizes a run.
 
@@ -27,35 +27,39 @@ def get_summary_dict(
         summary_dict: Information summarizing a run
     """
     root_directory = Path(root_directory)
-    previous_results, pending_configs, pending_configs_free = read(
-        root_directory, None, logging.getLogger("neps.status")
-    )
+    shared_state = SharedState(root_directory)
+
+    # NOTE: We don't lock the shared state since we are just reading and don't need to make
+    # decisions based on the state
+    trial_refs = shared_state.trial_refs()
+    evaluated = [r.to_result() for r in trial_refs[Trial.State.COMPLETE]]
+    pending = [r.load() for r in trial_refs[Trial.State.PENDING]]
+    in_progress = [r.load() for r in trial_refs[Trial.State.IN_PROGRESS]]
+
     summary = dict()
 
     if add_details:
-        summary["previous_results"] = previous_results
-        summary["pending_configs"] = pending_configs
-        summary["pending_configs_free"] = pending_configs_free
+        summary["previous_results"] = {c.id: c for c in evaluated}
+        summary["pending_configs"] = {c.id: c for c in in_progress + pending}
+        summary["pending_configs_free"] = {c: id for c in pending}
 
-    summary["num_evaluated_configs"] = len(previous_results)
-    summary["num_pending_configs"] = len(pending_configs)
-    summary["num_pending_configs_with_worker"] = len(pending_configs) - len(
-        pending_configs_free
-    )
+    summary["num_evaluated_configs"] = len(evaluated)
+    summary["num_pending_configs"] = len(in_progress) + len(pending)
+    summary["num_pending_configs_with_worker"] = len(in_progress)
 
     summary["best_loss"] = float("inf")
     summary["best_config_id"] = None
     summary["best_config_metadata"] = None
     summary["best_config"] = None
     summary["num_error"] = 0
-    for config_id, evaluation in previous_results.items():
+    for evaluation in evaluated:
         if evaluation.result == "error":
             summary["num_error"] += 1
         loss = get_loss(evaluation.result, ignore_errors=True)
         if isinstance(loss, float) and loss < summary["best_loss"]:
             summary["best_loss"] = get_loss(evaluation.result)
             summary["best_config"] = evaluation.config
-            summary["best_config_id"] = config_id
+            summary["best_config_id"] = evaluation.id
             summary["best_config_metadata"] = evaluation.metadata
 
     return summary
@@ -151,9 +155,7 @@ def _initiate_summary_csv(
     csv_config_data = summary_csv_directory / "config_data.csv"
     csv_run_data = summary_csv_directory / "run_status.csv"
 
-    csv_lock_file = summary_csv_directory / ".csv_lock"
-    csv_lock_file.touch(exist_ok=True)
-    csv_locker = Locker(csv_lock_file, logger.getChild("_locker"))
+    csv_locker = Locker(summary_csv_directory / ".csv_lock")
 
     return (
         csv_config_data,
@@ -227,7 +229,9 @@ def _get_dataframes_from_summary(
     )
 
     # Concatenate the two DataFrames
-    df_config_data = pd.concat([df_previous, df_pending], join="outer", ignore_index=True)
+    df_config_data = pd.concat(
+        [df_previous, df_pending], join="outer", ignore_index=True
+    )
 
     # Create a dataframe with the specified additional summary data
     additional_data = {
@@ -267,55 +271,46 @@ def _save_data_to_csv(
     This function saves data to CSV files while acquiring a lock to prevent concurrent writes.
     If the lock is acquired, it writes the data to the CSV files and releases the lock.
     """
-    should_break = False
-    while not should_break:
-        if locker.acquire_lock():
-            try:
-                pending_configs = run_data_df.loc["num_pending_configs", "value"]
-                pending_configs_with_worker = run_data_df.loc[
-                    "num_pending_configs_with_worker", "value"
+    with locker(poll=2):
+        try:
+            pending_configs = run_data_df.loc["num_pending_configs", "value"]
+            pending_configs_with_worker = run_data_df.loc[
+                "num_pending_configs_with_worker", "value"
+            ]
+            # Represents the last worker
+            if int(pending_configs) == 0 and int(pending_configs_with_worker) == 0:
+                config_data_df = config_data_df.sort_values(
+                    by="result.loss", ascending=True
+                )
+                config_data_df.to_csv(config_data_file_path, index=False, mode="w")
+                run_data_df.to_csv(run_data_file_path, index=True, mode="w")
+
+            if run_data_file_path.exists():
+                prev_run_data_df = pd.read_csv(run_data_file_path)
+                prev_run_data_df.set_index("description", inplace=True)
+
+                num_evaluated_configs_csv = prev_run_data_df.loc[
+                    "num_evaluated_configs", "value"
                 ]
-                # Represents the last worker
-                if int(pending_configs) == 0 and int(pending_configs_with_worker) == 0:
+                num_evaluated_configs_run = run_data_df.loc[
+                    run_data_df.index == "num_evaluated_configs", "value"
+                ]
+                # checks if the current worker has more evaluated configs than the previous
+                if int(num_evaluated_configs_csv) < num_evaluated_configs_run.iloc[0]:
                     config_data_df = config_data_df.sort_values(
                         by="result.loss", ascending=True
                     )
                     config_data_df.to_csv(config_data_file_path, index=False, mode="w")
                     run_data_df.to_csv(run_data_file_path, index=True, mode="w")
-
-                if run_data_file_path.exists():
-                    prev_run_data_df = pd.read_csv(run_data_file_path)
-                    prev_run_data_df.set_index("description", inplace=True)
-
-                    num_evaluated_configs_csv = prev_run_data_df.loc[
-                        "num_evaluated_configs", "value"
-                    ]
-                    num_evaluated_configs_run = run_data_df.loc[
-                        run_data_df.index == "num_evaluated_configs", "value"
-                    ]
-                    # checks if the current worker has more evaluated configs than the previous
-                    if int(num_evaluated_configs_csv) < num_evaluated_configs_run.iloc[0]:
-                        config_data_df = config_data_df.sort_values(
-                            by="result.loss", ascending=True
-                        )
-                        config_data_df.to_csv(
-                            config_data_file_path, index=False, mode="w"
-                        )
-                        run_data_df.to_csv(run_data_file_path, index=True, mode="w")
-                # Represents the first worker to be evaluated
-                else:
-                    config_data_df = config_data_df.sort_values(
-                        by="result.loss", ascending=True
-                    )
-                    config_data_df.to_csv(config_data_file_path, index=False, mode="w")
-                    run_data_df.to_csv(run_data_file_path, index=True, mode="w")
-            except Exception as e:
-                raise RuntimeError(f"Error during data saving: {e}") from e
-            finally:
-                locker.release_lock()
-                should_break = True
-        else:
-            time.sleep(2)
+            # Represents the first worker to be evaluated
+            else:
+                config_data_df = config_data_df.sort_values(
+                    by="result.loss", ascending=True
+                )
+                config_data_df.to_csv(config_data_file_path, index=False, mode="w")
+                run_data_df.to_csv(run_data_file_path, index=True, mode="w")
+        except Exception as e:
+            raise RuntimeError(f"Error during data saving: {e}") from e
 
 
 def post_run_csv(root_directory: str | Path, logger=None) -> None:

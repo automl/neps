@@ -5,13 +5,17 @@ from typing import Any
 
 from typing_extensions import Literal
 
-from ...metahyper import ConfigResult, instance_from_map
+from neps.types import ConfigResult
+from neps.utils.common import instance_from_map
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,
     CategoricalParameter,
 )
 from ...search_spaces.hyperparameters.constant import ConstantParameter
-from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES, FloatParameter
+from ...search_spaces.hyperparameters.float import (
+    FLOAT_CONFIDENCE_SCORES,
+    FloatParameter,
+)
 from ...search_spaces.hyperparameters.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
@@ -221,7 +225,7 @@ class BayesianOptimization(BaseOptimizer):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]

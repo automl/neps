@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...metahyper import ConfigResult, instance_from_map
+from neps.types import ConfigResult
+from neps.utils.common import instance_from_map
 from ...optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     CostCooler,
 )
@@ -186,7 +187,7 @@ class CostCooling(BayesianOptimization):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         # TODO(Jan): read out cost and fit cost model
         train_x = [el.config for el in previous_results.values()]

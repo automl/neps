@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ...metahyper import instance_from_map
+from neps.utils.common import instance_from_map
 from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity.utils import normalize_vectorize_config
 from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
@@ -286,7 +286,9 @@ class FreezeThawModel:
 
         if decay_t is None:
             decay_t = len(train_x)
-        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
+        train_x, train_y, train_lcs = self._fantasize_pending(
+            train_x, train_y, pending_x
+        )
         self._fit(train_x, train_y, train_lcs)
 
         return self.surrogate_model, decay_t
