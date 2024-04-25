@@ -7,6 +7,8 @@ authors:
     given-names: Neeratyoy
   - family-names: Schrodi
     given-names: Simon
+  - family-names: Bergman
+    given-names: Eddie
   - family-names: Janowski
     given-names: Maciej
   - family-names: Garibov
@@ -15,8 +17,6 @@ authors:
     given-names: Tarek
   - family-names: Rogalla
     given-names: Daniel
-  - family-names: Bergman
-    given-names: Eddie
   - family-names: Hvarfner
     given-names: Carl
   - family-names: Binxin
