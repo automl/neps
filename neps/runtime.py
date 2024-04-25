@@ -2,7 +2,7 @@
 
 An important advantage of NePS with a running instance per worker and no
 multiprocessing is that we can reliably use globals to store information such
-as the currently runnig configuraiton, without interfering with other
+as the currently running configuration, without interfering with other
 workers which have launched.
 
 This allows us to have a global `Trial` object which can be accessed
@@ -16,11 +16,11 @@ This module primarily handles the worker loop where important concepts are:
 * **Shared State**: Whenever a worker wishes to read or write any state, they will _lock_ the
  shared state, declaring themselves as operating on it. At this point, no other worker can
  access the shared state.
-* **Optimizer Hydration**: This is the process through which an optimzier instance is _hydrated_
+* **Optimizer Hydration**: This is the process through which an optimizer instance is _hydrated_
  with the Shared State so it can make a decision, i.e. for sampling. Equally we _serialize_
  the optimizer when writing it back to Shared State
 * **Trial Lock**: When evaluating a configuration, a worker must _lock_ it to declared itself
- as evaluating it. This communicates to other workers that this configuration is pending
+ as evaluating it. This communicates to other workers that this configuration is in progress
 
 ### Loop
 We mark lines with `+` as the worker having locked the Shared State and `~` as the worker
