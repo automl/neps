@@ -48,13 +48,13 @@ class Locker:
     @contextmanager
     def acquire(
         self,
-        check_interval: float = 1.0,
+        poll: float = 1.0,
         *,
         timeout: float | None = None,
         fail_when_locked: bool = False,
     ) -> Iterator[IO]:
         with self(
-            check_interval,
+            poll,
             timeout=timeout,
             fail_when_locked=fail_when_locked,
         ) as fh:
