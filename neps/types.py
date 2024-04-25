@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Mapping, Any, Literal, Callable, Union
+from typing import Mapping, Any, Literal, Callable, Union, Dict
 from typing_extensions import TypeAlias
 from dataclasses import dataclass
 import logging
@@ -18,7 +18,7 @@ POST_EVAL_HOOK_SIGNATURE: TypeAlias = Callable[
         ConfigLike,
         str,
         Path,
-        Union[dict[str, Any], ERROR],
+        Union[Dict[str, Any], ERROR],
         logging.Logger,
     ],
     None,
