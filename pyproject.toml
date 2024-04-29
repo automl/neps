@@ -95,11 +95,49 @@ gpytorch = "1.8.0"
 requires = ["poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"
 
+# TODO(eddiebergman): Include more of these as we go on in migration
+# "tests",
+# "neps_examples",
 [tool.ruff]
 target-version = "py38"
-line-length = 90
 output-format = "full"
-src = ["neps", "tests", "neps_examples"]
+line-length = 90
+src = ["neps"]
+
+# TODO(eddiebergman): Include more of these as we go on in migration
+exclude = [
+  "neps/optimizers/**/*.py",
+  "neps/plot/**/*.py",
+  "neps/search_spaces/**/*.py",
+  "neps/status/**/*.py",
+  "neps/utils/**/*.py",
+  "neps/api.py",
+  "neps/runtime.py",
+  "neps/types.py",
+  "neps/__init__.py",
+  "tests",
+  "neps_examples",
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+  "docs",
+]
 
 [tool.ruff.lint]
 # Extend what ruff is allowed to fix, even it it may break
@@ -178,28 +216,6 @@ ignore = [
   # These tend to be lighweight and confuse pyright
 ]
 
-exclude = [
-  ".bzr",
-  ".direnv",
-  ".eggs",
-  ".git",
-  ".hg",
-  ".mypy_cache",
-  ".nox",
-  ".pants.d",
-  ".ruff_cache",
-  ".svn",
-  ".tox",
-  ".venv",
-  "__pypackages__",
-  "_build",
-  "buck-out",
-  "build",
-  "dist",
-  "node_modules",
-  "venv",
-  "docs",
-]
 
 # Exclude a variety of commonly ignored directories.
 [tool.ruff.lint.per-file-ignores]
