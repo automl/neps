@@ -23,6 +23,10 @@ pipeline_space = {
     "optimizer": neps.CategoricalParameter(choices=["adam", "sgd", "rmsprop"]),
     "dropout_rate": neps.FloatParameter(value=0.5),
 }
+
+
+# Provide this dictionary to NePS via the 'pipeline_space' argument.
+neps.run(.., pipeline_space=pipeline_space)
 ```
 
 ### Option 2: Using a YAML File
@@ -48,6 +52,11 @@ pipeline_space: # important to start with
   dropout_rate:
     value: 0.5
 ...
+
+```
+```python
+# Provide this yaml file to NePS via the 'pipeline_space' argument by providing its path.
+neps.run(.., pipeline_space="path/to/pipeline_space.yaml")
 ```
 
 Ensure your YAML file starts with `pipeline_space:`.
