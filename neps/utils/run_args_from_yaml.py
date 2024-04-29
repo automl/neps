@@ -4,10 +4,12 @@ import sys
 import yaml
 from neps.optimizers.base_optimizer import BaseOptimizer
 from typing import Callable, Optional, Dict, Tuple, List
+import inspect
 
 logger = logging.getLogger("neps")
 
 # Define the name of the arguments as variables for easier code maintenance
+RUN_ARGS = "run_args"
 RUN_PIPELINE = "run_pipeline"
 PIPELINE_SPACE = "pipeline_space"
 ROOT_DIRECTORY = "root_directory"
@@ -458,3 +460,30 @@ def check_essential_arguments(
             "'max_evaluation_total' or 'max_cost_total' is required but "
             "both were not provided."
         )
+
+
+def check_arg_defaults(func: Callable, provided_arguments: Dict):
+    """
+    Checks if provided arguments deviate from default values defined in the function's
+    signature.
+
+    Parameters:
+    - func (Callable): The function to check arguments against.
+    - provided_arguments (Dict): A dictionary containing the provided arguments and their
+    values.
+
+    Raises:
+    - ValueError: If any provided argument differs from its default value in the function
+    signature.
+    """
+    sig = inspect.signature(func)
+    for name, param in sig.parameters.items():
+        if param.default != provided_arguments[name]:
+            if name == RUN_ARGS:
+                # ignoring run_args argument
+                continue
+            if name == SEARCHER_KWARGS:
+                if provided_arguments[name] == {}:
+                    continue
+            raise ValueError(
+                f"Argument '{name}' must not be set directly when 'run_args' is used.")

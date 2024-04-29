@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
-from utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml
+from utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml, \
+    check_arg_defaults
 
 from .metahyper import instance_from_map, metahyper_run
 from .optimizers import BaseOptimizer, SearcherMapping
@@ -222,6 +223,12 @@ def run(
 
     # if arguments via run_args provided overwrite them
     if run_args:
+        # Check if the user provided other arguments directly to neps.run().
+        # If so, raise an error.
+        check_arg_defaults(run, locals())
+
+        # Warning if the user has specified default values for arguments that differ
+        # from those specified in 'run_args'. These user-defined changes are not applied.
         warnings.warn(
             "WARNING: Loading arguments from 'run_args'. Arguments directly provided "
             "to neps.run(...) will be not used!"
