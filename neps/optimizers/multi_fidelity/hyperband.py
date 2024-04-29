@@ -9,9 +9,11 @@ from typing import Any
 import numpy as np
 from typing_extensions import Literal
 
-from ...metahyper import ConfigResult
+from neps.types import ConfigResult
 from ...search_spaces.search_space import SearchSpace
-from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
@@ -124,7 +126,7 @@ class HyperbandBase(SuccessiveHalvingBase):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         super().load_results(previous_results, pending_evaluations)
         # important for the global HB to run the right SH
@@ -302,7 +304,7 @@ class HyperbandCustomDefault(HyperbandWithPriors):
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target
+            sample_default_at_target=sample_default_at_target,
         )
         self.sampling_args = {
             "inc": None,
@@ -394,7 +396,8 @@ class AsynchronousHyperband(HyperbandBase):
         # Since in this version, we see the full SH rung, we fix the K to max_rung
         K = self.max_rung
         bracket_probs = [
-            self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
+            self.eta ** (K - s) * (K + 1) / (K - s + 1)
+            for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
         bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)

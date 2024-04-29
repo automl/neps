@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 
-from ...metahyper import ConfigResult
+from neps.types import ConfigResult
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 
@@ -21,7 +21,7 @@ class GridSearch(BaseOptimizer):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 

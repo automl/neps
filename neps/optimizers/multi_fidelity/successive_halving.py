@@ -10,13 +10,16 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Literal
 
-from ...metahyper import ConfigResult
+from neps.types import ConfigResult
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,
     CategoricalParameter,
 )
 from ...search_spaces.hyperparameters.constant import ConstantParameter
-from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES, FloatParameter
+from ...search_spaces.hyperparameters.float import (
+    FLOAT_CONFIDENCE_SCORES,
+    FloatParameter,
+)
 from ...search_spaces.hyperparameters.integer import IntegerParameter
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
@@ -102,8 +105,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
         self.sampling_policy = sampling_policy(
-            pipeline_space=self.pipeline_space,
-            logger=self.logger
+            pipeline_space=self.pipeline_space, logger=self.logger
         )
         self.promotion_policy = promotion_policy(self.eta)
 
@@ -174,9 +176,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         assert s <= self.stopping_rate_limit
         new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
-            np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
-                int
-            )
+            np.floor(
+                np.log(self.max_budget / new_min_budget) / np.log(self.eta)
+            ).astype(int)
             + 1
         )
         _max_budget = self.max_budget
@@ -195,9 +197,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         assert s <= self.stopping_rate_limit
         new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
-            np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
-                int
-            )
+            np.floor(
+                np.log(self.max_budget / new_min_budget) / np.log(self.eta)
+            ).astype(int)
             + 1
         )
         s_max = self.stopping_rate_limit + 1
@@ -317,7 +319,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         """This is basically the fit method.
 
@@ -374,7 +376,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return config
 
     def _generate_new_config_id(self):
-        return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
+        return (
+            self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
+        )
 
     def get_default_configuration(self):
         pass
@@ -422,7 +426,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 if self.sample_default_at_target:
                     # sets the default config to be evaluated at the target fidelity
                     rung_id = self.max_rung
-                    self.logger.info("Next config will be evaluated at target fidelity.")
+                    self.logger.info(
+                        "Next config will be evaluated at target fidelity."
+                    )
                 self.logger.info("Sampling the default configuration...")
                 config = self.pipeline_space.sample_default_configuration()
 

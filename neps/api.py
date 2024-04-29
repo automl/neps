@@ -1,6 +1,5 @@
 """API for the neps package.
 """
-
 from __future__ import annotations
 
 import logging
@@ -10,7 +9,8 @@ from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
 
-from .metahyper import instance_from_map, metahyper_run
+from neps.utils.common import instance_from_map
+from neps.runtime import launch_runtime
 from .optimizers import BaseOptimizer, SearcherMapping
 from .plot.tensorboard_eval import tblogger
 from .search_spaces.parameter import Parameter
@@ -271,7 +271,7 @@ def run(
     if development_stage_id is not None:
         root_directory = Path(root_directory) / f"dev_{development_stage_id}"
 
-    metahyper_run(
+    launch_runtime(
         run_pipeline,
         searcher_instance,
         searcher_info,

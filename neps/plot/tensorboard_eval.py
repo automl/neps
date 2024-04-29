@@ -4,6 +4,7 @@ import math
 import os
 import warnings
 from pathlib import Path
+from typing import Any, Mapping
 
 import numpy as np
 import torch
@@ -17,7 +18,7 @@ warnings.filterwarnings(
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
 
-from ..metahyper.api import ConfigInRun
+from neps.runtime import get_in_progress_trial
 from ..status.status import get_summary_dict
 from ..utils.common import get_initial_directory
 
@@ -40,7 +41,9 @@ class SummaryWriter_(SummaryWriter):
     metrics with better formatting.
     """
 
-    def add_hparams(self, hparam_dict: dict, metric_dict: dict, global_step: int) -> None:
+    def add_hparams(
+        self, hparam_dict: dict, metric_dict: dict, global_step: int
+    ) -> None:
         if not isinstance(hparam_dict, dict) or not isinstance(metric_dict, dict):
             raise TypeError("hparam_dict and metric_dict should be dictionary.")
         updated_metric = {f"Summary/{key}": val for key, val in metric_dict.items()}
@@ -55,9 +58,9 @@ class SummaryWriter_(SummaryWriter):
 
 class tblogger:
     config_id: str | None = None
-    config: dict | None = None
+    config: Mapping[str, Any] | None = None
     config_working_directory: Path | None = None
-    optim_path: Path | None = None
+    optimizer_dir: Path | None = None
     config_previous_directory: Path | None = None
 
     disable_logging: bool = False
@@ -77,14 +80,19 @@ class tblogger:
     @staticmethod
     def _initiate_internal_configurations() -> None:
         """
-        Track the Configuration space data from the way handled by neps metahyper
+        Track the Configuration space data from the way handled by neps runtime
         '_sample_config' to keep in sync with config ids and directories NePS is
         operating on.
         """
-        tblogger.config_working_directory = ConfigInRun.pipeline_directory
-        tblogger.config_previous_directory = ConfigInRun.previous_pipeline_directory
-        tblogger.optim_path = ConfigInRun.optimization_dir
-        tblogger.config = ConfigInRun.config
+        trial = get_in_progress_trial()
+        assert trial is not None
+
+        # TODO(eddiebergman): We could just save the instance of the trial
+        # on this object, OR even just use `get_in_process_trial()` in each call directly.
+        tblogger.config_working_directory = trial.pipeline_dir
+        tblogger.config_previous_directory = trial.disk.previous_pipeline_dir
+        tblogger.optimizer_dir = trial.disk.optimization_dir
+        tblogger.config = trial.config
 
     @staticmethod
     def _is_initialized() -> bool:
@@ -384,7 +392,7 @@ class tblogger:
         # Just an extra safety measure
         if tblogger.config_writer is not None:
             tblogger.config_writer.add_hparams(
-                hparam_dict=tblogger.config,
+                hparam_dict=dict(tblogger.config),
                 metric_dict=values,
                 global_step=tblogger.current_epoch,
             )
@@ -401,18 +409,18 @@ class tblogger:
 
         Note:
             The function relies on the following global variables:
-                - tblogger.optim_path (str)
-                - tblogger.summary_writer (SummaryWriter_)
+                - tblogger.optimizer_dir
+                - tblogger.summary_writer
 
             The function logs the incumbent trajectory in TensorBoard.
         """
-        summary_dict = get_summary_dict(tblogger.optim_path, add_details=True)
+        summary_dict = get_summary_dict(tblogger.optimizer_dir, add_details=True)
 
         incum_tracker = summary_dict["num_evaluated_configs"]
         incum_val = summary_dict["best_loss"]
 
-        if tblogger.summary_writer is None and tblogger.optim_path:
-            tblogger.summary_writer = SummaryWriter_(tblogger.optim_path / "summary")
+        if tblogger.summary_writer is None and tblogger.optimizer_dir:
+            tblogger.summary_writer = SummaryWriter_(tblogger.optimizer_dir / "summary")
 
         tblogger.summary_writer.add_scalar(
             tag="Summary/Incumbent_graph",
@@ -484,7 +492,7 @@ class tblogger:
                 curve on tensorboard (default: True)
             writer_config_hparam (bool, optional): Write hyperparameters logging of
                 the configs (default: True).
-            write_summary_incumbent (bool, optional): Set to `True` for a live 
+            write_summary_incumbent (bool, optional): Set to `True` for a live
                 incumbent trajectory.
             extra_data (dict, optional): Additional experiment data for logging.
         """
@@ -509,7 +517,9 @@ class tblogger:
         if extra_data is not None:
             for key in extra_data:
                 if extra_data[key][0] == "scalar":
-                    tblogger._write_scalar_config(tag=str(key), value=extra_data[key][1])
+                    tblogger._write_scalar_config(
+                        tag=str(key), value=extra_data[key][1]
+                    )
 
                 elif extra_data[key][0] == "image":
                     tblogger._write_image_config(

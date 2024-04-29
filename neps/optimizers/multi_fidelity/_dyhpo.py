@@ -3,10 +3,12 @@ from typing import Any, List, Union
 
 import numpy as np
 
-from ...metahyper import ConfigResult
+from neps.types import ConfigResult
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from ..base_optimizer import BaseOptimizer
-from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
@@ -206,7 +208,7 @@ class MFEIBO(BaseOptimizer):
     def load_results(
         self,
         previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
     ) -> None:
         """This is basically the fit method.
 
@@ -239,7 +241,8 @@ class MFEIBO(BaseOptimizer):
             self.observed_configs.add_data([config_val.config, perf], index=index)
 
             if not np.isclose(
-                self.observed_configs.df.loc[index, self.observed_configs.perf_col], perf
+                self.observed_configs.df.loc[index, self.observed_configs.perf_col],
+                perf,
             ):
                 self.observed_configs.update_data(
                     {
@@ -276,7 +279,9 @@ class MFEIBO(BaseOptimizer):
         ID of the promoted configuration, else return None.
         """
         if promotion_type == "model":
-            config_id = self.model_policy.sample(is_promotion=True, **self.sampling_args)
+            config_id = self.model_policy.sample(
+                is_promotion=True, **self.sampling_args
+            )
         elif promotion_type == "policy":
             config_id = self.promotion_policy.retrieve_promotions()
         elif promotion_type is None:
@@ -290,7 +295,9 @@ class MFEIBO(BaseOptimizer):
         return config_id
 
     def sample_new_config(
-        self, sample_type: str = "model", **kwargs  # pylint: disable=unused-argument
+        self,
+        sample_type: str = "model",
+        **kwargs,  # pylint: disable=unused-argument
     ) -> SearchSpace:
         """
         Sample completely new configuration that

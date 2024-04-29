@@ -22,7 +22,7 @@ def launch_example_processes(n_workers: int = 3) -> list:
     return processes
 
 
-@pytest.mark.metahyper
+@pytest.mark.runtime
 def test_filelock() -> None:
     """Test that the filelocking method of parallelization works as intended."""
     # Note: Not using tmpdir
