@@ -483,6 +483,7 @@ def check_arg_defaults(func: Callable, provided_arguments: Dict):
                 # ignoring run_args argument
                 continue
             if name == SEARCHER_KWARGS:
+                # searcher_kwargs does not have a default specified by inspect
                 if provided_arguments[name] == {}:
                     continue
             raise ValueError(
