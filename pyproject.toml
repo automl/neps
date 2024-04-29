@@ -94,10 +94,155 @@ gpytorch = "1.8.0"
 requires = ["poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.ruff]
+target-version = "py38"
+line-length = 90
+output-format = "full"
+src = ["neps", "tests", "neps_examples"]
+
+[tool.ruff.lint]
+# Extend what ruff is allowed to fix, even it it may break
+# This is okay given we use it all the time and it ensures
+# better practices. Would be dangerous if using for first
+# time on established project.
+extend-safe-fixes = ["ALL"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+select = [
+  "A",
+  # "ANN", # Handled by mypy
+  "ARG",
+  "B",
+  "BLE",
+  "COM",
+  "C4",
+  "D",
+  # "DTZ",  # One day I should know how to utilize timezones and dates...
+  "E",
+  # "EXE", Meh
+  "ERA",
+  "F",
+  "FBT",
+  "I",
+  # "ISC",  # Favours implicit string concatenation
+  "INP",
+  # "INT", # I don't understand this one
+  "N",
+  "NPY",
+  "PD",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "PIE",
+  "PT",
+  "PTH",
+  # "PYI", # Specific to .pyi files for type stubs
+  "Q",
+  "PGH004",
+  "RET",
+  "RUF",
+  "C90",
+  "S",
+  # "SLF",    # Private member accessed (sure, it's python)
+  "SIM",
+  # "TRY", # Good in principle, would take a lot of work to statisfy
+  "T10",
+  "T20",
+  "TID",
+  "TCH",
+  "UP",
+  "N",
+  "W",
+  "YTT",
+]
+
+ignore = [
+  "D104",    # Missing docstring in public package
+  "D105",    # Missing docstring in magic mthod
+  "D203",    # 1 blank line required before class docstring
+  "D205",    # 1 blank line between summary and description
+  "D401",    # First line of docstring should be in imperative mood
+  "N806",    # Variable X in function should be lowercase
+  "E731",    # Do not assign a lambda expression, use a def
+  "A003",    # Shadowing a builtin
+  "S101",    # Use of assert detected.
+  "W292",    # No newline at end of file
+  "PLC1901", # "" can be simplified to be falsey
+  "TCH003",  # Move stdlib import into TYPE_CHECKING
+  "B010",    # Do not use `setattr`
+  "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
+  # These tend to be lighweight and confuse pyright
+]
+
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+  "docs",
+]
+
+# Exclude a variety of commonly ignored directories.
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+  "S101",
+  "D101",
+  "D102",
+  "D103",
+  "ANN001",
+  "ANN201",
+  "FBT001",
+  "D100",
+  "PLR2004",
+  "PD901",   #  X is a bad variable name. (pandas)
+  "TCH",
+  "N803",
+  "C901",  # Too complex
+]
+"__init__.py" = ["I002"]
+"neps_examples/*" = ["INP001", "I002", "E741", "D101", "D103", "T20", "D415", "ERA001", "E402", "E501"]
+"docs/*" = ["INP001"]
+
+
+[tool.ruff.lint.isort]
+known-first-party = ["neps"]
+known-third-party = []
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+force-wrap-aliases = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 10 # Changed from default of 5
+
+# TODO(eddiebergman): Remove black eventually and replace with ruff
 [tool.black]
 line-length = 90
 target-version = ['py38']
 
+# TODO(eddiebergman): Remove black eventually and replace with ruff
 [tool.isort]
 profile = 'black'
 line_length = 90
@@ -133,6 +278,7 @@ module = [
 ]
 ignore_errors = true
 
+# TODO(eddiebergman): Remove black eventually and replace with ruff
 [tool.pylint.messages_control]
 disable = 'all'
 enable = [
