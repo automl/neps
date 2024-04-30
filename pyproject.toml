@@ -72,7 +72,7 @@ tensorboard = "^2"
 # cython = "^3.0.4"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^4"
+ruff = "^0.4"
 pre-commit = "^3"
 mypy = "^1"
 pytest = "^7"
