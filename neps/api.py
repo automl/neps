@@ -343,10 +343,10 @@ def run(
         root_directory = Path(root_directory) / f"dev_{development_stage_id}"
 
     launch_runtime(
-        run_pipeline,
-        searcher_instance,
-        searcher_info,
-        root_directory,
+        evaluation_fn=run_pipeline,
+        sampler=searcher_instance,
+        optimizer_info=searcher_info,
+        optimization_dir=root_directory,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,

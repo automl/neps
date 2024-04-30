@@ -13,14 +13,15 @@ using `import neps.runtime; neps.get_in_progress_trial()`.
 This module primarily handles the worker loop where important concepts are:
 * **State**: The state of optimization is all of the configurations, their results and
  the current state of the optimizer.
-* **Shared State**: Whenever a worker wishes to read or write any state, they will _lock_ the
- shared state, declaring themselves as operating on it. At this point, no other worker can
- access the shared state.
-* **Optimizer Hydration**: This is the process through which an optimizer instance is _hydrated_
- with the Shared State so it can make a decision, i.e. for sampling. Equally we _serialize_
- the optimizer when writing it back to Shared State
-* **Trial Lock**: When evaluating a configuration, a worker must _lock_ it to declared itself
- as evaluating it. This communicates to other workers that this configuration is in progress
+* **Shared State**: Whenever a worker wishes to read or write any state, they will _lock_
+the shared state, declaring themselves as operating on it. At this point, no other worker
+can access the shared state.
+* **Optimizer Hydration**: This is the process through which an optimizer instance is
+_hydrated_ with the Shared State so it can make a decision, i.e. for sampling.
+Equally we _serialize_ the optimizer when writing it back to Shared State
+* **Trial Lock**: When evaluating a configuration, a worker must _lock_ it to declared
+itself as evaluating it. This communicates to other workers that this configuration is
+in progress.
 
 ### Loop
 We mark lines with `+` as the worker having locked the Shared State and `~` as the worker
@@ -40,24 +41,25 @@ with a `~` are skipped and the loop continues.
 10. ~ Unlock the shared state
 11. Unlock Trial Lock
 """
+
 from __future__ import annotations
 
 import inspect
 import logging
+import os
 import shutil
 import time
 import warnings
-import os
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Iterable, Mapping, Callable, TYPE_CHECKING
 from enum import Enum
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
+from neps.types import ERROR, POST_EVAL_HOOK_SIGNATURE, ConfigLike, ConfigResult
 from neps.utils._locker import Locker
-from neps.utils.files import empty_file, serialize, deserialize
-from neps.types import ConfigLike, ERROR, ConfigResult, POST_EVAL_HOOK_SIGNATURE
+from neps.utils.files import deserialize, empty_file, serialize
 
 if TYPE_CHECKING:
     from .optimizers.base_optimizer import BaseOptimizer
@@ -82,11 +84,12 @@ _CURRENTLY_RUNNING_TRIAL_IN_PROCESS: Trial | None = None
 
 
 def get_in_progress_trial() -> Trial | None:
+    """Get the currently running trial in this process."""
     return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
 
 
 def _set_in_progress_trial(trial: Trial | None) -> None:
-    global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
+    global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
 
 
@@ -124,9 +127,11 @@ class Trial:
 
     @property
     def state(self) -> Trial.State:
+        """The state of the trial on disk."""
         return self.disk.state
 
     def write_to_disk(self) -> Trial.Disk:
+        """Serliaze the trial to disk."""
         serialize(self.config, self.disk.config_file)
         serialize(self.metadata, self.disk.metadata_file)
 
@@ -139,16 +144,40 @@ class Trial:
         return self.disk
 
     class State(str, Enum):
+        """The state of a trial."""
+
         COMPLETE = "evaluated"
+        """The trial has been evaluated and results are available."""
+
         IN_PROGRESS = "in_progress"
+        """There is currently a worker evaluating this trial."""
+
         PENDING = "pending"
+        """The trial has been sampled but no worker has been assigned to evaluate it."""
+
         CORRUPTED = "corrupted"
+        """The trial is not in one of the previous states and should be removed."""
 
         def __str__(self):
             return self.value
 
     @dataclass
     class Disk:
+        """The disk information of a trial.
+
+        Attributes:
+            pipeline_dir: The directory where the trial is stored
+            id: The unique identifier of the trial
+            config_file: The path to the configuration file
+            result_file: The path to the result file
+            metadata_file: The path to the metadata file
+            optimization_dir: The directory from which optimization is running
+            previous_config_id_file: The path to the previous config id file
+            previous_pipeline_dir: The directory of the previous configuration
+            lock: The lock for the trial. Obtaining this lock indicates the worker
+                is evaluating this trial.
+        """
+
         pipeline_dir: Path
 
         id: str = field(init=False)
@@ -171,7 +200,7 @@ class Trial:
 
             self.previous_config_id_file = self.pipeline_dir / "previous_config.id"
             if not empty_file(self.previous_config_id_file):
-                with open(self.previous_config_id_file, "r") as f:
+                with self.previous_config_id_file.open("r") as f:
                     self.previous_config_id = f.read().strip()
 
                 self.previous_pipeline_dir = (
@@ -183,24 +212,28 @@ class Trial:
             self.lock = Locker(self.pipeline_dir / ".config_lock")
 
         def config(self) -> ConfigLike:
+            """Deserialize the configuration from disk."""
             return deserialize(self.config_file)
 
         @property
         def state(self) -> Trial.State:
+            """The state of the trial."""
             if not empty_file(self.result_file):
                 return Trial.State.COMPLETE
-            elif self.lock.is_locked():
+            if self.lock.is_locked():
                 return Trial.State.IN_PROGRESS
-            elif not empty_file(self.config_file):
+            if not empty_file(self.config_file):
                 return Trial.State.PENDING
-            else:
-                return Trial.State.CORRUPTED
+
+            return Trial.State.CORRUPTED
 
         @classmethod
         def from_dir(cls, pipeline_dir: Path) -> Trial.Disk:
+            """Create a `Trial.Disk` object from a directory."""
             return cls(pipeline_dir=pipeline_dir)
 
         def load(self) -> Trial:
+            """Load the trial from disk."""
             config = deserialize(self.config_file)
             if not empty_file(self.metadata_file):
                 metadata = deserialize(self.metadata_file)
@@ -226,13 +259,22 @@ class Trial:
                 results=result,
             )
 
-        # TODO(eddiebergman): Backwards compatibility on things that require the `ConfigResult`
-        # Ideally, we just use `Trial` objects directly for things that need all informations
-        # about trials.
+        # TODO(eddiebergman): Backwards compatibility on things that require the
+        # `ConfigResult`. Ideally, we just use `Trial` objects directly for things
+        # that need all informations about trials.
         def to_result(
             self,
             config_transform: Callable[[ConfigLike], ConfigLike] | None = None,
         ) -> ConfigResult:
+            """Convert the trial to a `ConfigResult` object.
+
+            Args:
+                config_transform: A function to transform the configuration before
+                    creating the `ConfigResult`.
+
+            Returns:
+                A `ConfigResult` object usable by optimizers.
+            """
             config = deserialize(self.config_file)
             result = deserialize(self.result_file)
             metadata = deserialize(self.metadata_file)
@@ -249,6 +291,18 @@ class Trial:
 
 @dataclass
 class SharedState:
+    """The shared state of the optimization process that workers communicate through.
+
+    Attributes:
+        base_dir: The base directory from which the optimization is running.
+        create_dirs: Whether to create the directories if they do not exist.
+        lock: The lock to signify that a worker is operating on the shared state.
+        optimizer_state_file: The path to the optimizers state.
+        optimizer_info_file: The path to the file containing information about the
+            optimizer's setup.
+        results_dir: Directory where results for configurations are stored.
+    """
+
     base_dir: Path
     create_dirs: bool = False
 
@@ -271,6 +325,7 @@ class SharedState:
         self.optimizer_info_file = self.base_dir / ".optimizer_info.yaml"
 
     def trial_refs(self) -> dict[Trial.State, list[Trial.Disk]]:
+        """Get the disk reference of every trial, grouped by their state."""
         refs = [
             Trial.Disk.from_dir(pipeline_dir=pipeline_dir)
             for pipeline_dir in self.results_dir.iterdir()
@@ -288,6 +343,16 @@ class SharedState:
         *,
         excluded_keys: Iterable[str] = ("searcher_name",),
     ) -> None:
+        """Sanity check that the provided info matches the one on disk (if any).
+
+        Args:
+            optimizer_info: The optimizer info to check.
+            excluded_keys: Any keys to exclude during the comparison.
+
+        Raises:
+            ValueError: If there is optimizer info on disk and it does not match the
+            provided info.
+        """
         optimizer_info_copy = optimizer_info.copy()
         loaded_info = deserialize(self.optimizer_info_file)
 
@@ -298,7 +363,7 @@ class SharedState:
         if optimizer_info_copy != loaded_info:
             raise ValueError(
                 f"The sampler_info in the file {self.optimizer_info_file} is not valid. "
-                f"Expected: {optimizer_info_copy}, Found: {loaded_info}"
+                f"Expected: {optimizer_info_copy}, Found: {loaded_info}",
             )
 
 
@@ -333,7 +398,7 @@ def _evaluate_config(
         logger.exception(e)
         result = "error"
     else:
-        # Ensuring the result have the correct format that can be exploited by other functions
+        # Ensure the results have correct format that can be exploited by other functions
         if isinstance(result, Mapping):
             result = dict(result)
             if "loss" not in result:
@@ -348,7 +413,7 @@ def _evaluate_config(
         except (TypeError, ValueError) as e:
             raise ValueError(
                 "The evaluation result should be a dictionnary or a float but got"
-                f" a `{type(loss)}` with value of {loss}"
+                f" a `{type(loss)}` with value of {loss}",
             ) from e
 
     time_end = time.time()
@@ -370,6 +435,7 @@ def _try_remove_corrupted_configs(
 
 def _worker_should_continue(
     max_evaluations_total: int | None,
+    *,
     continue_until_max_evaluation_completed: bool,
     refs: Mapping[Trial.State, list[Trial.Disk]],
     logger: logging.Logger,
@@ -392,7 +458,8 @@ def _worker_should_continue(
     return n_counter < max_evaluations_total
 
 
-def launch_runtime(
+def launch_runtime(  # noqa: PLR0913, C901, PLR0915
+    *,
     evaluation_fn: Callable[..., float | Mapping[str, Any]],
     sampler: BaseOptimizer,
     optimizer_info: dict,
@@ -405,6 +472,25 @@ def launch_runtime(
     overwrite_optimization_dir: bool = False,
     pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
 ) -> None:
+    """Launch the runtime of a single instance of NePS.
+
+    Please refer to the module docstring for a detailed explanation of the runtime.
+    Runs until some exit condition is met.
+
+    Args:
+        evaluation_fn: The evaluation function to use.
+        sampler: The optimizer to use for sampling configurations.
+        optimizer_info: Information about the optimizer.
+        optimization_dir: The directory where the optimization is running.
+        max_evaluations_total: The maximum number of evaluations to run.
+        max_evaluations_per_run: The maximum number of evaluations to run in a single run.
+        continue_until_max_evaluation_completed: Whether to continue until the maximum
+            evaluations are completed.
+        logger: The logger to use.
+        post_evaluation_hook: A hook to run after the evaluation.
+        overwrite_optimization_dir: Whether to overwrite the optimization directory.
+        pre_load_hooks: Hooks to run before loading the results.
+    """
     # NOTE(eddiebergman): This was deprecated a while ago and called at
     # evaluate, now we just crash immediatly instead. Should probably
     # promote this check closer to the user, i.e. `neps.run()`
@@ -413,13 +499,13 @@ def launch_runtime(
         raise RuntimeError(
             "the argument: 'previous_working_directory' was deprecated. "
             f"In the function: '{evaluation_fn.__name__}', please,  "
-            "use 'previous_pipeline_directory' instead. "
+            "use 'previous_pipeline_directory' instead. ",
         )
     if "working_directory" in evaluation_fn_params:
         raise RuntimeError(
             "the argument: 'working_directory' was deprecated. "
             f"In the function: '{evaluation_fn.__name__}', please,  "
-            "use 'pipeline_directory' instead. "
+            "use 'pipeline_directory' instead. ",
         )
 
     if logger is None:
@@ -461,9 +547,9 @@ def launch_runtime(
 
             if not _worker_should_continue(
                 max_evaluations_total,
-                continue_until_max_evaluation_completed,
-                refs,
-                logger,
+                continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+                refs=refs,
+                logger=logger,
             ):
                 logger.info("Maximum total evaluations is reached, shutting down")
                 break
@@ -474,11 +560,13 @@ def launch_runtime(
                 logger.warning(
                     f"There are {len(refs[Trial.State.PENDING])} configs that"
                     " were sampled, but have no worker assigned. Sometimes this is due to"
-                    " a delay in the filesystem communication, but most likely some configs"
-                    " crashed during their execution or a jobtime-limit was reached."
+                    " a delay in the filesystem communication, but most likely some"
+                    " configs crashed during their execution or a jobtime-limit was"
+                    "  reached.",
                 )
 
-            # While we have the decision lock, we will now sample with the optimizer in this process
+            # While we have the decision lock, we will now sample with the optimizer in
+            # this process
             with sampler.using_state(shared_state.optimizer_state_file):
                 if sampler.budget is not None and sampler.used_budget >= sampler.budget:
                     logger.info("Maximum budget reached, shutting down")
@@ -541,7 +629,7 @@ def launch_runtime(
             elif "cost" not in result and sampler.budget is not None:
                 raise ValueError(
                     "The evaluation function result should contain "
-                    f"a 'cost' field when used with a budget. Got {result}"
+                    f"a 'cost' field when used with a budget. Got {result}",
                 )
             elif "cost" in result:
                 eval_cost = float(result["cost"])

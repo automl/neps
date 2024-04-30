@@ -112,7 +112,6 @@ exclude = [
   "neps/status/**/*.py",
   "neps/utils/**/*.py",
   "neps/api.py",
-  "neps/runtime.py",
   "neps/__init__.py",
   "tests",
   "neps_examples",
