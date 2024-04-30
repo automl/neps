@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
-from utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml, \
+from .utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml,\
     check_arg_defaults
 
 from .metahyper import instance_from_map, metahyper_run
