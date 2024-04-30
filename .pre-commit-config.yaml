@@ -1,63 +1,54 @@
+default_language_version:
+  python: python3
+files: |
+  (?x)^(
+    neps|
+    tests
+  )/.*\.py$
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.6.0
     hooks:
-      - id: trailing-whitespace
+      - id: check-added-large-files
+        files: ".*"
+      - id: check-case-conflict
+        files: ".*"
       - id: check-merge-conflict
-      - id: end-of-file-fixer
-      - id: debug-statements
+        files: ".*"
       - id: check-yaml
+        files: ".*"
+      - id: end-of-file-fixer
+        files: ".*"
+        types: ["yaml"]
       - id: check-toml
-
-  - repo: https://github.com/psf/black
-    rev: 23.1.0
-    hooks:
-      - id: black
-
-  - repo: https://github.com/MarcoGorelli/absolufy-imports
-    rev: v0.3.1
-    hooks:
-    - id: absolufy-imports
-      args: [--never]
-      exclude: ^(neps_examples/|tests)
-
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
-    hooks:
-      - id: pyupgrade
-        args: [--py38-plus]
-
-  - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.16
-    hooks:
-    - id: mdformat
-      additional_dependencies:
-      - mdformat-gfm
-      - mdformat-tables
-      - mdformat-beautysh
-      - mdformat-black
+        files: ".*"
+        types: ["toml"]
+      - id: debug-statements
+        files: '^src/.*\.py$'
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.1.1
+    rev: v1.10.0
     hooks:
       - id: mypy
         additional_dependencies:
-          - types-termcolor
-          - types-PyYAML
+          - "types-pyyaml"
+        args:
+          - "--no-warn-return-any" # Disable this because it doesn't know about 3rd party imports
+          - "--ignore-missing-imports"
+          - "--show-traceback"
 
-  - repo: https://github.com/terrencepreilly/darglint
-    rev: v1.8.1
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.28.2
     hooks:
-      - id: darglint
-        args: [-z=long,-v=2,--indentation=4]
-        files: (neps/api.py|neps/status.py|neps/optimizers/bayesian_optimization/optimizer.py)
+      - id: check-github-workflows
+        files: '^github/workflows/.*\.ya?ml$'
+        types: ["yaml"]
+      - id: check-dependabot
+        files: '^\.github/dependabot\.ya?ml$'
 
-  - repo: https://github.com/PyCQA/pylint
-    rev: v2.17.0
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.4.2
     hooks:
-      - id: pylint
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix, --no-cache]
+      - id: ruff-format
