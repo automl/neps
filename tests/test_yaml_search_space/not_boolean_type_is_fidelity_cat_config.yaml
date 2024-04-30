@@ -1,0 +1,5 @@
+pipeline_space:
+  cat1:
+    choices: ["a", "b", "c"]
+    is_fidelity: fals
+    default: "c"

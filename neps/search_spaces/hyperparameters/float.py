@@ -36,7 +36,28 @@ class FloatParameter(NumericalParameter):
         self.upper = float(upper)
 
         if self.lower >= self.upper:
-            raise ValueError("Float parameter: bounds error (lower >= upper).")
+            raise ValueError(
+                f"Float parameter: bounds error (lower >= upper). Actual values: "
+                f"lower={self.lower}, upper={self.upper}"
+            )
+
+        if self.default is not None:
+            if not self.lower <= self.default <= self.upper:
+                raise ValueError(
+                    f"Float parameter: default bounds error. Expected lower <= default"
+                    f" <= upper, but got lower={self.lower}, default={self.default},"
+                    f" upper={self.upper}"
+                )
+
+        # Validate 'log' and 'is_fidelity' types to prevent configuration errors
+        # from the YAML input
+        for param, value in {"log": log, "is_fidelity": is_fidelity}.items():
+            if not isinstance(value, bool):
+                raise TypeError(
+                    f"Expected '{param}' to be a boolean, but got type: "
+                    f"{type(value).__name__}"
+                )
+
         self.log = log
 
         if self.log:
@@ -51,7 +72,10 @@ class FloatParameter(NumericalParameter):
             self.lower == other.lower
             and self.upper == other.upper
             and self.log == other.log
+            and self.is_fidelity == other.is_fidelity
             and self.value == other.value
+            and self.default == other.default
+            and self.default_confidence_score == other.default_confidence_score
         )
 
     def __repr__(self):

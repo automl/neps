@@ -113,6 +113,12 @@ def pipeline_space_from_yaml(
         try:
             with open(yaml_file_path) as file:
                 config = yaml.safe_load(file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"Unable to find the specified file for 'pipeline_space' at "
+                f"'{yaml_file_path}'. Please verify the path specified in the "
+                f"'pipeline_space' argument and try again."
+            ) from e
         except yaml.YAMLError as e:
             raise ValueError(
                 f"The file at {str(yaml_file_path)} is not a valid YAML file."
@@ -178,7 +184,7 @@ def pipeline_space_from_yaml(
                     "For categorical parameter: cat, categorical\n"
                     "For constant parameter: const, constant\n"
                 )
-    except (KeyError, TypeError, ValueError) as e:
+    except (KeyError, TypeError, ValueError, FileNotFoundError) as e:
         raise SearchSpaceFromYamlFileError(e) from e
     return pipeline_space
 
