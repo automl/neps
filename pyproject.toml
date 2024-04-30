@@ -3,18 +3,18 @@ name = "neural-pipeline-search"
 version = "v0.11.1"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
-    "Danny Stoll <stolld@cs.uni-freiburg.de>",
-    "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-    "Simon Schrodi",
-    "Eddie Bergman",
-    "Maciej Janowski",
-    "Samir Garibov",
-    "Tarek Abou Chakra",
-    "Carl Hvarfner",
-    "Binxin Ru",
-    "Nils Kober",
-    "Théophane Vallaeys",
-    "Frank Hutter",
+  "Danny Stoll <stolld@cs.uni-freiburg.de>",
+  "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
+  "Simon Schrodi",
+  "Eddie Bergman",
+  "Maciej Janowski",
+  "Samir Garibov",
+  "Tarek Abou Chakra",
+  "Carl Hvarfner",
+  "Binxin Ru",
+  "Nils Kober",
+  "Théophane Vallaeys",
+  "Frank Hutter",
 ]
 readme = "README.md"
 license = "Apache-2.0"
@@ -109,7 +109,6 @@ exclude = [
   "neps/optimizers/**/*.py",
   "neps/plot/**/*.py",
   "neps/search_spaces/**/*.py",
-  "neps/status/**/*.py",
   "neps/utils/**/*.py",
   "neps/api.py",
   "neps/__init__.py",
@@ -211,6 +210,7 @@ ignore = [
   "TCH003",  # Move stdlib import into TYPE_CHECKING
   "B010",    # Do not use `setattr`
   "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
+  "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
   # These tend to be lighweight and confuse pyright
 ]
 
@@ -230,10 +230,21 @@ ignore = [
   "PD901",   #  X is a bad variable name. (pandas)
   "TCH",
   "N803",
-  "C901",  # Too complex
+  "C901",    # Too complex
 ]
 "__init__.py" = ["I002"]
-"neps_examples/*" = ["INP001", "I002", "E741", "D101", "D103", "T20", "D415", "ERA001", "E402", "E501"]
+"neps_examples/*" = [
+  "INP001",
+  "I002",
+  "E741",
+  "D101",
+  "D103",
+  "T20",
+  "D415",
+  "ERA001",
+  "E402",
+  "E501",
+]
 "docs/*" = ["INP001"]
 
 
