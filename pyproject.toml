@@ -111,7 +111,6 @@ exclude = [
   "neps/search_spaces/**/*.py",
   "neps/utils/**/*.py",
   "neps/api.py",
-  "neps/__init__.py",
   "tests",
   "neps_examples",
   ".bzr",

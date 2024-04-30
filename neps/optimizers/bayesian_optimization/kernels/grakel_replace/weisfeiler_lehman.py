@@ -18,6 +18,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from .vertex_histogram import VertexHistogram
 
+warnings.filterwarnings("ignore", message="Importing from numpy.matlib is deprecated ")
 
 class WeisfeilerLehman(Kernel):
     """Compute the Weisfeiler Lehman Kernel.
