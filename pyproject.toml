@@ -107,7 +107,6 @@ src = ["neps"]
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
   "neps/optimizers/**/*.py",
-  "neps/plot/**/*.py",
   "neps/search_spaces/**/*.py",
   "neps/utils/**/*.py",
   "neps/api.py",
@@ -208,8 +207,10 @@ ignore = [
   "PLC1901", # "" can be simplified to be falsey
   "TCH003",  # Move stdlib import into TYPE_CHECKING
   "B010",    # Do not use `setattr`
+  "PD901",   # Use a better name than 'df'
   "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
   "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
+  "PLR2004", # No magic numbers inline
   # These tend to be lighweight and confuse pyright
 ]
 
@@ -225,11 +226,10 @@ ignore = [
   "ANN201",
   "FBT001",
   "D100",
-  "PLR2004",
-  "PD901",   #  X is a bad variable name. (pandas)
+  "PD901",  #  X is a bad variable name. (pandas)
   "TCH",
   "N803",
-  "C901",    # Too complex
+  "C901",   # Too complex
 ]
 "__init__.py" = ["I002"]
 "neps_examples/*" = [

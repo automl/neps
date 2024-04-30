@@ -1,4 +1,4 @@
-""" Plot incumbent from a root directory of a neps.run
+"""Plot incumbent from a root directory of a neps.run.
 
 Usage:
     python -m neps.plot [-h] [--scientific_mode] [--key_to_extract] [--benchmarks]
@@ -29,7 +29,9 @@ Note:
     We have to use the __main__.py construct due to the issues explained in
     https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning
 
-"""
+"""  # noqa: E501
+
+from __future__ import annotations
 
 import argparse
 import logging
@@ -82,7 +84,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--x_range",
-    nargs='+',
+    nargs="+",
     type=float,
     help="Bound x-axis (e.g. 1 10)"
 )

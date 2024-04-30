@@ -1,7 +1,9 @@
+"""Utility functions for reading and processing results."""
+
 from __future__ import annotations
 
-import os
 from collections import OrderedDict
+from pathlib import Path
 
 import numpy as np
 
@@ -9,16 +11,17 @@ import neps
 
 
 def process_seed(
-    path: str | os.PathLike,
+    *,
+    path: str | Path,
     seed: str | int | None,
     key_to_extract: str | None = None,
     consider_continuations: bool = False,
     n_workers: int = 1,
 ) -> tuple[list[float], list[float], float]:
     """Reads and processes data per seed."""
-
+    path = Path(path)
     if seed is not None:
-        path = os.path.join(path, str(seed), "neps_root_directory")
+        path = path / str(seed) / "neps_root_directory"
 
     stats, _ = neps.status(path, print_summary=False)
     sorted_stats = sorted(sorted(stats.items()), key=lambda x: len(x[0]))
