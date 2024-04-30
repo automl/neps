@@ -24,7 +24,7 @@ from .search_spaces.search_space import (
 )
 from .status.status import post_run_csv
 from .utils.common import get_searcher_data, get_value
-from .utils.result_utils import get_loss
+from neps.utils.data_loading import _get_loss
 
 
 def _post_evaluation_hook_function(
@@ -40,7 +40,7 @@ def _post_evaluation_hook_function(
         ignore_errors=_ignore_errors,
     ):
         working_directory = Path(config_working_directory, "../../")
-        loss = get_loss(result, loss_value_on_error, ignore_errors)
+        loss = _get_loss(result, loss_value_on_error, ignore_errors=ignore_errors)
 
         # 1. Write all configs and losses
         all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")

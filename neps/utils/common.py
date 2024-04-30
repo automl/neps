@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import glob
+import inspect
 import os
 import random
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import torch
 import yaml
-
-import inspect
-from functools import partial
 
 from neps.runtime import get_in_progress_trial
 
@@ -22,8 +21,7 @@ def load_checkpoint(
     model: torch.nn.Module | None = None,
     optimizer: torch.optim.Optimizer | None = None,
 ) -> dict | None:
-    """
-    Load a checkpoint and return the model state_dict and checkpoint values.
+    """Load a checkpoint and return the model state_dict and checkpoint values.
 
     Args:
         directory (Path or str, optional): Directory where the checkpoint is located.
@@ -67,7 +65,6 @@ def load_checkpoint(
     if optimizer is not None and "optimizer_state_dict" in checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-    print(f"Loaded checkpoint from '{checkpoint_path}'")
 
     # Return the checkpoint values
     return checkpoint
@@ -80,8 +77,7 @@ def save_checkpoint(
     model: torch.nn.Module | None = None,
     optimizer: torch.optim.Optimizer | None = None,
 ):
-    """
-    Save a checkpoint including model state_dict and optimizer state_dict to a file.
+    """Save a checkpoint including model state_dict and optimizer state_dict to a file.
 
     Args:
         directory (Path or str): Directory where the checkpoint will be saved.
@@ -127,8 +123,7 @@ def save_checkpoint(
 def load_lightning_checkpoint(
     checkpoint_dir: Path | str, previous_pipeline_directory: Path | str | None = None
 ) -> tuple[str | None, dict | None]:
-    """
-    Load the latest checkpoint file from the specified directory.
+    """Load the latest checkpoint file from the specified directory.
 
     This function searches for possible checkpoint files in the `checkpoint_dir` and loads
     the latest one if found. It returns a tuple with the checkpoint path and the loaded
@@ -173,8 +168,7 @@ def load_lightning_checkpoint(
 
 
 def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
-    """
-    Find the initial directory based on its existence and the presence of
+    """Find the initial directory based on its existence and the presence of
     the "previous_config.id" file.
 
     Args:
@@ -214,8 +208,7 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
 
 def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) -> dict:
-    """
-    Returns the data from the YAML file associated with the specified searcher.
+    """Returns the data from the YAML file associated with the specified searcher.
 
     Args:
         searcher (str): The name of the searcher.
@@ -225,7 +218,6 @@ def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) ->
     Returns:
         dict: The content of the YAML file.
     """
-
     if searcher_path:
         user_yaml_path = os.path.join(Path(searcher_path), f"{searcher}.yaml")
 
@@ -270,11 +262,11 @@ def get_value(obj: Any):
 
 
 def has_instance(collection, *types):
-    return any([isinstance(el, typ) for el in collection for typ in types])
+    return any(isinstance(el, typ) for el in collection for typ in types)
 
 
 def filter_instances(collection, *types):
-    return [el for el in collection if any([isinstance(el, typ) for typ in types])]
+    return [el for el in collection if any(isinstance(el, typ) for typ in types)]
 
 
 def get_rnd_state() -> dict:
@@ -324,7 +316,7 @@ class MissingDependencyError(Exception):
 
 
 def is_partial_class(obj):
-    """Check if the object is a (partial) class, or an instance"""
+    """Check if the object is a (partial) class, or an instance."""
     if isinstance(obj, partial):
         obj = obj.func
     return inspect.isclass(obj)
@@ -354,10 +346,9 @@ def instance_from_map(
         ValueError: if the request is invalid (not a string if allow_any is False),
             or invalid key.
     """
-
     # Split arguments of the form (request, kwargs)
     args_dict = kwargs or {}
-    if isinstance(request, tuple) or isinstance(request, list):
+    if isinstance(request, (list, tuple)):
         if len(request) != 2:
             raise ValueError(
                 "When building an instance and specifying arguments, "

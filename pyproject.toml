@@ -108,7 +108,7 @@ src = ["neps"]
 exclude = [
   "neps/optimizers/**/*.py",
   "neps/search_spaces/**/*.py",
-  "neps/utils/**/*.py",
+  "neps/utils/run_args_from_yaml.py",
   "neps/api.py",
   "tests",
   "neps_examples",

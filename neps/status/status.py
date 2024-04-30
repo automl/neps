@@ -10,7 +10,7 @@ import pandas as pd
 
 from neps.runtime import ConfigResult, SharedState, Trial
 from neps.utils._locker import Locker
-from neps.utils.result_utils import get_loss
+from neps.utils.data_loading import _get_loss
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -60,9 +60,9 @@ def get_summary_dict(
     for evaluation in evaluated:
         if evaluation.result == "error":
             summary["num_error"] += 1
-        loss = get_loss(evaluation.result, ignore_errors=True)
+        loss = _get_loss(evaluation.result, ignore_errors=True)
         if isinstance(loss, float) and loss < summary["best_loss"]:
-            summary["best_loss"] = get_loss(evaluation.result)
+            summary["best_loss"] = _get_loss(evaluation.result)
             summary["best_config"] = evaluation.config
             summary["best_config_id"] = evaluation.id
             summary["best_config_metadata"] = evaluation.metadata
