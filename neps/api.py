@@ -359,7 +359,8 @@ def run(
     )
 
     if post_run_summary:
-        post_run_csv(root_directory, logger)
+        assert root_directory is not None
+        post_run_csv(root_directory)
 
 
 def _run_args(
