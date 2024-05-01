@@ -1,12 +1,12 @@
+"""Common utility functions used across the library."""
+
 from __future__ import annotations
 
-import glob
 import inspect
-import os
 import random
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
 import torch
@@ -15,6 +15,9 @@ import yaml
 from neps.runtime import get_in_progress_trial
 
 
+# TODO(eddiebergman): I feel like this function should throw an error if it can't
+# find anything to load, rather than returning None. In this case, we should provide
+# the user an easy way to check if there is some previous checkpoint to load.
 def load_checkpoint(
     directory: Path | str | None = None,
     checkpoint_name: str = "checkpoint",
@@ -24,49 +27,39 @@ def load_checkpoint(
     """Load a checkpoint and return the model state_dict and checkpoint values.
 
     Args:
-        directory (Path or str, optional): Directory where the checkpoint is located.
-        checkpoint_name (str, optional): The name of the checkpoint file. Default
-            is "checkpoint.pth".
-        model (torch.nn.Module, optional): The PyTorch model to load. Default is
-            None.
-        optimizer (torch.optim.Optimizer, optional): The optimizer to load. Default
-            is None.
+        directory: Directory where the checkpoint is located.
+        checkpoint_name: The name of the checkpoint file.
+        model: The PyTorch model to load.
+        optimizer: The optimizer to load.
 
     Returns:
-        Union[dict, None]: A dictionary containing the checkpoint values, or None if
-        the checkpoint file does not exist hence no checkpointing was previously done.
+        A dictionary containing the checkpoint values, or None if the checkpoint file
+        does not exist hence no checkpointing was previously done.
     """
-    # Check if the user did not provide a specific pipeline directory
-    # or if the provided pipeline directory does not exist.
     if directory is None:
-        # If not provided, use the pipeline directory of the current trial.
         trial = get_in_progress_trial()
 
-        # If the pipeline directory remains None, return None.
         if trial is None:
             return None
 
         directory = trial.disk.previous_pipeline_dir
+        if directory is None:
+            return None
 
-    # Otherwise, create a Path object using the provided or current trial.
-    if directory:
-        directory = Path(directory)
+    directory = Path(directory)
+    checkpoint_path = (directory / checkpoint_name).with_suffix(".pth")
 
-    checkpoint_path = f"{directory}/{checkpoint_name}.pth"
-
-    if not os.path.exists(checkpoint_path):
+    if not checkpoint_path.exists():
         return None
 
     checkpoint = torch.load(checkpoint_path)
 
-    # Load the model's state_dict and optimizer's state_dict if provided
     if model is not None and "model_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["model_state_dict"])
+
     if optimizer is not None and "optimizer_state_dict" in checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-
-    # Return the checkpoint values
     return checkpoint
 
 
@@ -76,53 +69,47 @@ def save_checkpoint(
     values_to_save: dict | None = None,
     model: torch.nn.Module | None = None,
     optimizer: torch.optim.Optimizer | None = None,
-):
+) -> None:
     """Save a checkpoint including model state_dict and optimizer state_dict to a file.
 
     Args:
-        directory (Path or str): Directory where the checkpoint will be saved.
-        values_to_save (dict, optional): Additional values to save in the checkpoint.
-            Default is None.
-        model (torch.nn.Module, optional): The PyTorch model to save. Default is
-            None.
-        optimizer (torch.optim.Optimizer, optional): The optimizer to save. Default
-            is None.
-        checkpoint_name (str, optional): The name of the checkpoint file. Default
-            is "checkpoint.pth".
+        directory: Directory where the checkpoint will be saved.
+        values_to_save: Additional values to save in the checkpoint.
+        model: The PyTorch model to save.
+        optimizer: The optimizer to save.
+        checkpoint_name: The name of the checkpoint file.
     """
     if directory is None:
         in_progress_trial = get_in_progress_trial()
 
         if in_progress_trial is None:
             raise ValueError(
-                "No current trial was found to save the checkpoint! This should not happen."
-                " Please report this issue and in the meantime you may provide a directory"
-                " manually."
+                "No current trial was found to save the checkpoint! This should not"
+                " happen. Please report this issue and in the meantime you may provide a"
+                " directory manually."
             )
         directory = in_progress_trial.pipeline_dir
 
     directory = Path(directory)
-    checkpoint_path = f"{directory}/{checkpoint_name}.pth"
+    checkpoint_path = (directory / checkpoint_name).with_suffix(".pth")
 
     saved_dict = {}
 
-    # Add model state_dict and optimizer state_dict if provided
     if model is not None:
         saved_dict["model_state_dict"] = model.state_dict()
     if optimizer is not None:
         saved_dict["optimizer_state_dict"] = optimizer.state_dict()
 
-    # Update saved_dict with additional values if provided
     if values_to_save is not None:
         saved_dict.update(values_to_save)
 
-    # Save the checkpoint to the specified path
     torch.save(saved_dict, checkpoint_path)
 
 
 def load_lightning_checkpoint(
-    checkpoint_dir: Path | str, previous_pipeline_directory: Path | str | None = None
-) -> tuple[str | None, dict | None]:
+    checkpoint_dir: Path | str,
+    previous_pipeline_directory: Path | str | None = None,
+) -> tuple[Path, dict] | tuple[None, None]:
     """Load the latest checkpoint file from the specified directory.
 
     This function searches for possible checkpoint files in the `checkpoint_dir` and loads
@@ -130,41 +117,40 @@ def load_lightning_checkpoint(
     checkpoint data.
 
     Args:
-        previous_pipeline_directory (Union[Path, str, None]): The previous pipeline directory.
-        checkpoint_dir (Union[Path, str]): The directory where checkpoint files are stored.
+        previous_pipeline_directory: The previous pipeline directory.
+        checkpoint_dir: The directory where checkpoint files are stored.
 
     Returns:
-        Tuple[Optional[str], Optional[dict]]: A tuple containing the checkpoint path (str)
-        and the loaded checkpoint data (dict). Returns (None, None) if no checkpoint files
-        are found in the directory.
+        A tuple containing the checkpoint path (str) and the loaded checkpoint data (dict)
+        or (None, None) if no checkpoint files are found in the directory.
     """
     if previous_pipeline_directory is None:
         trial = get_in_progress_trial()
         if trial is not None:
             previous_pipeline_directory = trial.disk.previous_pipeline_dir
 
-    if previous_pipeline_directory:
-        # Search for possible checkpoints to continue training
-        ckpt_files = glob.glob(str(Path(checkpoint_dir) / "*.ckpt"))
+        if previous_pipeline_directory is None:
+            return None, None
 
-        if len(ckpt_files) > 1:
-            raise ValueError(
-                "The number of checkpoint files is more than expected (1) "
-                "which makes if difficult to find the correct file."
-                " Please save other checkpoint files in a different directory."
-            )
+    # Search for possible checkpoints to continue training
+    ckpt_files = list(Path(checkpoint_dir).glob("*.ckpt"))
 
-        if ckpt_files:
-            # Load the checkpoint and retrieve necessary data
-            checkpoint_path = ckpt_files[-1]
-            checkpoint = torch.load(checkpoint_path)
-        else:
-            raise FileNotFoundError(
-                "No checkpoint files were located in the checkpoint directory"
-            )
-        return checkpoint_path, checkpoint
-    else:
-        return None, None
+    if len(ckpt_files) == 0:
+        raise FileNotFoundError(
+            "No checkpoint files were located in the checkpoint directory"
+        )
+
+    if len(ckpt_files) > 1:
+        raise ValueError(
+            "The number of checkpoint files is more than expected (1) "
+            "which makes if difficult to find the correct file."
+            " Please save other checkpoint files in a different directory."
+        )
+
+    assert len(ckpt_files) == 1
+    checkpoint_path = ckpt_files[0]
+    checkpoint = torch.load(checkpoint_path)
+    return checkpoint_path, checkpoint
 
 
 def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
@@ -172,10 +158,10 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     the "previous_config.id" file.
 
     Args:
-        pipeline_directory (Union[Path, str, None]): The current config directory.
+        pipeline_directory: The current config directory.
 
     Returns:
-        Path: The initial directory.
+        The initial directory.
     """
     if pipeline_directory is not None:
         pipeline_directory = Path(pipeline_directory)
@@ -183,95 +169,115 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
         trial = get_in_progress_trial()
         if trial is None:
             raise ValueError(
-                "No current trial was found to get the initial directory! This should not happen."
-                " Please report this issue and in the meantime you may provide a directory"
-                " manually."
+                "No current trial was found to get the initial directory! This should not"
+                " happen. Please report this issue and in the meantime you may provide"
+                " a directory manually."
             )
         pipeline_directory = trial.pipeline_dir
 
+    # TODO(eddiebergman): Can we just make this a method of the Trial class somehow?
+    # This relies on the fact it's always called "previous_config.id" which could subtly
+    # break, if it were to be updated.
+
     # Recursively find the initial directory
+    current_pipeline_directory = pipeline_directory
     while True:
-        # Get the id of the previous directory
-        previous_pipeline_directory_id = pipeline_directory / "previous_config.id"
-
-        # Get the directory where all configs are saved
-        optim_result_dir = pipeline_directory.parent
-
-        if previous_pipeline_directory_id.exists():
-            # Get and join to the previous path according to the id
-            with open(previous_pipeline_directory_id) as config_id_file:
-                config_id = config_id_file.read()
-                pipeline_directory = optim_result_dir / f"config_{config_id}"
-        else:
+        previous_pipeline_directory_id = current_pipeline_directory / "previous_config.id"
+        if not previous_pipeline_directory_id.exists():
             # Initial directory found
             return pipeline_directory
+
+        optim_result_dir = pipeline_directory.parent
+        with previous_pipeline_directory_id.open("r") as config_id_file:
+            config_id = config_id_file.read()
+
+        current_pipeline_directory = optim_result_dir / f"config_{config_id}"
 
 
 def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) -> dict:
     """Returns the data from the YAML file associated with the specified searcher.
 
     Args:
-        searcher (str): The name of the searcher.
-        searcher_path (Path | None, optional): The path to the directory where
-            the searcher defined YAML file is located. Defaults to None.
+        searcher: The name of the searcher.
+        searcher_path: The path to the directory where the searcher defined YAML file
+            is located.
 
     Returns:
-        dict: The content of the YAML file.
+        The content of the YAML file.
     """
-    if searcher_path:
-        user_yaml_path = os.path.join(Path(searcher_path), f"{searcher}.yaml")
+    if searcher_path is not None:
+        user_yaml_path = Path(searcher_path, searcher).with_suffix(".yaml")
 
-        if not os.path.exists(user_yaml_path):
+        if not user_yaml_path.exists():
             raise FileNotFoundError(
-                f"File '{searcher}.yaml' does not exist in {os.getcwd()}."
+                "Failed to get info for searcher from user-defined YAML file. "
+                f"File '{searcher}.yaml' does not exist at '{user_yaml_path}'"
             )
 
-        with open(user_yaml_path) as file:
+        with user_yaml_path.open("r") as file:
             data = yaml.safe_load(file)
 
     else:
-        folder_path = "optimizers/default_searchers"
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        parent_directory = os.path.join(script_directory, os.pardir)
-        resource_path = os.path.join(parent_directory, folder_path, f"{searcher}.yaml")
+        # TODO(eddiebergman): This is a bad idea as it relies on folder structure to be
+        # correct, we should either have a dedicated resource folder or at least have
+        # this defined as a constant somewhere, incase we access elsewhere.
+        # Seems like we could just include this as a method on `SearcherConfigs` class.
+        # TODO(eddiebergman): Need to make sure that these yaml files are actually
+        # included in a source dist when published to PyPI.
+
+        # This is pointing to yaml file directory elsewhere in the source code.
+        resource_path = (
+            Path(__file__).parent.parent.absolute()
+            / "optimizers"
+            / "default_searchers"
+            / searcher
+        ).with_suffix(".yaml")
 
         from neps.optimizers.info import SearcherConfigs
 
         searchers = SearcherConfigs.get_searchers()
 
-        if not os.path.exists(resource_path):
+        if not resource_path.exists():
             raise FileNotFoundError(
                 f"Searcher '{searcher}' not in:\n{', '.join(searchers)}"
             )
 
-        with open(resource_path) as file:
+        with resource_path.open() as file:
             data = yaml.safe_load(file)
 
     return data
 
 
-def get_value(obj: Any):
-    if isinstance(obj, (str, int, float, bool, type(None))):
+# TODO(eddiebergman): This seems like a bad function name, I guess this is used for a
+# string somewhere.
+def get_value(obj: Any) -> Any:
+    """Honestly, don't know why you would use this. Please try not to."""
+    if obj is None:
+        return None
+    if isinstance(obj, (str, int, float, bool)):
         return obj
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         return {key: get_value(value) for key, value in obj.items()}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [get_value(item) for item in obj]
-    else:
-        return obj.__name__
+
+    return obj.__name__
 
 
-def has_instance(collection, *types):
-    return any(isinstance(el, typ) for el in collection for typ in types)
+def has_instance(itr: Iterable[Any], *types: type) -> bool:
+    """Check if any instance in the collection is of the given types."""
+    return any(isinstance(el, types) for el in itr)
 
 
-def filter_instances(collection, *types):
-    return [el for el in collection if any(isinstance(el, typ) for typ in types)]
+def filter_instances(itr: Iterable[Any], *types: type) -> list[Any]:
+    """Filter instances of a collection by the given types."""
+    return [el for el in itr if isinstance(el, types)]
 
 
 def get_rnd_state() -> dict:
-    np_state = list(np.random.get_state())
-    np_state[1] = np_state[1].tolist()
+    """Current state of the global random number generators in a devoctorized format."""
+    np_state = list(np.random.get_state())  # noqa: NPY002
+    np_state[1] = np_state[1].tolist()  # type: ignore
     state = {
         "random_state": random.getstate(),
         "np_seed_state": np_state,
@@ -284,15 +290,15 @@ def get_rnd_state() -> dict:
     return state
 
 
-def set_rnd_state(state: dict):
-    # rnd_s1, rnd_s2, rnd_s3 = state["random_state"]
+def set_rnd_state(state: dict) -> None:
+    """Set the global random number generators to the given state."""
     random.setstate(
         tuple(
             tuple(rnd_s) if isinstance(rnd_s, list) else rnd_s
             for rnd_s in state["random_state"]
         )
     )
-    np.random.set_state(tuple(state["np_seed_state"]))
+    np.random.set_state(tuple(state["np_seed_state"]))  # noqa: NPY002
     torch.random.set_rng_state(torch.ByteTensor(state["torch_seed_state"]))
     if torch.cuda.is_available() and "torch_cuda_seed_state" in state:
         torch.cuda.set_rng_state_all(
@@ -300,8 +306,11 @@ def set_rnd_state(state: dict):
         )
 
 
-class MissingDependencyError(Exception):
+class MissingDependencyError(ImportError):
+    """Raise when a dependency is missing for an optional feature."""
+
     def __init__(self, dep: str, cause: Exception, *args: Any):
+        """Initialize the error with the missing dependency and the original error."""
         super().__init__(dep, cause, *args)
         self.dep = dep
         self.__cause__ = cause  # This is what `raise a from b` does
@@ -315,17 +324,18 @@ class MissingDependencyError(Exception):
         )
 
 
-def is_partial_class(obj):
+def is_partial_class(obj: Any) -> bool:
     """Check if the object is a (partial) class, or an instance."""
     if isinstance(obj, partial):
         obj = obj.func
     return inspect.isclass(obj)
 
 
-def instance_from_map(
+def instance_from_map(  # noqa: C901, PLR0912
     mapping: dict[str, Any],
     request: str | list | tuple | Any,
     name: str = "mapping",
+    *,
     allow_any: bool = True,
     as_class: bool = False,
     kwargs: dict | None = None,
@@ -348,23 +358,25 @@ def instance_from_map(
     """
     # Split arguments of the form (request, kwargs)
     args_dict = kwargs or {}
-    if isinstance(request, (list, tuple)):
+    if isinstance(request, Sequence) and not isinstance(request, str):
         if len(request) != 2:
             raise ValueError(
                 "When building an instance and specifying arguments, "
                 "you should give a pair (class, arguments)"
             )
         request, req_args_dict = request
-        if not isinstance(req_args_dict, dict):
+
+        if not isinstance(req_args_dict, Mapping):
             raise ValueError("The arguments should be given as a dictionary")
+
         args_dict = {**args_dict, **req_args_dict}
 
     # Then, get the class/instance from the request
     if isinstance(request, str):
-        if request in mapping:
-            instance = mapping[request]
-        else:
+        if request not in mapping:
             raise ValueError(f"{request} doesn't exists for {name}")
+
+        instance = mapping[request]
     elif allow_any:
         instance = request
     else:
@@ -381,14 +393,15 @@ def instance_from_map(
 
     # Give the arguments to the class
     if args_dict:
-        instance = partial(instance, **args_dict)
+        instance = partial(instance, **args_dict)  # type: ignore
 
-    # Return the class / instance
     if as_class:
         return instance
+
     if is_partial_class(instance):
         try:
-            instance = instance()
+            instance = instance()  # type: ignore
         except TypeError as e:
             raise TypeError(f"{e} when calling {instance} with {args_dict}") from e
+
     return instance
