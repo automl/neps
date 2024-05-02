@@ -12,7 +12,7 @@ We will show some basic usages and some functionalites this function would requi
 
 ### 1. Single Value
 
-Assuming the `pipeline_space=` was already created (have a look at [pipeline space](https://automl.github.io/neps/latest/pipeline_space/) for more details).
+Assuming the `pipeline_space=` was already created (have a look at [pipeline space](./pipeline_space.md) for more details).
 A `run_pipeline=` function with an objective of minimizing the loss will resemble the following:
 
 ```python

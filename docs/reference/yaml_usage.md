@@ -61,6 +61,5 @@ Configure the searcher to either utilize a built-in searcher or integrate a cust
         ```
 
 
-For detailed examples and specific use case configurations,
-visit [here](https://github.com/automl/neps/tree/master/neps_examples/basic_usage/yaml_usage)
+For detailed examples and specific use case configurations, visit [here](../examples/yaml_usage/index.md)
 

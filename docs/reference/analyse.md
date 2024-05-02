@@ -123,7 +123,7 @@ tblogger.image_logging(
 
 For illustration purposes, we have employed a straightforward example involving the tuning of hyperparameters for a model utilized in the classification of the MNIST dataset provided by [torchvision](https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html).
 
-You can find this example [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py)
+You can find this example [here](../examples/convenience/neps_tblogger_tutorial.md)
 
 !!! info "Important"
 

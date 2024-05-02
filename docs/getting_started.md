@@ -15,11 +15,11 @@ pip install neural-pipeline-search
 for evaluating different configurations. You'll implement the specific logic for your problem within this function.
 For detailed instructions on initializing and effectively using `run_pipeline=`, refer to the guide.
 
-2. **Establish a [`pipeline_space=`](https://automl.github.io/neps/latest/pipeline_space)**: Your search space for
+2. **Establish a [`pipeline_space=`](./reference/pipeline_space.md)**: Your search space for
 defining parameters. You can structure this in various formats, including dictionaries, YAML, or ConfigSpace.
 The guide offers insights into defining and configuring your search space.
 
-3. **Execute with [`neps.run=`](https://automl.github.io/neps/latest/neps_run)**: Optimize your `run_pipeline=` over
+3. **Execute with [`neps.run=`](./reference/neps_run.md)**: Optimize your `run_pipeline=` over
 the `pipeline_space=` using this function. For a thorough overview of the arguments and their explanations,
 check out the detailed documentation.
 
