@@ -37,6 +37,7 @@ extra:
     provider: mike
 
 nav:
+  - Home: 'index.md'
   - Installation: 'installation.md'
   - Getting Started: 'getting_started.md'
   - The run_pipeline Function: 'run_pipeline.md'
@@ -47,11 +48,5 @@ nav:
   - Parallelization: 'parallelization.md'
   - Citations: 'citations.md'
   - Alternatives: 'alternatives.md'
-  - Contributing:
-      - Introduction: "contributing/README.md"
-      - Installation for Contributors: "contributing/installation.md"
-      - Checks and Tests: "contributing/tests.md"
-      - Managing Dependencies: "contributing/dependencies.md"
-      - Releasing a New Version: "contributing/releasing.md"
-      - Documentation: "contributing/documentation.md"
-      - Roadmap: "contributing/roadmap.md"
+  - Contributing: 'contributing.md'
+  - Roadmap: "roadmap.md"
