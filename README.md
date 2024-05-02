@@ -36,14 +36,21 @@ In addition to the common features offered by traditional HPO and NAS libraries,
 ## Getting Started
 
 ### 1. Installation
+NePS requires Python 3.8 or higher. You can install it via pip or from source.
 
 Using pip:
-
 ```bash
 pip install neural-pipeline-search
 ```
 
 > Note: As indicated with the `v0.x.x` version number, NePS is early stage code and APIs might change in the future.
+
+You can install from source by cloning the repository and running:
+```bash
+git clone git@github.com:automl/neps.git
+cd neps
+poetry install
+```
 
 ### 2. Basic Usage
 
@@ -111,7 +118,7 @@ if __name__ == "__main__":
 ## Examples
 
 Discover how NePS works through these practical examples:
-* **[Pipeline Space via YAML](neps_examples/basic_usage/defining_search_space)**: Explore how to define the `pipeline_space` using a
+* **[Pipeline Space via YAML](neps_examples/basic_usage/hpo_usage_example.py)**: Explore how to define the `pipeline_space` using a
   YAML file instead of a dictionary.
 
 * **[Hyperparameter Optimization (HPO)](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.

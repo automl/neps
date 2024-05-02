@@ -1,9 +1,9 @@
 """
-NOTE!!! This code is not meant to be executed. 
+NOTE!!! This code is not meant to be executed.
 It is only to serve as a template to help interface NePS with an existing ML/DL pipeline.
 
-The following script is designed as a template for using NePS. 
-It describes the crucial components that a user needs to provide in order to interface 
+The following script is designed as a template for using NePS.
+It describes the crucial components that a user needs to provide in order to interface
 a NePS optimizer.
 
 The 2 crucial components are:
@@ -37,7 +37,7 @@ def pipeline_space() -> dict:
     # Example:
     space = dict(
         lr=neps.FloatParameter(
-            lower=1e-5, 
+            lower=1e-5,
             upper=1e-2,
             log=True,      # If True, the search space is sampled in log space
             default=1e-3,  # a non-None value here acts as the mode of the prior distribution
@@ -67,11 +67,11 @@ def run_pipeline(**config) -> dict | float:
 
 if __name__ == "__main__":
     # 1. Creating the logger
-    
+
 
     # 2. Passing the correct arguments to the neps.run function
     # For more information on the searcher, please take a look at this link:
-    # https://github.com/automl/neps/tree/master/src/neps/optimizers/README.md
+    # https://github.com/automl/neps/tree/master/neps/optimizers/README.md
 
     neps.run(
         run_pipeline=run_pipeline,        # User TODO (defined above)

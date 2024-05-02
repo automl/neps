@@ -31,7 +31,7 @@ neps.run(.., pipeline_space=pipeline_space)
 
 ### Option 2: Using a YAML File
 
-Create a YAML file (e.g., pipeline_space.yaml) with the parameter definitions following this structure.
+Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definitions following this structure.
 
 ```yaml
 pipeline_space: # important to start with
@@ -62,7 +62,8 @@ neps.run(.., pipeline_space="path/to/pipeline_space.yaml")
 Ensure your YAML file starts with `pipeline_space:`.
 This is the root key under which all parameter configurations are defined.
 
-!!! note "Note"
+!!! note
+
     The various types of parameters displayed in the Dictionary of Option 1 are here automatically determined by the
     data. If desired, you have the option to define them manually by providing the argument `type`. For more details,
     refer to the section on [Supported Hyperparameter Types](#supported-hyperparameter-types).
