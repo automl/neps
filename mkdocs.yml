@@ -8,7 +8,19 @@ theme:
   name: material
   icon:
     repo: fontawesome/brands/github
-
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.footer
+    - navigation.sections
+    - toc.follow
+    - toc.integrate
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - header.autohide
+    - search.suggest
+    - search.highlight
+    - search.share
   palette:
     # Palette toggle for light mode
     - scheme: default
@@ -21,32 +33,114 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
 
+# We do have some extra custom css
+# If for whatever reason you think this is breaking something,
+# please feel free to remove it.
+extra_css:
+  - stylesheets/custom.css
+
 markdown_extensions:
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.superfences
-  - attr_list
   - admonition
+  - tables
   - attr_list
   - md_in_html
+  - toc:
+      permalink: "#"
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.magiclink:
+      hide_protocol: true
+      repo_url_shortener: true
+      repo_url_shorthand: true
+      user: automl
+      repo: neps
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+      - name: mermaid
+        class: mermaid
+        format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 extra:
   version:
     provider: mike
 
+plugins:
+  - search
+  - autorefs
+  - gen-files:
+      scripts:
+        - docs/_code/api_generator.py
+        - docs/_code/example_generator.py
+  - literate-nav
+  - mkdocstrings:
+      default_handler: python
+      enable_inventory: true
+      handlers:
+        python:
+          paths: [neps]
+          # Extra objects which allow for linking to external docs
+          import:
+            - 'https://docs.python.org/3/objects.inv'
+            - 'https://numpy.org/doc/stable/objects.inv'
+            - 'https://pandas.pydata.org/docs/objects.inv'
+            - 'https://pytorch.org/docs/stable/objects.inv'
+          # Please do not try to change these without having
+          # looked at all of the documentation and seeing if it
+          # causes the API docs to look weird anywhere.
+          options:  # https://mkdocstrings.github.io/python/usage/
+            docstring_section_style: spacy
+            docstring_options:
+              ignore_init_summary: true
+              trim_doctest_flags: true
+              returns_multiple_items: false
+            show_docstring_attributes: true
+            show_docstring_description: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_object_full_path: false
+            show_root_members_full_path: false
+            signature_crossrefs: true
+            merge_init_into_class: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_style: google
+            inherited_members: true
+            line_length: 60
+            show_if_no_docstring: false
+            show_bases: true
+            show_source: true
+            members_order: "alphabetical"
+            group_by_category: true
+            show_signature: true
+            separate_signature: true
+            show_signature_annotations: true
+            filters:
+              - "!^_[^_]"
+
+
+
 nav:
   - Home: 'index.md'
-  - Installation: 'installation.md'
   - Getting Started: 'getting_started.md'
-  - The run_pipeline Function: 'run_pipeline.md'
-  - The pipeline_space: 'pipeline_space.md'
-  - The neps.run Function: 'neps_run.md'
-  - Optimizers: 'optimizers.md'
-  - Analysing Runs: 'analyse.md'
-  - Parallelization: 'parallelization.md'
-  - Citations: 'citations.md'
-  - Alternatives: 'alternatives.md'
-  - Contributing: 'contributing.md'
-  - Roadmap: "roadmap.md"
+  - Reference:
+    - Run: 'reference/neps_run.md'
+    - Search Space: 'reference/pipeline_space.md'
+    - Optimizers: 'reference/optimizers.md'
+    - YAML Usage: 'reference/yaml_usage.md'
+    - The Run Function: 'reference/run_pipeline.md'
+    - Analysing Runs: 'reference/analyse.md'
+  - Examples: "examples/"  # auto-generated
+  - API: 'api/' # auto-generated
+  - Contributing:
+    - Dev Guide: 'dev_docs/contributing.md'
+    - Roadmap: "dev_docs/roadmap.md"
+  - Cite: 'citations.md'

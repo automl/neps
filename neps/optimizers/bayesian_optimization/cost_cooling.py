@@ -4,18 +4,18 @@ from typing import Any
 
 from neps.types import ConfigResult
 from neps.utils.common import instance_from_map
-from ...optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
+from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     CostCooler,
 )
-from ...search_spaces.search_space import SearchSpace
-from .acquisition_functions import AcquisitionMapping
-from .acquisition_functions.base_acquisition import BaseAcquisition
-from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
-from .acquisition_samplers import AcquisitionSamplerMapping
-from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from .kernels.get_kernels import get_kernels
-from .models import SurrogateModelMapping
-from .optimizer import BayesianOptimization
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
+from neps.optimizers.bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import AcquisitionSampler
+from neps.optimizers.bayesian_optimization.kernels import get_kernels
+from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
+from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
 
 class CostCooling(BayesianOptimization):

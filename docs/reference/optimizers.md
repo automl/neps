@@ -1,4 +1,4 @@
-## Optimizer Configuration Options
+# Optimizer Configuration
 
 Before running the optimizer for your AutoML tasks, you have several configuration options to tailor the optimization
 process to your specific needs. These options allow you to customize the optimizer's behavior according to your

@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from typing_extensions import Literal
 
-from .float import FloatParameter
+from neps.search_spaces.hyperparameters.float import FloatParameter
 
 
 class IntegerParameter(FloatParameter):

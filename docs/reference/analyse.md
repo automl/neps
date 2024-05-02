@@ -3,7 +3,6 @@
 NePS has some convenient utilities to help you to understand the results of your run.
 
 ## Saved to disk
-
 In the root directory, NePS maintains several files at all times that are human readable and can be useful
 
 ```
@@ -17,9 +16,10 @@ ROOT_DIRECTORY
 ├── best_loss_trajectory.txt
 └── best_loss_with_config_trajectory.txt
 ```
-## Summary CSV
 
-The argument `post_run_summary` in `neps.run` allows for the automatic generation of CSV files after a run is complete. The new root directory after utilizing this argument will look like the following:
+## Summary CSV
+The argument `post_run_summary` in `neps.run` allows for the automatic generation of CSV files after a run is complete.
+The new root directory after utilizing this argument will look like the following:
 
 ```
 ROOT_DIRECTORY
@@ -36,7 +36,8 @@ ROOT_DIRECTORY
 └── best_loss_with_config_trajectory.txt
 ```
 
-- *`config_data.csv`*: Contains all configuration details in CSV format, ordered by ascending `loss`. Details include configuration hyperparameters, any returned result from the `run_pipeline` function, and metadata information.
+- *`config_data.csv`*: Contains all configuration details in CSV format, ordered by ascending `loss`.
+Details include configuration hyperparameters, any returned result from the `run_pipeline` function, and metadata information.
 
 - *`run_status.csv`*: Provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
 
@@ -44,13 +45,14 @@ ROOT_DIRECTORY
 
 ### Introduction
 
-[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments, offering the ability to observe losses and metrics throughout the model training process. In NePS, we use this powerful tool to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
+[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments, offering the ability to observe losses and metrics throughout the model training process.
+In NePS, we use this powerful tool to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
 
 ### The Logging Function
 
 The `tblogger.log` function is invoked within the model's training loop to facilitate logging of key metrics.
 
-!!! tip 
+!!! tip
 
     The logger function is primarily designed for implementation within the `run_pipeline` function during the training of the neural network.
 
@@ -76,7 +78,7 @@ tblogger.log(
 
 ### Extra Custom Logging
 
-NePS provides dedicated functions for customized logging using the `extra_data` argument. 
+NePS provides dedicated functions for customized logging using the `extra_data` argument.
 
 !!! note "Custom Logging Instructions"
 
@@ -124,6 +126,7 @@ For illustration purposes, we have employed a straightforward example involving 
 You can find this example [here](https://github.com/automl/neps/blob/master/neps_examples/convenience/neps_tblogger_tutorial.py)
 
 !!! info "Important"
+
     We have optimized the example for computational efficiency. If you wish to replicate the exact results showcased in the following section, we recommend the following modifications:
 
     1- Increase maximum epochs from 2 to 10
@@ -131,7 +134,7 @@ You can find this example [here](https://github.com/automl/neps/blob/master/neps
     2- Set the `write_summary_incumbent` argument to `True`
 
     3- Change the searcher from `random_search` to `bayesian_optimization`
-    
+
     4- Increase the maximum evaluations before disabling `tblogger` from 2 to 14
 
     5- Increase the maximum evaluations after disabling `tblogger` from 3 to 15
@@ -144,27 +147,33 @@ The following command will open a local host for TensorBoard visualizations, all
 tensorboard --logdir path/to/root_directory
 ```
 
-This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided via the `extra_data` argument in the `tblogger.log` function. 
+This image shows visualizations related to scalar values logged during training. Scalars typically include metrics such as loss, incumbent trajectory, a summary of losses for all configurations, and any additional data provided via the `extra_data` argument in the `tblogger.log` function.
 
-![scalar_loggings](doc_images/tensorboard/tblogger_scalar.jpg)
+![scalar_loggings](../doc_images/tensorboard/tblogger_scalar.jpg)
 
-This image represents visualizations related to logged images during training. It could include snapshots of input data, model predictions, or any other image-related information. In our case, we use images to depict instances of incorrect predictions made by the model.
+This image represents visualizations related to logged images during training.
+It could include snapshots of input data, model predictions, or any other image-related information.
+In our case, we use images to depict instances of incorrect predictions made by the model.
 
-![image_loggings](doc_images/tensorboard/tblogger_image.jpg)
+![image_loggings](../doc_images/tensorboard/tblogger_image.jpg)
 
-The following images showcase visualizations related to hyperparameter logging in TensorBoard. These plots include three different views, providing insights into the relationship between different hyperparameters and their impact on the model.
+The following images showcase visualizations related to hyperparameter logging in TensorBoard.
+These plots include three different views, providing insights into the relationship between different hyperparameters and their impact on the model.
 
-In the table view, you can explore hyperparameter configurations across five different trials. The table displays various hyperparameter values alongside corresponding evaluation metrics.
+In the table view, you can explore hyperparameter configurations across five different trials.
+The table displays various hyperparameter values alongside corresponding evaluation metrics.
 
-![hparam_loggings1](doc_images/tensorboard/tblogger_hparam1.jpg)
+![hparam_loggings1](../doc_images/tensorboard/tblogger_hparam1.jpg)
 
-The parallel coordinate plot offers a holistic perspective on hyperparameter configurations. By presenting multiple hyperparameters simultaneously, this view allows you to observe the interactions between variables, providing insights into their combined influence on the model.
+The parallel coordinate plot offers a holistic perspective on hyperparameter configurations.
+By presenting multiple hyperparameters simultaneously, this view allows you to observe the interactions between variables, providing insights into their combined influence on the model.
 
-![hparam_loggings2](doc_images/tensorboard/tblogger_hparam2.jpg)
+![hparam_loggings2](../doc_images/tensorboard/tblogger_hparam2.jpg)
 
-The scatter plot matrix view provides an in-depth analysis of pairwise relationships between different hyperparameters. By visualizing correlations and patterns, this view aids in identifying key interactions that may influence the model's performance.
+The scatter plot matrix view provides an in-depth analysis of pairwise relationships between different hyperparameters.
+By visualizing correlations and patterns, this view aids in identifying key interactions that may influence the model's performance.
 
-![hparam_loggings3](doc_images/tensorboard/tblogger_hparam3.jpg)
+![hparam_loggings3](../doc_images/tensorboard/tblogger_hparam3.jpg)
 
 ## Status
 

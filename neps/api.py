@@ -9,21 +9,21 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
-from .utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml,\
+from neps.utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml,\
     check_arg_defaults
 
 from neps.utils.common import instance_from_map
 from neps.runtime import launch_runtime
-from .optimizers import BaseOptimizer, SearcherMapping
-from .plot.tensorboard_eval import tblogger
-from .search_spaces.parameter import Parameter
-from .search_spaces.search_space import (
+from neps.optimizers import BaseOptimizer, SearcherMapping
+from neps.plot.tensorboard_eval import tblogger
+from neps.search_spaces.parameter import Parameter
+from neps.search_spaces.search_space import (
     SearchSpace,
     pipeline_space_from_configspace,
     pipeline_space_from_yaml,
 )
-from .status.status import post_run_csv
-from .utils.common import get_searcher_data, get_value
+from neps.status.status import post_run_csv
+from neps.utils.common import get_searcher_data, get_value
 from neps.utils.data_loading import _get_loss
 
 

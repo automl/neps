@@ -5,7 +5,6 @@ import numpy as np
 
 import neps
 
-
 def run_pipeline(
     float_name1,
     float_name2,
