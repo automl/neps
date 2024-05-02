@@ -41,7 +41,7 @@ def get_summary_dict(
     pending = [r.load() for r in trial_refs[Trial.State.PENDING]]
     in_progress = [r.load() for r in trial_refs[Trial.State.IN_PROGRESS]]
 
-    summary = {}
+    summary: dict[str, Any] = {}
 
     if add_details:
         summary["previous_results"] = {c.id: c for c in evaluated}

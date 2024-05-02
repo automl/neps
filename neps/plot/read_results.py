@@ -34,9 +34,9 @@ def process_seed(
 
     global_start = stats[min(stats.keys())].metadata["time_sampled"]
 
-    def get_cost(idx):
+    def get_cost(idx: str) -> float:
         if key_to_extract is not None:
-            return stats[idx].result["info_dict"][key_to_extract]
+            return float(stats[idx].result["info_dict"][key_to_extract])
         return 1.0
 
     losses = []

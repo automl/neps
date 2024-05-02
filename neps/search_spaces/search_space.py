@@ -6,7 +6,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from itertools import product
 from pathlib import Path
-from typing import Mapping, Any
+from typing import Mapping, Any, Iterator
 
 import ConfigSpace as CS
 import numpy as np
@@ -22,7 +22,7 @@ from . import (
     NumericalParameter,
 )
 from .architecture.graph import Graph
-from .parameter import Parameter
+from neps.search_spaces.parameter import Parameter
 from .yaml_search_space_utils import (
     SearchSpaceFromYamlFileError,
     deduce_and_validate_param_type,
@@ -191,7 +191,7 @@ def pipeline_space_from_yaml(
 
 class SearchSpace(Mapping[str, Any]):
     def __init__(self, **hyperparameters):
-        self.hyperparameters = OrderedDict()
+        self.hyperparameters: dict[str, Parameter] = {}
 
         self.fidelity = None
         self.has_prior = False
@@ -561,19 +561,24 @@ class SearchSpace(Mapping[str, Any]):
                     hp.lower = new_hp_value
                     hp.upper = new_hp_value
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Parameter:
         return self.hyperparameters[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self.hyperparameters)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.hyperparameters)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return pprint.pformat(self.hyperparameters)
 
-    def is_equal_value(self, other, include_fidelity=True, on_decimal=8):
+    def is_equal_value(
+        self,
+        other: SearchSpace,
+        include_fidelity: bool = True,
+        on_decimal: int = 8,
+    ) -> bool:
         # This does NOT check that the entire SearchSpace is equal (and thus it is
         # not a dunder method), but only checks the configuration
         if self.hyperparameters.keys() != other.hyperparameters.keys():

@@ -32,7 +32,7 @@ class BaseOptimizer:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.used_budget = 0
+        self.used_budget: float = 0.0
         self.budget = budget
         self.pipeline_space = pipeline_space
         self.patience = patience

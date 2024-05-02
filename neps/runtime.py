@@ -65,11 +65,11 @@ if TYPE_CHECKING:
     from .optimizers.base_optimizer import BaseOptimizer
 
 # Wait time between each successive poll to see if state can be grabbed
-DEFAULT_STATE_POLL = 1
+DEFAULT_STATE_POLL: float = 1.0
 ENVIRON_STATE_POLL_KEY = "NEPS_STATE_POLL"
 
 # Timeout before giving up on trying to grab the state, raising an error
-DEFAULT_STATE_TIMEOUT = None
+DEFAULT_STATE_TIMEOUT: float | None = None
 ENVIRON_STATE_TIMEOUT_KEY = "NEPS_STATE_TIMEOUT"
 
 
@@ -119,7 +119,7 @@ class Trial:
 
     disk: Trial.Disk = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.prev_config_id is not None:
             self.metadata["previous_config_id"] = self.prev_config_id
         self.disk = Trial.Disk(pipeline_dir=self.pipeline_dir)
@@ -158,7 +158,7 @@ class Trial:
         CORRUPTED = "corrupted"
         """The trial is not in one of the previous states and should be removed."""
 
-        def __str__(self):
+        def __str__(self) -> str:
             return self.value
 
     @dataclass
@@ -189,7 +189,7 @@ class Trial:
         previous_pipeline_dir: Path | None = field(init=False)
         lock: Locker = field(init=False)
 
-        def __post_init__(self):
+        def __post_init__(self) -> None:
             self.id = self.pipeline_dir.name[len("config_") :]
             self.config_file = self.pipeline_dir / "config.yaml"
             self.result_file = self.pipeline_dir / "result.yaml"
@@ -278,12 +278,11 @@ class Trial:
             config = deserialize(self.config_file)
             result = deserialize(self.result_file)
             metadata = deserialize(self.metadata_file)
-            if config_transform is not None:
-                config = config_transform(config)
+            _config = config_transform(config) if config_transform is not None else config
 
             return ConfigResult(
                 id=self.id,
-                config=config,
+                config=_config,
                 result=result,
                 metadata=metadata,
             )
@@ -371,7 +370,7 @@ def _evaluate_config(
     trial: Trial,
     evaluation_fn: Callable[..., float | Mapping[str, Any]],
     logger: logging.Logger,
-) -> tuple[ERROR | dict, float]:
+) -> tuple[ERROR | dict[str, Any], float]:
     config = trial.config
     config_id = trial.id
     pipeline_directory = trial.disk.pipeline_dir
@@ -383,7 +382,7 @@ def _evaluate_config(
 
     # If pipeline_directory and previous_pipeline_directory are included in the
     # signature we supply their values, otherwise we simply do nothing.
-    directory_params = []
+    directory_params: list[Path | None] = []
 
     evaluation_fn_params = inspect.signature(evaluation_fn).parameters
     if "pipeline_directory" in evaluation_fn_params:
@@ -392,29 +391,29 @@ def _evaluate_config(
         directory_params.append(previous_pipeline_directory)
 
     try:
-        result = evaluation_fn(*directory_params, **config)
+        eval_result = evaluation_fn(*directory_params, **config)
     except Exception as e:
         logger.error(f"An error occured evaluating config '{config_id}': {config}.")
         logger.exception(e)
-        result = "error"
-    else:
-        # Ensure the results have correct format that can be exploited by other functions
-        if isinstance(result, Mapping):
-            result = dict(result)
-            if "loss" not in result:
-                raise KeyError("The 'loss' should be provided in the evaluation result")
-            loss = result["loss"]
-        else:
-            loss = result
-            result = {}
+        return "error", time.time()
 
-        try:
-            result["loss"] = float(loss)
-        except (TypeError, ValueError) as e:
-            raise ValueError(
-                "The evaluation result should be a dictionnary or a float but got"
-                f" a `{type(loss)}` with value of {loss}",
-            ) from e
+    # Ensure the results have correct format that can be exploited by other functions
+    result: dict[str, Any] = {}
+    if isinstance(eval_result, Mapping):
+        result = dict(eval_result)
+        if "loss" not in result:
+            raise KeyError("The 'loss' should be provided in the evaluation result")
+        loss = result["loss"]
+    else:
+        loss = eval_result
+
+    try:
+        result["loss"] = float(loss)
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            "The evaluation result should be a dictionnary or a float but got"
+            f" a `{type(loss)}` with value of {loss}",
+        ) from e
 
     time_end = time.time()
     return result, time_end
@@ -522,10 +521,9 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
 
     _poll = float(os.environ.get(ENVIRON_STATE_POLL_KEY, DEFAULT_STATE_POLL))
     _timeout = os.environ.get(ENVIRON_STATE_TIMEOUT_KEY, DEFAULT_STATE_TIMEOUT)
-    if _timeout is not None:
-        _timeout = float(_timeout)
+    timeout = float(_timeout) if _timeout is not None else None
 
-    with shared_state.lock(poll=_poll, timeout=_timeout):
+    with shared_state.lock(poll=_poll, timeout=timeout):
         if not shared_state.optimizer_info_file.exists():
             serialize(optimizer_info, shared_state.optimizer_info_file, sort_keys=False)
         else:
@@ -540,7 +538,7 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
             logger.info("Maximum evaluations per run is reached, shutting down")
             break
 
-        with shared_state.lock(poll=_poll, timeout=_timeout):
+        with shared_state.lock(poll=_poll, timeout=timeout):
             refs = shared_state.trial_refs()
 
             _try_remove_corrupted_configs(refs[Trial.State.CORRUPTED], logger)
@@ -644,7 +642,7 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
             trial.results = result
             trial.metadata.update(meta)
 
-            with shared_state.lock(poll=_poll, timeout=_timeout):
+            with shared_state.lock(poll=_poll, timeout=timeout):
                 trial.write_to_disk()
                 if account_for_cost:
                     assert eval_cost is not None

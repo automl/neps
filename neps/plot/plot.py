@@ -110,7 +110,7 @@ def plot(  # noqa: C901, PLR0913
                 costs.append(cost)
                 max_costs.append(max_cost)
 
-            is_last_row = lambda idx: idx >= (nrows - 1) * ncols
+            is_last_row = benchmark_idx >= (nrows - 1) * ncols
             is_first_column = benchmark_idx % ncols == 0
             xlabel = "Evaluations" if key_to_extract is None else key_to_extract.upper()
             _plot_incumbent(

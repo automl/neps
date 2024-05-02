@@ -249,7 +249,6 @@ class BestLossesDict(TypedDict):
     best_loss_std_err: float
     best_loss_min: float
     best_loss_max: float
-    best_loss_max: float
     best_loss_median: float
     best_loss_quantile_25: float
     best_loss_quantile_75: float
@@ -322,7 +321,7 @@ def summarize_results(
     if len(best_losses) == 0:
         raise ValueError(f"No results found in directort {working_dir}.")
 
-    best_losses = BestLossesDict(
+    best_losses_dict = BestLossesDict(
         best_loss_mean=float(np.mean(best_losses)),
         best_loss_std=float(np.std(best_losses)),
         best_loss_std_err=float(np.std(best_losses) / np.sqrt(np.size(best_losses))),
@@ -339,12 +338,12 @@ def summarize_results(
         file_path = working_dir / ("summary_task_" + task_id_str + "_dev_" + dev_id_str)
 
         with file_path.with_suffix(".yaml").open("w") as f:
-            yaml.dump(best_losses, f, default_flow_style=False)
+            yaml.dump(best_losses_dict, f, default_flow_style=False)
 
         with file_path.with_suffix(".json").open("w") as f:
-            json.dump(best_losses, f)
+            json.dump(best_losses_dict, f)
 
-    return best_losses
+    return best_losses_dict
 
 
 def summarize_results_all_tasks_all_devs(
@@ -352,7 +351,7 @@ def summarize_results_all_tasks_all_devs(
     sub_dir: str = "",
     file_name: str = "summary",
     user_prior_dir: str | Path | None = None,
-):
+) -> Any:
     """Summarizes the results of all tasks and all development stages.
 
     This includes runs overrmultiple seeds. The results are saved in

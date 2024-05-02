@@ -1,4 +1,5 @@
 """Primitive types to be used in NePS or consumers of NePS."""
+
 from __future__ import annotations
 
 import logging
@@ -55,7 +56,7 @@ class ConfigResult:
 class AttrDict(dict):
     """Dictionary that allows access to keys as attributes."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         """Initialize like a dict."""
         super().__init__(*args, **kwargs)
         self.__dict__ = self

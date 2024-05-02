@@ -45,7 +45,7 @@ def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
 def deserialize(path: Path | str) -> dict[str, Any]:
     """Deserialize data from a yaml file."""
     with Path(path).open("r") as file_stream:
-        return yaml.full_load(file_stream)
+        return yaml.full_load(file_stream)  # type: ignore
 
 
 def empty_file(file_path: Path) -> bool:

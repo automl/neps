@@ -265,20 +265,35 @@ markers = [
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
-files = ["neps"]
-namespace_packages = true
-follow_imports = "skip"
-ignore_missing_imports = true
+python_version = "3.8"  # Match minimum supported version
+packages = ["neps"]
 show_error_codes = true
-incremental = false
+
+namespace_packages = true
 explicit_package_bases = true
 
+follow_imports = "normal"
+
+ignore_missing_imports = true
+
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+
+disallow_untyped_defs = true       # All functions must have types
+disallow_untyped_decorators = true # ... even decorators
+disallow_incomplete_defs = true    # ...all types
+
+no_implicit_optional = true
+check_untyped_defs = true
+
+# TODO(eddiebergman): Improve coverage on these modules
 [[tool.mypy.overrides]]
 module = [
-  "neps.optimizers.bayesian_optimization.models.*",
-  "neps.optimizers.bayesian_optimization.kernels.*",
-  "neps.optimizers.bayesian_optimization.acquisition_functions.*",
-  "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
-  "neps.search_spaces.architecture.*",
+  "neps.api",
+  "neps.optimizers.*",
+  "neps.search_spaces.*",
+  "neps.utils.run_args_from_yaml",
 ]
 ignore_errors = true

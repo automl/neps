@@ -60,7 +60,7 @@ def load_checkpoint(
     if optimizer is not None and "optimizer_state_dict" in checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
-    return checkpoint
+    return checkpoint  # type: ignore
 
 
 def save_checkpoint(
@@ -194,7 +194,10 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
         current_pipeline_directory = optim_result_dir / f"config_{config_id}"
 
 
-def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) -> dict:
+def get_searcher_data(
+    searcher: str,
+    searcher_path: Path | str | None = None,
+) -> dict[str, Any]:
     """Returns the data from the YAML file associated with the specified searcher.
 
     Args:
@@ -245,7 +248,7 @@ def get_searcher_data(searcher: str, searcher_path: Path | str | None = None) ->
         with resource_path.open() as file:
             data = yaml.safe_load(file)
 
-    return data
+    return data  # type: ignore
 
 
 # TODO(eddiebergman): This seems like a bad function name, I guess this is used for a
@@ -333,13 +336,13 @@ def is_partial_class(obj: Any) -> bool:
 
 def instance_from_map(  # noqa: C901, PLR0912
     mapping: dict[str, Any],
-    request: str | list | tuple | Any,
+    request: str | list | tuple | type,
     name: str = "mapping",
     *,
     allow_any: bool = True,
     as_class: bool = False,
     kwargs: dict | None = None,
-):
+) -> Any:
     """Get an instance of an class from a mapping.
 
     Arguments:
@@ -393,14 +396,14 @@ def instance_from_map(  # noqa: C901, PLR0912
 
     # Give the arguments to the class
     if args_dict:
-        instance = partial(instance, **args_dict)  # type: ignore
+        instance = partial(instance, **args_dict)
 
     if as_class:
         return instance
 
     if is_partial_class(instance):
         try:
-            instance = instance()  # type: ignore
+            instance = instance()
         except TypeError as e:
             raise TypeError(f"{e} when calling {instance} with {args_dict}") from e
 

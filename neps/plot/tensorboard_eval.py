@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 from typing import Any, ClassVar, Mapping
+from typing_extensions import override
 
 import numpy as np
 import torch
@@ -33,7 +34,13 @@ class SummaryWriter_(SummaryWriter):  # noqa: N801
     metrics with better formatting.
     """
 
-    def add_hparams(self, hparam_dict: dict, metric_dict: dict, global_step: int) -> None:
+    @override
+    def add_hparams(  # type: ignore
+        self,
+        hparam_dict: dict[str, Any],
+        metric_dict: dict[str, Any],
+        global_step: int,
+    ) -> None:
         """Add a set of hyperparameters to be logged."""
         if not isinstance(hparam_dict, dict) or not isinstance(metric_dict, dict):
             raise TypeError("hparam_dict and metric_dict should be dictionary.")
@@ -51,7 +58,7 @@ class SummaryWriter_(SummaryWriter):  # noqa: N801
 class tblogger:  # noqa: N801
     """The tblogger class provides a simplified interface for logging to tensorboard."""
 
-    config_id: ClassVar[str | None] | None = None
+    config_id: ClassVar[str | None] = None
     config: ClassVar[Mapping[str, Any] | None] = None
     config_working_directory: ClassVar[Path | None] = None
     optimizer_dir: ClassVar[Path | None] = None
@@ -321,10 +328,11 @@ class tblogger:  # noqa: N801
             else:
                 if not isinstance(seed, np.random.RandomState):
                     seed = np.random.RandomState(seed)
+
                 # We do not interfere with any randomness from the pipeline
                 num_total_images = len(image)
                 indices = seed.choice(num_total_images, num_images, replace=False)
-                subset_images = image[indices]
+                subset_images = image[indices]  # type: ignore
 
             resized_images = torch.nn.functional.interpolate(
                 subset_images,
@@ -452,7 +460,7 @@ class tblogger:  # noqa: N801
         tblogger.disable_logging = False
 
     @staticmethod
-    def get_status():
+    def get_status() -> bool:
         """Returns the currect state of tblogger ie. whether the logger is
         enabled or not.
         """

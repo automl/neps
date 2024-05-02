@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import matplotlib.axes
 import matplotlib.figure
@@ -80,7 +81,7 @@ def _plot_incumbent(
     log_x: bool = False,
     log_y: bool = False,
     x_range: tuple | None = None,
-    **plotting_kwargs,
+    **plotting_kwargs: Any,
 ) -> None:
     df = _interpolate_time(incumbents=y, costs=x, x_range=x_range, scale_x=scale_x)
     df = _df_to_x_range(df, x_range=x_range)
@@ -134,7 +135,7 @@ def _interpolate_time(
     df = pd.DataFrame.from_dict(df_dict)
 
     # important step to plot func evals on x-axis
-    df.index = df.index if scale_x is None else df.index.to_numpy() / scale_x  # type: ignore
+    df.index = df.index if scale_x is None else df.index.to_numpy() / scale_x
 
     if x_range is not None:
         min_b, max_b = x_range
@@ -193,7 +194,7 @@ def _set_legend(
         frameon=True,
     )
 
-    for legend_item in legend.legendHandles:  # type: ignore
+    for legend_item in legend.legend_handles:
         legend_item.set_linewidth(2.0)
 
 
