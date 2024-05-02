@@ -86,9 +86,15 @@ pre-commit install
 
 This install a set of hooks that will run basic linting and type checking before every comment.
 If you ever need to unsinstall the hooks, you can do so with `pre-commit uninstall`.
+These mostly consist of `ruff` for formatting and linting and `mypy` for type checking.
+
+We highly recommend you install at least [`ruff`](https://github.com/astral-sh/ruff) either on command line, or in the editor of
+your choice, e.g.
+[VSCode](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff),
+[PyCharm](https://plugins.jetbrains.com/plugin/20574-ruff).
 
 
-## Checks and Tests
+# Checks and Tests
 
 We have setup checks and tests at several points in the development flow:
 
@@ -97,6 +103,61 @@ This is setup during our [installation process](https://automl.github.io/neps/co
 - At every commit / push locally running a minimal suite of integration tests is encouraged.
 The tests correspond directly to examples in [neps_examples](https://github.com/automl/neps/tree/master/neps_examples) and only check for crash-causing errors.
 - At every push all integration tests and regression tests are run automatically using [github actions](https://github.com/automl/neps/actions).
+
+## Linting (Ruff)
+For linting we use `ruff` for checking code quality. You can install it locally and use it as so:
+
+```bash
+pip install ruff
+ruff check --fix neps  # the --fix flag will try to fix issues it can automatically
+```
+
+
+This will also be run using `pre-commit` hooks.
+
+To ignore a rule for a specific line, you can add a comment with `ruff: disable` at the end of the line, e.g.
+
+```python
+for x, y in zip(a, b):  # noqa: <ERRCODE>
+    pass
+```
+
+The configuration of `ruff` is in the `pyproject.toml` file and we refer you to the
+[documentation](https://docs.astral.sh/ruff/) if you require any changes to be made.
+
+There you can find the documentation for all of the rules employed.
+
+## Type Checking (Mypy)
+For type checking we use `mypy`. You can install it locally and use it as so:
+
+```bash
+pip install mypy
+mypy neps
+```
+
+Types are helpful for making your code more understandable by your editor and tools, allowing them to warn you of
+potential issues, as well as allow for safer refactoring. Copilot also works better with types.
+
+To ignore some error you can use `# type: ignore` at the end of the line, e.g.
+
+```python
+code = "foo"  # type: ignore
+```
+
+A common place to ignore types is when dealing with numpy arrays, tensors and pandas, where the type
+checker can not be sure of the return type.
+
+```python
+df.mean()  # Is this another dataframe, a series or a single number?
+```
+
+In the worse case, please just use `Any` and move on with your life, the type checker is meant to help you catch bugs,
+not hinder you. However it will take some experience to know whe it's trying to tell you something useful vs. something
+it just can not infer properly. A good rule of thumb is that you're only dealing with simple native types from python
+or types defined from NePS, there is probably a good reason for a mypy error.
+
+If you have issues regarding typing, please feel free to reach out for help `@eddiebergman`.
+
 
 ## Examples and Integration Tests
 
