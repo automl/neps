@@ -3,7 +3,7 @@ import logging
 import sys
 import yaml
 from neps.optimizers.base_optimizer import BaseOptimizer
-from typing import Callable, Optional, Dict, Tuple, List
+from typing import Callable, Optional, Dict, Tuple, List, Any
 import inspect
 
 logger = logging.getLogger("neps")
