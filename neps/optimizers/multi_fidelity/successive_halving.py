@@ -307,7 +307,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
 
-    # pylint: disable=no-self-use
+
     def clear_old_brackets(self):
         return
 
@@ -362,7 +362,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def sample_new_config(
         self,
         rung: int = None,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ):
         # Samples configuration from policy or random
         if self.sampling_policy is None:
@@ -396,7 +396,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 break
         return rung_to_promote
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.

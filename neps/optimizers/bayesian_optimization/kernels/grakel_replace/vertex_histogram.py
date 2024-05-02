@@ -410,7 +410,7 @@ class VertexHistogram(Kernel):
             km = torch.tensor(km)
         return km
 
-    def fit(self, X, y=None, **kwargs):  # pylint: disable=unused-argument
+    def fit(self, X, y=None, **kwargs):
         """Fit a dataset, for a transformer.
 
         Parameters

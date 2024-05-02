@@ -215,7 +215,7 @@ class ComprehensiveGP:
                     )
                 optim.step()  # TODO
                 with torch.no_grad():
-                    # pylint: disable=expression-not-assigned
+
                     weights.clamp_(
                         0.0, 1.0
                     ) if weights is not None and weights.is_leaf else None
@@ -226,7 +226,7 @@ class ComprehensiveGP:
                     layer_weights.clamp_(
                         0.0, 1.0
                     ) if layer_weights is not None and layer_weights.is_leaf else None
-                    # pylint: enable=expression-not-assigned
+
 
                 optim.zero_grad(set_to_none=True)
 
@@ -255,7 +255,7 @@ class ComprehensiveGP:
         self.logger.debug(f"Lengthscales: {theta_vector}")
         try:
             self.logger.debug(
-                f"Optimal h: {self.domain_kernels[0]._h}",  # pylint: disable=protected-access
+                f"Optimal h: {self.domain_kernels[0]._h}",
             )
         except AttributeError:
             pass
@@ -515,9 +515,9 @@ def _grid_search_wl_kernel(
     train_x: list,
     train_y: torch.Tensor,
     lik: float,
-    subtree_prior=None,  # pylint: disable=unused-argument
+    subtree_prior=None,
     lengthscales=None,
-    lengthscales_prior=None,  # pylint: disable=unused-argument
+    lengthscales_prior=None,
 ):
     """Optimize the *discrete hyperparameters* of Weisfeiler Lehman kernel.
     k: a Weisfeiler-Lehman kernel instance
@@ -557,7 +557,7 @@ def _grid_search_wl_kernel(
     k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})
-    k._gram = best_K  # pylint: disable=protected-access
+    k._gram = best_K
 
 
 def get_theta_vector(vectorial_features):

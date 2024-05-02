@@ -12,7 +12,7 @@ def launch_example_processes(n_workers: int = 3) -> list:
     processes = []
     for _ in range(n_workers):
         processes.append(
-            subprocess.Popen(  # pylint: disable=consider-using-with
+            subprocess.Popen(
                 "python -m neps_examples.basic_usage.hyperparameters && python -m neps_examples.basic_usage.analyse",
                 stdout=subprocess.PIPE,
                 shell=True,

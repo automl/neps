@@ -144,7 +144,7 @@ def ArchitectureParameter(**kwargs):
                 self.prune_graph()
 
                 if self._set_recursive_attribute:
-                    m = _build(  # pylint: disable=assignment-from-no-return
+                    m = _build(
                         self, self._set_recursive_attribute
                     )
 

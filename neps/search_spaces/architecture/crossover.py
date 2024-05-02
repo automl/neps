@@ -30,7 +30,7 @@ def simple_crossover(
 def repetitive_search_space_crossover(
     base_parent: Tuple[str, str],
     motif_parents: Tuple[List[str], List[str]],
-    base_grammar: Grammar,  # pylint: disable=W0613
+    base_grammar: Grammar,
     motif_grammars: List[Grammar],
     terminal_to_sublanguage_map: dict,
     number_of_repetitive_motifs_per_grammar: list,

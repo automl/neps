@@ -35,7 +35,7 @@ class MFEIBO(BaseOptimizer):
         pipeline_space: SearchSpace,
         budget: int = None,
         step_size: int | float = 1,
-        optimal_assignment: bool = False,  # pylint: disable=unused-argument
+        optimal_assignment: bool = False,
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
@@ -409,7 +409,7 @@ class MFEIBO(BaseOptimizer):
         config.fidelity.value = new_fidelity
         return config, _config_id
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.

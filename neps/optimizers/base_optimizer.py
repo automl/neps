@@ -62,7 +62,7 @@ class BaseOptimizer:
         """
         raise NotImplementedError
 
-    def get_state(self) -> Any:  # pylint: disable=no-self-use
+    def get_state(self) -> Any:
         _state = {"rnd_seeds": get_rnd_state(), "used_budget": self.used_budget}
         if self.budget is not None:
             # TODO(eddiebergman): Seems like this isn't used anywhere,
@@ -72,7 +72,7 @@ class BaseOptimizer:
 
         return _state
 
-    def load_state(self, state: Any) -> None:  # pylint: disable=no-self-use
+    def load_state(self, state: Any) -> None:
         set_rnd_state(state["rnd_seeds"])
         self.used_budget = state["used_budget"]
 

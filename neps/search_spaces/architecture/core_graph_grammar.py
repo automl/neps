@@ -278,7 +278,6 @@ class CoreGraphGrammar(Graph):
             return ensembled_tree_string
         elif isinstance(base_tree, nx.DiGraph):
             raise NotImplementedError
-            # pylint: disable=unreachable
             leafnodes = self._find_leafnodes(base_tree)
             root_nodes = [self._find_root(G) for G in motif_trees]
             root_op_names = np.array(
@@ -351,7 +350,6 @@ class CoreGraphGrammar(Graph):
                     leafnode
                 )
             return ensembled_tree
-            # pylint: enable=unreachable
         else:
             raise NotImplementedError(
                 f"Assembling of trees of type {type(base_tree)} is not supported!"
@@ -923,7 +921,7 @@ class CoreGraphGrammar(Graph):
                     node_list.append((ni, 1))
 
                 for e_ in filter(
-                    lambda e: (e[1] == u), edge_list  # pylint: disable=W0640
+                    lambda e: (e[1] == u), edge_list
                 ):
                     node_list.append((edge_to_node_map[e_], ni))
 
@@ -1305,7 +1303,7 @@ class CoreGraphGrammar(Graph):
                     node_list.append((ni, v))
 
                 for e_ in filter(
-                    lambda e: (e[1] == u), edge_list  # pylint: disable=W0640
+                    lambda e: (e[1] == u), edge_list
                 ):
                     node_list.append((edge_to_node_map[e_], ni))
 

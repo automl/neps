@@ -130,7 +130,7 @@ class FloatParameter(NumericalParameter):
     def mutate(
         self,
         parent=None,
-        mutation_rate: float = 1.0,  # pylint: disable=unused-argument
+        mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
         **kwargs,
     ):
@@ -146,11 +146,11 @@ class FloatParameter(NumericalParameter):
             if "std" in kwargs:
                 child = self._get_neighbours(std=kwargs["std"], num_neighbours=1)[
                     0
-                ]  # pylint: disable=protected-access
+                ]
             else:
                 child = self._get_neighbours(num_neighbours=1)[
                     0
-                ]  # pylint: disable=protected-access
+                ]
         else:
             raise NotImplementedError
 
@@ -168,7 +168,6 @@ class FloatParameter(NumericalParameter):
 
         proxy_self = deepcopy(self)
         proxy_self.value = (parent1.value + parent2.value) / 2
-        # pylint: disable=protected-access
         children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)
 
         if all(not c for c in children):
@@ -185,7 +184,6 @@ class FloatParameter(NumericalParameter):
             if n_val < 0 or n_val > 1:
                 continue
             neighbour = deepcopy(self)
-            # pylint: disable=protected-access
             neighbour.value = neighbour._normalization_inv(n_val)
             neighbours.append(neighbour)
 

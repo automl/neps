@@ -73,7 +73,7 @@ class JAHSObjective(RegressionObjectiveBase):
             task=self.task, kind="surrogate", download=True, save_dir=self.save_dir
         )
 
-        def cost_evaluation(**joint_configuration):  # pylint: disable=unused-argument
+        def cost_evaluation(**joint_configuration):
             epoch = joint_configuration.pop("epoch")
             joint_configuration.update({"N": 5, "W": 16, "Resolution": 1.0})
 
@@ -83,7 +83,7 @@ class JAHSObjective(RegressionObjectiveBase):
                 "cost": results[epoch]["runtime"],
             }
 
-        def loss_evaluation(**joint_configuration):  # pylint: disable=unused-argument
+        def loss_evaluation(**joint_configuration):
             epoch = joint_configuration.pop("epoch")
             joint_configuration.update({"N": 5, "W": 16, "Resolution": 1.0})
 

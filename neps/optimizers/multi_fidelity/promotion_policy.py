@@ -21,7 +21,7 @@ class PromotionPolicy(ABC):
         max_rung: int,
         members: dict,
         performances: dict,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ) -> None:
         self.max_rung = max_rung
         self.rung_members = members
@@ -50,8 +50,8 @@ class SyncPromotionPolicy(PromotionPolicy):
         members: dict,
         performances: dict,
         config_map: dict,
-        **kwargs,  # pylint: disable=unused-argument
-    ) -> None:  # pylint: disable=unused-argument
+        **kwargs,
+    ) -> None:
         super().set_state(max_rung=max_rung, members=members, performances=performances)
         self.config_map = config_map
 

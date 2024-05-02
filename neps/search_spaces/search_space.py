@@ -299,7 +299,7 @@ class SearchSpace(Mapping[str, Any]):
 
     def mutate(
         self,
-        parent=None,  # pylint: disable=unused-argument
+        parent=None,
         mutation_rate: float = 1.0,
         mutation_strategy="smbo",
         patience=50,

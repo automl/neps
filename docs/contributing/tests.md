@@ -91,20 +91,6 @@ poetry run pytest -m regression_all
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.
 
-### Pylint: How to ignore warnings?
-
-There are two options:
-
-- Disable the warning locally:
-
-  ```python
-  code = "foo"  # pylint: disable=ERROR_CODE
-  ```
-
-  Make sure to use the named version of the error (e.g., `unspecified-encoding`, not `W1514`).
-
-- Remove warning in `pyproject.toml` that we do not consider useful (do not catch bugs, do not increase code quality).
-
 ### Mypy: How to ignore warnings?
 
 There are two options:

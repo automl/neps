@@ -12,7 +12,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         base_acquisition,
         pibo_beta=10,
         log: bool = False,
-    ):  # pylint: disable=super-init-not-called
+    ):
         self.pibo_beta = pibo_beta
         self.base_acquisition = base_acquisition
         self.log = log

@@ -232,7 +232,7 @@ class Grammar(CFG):
 
     def _convergent_sampler(
         self, cfactor, symbol=None, pcount=defaultdict(int)
-    ):  # pylint: disable=dangerous-default-value
+    ):
         # sampler that down-weights the probability of selcting the same production many times
         # ensuring that the sampled trees are not 'too' long (size to be controlled by cfactor)
         #

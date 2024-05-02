@@ -150,8 +150,8 @@ class WeisfilerLehman(GraphKernels):
                 setattr(self, k, v)
             except AttributeError:
                 pass
-        for k in self.kern._initialized.keys():  # pylint: disable=W0212
-            self.kern._initialized[k] = False  # pylint: disable=W0212
+        for k in self.kern._initialized.keys():
+            self.kern._initialized[k] = False
 
         self.kern.initialize()
 
@@ -297,10 +297,10 @@ class WeisfilerLehman(GraphKernels):
         if self._gram is None:
             return None
         if not flatten:
-            return self.kern._label_node_attr  # pylint: disable=W0212
+            return self.kern._label_node_attr
         else:
             res = {}
-            for _, map_ in self.kern._label_node_attr.items():  # pylint: disable=W0212
+            for _, map_ in self.kern._label_node_attr.items():
                 for k, v in map_.items():
                     res.update({k: v})
             return res

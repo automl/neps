@@ -142,7 +142,7 @@ class MFBOBase:
     def sample_new_config(
         self,
         rung: int = None,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ):
         """Samples configuration from policies or random."""
         if self.model_based and not self.is_init_phase():
@@ -256,7 +256,7 @@ class FreezeThawModel:
         self,
         pipeline_space,
         surrogate_model_args,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ):
         self.pipeline_space = pipeline_space
         self.surrogate_model_args = (
@@ -302,7 +302,7 @@ class PFNSurrogate(FreezeThawModel):
         self.train_x = None
         self.train_y = None
 
-    def _fit(self, *args):  # pylint: disable=unused-argument
+    def _fit(self, *args):
         assert self.surrogate_model_name == "pfn"
         self.preprocess_training_set()
         self.surrogate_model.fit(self.train_x, self.train_y)

@@ -689,12 +689,10 @@ class ConstrainedGrammar(Grammar):
                         if valid_production:
                             new_production = deepcopy(production)
                             rhs = list(new_production.rhs())
-                            # pylint: disable=protected-access
                             new_production._rhs = tuple(
                                 self.none_operation if i in zero_combination else r
                                 for i, r in enumerate(rhs)
                             )
-                            # pylint: enable=protected-access
                             variants.append(new_production)
                 return variants
 

@@ -24,7 +24,7 @@ class CombineKernel:
         self,
         combined_by="sum",
         *kernels: list,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ):
         if combined_by not in ["sum", "product"]:
             raise ValueError(f"Invalid value for combined_by ({combined_by})")

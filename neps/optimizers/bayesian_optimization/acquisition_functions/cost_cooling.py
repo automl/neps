@@ -11,7 +11,7 @@ class CostCooler(BaseAcquisition):
     def __init__(
         self,
         base_acquisition: BaseAcquisition = ComprehensiveExpectedImprovement,
-    ):  # pylint: disable=super-init-not-called
+    ):
         self.base_acquisition = base_acquisition
         self.cost_model = None
         self.alpha = None

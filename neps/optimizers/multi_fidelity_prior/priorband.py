@@ -82,11 +82,11 @@ class PriorBandBase:
             sampling_args["prior"] += sampling_args["inc"]
             sampling_args["inc"] = 0
             inc = None
-            # pylint: disable=attribute-defined-outside-init
+
             self.sampling_args = {"inc": inc, "weights": sampling_args}
         else:
             inc = self.find_incumbent()
-            # pylint: disable=attribute-defined-outside-init
+
             self.sampling_args = {"inc": inc, "weights": sampling_args}
             if self.inc_sample_type == "hypersphere":
                 min_dist = self.find_1nn_distance_from_incumbent(inc)
@@ -371,7 +371,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             sh.model_policy = self.model_policy
             sh.sample_new_config = self.sample_new_config
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.

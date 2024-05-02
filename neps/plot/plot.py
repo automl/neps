@@ -111,7 +111,6 @@ def plot(  # noqa: C901, PLR0913
                 max_costs.append(max_cost)
 
             is_last_row = lambda idx: idx >= (nrows - 1) * ncols
-            # pylint: disable=cell-var-from-loop
             is_first_column = benchmark_idx % ncols == 0
             xlabel = "Evaluations" if key_to_extract is None else key_to_extract.upper()
             _plot_incumbent(

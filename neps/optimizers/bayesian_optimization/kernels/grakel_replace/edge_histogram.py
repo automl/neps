@@ -27,7 +27,7 @@ class EdgeHistogram(VertexHistogram):
 
     """
 
-    def parse_input(self, X: Iterable, **kwargs):  # pylint: disable=unused-argument
+    def parse_input(self, X: Iterable, **kwargs):
         """Parse and check the given input for EH kernel.
 
         Parameters
@@ -52,7 +52,7 @@ class EdgeHistogram(VertexHistogram):
             rows, cols, data = list(), list(), list()
             if self._method_calling in [1, 2]:
                 labels = dict()
-                self._labels = labels  # pylint: disable=W0201
+                self._labels = labels
             elif self._method_calling == 3:
                 labels = dict(self._labels)
             ni = 0
@@ -102,11 +102,11 @@ class EdgeHistogram(VertexHistogram):
             # Initialise the feature matrix
             if self._method_calling in [1, 2]:
                 if self.sparse == "auto":
-                    self.sparse_ = (  # pylint: disable=W0201
+                    self.sparse_ = (
                         len(cols) / float(ni * len(labels)) <= 0.5
                     )
                 else:
-                    self.sparse_ = bool(self.sparse)  # pylint: disable=W0201
+                    self.sparse_ = bool(self.sparse)
 
             if self.sparse_:
                 features = csr_matrix(
@@ -119,7 +119,7 @@ class EdgeHistogram(VertexHistogram):
                     features[rows, cols] = data
                 except MemoryError:
                     warn("memory-error: switching to sparse")
-                    self.sparse_, features = True, csr_matrix(  # pylint: disable=W0201
+                    self.sparse_, features = True, csr_matrix(
                         (data, (rows, cols)), shape=(ni, len(labels)), copy=False
                     )
 
