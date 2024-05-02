@@ -103,18 +103,3 @@ There are two options:
 
 - If you know what you are doing, you can add the whole module to the `[[tool.mypy.overrides]]` section.
   This is useful e.g., when adding new files that are in early stage development.
-
-### Black: How to not format code parts?
-
-```python
-x = 2  # fmt: off
-```
-
-or for blocks
-
-```python
-# fmt: off
-x = 2
-y = x + 1
-# fmt: on
-```
