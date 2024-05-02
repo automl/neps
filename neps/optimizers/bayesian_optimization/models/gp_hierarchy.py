@@ -70,18 +70,18 @@ class _dtype_value_context:
             cls._global_half_value = half_value
 
     def __init__(
-        self, float=None, double=None, half=None  # pylint: disable=redefined-builtin
+        self, float=None, double=None, half=None
     ):
         self._orig_float_value = (
-            self.__class__.value()  # pylint: disable=no-value-for-parameter
+            self.__class__.value()
         )
         self._instance_float_value = float
         self._orig_double_value = (
-            self.__class__.value()  # pylint: disable=no-value-for-parameter
+            self.__class__.value()
         )
         self._instance_double_value = double
         self._orig_half_value = (
-            self.__class__.value()  # pylint: disable=no-value-for-parameter
+            self.__class__.value()
         )
         self._instance_half_value = half
 
@@ -195,7 +195,7 @@ class NumericalWarning(RuntimeWarning):
     Warning thrown when convergence criteria are not met, or when comptuations require extra stability.
     """
 
-    pass  # pylint: disable=unnecessary-pass
+    pass
 
 
 class NanError(RuntimeError):
@@ -436,7 +436,7 @@ class ComprehensiveGPHierarchy:
                 for i, k in enumerate(self.combined_kernel.kernels):
                     if isinstance(k, WeisfilerLehman):
                         k.change_kernel_params({"h": best_subtree_depth_combo[i]})  # type: ignore[index]
-                self.combined_kernel._gram = best_K  # pylint: disable=protected-access
+                self.combined_kernel._gram = best_K
             else:
                 best_nlml = torch.tensor(np.inf)
                 best_subtree_depth = None
@@ -468,7 +468,7 @@ class ComprehensiveGPHierarchy:
                     self.combined_kernel.kernels[0].change_kernel_params(
                         {"h": best_subtree_depth}
                     )
-                    self.combined_kernel._gram = (  # pylint: disable=protected-access
+                    self.combined_kernel._gram = (
                         best_K
                     )
 
@@ -486,7 +486,7 @@ class ComprehensiveGPHierarchy:
             np.e**i for i in range(-2, 3)  # type: ignore[name-defined]
         ),
         optimize_lik: bool = True,
-        max_lik: float = 0.5,  # pylint: disable=unused-argument
+        max_lik: float = 0.5,
         optimize_wl_layer_weights: bool = False,
         optimizer_kwargs: dict = None,
     ):
@@ -603,7 +603,7 @@ class ComprehensiveGPHierarchy:
                 optim.step()
 
                 with torch.no_grad():
-                    likelihood.clamp_(  # pylint: disable=expression-not-assigned
+                    likelihood.clamp_(
                         1e-5, max_lik
                     ) if likelihood is not None and likelihood.is_leaf else None
 
@@ -637,7 +637,7 @@ class ComprehensiveGPHierarchy:
         self.K = K.clone()
         self.logDetK = logDetK.clone()
         self.likelihood = likelihood.item()
-        self.theta_vector = theta_vector  # pylint: disable=attribute-defined-outside-init
+        self.theta_vector = theta_vector
         self.layer_weights = layer_weights
         self.nlml = nlml.detach().cpu() if nlml is not None else None
 
@@ -653,7 +653,7 @@ class ComprehensiveGPHierarchy:
             try:
                 print(
                     "Optimal h: ",
-                    self.domain_kernels[0]._h,  # pylint: disable=protected-access
+                    self.domain_kernels[0]._h,
                 )
             except AttributeError:
                 pass
@@ -964,9 +964,9 @@ def _grid_search_wl_kernel(
     train_x: list,
     train_y: torch.Tensor,
     lik: float,
-    subtree_prior=None,  # pylint: disable=unused-argument
+    subtree_prior=None,
     lengthscales=None,
-    lengthscales_prior=None,  # pylint: disable=unused-argument
+    lengthscales_prior=None,
     gpytorch_kinv: bool = False,
 ):
     """Optimize the *discrete hyperparameters* of Weisfeiler Lehman kernel.
@@ -1007,7 +1007,7 @@ def _grid_search_wl_kernel(
     k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})
-    k._gram = best_K  # pylint: disable=protected-access
+    k._gram = best_K
 
 
 def get_theta_vector(vectorial_features):

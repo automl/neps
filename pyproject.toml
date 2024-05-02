@@ -3,18 +3,18 @@ name = "neural-pipeline-search"
 version = "v0.11.1"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
-    "Danny Stoll <stolld@cs.uni-freiburg.de>",
-    "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-    "Simon Schrodi",
-    "Eddie Bergman",
-    "Maciej Janowski",
-    "Samir Garibov",
-    "Tarek Abou Chakra",
-    "Carl Hvarfner",
-    "Binxin Ru",
-    "Nils Kober",
-    "Théophane Vallaeys",
-    "Frank Hutter",
+  "Danny Stoll <stolld@cs.uni-freiburg.de>",
+  "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
+  "Simon Schrodi",
+  "Eddie Bergman",
+  "Maciej Janowski",
+  "Samir Garibov",
+  "Tarek Abou Chakra",
+  "Carl Hvarfner",
+  "Binxin Ru",
+  "Nils Kober",
+  "Théophane Vallaeys",
+  "Frank Hutter",
 ]
 readme = "README.md"
 license = "Apache-2.0"
@@ -54,31 +54,22 @@ numpy = "^1"
 pandas = "^2"
 networkx = "^2.6.3"
 nltk = "^3.6.4"
-#path = "^16.2.0"
-#termcolor = "^1.1.0"
 scipy = "^1"
 torch = ">=1.7.0,<=2.1, !=2.0.1, !=2.1.0" # fix from: https://stackoverflow.com/a/76647180
-# torch = [
-#     {version = ">=1.7.0,<=2.1", markers = "sys_platform == 'darwin'"},  # Segfaults for macOS on github actions
-#     {version = ">=1.7.0,<=2.1", markers = "sys_platform != 'darwin'"},
-# ]
 matplotlib = "^3"
-# statsmodels = "^0.13.2"
 more-itertools = "^10"
 portalocker = "^2"
 seaborn = "^0.13"
 pyyaml = "^6"
 tensorboard = "^2"
-# cython = "^3.0.4"
 
 [tool.poetry.group.dev.dependencies]
+ruff = "^0.4"
 pre-commit = "^3"
 mypy = "^1"
 pytest = "^7"
 types-PyYAML = "^6"
 typing-extensions = "^4"
-#types-termcolor = "^1.1.2"
-# jahs-bench = {git = "https://github.com/automl/jahs_bench_201.git", rev = "v1.0.2"}
 mkdocs-material = "^8.1.3"
 mike = "^1.1.2"
 torchvision = "<0.16.0"    # Used in examples
@@ -94,13 +85,172 @@ gpytorch = "1.8.0"
 requires = ["poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
+# TODO(eddiebergman): Include more of these as we go on in migration
+# "tests",
+# "neps_examples",
+[tool.ruff]
+target-version = "py38"
+output-format = "full"
 line-length = 90
-target-version = ['py38']
+src = ["neps"]
 
-[tool.isort]
-profile = 'black'
-line_length = 90
+# TODO(eddiebergman): Include more of these as we go on in migration
+exclude = [
+  "neps/optimizers/**/*.py",
+  "neps/search_spaces/**/*.py",
+  "neps/utils/run_args_from_yaml.py",
+  "neps/api.py",
+  "tests",
+  "neps_examples",
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+  "docs",
+]
+
+[tool.ruff.lint]
+# Extend what ruff is allowed to fix, even it it may break
+# This is okay given we use it all the time and it ensures
+# better practices. Would be dangerous if using for first
+# time on established project.
+extend-safe-fixes = ["ALL"]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+select = [
+  "A",
+  # "ANN", # Handled by mypy
+  "ARG",
+  "B",
+  "BLE",
+  "COM",
+  "C4",
+  "D",
+  # "DTZ",  # One day I should know how to utilize timezones and dates...
+  "E",
+  # "EXE", Meh
+  "ERA",
+  "F",
+  "FBT",
+  "I",
+  # "ISC",  # Favours implicit string concatenation
+  "INP",
+  # "INT", # I don't understand this one
+  "N",
+  "NPY",
+  "PD",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "PIE",
+  "PT",
+  "PTH",
+  # "PYI", # Specific to .pyi files for type stubs
+  "Q",
+  "PGH004",
+  "RET",
+  "RUF",
+  "C90",
+  "S",
+  # "SLF",    # Private member accessed (sure, it's python)
+  "SIM",
+  # "TRY", # Good in principle, would take a lot of work to statisfy
+  "T10",
+  "T20",
+  "TID",
+  "TCH",
+  "UP",
+  "N",
+  "W",
+  "YTT",
+]
+
+ignore = [
+  "D104",    # Missing docstring in public package
+  "D105",    # Missing docstring in magic mthod
+  "D203",    # 1 blank line required before class docstring
+  "D205",    # 1 blank line between summary and description
+  "D401",    # First line of docstring should be in imperative mood
+  "N806",    # Variable X in function should be lowercase
+  "E731",    # Do not assign a lambda expression, use a def
+  "A003",    # Shadowing a builtin
+  "S101",    # Use of assert detected.
+  "W292",    # No newline at end of file
+  "PLC1901", # "" can be simplified to be falsey
+  "TCH003",  # Move stdlib import into TYPE_CHECKING
+  "B010",    # Do not use `setattr`
+  "PD901",   # Use a better name than 'df'
+  "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
+  "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
+  "PLR2004", # No magic numbers inline
+  # These tend to be lighweight and confuse pyright
+]
+
+
+# Exclude a variety of commonly ignored directories.
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+  "S101",
+  "D101",
+  "D102",
+  "D103",
+  "ANN001",
+  "ANN201",
+  "FBT001",
+  "D100",
+  "PD901",  #  X is a bad variable name. (pandas)
+  "TCH",
+  "N803",
+  "C901",   # Too complex
+]
+"__init__.py" = ["I002"]
+"neps_examples/*" = [
+  "INP001",
+  "I002",
+  "E741",
+  "D101",
+  "D103",
+  "T20",
+  "D415",
+  "ERA001",
+  "E402",
+  "E501",
+]
+"docs/*" = ["INP001"]
+
+
+[tool.ruff.lint.isort]
+known-first-party = ["neps"]
+known-third-party = []
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+force-wrap-aliases = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 10 # Changed from default of 5
 
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m 'neps_api or core_examples'"
@@ -115,224 +265,35 @@ markers = [
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
-files = ["neps"]
-namespace_packages = true
-follow_imports = "skip"
-ignore_missing_imports = true
+python_version = "3.8"  # Match minimum supported version
+packages = ["neps"]
 show_error_codes = true
-incremental = false
+
+namespace_packages = true
 explicit_package_bases = true
 
+follow_imports = "normal"
+
+ignore_missing_imports = true
+
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+
+disallow_untyped_defs = true       # All functions must have types
+disallow_untyped_decorators = true # ... even decorators
+disallow_incomplete_defs = true    # ...all types
+
+no_implicit_optional = true
+check_untyped_defs = true
+
+# TODO(eddiebergman): Improve coverage on these modules
 [[tool.mypy.overrides]]
 module = [
-  "neps.optimizers.bayesian_optimization.models.*",
-  "neps.optimizers.bayesian_optimization.kernels.*",
-  "neps.optimizers.bayesian_optimization.acquisition_functions.*",
-  "neps.optimizers.bayesian_optimization.acquisition_function_optimization.*",
-  "neps.search_spaces.architecture.*",
+  "neps.api",
+  "neps.optimizers.*",
+  "neps.search_spaces.*",
+  "neps.utils.run_args_from_yaml",
 ]
 ignore_errors = true
-
-[tool.pylint.messages_control]
-disable = 'all'
-enable = [
-  'invalid-characters-in-docstring',
-  'wrong-spelling-in-comment',
-  'wrong-spelling-in-docstring',
-  'not-in-loop',
-  'function-redefined',
-  'continue-in-finally',
-  'abstract-class-instantiated',
-  'star-needs-assignment-target',
-  'duplicate-argument-name',
-  'return-in-init',
-  'too-many-star-expressions',
-  'nonlocal-and-global',
-  'return-outside-function',
-  'return-arg-in-generator',
-  'invalid-star-assignment-target',
-  'bad-reversed-sequence',
-  'nonexistent-operator',
-  'yield-outside-function',
-  'init-is-generator',
-  'nonlocal-without-binding',
-  'lost-exception',
-  'assert-on-tuple',
-  'dangerous-default-value',
-  'duplicate-key',
-  'useless-else-on-loop',
-  'expression-not-assigned',
-  'confusing-with-statement',
-  'unnecessary-lambda',
-  'pointless-statement',
-  'unnecessary-pass',
-  'unreachable',
-  'eval-used',
-  'exec-used',
-  'using-constant-test',
-  'deprecated-lambda',
-  'blacklisted-name',
-  'misplaced-comparison-constant',
-  'singleton-comparison',
-  'unneeded-not',
-  'ßconsider-iterating-dictionary',
-  'consider-using-enumerate',
-  'empty-docstring',
-  'unidiomatic-typecheck',
-  'condition-evals-to-constant',
-  'consider-using-generator',
-  'nan-comparison',
-  'consider-using-min-max-builtin',
-  'consider-using-with',
-  'invalid-all-format',
-  'consider-using-dict-items',
-  'deprecated-decorator',
-  'forgotten-debug-statement',
-  'useless-with-lock',
-  'use-implicit-booleaness-not-comparison',
-  'not-async-context-manager',
-  'yield-inside-async-function',
-  'await-outside-async',
-  'invalid-unary-operand-type',
-  'unsupported-binary-operation',
-  'not-callable',
-  'redundant-keyword-arg',
-  'assignment-from-no-return',
-  'assignment-from-none',
-  'not-context-manager',
-  'repeated-keyword',
-  'missing-kwoa',
-  'no-value-for-parameter',
-  'invalid-sequence-index',
-  'invalid-slice-index',
-  'unexpected-keyword-arg',
-  'unsupported-membership-test',
-  'unsubscriptable-object',
-  'bad-except-order',
-  'catching-non-exception',
-  'bad-exception-context',
-  'notimplemented-raised',
-  'raising-bad-type',
-  'raising-non-exception',
-  'misplaced-bare-raise',
-  'duplicate-except',
-  'nonstandard-exception',
-  'binary-op-exception',
-  'bare-except',
-  'raise-missing-from',
-  'consider-using-namedtuple-or-dataclass',
-  'consider-using-tuple',
-  'bad-open-mode',
-  'redundant-unittest-assert',
-  'boolean-datetime',
-  'deprecated-methodimport-error',
-  'import-self',
-  'reimported',
-  'relative-import',
-  'deprecated-module',
-  'wildcard-import',
-  'misplaced-future',
-  'cyclic-import',
-  'wrong-import-position',
-  'ungrouped-imports',
-  'multiple-imports',
-  'simplifiable-condition',
-  'len-as-condition',
-  'unpacking-non-sequence',
-  'invalid-all-object',
-  'unbalanced-tuple-unpacking',
-  'undefined-variable',
-  'undefined-all-variable',
-  'used-before-assignment',
-  'cell-var-from-loop',
-  'global-variable-undefined',
-  'redefined-builtin',
-  'redefine-in-handler',
-  'unused-import',
-  'unused-argument',
-  'unused-wildcard-import',
-  'unused-variable',
-  'global-variable-not-assigned',
-  'undefined-loop-variable',
-  'global-statement',
-  'global-at-module-level',
-  'format-needs-mapping',
-  'truncated-format-string',
-  'missing-format-string-key',
-  'mixed-format-string',
-  'too-few-format-args',
-  'bad-str-strip-call',
-  'too-many-format-args',
-  'bad-format-character',
-  'format-combined-specification',
-  'bad-format-string-key',
-  'bad-format-string',
-  'missing-format-attribute',
-  'missing-format-argument-key',
-  'unused-format-string-argument',
-  'unused-format-string-key',
-  'invalid-format-index',
-  'f-string-without-interpolation',
-  'use-maxsplit-arg',
-  'anomalous-unicode-escape-in-string',
-  'anomalous-backslash-in-string',
-  'redundant-u-string-prefix',
-  'format-string-without-interpolation',
-  'simplifiable-if-statement',
-  'logging-format-truncated',
-  'logging-too-few-args',
-  'logging-too-many-args',
-  'logging-unsupported-format',
-  'not-an-iterable',
-  'not-a-mapping',
-  'use-sequence-for-iteration',
-  'bad-indentation',
-  'unnecessary-semicolon',
-  'missing-final-newline',
-  'mixed-line-endings',
-  'multiple-statements',
-  'trailing-newlines',
-  'trailing-whitespace',
-  'unexpected-line-ending-format',
-  'superfluous-parens',
-  'access-member-before-definition',
-  'method-hidden',
-  'assigning-non-slot',
-  'duplicate-bases',
-  'inconsistent-mro',
-  'inherit-non-class',
-  'invalid-slots',
-  'invalid-slots-object',
-  'no-method-argument',
-  'no-self-argument',
-  'unexpected-special-method-signature',
-  'non-iterator-returned',
-  'invalid-length-returned',
-  'protected-access',
-  'attribute-defined-outside-init',
-  'abstract-method',
-  'bad-staticmethod-argument',
-  'non-parent-init-called',
-  'super-init-not-called',
-  'no-classmethod-decorator',
-  'no-staticmethod-decorator',
-  'no-self-use',
-  'bad-classmethod-argument',
-  'bad-mcs-classmethod-argument',
-  'bad-mcs-method-argument',
-  'method-check-failed',
-  'invalid-bool-returned',
-  'invalid-index-returned',
-  'invalid-repr-returned',
-  'invalid-str-returned',
-  'invalid-bytes-returned',
-  'invalid-hash-returned',
-  'invalid-length-hint-returned',
-  'invalid-format-returned',
-  'invalid-getnewargs-returned',
-  'invalid-getnewargs-ex-returned',
-  'super-with-arguments',
-  'deprecated-class',
-  'invalid-class-object',
-  'unused-private-member',
-]

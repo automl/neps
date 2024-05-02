@@ -1,3 +1,5 @@
+"""Plot results of a neural pipeline search run."""
+
 from __future__ import annotations
 
 import errno
@@ -7,12 +9,13 @@ from pathlib import Path
 
 import numpy as np
 
-from .plotting import get_fig_and_axs, map_axs, plot_incumbent, save_fig, set_legend
+from .plotting import _get_fig_and_axs, _map_axs, _plot_incumbent, _save_fig, _set_legend
 from .read_results import process_seed
 
 
-def plot(
+def plot(  # noqa: C901, PLR0913
     root_directory: str | Path,
+    *,
     scientific_mode: bool = False,
     key_to_extract: str | None = None,
     benchmarks: list[str] | None = None,
@@ -48,7 +51,6 @@ def plot(
     Raises:
         FileNotFoundError: If the data to be plotted is not present.
     """
-
     logger = logging.getLogger("neps")
     logger.info(f"Starting neps.plot using working directory {root_directory}")
 
@@ -65,35 +67,40 @@ def plot(
     ncols = 1 if len(benchmarks) == 1 else 2
     nrows = np.ceil(len(benchmarks) / ncols).astype(int)
 
-    fig, axs = get_fig_and_axs(nrows=nrows, ncols=ncols)
+    fig, axs = _get_fig_and_axs(nrows=nrows, ncols=ncols)
 
     base_path = Path(root_directory)
 
     for benchmark_idx, benchmark in enumerate(benchmarks):
         if scientific_mode:
-            _base_path = os.path.join(base_path, f"benchmark={benchmark}")
-            if not os.path.isdir(_base_path):
+            _base_path = base_path / f"benchmark={benchmark}"
+            if not _base_path.is_dir():
                 raise FileNotFoundError(
                     errno.ENOENT, os.strerror(errno.ENOENT), _base_path
                 )
+        else:
+            _base_path = None
 
         for algorithm in algorithms:
             seeds = [None]
-            if scientific_mode:
-                _path = os.path.join(_base_path, f"algorithm={algorithm}")
-                if not os.path.isdir(_path):
+            if _base_path is not None:
+                assert scientific_mode
+                _path = _base_path / f"algorithm={algorithm}"
+                if not _path.is_dir():
                     raise FileNotFoundError(
                         errno.ENOENT, os.strerror(errno.ENOENT), _path
                     )
 
                 seeds = sorted(os.listdir(_path))  # type: ignore
+            else:
+                _path = None
 
             incumbents = []
             costs = []
             max_costs = []
             for seed in seeds:
                 incumbent, cost, max_cost = process_seed(
-                    path=_path if scientific_mode else base_path,
+                    path=_path if _path is not None else base_path,
                     seed=seed,
                     key_to_extract=key_to_extract,
                     consider_continuations=consider_continuations,
@@ -103,12 +110,11 @@ def plot(
                 costs.append(cost)
                 max_costs.append(max_cost)
 
-            is_last_row = lambda idx: idx >= (nrows - 1) * ncols
-            # pylint: disable=cell-var-from-loop
-            is_first_column = lambda idx: benchmark_idx % ncols == 0
+            is_last_row = benchmark_idx >= (nrows - 1) * ncols
+            is_first_column = benchmark_idx % ncols == 0
             xlabel = "Evaluations" if key_to_extract is None else key_to_extract.upper()
-            plot_incumbent(
-                ax=map_axs(
+            _plot_incumbent(
+                ax=_map_axs(
                     axs,
                     benchmark_idx,
                     len(benchmarks),
@@ -118,8 +124,8 @@ def plot(
                 y=incumbents,
                 scale_x=max(max_costs) if key_to_extract == "fidelity" else None,
                 title=benchmark if scientific_mode else None,
-                xlabel=xlabel if is_last_row(benchmark_idx) else None,
-                ylabel="Best error" if is_first_column(benchmark_idx) else None,
+                xlabel=xlabel if is_last_row else None,
+                ylabel="Best error" if is_first_column else None,
                 log_x=log_x,
                 log_y=log_y,
                 x_range=x_range,
@@ -127,7 +133,7 @@ def plot(
             )
 
     if scientific_mode:
-        set_legend(
+        _set_legend(
             fig,
             axs,
             benchmarks=benchmarks,
@@ -135,5 +141,5 @@ def plot(
             nrows=nrows,
             ncols=ncols,
         )
-    save_fig(fig, output_dir=base_path, filename=filename, extension=extension, dpi=dpi)
+    _save_fig(fig, output_dir=base_path, filename=filename, extension=extension, dpi=dpi)
     logger.info(f"Saved to '{base_path}/{filename}.{extension}'")

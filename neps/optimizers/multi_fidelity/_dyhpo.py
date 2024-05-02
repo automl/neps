@@ -32,7 +32,7 @@ class MFEIBO(BaseOptimizer):
         pipeline_space: SearchSpace,
         budget: int,
         step_size: Union[int, float] = 1,
-        optimal_assignment: bool = False,  # pylint: disable=unused-argument
+        optimal_assignment: bool = False,
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
@@ -297,7 +297,7 @@ class MFEIBO(BaseOptimizer):
     def sample_new_config(
         self,
         sample_type: str = "model",
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ) -> SearchSpace:
         """
         Sample completely new configuration that
@@ -322,7 +322,7 @@ class MFEIBO(BaseOptimizer):
 
         return config
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, Union[str, None]]:
         """...and this is the method that decides which point to query.

@@ -20,7 +20,7 @@ from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_
 class GraphGrammar(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar"
 
-    def __init__(  # pylint: disable=W0102
+    def __init__(
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
@@ -119,7 +119,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):
         self.reset()
         self.string_tree = self.grammars[0].sampler(1, user_priors=user_priors)[0]
         _ = self.value  # required for checking if graph is valid!
@@ -206,7 +206,7 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
 class GraphGrammarCell(GraphGrammar):
     hp_name = "graph_grammar_cell"
 
-    def __init__(  # pylint: disable=W0102
+    def __init__(
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
@@ -246,7 +246,7 @@ class GraphGrammarCell(GraphGrammar):
 class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar_repetitive"
 
-    def __init__(  # pylint: disable=W0102
+    def __init__(
         self,
         grammars: list[Grammar],
         terminal_to_op_names: dict,
@@ -323,7 +323,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def sample(self, user_priors: bool = False):  # pylint: disable=unused-argument
+    def sample(self, user_priors: bool = False):
         self.reset()
         self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
         self.string_tree = self.assemble_trees(
@@ -365,7 +365,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         mutation_strategy: str = "bananas",
     ):
         raise NotImplementedError
-        # pylint: disable=unreachable
         if parent is None:
             parent = self
 
@@ -394,13 +393,11 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             raise ValueError("Parent is the same as child!")
 
         return self.create_graph_from_string(child_string_tree_list)
-        # pylint: enable=unreachable
 
     def crossover(
         self, parent1: GraphGrammarRepetitive, parent2: GraphGrammarRepetitive = None
     ):
         raise NotImplementedError
-        # pylint: disable=unreachable
         if parent2 is None:
             parent2 = self
         children = repetitive_search_space_crossover(
@@ -414,7 +411,6 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
-        # pylint: enable=unreachable
 
     @property
     def search_space_size(self) -> int:
@@ -457,7 +453,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
 class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
     hp_name = "graph_grammar_multiple_repetitive"
 
-    def __init__(  # pylint: disable=W0102
+    def __init__(
         self,
         grammars: list[Grammar] | list[ConstrainedGrammar],
         terminal_to_op_names: dict,

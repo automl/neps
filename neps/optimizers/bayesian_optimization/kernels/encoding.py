@@ -38,7 +38,7 @@ def edit_distance(g1, g2):
     return np.sum([1 for i in range(len(g1_ops)) if g1_ops[i] != g2_ops[i]])
 
 
-class NASBOTDistance(GraphKernels):  # pylint: disable=abstract-method
+class NASBOTDistance(GraphKernels):
     """NASBOT OATMANN distance according to BANANAS paper"""
 
     def __init__(
@@ -143,18 +143,18 @@ class NASBOTDistance(GraphKernels):  # pylint: disable=abstract-method
     ):
         if (
             not rebuild_model
-            and self._gram is not None  # pylint: disable=access-member-before-definition
+            and self._gram is not None
         ):
-            return self._gram  # pylint: disable=access-member-before-definition
+            return self._gram
         K = self.forward(*gr, l=l)
         if save_gram_matrix:
-            self._gram = K.clone()  # pylint: disable=attribute-defined-outside-init
-            self._train_x = gr[:]  # pylint: disable=attribute-defined-outside-init
+            self._gram = K.clone()
+            self._train_x = gr[:]
         return K
 
     def transform(
         self, gr: list, l: float = None, **kwargs
-    ):  # pylint: disable=unused-argument
+    ):
         if self._gram is None:
             raise ValueError("The kernel has not been fitted. Run fit_transform first")
         n = len(gr)
@@ -167,7 +167,7 @@ class NASBOTDistance(GraphKernels):  # pylint: disable=abstract-method
         return K
 
 
-class AdjacencyDistance(  # pylint: disable=abstract-method
+class AdjacencyDistance(
     NASBOTDistance,
 ):
     def _compute_dist(self, g1: nx.Graph, g2: nx.Graph):
@@ -181,7 +181,7 @@ class AdjacencyDistance(  # pylint: disable=abstract-method
         return (graph_dist + ops_dist) + 0.0
 
 
-class PathDistance(NASBOTDistance):  # pylint: disable=abstract-method
+class PathDistance(NASBOTDistance):
     def get_paths(self, g: nx.Graph):
         """
         return all paths from input to output

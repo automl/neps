@@ -302,7 +302,7 @@ class AvgPool(AbstractPrimitive):
     Implementation of Avergae Pooling.
     """
 
-    def __init__(self, kernel_size, stride, **kwargs):  # pylint: disable=W0613
+    def __init__(self, kernel_size, stride, **kwargs):
         stride = int(stride)
         super().__init__(locals())
         self.avgpool = nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False)
@@ -321,12 +321,12 @@ class AvgPool1x1(AbstractPrimitive):
 
     def __init__(
         self,
-        kernel_size,  # pylint: disable=W0613
+        kernel_size,
         stride,
         C_in,
         C_out,
         affine=True,
-        **kwargs,  # pylint: disable=W0613
+        **kwargs,
     ):
         super().__init__(locals())
         stride = int(stride)
@@ -425,7 +425,7 @@ class Concat1x1(AbstractPrimitive):
     """
 
     def __init__(
-        self, num_in_edges, C_out, affine=True, **kwargs  # pylint: disable=W0613
+        self, num_in_edges, C_out, affine=True, **kwargs
     ):
         super().__init__(locals())
         self.conv = nn.Conv2d(
@@ -447,7 +447,7 @@ class Concat1x1(AbstractPrimitive):
 class ResNetBasicblock(AbstractPrimitive):
     def __init__(
         self, C_in, C_out, stride, affine=True, **kwargs
-    ):  # pylint:disable=W0613
+    ):
         super().__init__(locals())
         assert stride == 1 or stride == 2, f"invalid stride {stride}"
         self.conv_a = ReLUConvBN(C_in, C_out, 3, stride)

@@ -18,6 +18,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from .vertex_histogram import VertexHistogram
 
+warnings.filterwarnings("ignore", message="Importing from numpy.matlib is deprecated ")
 
 class WeisfeilerLehman(Kernel):
     """Compute the Weisfeiler Lehman Kernel.
@@ -113,7 +114,7 @@ class WeisfeilerLehman(Kernel):
             if base_graph_kernel is None:
                 base_graph_kernel, params = VertexHistogram, dict()
             # TODO: make sure we're always passing like this
-            elif type(base_graph_kernel) is type and issubclass(  # pylint: disable=C0123
+            elif type(base_graph_kernel) is type and issubclass(
                 base_graph_kernel, Kernel
             ):
                 params = dict()
@@ -128,7 +129,7 @@ class WeisfeilerLehman(Kernel):
                     ) from _error
 
                 if not (
-                    type(base_graph_kernel) is type  # pylint: disable=C0123
+                    type(base_graph_kernel) is type
                     and issubclass(base_graph_kernel, Kernel)
                 ):
                     raise TypeError(
@@ -425,7 +426,7 @@ class WeisfeilerLehman(Kernel):
 
     def fit_transform(
         self, X: Iterable, y=None, gp_fit: bool = True
-    ):  # pylint: disable=unused-argument
+    ):
         """Fit and transform, on the same dataset.
 
         Parameters

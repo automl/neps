@@ -103,7 +103,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
         bracket.observed_configs = self.observed_configs.copy()
 
-    # pylint: disable=no-self-use
+
     def clear_old_brackets(self):
         """Enforces reset at each new bracket."""
         # unlike synchronous SH, the state is not reset at each rung and a configuration
@@ -132,7 +132,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -177,7 +177,7 @@ class Hyperband(HyperbandBase):
             sh_bracket.clean_rung_information()
             # for the SH bracket in start-end, calculate total SH budget used, from the
             # correct SH bracket object to make the right budget calculations
-            # pylint: disable=protected-access
+
             bracket_budget_used = sh_bracket._calc_budget_used_in_bracket(
                 deepcopy(self.observed_configs.rung.values[start:end])
             )
@@ -185,12 +185,12 @@ class Hyperband(HyperbandBase):
             current_bracket_full_budget = sum(sh_bracket.full_rung_trace)
             if bracket_budget_used < current_bracket_full_budget:
                 # updating rung information of the current bracket
-                # pylint: disable=protected-access
+
                 sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
                 # extra call to use the updated rung member info to find promotions
                 # SyncPromotion signals a wait if a rung is full but with
                 # incomplete/pending evaluations, signals to starts a new SH bracket
-                sh_bracket._handle_promotions()  # pylint: disable=protected-access
+                sh_bracket._handle_promotions()
                 promotion_count = 0
                 for _, promotions in sh_bracket.rung_promotions.items():
                     promotion_count += len(promotions)
@@ -210,12 +210,12 @@ class Hyperband(HyperbandBase):
 
         # updates rung info with the latest active, incomplete bracket
         sh_bracket = self.sh_brackets[self.current_sh_bracket]
-        # pylint: disable=protected-access
+
         sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
         sh_bracket._handle_promotions()
         # self._handle_promotion() need not be called as it is called by load_results()
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -403,7 +403,7 @@ class AsynchronousHyperband(HyperbandBase):
         bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
         return bracket_next
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.

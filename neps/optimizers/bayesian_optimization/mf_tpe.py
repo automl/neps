@@ -618,7 +618,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         next_config.fidelity.value = new_fidelity
         return next_config
 
-    def get_config_and_ids(  # pylint: disable=no-self-use
+    def get_config_and_ids(
         self,
     ) -> tuple[SearchSpace, str, str | None]:
         if self._num_train_x == 0 and self._initial_design_size >= 1:

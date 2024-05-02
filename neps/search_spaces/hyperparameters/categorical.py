@@ -106,7 +106,7 @@ class CategoricalParameter(Parameter):
     def mutate(
         self,
         parent=None,
-        mutation_rate: float = 1.0,  # pylint: disable=unused-argument
+        mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
         **kwargs,
     ):

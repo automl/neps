@@ -24,7 +24,7 @@ class ConstantParameter(NumericalParameter):
     def sample(self, user_priors: bool = False):
         pass
 
-    def mutate(  # pylint: disable=unused-argument
+    def mutate(
         self,
         parent=None,
         mutation_rate: float = 1.0,
@@ -33,7 +33,7 @@ class ConstantParameter(NumericalParameter):
     ):
         return self
 
-    def crossover(self, parent1, parent2=None):  # pylint: disable=unused-argument
+    def crossover(self, parent1, parent2=None):
         raise NotImplementedError
 
     def _get_neighbours(self, **kwargs):

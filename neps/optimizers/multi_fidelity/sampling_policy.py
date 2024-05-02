@@ -180,7 +180,7 @@ class EnsemblePolicy(SamplingPolicy):
                 patience=self.patience, user_priors=True, ignore_fidelity=True
             )
         elif policy == "inc":
-            # pylint: disable=simplifiable-if-statement
+
             if (
                 hasattr(self.pipeline_space, "has_prior")
                 and self.pipeline_space.has_prior
@@ -280,7 +280,7 @@ class ModelPolicy(SamplingPolicy):
         hp_kernels: list = None,
         surrogate_model_args: dict = None,
         acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,  # pylint: disable=unused-argument
+        log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
         patience: int = 100,
         logger=None,
@@ -526,7 +526,7 @@ class RandomPromotionDynamicPolicy(BaseDynamicModelPolicy):
 
         super().__init__(*args, **kwargs)
 
-    def _fantasize_pending(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def _fantasize_pending(self, *args, **kwargs):
         pending_configs = []
 
         # Select configs that are neither pending nor resulted in error
@@ -551,7 +551,7 @@ class RandomPromotionDynamicPolicy(BaseDynamicModelPolicy):
             max_budget_configs, max_budget_perf, pending_configs
         )
 
-    def sample(self, rand_promotion_prob=0.5, seed=777, is_promotion=False, **kwargs):  # pylint: disable=unused-argument
+    def sample(self, rand_promotion_prob=0.5, seed=777, is_promotion=False, **kwargs):
         promoted = False
         # np.random.seed(seed)
         if np.random.random_sample() < rand_promotion_prob:

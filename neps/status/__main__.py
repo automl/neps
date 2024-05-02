@@ -1,4 +1,4 @@
-""" Displays status information about a working directory of a neps.run
+"""Displays status information about a working directory of a neps.run.
 
 Usage:
     python -m neps.status [-h] [--best_losses] [--best_configs] [--all_configs]
@@ -20,6 +20,8 @@ Note:
 
 """
 
+from __future__ import annotations
+
 import argparse
 import logging
 from pathlib import Path
@@ -29,18 +31,31 @@ from .status import status
 # fmt: off
 parser = argparse.ArgumentParser(
     prog="python -m neps.status",
-    description="Displays status information about a working directory of a neps.run"
+    description="Displays status information about a working directory of a neps.run",
 )
 parser.add_argument("root_directory", type=Path,
                     help="The working directory given to neps.run")
-parser.add_argument("--best_losses", action="store_true",
-                    help="Show the trajectory of the best loss across evaluations")
-parser.add_argument("--best_configs", action="store_true",
-                    help="Show the trajectory of the best configs and their losses across evaluations")
-parser.add_argument("--all_configs", action="store_true",
-                    help="Show all configs and their losses")
+parser.add_argument(
+    "--best_losses",
+    action="store_true",
+    help="Show the trajectory of the best loss across evaluations",
+)
+parser.add_argument(
+    "--best_configs",
+    action="store_true",
+    help="Show the trajectory of the best configs and their losses across evaluations",
+)
+parser.add_argument(
+    "--all_configs",
+    action="store_true",
+    help="Show all configs and their losses",
+)
 args = parser.parse_args()
-# fmt: on
 
 logging.basicConfig(level=logging.WARN)
-status(args.root_directory, args.best_losses, args.best_configs, args.all_configs)
+status(
+    args.root_directory,
+    best_losses=args.best_losses,
+    best_configs=args.best_configs,
+    all_configs=args.all_configs,
+)

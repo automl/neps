@@ -169,8 +169,8 @@ class DeepGP:
         root_directory: Path | str | None = None,
         checkpoint_file: Path | str = "surrogate_checkpoint.pth",
         refine_epochs: int = 50,
-        **kwargs,  # pylint: disable=unused-argument
-    ):  
+        **kwargs,
+    ):
         self.surrogate_model_fit_args = (
             surrogate_model_fit_args if surrogate_model_fit_args is not None else {}
         )
@@ -317,10 +317,10 @@ class DeepGP:
         normalize_y: bool = False,
         normalize_budget: bool = True,
     ):
-        self.normalize_budget = (  # pylint: disable=attribute-defined-outside-init
+        self.normalize_budget = (
             normalize_budget
         )
-        self.normalize_y = normalize_y  # pylint: disable=attribute-defined-outside-init
+        self.normalize_y = normalize_y
 
         x_train, train_budgets, learning_curves = self._preprocess_input(
             x_train, learning_curves, normalize_budget
@@ -328,14 +328,14 @@ class DeepGP:
 
         y_train = self._preprocess_y(y_train, normalize_y)
 
-        self.x_train = x_train  # pylint: disable=attribute-defined-outside-init
-        self.train_budgets = (  # pylint: disable=attribute-defined-outside-init
+        self.x_train = x_train
+        self.train_budgets = (
             train_budgets
         )
-        self.learning_curves = (  # pylint: disable=attribute-defined-outside-init
+        self.learning_curves = (
             learning_curves
         )
-        self.y_train = y_train  # pylint: disable=attribute-defined-outside-init
+        self.y_train = y_train
 
     def _preprocess_input(
         self,
@@ -356,8 +356,8 @@ class DeepGP:
 
     def _preprocess_y(self, y_train: list[float], normalize_y: bool = False):
         y_train_array = np.array(y_train, dtype=np.single)
-        self.min_y = y_train_array.min()  # pylint: disable=attribute-defined-outside-init
-        self.max_y = y_train_array.max()  # pylint: disable=attribute-defined-outside-init
+        self.min_y = y_train_array.min()
+        self.max_y = y_train_array.max()
         if normalize_y:
             y_train_array = (y_train_array - self.min_y) / (self.max_y - self.min_y)
         y_train_array = torch.tensor(y_train_array).to(device=self.device)
@@ -446,7 +446,7 @@ class DeepGP:
         self.model.train()
         self.likelihood.train()
         self.nn.train()
-        self.optimizer = (  # pylint: disable=attribute-defined-outside-init
+        self.optimizer = (
             torch.optim.Adam(
                 [
                     dict({"params": self.model.parameters()}, **optimizer_args),
@@ -547,9 +547,9 @@ class DeepGP:
             #     break
 
     def set_prediction_learning_curves(self, learning_curves: list[list[float]]):
-        # pylint: disable=attribute-defined-outside-init
+
         self.prediction_learning_curves = learning_curves
-        # pylint: enable=attribute-defined-outside-init
+
 
     def predict(
         self, x: list[SearchSpace], learning_curves: list[list[float]] | None = None

@@ -18,7 +18,7 @@ class CombineKernel:
         self,
         combined_by="sum",
         *kernels: list,
-        **kwargs,  # pylint: disable=unused-argument
+        **kwargs,
     ):
         if combined_by not in ["sum", "product"]:
             raise ValueError(f"Invalid value for combined_by ({combined_by})")
@@ -150,7 +150,7 @@ class CombineKernel:
     def clamp_theta_vector(self, theta_vector):
         if theta_vector is None:
             return None
-        # pylint: disable=expression-not-assigned
+
         [
             t_.clamp_(self.lengthscale_bounds[0], self.lengthscale_bounds[1])
             if t_ is not None and t_.is_leaf

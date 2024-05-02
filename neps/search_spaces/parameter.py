@@ -31,7 +31,7 @@ class Parameter:
     def normalized(self):
         return deepcopy(self)
 
-    def compute_prior(self):  # pylint: disable=no-self-use
+    def compute_prior(self):
         return 1
 
     def __eq__(self, other):

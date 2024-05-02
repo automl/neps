@@ -13,5 +13,5 @@ class BaseAcquisition(ABC):
     def __call__(self, *args, **kwargs):
         return self.eval(*args, **kwargs)
 
-    def set_state(self, surrogate_model, **kwargs):  # pylint: disable=unused-argument
+    def set_state(self, surrogate_model, **kwargs):
         self.surrogate_model = surrogate_model

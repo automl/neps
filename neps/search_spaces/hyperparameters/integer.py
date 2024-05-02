@@ -33,10 +33,10 @@ class IntegerParameter(FloatParameter):
 
     def __repr__(self):
         return f"<Integer, range: [{self.lower}, {self.upper}], value: {self.value}>"
-    
+
     def load_from(self, value):
         super().load_from(int(value))
-    
+
     def _set_float_hp_val(self):
         # IMPORTANT function to call wherever `self.float_hp` is used in this class
         self.float_hp.value = None if self.value is None else float(self.value)
@@ -75,7 +75,6 @@ class IntegerParameter(FloatParameter):
 
         proxy_self = deepcopy(self)
         proxy_self.value = round((parent1.value + parent2.value) / 1)
-        # pylint: disable=protected-access
         children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)
 
         if all(not c for c in children):
@@ -83,7 +82,6 @@ class IntegerParameter(FloatParameter):
         # expected len(children) == num_neighbours
         return children
 
-    # pylint: disable=protected-access
     def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
         self._set_float_hp_val()
         neighbours = self.float_hp._get_neighbours(std, num_neighbours)

@@ -12,7 +12,7 @@ from neps.types import ConfigResult
 from neps.utils.files import serialize, deserialize
 from ..search_spaces.search_space import SearchSpace
 from ..utils.common import get_rnd_state, set_rnd_state
-from ..utils.result_utils import get_cost, get_learning_curve, get_loss
+from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
 
 
 class BaseOptimizer:
@@ -32,7 +32,7 @@ class BaseOptimizer:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.used_budget = 0
+        self.used_budget: float = 0.0
         self.budget = budget
         self.pipeline_space = pipeline_space
         self.patience = patience
@@ -62,7 +62,7 @@ class BaseOptimizer:
         """
         raise NotImplementedError
 
-    def get_state(self) -> Any:  # pylint: disable=no-self-use
+    def get_state(self) -> Any:
         _state = {"rnd_seeds": get_rnd_state(), "used_budget": self.used_budget}
         if self.budget is not None:
             # TODO(eddiebergman): Seems like this isn't used anywhere,
@@ -72,7 +72,7 @@ class BaseOptimizer:
 
         return _state
 
-    def load_state(self, state: Any) -> None:  # pylint: disable=no-self-use
+    def load_state(self, state: Any) -> None:
         set_rnd_state(state["rnd_seeds"])
         self.used_budget = state["used_budget"]
 
@@ -84,7 +84,7 @@ class BaseOptimizer:
     def get_loss(self, result: str | dict | float) -> float | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes."""
-        return get_loss(
+        return _get_loss(
             result,
             loss_value_on_error=self.loss_value_on_error,
             ignore_errors=self.ignore_errors,
@@ -93,7 +93,7 @@ class BaseOptimizer:
     def get_cost(self, result: str | dict | float) -> float | Any:
         """Calls result.utils.get_cost() and passes the error handling through.
         Please use self.get_cost() instead of get_cost() in all optimizer classes."""
-        return get_cost(
+        return _get_cost(
             result,
             cost_value_on_error=self.cost_value_on_error,
             ignore_errors=self.ignore_errors,
@@ -102,7 +102,7 @@ class BaseOptimizer:
     def get_learning_curve(self, result: str | dict | float) -> float | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes."""
-        return get_learning_curve(
+        return _get_learning_curve(
             result,
             learning_curve_on_error=self.learning_curve_on_error,
             ignore_errors=self.ignore_errors,

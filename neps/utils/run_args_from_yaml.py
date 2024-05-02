@@ -3,7 +3,7 @@ import logging
 import sys
 import yaml
 from neps.optimizers.base_optimizer import BaseOptimizer
-from typing import Callable, Optional, Dict, Tuple, List
+from typing import Callable, Optional, Dict, Tuple, List, Any
 import inspect
 
 logger = logging.getLogger("neps")
@@ -462,14 +462,14 @@ def check_essential_arguments(
         )
 
 
-def check_arg_defaults(func: Callable, provided_arguments: Dict):
+def check_arg_defaults(func: Callable, provided_arguments: Dict) -> Any:
     """
     Checks if provided arguments deviate from default values defined in the function's
     signature.
 
     Parameters:
     - func (Callable): The function to check arguments against.
-    - provided_arguments (Dict): A dictionary containing the provided arguments and their
+    - provided_arguments: A dictionary containing the provided arguments and their
     values.
 
     Raises:

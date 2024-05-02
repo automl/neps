@@ -24,7 +24,7 @@ from .search_spaces.search_space import (
 )
 from .status.status import post_run_csv
 from .utils.common import get_searcher_data, get_value
-from .utils.result_utils import get_loss
+from neps.utils.data_loading import _get_loss
 
 
 def _post_evaluation_hook_function(
@@ -40,7 +40,7 @@ def _post_evaluation_hook_function(
         ignore_errors=_ignore_errors,
     ):
         working_directory = Path(config_working_directory, "../../")
-        loss = get_loss(result, loss_value_on_error, ignore_errors)
+        loss = _get_loss(result, loss_value_on_error, ignore_errors=ignore_errors)
 
         # 1. Write all configs and losses
         all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
@@ -343,10 +343,10 @@ def run(
         root_directory = Path(root_directory) / f"dev_{development_stage_id}"
 
     launch_runtime(
-        run_pipeline,
-        searcher_instance,
-        searcher_info,
-        root_directory,
+        evaluation_fn=run_pipeline,
+        sampler=searcher_instance,
+        optimizer_info=searcher_info,
+        optimization_dir=root_directory,
         max_evaluations_total=max_evaluations_total,
         max_evaluations_per_run=max_evaluations_per_run,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
@@ -359,7 +359,8 @@ def run(
     )
 
     if post_run_summary:
-        post_run_csv(root_directory, logger)
+        assert root_directory is not None
+        post_run_csv(root_directory)
 
 
 def _run_args(
