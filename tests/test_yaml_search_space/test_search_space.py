@@ -17,19 +17,19 @@ def test_correct_yaml_files():
         """Test the function with a correctly formatted YAML file."""
         pipeline_space = pipeline_space_from_yaml(path)
         assert isinstance(pipeline_space, dict)
-        float1 = FloatParameter(0.00001, 0.1, True, False)
+        float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False)
         assert float1.__eq__(pipeline_space["param_float1"]) is True
-        int1 = IntegerParameter(-3, 30, False, True)
+        int1 = IntegerParameter(-3, 30, log=False, is_fidelity=True)
         assert int1.__eq__(pipeline_space["param_int1"]) is True
-        int2 = IntegerParameter(100, 30000, True, False)
+        int2 = IntegerParameter(100, 30000, log=True, is_fidelity=False)
         assert int2.__eq__(pipeline_space["param_int2"]) is True
-        float2 = FloatParameter(3.3e-5, 0.15, False, False)
+        float2 = FloatParameter(3.3e-5, 0.15, log=False,is_fidelity= False)
         assert float2.__eq__(pipeline_space["param_float2"]) is True
-        cat1 = CategoricalParameter([2, "sgd", 10e-3], False)
+        cat1 = CategoricalParameter([2, "sgd", 10e-3],is_fidelity= False)
         assert cat1.__eq__(pipeline_space["param_cat"]) is True
-        const1 = ConstantParameter(0.5, False)
+        const1 = ConstantParameter(0.5,is_fidelity= False)
         assert const1.__eq__(pipeline_space["param_const1"]) is True
-        const2 = ConstantParameter(1e3, True)
+        const2 = ConstantParameter(1e3,is_fidelity= True)
         assert const2.__eq__(pipeline_space["param_const2"]) is True
 
     test_correct_yaml_file(BASE_PATH + "correct_config.yaml")
@@ -43,13 +43,13 @@ def test_correct_including_priors_yaml_file():
         BASE_PATH + "correct_config_including_priors.yml"
     )
     assert isinstance(pipeline_space, dict)
-    float1 = FloatParameter(0.00001, 0.1, True, False, 3.3e-2, "high")
+    float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False, default=3.3e-2, default_confidence="high")
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
-    int1 = IntegerParameter(3, 30, False, True, 10)
+    int1 = IntegerParameter(3, 30, log=False, is_fidelity=True, default=10)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
-    cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], False, 90e-3, "medium")
+    cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], is_fidelity=False, default=90e-3, default_confidence="medium")
     assert cat1.__eq__(pipeline_space["optimizer"]) is True
-    const1 = ConstantParameter(1e3, True)
+    const1 = ConstantParameter(1e3, is_fidelity=True)
     assert const1.__eq__(pipeline_space["dropout_rate"]) is True
 
 
