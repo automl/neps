@@ -1,10 +1,30 @@
-from typing import Union
+from __future__ import annotations
 
-from .numerical import NumericalParameter
+from neps.search_spaces.hyperparameters.numerical import NumericalParameter
 
 
 class ConstantParameter(NumericalParameter):
-    def __init__(self, value: Union[float, int, str], is_fidelity: bool = False):
+    """A constant value for a parameter.
+
+    This kind of [`Parameter`][neps.search_spaces.parameter] is used
+    to represent hyperparameters with values that should not change during
+    optimization. For example, the `batch_size` hyperparameter in a neural
+    network search space can be a `ConstantParameter` with a value of `32`.
+
+    ```python
+    import neps
+
+    batch_size = neps.ConstantParameter(32)
+    ```
+    """
+
+    def __init__(self, value: int | float | str, *, is_fidelity: bool = False):
+        """Create a new `ConstantParameter`.
+
+        Args:
+            value: value for the hyperparameter.
+            is_fidelity: whether the hyperparameter is fidelity.
+        """
         super().__init__()
         self.value = value
         self.is_fidelity = is_fidelity

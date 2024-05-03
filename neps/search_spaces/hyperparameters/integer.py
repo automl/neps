@@ -8,16 +8,53 @@ from neps.search_spaces.hyperparameters.float import FloatParameter
 
 
 class IntegerParameter(FloatParameter):
+    """An integer value for a parameter.
+
+    This kind of [`Parameter`][neps.search_spaces.parameter] is used
+    to represent hyperparameters with continuous integer values, optionally specifying if it exists
+    on a log scale.
+    For example, `batch_size` could be a value in `(32, 128)`, while the `num_layers`
+    hyperparameter in a neural network search space can be a `IntegerParameter`
+    with a range of `(1, 1000)` but on a log scale.
+
+    ```python
+    import neps
+
+    batch_size = neps.IntegerParameter(32, 128)
+    num_layers = neps.IntegerParameter(1, 1000, log=True)
+    ```
+    """
+
     def __init__(
         self,
         lower: float | int,
         upper: float | int,
+        *,
         log: bool = False,
         is_fidelity: bool = False,
         default: None | float | int = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
-        super().__init__(lower, upper, log, is_fidelity, default, default_confidence)
+        """Create a new `IntegerParameter`.
+
+        Args:
+            lower: lower bound for the hyperparameter.
+            upper: upper bound for the hyperparameter.
+            log: whether the hyperparameter is on a log scale.
+            is_fidelity: whether the hyperparameter is fidelity.
+            default: default value for the hyperparameter.
+            default_confidence: confidence score for the default value, used when
+                condsider prior based optimization.
+        """
+
+        super().__init__(
+            lower,
+            upper,
+            log=log,
+            is_fidelity=is_fidelity,
+            default=default,
+            default_confidence=default_confidence,
+        )
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
         # i.e. [x - 0.499999, x + 0.499999]

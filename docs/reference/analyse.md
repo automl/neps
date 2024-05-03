@@ -1,145 +1,144 @@
 # Analysing Runs
+NePS has some convenient utilities to help you to understand the results after you've run your runs.
+All of the results and state are stored and communicated on disk, which you can access using
+the `#!bash python -m neps.status ROOT_DIRECTORY` command or integrate live logging directly into your training loop
+and visualize the results using TensorBoard.
 
-NePS has some convenient utilities to help you to understand the results of your run.
+To get a quick overview of the results, you can use the `#!bash python -m neps.plot ROOT_DIRECTORY` command.
 
-## Saved to disk
+## Status
+
+To show status information about a neural pipeline search run, use
+
+```bash
+python -m neps.status ROOT_DIRECTORY
+```
+
+If you need more status information than is printed per default (e.g., the best config over time), please have a look at
+
+```bash
+python -m neps.status --help
+```
+
+!!! tip "Using `watch`"
+
+    To show the status repeatedly, on unix systems you can use
+
+    ```bash
+    watch --interval 30 python -m neps.status ROOT_DIRECTORY
+    ```
+
+## CLI commands
+
+To generate plots to the root directory, run
+
+```bash
+python -m neps.plot ROOT_DIRECTORY
+```
+
+Currently, this creates one plot that shows the best error value across the number of evaluations.
+
+## What's on disk?
 In the root directory, NePS maintains several files at all times that are human readable and can be useful
+If you pass the `post_run_summary=` argument to [`neps.run()`][neps.api.run],
+NePS will also generate a summary CSV file for you.
 
-```
-ROOT_DIRECTORY
-├── results
-│  └── config_1
-│      ├── config.yaml
-│      ├── metadata.yaml
-│      └── result.yaml
-├── all_losses_and_configs.txt
-├── best_loss_trajectory.txt
-└── best_loss_with_config_trajectory.txt
-```
+=== "`neps.run(..., post_run_summary=True)`"
 
-## Summary CSV
-The argument `post_run_summary` in `neps.run` allows for the automatic generation of CSV files after a run is complete.
-The new root directory after utilizing this argument will look like the following:
+    ```
+    ROOT_DIRECTORY
+    ├── results
+    │  └── config_1
+    │      ├── config.yaml
+    │      ├── metadata.yaml
+    │      └── result.yaml
+    ├── summary_csv
+    │  ├── config_data.csv
+    │  └── run_status.csv
+    ├── all_losses_and_configs.txt
+    ├── best_loss_trajectory.txt
+    └── best_loss_with_config_trajectory.txt
+    ```
 
-```
-ROOT_DIRECTORY
-├── results
-│  └── config_1
-│      ├── config.yaml
-│      ├── metadata.yaml
-│      └── result.yaml
-├── summary_csv
-│  ├── config_data.csv
-│  └── run_status.csv
-├── all_losses_and_configs.txt
-├── best_loss_trajectory.txt
-└── best_loss_with_config_trajectory.txt
-```
 
-- *`config_data.csv`*: Contains all configuration details in CSV format, ordered by ascending `loss`.
+=== "`neps.run(..., post_run_summary=False)`"
+
+    ```
+    ROOT_DIRECTORY
+    ├── results
+    │  └── config_1
+    │      ├── config.yaml
+    │      ├── metadata.yaml
+    │      └── result.yaml
+    ├── all_losses_and_configs.txt
+    ├── best_loss_trajectory.txt
+    └── best_loss_with_config_trajectory.txt
+    ```
+
+
+The `config_data.csv` contains all configuration details in CSV format, ordered by ascending `loss`.
 Details include configuration hyperparameters, any returned result from the `run_pipeline` function, and metadata information.
 
-- *`run_status.csv`*: Provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
+The `run_status.csv` provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
 
 ## TensorBoard Integration
+[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments,
+offering the ability to observe losses and metrics throughout the model training process.
+In NePS, we use this to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
 
-### Introduction
+### Logging Things
 
-[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments, offering the ability to observe losses and metrics throughout the model training process.
-In NePS, we use this powerful tool to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
+The [`tblogger.log()`][neps.plot.tensorboard_eval.tblogger.log] function is invoked
+within the model's training loop to facilitate logging of key metrics.
 
-### The Logging Function
+We also provide some utility functions to make it easier to log things like:
 
-The `tblogger.log` function is invoked within the model's training loop to facilitate logging of key metrics.
+* Scalars through [`tblogger.scalar_logging()`][neps.plot.tensorboard_eval.tblogger.scalar_logging]
+* Images through [`tblogger.image_logging()`][neps.plot.tensorboard_eval.tblogger.image_logging]
+
+You can provide these through the `extra_data=` argument in the `tblogger.log()` function.
+
+For an example usage of all these features please refer to the [example](../examples/convenience/neps_tblogger_tutorial.md)!
+
+```python
+tblogger.log(
+    loss=loss,
+    current_epoch=i,
+    write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
+    writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
+    writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+
+    # Name the dictionary keys as the names of the values
+    # you want to log and pass one of the following functions
+    # as the values for a successful logging process.
+    extra_data={
+        "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
+        "miss_img": tblogger.image_logging(image=miss_img, counter=2, seed=2),
+        "layer_gradient1": tblogger.scalar_logging(value=mean_gradient[0]),
+        "layer_gradient2": tblogger.scalar_logging(value=mean_gradient[1]),
+    },
+)
+```
 
 !!! tip
 
-    The logger function is primarily designed for implementation within the `run_pipeline` function during the training of the neural network.
+    The logger function is primarily designed for use within the `run_pipeline` function during the training of the neural network.
 
-- **Signature:**
-```python
-tblogger.log(
-    loss: float,
-    current_epoch: int,
-    write_config_scalar: bool = False,
-    write_config_hparam: bool = True,
-    write_summary_incumbent: bool = False,
-    extra_data: dict | None = None
-)
-```
+??? example "Quick Reference"
 
-- **Parameters:**
-    - `loss` (float): The loss value to be logged.
-    - `current_epoch` (int): The current epoch or iteration number.
-    - `write_config_scalar` (bool, optional): Set to `True` for a live loss trajectory for each configuration.
-    - `write_config_hparam` (bool, optional): Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
-    - `write_summary_incumbent` (bool, optional): Set to `True` for a live incumbent trajectory.
-    - `extra_data` (dict, optional): Additional data to be logged, provided as a dictionary.
+    === "`tblogger.log()`"
 
-### Extra Custom Logging
+        ::: neps.plot.tensorboard_eval.tblogger.log
 
-NePS provides dedicated functions for customized logging using the `extra_data` argument.
+    === "`tblogger.scalar_logging()`"
 
-!!! note "Custom Logging Instructions"
+        ::: neps.plot.tensorboard_eval.tblogger.scalar_logging
 
-    Name the dictionary keys as the names of the values you want to log and pass one of the following functions as the values for a successful logging process.
+    === "`tblogger.image_logging()`"
 
-#### 1- Extra Scalar Logging
+        ::: neps.plot.tensorboard_eval.tblogger.image_logging
 
-Logs new scalar data during training. Uses `current_epoch` from the log function as its `global_step`.
-
-- **Signature:**
-```python
-tblogger.scalar_logging(value: float)
-```
-- **Parameters:**
-    - `value` (float): Any scalar value to be logged at the current epoch of `tblogger.log` function.
-
-#### 2- Extra Image Logging
-
-Logs images during training. Images can be resized, randomly selected, and a specified number can be logged at specified intervals. Uses `current_epoch` from the log function as its `global_step`.
-
-- **Signature:**
-```python
-tblogger.image_logging(
-    image: torch.Tensor,
-    counter: int = 1,
-    resize_images: list[None | int] | None = None,
-    random_images: bool = True,
-    num_images: int = 20,
-    seed: int | np.random.RandomState | None = None,
-)
-```
-
-- **Parameters:**
-    - `image` (torch.Tensor): Image tensor to be logged.
-    - `counter` (int): Log images every counter epochs (i.e., when current_epoch % counter equals 0).
-    - `resize_images` (list of int, optional): List of integers for image sizes after resizing (default: [32, 32]).
-    - `random_images` (bool, optional): Images are randomly selected if True (default: True).
-    - `num_images` (int, optional): Number of images to log (default: 20).
-    - `seed` (int or np.random.RandomState or None, optional): Seed value or RandomState instance to control randomness and reproducibility (default: None).
-
-### Logging Example
-
-For illustration purposes, we have employed a straightforward example involving the tuning of hyperparameters for a model utilized in the classification of the MNIST dataset provided by [torchvision](https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html).
-
-You can find this example [here](../examples/convenience/neps_tblogger_tutorial.md)
-
-!!! info "Important"
-
-    We have optimized the example for computational efficiency. If you wish to replicate the exact results showcased in the following section, we recommend the following modifications:
-
-    1- Increase maximum epochs from 2 to 10
-
-    2- Set the `write_summary_incumbent` argument to `True`
-
-    3- Change the searcher from `random_search` to `bayesian_optimization`
-
-    4- Increase the maximum evaluations before disabling `tblogger` from 2 to 14
-
-    5- Increase the maximum evaluations after disabling `tblogger` from 3 to 15
-
-### Visualization Results
+### Visualizing Results
 
 The following command will open a local host for TensorBoard visualizations, allowing you to view them either in real-time or after the run is complete.
 
@@ -174,33 +173,3 @@ The scatter plot matrix view provides an in-depth analysis of pairwise relations
 By visualizing correlations and patterns, this view aids in identifying key interactions that may influence the model's performance.
 
 ![hparam_loggings3](../doc_images/tensorboard/tblogger_hparam3.jpg)
-
-## Status
-
-To show status information about a neural pipeline search run, use
-
-```bash
-python -m neps.status ROOT_DIRECTORY
-```
-
-If you need more status information than is printed per default (e.g., the best config over time), please have a look at
-
-```bash
-python -m neps.status --help
-```
-
-To show the status repeatedly, on unix systems you can use
-
-```bash
-watch --interval 30 python -m neps.status ROOT_DIRECTORY
-```
-
-## CLI commands
-
-To generate plots to the root directory, run
-
-```bash
-python -m neps.plot ROOT_DIRECTORY
-```
-
-Currently, this creates one plot that shows the best error value across the number of evaluations.

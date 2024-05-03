@@ -17,15 +17,44 @@ FLOAT_CONFIDENCE_SCORES = {
 
 
 class FloatParameter(NumericalParameter):
+    """A float value for a parameter.
+
+    This kind of [`Parameter`][neps.search_spaces.parameter] is used
+    to represent hyperparameters with continuous float values, optionally specifying if it exists
+    on a log scale.
+    For example, `l2_norm` could be a value in `(0.1)`, while the `learning_rate`
+    hyperparameter in a neural network search space can be a `FloatParameter`
+    with a range of `(0.0001, 0.1)` but on a log scale.
+
+    ```python
+    import neps
+
+    l2_norm = neps.FloatParameter(0, 1)
+    learning_rate = neps.FloatParameter(1e-4, 1e-1, log=True)
+    ```
+    """
+
     def __init__(
         self,
         lower: float | int,
         upper: float | int,
+        *,
         log: bool = False,
         is_fidelity: bool = False,
         default: None | float | int = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
+        """Create a new `FloatParameter`.
+
+        Args:
+            lower: lower bound for the hyperparameter.
+            upper: upper bound for the hyperparameter.
+            log: whether the hyperparameter is on a log scale.
+            is_fidelity: whether the hyperparameter is fidelity.
+            default: default value for the hyperparameter.
+            default_confidence: confidence score for the default value, used when
+                condsider prior based optimization.
+        """
         super().__init__(is_fidelity=is_fidelity)
 
         self.default = default
