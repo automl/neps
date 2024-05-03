@@ -1,190 +1,181 @@
 # Initializing the Pipeline Space
 
-In NePS, a pivotal step is the definition of the search space, termed `pipeline_space`. This space can be structured
-through various approaches, including a Python dictionary, a YAML file, or ConfigSpace. Each of these methods allows
-you to specify a set of parameter types, ranging from Float and Categorical to specialized architecture parameters.
+In NePS, we need to define a `pipeline_space`.
+This space can be structured through various approaches, including a Python dictionary, a YAML file, or ConfigSpace.
+Each of these methods allows you to specify a set of parameter types, ranging from Float and Categorical to specialized architecture parameters.
 Whether you choose a dictionary, YAML file, or ConfigSpace, your selected method serves as a container or framework
 within which these parameters are defined and organized. This section not only guides you through the process of
 setting up your `pipeline_space` using these methods but also provides detailed instructions and examples on how to
 effectively incorporate various parameter types, ensuring that NePS can utilize them in the optimization process.
 
 
-## Methods for Defining the NePS Pipeline Space
-### Option 1: Using a Python Dictionary
+## Parameters
+NePS currently features 4 primary hyperparameter types:
 
-To define the `pipeline_space` using a Python dictionary, follow these steps:
+* [`CategoricalParameter`][neps.search_spaces.hyperparameters.categorical.CategoricalParameter]
+* [`FloatParameter`][neps.search_spaces.hyperparameters.float.FloatParameter]
+* [`IntegerParameter`][neps.search_spaces.hyperparameters.integer.IntegerParameter]
+* [`ConstantParameter`][neps.search_spaces.hyperparameters.constant.ConstantParameter]
 
-Create a Python dictionary that specifies the parameters and their respective ranges. For example:
+Using these types, you can define the parameters that NePS will optimize during the search process.
+The most basic way to pass these parameters is through a Python dictionary, where each key-value
+pair represents a parameter name and its respective type.
+For example, the following Python dictionary defines a `pipeline_space` with four parameters
+for optimizing a deep learning model:
 
 ```python
 pipeline_space = {
-    "learning_rate": neps.FloatParameter(lower=0.00001, upper=0.1, log=True),
-    "num_epochs": neps.IntegerParameter(lower=3, upper=30, is_fidelity=True),
-    "optimizer": neps.CategoricalParameter(choices=["adam", "sgd", "rmsprop"]),
-    "dropout_rate": neps.FloatParameter(value=0.5),
+    "learning_rate": neps.FloatParameter(0.00001, 0.1, log=True),
+    "num_epochs": neps.IntegerParameter(3, 30, is_fidelity=True),
+    "optimizer": neps.CategoricalParameter(["adam", "sgd", "rmsprop"]),
+    "dropout_rate": neps.ConstantParameter(0.5),
 }
 
-
-# Provide this dictionary to NePS via the 'pipeline_space' argument.
 neps.run(.., pipeline_space=pipeline_space)
 ```
 
-### Option 2: Using a YAML File
+??? example "Quick Parameter Reference"
 
+    === "`CategoricalParameter`"
+
+        ::: neps.search_spaces.hyperparameters.categorical.CategoricalParameter
+
+    === "`FloatParameter`"
+
+        ::: neps.search_spaces.hyperparameters.float.FloatParameter
+
+    === "`IntegerParameter`"
+
+        ::: neps.search_spaces.hyperparameters.integer.IntegerParameter
+
+    === "`ConstantParameter`"
+
+        ::: neps.search_spaces.hyperparameters.constant.ConstantParameter
+
+
+## Using your knowledge, providing a Prior
+When optimizing, you can provide your own knowledge using the parameters `default=`.
+By indicating a `default=` we take this to be your user prior,
+**your knowledge about where a good value for this parameter lies**.
+
+You can also specify a `default_confidence=` to indicate how strongly you want NePS,
+to focus on these, one of either `"low"`, `"medium"`, or `"high"`.
+
+Currently the two major algorithms that exploit this in NePS are `PriorBand`
+(prior-based `HyperBand`) and `PiBO`, a version of Bayesian Optimization which uses Priors.
+
+```python
+import neps
+
+neps.run(
+    ...,
+    pipeline_space={
+        "learning_rate": neps.FloatParameter(1e-4, 1e-1, log=True, default=1e-2, default_confidence="medium"),
+        "num_epochs": neps.IntegerParameter(3, 30, is_fidelity=True),
+        "optimizer": neps.CategoricalParameter(["adam", "sgd", "rmsprop"], default="adam", default_confidence="low"),
+        "dropout_rate": neps.ConstantParameter(0.5),
+    }
+)
+```
+!!! warning "Must set `default=` for all parameters, if any"
+
+    If you specify `default=` for one parameter, you must do so for all your variables.
+    This will be improved in future versions.
+
+!!! warning "Interaction with `is_fidelity`"
+
+    If you specify `is_fidelity=True` for one parameter, the `default=` and `default_confidence=` are ignored.
+    This will be dissallowed in future versions.
+
+## Defining a pipeline space using YAML
 Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definitions following this structure.
 
-```yaml
-pipeline_space: # important to start with
-  learning_rate:
-    lower: 2e-3
-    upper: 0.1
-    log: true
+=== "`./pipeline_space.yaml`"
 
-  num_epochs:
-    type: int # or "integer", optional if u want to manually set this
-    lower: 3
-    upper: 30
-    is_fidelity: True
+    ```yaml
+    pipeline_space: # important to start with
+      learning_rate:
+        type: float
+        lower: 2e-3
+        upper: 0.1
+        log: true
 
-  optimizer:
-    choices: ["adam", "sgd", "rmsprop"]
+      num_epochs:
+        type: int
+        lower: 3
+        upper: 30
+        is_fidelity: True
 
-  dropout_rate:
-    value: 0.5
-...
+      optimizer:
+        type: categorical
+        choices: ["adam", "sgd", "rmsprop"]
 
-```
+      dropout_rate:
+        type: constant
+        value: 0.5
+    ```
+
+=== "`run.py`"
+
+    ```python
+    neps.run(.., pipeline_space="./pipeline_space.yaml")
+    ```
+
+!!! tip
+
+    Ensure your YAML file starts with `pipeline_space:`.
+    This is the root key under which all parameter configurations are defined.
+
+When defining the `pipeline_space` using a YAML file, if the `type` argument is not specified,
+the NePS will automatically infer the data type based on the value provided.
+
+* If `lower` and `upper` are provided, then if they are both integers, the type will be inferred as `int`,
+    otherwise as `float`. You can provide scientific notation for floating-point numbers as well.
+* If `choices` are provided, the type will be inferred as `categorical`.
+* If `value` is provided, the type will be inferred as `constant`.
+
+If none of these hold, an error will be raised.
+
+Details on how YAML interpret boolean values can be found later on,
+[here](#important-note-on-yaml-data-type-interpretation)
+
+
+## Using ConfigSpace
+
+For users familiar with the [`ConfigSpace`](https://automl.github.io/ConfigSpace/main/) library,
+can also define the `pipeline_space` through `ConfigurationSpace()`
+
 ```python
-# Provide this yaml file to NePS via the 'pipeline_space' argument by providing its path.
-neps.run(.., pipeline_space="path/to/pipeline_space.yaml")
-```
+from configspace import ConfigurationSpace, Float
 
-Ensure your YAML file starts with `pipeline_space:`.
-This is the root key under which all parameter configurations are defined.
-
-!!! note
-
-    The various types of parameters displayed in the Dictionary of Option 1 are here automatically determined by the
-    data. If desired, you have the option to define them manually by providing the argument `type`. For more details,
-    refer to the section on [Supported Hyperparameter Types](#supported-hyperparameter-types).
-
-
-### Option 3: Using ConfigSpace
-
-For users familiar with the ConfigSpace library, can also define the `pipeline_space` through
-ConfigurationSpace().
-
-```python
-from configspace import ConfigurationSpace, UniformFloatHyperparameter
-
-configspace = ConfigurationSpace()
-configspace.add_hyperparameter(
-    UniformFloatHyperparameter("learning_rate", 0.00001, 0.1, log=True)
+configspace = ConfigurationSpace(
+    {
+        "learning_rate": Float("learning_rate", bounds=(1e-4, 1e-1), log=True)
+        "optimizer": ["adam", "sgd", "rmsprop"],
+        "dropout_rate": 0.5,
+    }
 )
 ```
 
+!!! warning
+
+    Parameters you wish to use as a **fidelity** are not support through ConfigSpace
+    at this time.
+
 For additional information on ConfigSpace and its features, please visit the following
 [link](https://github.com/automl/ConfigSpace).
-## Supported Hyperparameter Types
-
-### Float/Integer Parameter
-
-- **Expected Arguments:**
-    - `lower`: The minimum value of the parameter.
-    - `upper`: The maximum value of the parameter.
-        - Accepted values: int or float depending on the specific parameter type one wishes to use.
-- **Optional Arguments:**
-    - `log`: Boolean that indicates if the parameter uses a logarithmic scale (default: False)
-        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-data-type-interpretation)
-    - `is_fidelity`: Boolean that marks the parameter as a fidelity parameter (default: False).
-    - `default`: Sets a prior central value for the parameter (default: None).
-      > Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
-    - `default_confidence`: Specifies the confidence level of the default value,
-      indicating how strongly the prior
-      should be considered (default: 'low').
-        - Accepted values: 'low', 'medium', or 'high'.
-    - `type`: Specifies the data type of the parameter.
-        - Accepted values: 'int', 'integer', or 'float'.
-        > Note: If type is not specified e notation gets converted to float
-
-        !!! note "YAML Method Specific:"
-            The type argument, used to specify the data type of parameters as 'int', 'integer', or 'float',
-            is unique to defining the pipeline_space with a YAML file. This explicit specification of the parameter
-            type is not required when using a Python dictionary or ConfigSpace, as these methods inherently determine
-            the data types based on the syntax and structure of the code.
-
-### Categorical Parameter
-
-- **Expected Arguments:**
-    - `choices`: A list of discrete options (int | float | str) that the parameter can take.
-- **Optional Arguments:**
-    - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
-        - [Details on how YAML interpret Boolean Values](#important-note-on-yaml-data-type-interpretation)
-    - `default`: Sets a prior central value for the parameter (default: None).
-      > Note: Currently, if you define a prior for one parameter, you must do so for all your variables.
-    - `default_confidence`: Specifies the confidence level of the default value,
-      indicating how strongly the prior
-      should be considered (default: "low").
-      - `type`: Specifies the data type of the parameter.
-        - Accepted values: 'cat' or 'categorical'.
-        > Note: Yaml Method Specific
-
-### Constant Parameter
-
-- **Expected Arguments:**
-    - `value`: The fixed value (int | float | str) for the parameter.
-- **Optional Arguments:**
-    - `type`: Specifies the data type of the parameter.
-        - Accepted values: 'const' or 'constant'.
-      > Note: Yaml Method Specific
-    - `is_fidelity`: Marks the parameter as a fidelity parameter (default: False).
-
-### Important Note on YAML Data Type Interpretation
-
-When working with YAML files, it's essential to understand how the format interprets different data types:
-
-1. **Strings in Quotes:**
-
-    - Any value enclosed in single (`'`) or double (`"`) quotes is treated as a string.
-    - Example: `"true"`, `'123'` are read as strings.
-
-2. **Boolean Interpretation:**
-
-    -  Specific unquoted values are interpreted as booleans. This includes:
-        - `true`, `True`, `TRUE`
-        - `false`, `False`, `FALSE`
-        - `on`, `On`, `ON`
-        - `off`, `Off`, `OFF`
-        - `yes`, `Yes`, `YES`
-        - `no`, `No`, `NO`
-
-3. **Numbers:**
-
-    - Unquoted numeric values are interpreted as integers or floating-point numbers, depending on their format.
-    - By default, when the 'type' is not specified, any number in scientific notation (e.g., 1e3) is interpreted as a
-   floating-point number. This interpretation is unique to our system.
-
-4. **Empty Strings:**
-
-    - An empty string `""` or a key with no value is always treated as `null` in YAML.
-
-5. **Unquoted Non-Boolean, Non-Numeric Strings:**
-
-    - Unquoted values that don't match boolean patterns or numeric formats are treated as strings.
-    - Example: `example` is a string.
-
-Remember to use appropriate quotes and formats to ensure values are interpreted as intended.
 
 ## Supported Architecture parameter Types
+A comprehensive documentation for the Architecture parameter is not available at this point.
 
-!!! note "Note"
+If you are interested in exploring architecture parameters, you can find detailed
+examples and usage in the following resources:
+
+- [Basic Usage Examples](https://github.com/automl/neps/tree/master/neps_examples/basic_usage) - Basic usage
+    examples that can help you understand the fundamentals of Architecture parameters.
+- [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced
+    and experimental use cases, including Hierarchical parameters, check out this collection of examples.
+
+!!! warning
+
     The configuration of `pipeline_space` from a YAML file does not currently support architecture parameter types.
-!!! note "Note"
-    A comprehensive documentation for the Architecture parameter will be available soon.
-    If you are interested in exploring architecture parameters, you can find detailed
-    examples and usage in the following resources:
-
-    - [Basic Usage Examples](https://github.com/automl/neps/tree/master/neps_examples/basic_usage) - Basic usage
-        examples that can help you understand the fundamentals of Architecture parameters.
-    - [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced
-        and experimental use cases, including Hierarchical parameters, check out this collection of examples.

@@ -17,13 +17,43 @@ CATEGORICAL_CONFIDENCE_SCORES = {
 
 
 class CategoricalParameter(Parameter):
+    """A set of **unordered** choices for a parameter.
+
+    This kind of [`Parameter`][neps.search_spaces.parameter] is used
+    to represent hyperparameters that can take on a discrete set of unordered
+    values. For example, the `optimizer` hyperparameter in a neural network
+    search space can be a `CategoricalParameter` with choices like
+    `#!python ["adam", "sgd", "rmsprop"]`.
+
+    ```python
+    import neps
+
+    optimizer_choice = neps.CategoricalParameter(
+        ["adam", "sgd", "rmsprop"],
+        default="adam"
+    )
+    ```
+    """
+
     def __init__(
         self,
         choices: Iterable[float | int | str],
+        *,
         is_fidelity: bool = False,
         default: None | float | int | str = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
+        """Create a new `CategoricalParameter`.
+
+        Args:
+            choices: choices for the hyperparameter.
+            is_fidelity: whether the hyperparameter is fidelity.
+            default: default value for the hyperparameter, must be in `choices=`
+                if provided.
+            default_confidence: confidence score for the default value, used when
+                condsider prior based optimization.
+        """
+
         super().__init__()
 
         self.default = default
