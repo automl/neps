@@ -113,12 +113,18 @@ class SeedState:
             int(x) for x in np.fromfile(path / "py_rng.npy", dtype=cls.PY_RNG_STATE_DTYPE)
         )
         np_rng_state = np.fromfile(path / "np_rng_state.npy", dtype=np.uint32)
-        torch_rng_state = torch.load(path / "torch_rng_state.pt")
+
+        # By specifying `weights_only=True`, it disables arbitrary object loading
+        torch_rng_state = torch.load(path / "torch_rng_state.pt", weights_only=True)
 
         torch_cuda_rng = None
         torch_cuda_rng_path = path / "torch_cuda_rng_state.pt"
         if torch_cuda_rng_path.exists():
-            torch_cuda_rng = torch.load(path / "torch_cuda_rng_state.pt")
+            # By specifying `weights_only=True`, it disables arbitrary object loading
+            torch_cuda_rng = torch.load(
+                path / "torch_cuda_rng_state.pt",
+                weights_only=True,
+            )
 
         return cls(
             np_rng=(
