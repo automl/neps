@@ -5,16 +5,16 @@ import random
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Union
+from typing import Iterator, List, Tuple, Union
 from typing_extensions import TypeAlias
 
 import numpy as np
 import torch
 
-NP_RNG_STATE: TypeAlias = tuple[str, np.ndarray, int, int, float]
-PY_RNG_STATE: TypeAlias = tuple[int, tuple[int, ...], Union[int, None]]
+NP_RNG_STATE: TypeAlias = Tuple[str, np.ndarray, int, int, float]
+PY_RNG_STATE: TypeAlias = Tuple[int, Tuple[int, ...], Union[int, None]]
 TORCH_RNG_STATE: TypeAlias = torch.Tensor
-TORCH_CUDA_RNG_STATE: TypeAlias = list[torch.Tensor]
+TORCH_CUDA_RNG_STATE: TypeAlias = List[torch.Tensor]
 
 
 @dataclass
