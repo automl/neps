@@ -22,7 +22,6 @@ def run_pipeline(
     if categorical_name2 == "a":
         loss += 1
 
-    time.sleep(2)  # For demonstration purposes only
     return loss
 
 

@@ -59,13 +59,14 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
 from neps.types import ERROR, POST_EVAL_HOOK_SIGNATURE, ConfigLike, ConfigResult
 from neps.utils._locker import Locker
+from neps.utils._rng import SeedState
 from neps.utils.files import deserialize, empty_file, serialize
 
 if TYPE_CHECKING:
     from .optimizers.base_optimizer import BaseOptimizer
 
 # Wait time between each successive poll to see if state can be grabbed
-DEFAULT_STATE_POLL: float = 1.0
+DEFAULT_STATE_POLL: float = 0.1
 ENVIRON_STATE_POLL_KEY = "NEPS_STATE_POLL"
 
 # Timeout before giving up on trying to grab the state, raising an error
@@ -299,6 +300,7 @@ class SharedState:
         optimizer_state_file: The path to the optimizers state.
         optimizer_info_file: The path to the file containing information about the
             optimizer's setup.
+        seed_state_dir: Directory where the seed state is stored.
         results_dir: Directory where results for configurations are stored.
     """
 
@@ -308,6 +310,7 @@ class SharedState:
     lock: Locker = field(init=False)
     optimizer_state_file: Path = field(init=False)
     optimizer_info_file: Path = field(init=False)
+    seed_state_dir: Path = field(init=False)
     results_dir: Path = field(init=False)
 
     def __post_init__(self) -> None:
@@ -322,6 +325,7 @@ class SharedState:
         self.lock = Locker(self.base_dir / ".decision_lock")
         self.optimizer_state_file = self.base_dir / ".optimizer_state.yaml"
         self.optimizer_info_file = self.base_dir / ".optimizer_info.yaml"
+        self.seed_state_dir = self.base_dir / ".seed_state"
 
     def trial_refs(self) -> dict[Trial.State, list[Trial.Disk]]:
         """Get the disk reference of every trial, grouped by their state."""
@@ -565,7 +569,9 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
 
             # While we have the decision lock, we will now sample with the optimizer in
             # this process
-            with sampler.using_state(shared_state.optimizer_state_file):
+            with SeedState.use(shared_state.seed_state_dir), sampler.using_state(
+                shared_state.optimizer_state_file
+            ):
                 if sampler.budget is not None and sampler.used_budget >= sampler.budget:
                     logger.info("Maximum budget reached, shutting down")
                     break

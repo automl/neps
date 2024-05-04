@@ -11,7 +11,7 @@ from pathlib import Path
 from neps.types import ConfigResult
 from neps.utils.files import serialize, deserialize
 from ..search_spaces.search_space import SearchSpace
-from ..utils.common import get_rnd_state, set_rnd_state
+from neps.utils._rng import SeedState
 from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
 
 
@@ -63,7 +63,7 @@ class BaseOptimizer:
         raise NotImplementedError
 
     def get_state(self) -> Any:
-        _state = {"rnd_seeds": get_rnd_state(), "used_budget": self.used_budget}
+        _state = {"used_budget": self.used_budget}
         if self.budget is not None:
             # TODO(eddiebergman): Seems like this isn't used anywhere,
             # A fuzzy find search for `remaining_budget` shows this as the
@@ -73,7 +73,6 @@ class BaseOptimizer:
         return _state
 
     def load_state(self, state: Any) -> None:
-        set_rnd_state(state["rnd_seeds"])
         self.used_budget = state["used_budget"]
 
     def load_config(self, config_dict: Mapping[str, Any]) -> SearchSpace:
@@ -114,8 +113,8 @@ class BaseOptimizer:
     @contextmanager
     def using_state(self, state_file: Path) -> Iterator[Self]:
         if state_file.exists():
-            state = deserialize(state_file)
-            self.load_state(state)
+            optimizer_state = deserialize(state_file)
+            self.load_state(optimizer_state)
 
         yield self
 
