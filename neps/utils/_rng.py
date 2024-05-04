@@ -145,7 +145,25 @@ class SeedState:
 
     @classmethod
     @contextmanager
-    def use(cls, path: Path, *, write_on_exit: bool = True) -> Iterator[SeedState]:
+    def use(
+        cls,
+        path: Path,
+        *,
+        update_on_exit: bool = False,
+    ) -> Iterator[SeedState]:
+        """Context manager to use a seed state.
+
+        If the path exists, load the seed state from the path and set it as the
+        global state. Otherwise, use the current global state.
+
+        Args:
+            path: Path to the seed state.
+            update_on_exit: If True, get the seed state after the context manager returns
+                and save it to the path.
+
+        Yields:
+            SeedState: The seed state in use.
+        """
         if path.exists():
             seed_state = cls.load(path)
             seed_state.set_as_global_state()
@@ -154,5 +172,5 @@ class SeedState:
 
         yield seed_state
 
-        if write_on_exit:
-            seed_state.dump(path)
+        if update_on_exit:
+            cls.get().dump(path)
