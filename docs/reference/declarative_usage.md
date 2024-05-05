@@ -1,19 +1,46 @@
-# Introduction to Declarative Usage with NePS
-## Configuring with YAML
+## Introduction
+### Configuring with YAML
 
 Configure your experiments by specifying settings in a YAML file. This file becomes the single source for
 your project setup, making it easy to share, reproduce, and modify them.
 
 Should i explain how to create a yaml??
 
-## Simple YAML Example
+#### Simple YAML Example
 Here’s a basic example of how a YAML configuration for NePS looks:
 ```yaml
 # Basic NEPS Configuration Example
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_run                   # Function name within the file
+  name: run_pipeline                   # Function name within the file
 
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: True  # Log scale for learning rate
+  optimizer:
+    choices: [adam, sgd, adamw]
+  epochs: 50
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20               # Budget
+
+```
+
+#### Executing the Configuration
+To run the experiment defined in your YAML, use this simple command in Python:
+```python
+import neps
+def run_pipeline():
+    pass
+neps.run(run_args="path/to/your/config.yaml")
+```
+
+
+### Convenience?
+```yaml
+# Basic NEPS Configuration Example
 pipeline_space:
   learning_rate:
     lower: 1e-5
@@ -28,15 +55,14 @@ max_evaluations_total: 20               # Budget
 
 
 ```
-## Executing the Configuration
-To run the experiment defined in your YAML, use this simple command in Python:
 ```python
 import neps
-neps.run(run_args="path/to/your/config.yaml")
+def run_pipeline():
+    pass
+neps.run(run_pipeline, run_args="path/to/your/config.yaml")
 ```
 
-
-## Extended Configuration
+### Extended Configuration
 ```yaml
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
@@ -76,7 +102,9 @@ pre_load_hooks:
 
 ```
 explain what happens with undefined keys?
-## Customizing neps searcher
+
+## Different Use Cases
+### Customizing neps searcher
 ```yaml
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
@@ -112,7 +140,7 @@ TODO
 information where to find parameters of included searcher, where to find optimizers names...link
 
 
-## Load your optimizer
+### Load your own optimizer
 ```yaml
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
@@ -139,7 +167,7 @@ searcher:
 
 
 ```
-## How to define hooks?
+### How to define hooks?
 
 ```yaml
 # Basic NEPS Configuration Example
@@ -164,7 +192,7 @@ pre_load_hooks:
     hook2: path/to/your/hooks.py # Different function name from the same file source
 
 ```
-## What if your search space is big?
+### What if your search space is big?
 ```yaml
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
@@ -191,7 +219,7 @@ pipeline_space:
 ...
 ```
 
-## If your use case involves experimenting with different searcher settings
+### If you experimenting a lot with different searcher settings
 ```yaml
 # Basic NEPS Configuration Example
 run_pipeline:
@@ -226,6 +254,27 @@ random_interleave_prob: 0.1
 disable_priors: false
 prior_confidence: high
 sample_default_first: false
+```
+
+### Architecture search space (Loading Dict)
+```yaml
+# Basic NEPS Configuration Example
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: example_run                   # Function name within the file
+
+pipeline_space:
+  path: path/to/your/search_space.py  # Path to the dict file
+  name: search_space                  # Name of the dict instance
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20               # Budget
+
+
+```
+search_space.py
+```python
+search_space = {}
 ```
 
 {{ include('test_yaml_test.yaml') }}

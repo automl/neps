@@ -135,7 +135,7 @@ nav:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
     - Optimizers: 'reference/optimizers.md'
-    - YAML Usage: 'reference/yaml_usage.md'
+    - Declarative Usage: 'reference/declarative_usage.md'
     - The Run Function: 'reference/run_pipeline.md'
     - Analysing Runs: 'reference/analyse.md'
   - Examples: "examples/"  # auto-generated
