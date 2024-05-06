@@ -639,7 +639,7 @@ class SharedState:
                 raise ValueError(f"Unknown state {state} for trial {trial_on_disk.id}")
 
     @contextmanager
-    def sync(self, *, lock: bool = False) -> Iterator[None]:
+    def sync(self, *, lock: bool = True) -> Iterator[None]:
         """Sync up with what's on disk."""
         if lock:
             _poll, _timeout = get_shared_state_poll_and_timeout()
