@@ -138,7 +138,7 @@ def read_tasks_and_dev_stages_from_disk(
 
             state = SharedState(Path(dev_dir_path))
             with state.lock(poll=1, timeout=None):
-                refs = state.trial_refs()
+                refs = state.load_trial_refs_from_disk()
 
             result = {ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]}
             results[task_id][dev_id] = result
@@ -168,7 +168,7 @@ def read_user_prior_results_from_disk(
 
         state = SharedState(prior_dir)
         with state.lock(poll=0.1, timeout=None):
-            refs = state.trial_refs()
+            refs = state.load_trial_refs_from_disk()
 
         results[prior_dir.name] = {
             ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]
@@ -300,7 +300,7 @@ def summarize_results(
         else:
             state = SharedState(Path(seed_dir))
             with state.lock(poll=1, timeout=None):
-                refs = state.trial_refs()
+                refs = state.load_trial_refs_from_disk()
 
             final_results = {
                 ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]
