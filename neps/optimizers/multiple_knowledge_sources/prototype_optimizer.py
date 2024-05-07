@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from utils.types import ConfigResult
+from neps.utils.types import ConfigResult
 from ...search_spaces.search_space import SearchSpace
 from ...utils.data_loading import read_tasks_and_dev_stages_from_disk
 from .. import BaseOptimizer

@@ -69,7 +69,7 @@ from typing_extensions import TypeAlias
 
 import numpy as np
 
-from utils.types import (
+from neps.utils.types import (
     ERROR,
     POST_EVAL_HOOK_SIGNATURE,
     ConfigID,

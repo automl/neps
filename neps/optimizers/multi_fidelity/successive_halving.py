@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Literal
 
-from utils.types import ConfigResult
+from neps.utils.types import ConfigResult
 from ...search_spaces.hyperparameters.categorical import (
     CATEGORICAL_CONFIDENCE_SCORES,
     CategoricalParameter,

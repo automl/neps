@@ -15,7 +15,7 @@ from networkx.algorithms.dag import lexicographical_topological_sort
 from pathlib import Path
 from torch import nn
 
-from utils.types import AttrDict
+from neps.utils.types import AttrDict
 from .primitives import AbstractPrimitive, Identity
 
 

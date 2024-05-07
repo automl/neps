@@ -13,7 +13,7 @@ import numpy as np
 import yaml
 
 from neps.runtime import ErrorReport, SharedState
-from utils.types import ERROR, ResultDict, _ConfigResultForStats
+from neps.utils.types import ERROR, ResultDict, _ConfigResultForStats
 
 
 def _get_loss(

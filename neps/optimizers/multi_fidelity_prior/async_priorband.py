@@ -5,7 +5,7 @@ import typing
 import numpy as np
 from typing_extensions import Literal
 
-from utils.types import ConfigResult
+from neps.utils.types import ConfigResult
 from ...search_spaces.search_space import SearchSpace
 from ..bayesian_optimization.acquisition_functions.base_acquisition import (
     BaseAcquisition,

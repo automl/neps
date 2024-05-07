@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from utils.types import ConfigResult
+from neps.utils.types import ConfigResult
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 

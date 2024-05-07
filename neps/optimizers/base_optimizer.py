@@ -8,7 +8,7 @@ from typing_extensions import Self
 from contextlib import contextmanager
 from pathlib import Path
 
-from utils.types import ConfigResult
+from neps.utils.types import ConfigResult
 from neps.utils.files import serialize, deserialize
 from ..search_spaces.search_space import SearchSpace
 from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
