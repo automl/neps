@@ -9,30 +9,14 @@ Should i explain how to create a yaml??
 #### Simple YAML Example
 Here’s a basic example of how a YAML configuration for NePS looks:
 ```yaml
-# Basic NEPS Configuration Example
-run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
-  name: run_pipeline                   # Function name within the file
-
-pipeline_space:
-  learning_rate:
-    lower: 1e-5
-    upper: 1e-1
-    log: True  # Log scale for learning rate
-  optimizer:
-    choices: [adam, sgd, adamw]
-  epochs: 50
-
-root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
-
+--8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example.yaml"
 ```
 
 #### Executing the Configuration
 To run the experiment defined in your YAML, use this simple command in Python:
 ```python
 import neps
-def run_pipeline():
+def run_pipeline(learning_rate, optimizer, epochs):
     pass
 neps.run(run_args="path/to/your/config.yaml")
 ```
@@ -40,20 +24,7 @@ neps.run(run_args="path/to/your/config.yaml")
 
 ### Convenience?
 ```yaml
-# Basic NEPS Configuration Example
-pipeline_space:
-  learning_rate:
-    lower: 1e-5
-    upper: 1e-1
-    log: True  # Log scale for learning rate
-  optimizer:
-    choices: [adam, sgd, adamw]
-  epochs: 50
-
-root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
-
-
+--8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example_including_run_pipeline.yaml
 ```
 ```python
 import neps

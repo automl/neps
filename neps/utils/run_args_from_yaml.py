@@ -132,17 +132,7 @@ def config_loader(path: str) -> Dict:
     except yaml.YAMLError as e:
         raise ValueError(f"The file at {path} is not a valid YAML file.") from e
 
-    # Check if 'run_args' is the top-level key in the loaded YAML
-    if 'run_args' not in config:
-        raise KeyError(f"The 'run_args' key is missing at the top level of the YAML "
-                       f"file: {path}")
-    # Check if 'run_args' is the only top-level key, as it is supposed to be
-    if len(config) > 1:
-        raise KeyError(
-            f"The YAML file at '{path}' is incorrectly structured. All configurations "
-            f"must be under 'run_args'.")
-
-    return config['run_args']
+    return config
 
 
 def extract_leaf_keys(d: Dict, special_keys: Dict = None) -> Tuple[Dict, Dict]:
