@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.runtime import ConfigResult, SharedState, Trial
+from neps.runtime import ErrorReport, SharedState
+from neps.types import _ConfigResultForStats
 from neps.utils._locker import Locker
-from neps.utils.data_loading import _get_loss
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -32,21 +32,32 @@ def get_summary_dict(
         summary_dict: Information summarizing a run
     """
     root_directory = Path(root_directory)
-    shared_state = SharedState(root_directory)
 
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
-    trial_refs = shared_state.trial_refs()
-    evaluated = [r.to_result() for r in trial_refs[Trial.State.COMPLETE]]
-    pending = [r.load() for r in trial_refs[Trial.State.PENDING]]
-    in_progress = [r.load() for r in trial_refs[Trial.State.IN_PROGRESS]]
+    shared_state = SharedState(root_directory)
+    shared_state.update_from_disk()
+
+    evaluated = {
+        _id: _ConfigResultForStats(
+            _id,
+            report.config,
+            "error" if isinstance(report, ErrorReport) else report.results,
+            report.metadata,
+        )
+        for _id, report in shared_state.evaluated_trials.items()
+    }
+    in_progress = {
+        _id: trial.config for _id, trial in shared_state.in_progress_trials.items()
+    }
+    pending = {_id: trial.config for _id, trial in shared_state.pending_trials.items()}
 
     summary: dict[str, Any] = {}
 
     if add_details:
-        summary["previous_results"] = {c.id: c for c in evaluated}
-        summary["pending_configs"] = {c.id: c for c in in_progress + pending}
-        summary["pending_configs_free"] = {c: id for c in pending}
+        summary["previous_results"] = evaluated
+        summary["pending_configs"] = {**in_progress, **pending}
+        summary["pending_configs_free"] = pending
 
     summary["num_evaluated_configs"] = len(evaluated)
     summary["num_pending_configs"] = len(in_progress) + len(pending)
@@ -57,12 +68,12 @@ def get_summary_dict(
     summary["best_config_metadata"] = None
     summary["best_config"] = None
     summary["num_error"] = 0
-    for evaluation in evaluated:
+    for evaluation in evaluated.values():
         if evaluation.result == "error":
             summary["num_error"] += 1
-        loss = _get_loss(evaluation.result, ignore_errors=True)
+        loss = evaluation.loss
         if isinstance(loss, float) and loss < summary["best_loss"]:
-            summary["best_loss"] = _get_loss(evaluation.result)
+            summary["best_loss"] = loss
             summary["best_config"] = evaluation.config
             summary["best_config_id"] = evaluation.id
             summary["best_config_metadata"] = evaluation.metadata
@@ -77,7 +88,7 @@ def status(
     best_configs: bool = False,
     all_configs: bool = False,
     print_summary: bool = True,
-) -> tuple[dict[str, ConfigResult], dict[str, SearchSpace]]:
+) -> tuple[dict[str, _ConfigResultForStats], dict[str, SearchSpace]]:
     """Print status information of a neps run and return results.
 
     Args:

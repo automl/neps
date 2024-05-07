@@ -50,13 +50,16 @@ def test_filelock() -> None:
             eval_re = r"#Evaluated configs:\s+(\d+)"
 
             evaluated = first_true(re.match(eval_re, l) for l in lines)  # noqa
-            pending = first_true(re.match(pending_re, l) for l in lines)  # noqa
+            pending = first_true((re.match(pending_re, l) for l in lines), default=0)  # noqa
 
             assert evaluated is not None
             assert pending is not None
 
             evaluated_configs = int(evaluated.groups()[0])
-            pending_configs = int(pending.groups()[0])
+            if pending == 0:
+                pending_configs = 0
+            else:
+                pending_configs = int(pending.groups()[0])  # type: ignore
 
             # Make sure the evaluated configs and the ones pending add up to 15
             assert evaluated_configs + pending_configs == 15

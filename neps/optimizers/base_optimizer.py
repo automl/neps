@@ -119,3 +119,7 @@ class BaseOptimizer:
         yield self
 
         serialize(self.get_state(), path=state_file)
+
+    def is_out_of_budget(self) -> bool:
+        """Check if the optimizer has used all of its budget, if any."""
+        return self.budget is not None and self.used_budget >= self.budget
