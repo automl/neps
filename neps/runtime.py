@@ -884,7 +884,7 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                     serialize(report.metadata, report.disk.metadata_file)
             else:
                 report = trial.success(user_result, time_end=time.time())
-                if sampler.budget is not None and report.result.cost is not None:
+                if sampler.budget is not None and report.result.cost is None:
                     raise ValueError(
                         "The evaluation function result should contain "
                         f"a 'cost' field when used with a budget. Got {report.result}",
