@@ -49,23 +49,46 @@ import logging
 import os
 import shutil
 import time
+import traceback
 import warnings
-from collections import defaultdict
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterable,
+    Iterator,
+    Mapping,
+    Union,
+)
+from typing_extensions import TypeAlias
 
-from neps.types import ERROR, POST_EVAL_HOOK_SIGNATURE, ConfigLike, ConfigResult
+import numpy as np
+
+from utils.types import (
+    ERROR,
+    POST_EVAL_HOOK_SIGNATURE,
+    ConfigID,
+    ConfigResult,
+    Metadata,
+    RawConfig,
+)
 from neps.utils._locker import Locker
+from neps.utils._rng import SeedState
 from neps.utils.files import deserialize, empty_file, serialize
 
 if TYPE_CHECKING:
-    from .optimizers.base_optimizer import BaseOptimizer
+    from neps.optimizers.base_optimizer import BaseOptimizer
+    from neps.search_spaces.search_space import SearchSpace
+
+logger = logging.getLogger(__name__)
 
 # Wait time between each successive poll to see if state can be grabbed
-DEFAULT_STATE_POLL: float = 1.0
+DEFAULT_STATE_POLL: float = 0.1
 ENVIRON_STATE_POLL_KEY = "NEPS_STATE_POLL"
 
 # Timeout before giving up on trying to grab the state, raising an error
@@ -93,6 +116,242 @@ def _set_in_progress_trial(trial: Trial | None) -> None:
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
 
 
+def get_shared_state_poll_and_timeout() -> tuple[float, float | None]:
+    """Get the poll and timeout for the shared state."""
+    poll = float(os.environ.get(ENVIRON_STATE_POLL_KEY, DEFAULT_STATE_POLL))
+    timeout = os.environ.get(ENVIRON_STATE_TIMEOUT_KEY, DEFAULT_STATE_TIMEOUT)
+    timeout = float(timeout) if timeout is not None else None
+    return poll, timeout
+
+
+@dataclass
+class SuccessReport:
+    """A successful report of the evaluation of a configuration.
+
+    Attributes:
+        trial: The trial that was evaluated
+        id: The identifier of the configuration
+        loss: The loss of the evaluation
+        cost: The cost of the evaluation
+        results: The results of the evaluation
+        config: The configuration that was evaluated
+        metadata: Additional metadata about the configuration
+        pipeline_dir: The directory where the configuration was evaluated
+        previous: The report of the previous iteration of this trial
+        time_sampled: The time the configuration was sampled
+        time_end: The time the configuration was evaluated
+    """
+
+    trial: Trial
+    id: ConfigID
+    loss: float
+    cost: float | None
+    account_for_cost: bool
+    results: Mapping[str, Any]
+    config: RawConfig
+    metadata: Metadata
+    pipeline_dir: Path
+    previous: Report | None  # NOTE: Assumption only one previous report
+    time_sampled: float
+    time_end: float
+
+    def __post_init__(self) -> None:
+        if "time_end" not in self.metadata:
+            self.metadata["time_end"] = self.time_end
+        if "time_sampled" not in self.metadata:
+            self.metadata["time_sampled"] = self.time_sampled
+
+    @property
+    def disk(self) -> TrialOnDisk:
+        """Access the disk information of the trial."""
+        return TrialOnDisk(pipeline_dir=self.pipeline_dir)
+
+    def to_config_result(
+        self,
+        config_to_search_space: Callable[[RawConfig], SearchSpace],
+    ) -> ConfigResult:
+        """Convert the report to a `ConfigResult` object."""
+        return ConfigResult(
+            self.id,
+            config=config_to_search_space(self.config),
+            result=self.results,
+            metadata=self.metadata,
+        )
+
+
+@dataclass
+class ErrorReport:
+    """A failed report of the evaluation of a configuration.
+
+    Attributes:
+        trial: The trial that was evaluated
+        id: The identifier of the configuration
+        loss: The loss of the evaluation, if any
+        cost: The cost of the evaluation, if any
+        results: The results of the evaluation
+        config: The configuration that was evaluated
+        metadata: Additional metadata about the configuration
+        pipeline_dir: The directory where the configuration was evaluated
+        previous: The report of the previous iteration of this trial
+        time_sampled: The time the configuration was sampled
+        time_end: The time the configuration was evaluated
+    """
+
+    trial: Trial
+    id: ConfigID
+    err: Exception
+    tb: str | None
+    loss: float | None
+    cost: float | None
+    account_for_cost: bool
+    results: Mapping[str, Any]
+    config: RawConfig
+    metadata: Metadata
+    pipeline_dir: Path
+    previous: Report | None  # NOTE: Assumption only one previous report
+    time_sampled: float
+    time_end: float
+
+    def __post_init__(self) -> None:
+        if "time_end" not in self.metadata:
+            self.metadata["time_end"] = self.time_end
+        if "time_sampled" not in self.metadata:
+            self.metadata["time_sampled"] = self.time_sampled
+
+    @property
+    def disk(self) -> TrialOnDisk:
+        """Access the disk information of the trial."""
+        return TrialOnDisk(pipeline_dir=self.pipeline_dir)
+
+    def to_config_result(
+        self,
+        config_to_search_space: Callable[[RawConfig], SearchSpace],
+    ) -> ConfigResult:
+        """Convert the report to a `ConfigResult` object."""
+        return ConfigResult(
+            self.id,
+            config=config_to_search_space(self.config),
+            result="error",
+            metadata=self.metadata,
+        )
+
+
+Report: TypeAlias = Union[SuccessReport, ErrorReport]
+
+
+@dataclass
+class TrialOnDisk:
+    """The disk information of a trial.
+
+    Attributes:
+        pipeline_dir: The directory where the trial is stored
+        id: The unique identifier of the trial
+        config_file: The path to the configuration file
+        result_file: The path to the result file
+        metadata_file: The path to the metadata file
+        optimization_dir: The directory from which optimization is running
+        previous_config_id_file: The path to the previous config id file
+        previous_pipeline_dir: The directory of the previous configuration
+        lock: The lock for the trial. Obtaining this lock indicates the worker
+            is evaluating this trial.
+    """
+
+    pipeline_dir: Path
+
+    id: ConfigID = field(init=False)
+    config_file: Path = field(init=False)
+    result_file: Path = field(init=False)
+    error_file: Path = field(init=False)
+    metadata_file: Path = field(init=False)
+    optimization_dir: Path = field(init=False)
+    previous_config_id_file: Path = field(init=False)
+    previous_pipeline_dir: Path | None = field(init=False)
+    lock: Locker = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.id = self.pipeline_dir.name[len("config_") :]
+        self.config_file = self.pipeline_dir / "config.yaml"
+        self.result_file = self.pipeline_dir / "result.yaml"
+        self.error_file = self.pipeline_dir / "error.yaml"
+        self.metadata_file = self.pipeline_dir / "metadata.yaml"
+
+        # NOTE: This is a bit of an assumption!
+        self.optimization_dir = self.pipeline_dir.parent
+
+        self.previous_config_id_file = self.pipeline_dir / "previous_config.id"
+        if not empty_file(self.previous_config_id_file):
+            with self.previous_config_id_file.open("r") as f:
+                self.previous_config_id = f.read().strip()
+
+            self.previous_pipeline_dir = (
+                self.pipeline_dir.parent / f"config_{self.previous_config_id}"
+            )
+        else:
+            self.previous_pipeline_dir = None
+        self.pipeline_dir.mkdir(exist_ok=True, parents=True)
+        self.lock = Locker(self.pipeline_dir / ".config_lock")
+
+    class State(Enum):
+        """The state of a trial."""
+
+        PENDING = "pending"
+        IN_PROGRESS = "in_progress"
+        SUCCESS = "success"
+        ERROR = "error"
+        CORRUPTED = "corrupted"
+
+    def raw_config(self) -> dict[str, Any]:
+        """Deserialize the configuration from disk."""
+        return deserialize(self.config_file)
+
+    def state(self) -> TrialOnDisk.State:
+        """The state of the trial."""
+        if not empty_file(self.result_file):
+            return TrialOnDisk.State.SUCCESS
+        if not empty_file(self.error_file):
+            return TrialOnDisk.State.ERROR
+        if self.lock.is_locked():
+            return TrialOnDisk.State.IN_PROGRESS
+        if not empty_file(self.config_file):
+            return TrialOnDisk.State.PENDING
+
+        return TrialOnDisk.State.CORRUPTED
+
+    @classmethod
+    def from_dir(cls, pipeline_dir: Path) -> TrialOnDisk:
+        """Create a `Trial.Disk` object from a directory."""
+        return cls(pipeline_dir=pipeline_dir)
+
+    def load(
+        self,
+    ) -> tuple[
+        RawConfig,
+        Metadata,
+        ConfigID | None,
+        dict[str, Any] | tuple[Exception, str | None] | None,
+    ]:
+        """Load the trial from disk."""
+        config = deserialize(self.config_file)
+        metadata = deserialize(self.metadata_file)
+
+        result: dict[str, Any] | tuple[Exception, str | None] | None
+        if not empty_file(self.result_file):
+            result = deserialize(self.result_file)
+            assert isinstance(result, dict)
+        elif not empty_file(self.error_file):
+            error_tb = deserialize(self.error_file)
+            result = (Exception(error_tb["err"]), error_tb.get("tb"))
+        else:
+            result = None
+
+        if not empty_file(self.previous_config_id_file):
+            previous_config_id = self.previous_config_id_file.read_text().strip()
+        else:
+            previous_config_id = None
+
+        return config, metadata, previous_config_id, result
+
+
 @dataclass
 class Trial:
     """A trial is a configuration and it's associated data.
@@ -104,188 +363,170 @@ class Trial:
         id: Unique identifier for the configuration
         config: The configuration to evaluate
         pipeline_dir: Directory where the configuration is evaluated
-        prev_config_id: The id of the previous configuration evaluated for this trial.
+        previous: The report of the previous iteration of this trial
+        time_sampled: The time the configuration was sampled
         metadata: Additional metadata about the configuration
-        results: The results of the evaluation, if any
-        disk: The disk information of this trial such as paths and locks
     """
 
-    id: str
-    config: ConfigLike
+    id: ConfigID
+    config: Mapping[str, Any]
     pipeline_dir: Path
-    prev_config_id: str | None
+    previous: Report | None
+    time_sampled: float
     metadata: dict[str, Any]
-    results: dict[str, Any] | ERROR | None = None
-
-    disk: Trial.Disk = field(init=False)
+    _lock: Locker = field(init=False)
+    disk: TrialOnDisk = field(init=False)
 
     def __post_init__(self) -> None:
-        if self.prev_config_id is not None:
-            self.metadata["previous_config_id"] = self.prev_config_id
-        self.disk = Trial.Disk(pipeline_dir=self.pipeline_dir)
-        self.disk.pipeline_dir.mkdir(exist_ok=True, parents=True)
+        if "time_sampled" not in self.metadata:
+            self.metadata["time_sampled"] = self.time_sampled
+        self.pipeline_dir.mkdir(exist_ok=True, parents=True)
+        self._lock = Locker(self.pipeline_dir / ".config_lock")
+        self.disk = TrialOnDisk(pipeline_dir=self.pipeline_dir)
 
     @property
-    def state(self) -> Trial.State:
-        """The state of the trial on disk."""
-        return self.disk.state
+    def config_file(self) -> Path:
+        """The path to the configuration file."""
+        return self.pipeline_dir / "config.yaml"
 
-    def write_to_disk(self) -> Trial.Disk:
-        """Serliaze the trial to disk."""
-        serialize(self.config, self.disk.config_file)
-        serialize(self.metadata, self.disk.metadata_file)
+    @property
+    def metadata_file(self) -> Path:
+        """The path to the metadata file."""
+        return self.pipeline_dir / "metadata.yaml"
 
-        if self.prev_config_id is not None:
-            self.disk.previous_config_id_file.write_text(self.prev_config_id)
+    @property
+    def previous_config_id_file(self) -> Path:
+        """The path to the previous configuration id file."""
+        return self.pipeline_dir / "previous_config.id"
 
-        if self.results is not None:
-            serialize(self.results, self.disk.result_file)
+    def error(
+        self,
+        err: Exception,
+        tb: str | None = None,
+        *,
+        time_end: float | None = None,
+    ) -> ErrorReport:
+        """Create a [`Report`][neps.runtime.Report] object with an error."""
+        time_end = time_end if time_end is not None else time.time()
+        if time_end not in self.metadata:
+            self.metadata["time_end"] = time_end
 
-        return self.disk
+        # TODO(eddiebergman): For now we assume the loss and cost for an error is None
+        # and that we don't account for cost and there are no possible results.
+        return ErrorReport(
+            config=self.config,
+            id=self.id,
+            loss=None,
+            cost=None,
+            account_for_cost=False,
+            results={},
+            err=err,
+            tb=tb,
+            pipeline_dir=self.pipeline_dir,
+            previous=self.previous,
+            trial=self,
+            metadata=self.metadata,
+            time_sampled=self.time_sampled,
+            time_end=time_end,
+        )
 
-    class State(str, Enum):
-        """The state of a trial."""
+    def success(
+        self,
+        result: float | Mapping[str, Any],
+        *,
+        time_end: float | None = None,
+    ) -> SuccessReport:
+        """Check if the trial has succeeded."""
+        time_end = time_end if time_end is not None else time.time()
+        _result: dict[str, Any] = {}
+        if isinstance(result, Mapping):
+            if "loss" not in result:
+                raise KeyError("The 'loss' should be provided in the evaluation result")
 
-        COMPLETE = "evaluated"
-        """The trial has been evaluated and results are available."""
+            _result = dict(result)
+            loss = _result["loss"]
+        else:
+            loss = result
 
-        IN_PROGRESS = "in_progress"
-        """There is currently a worker evaluating this trial."""
+        try:
+            _result["loss"] = float(loss)
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                "The evaluation result should be a dictionnary or a float but got"
+                f" a `{type(loss)}` with value of {loss}",
+            ) from e
 
-        PENDING = "pending"
-        """The trial has been sampled but no worker has been assigned to evaluate it."""
+        # TODO(eddiebergman): For now we have no access to the cost for crash
+        # so we just set it to None.
+        _cost: float | None = _result.get("cost", None)
+        if _cost is not None:
+            try:
+                _result["cost"] = float(_cost)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    "The evaluation result should be a dictionnary or a float but got"
+                    f" a `{type(_cost)}` with value of {_cost}",
+                ) from e
 
-        CORRUPTED = "corrupted"
-        """The trial is not in one of the previous states and should be removed."""
+        # TODO(eddiebergman): Should probably be a global user setting for this.
+        _account_for_cost = _result.get("account_for_cost", True)
 
-        def __str__(self) -> str:
-            return self.value
+        return SuccessReport(
+            config=self.config,
+            id=self.id,
+            loss=_result["loss"],
+            cost=_cost,
+            account_for_cost=_account_for_cost,
+            results=_result,
+            pipeline_dir=self.pipeline_dir,
+            previous=self.previous,
+            trial=self,
+            metadata=self.metadata,
+            time_sampled=self.time_sampled,
+            time_end=time_end,
+        )
 
-    @dataclass
-    class Disk:
-        """The disk information of a trial.
 
-        Attributes:
-            pipeline_dir: The directory where the trial is stored
-            id: The unique identifier of the trial
-            config_file: The path to the configuration file
-            result_file: The path to the result file
-            metadata_file: The path to the metadata file
-            optimization_dir: The directory from which optimization is running
-            previous_config_id_file: The path to the previous config id file
-            previous_pipeline_dir: The directory of the previous configuration
-            lock: The lock for the trial. Obtaining this lock indicates the worker
-                is evaluating this trial.
-        """
+@dataclass
+class StatePaths:
+    """The paths used for the state of the optimization process.
 
-        pipeline_dir: Path
+    Most important method is [`config_dir`][neps.runtime.StatePaths.config_dir],
+    which gives the directory to use for a configuration.
 
-        id: str = field(init=False)
-        config_file: Path = field(init=False)
-        result_file: Path = field(init=False)
-        metadata_file: Path = field(init=False)
-        optimization_dir: Path = field(init=False)
-        previous_config_id_file: Path = field(init=False)
-        previous_pipeline_dir: Path | None = field(init=False)
-        lock: Locker = field(init=False)
+    Attributes:
+        root: The root directory of the optimization process.
+        create_dirs: Whether to create the directories if they do not exist.
+        optimizer_state_file: The path to the optimizer state file.
+        optimizer_info_file: The path to the optimizer info file.
+        seed_state_dir: The directory where the seed state is stored.
+        results_dir: The directory where results are stored.
+    """
 
-        def __post_init__(self) -> None:
-            self.id = self.pipeline_dir.name[len("config_") :]
-            self.config_file = self.pipeline_dir / "config.yaml"
-            self.result_file = self.pipeline_dir / "result.yaml"
-            self.metadata_file = self.pipeline_dir / "metadata.yaml"
+    root: Path
+    create_dirs: bool = False
 
-            # NOTE: This is a bit of an assumption!
-            self.optimization_dir = self.pipeline_dir.parent
+    optimizer_state_file: Path = field(init=False)
+    optimizer_info_file: Path = field(init=False)
+    seed_state_dir: Path = field(init=False)
+    results_dir: Path = field(init=False)
 
-            self.previous_config_id_file = self.pipeline_dir / "previous_config.id"
-            if not empty_file(self.previous_config_id_file):
-                with self.previous_config_id_file.open("r") as f:
-                    self.previous_config_id = f.read().strip()
+    def __post_init__(self) -> None:
+        if self.create_dirs:
+            self.root.mkdir(parents=True, exist_ok=True)
 
-                self.previous_pipeline_dir = (
-                    self.pipeline_dir.parent / f"config_{self.previous_config_id}"
-                )
-            else:
-                self.previous_pipeline_dir = None
-            self.pipeline_dir.mkdir(exist_ok=True, parents=True)
-            self.lock = Locker(self.pipeline_dir / ".config_lock")
+        self.results_dir = self.root / "results"
 
-        def config(self) -> ConfigLike:
-            """Deserialize the configuration from disk."""
-            return deserialize(self.config_file)
+        if self.create_dirs:
+            self.results_dir.mkdir(exist_ok=True)
 
-        @property
-        def state(self) -> Trial.State:
-            """The state of the trial."""
-            if not empty_file(self.result_file):
-                return Trial.State.COMPLETE
-            if self.lock.is_locked():
-                return Trial.State.IN_PROGRESS
-            if not empty_file(self.config_file):
-                return Trial.State.PENDING
+        self.optimizer_state_file = self.root / ".optimizer_state.yaml"
+        self.optimizer_info_file = self.root / ".optimizer_info.yaml"
+        self.seed_state_dir = self.root / ".seed_state"
 
-            return Trial.State.CORRUPTED
-
-        @classmethod
-        def from_dir(cls, pipeline_dir: Path) -> Trial.Disk:
-            """Create a `Trial.Disk` object from a directory."""
-            return cls(pipeline_dir=pipeline_dir)
-
-        def load(self) -> Trial:
-            """Load the trial from disk."""
-            config = deserialize(self.config_file)
-            if not empty_file(self.metadata_file):
-                metadata = deserialize(self.metadata_file)
-            else:
-                metadata = {}
-
-            if not empty_file(self.result_file):
-                result = deserialize(self.result_file)
-            else:
-                result = None
-
-            if not empty_file(self.previous_config_id_file):
-                previous_config_id = self.previous_config_id_file.read_text().strip()
-            else:
-                previous_config_id = None
-
-            return Trial(
-                id=self.id,
-                config=config,
-                pipeline_dir=self.pipeline_dir,
-                metadata=metadata,
-                prev_config_id=previous_config_id,
-                results=result,
-            )
-
-        # TODO(eddiebergman): Backwards compatibility on things that require the
-        # `ConfigResult`. Ideally, we just use `Trial` objects directly for things
-        # that need all informations about trials.
-        def to_result(
-            self,
-            config_transform: Callable[[ConfigLike], ConfigLike] | None = None,
-        ) -> ConfigResult:
-            """Convert the trial to a `ConfigResult` object.
-
-            Args:
-                config_transform: A function to transform the configuration before
-                    creating the `ConfigResult`.
-
-            Returns:
-                A `ConfigResult` object usable by optimizers.
-            """
-            config = deserialize(self.config_file)
-            result = deserialize(self.result_file)
-            metadata = deserialize(self.metadata_file)
-            _config = config_transform(config) if config_transform is not None else config
-
-            return ConfigResult(
-                id=self.id,
-                config=_config,
-                result=result,
-                metadata=metadata,
-            )
+    def config_dir(self, config_id: ConfigID) -> Path:
+        """Get the directory for a configuration."""
+        return self.results_dir / f"config_{config_id}"
 
 
 @dataclass
@@ -299,42 +540,21 @@ class SharedState:
         optimizer_state_file: The path to the optimizers state.
         optimizer_info_file: The path to the file containing information about the
             optimizer's setup.
+        seed_state_dir: Directory where the seed state is stored.
         results_dir: Directory where results for configurations are stored.
     """
 
     base_dir: Path
+    paths: StatePaths = field(init=False)
     create_dirs: bool = False
-
     lock: Locker = field(init=False)
-    optimizer_state_file: Path = field(init=False)
-    optimizer_info_file: Path = field(init=False)
-    results_dir: Path = field(init=False)
+    evaluated_trials: dict[ConfigID, Report] = field(default_factory=dict)
+    pending_trials: dict[ConfigID, Trial] = field(default_factory=dict)
+    in_progress_trials: dict[ConfigID, Trial] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.create_dirs:
-            self.base_dir.mkdir(parents=True, exist_ok=True)
-
-        self.results_dir = self.base_dir / "results"
-
-        if self.create_dirs:
-            self.results_dir.mkdir(exist_ok=True)
-
+        self.paths = StatePaths(root=self.base_dir, create_dirs=self.create_dirs)
         self.lock = Locker(self.base_dir / ".decision_lock")
-        self.optimizer_state_file = self.base_dir / ".optimizer_state.yaml"
-        self.optimizer_info_file = self.base_dir / ".optimizer_info.yaml"
-
-    def trial_refs(self) -> dict[Trial.State, list[Trial.Disk]]:
-        """Get the disk reference of every trial, grouped by their state."""
-        refs = [
-            Trial.Disk.from_dir(pipeline_dir=pipeline_dir)
-            for pipeline_dir in self.results_dir.iterdir()
-            if pipeline_dir.is_dir()
-        ]
-        by_state: dict[Trial.State, list[Trial.Disk]] = defaultdict(list)
-        for ref in refs:
-            by_state[ref.state].append(ref)
-
-        return by_state
 
     def check_optimizer_info_on_disk_matches(
         self,
@@ -353,7 +573,7 @@ class SharedState:
             provided info.
         """
         optimizer_info_copy = optimizer_info.copy()
-        loaded_info = deserialize(self.optimizer_info_file)
+        loaded_info = deserialize(self.paths.optimizer_info_file)
 
         for key in excluded_keys:
             optimizer_info_copy.pop(key, None)
@@ -361,20 +581,164 @@ class SharedState:
 
         if optimizer_info_copy != loaded_info:
             raise ValueError(
-                f"The sampler_info in the file {self.optimizer_info_file} is not valid. "
-                f"Expected: {optimizer_info_copy}, Found: {loaded_info}",
+                f"The sampler_info in the file {self.paths.optimizer_info_file} is not"
+                f" valid. Expected: {optimizer_info_copy}, Found: {loaded_info}",
             )
+
+    @contextmanager
+    def use_sampler(
+        self,
+        sampler: BaseOptimizer,
+        *,
+        serialize_seed: bool = True,
+    ) -> Iterator[BaseOptimizer]:
+        """Use the sampler with the shared state."""
+        if serialize_seed:
+            with SeedState.use(self.paths.seed_state_dir), sampler.using_state(
+                self.paths.optimizer_state_file
+            ):
+                yield sampler
+        else:
+            with sampler.using_state(self.paths.optimizer_state_file):
+                yield sampler
+
+    def update_from_disk(self) -> None:  # noqa: C901, PLR0912, PLR0915
+        """Update the shared state from disk."""
+        trial_dirs = (p for p in self.paths.results_dir.iterdir() if p.is_dir())
+        trials_on_disk = [TrialOnDisk.from_dir(p) for p in trial_dirs]
+
+        for trial_on_disk in trials_on_disk:
+            state = trial_on_disk.state()
+
+            if state in (TrialOnDisk.State.SUCCESS, TrialOnDisk.State.ERROR):
+                if trial_on_disk.id in self.evaluated_trials:
+                    continue
+
+                # It's been evaluated and we can move it out of pending
+                self.pending_trials.pop(trial_on_disk.id, None)
+                self.in_progress_trials.pop(trial_on_disk.id, None)
+
+                raw_config, metadata, previous_config_id, result = trial_on_disk.load()
+
+                # NOTE: Assuming that the previous one will always have been
+                # evaluated, if there is a previous one.
+                previous_report = None
+                if previous_config_id is not None:
+                    previous_report = self.evaluated_trials[previous_config_id]
+
+                trial = Trial(
+                    id=trial_on_disk.id,
+                    config=raw_config,
+                    pipeline_dir=trial_on_disk.pipeline_dir,
+                    previous=previous_report,
+                    time_sampled=metadata["time_sampled"],
+                    metadata=metadata,
+                )
+
+                report: Report
+                if isinstance(result, dict):
+                    report = trial.success(result, time_end=metadata["time_end"])
+                elif isinstance(result, tuple):
+                    err, tb = result
+                    report = trial.error(err=err, tb=tb, time_end=metadata["time_end"])
+                elif result is None:
+                    raise RuntimeError(
+                        "Result should not have been None, this is a bug!",
+                        "Please report this to the developers with some sample code"
+                        " if possible.",
+                    )
+                else:
+                    raise TypeError(f"Unknown result type {type(result)}")
+
+                self.evaluated_trials[trial_on_disk.id] = report
+
+            elif state is TrialOnDisk.State.PENDING:
+                assert trial_on_disk.id not in self.evaluated_trials
+                if trial_on_disk.id in self.pending_trials:
+                    continue
+
+                raw_config, metadata, previous_config_id, result = trial_on_disk.load()
+
+                # NOTE: Assuming that the previous one will always have been evaluated,
+                # if there is a previous one.
+                previous_report = None
+                if previous_config_id is not None:
+                    previous_report = self.evaluated_trials[previous_config_id]
+
+                trial = Trial(
+                    id=trial_on_disk.id,
+                    config=raw_config,
+                    pipeline_dir=trial_on_disk.pipeline_dir,
+                    previous=previous_report,
+                    time_sampled=metadata["time_sampled"],
+                    metadata=metadata,
+                )
+                self.pending_trials[trial_on_disk.id] = trial
+
+            elif state is TrialOnDisk.State.IN_PROGRESS:
+                assert trial_on_disk.id not in self.evaluated_trials
+                if trial_on_disk.id in self.in_progress_trials:
+                    continue
+
+                # If this was previously in the pending queue, jsut pop
+                # it into the in progress queue
+                previously_pending_trial = self.pending_trials.pop(trial_on_disk.id, None)
+                if previously_pending_trial is not None:
+                    self.in_progress_trials[trial_on_disk.id] = previously_pending_trial
+                    continue
+
+                # Otherwise it's the first time we saw it so we have to load it in
+                raw_config, metadata, previous_config_id, result = trial_on_disk.load()
+
+                # NOTE: Assuming that the previous one will always have been evaluated,
+                # if there is a previous one.
+                previous_report = None
+                if previous_config_id is not None:
+                    previous_report = self.evaluated_trials[previous_config_id]
+
+                trial = Trial(
+                    id=trial_on_disk.id,
+                    config=raw_config,
+                    pipeline_dir=trial_on_disk.pipeline_dir,
+                    previous=previous_report,
+                    time_sampled=metadata["time_sampled"],
+                    metadata=metadata,
+                )
+                self.pending_trials[trial_on_disk.id] = trial
+
+            elif state == TrialOnDisk.State.CORRUPTED:
+                logger.warning(f"Removing corrupted trial {trial_on_disk.id}")
+                try:
+                    shutil.rmtree(trial_on_disk.pipeline_dir)
+                except Exception as e:
+                    logger.exception(e)
+
+            else:
+                raise ValueError(f"Unknown state {state} for trial {trial_on_disk.id}")
+
+    @contextmanager
+    def sync(self, *, lock: bool = True) -> Iterator[None]:
+        """Sync up with what's on disk."""
+        if lock:
+            _poll, _timeout = get_shared_state_poll_and_timeout()
+            with self.lock(poll=_poll, timeout=_timeout):
+                self.update_from_disk()
+                yield
+        else:
+            yield
 
 
 def _evaluate_config(
     trial: Trial,
     evaluation_fn: Callable[..., float | Mapping[str, Any]],
     logger: logging.Logger,
-) -> tuple[ERROR | dict[str, Any], float]:
+) -> float | Mapping[str, Any]:
     config = trial.config
     config_id = trial.id
-    pipeline_directory = trial.disk.pipeline_dir
-    previous_pipeline_directory = trial.disk.previous_pipeline_dir
+    pipeline_directory = trial.pipeline_dir
+    previous_pipeline_directory = (
+        None if trial.previous is None else trial.previous.pipeline_dir
+    )
 
     logger.info(f"Start evaluating config {config_id}")
 
@@ -390,64 +754,20 @@ def _evaluate_config(
     if "previous_pipeline_directory" in evaluation_fn_params:
         directory_params.append(previous_pipeline_directory)
 
-    try:
-        eval_result = evaluation_fn(*directory_params, **config)
-    except Exception as e:
-        logger.error(f"An error occured evaluating config '{config_id}': {config}.")
-        logger.exception(e)
-        return "error", time.time()
-
-    # Ensure the results have correct format that can be exploited by other functions
-    result: dict[str, Any] = {}
-    if isinstance(eval_result, Mapping):
-        result = dict(eval_result)
-        if "loss" not in result:
-            raise KeyError("The 'loss' should be provided in the evaluation result")
-        loss = result["loss"]
-    else:
-        loss = eval_result
-
-    try:
-        result["loss"] = float(loss)
-    except (TypeError, ValueError) as e:
-        raise ValueError(
-            "The evaluation result should be a dictionnary or a float but got"
-            f" a `{type(loss)}` with value of {loss}",
-        ) from e
-
-    time_end = time.time()
-    return result, time_end
-
-
-def _try_remove_corrupted_configs(
-    refs: Iterable[Trial.Disk],
-    logger: logging.Logger,
-) -> None:
-    # If there are corrupted configs, we should remove them with a warning
-    for ref in refs:
-        logger.warning(f"Removing corrupted config {ref.id}")
-        try:
-            shutil.rmtree(ref.pipeline_dir)
-        except Exception as e:
-            logger.exception(e)
+    return evaluation_fn(*directory_params, **config)
 
 
 def _worker_should_continue(
     max_evaluations_total: int | None,
     *,
+    n_inprogress: int,
+    n_evaluated: int,
     continue_until_max_evaluation_completed: bool,
-    refs: Mapping[Trial.State, list[Trial.Disk]],
-    logger: logging.Logger,
 ) -> bool:
     # Check if we have reached the total amount of configurations to evaluated
     # (including pending evaluations possibly)
     if max_evaluations_total is None:
         return True
-
-    logger.debug("Checking if max evaluations is reached")
-
-    n_evaluated = len(refs[Trial.State.COMPLETE])
-    n_inprogress = len(refs[Trial.State.IN_PROGRESS])
 
     n_counter = (
         n_evaluated
@@ -455,6 +775,38 @@ def _worker_should_continue(
         else n_evaluated + n_inprogress
     )
     return n_counter < max_evaluations_total
+
+
+def _sample_trial_from_optimizer(
+    optimizer: BaseOptimizer,
+    config_dir_f: Callable[[ConfigID], Path],
+    evaluated_trials: Mapping[ConfigID, Report],
+    pending_trials: Mapping[ConfigID, Trial],
+) -> Trial:
+    optimizer.load_results(
+        previous_results={
+            config_id: report.to_config_result(optimizer.load_config)
+            for config_id, report in evaluated_trials.items()
+        },
+        pending_evaluations={
+            config_id: optimizer.load_config(trial.config)
+            for config_id, trial in pending_trials.items()
+        },
+    )
+    config, config_id, prev_config_id = optimizer.get_config_and_ids()
+    previous = None
+    if prev_config_id is not None:
+        previous = evaluated_trials[prev_config_id]
+
+    time_sampled = time.time()
+    return Trial(
+        id=config_id,
+        config=config,
+        time_sampled=time_sampled,
+        pipeline_dir=config_dir_f(config_id),
+        previous=previous,
+        metadata={"time_sampled": time_sampled},
+    )
 
 
 def launch_runtime(  # noqa: PLR0913, C901, PLR0915
@@ -519,146 +871,139 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
 
     shared_state = SharedState(optimization_dir, create_dirs=True)
 
-    _poll = float(os.environ.get(ENVIRON_STATE_POLL_KEY, DEFAULT_STATE_POLL))
-    _timeout = os.environ.get(ENVIRON_STATE_TIMEOUT_KEY, DEFAULT_STATE_TIMEOUT)
-    timeout = float(_timeout) if _timeout is not None else None
-
-    with shared_state.lock(poll=_poll, timeout=timeout):
-        if not shared_state.optimizer_info_file.exists():
-            serialize(optimizer_info, shared_state.optimizer_info_file, sort_keys=False)
+    _poll, _timeout = get_shared_state_poll_and_timeout()
+    with shared_state.sync(lock=True):
+        if not shared_state.paths.optimizer_info_file.exists():
+            serialize(
+                optimizer_info,
+                shared_state.paths.optimizer_info_file,
+                sort_keys=False,
+            )
         else:
             shared_state.check_optimizer_info_on_disk_matches(optimizer_info)
 
+    _max_evals_this_run = (
+        max_evaluations_per_run if max_evaluations_per_run is not None else np.inf
+    )
+
     evaluations_in_this_run = 0
     while True:
-        if (
-            max_evaluations_per_run is not None
-            and evaluations_in_this_run >= max_evaluations_per_run
-        ):
+        if evaluations_in_this_run >= _max_evals_this_run:
             logger.info("Maximum evaluations per run is reached, shutting down")
             break
 
-        with shared_state.lock(poll=_poll, timeout=timeout):
-            refs = shared_state.trial_refs()
-
-            _try_remove_corrupted_configs(refs[Trial.State.CORRUPTED], logger)
-
+        with shared_state.sync(lock=True):
             if not _worker_should_continue(
                 max_evaluations_total,
+                n_inprogress=len(shared_state.pending_trials),
+                n_evaluated=len(shared_state.evaluated_trials),
                 continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
-                refs=refs,
-                logger=logger,
             ):
                 logger.info("Maximum total evaluations is reached, shutting down")
                 break
 
-            # TODO(eddiebergman): I assume we should skip sampling and just go evaluate
-            # pending configs?
-            if any(refs[Trial.State.PENDING]):
-                logger.warning(
-                    f"There are {len(refs[Trial.State.PENDING])} configs that"
-                    " were sampled, but have no worker assigned. Sometimes this is due to"
-                    " a delay in the filesystem communication, but most likely some"
-                    " configs crashed during their execution or a jobtime-limit was"
-                    "  reached.",
-                )
-
-            # While we have the decision lock, we will now sample with the optimizer in
-            # this process
-            with sampler.using_state(shared_state.optimizer_state_file):
-                if sampler.budget is not None and sampler.used_budget >= sampler.budget:
+            # While we have the decision lock, we will now sample
+            # with the optimizer in this process
+            with shared_state.use_sampler(sampler) as sampler:
+                if sampler.is_out_of_budget():
                     logger.info("Maximum budget reached, shutting down")
                     break
 
-                logger.debug("Sampling a new configuration")
                 if pre_load_hooks is not None:
                     for hook in pre_load_hooks:
-                        sampler = hook(sampler)
+                        sampler = hook(sampler)  # noqa: PLW2901
 
-                sampler.load_results(
-                    previous_results={
-                        ref.id: ref.to_result(config_transform=sampler.load_config)
-                        for ref in refs[Trial.State.COMPLETE]
-                    },
-                    pending_evaluations={
-                        ref.id: sampler.load_config(ref.config())
-                        for ref in refs[Trial.State.IN_PROGRESS]
-                    },
+                logger.debug("Sampling a new configuration")
+
+                trial = _sample_trial_from_optimizer(
+                    sampler,
+                    shared_state.paths.config_dir,
+                    evaluated_trials=shared_state.evaluated_trials,
+                    pending_trials=shared_state.pending_trials,
                 )
+                serialize(trial.config, trial.config_file)
+                serialize(trial.metadata, trial.metadata_file)
+                if trial.previous is not None:
+                    trial.previous_config_id_file.write_text(trial.previous.trial.id)
 
-                # TODO(eddiebergman): If we have some unified `Trial` like object,
-                # we can just have them return this instead.
-                config, config_id, prev_config_id = sampler.get_config_and_ids()
-
-            trial = Trial(
-                id=config_id,
-                config=config,
-                pipeline_dir=shared_state.results_dir / f"config_{config_id}",
-                prev_config_id=prev_config_id,
-                metadata={"time_sampled": time.time()},
-            )
-            trial.write_to_disk()
-            logger.debug(f"Sampled config {config_id}")
-
-            # Inform the global state of this process that we are evaluating this trial
-            _set_in_progress_trial(trial)
+            logger.debug(f"Sampled config {trial.id}")
 
         # Obtain the lock on this trial and evaluate it,
         # otherwise continue back to waiting to sampling
-        with trial.disk.lock.try_lock() as acquired:
+        with trial._lock.try_lock() as acquired:
             if not acquired:
                 continue
 
-            # NOTE: Bit of an extra safety check but check that the trial is not complete
-            if trial.disk.state == Trial.State.COMPLETE:
-                continue
+            # Inform the global state that this trial is being evaluated
+            _set_in_progress_trial(trial)
 
-            result, time_end = _evaluate_config(trial, evaluation_fn, logger)
-            meta: dict[str, Any] = {"time_end": time_end}
+            # TODO(eddiebergman): Right now if a trial crashes, it's cost is not accounted
+            # for, this should probably removed from BaseOptimizer as it does not need
+            # to know this and the runtime can fill this in for it.
+            report: Report
+            try:
+                user_result = _evaluate_config(trial, evaluation_fn, logger)
+            except Exception as e:  # noqa: BLE001
+                # TODO(eddiebergman): Right now this never accounts for cost!
+                # NOTE: It's important to lock the shared state such that any
+                # sampling done is with taking this result into account
+                # accidentally reads this config as un-evaluated
+                with shared_state.lock(poll=_poll, timeout=_timeout):
+                    # TODO(eddiebergman): We should add an option to just crash here
+                    # if something goes wrong and raise up this error to the top.
+                    logger.error(
+                        f"Error during evaluation of '{trial.id}': {trial.config}."
+                    )
+                    logger.exception(e)
+                    tb = traceback.format_exc()
+                    report = trial.error(e, tb=tb, time_end=time.time())
+                    serialize({"err": str(e), "tb": tb}, report.disk.error_file)
+                    serialize(report.metadata, report.disk.metadata_file)
+            else:
+                report = trial.success(user_result, time_end=time.time())
+                if sampler.budget is not None and report.cost is None:
+                    raise ValueError(
+                        "The evaluation function result should contain "
+                        f"a 'cost' field when used with a budget. Got {report.results}",
+                    )
 
-            # If this is set, it means we update the optimzier with the used
-            # budget once we write the trial to disk and mark it as complete
-            account_for_cost: bool = False
-            eval_cost: float | None = None
+                with shared_state.lock(poll=_poll, timeout=_timeout):
+                    eval_cost = report.cost
+                    account_for_cost = False
+                    if eval_cost is not None:
+                        account_for_cost = report.account_for_cost
+                        budget_metadata = {
+                            "max": sampler.budget,
+                            "used": sampler.used_budget,
+                            "eval_cost": eval_cost,
+                            "account_for_cost": account_for_cost,
+                        }
+                        trial.metadata.update(budget_metadata)
 
-            if result == "error":
-                # TODO(eddiebergman): We should probably do something here...
-                pass
-            elif "cost" not in result and sampler.budget is not None:
-                raise ValueError(
-                    "The evaluation function result should contain "
-                    f"a 'cost' field when used with a budget. Got {result}",
-                )
-            elif "cost" in result:
-                eval_cost = float(result["cost"])
-                account_for_cost = result.get("account_for_cost", True)
-                meta["budget"] = {
-                    "max": sampler.budget,
-                    "used": sampler.used_budget,
-                    "eval_cost": eval_cost,
-                    "account_for_cost": account_for_cost,
-                }
+                    serialize(report.metadata, report.disk.metadata_file)
+                    serialize(report.results, report.disk.result_file)
+                    if account_for_cost:
+                        assert eval_cost is not None
+                        with shared_state.use_sampler(sampler, serialize_seed=False):
+                            sampler.used_budget += eval_cost
 
-            trial.results = result
-            trial.metadata.update(meta)
-
-            with shared_state.lock(poll=_poll, timeout=timeout):
-                trial.write_to_disk()
-                if account_for_cost:
-                    assert eval_cost is not None
-                    with sampler.using_state(shared_state.optimizer_state_file):
-                        sampler.used_budget += eval_cost
-
-            # 3. Anything the user might want to do after the evaluation
+            _result: ERROR | dict[str, Any]
             if post_evaluation_hook is not None:
+                if isinstance(report, ErrorReport):
+                    _result = "error"
+                elif isinstance(report, SuccessReport):
+                    _result = dict(report.results)
+                else:
+                    raise TypeError(
+                        f"Unknown result type '{type(report)}' for report: {report}"
+                    )
                 post_evaluation_hook(
                     trial.config,
                     trial.id,
                     trial.pipeline_dir,
-                    trial.results,
+                    _result,
                     logger,
                 )
 
-            logger.info(f"Finished evaluating config {config_id}")
-
             evaluations_in_this_run += 1
+            logger.info(f"Finished evaluating config {trial.id}")

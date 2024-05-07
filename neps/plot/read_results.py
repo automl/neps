@@ -28,15 +28,22 @@ def process_seed(
     stats = OrderedDict(sorted_stats)
 
     # max_cost only relevant for scaling x-axis when using fidelity on the x-axis
-    max_cost = -1.0
+    max_cost: float = -1.0
     if key_to_extract == "fidelity":
-        max_cost = max(s.result["info_dict"][key_to_extract] for s in stats.values())
+        # TODO(eddiebergman): This can crash for a number of reasons, namely if the config
+        # crased and it's result is an error, or if the `"info_dict"` and/or
+        # `key_to_extract` doesn't exist
+        max_cost = max(s.result["info_dict"][key_to_extract] for s in stats.values())  # type: ignore
 
     global_start = stats[min(stats.keys())].metadata["time_sampled"]
 
     def get_cost(idx: str) -> float:
         if key_to_extract is not None:
-            return float(stats[idx].result["info_dict"][key_to_extract])
+            # TODO(eddiebergman): This can crash for a number of reasons, namely if the
+            # config crased and it's result is an error, or if the `"info_dict"` and/or
+            # `key_to_extract` doesn't exist
+            return float(stats[idx].result["info_dict"][key_to_extract])  # type: ignore
+
         return 1.0
 
     losses = []
@@ -55,7 +62,9 @@ def process_seed(
             else:
                 config_cost = config_result.metadata["time_end"] - global_start
 
-        losses.append(config_result.result["loss"])
+        # TODO(eddiebergman): Assumes it never crashed and there's a loss available,
+        # not fixing now but it should be addressed
+        losses.append(config_result.result["loss"])  # type: ignore
         costs.append(config_cost)
 
     return list(np.minimum.accumulate(losses)), costs, max_cost

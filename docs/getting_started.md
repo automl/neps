@@ -11,17 +11,19 @@ pip install neural-pipeline-search
 ```
 
 ## The 3 Main Components
-1. **Define a [`run_pipeline=`](./reference/run_pipeline.md) Function**: This function is essential
-for evaluating different configurations. You'll implement the specific logic for your problem within this function.
+1. **Execute with [`neps.run()`](./reference/neps_run.md)**:
+Optimize your `run_pipeline=` over the `pipeline_space=` using this function.
+For a thorough overview of the arguments and their explanations, check out the detailed documentation.
+
+2. **Define a [`run_pipeline=`](./reference/run_pipeline.md) Function**:
+This function is essential for evaluating different configurations.
+You'll implement the specific logic for your problem within this function.
 For detailed instructions on initializing and effectively using `run_pipeline=`, refer to the guide.
 
-2. **Establish a [`pipeline_space=`](./reference/pipeline_space.md)**: Your search space for
-defining parameters. You can structure this in various formats, including dictionaries, YAML, or ConfigSpace.
+3. **Establish a [`pipeline_space=`](./reference/pipeline_space.md)**:
+Your search space for defining parameters.
+You can structure this in various formats, including dictionaries, YAML, or ConfigSpace.
 The guide offers insights into defining and configuring your search space.
-
-3. **Execute with [`neps.run=`](./reference/neps_run.md)**: Optimize your `run_pipeline=` over
-the `pipeline_space=` using this function. For a thorough overview of the arguments and their explanations,
-check out the detailed documentation.
 
 By following these steps and utilizing the extensive resources provided in the guides, you can tailor NePS to meet
 your specific requirements, ensuring a streamlined and effective optimization process.

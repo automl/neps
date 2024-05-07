@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 
-from neps.types import ConfigResult
+from utils.types import ConfigResult
 from ...search_spaces.search_space import SearchSpace
 from ..base_optimizer import BaseOptimizer
 

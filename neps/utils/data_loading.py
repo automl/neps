@@ -7,23 +7,21 @@ import os
 import re
 from itertools import chain
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
 import yaml
 
-from neps.runtime import SharedState, Trial
-
-if TYPE_CHECKING:
-    from neps.types import ConfigResult
+from neps.runtime import ErrorReport, SharedState
+from utils.types import ERROR, ResultDict, _ConfigResultForStats
 
 
 def _get_loss(
-    result: str | dict | float,
+    result: ERROR | ResultDict | float,
     loss_value_on_error: float | None = None,
     *,
     ignore_errors: bool = False,
-) -> float | Any:
+) -> ERROR | float:
     if result == "error":
         if ignore_errors:
             return "error"
@@ -42,6 +40,7 @@ def _get_loss(
     if isinstance(result, dict):
         return float(result["loss"])
 
+    assert isinstance(result, float)
     return float(result)
 
 
@@ -105,7 +104,7 @@ def _get_learning_curve(
 
 def read_tasks_and_dev_stages_from_disk(
     paths: list[str | Path],
-) -> dict[int, dict[int, dict[str, ConfigResult]]]:
+) -> dict[int, dict[int, dict[str, _ConfigResultForStats]]]:
     """Reads the given tasks and dev stages from the disk.
 
     Args:
@@ -116,7 +115,7 @@ def read_tasks_and_dev_stages_from_disk(
     """
     path_iter = chain.from_iterable(Path(path).iterdir() for path in paths)
 
-    results: dict[int, dict[int, dict[str, ConfigResult]]] = {}
+    results: dict[int, dict[int, dict[str, _ConfigResultForStats]]] = {}
 
     for task_dir_path in path_iter:
         if not is_valid_task_path(task_dir_path):
@@ -137,10 +136,16 @@ def read_tasks_and_dev_stages_from_disk(
                 continue
 
             state = SharedState(Path(dev_dir_path))
-            with state.lock(poll=1, timeout=None):
-                refs = state.trial_refs()
-
-            result = {ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]}
+            state.update_from_disk()
+            result = {
+                _id: _ConfigResultForStats(
+                    _id,
+                    report.config,
+                    "error" if isinstance(report, ErrorReport) else report.results,
+                    report.metadata,
+                )
+                for _id, report in state.evaluated_trials.items()
+            }
             results[task_id][dev_id] = result
 
     return results
@@ -148,14 +153,14 @@ def read_tasks_and_dev_stages_from_disk(
 
 def read_user_prior_results_from_disk(
     path: str | Path,
-) -> dict[str, dict[str, ConfigResult]]:
+) -> dict[str, dict[str, _ConfigResultForStats]]:
     """Reads the user prior results from the disk.
 
     Args:
         path: Path to the user prior results.
 
     Returns:
-        dict[prior_dir_name, dict[hyperparameter, value].
+        dict[prior_dir_name, dict[config_id, ConfigResult]].
     """
     path = Path(path)
     if not path.is_dir():
@@ -167,12 +172,16 @@ def read_user_prior_results_from_disk(
             continue
 
         state = SharedState(prior_dir)
-        with state.lock(poll=0.1, timeout=None):
-            refs = state.trial_refs()
-
-        results[prior_dir.name] = {
-            ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]
-        }
+        with state.sync():
+            results[prior_dir.name] = {
+                _id: _ConfigResultForStats(
+                    _id,
+                    report.config,
+                    "error" if isinstance(report, ErrorReport) else report.results,
+                    report.metadata,
+                )
+                for _id, report in state.evaluated_trials.items()
+            }
 
     return results
 
@@ -299,22 +308,26 @@ def summarize_results(
             final_results = results[final_task_id][final_dev_id]
         else:
             state = SharedState(Path(seed_dir))
-            with state.lock(poll=1, timeout=None):
-                refs = state.trial_refs()
-
-            final_results = {
-                ref.id: ref.to_result() for ref in refs[Trial.State.COMPLETE]
-            }
+            with state.sync():
+                final_results = {
+                    _id: _ConfigResultForStats(
+                        _id,
+                        report.config,
+                        "error" if isinstance(report, ErrorReport) else report.results,
+                        report.metadata,
+                    )
+                    for _id, report in state.evaluated_trials.items()
+                }
 
         # This part is copied from neps.status()
-        best_loss = float("inf")
+        best_loss: float = float("inf")
         num_error = 0
         for _, evaluation in final_results.items():
             if evaluation.result == "error":
                 num_error += 1
             loss = _get_loss(evaluation.result, ignore_errors=True)
             if isinstance(loss, float) and loss < best_loss:
-                best_loss = _get_loss(evaluation.result)
+                best_loss = loss
 
         best_losses.append(best_loss)
 
