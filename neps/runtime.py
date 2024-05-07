@@ -51,28 +51,26 @@ import shutil
 import time
 import traceback
 import warnings
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import partial
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generic,
     Iterable,
     Iterator,
     Mapping,
-    NamedTuple,
-    TypeVar,
+    Union,
 )
-from typing_extensions import override
+from typing_extensions import TypeAlias
 
 import numpy as np
 
 from neps.types import (
+    ERROR,
     POST_EVAL_HOOK_SIGNATURE,
     ConfigID,
     ConfigResult,
@@ -127,48 +125,29 @@ def get_shared_state_poll_and_timeout() -> tuple[float, float | None]:
 
 
 @dataclass
-class SuccessResult(Mapping[str, Any]):
-    results: Mapping[str, Any]
+class SuccessReport:
+    """A successful report of the evaluation of a configuration.
 
-    @property
-    def loss(self) -> float:
-        return self.results["loss"]
+    Attributes:
+        trial: The trial that was evaluated
+        id: The identifier of the configuration
+        loss: The loss of the evaluation
+        cost: The cost of the evaluation
+        results: The results of the evaluation
+        config: The configuration that was evaluated
+        metadata: Additional metadata about the configuration
+        pipeline_dir: The directory where the configuration was evaluated
+        previous: The report of the previous iteration of this trial
+        time_sampled: The time the configuration was sampled
+        time_end: The time the configuration was evaluated
+    """
 
-    @property
-    def cost(self) -> float | None:
-        cost = self.results.get("cost")
-        return float(cost) if cost is not None else None
-
-    @property
-    def account_for_cost(self) -> bool:
-        return self.results.get("account_for_cost", True)
-
-    @override
-    def __getitem__(self, key: str) -> Any:
-        return self.results[key]
-
-    @override
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.results)
-
-    @override
-    def __len__(self) -> int:
-        return len(self.results)
-
-
-class ErrorResult(NamedTuple):
-    err: Exception
-    tb: str | None
-
-
-_ReportKind = TypeVar("_ReportKind", SuccessResult, ErrorResult)
-
-
-@dataclass
-class Report(Generic[_ReportKind]):
     trial: Trial
-    result: _ReportKind
     id: ConfigID
+    loss: float
+    cost: float | None
+    account_for_cost: bool
+    results: Mapping[str, Any]
     config: RawConfig
     metadata: Metadata
     pipeline_dir: Path
@@ -176,26 +155,88 @@ class Report(Generic[_ReportKind]):
     time_sampled: float
     time_end: float
 
-    @property
-    def duration(self) -> float:
-        """The duration of the evaluation."""
-        return self.time_end - self.time_sampled
+    def __post_init__(self) -> None:
+        if "time_end" not in self.metadata:
+            self.metadata["time_end"] = self.time_end
+        if "time_sampled" not in self.metadata:
+            self.metadata["time_sampled"] = self.time_sampled
 
     @property
     def disk(self) -> TrialOnDisk:
+        """Access the disk information of the trial."""
         return TrialOnDisk(pipeline_dir=self.pipeline_dir)
 
     def to_config_result(
-        self, config_to_search_space: Callable[[RawConfig], SearchSpace]
+        self,
+        config_to_search_space: Callable[[RawConfig], SearchSpace],
     ) -> ConfigResult:
         """Convert the report to a `ConfigResult` object."""
-        _result = "error" if isinstance(self.result, ErrorResult) else self.result.results
         return ConfigResult(
             self.id,
             config=config_to_search_space(self.config),
-            result=_result,
+            result=self.results,
             metadata=self.metadata,
         )
+
+
+@dataclass
+class ErrorReport:
+    """A failed report of the evaluation of a configuration.
+
+    Attributes:
+        trial: The trial that was evaluated
+        id: The identifier of the configuration
+        loss: The loss of the evaluation, if any
+        cost: The cost of the evaluation, if any
+        results: The results of the evaluation
+        config: The configuration that was evaluated
+        metadata: Additional metadata about the configuration
+        pipeline_dir: The directory where the configuration was evaluated
+        previous: The report of the previous iteration of this trial
+        time_sampled: The time the configuration was sampled
+        time_end: The time the configuration was evaluated
+    """
+
+    trial: Trial
+    id: ConfigID
+    err: Exception
+    tb: str | None
+    loss: float | None
+    cost: float | None
+    account_for_cost: bool
+    results: Mapping[str, Any]
+    config: RawConfig
+    metadata: Metadata
+    pipeline_dir: Path
+    previous: Report | None  # NOTE: Assumption only one previous report
+    time_sampled: float
+    time_end: float
+
+    def __post_init__(self) -> None:
+        if "time_end" not in self.metadata:
+            self.metadata["time_end"] = self.time_end
+        if "time_sampled" not in self.metadata:
+            self.metadata["time_sampled"] = self.time_sampled
+
+    @property
+    def disk(self) -> TrialOnDisk:
+        """Access the disk information of the trial."""
+        return TrialOnDisk(pipeline_dir=self.pipeline_dir)
+
+    def to_config_result(
+        self,
+        config_to_search_space: Callable[[RawConfig], SearchSpace],
+    ) -> ConfigResult:
+        """Convert the report to a `ConfigResult` object."""
+        return ConfigResult(
+            self.id,
+            config=config_to_search_space(self.config),
+            result="error",
+            metadata=self.metadata,
+        )
+
+
+Report: TypeAlias = Union[SuccessReport, ErrorReport]
 
 
 @dataclass
@@ -287,18 +328,19 @@ class TrialOnDisk:
         RawConfig,
         Metadata,
         ConfigID | None,
-        SuccessResult | ErrorResult | None,
+        dict[str, Any] | tuple[Exception, str | None] | None,
     ]:
         """Load the trial from disk."""
         config = deserialize(self.config_file)
         metadata = deserialize(self.metadata_file)
 
-        result = None
+        result: dict[str, Any] | tuple[Exception, str | None] | None
         if not empty_file(self.result_file):
-            result = SuccessResult(deserialize(self.result_file))
+            result = deserialize(self.result_file)
+            assert isinstance(result, dict)
         elif not empty_file(self.error_file):
             error_tb = deserialize(self.error_file)
-            result = ErrorResult(err=error_tb["err"], tb=error_tb.get("tb"))
+            result = (Exception(error_tb["err"]), error_tb.get("tb"))
         else:
             result = None
 
@@ -354,6 +396,7 @@ class Trial:
 
     @property
     def previous_config_id_file(self) -> Path:
+        """The path to the previous configuration id file."""
         return self.pipeline_dir / "previous_config.id"
 
     def error(
@@ -362,19 +405,26 @@ class Trial:
         tb: str | None = None,
         *,
         time_end: float | None = None,
-    ) -> Report[ErrorResult]:
+    ) -> ErrorReport:
         """Create a [`Report`][neps.runtime.Report] object with an error."""
         time_end = time_end if time_end is not None else time.time()
         if time_end not in self.metadata:
             self.metadata["time_end"] = time_end
 
-        return Report(
+        # TODO(eddiebergman): For now we assume the loss and cost for an error is None
+        # and that we don't account for cost and there are no possible results.
+        return ErrorReport(
             config=self.config,
             id=self.id,
+            loss=None,
+            cost=None,
+            account_for_cost=False,
+            results={},
+            err=err,
+            tb=tb,
             pipeline_dir=self.pipeline_dir,
             previous=self.previous,
             trial=self,
-            result=ErrorResult(err=err, tb=tb),
             metadata=self.metadata,
             time_sampled=self.time_sampled,
             time_end=time_end,
@@ -385,12 +435,9 @@ class Trial:
         result: float | Mapping[str, Any],
         *,
         time_end: float | None = None,
-    ) -> Report[SuccessResult]:
+    ) -> SuccessReport:
         """Check if the trial has succeeded."""
         time_end = time_end if time_end is not None else time.time()
-        if time_end not in self.metadata:
-            self.metadata["time_end"] = time_end
-
         _result: dict[str, Any] = {}
         if isinstance(result, Mapping):
             if "loss" not in result:
@@ -409,13 +456,31 @@ class Trial:
                 f" a `{type(loss)}` with value of {loss}",
             ) from e
 
-        return Report(
+        # TODO(eddiebergman): For now we have no access to the cost for crash
+        # so we just set it to None.
+        _cost: float | None = _result.get("cost", None)
+        if _cost is not None:
+            try:
+                _result["cost"] = float(_cost)
+            except (TypeError, ValueError) as e:
+                raise ValueError(
+                    "The evaluation result should be a dictionnary or a float but got"
+                    f" a `{type(_cost)}` with value of {_cost}",
+                ) from e
+
+        # TODO(eddiebergman): Should probably be a global user setting for this.
+        _account_for_cost = _result.get("account_for_cost", True)
+
+        return SuccessReport(
             config=self.config,
             id=self.id,
+            loss=_result["loss"],
+            cost=_cost,
+            account_for_cost=_account_for_cost,
+            results=_result,
             pipeline_dir=self.pipeline_dir,
             previous=self.previous,
             trial=self,
-            result=SuccessResult(_result),
             metadata=self.metadata,
             time_sampled=self.time_sampled,
             time_end=time_end,
@@ -424,6 +489,20 @@ class Trial:
 
 @dataclass
 class StatePaths:
+    """The paths used for the state of the optimization process.
+
+    Most important method is [`config_dir`][neps.runtime.StatePaths.config_dir],
+    which gives the directory to use for a configuration.
+
+    Attributes:
+        root: The root directory of the optimization process.
+        create_dirs: Whether to create the directories if they do not exist.
+        optimizer_state_file: The path to the optimizer state file.
+        optimizer_info_file: The path to the optimizer info file.
+        seed_state_dir: The directory where the seed state is stored.
+        results_dir: The directory where results are stored.
+    """
+
     root: Path
     create_dirs: bool = False
 
@@ -555,14 +634,13 @@ class SharedState:
                     time_sampled=metadata["time_sampled"],
                     metadata=metadata,
                 )
-                if isinstance(result, SuccessResult):
-                    report = trial.success(result.results, time_end=metadata["time_end"])
-                elif isinstance(result, ErrorResult):
-                    report = trial.error(
-                        result.err,
-                        tb=result.tb,
-                        time_end=metadata["time_end"],
-                    )
+
+                report: Report
+                if isinstance(result, dict):
+                    report = trial.success(result, time_end=metadata["time_end"])
+                elif isinstance(result, tuple):
+                    err, tb = result
+                    report = trial.error(err=err, tb=tb, time_end=metadata["time_end"])
                 elif result is None:
                     raise RuntimeError(
                         "Result should not have been None, this is a bug!",
@@ -643,12 +721,10 @@ class SharedState:
         """Sync up with what's on disk."""
         if lock:
             _poll, _timeout = get_shared_state_poll_and_timeout()
-            ctx = partial(self.lock, poll=_poll, timeout=_timeout)
+            with self.lock(poll=_poll, timeout=_timeout):
+                self.update_from_disk()
+                yield
         else:
-            ctx = nullcontext
-
-        with ctx():
-            self.update_from_disk()
             yield
 
 
@@ -864,6 +940,7 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
             # TODO(eddiebergman): Right now if a trial crashes, it's cost is not accounted
             # for, this should probably removed from BaseOptimizer as it does not need
             # to know this and the runtime can fill this in for it.
+            report: Report
             try:
                 user_result = _evaluate_config(trial, evaluation_fn, logger)
             except Exception as e:  # noqa: BLE001
@@ -884,17 +961,17 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                     serialize(report.metadata, report.disk.metadata_file)
             else:
                 report = trial.success(user_result, time_end=time.time())
-                if sampler.budget is not None and report.result.cost is None:
+                if sampler.budget is not None and report.cost is None:
                     raise ValueError(
                         "The evaluation function result should contain "
-                        f"a 'cost' field when used with a budget. Got {report.result}",
+                        f"a 'cost' field when used with a budget. Got {report.results}",
                     )
 
                 with shared_state.lock(poll=_poll, timeout=_timeout):
-                    eval_cost = report.result.cost
+                    eval_cost = report.cost
                     account_for_cost = False
                     if eval_cost is not None:
-                        account_for_cost = report.result.account_for_cost
+                        account_for_cost = report.account_for_cost
                         budget_metadata = {
                             "max": sampler.budget,
                             "used": sampler.used_budget,
@@ -904,18 +981,22 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                         trial.metadata.update(budget_metadata)
 
                     serialize(report.metadata, report.disk.metadata_file)
-                    serialize(report.result.results, report.disk.result_file)
+                    serialize(report.results, report.disk.result_file)
                     if account_for_cost:
                         assert eval_cost is not None
                         with shared_state.use_sampler(sampler, serialize_seed=False):
                             sampler.used_budget += eval_cost
 
+            _result: ERROR | dict[str, Any]
             if post_evaluation_hook is not None:
-                _result = (
-                    "error"
-                    if isinstance(report.result, ErrorResult)
-                    else dict(report.result.results)
-                )
+                if isinstance(report, ErrorReport):
+                    _result = "error"
+                elif isinstance(report, SuccessReport):
+                    _result = dict(report.results)
+                else:
+                    raise TypeError(
+                        f"Unknown result type '{type(report)}' for report: {report}"
+                    )
                 post_evaluation_hook(
                     trial.config,
                     trial.id,

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.runtime import ConfigResult, ErrorResult, SharedState
+from neps.runtime import ErrorReport, SharedState
 from neps.types import _ConfigResultForStats
 from neps.utils._locker import Locker
 
@@ -42,7 +42,7 @@ def get_summary_dict(
         _id: _ConfigResultForStats(
             _id,
             report.config,
-            "error" if isinstance(report.result, ErrorResult) else report.result.results,
+            "error" if isinstance(report, ErrorReport) else report.results,
             report.metadata,
         )
         for _id, report in shared_state.evaluated_trials.items()
@@ -88,7 +88,7 @@ def status(
     best_configs: bool = False,
     all_configs: bool = False,
     print_summary: bool = True,
-) -> tuple[dict[str, ConfigResult], dict[str, SearchSpace]]:
+) -> tuple[dict[str, _ConfigResultForStats], dict[str, SearchSpace]]:
     """Print status information of a neps run and return results.
 
     Args:
