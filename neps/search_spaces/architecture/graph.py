@@ -4,7 +4,7 @@ import logging
 import os
 import random
 import sys
-from utils import types
+from neps.utils import types
 from collections import Counter
 from typing import Callable
 from typing import Counter as CounterType
