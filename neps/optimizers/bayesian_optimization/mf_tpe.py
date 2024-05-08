@@ -9,7 +9,7 @@ import torch
 from scipy.stats import spearmanr
 from typing_extensions import Literal
 
-from neps.types import ConfigResult
+from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map
 from ...search_spaces import (
     CategoricalParameter,

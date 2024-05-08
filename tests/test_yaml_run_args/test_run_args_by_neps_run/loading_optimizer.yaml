@@ -1,28 +1,27 @@
-run_args:
-  run_pipeline:
-    path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
-    name: "run_pipeline"
-  pipeline_space: "tests/test_yaml_run_args/test_run_args_by_neps_run/search_space.yaml"
-  root_directory: "tests/test_yaml_run_args/test_run_args_by_neps_run/results"
+run_pipeline:
+  path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
+  name: "run_pipeline"
+pipeline_space: "tests/test_yaml_run_args/test_run_args_by_neps_run/search_space.yaml"
+root_directory: "tests/test_yaml_run_args/test_run_args_by_neps_run/results"
 
-  max_evaluations_total: 1
-  max_cost_total:
+max_evaluations_total: 1
+max_cost_total:
 
-  monitoring:
-    overwrite_working_directory: True
-    post_run_summary: False
-    development_stage_id: None
-    task_id: None
+monitoring:
+  overwrite_working_directory: True
+  post_run_summary: False
+  development_stage_id: None
+  task_id: None
 
-  parallelization_setup:
-    max_evaluations_per_run: None
-    continue_until_max_evaluation_completed:
+parallelization_setup:
+  max_evaluations_per_run: None
+  continue_until_max_evaluation_completed:
 
-  search:
-    # Test Case
-    searcher:
-      path: "neps/optimizers/bayesian_optimization/optimizer.py"
-      name: BayesianOptimization
+search:
+  # Test Case
+  searcher:
+    path: "neps/optimizers/bayesian_optimization/optimizer.py"
+    name: BayesianOptimization
 
 
-  pre_load_hooks: None
+pre_load_hooks: None

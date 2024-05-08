@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from neps.types import ConfigResult
+from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from ..base_optimizer import BaseOptimizer

@@ -93,26 +93,25 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
 === "`./pipeline_space.yaml`"
 
     ```yaml
-    pipeline_space: # important to start with
-      learning_rate:
-        type: float
-        lower: 2e-3
-        upper: 0.1
-        log: true
+    learning_rate:
+      type: float
+      lower: 2e-3
+      upper: 0.1
+      log: true
 
-      num_epochs:
-        type: int
-        lower: 3
-        upper: 30
-        is_fidelity: True
+    num_epochs:
+      type: int
+      lower: 3
+      upper: 30
+      is_fidelity: True
 
-      optimizer:
-        type: categorical
-        choices: ["adam", "sgd", "rmsprop"]
+    optimizer:
+      type: categorical
+      choices: ["adam", "sgd", "rmsprop"]
 
-      dropout_rate:
-        type: constant
-        value: 0.5
+    dropout_rate:
+      type: constant
+      value: 0.5
     ```
 
 === "`run.py`"

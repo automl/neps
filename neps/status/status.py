@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from neps.runtime import ErrorReport, SharedState
-from neps.types import _ConfigResultForStats
 from neps.utils._locker import Locker
+from neps.utils.types import _ConfigResultForStats
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace

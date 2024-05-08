@@ -4,18 +4,17 @@ import logging
 import os
 import random
 import sys
-import types
 from collections import Counter
 from typing import Callable
 from typing import Counter as CounterType
-
+import types
 import networkx as nx
 import torch
 from networkx.algorithms.dag import lexicographical_topological_sort
 from pathlib import Path
 from torch import nn
 
-from neps.types import AttrDict
+from neps.utils.types import AttrDict
 from .primitives import AbstractPrimitive, Identity
 
 

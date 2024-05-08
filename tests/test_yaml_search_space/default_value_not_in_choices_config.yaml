@@ -1,4 +1,3 @@
-pipeline_space:
-  cat1:
-    choices: ["a", "b", "c"]
-    default: "d"
+cat1:
+  choices: ["a", "b", "c"]
+  default: "d"

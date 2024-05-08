@@ -3,7 +3,7 @@ from typing import Any, List, Union
 
 import numpy as np
 
-from neps.types import ConfigResult
+from neps.utils.types import ConfigResult
 from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from ..base_optimizer import BaseOptimizer
 from ..bayesian_optimization.acquisition_functions.base_acquisition import (

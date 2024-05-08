@@ -1,28 +1,27 @@
-run_args:
-  pipeline_space:
-  root_directory:
+pipeline_space:
+root_directory:
 
-  budget:
-    evaluations:
-        max_evaluations_total:
-    cost:
-      max_cost_total:
+budget:
+  evaluations:
+      max_evaluations_total:
+  cost:
+    max_cost_total:
 
-  monitoring:
-    overwrite_working_directory:
-    post_run_summary:
-    development_stage_id:
-    task_id:
+monitoring:
+  overwrite_working_directory:
+  post_run_summary:
+  development_stage_id:
+  task_id:
 
-  parallelization_setup:
-    max_evaluations_per_run: None
-    continue_until_max_evaluation_completed:
+parallelization_setup:
+  max_evaluations_per_run: None
+  continue_until_max_evaluation_completed:
 
-  search:
-    searcher:
-    searcher_path:
-    searcher_kwargs:
-      initial_design_size:
-      surrogate_model:
+search:
+  searcher:
+  searcher_path:
+  searcher_kwargs:
+    initial_design_size:
+    surrogate_model:
 
-  pre_load_hooks: None
+pre_load_hooks: None

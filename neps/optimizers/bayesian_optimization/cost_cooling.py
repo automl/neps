@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from neps.types import ConfigResult
+from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map
 from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     CostCooler,
