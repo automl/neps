@@ -4,11 +4,10 @@ import logging
 import os
 import random
 import sys
-from neps.utils import types
 from collections import Counter
 from typing import Callable
 from typing import Counter as CounterType
-
+import types
 import networkx as nx
 import torch
 from networkx.algorithms.dag import lexicographical_topological_sort

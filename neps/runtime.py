@@ -69,6 +69,9 @@ from typing_extensions import TypeAlias
 
 import numpy as np
 
+from neps.utils._locker import Locker
+from neps.utils._rng import SeedState
+from neps.utils.files import deserialize, empty_file, serialize
 from neps.utils.types import (
     ERROR,
     POST_EVAL_HOOK_SIGNATURE,
@@ -77,9 +80,6 @@ from neps.utils.types import (
     Metadata,
     RawConfig,
 )
-from neps.utils._locker import Locker
-from neps.utils._rng import SeedState
-from neps.utils.files import deserialize, empty_file, serialize
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
