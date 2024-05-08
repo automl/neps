@@ -3,44 +3,59 @@
 
 ## Introduction
 ### Configuring with YAML
-
-Configure your experiments by specifying settings in a YAML file. This file becomes the single source for
-your project setup, making it easy to share, reproduce, and modify them.
-
-Add yaml tutorial link
-
+Configure your experiments using a YAML file, which serves as a central reference for setting up your project.
+This approach simplifies sharing, reproducing, and modifying configurations.
 #### Simple YAML Example
-Here’s a basic example of how a YAML configuration for NePS looks:
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example.yaml"
-```
+Below is a straightforward YAML configuration example for NePS covering the required arguments.
+=== "config.yaml"
+    ```yaml
+    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example.yaml"
+    ```
 
-#### Executing the Configuration
-To run the experiment defined in your YAML, use this simple command in Python:
-```python
-import neps
-def run_pipeline(learning_rate, optimizer, epochs):
-    pass
-neps.run(run_pipeline, run_args="path/to/your/config.yaml")
-```
+=== "run_neps.py"
+    ```python
+    import neps
+    def run_pipeline(learning_rate, optimizer, epochs):
+        pass
+    neps.run(run_pipeline, run_args="path/to/your/config.yaml")
+    ```
 
 
-### Including run_pipeline
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example_including_run_pipeline.yaml"
-```
-```python
-import neps
-def run_pipeline():
-    pass
-neps.run(run_args="path/to/your/config.yaml")
-```
+#### Advanced Configuration with External Pipeline
+In addition to setting experimental parameters via YAML, this configuration example also specifies the pipeline function
+and its location, enabling more flexible project structures.
+=== "config.yaml"
+    ```yaml
+    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example_including_run_pipeline.yaml"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    # No need to define run_pipeline here. NePS loads it directly from the specified path.
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
 
-### Extended Configuration
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/full_configuration_template.yaml"
-```
-explain what happens with undefined keys?
+#### Extended Configuration
+This example showcases a more comprehensive YAML configuration, which includes not only the essential parameters
+but also advanced settings for more complex setups:
+=== "config.yaml"
+    ```yaml
+    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/full_configuration_template.yaml"
+    ```
+
+=== "run_neps.py"
+    ```python
+    import neps
+    # Executes the configuration specified in your YAML file
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
+The `searcher` key used in the YAML configuration corresponds to the same keys used for selecting an optimizer directly
+through `neps.run`. For a detailed list of integrated optimizers, see [here](optimizers.md#list-available-searchers)
+!!! note "Note on Undefined Keys"
+    Not all configurations are explicitly defined in this template. Any undefined key in the YAML file is mapped to
+    the internal default settings of NePS. This ensures that your experiments can run even if certain parameters are
+    omitted.
 
 ## Different Use Cases
 ### Customizing neps optimizer
