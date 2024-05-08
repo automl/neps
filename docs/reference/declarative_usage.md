@@ -1,10 +1,13 @@
+!!! note "Work in Progress"
+    This document is currently a work in progress and may contain incomplete or preliminary information.
+
 ## Introduction
 ### Configuring with YAML
 
 Configure your experiments by specifying settings in a YAML file. This file becomes the single source for
 your project setup, making it easy to share, reproduce, and modify them.
 
-Should i explain how to create a yaml?? Add link for tutorial?
+Add yaml tutorial link
 
 #### Simple YAML Example
 Here’s a basic example of how a YAML configuration for NePS looks:
