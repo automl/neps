@@ -120,11 +120,6 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
     neps.run(.., pipeline_space="./pipeline_space.yaml")
     ```
 
-!!! tip
-
-    Ensure your YAML file starts with `pipeline_space:`.
-    This is the root key under which all parameter configurations are defined.
-
 When defining the `pipeline_space` using a YAML file, if the `type` argument is not specified,
 the NePS will automatically infer the data type based on the value provided.
 

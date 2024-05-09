@@ -62,8 +62,8 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
 ```yaml
 --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/customizing_neps_optimizer.yaml"
 ```
-TODO
-information where to find parameters of included searcher, where to find optimizers names...link
+# TODO
+link here optimizer page, regarding arguments of optimizers
 
 
 ### Load your own optimizer
@@ -103,5 +103,8 @@ search_space.py
 ```python
 search_space = {}
 ```
+### Multi-fidelity
+
+### Prior-Band
 
 
