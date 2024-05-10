@@ -52,7 +52,6 @@ import time
 import traceback
 import warnings
 from contextlib import contextmanager
-from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -741,8 +740,6 @@ def _evaluate_config(
     )
 
     logger.info(f"Start evaluating config {config_id}")
-
-    config = deepcopy(config)
 
     # If pipeline_directory and previous_pipeline_directory are included in the
     # signature we supply their values, otherwise we simply do nothing.

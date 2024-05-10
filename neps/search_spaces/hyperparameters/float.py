@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from typing import TYPE_CHECKING, ClassVar, Literal, Mapping
-from typing_extensions import override
+from typing_extensions import Self, override
 
 import numpy as np
 
@@ -71,6 +71,21 @@ class FloatParameter(NumericalParameter[float]):
             default_confidence=default_confidence,
             is_fidelity=is_fidelity,
         )
+
+    @override
+    def clone(self) -> Self:
+        clone = self.__class__(
+            lower=self.lower,
+            upper=self.upper,
+            log=self.log,
+            is_fidelity=self.is_fidelity,
+            default=self.default,
+            default_confidence=self.default_confidence_choice,
+        )
+        if self.value is not None:
+            clone.set_value(self.value)
+
+        return clone
 
     @override
     def set_default(self, default: float | None) -> None:
@@ -156,6 +171,33 @@ class FloatParameter(NumericalParameter[float]):
 
         normalized_value = normalized_value * (high - low) + low
         return np.exp(normalized_value) if self.log else normalized_value
+
+    @override
+    def _get_non_unique_neighbors(
+        self,
+        num_neighbours: int,
+        *,
+        std: float = 0.2,
+    ) -> list[Self]:
+        neighbours: list[Self] = []
+
+        assert self.value is not None
+        vectorized_val = self.value_to_normalized(self.value)
+
+        # TODO(eddiebergman): This whole thing can be vectorized, not sure
+        # if we ever have enough num_neighbours to make it worth it
+        while len(neighbours) < num_neighbours:
+            n_val = np.random.normal(vectorized_val, std)
+            if n_val < 0 or n_val > 1:
+                continue
+
+            sampled_value = self.normalized_to_value(n_val)
+
+            neighbour = self.clone()
+            neighbour.set_value(sampled_value)
+            neighbours.append(neighbour)
+
+        return neighbours
 
     def __repr__(self) -> str:
         float_repr = f"{self.value:.07f}" if self.value is not None else "None"

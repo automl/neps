@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, Literal, Mapping
-from typing_extensions import override
+from typing_extensions import Self, override
 
 import numpy as np
 
@@ -59,6 +59,15 @@ class IntegerParameter(NumericalParameter[int]):
             default_confidence: confidence score for the default value, used when
                 condsider prior based optimization.
         """
+        lower = int(np.rint(lower))
+        upper = int(np.rint(upper))
+        _size = upper - lower + 1
+        if _size <= 1:
+            raise ValueError(
+                f"IntegerParameter: expected at least 2 possible values in the range,"
+                f" got upper={upper}, lower={lower}."
+            )
+
         super().__init__(
             lower=int(np.rint(lower)),
             upper=int(np.rint(upper)),
@@ -67,6 +76,7 @@ class IntegerParameter(NumericalParameter[int]):
             default=int(np.rint(default)) if default is not None else None,
             default_confidence=default_confidence,
         )
+
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
         # i.e. [x - 0.499999, x + 0.499999]
@@ -81,6 +91,21 @@ class IntegerParameter(NumericalParameter[int]):
 
     def __repr__(self) -> str:
         return f"<Integer, range: [{self.lower}, {self.upper}], value: {self.value}>"
+
+    @override
+    def clone(self) -> Self:
+        clone = self.__class__(
+            lower=self.lower,
+            upper=self.upper,
+            log=self.log,
+            is_fidelity=self.is_fidelity,
+            default=self.default,
+            default_confidence=self.default_confidence_choice,
+        )
+        if self.value is not None:
+            clone.set_value(self.value)
+
+        return clone
 
     @override
     def load_from(self, value: Number) -> None:
@@ -140,3 +165,32 @@ class IntegerParameter(NumericalParameter[int]):
     def set_default_confidence_score(self, default_confidence: str) -> None:
         self.float_hp.set_default_confidence_score(default_confidence)
         super().set_default_confidence_score(default_confidence)
+
+    @override
+    def _get_non_unique_neighbors(
+        self,
+        num_neighbours: int,
+        *,
+        std: float = 0.2,
+    ) -> list[Self]:
+        neighbours: list[Self] = []
+
+        assert self.value is not None
+        vectorized_val = self.value_to_normalized(self.value)
+
+        # TODO(eddiebergman): This whole thing can be vectorized, not sure
+        # if we ever have enough num_neighbours to make it worth it
+        while len(neighbours) < num_neighbours:
+            n_val = np.random.normal(vectorized_val, std)
+            if n_val < 0 or n_val > 1:
+                continue
+
+            sampled_value = self.normalized_to_value(n_val)
+            if sampled_value == self.value:
+                continue
+
+            neighbour = self.clone()
+            neighbour.set_value(sampled_value)
+            neighbours.append(neighbour)
+
+        return neighbours

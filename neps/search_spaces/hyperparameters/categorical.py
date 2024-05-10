@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from copy import copy, deepcopy
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -75,6 +74,10 @@ class CategoricalParameter(
             default_confidence: confidence score for the default value, used when
                 condsider prior based optimization.
         """
+        choices = list(choices)
+        if len(choices) <= 1:
+            raise ValueError("Categorical choices must have more than one value.")
+
         super().__init__(value=None, is_fidelity=False, default=default)
 
         for choice in choices:
@@ -107,6 +110,18 @@ class CategoricalParameter(
         self._default_index: int | None = (
             self.choices.index(default) if default is not None else None
         )
+
+    @override
+    def clone(self) -> Self:
+        clone = self.__class__(
+            choices=self.choices,
+            default=self.default,
+            default_confidence=self.default_confidence_choice,  # type: ignore
+        )
+        if self.value is not None:
+            clone.set_value(self.value)
+
+        return clone
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
@@ -166,10 +181,9 @@ class CategoricalParameter(
             parent = self
 
         if mutation_strategy == "simple":
-            child = copy(self)
-            child.sample()
+            child = parent.sample()
         elif mutation_strategy == "local_search":
-            child = self._get_neighbours(num_neighbours=1)[0]
+            child = self._get_non_unique_neighbors(num_neighbours=1)[0]
         else:
             raise NotImplementedError
 
@@ -189,38 +203,37 @@ class CategoricalParameter(
         assert parent1.value is not None
         assert parent2.value is not None
 
-        child1 = deepcopy(parent1)
+        child1 = parent1.clone()
         child1.set_value(parent2.value)
 
-        child2 = deepcopy(parent2)
+        child2 = parent2.clone()
         child2.set_value(parent1.value)
 
         return child1, child2
 
     @override
-    def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]:
+    def _get_non_unique_neighbors(
+        self,
+        num_neighbours: int,
+        *,
+        std: float = 0.2,
+    ) -> list[Self]:
         assert self._value_index is not None
-
-        # TODO(eddiebergman): What the hell to do when there's only one choice
-        # and it's the current value?
-        if len(self.choices) == 1:
-            return []
 
         indices = np.arange(len(self.choices))
         bot = indices[: self._value_index]
         top = indices[self._value_index + 1 :]
         available_neighbours = np.concatenate([bot, top])
-        should_replace = len(available_neighbours) < num_neighbours
 
         selected_indices = np.random.choice(
             available_neighbours,
             size=num_neighbours,
-            replace=should_replace,
+            replace=True,
         )
 
         new_neighbours: list[Self] = []
         for value_index in selected_indices:
-            new_param = deepcopy(self)
+            new_param = self.clone()
             new_param.set_value(self.choices[value_index])
             new_neighbours.append(new_param)
 

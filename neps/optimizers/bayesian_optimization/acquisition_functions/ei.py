@@ -1,12 +1,14 @@
-from copy import deepcopy
-from typing import Iterable, Union
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, Sequence, Union
 import numpy as np
 import torch
 from torch.distributions import Normal
 
 from .base_acquisition import BaseAcquisition
 
+if TYPE_CHECKING:
+    from neps.search_spaces import SearchSpace
 
 class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(
@@ -49,18 +51,18 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.optimize_on_max_fidelity = optimize_on_max_fidelity
 
     def eval(
-        self, x: Iterable, asscalar: bool = False
+        self, x: Sequence[SearchSpace], asscalar: bool = False,
     ) -> Union[np.ndarray, torch.Tensor, float]:
         """
         Return the negative expected improvement at the query point x2
         """
         assert self.incumbent is not None, "EI function not fitted on model"
-        if x[0].has_fidelity and self.optimize_on_max_fidelity:
-            _x = deepcopy(x)
+        _x = [elem.clone() for elem in x]
 
-            [elem.set_to_max_fidelity() for elem in _x]
-        else:
-            _x = x
+        if _x[0].has_fidelity and self.optimize_on_max_fidelity:
+            for elem in _x:
+                elem.set_to_max_fidelity()
+
         try:
             mu, cov = self.surrogate_model.predict(_x)
         except ValueError as e:

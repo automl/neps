@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 import operator
 import pprint
-from copy import deepcopy
 from itertools import product
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Hashable, Iterator, Literal, Mapping
@@ -366,7 +365,9 @@ class SearchSpace(Mapping[str, Any]):
                         sampled_hps[name] = hp.sample()
                     break
                 except ValueError:
-                    pass
+                    logger.warning(
+                        f"Could not sample valid value for hyperparameter {name}!"
+                    )
             else:
                 raise ValueError(
                     f"Could not sample valid value for hyperparameter {name}"
@@ -412,7 +413,7 @@ class SearchSpace(Mapping[str, Any]):
 
     # TODO(eddiebergman): This function seems very weak, i.e. it's only mutating
     # one hyperparamter and copying the rest, very expensive for little gain.
-    def _smbo_mutation(self, *, patience: int = 50, **kwargs: Any) -> Self:
+    def _smbo_mutation(self, *, patience: int = 5, **kwargs: Any) -> Self:
         non_fidelity_mutatable_params = {
             hp_name: hp
             for hp_name, hp in self.hyperparameters.items()
@@ -427,8 +428,7 @@ class SearchSpace(Mapping[str, Any]):
                 mutated_param = hp.mutate(**kwargs)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"{chosen_hp_name} failed to mutate! Error: {e}, {kwargs}")
-
-                # -x- sdf print(traceback.format_exc())  # noq-a: T201
+                # !- print(traceback.format_exc())  # noq-a: T201
                 continue
 
             new_params = {
@@ -437,10 +437,8 @@ class SearchSpace(Mapping[str, Any]):
             }
             return self.__class__(**new_params)
 
-        # TODO(eddiebergman): Should probably throw here... but this is what the previous
-        # behaviour did...
-        return self.__class__(
-            **{hp_name: hp.clone() for hp_name, hp in self.hyperparameters.items()}
+        raise ValueError(
+            f"Could not mutate valid value for hyperparameter in {patience} tries!"
         )
 
     def crossover(
@@ -712,26 +710,18 @@ class SearchSpace(Mapping[str, Any]):
 
     def clone(self, *, _with_tabular: bool = False) -> SearchSpace:
         """Create a copy of the search space."""
-        if _with_tabular:
-            return deepcopy(self)
+        new_copy = self.__class__(
+            **{k: v.clone() for k, v in self.hyperparameters.items()}
+        )
+        if _with_tabular and self.has_tabular:
+            assert self.custom_grid_table is not None
+            assert self.raw_tabular_space is not None
+            new_copy.set_custom_grid_space(
+                grid_table=self.custom_grid_table,
+                raw_space=self.raw_tabular_space,
+            )
 
-        # TODO(eddiebergman): While tabular is part of the search space, whenever we copy
-        # this, we make sure to remove the table first and then re-assign.
-        has_tabular = self.has_tabular
-        custom_grid_table = self.custom_grid_table
-        raw_tabular_space = self.raw_tabular_space
-
-        self.has_tabular = False
-        self.custom_grid_table = None
-        self.raw_tabular_space = None
-
-        _copy = deepcopy(self)
-
-        self.has_tabular = has_tabular
-        self.custom_grid_table = custom_grid_table
-        self.raw_tabular_space = raw_tabular_space
-
-        return _copy
+        return new_copy
 
     def sample_default_configuration(
         self,

@@ -151,7 +151,7 @@ class FreezeThawSampler(AcquisitionSampler):
         partial_configs_list = []
         index_list = []
         for idx, config in partial_configs.items():
-            _config = deepcopy(config)
+            _config = config.clone()
             partial_configs_list.append(_config)
             index_list.append(idx)
 

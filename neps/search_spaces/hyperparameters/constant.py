@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any, TypeVar
 from typing_extensions import Self, override
 
@@ -50,6 +49,10 @@ class ConstantParameter(Parameter[T, T]):
         super().__init__(value=value, default=value, is_fidelity=False)  # type: ignore
         self._value: T = value  # type: ignore
 
+    @override
+    def clone(self) -> Self:
+        return self.__class__(value=self.value)
+
     @property
     @override
     def value(self) -> T:
@@ -66,8 +69,8 @@ class ConstantParameter(Parameter[T, T]):
         return f"<Constant, value: {self.value}>"
 
     @override
-    def sample_value(self) -> Any:
-        return deepcopy(self.value)
+    def sample_value(self) -> T:
+        return self.value
 
     @override
     def set_default(self, default: T | None) -> None:
@@ -145,8 +148,13 @@ class ConstantParameter(Parameter[T, T]):
         return self._value
 
     @override
-    def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]:
-        return []
+    def _get_non_unique_neighbors(
+        self,
+        num_neighbours: int,
+        *,
+        std: float = 0.2,
+    ) -> list[Self]:
+        raise ValueError("ConstantParameter have no neighbours")
 
     @override
     @classmethod

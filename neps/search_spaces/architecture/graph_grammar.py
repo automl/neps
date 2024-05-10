@@ -139,13 +139,13 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
         self.create_from_id(value)
 
     @abstractmethod
-    def mutate(self, parent: Self | None = None) -> Self: ...
+    def mutate(self, parent: Self | None = None, *, mutation_strategy: str = "bananas") -> Self: ...
 
     @abstractmethod
     def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
         ...
 
-    def _get_neighbours(self, num_neighbours: int) -> list[Self]:
+    def _get_non_unique_neighbors(self, num_neighbours: int) -> list[Self]:
         raise NotImplementedError
 
     def value_to_normalized(self, value: nx.DiGraph) -> float:
@@ -154,6 +154,11 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
     def normalized_to_value(self, normalized_value: float) -> nx.DiGraph:
         raise NotImplementedError
 
+    @override
+    def clone(self) -> Self:
+        # NOTE(eddiebergman): We don't have any safe way better than a deepcopy
+        # I think
+        return deepcopy(self)
 
 class GraphGrammar(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar"

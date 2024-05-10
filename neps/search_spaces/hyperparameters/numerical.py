@@ -149,31 +149,6 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             and self.default_confidence_score == other.default_confidence_score
         )
 
-    # TODO(eddiebergman): Right now this is identical for both float and integer
-    # however the integer version is buggy as it returns duplicates due to rounding
-    # Likely need to move this down to subclasses when addressed.
-    @override
-    def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]:
-        neighbours: list[Self] = []
-
-        assert self.value is not None
-        vectorized_val = self.value_to_normalized(self.value)
-
-        # TODO(eddiebergman): This whole thing can be vectorized, not sure
-        # if we ever have enough num_neighbours to make it worth it
-        while len(neighbours) < num_neighbours:
-            n_val = np.random.normal(vectorized_val, std)
-            if n_val < 0 or n_val > 1:
-                continue
-
-            sampled_value = self.normalized_to_value(n_val)
-
-            neighbour = self.clone()
-            neighbour.set_value(sampled_value)
-            neighbours.append(neighbour)
-
-        return neighbours
-
     @override
     def compute_prior(self, *, log: bool = False) -> float:
         default = self.log_default if self.log else self.default
@@ -206,9 +181,9 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             child = self.clone()
             child.sample()
         elif mutation_strategy == "local_search" and "std" in kwargs:
-            child = self._get_neighbours(std=kwargs["std"], num_neighbours=1)[0]
+            child = self._get_non_unique_neighbors(std=kwargs["std"], num_neighbours=1)[0]
         elif mutation_strategy == "local_search":
-            child = self._get_neighbours(num_neighbours=1)[0]
+            child = self._get_non_unique_neighbors(num_neighbours=1)[0]
         else:
             raise NotImplementedError
 
@@ -233,7 +208,7 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         proxy_self = self.clone()
         proxy_self.set_value(crossover_value)  # type: ignore
 
-        tt = tuple(proxy_self._get_neighbours(std=0.1, num_neighbours=2))
+        tt = tuple(proxy_self._get_non_unique_neighbors(std=0.1, num_neighbours=2))
         assert len(tt) == 2
         return tt
 

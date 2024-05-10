@@ -23,7 +23,6 @@ set or empty, in which case it is `None`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from typing import Any, ClassVar, Generic, Mapping, TypeVar, runtime_checkable
 from typing_extensions import Protocol, Self
 
@@ -88,11 +87,9 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
 
         return False
 
-    # TODO(eddiebergman): The reason to use the word `clone()` instead of `copy()`
-    # is so we can find it throughout the codebase if we migrate away from copies.
+    @abstractmethod
     def clone(self) -> Self:
-        """Create a deep copy of the `Parameter`."""
-        return deepcopy(self)
+        """Create a copy of the `Parameter`."""
 
     @property
     def value(self) -> ValueT | None:
@@ -109,7 +106,7 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
             A new `Parameter` with a sampled value.
         """
         value = self.sample_value()
-        copy_self = deepcopy(self)
+        copy_self = self.clone()
         copy_self.set_value(value)
         return copy_self
 
@@ -168,7 +165,16 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         """
 
     @abstractmethod
-    def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]: ...
+    def _get_non_unique_neighbors(
+        self,
+        num_neighbours: int,
+        *,
+        std: float = 0.2,
+    ) -> list[Self]: ...
+
+    def _get_single_neighbor(self, *, std: float = 0.2) -> Self:
+        """Override this if a faster implementation is possible."""
+        return self._get_non_unique_neighbors(num_neighbours=1, std=std)[0]
 
     @classmethod
     @abstractmethod
@@ -278,7 +284,7 @@ class ParameterWithPrior(Parameter[ValueT, SerializedT]):
             A new `Parameter` with a sampled value.
         """
         value = self.sample_value(user_priors=user_priors)
-        copy_self = deepcopy(self)
+        copy_self = self.clone()
         copy_self.set_value(value)
         return copy_self
 

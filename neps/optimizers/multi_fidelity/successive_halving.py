@@ -405,7 +405,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         if rung_to_promote is not None:
             # promotes the first recorded promotable config in the argsort-ed rung
             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
-            config = deepcopy(row["config"])
+            config = row["config"].clone()
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
             config.fidelity.set_value(self.rung_map[rung])
@@ -504,6 +504,9 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         # iterates over the different SH brackets which span start-end by index
         while end <= len(self.observed_configs):
             # for the SH bracket in start-end, calculate total SH budget used
+
+            # TODO(eddiebergman): Not idea what the type is of the stuff in the deepcopy
+            # but should work on removing the deepcopy
             bracket_budget_used = self._calc_budget_used_in_bracket(
                 deepcopy(self.observed_configs.rung.values[start:end])
             )

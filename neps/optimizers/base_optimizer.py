@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from copy import deepcopy
 from typing import Any, Iterator, Mapping
 from typing_extensions import Self
 from contextlib import contextmanager
@@ -75,7 +74,7 @@ class BaseOptimizer:
         self.used_budget = state["used_budget"]
 
     def load_config(self, config_dict: Mapping[str, Any]) -> SearchSpace:
-        config = deepcopy(self.pipeline_space)
+        config = self.pipeline_space.clone()
         config.load_from(config_dict)
         return config
 
