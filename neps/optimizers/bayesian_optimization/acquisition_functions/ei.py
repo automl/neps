@@ -57,11 +57,13 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         Return the negative expected improvement at the query point x2
         """
         assert self.incumbent is not None, "EI function not fitted on model"
-        _x = [elem.clone() for elem in x]
 
-        if _x[0].has_fidelity and self.optimize_on_max_fidelity:
-            for elem in _x:
-                elem.set_to_max_fidelity()
+        if x[0].has_fidelity and self.optimize_on_max_fidelity:
+            _x = [e.clone() for e in x]
+            for e in _x:
+                e.set_to_max_fidelity()
+        else:
+            _x = x
 
         try:
             mu, cov = self.surrogate_model.predict(_x)

@@ -228,9 +228,10 @@ class SearchSpace(Mapping[str, Any]):
         # Ensure a consistent ordering for uses throughout the lib
         _hyperparameters = sorted(hyperparameters.items(), key=lambda x: x[0])
         _fidelity_param: NumericalParameter | None = None
+        _fidelity_name: str | None = None
         _has_prior: bool = False
 
-        for _, hp in _hyperparameters:
+        for name, hp in _hyperparameters:
             if hp.is_fidelity:
                 if _fidelity_param is not None:
                     raise ValueError(
@@ -245,12 +246,14 @@ class SearchSpace(Mapping[str, Any]):
                     )
 
                 _fidelity_param = hp
+                _fidelity_name = name
 
             if isinstance(hp, ParameterWithPrior) and hp.has_prior:
                 _has_prior = True
 
         self.hyperparameters: dict[str, Parameter] = dict(_hyperparameters)
         self.fidelity: NumericalParameter | None = _fidelity_param
+        self.fidelity_name: str | None = _fidelity_name
         self.has_prior: bool = _has_prior
 
         # TODO(eddiebergman): This should be a seperate thing most likely and not

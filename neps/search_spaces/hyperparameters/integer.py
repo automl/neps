@@ -132,8 +132,6 @@ class IntegerParameter(NumericalParameter[int]):
             self.float_hp.set_value(None)
             return
 
-        value = int(np.rint(value))
-
         if not self.lower <= value <= self.upper:
             cls_name = self.__class__.__name__
             raise ValueError(
@@ -141,6 +139,8 @@ class IntegerParameter(NumericalParameter[int]):
                 f" <= upper, but got lower={self.lower}, value={value},"
                 f" upper={self.upper}"
             )
+
+        value = int(np.rint(value))
 
         self.float_hp.set_value(value)
         self._value = value
