@@ -9,7 +9,6 @@ from typing_extensions import Literal
 
 import neps
 from neps.search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
-from tests.joint_config_space import joint_config_space
 
 
 class RegressionObjectiveBase:
@@ -116,6 +115,8 @@ class JAHSObjective(RegressionObjectiveBase):
             required for the benchmark to run will be read from.
         """
         super().__init__(optimizer=optimizer, task=task)
+        from tests.joint_config_space import joint_config_space
+
         self.save_dir = Path(save_dir)
         self.benchmark = None
 

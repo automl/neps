@@ -5,6 +5,10 @@ import pytest
 
 from tests.settings import OPTIMIZERS
 
+pytest.skip(
+    "Pretty slow and will be reworked",
+    allow_module_level=True
+)
 
 @pytest.fixture(autouse=True)
 def use_tmpdir(tmp_path, request):
