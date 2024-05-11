@@ -1,9 +1,17 @@
+"""Constant hyperparameter for search spaces."""
+
 from __future__ import annotations
 
-from neps.search_spaces.hyperparameters.numerical import NumericalParameter
+from copy import deepcopy
+from typing import Any, TypeVar
+from typing_extensions import Self, override
+
+from neps.search_spaces.parameter import Parameter
+
+T = TypeVar("T", int, float, str)
 
 
-class ConstantParameter(NumericalParameter):
+class ConstantParameter(Parameter[T]):
     """A constant value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
@@ -16,45 +24,126 @@ class ConstantParameter(NumericalParameter):
 
     batch_size = neps.ConstantParameter(32)
     ```
+
+    !!! note
+
+        As the name suggests, the value of a `ConstantParameter` only have one
+        value and so its [`.default`][neps.search_spaces.parameter.Parameter.default]
+        and [`.value`][neps.search_spaces.parameter.Parameter.value] should always be
+        the same.
+
+        This also implies that the
+        [`.default`][neps.search_spaces.parameter.Parameter.default] can never be `None`.
+
+        Please use
+        [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
+        if you need to change the value of the constant parameter.
+
     """
 
-    def __init__(self, value: int | float | str, *, is_fidelity: bool = False):
+    def __init__(self, value: T):
         """Create a new `ConstantParameter`.
 
         Args:
             value: value for the hyperparameter.
-            is_fidelity: whether the hyperparameter is fidelity.
         """
-        super().__init__()
-        self.value = value
-        self.is_fidelity = is_fidelity
-        self.default = value
-        self.lower = value
-        self.upper = value
+        super().__init__(value=value, default=value, is_fidelity=False)  # type: ignore
+        self._value: T = value  # type: ignore
 
-    def __eq__(self, other):
+    @property
+    @override
+    def value(self) -> T:
+        """Get the value of the constant parameter."""
+        return self._value
+
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
-            return False
-        return (self.value == other.value
-                and self.is_fidelity == other.is_fidelity)
+            return NotImplemented
 
-    def __repr__(self):
-        return f"<Constant, value: {self.id}>"
+        return self.value == other.value and self.is_fidelity == other.is_fidelity
 
-    def sample(self, user_priors: bool = False):
-        pass
+    def __repr__(self) -> str:
+        return f"<Constant, value: {self.value}>"
 
-    def mutate(
-        self,
-        parent=None,
-        mutation_rate: float = 1.0,
-        mutation_strategy: str = "local_search",
-        **kwargs,
-    ):
-        return self
+    @override
+    def sample_value(self) -> Any:
+        return deepcopy(self.value)
 
-    def crossover(self, parent1, parent2=None):
-        raise NotImplementedError
+    @override
+    def set_default(self, default: T | None) -> None:
+        """Set the default of the constant parameter.
 
-    def _get_neighbours(self, **kwargs):
-        pass
+        !!! note
+
+            This method is a no-op but will raise a `ValueError` if the default
+            is different from the current default.
+
+            Please see
+            [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
+            which can be used to set both the
+            [`.value`][neps.search_spaces.parameter.Parameter.value]
+            and the [`.default`][neps.search_spaces.parameter.Parameter.default] at once
+
+        Args:
+            default: value to set the default to.
+
+        Raises:
+            ValueError: if the default is different from the current default.
+        """
+        if default != self.default:
+            raise ValueError(
+                f"Constant does not allow changing the default value. "
+                f"Tried to set default to {default}, but it is already {self.default}"
+            )
+
+    @override
+    def set_value(self, value: T | None) -> None:
+        """Set the value of the constant parameter.
+
+        !!! note
+
+            This method is a no-op but will raise a `ValueError` if the value
+            is different from the current value.
+
+            Please see
+            [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
+            which can be used to set both the
+            [`.value`][neps.search_spaces.parameter.Parameter.value]
+            and the [`.default`][neps.search_spaces.parameter.Parameter.default] at once
+
+        Args:
+            value: value to set the parameter to.
+
+        Raises:
+            ValueError: if the value is different from the current value.
+        """
+        if value != self._value:
+            raise ValueError(
+                f"Constant does not allow chaning the set value. "
+                f"Tried to set value to {value}, but it is already {self.value}"
+            )
+
+    def set_constant_value(self, value: T) -> None:
+        """Set the value of the constant parameter.
+
+        !!! note
+
+            This method is used to set the
+            [`.value`][neps.search_spaces.parameter.Parameter.value]
+            including the [`.default`][neps.search_spaces.parameter.Parameter.default]
+            It is used internally and should not be used by the user.
+        """
+        self._value = value
+        self.default = value
+
+    @override
+    def value_to_normalized(self, value: T) -> float:
+        return 1.0 if value == self._value else 0.0
+
+    @override
+    def normalized_to_value(self, normalized_value: float) -> T:
+        return self._value
+
+    @override
+    def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]:
+        return []

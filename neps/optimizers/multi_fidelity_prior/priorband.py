@@ -1,5 +1,3 @@
-# type: ignore
-
 from __future__ import annotations
 
 import typing
@@ -7,16 +5,19 @@ import typing
 import numpy as np
 from typing_extensions import Literal
 
-from ...search_spaces.search_space import SearchSpace
-from ..bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+from neps.types import RawConfig
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from ..multi_fidelity.hyperband import HyperbandCustomDefault
-from ..multi_fidelity.mf_bo import MFBOBase
-from ..multi_fidelity.promotion_policy import SyncPromotionPolicy
-from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
-from .utils import (
+from neps.optimizers.multi_fidelity.hyperband import HyperbandCustomDefault
+from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
+from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
+from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
+from neps.optimizers.multi_fidelity_prior.utils import (
     calc_total_resources_spent,
     compute_config_dist,
     compute_scores,
@@ -371,9 +372,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             sh.model_policy = self.model_policy
             sh.sample_new_config = self.sample_new_config
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:

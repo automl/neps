@@ -9,8 +9,10 @@ from typing import Callable
 import numpy as np
 import yaml
 
-from ...search_spaces.search_space import SearchSpace
-from ..base_optimizer import BaseOptimizer
+from neps.types import RawConfig
+
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.base_optimizer import BaseOptimizer
 
 
 class RegularizedEvolution(BaseOptimizer):
@@ -62,7 +64,7 @@ class RegularizedEvolution(BaseOptimizer):
         ]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
 
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         if len(self.population) < self.population_size:
             if self.assisted:
                 if 0 == len(os.listdir(self.assisted_init_population_dir)):
@@ -75,9 +77,7 @@ class RegularizedEvolution(BaseOptimizer):
                         for _ in range(cur_population_size * 2)
                     ]
                     if self.assisted_zero_cost_proxy is not None:
-                        zero_cost_proxy_values = self.assisted_zero_cost_proxy(
-                            x=configs
-                        )  # type:  ignore[misc]
+                        zero_cost_proxy_values = self.assisted_zero_cost_proxy(x=configs)  # type:  ignore[misc]
                     else:
                         raise Exception("Zero cost proxy function is not defined!")
                     indices = np.argsort(zero_cost_proxy_values)[-cur_population_size:][
@@ -99,7 +99,7 @@ class RegularizedEvolution(BaseOptimizer):
                     self.assisted_init_population_dir / config_yaml, encoding="utf-8"
                 ) as f:
                     config_identifier = yaml.safe_load(f)
-                config = self.pipeline_space.copy()
+                config = self.pipeline_space.clone()
                 config.load_from(config_identifier)
                 os.remove(self.assisted_init_population_dir / config_yaml)
             else:

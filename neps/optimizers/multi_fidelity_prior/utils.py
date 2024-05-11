@@ -27,8 +27,7 @@ def local_mutation(
                 continue
             kwargs = {"mutation_strategy": "local_search"}
             if isinstance(hp, CategoricalParameter):
-                confidences = {hp.value: len(hp.choices)}
-                kwargs["confidences"] = confidences
+                pass
             elif isinstance(hp, IntegerParameter) or isinstance(hp, FloatParameter):
                 kwargs["std"] = std
             _val = hp.mutate(**kwargs).value

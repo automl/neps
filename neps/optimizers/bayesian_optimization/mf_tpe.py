@@ -9,26 +9,30 @@ import torch
 from scipy.stats import spearmanr
 from typing_extensions import Literal
 
-from neps.utils.types import ConfigResult
+from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
-from ...search_spaces import (
+from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
     FloatParameter,
     IntegerParameter,
+    SearchSpace,
 )
-from ...search_spaces.hyperparameters.categorical import CATEGORICAL_CONFIDENCE_SCORES
-from ...search_spaces.hyperparameters.float import FLOAT_CONFIDENCE_SCORES
-from ...search_spaces.search_space import SearchSpace
-from .. import BaseOptimizer
-from .acquisition_samplers import AcquisitionSamplerMapping
-from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from .models import SurrogateModelMapping
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.bayesian_optimization.acquisition_samplers import (
+    AcquisitionSamplerMapping,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
+    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
+)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -222,9 +226,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         eta = round(1 / self.good_fraction)
         new_min_budget = self.min_fidelity * (1 / eta**s)
         nrungs = (
-            np.floor(np.log(self.max_fidelity / new_min_budget) / np.log(eta)).astype(
-                int
-            )
+            np.floor(np.log(self.max_fidelity / new_min_budget) / np.log(eta)).astype(int)
             + 1
         )
         _max_budget = self.max_fidelity
@@ -298,8 +300,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         # TODO have this as a setting in the acq_sampler instead
         if only_lowest_fidelity:
             is_lowest_fidelity = (
-                np.array([x_.fidelity.value for x_ in x])
-                == self.rung_map[self.min_rung]
+                np.array([x_.fidelity.value for x_ in x]) == self.rung_map[self.min_rung]
             )
             return np.log(self.surrogate_models["good"].pdf(x)) - np.log(
                 self.surrogate_models["bad"].pdf(x)
@@ -348,9 +349,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             if self.round_up:
                 num_good_configs = np.ceil(len(configs_fid) * good_fraction).astype(int)
             else:
-                num_good_configs = np.floor(len(configs_fid) * good_fraction).astype(
-                    int
-                )
+                num_good_configs = np.floor(len(configs_fid) * good_fraction).astype(int)
 
             ordered_loss_indices = np.argsort(losses_fid)
             good_indices = ordered_loss_indices[0:num_good_configs]
@@ -370,9 +369,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 good_configs_weights.extend(
                     [weight_per_fidelity[fid]] * len(good_configs_fid)
                 )
-            bad_configs_weights.extend(
-                [weight_per_fidelity[fid]] * len(bad_configs_fid)
-            )
+            bad_configs_weights.extend([weight_per_fidelity[fid]] * len(bad_configs_fid))
         return good_configs, bad_configs, good_configs_weights, bad_configs_weights
 
     def _compute_improvement_weights(self, losses, num_good_configs, max_weight):
@@ -559,9 +556,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             configs_per_rung[rung] += 1
 
         cumulative_per_rung = np.flip(np.cumsum(np.flip(configs_per_rung)))
-        cumulative_above = np.append(
-            np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0
-        )
+        cumulative_above = np.append(np.flip(np.cumsum(np.flip(configs_per_rung[1:]))), 0)
         # then check which one can make the most informed decision on promotions
         rungs_to_promote = cumulative_per_rung * self.good_fraction - cumulative_above
 
@@ -603,9 +598,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         # i.e. give it zero weight in the KDE, and ensure the count is correct
         assert len(configs_for_promotion) > 0, "No promotable configurations"
         if self.promote_from_acq:
-            acq_values = self.__call__(
-                configs_for_promotion, only_lowest_fidelity=False
-            )
+            acq_values = self.__call__(configs_for_promotion, only_lowest_fidelity=False)
         else:
             acq_values = self.__call__(
                 configs_for_promotion, only_lowest_fidelity=False, only_good=True
@@ -618,9 +611,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         next_config.fidelity.value = new_fidelity
         return next_config
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         if self._num_train_x == 0 and self._initial_design_size >= 1:
             # TODO only at lowest fidelity
             config = self.pipeline_space.sample(

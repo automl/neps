@@ -41,7 +41,7 @@ class SeedState:
         Takes a snapshot, including cloning or copying any arrays, tensors, etc.
         """
         # https://numpy.org/doc/stable/reference/random/generated/numpy.random.get_state.html
-        np_keys = np.random.get_state(legacy=True)  # noqa: NPY002
+        np_keys = np.random.get_state(legacy=True)
         assert np_keys[0] == "MT19937"  # type: ignore
         np_keys = (np_keys[0], np_keys[1].copy(), *np_keys[2:])  # type: ignore
 
@@ -60,7 +60,7 @@ class SeedState:
 
     def set_as_global_state(self) -> None:
         """Set the global rng to the given state."""
-        np.random.set_state(self.np_rng)  # noqa: NPY002
+        np.random.set_state(self.np_rng)
         random.setstate(self.py_rng)
         torch.random.set_rng_state(self.torch_rng)
         if self.torch_cuda_rng and torch.cuda.is_available():

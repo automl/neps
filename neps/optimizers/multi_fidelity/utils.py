@@ -18,7 +18,7 @@ def continuous_to_tabular(
     Convert the continuous parameters in the config into categorical ones based on
     the categorical_space provided
     """
-    result = config.copy()
+    result = config.clone()
     for hp_name, _ in config.items():
         if hp_name in categorical_space.keys():
             choices = np.array(categorical_space[hp_name].choices)

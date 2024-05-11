@@ -1,23 +1,26 @@
+"""Categorical hyperparameter for search spaces."""
+
 from __future__ import annotations
 
-import random
 from copy import copy, deepcopy
-from typing import Iterable, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Literal, Mapping, Union
+from typing_extensions import Self, override
 
 import numpy as np
 import numpy.typing as npt
+from more_itertools import all_unique
 
-from ..parameter import Parameter
+from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
-CATEGORICAL_CONFIDENCE_SCORES = {
-    "low": 2,
-    "medium": 4,
-    "high": 6,
-}
+if TYPE_CHECKING:
+    from neps.types import f64
 
 
-class CategoricalParameter(Parameter):
-    """A set of **unordered** choices for a parameter.
+class CategoricalParameter(
+    ParameterWithPrior[Union[float, int, str]],
+    MutatableParameter,
+):
+    """A list of **unordered** choices for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
     to represent hyperparameters that can take on a discrete set of unordered
@@ -33,113 +36,118 @@ class CategoricalParameter(Parameter):
         default="adam"
     )
     ```
+
+    Please see the [`Parameter`][neps.search_spaces.parameter],
+    [`ParameterWithPrior`][neps.search_spaces.parameter.ParameterWithPrior],
+    [`MutatableParameter`][neps.search_spaces.parameter.MutatableParameter] classes
+    for more details on the methods available for this class.
     """
+
+    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, Any]] = {
+        "low": 2,
+        "medium": 4,
+        "high": 6,
+    }
 
     def __init__(
         self,
         choices: Iterable[float | int | str],
         *,
-        is_fidelity: bool = False,
-        default: None | float | int | str = None,
+        default: float | int | str | None = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Create a new `CategoricalParameter`.
 
         Args:
             choices: choices for the hyperparameter.
-            is_fidelity: whether the hyperparameter is fidelity.
             default: default value for the hyperparameter, must be in `choices=`
                 if provided.
             default_confidence: confidence score for the default value, used when
                 condsider prior based optimization.
         """
-
-        super().__init__()
-
-        self.default = default
-        self.lower = default
-        self.upper = default
-        self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]
-        self.has_prior = self.default is not None
-        self.is_fidelity = is_fidelity
+        super().__init__(value=None, is_fidelity=False, default=default)
         self.choices = list(choices)
-        self.num_choices = len(self.choices)
-        self.probabilities: list[npt.NDArray] = list(
-            np.ones(self.num_choices) * (1.0 / self.num_choices)
-        )
-        self.value: None | float | int | str = None
 
-        # Check if choices have valid types (float | int | str)
+        # NOTE(eddiebergman): If there's ever a very large categorical,
+        # then it would be beneficial to have a lookup table for indices as
+        # currently we do a list.index() operation which is O(n).
+        # However for small sized categoricals this is likely faster than
+        # a lookup table.
+        # For now we can just cache the index of the value and default.
+        self._value_index: int | None = None
+        self._default_index: int | None = None
+
+        self.default_confidence_choice = default_confidence
+        self.default_confidence_score = self.DEFAULT_CONFIDENCE_SCORES[default_confidence]
+        self.has_prior = self.default is not None
+
         for choice in self.choices:
             if not isinstance(choice, (float, int, str)):
                 raise TypeError(
-                    f'Choice "{choice}" is not of a valid type (float, int, str)')
+                    f'Choice "{choice}" is not of a valid type (float, int, str)'
+                )
 
-        # Check if 'default' is in 'choices'
+        if not all_unique(self.choices):
+            raise ValueError(
+                f"Choices must be unique but got duplicates.\n{self.choices}"
+            )
+
         if default is not None and default not in self.choices:
             raise ValueError(
                 f"Default value {default} is not in the provided choices {self.choices}"
             )
 
-        # Check if 'is_fidelity' is a boolean
-        if not isinstance(is_fidelity, bool):
-            raise TypeError(
-                f"Expected 'is_fidelity' to be a boolean, but got type: "
-                f"{type(is_fidelity).__name__}"
-            )
-
-    @property
-    def id(self):
-        return self.value
-
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
             return False
+
         return (
             self.choices == other.choices
             and self.value == other.value
             and self.is_fidelity == other.is_fidelity
             and self.default == other.default
+            and self.has_prior == other.has_prior
             and self.default_confidence_score == other.default_confidence_score
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Categorical, choices: {self.choices}, value: {self.value}>"
 
-    def _compute_user_prior_probabilities(self):
-        # The default value should have "default_confidence_score" more probability than
-        # all the other values.
-        base_probability = 1 / (self.num_choices - 1 + self.default_confidence_score)
-        probabilities = [base_probability] * self.num_choices
-        default_index = self.choices.index(self.default)  # type: ignore[arg-type]
-        probabilities[default_index] *= self.default_confidence_score
-        return probabilities
+    def _compute_user_prior_probabilities(self) -> npt.NDArray[f64]:
+        # The default value should have "default_confidence_score" more probability
+        # than all the other values.
+        assert self._default_index is not None
+        probabilities = np.ones(len(self.choices))
+        probabilities[self._default_index] = self.default_confidence_score
+        return probabilities / np.sum(probabilities)
 
-    def compute_prior(self, log: bool = False):
+    @override
+    def compute_prior(self, log: bool = False) -> float:
+        assert self._value_index is not None
+
         probabilities = self._compute_user_prior_probabilities()
-        own_value_index = self.choices.index(self.value)  # type: ignore[arg-type]
-        return (
-            np.log(probabilities[own_value_index] + 1e-12)
+        return float(
+            np.log(probabilities[self._value_index] + 1e-12)
             if log
-            else probabilities[own_value_index]
+            else probabilities[self._value_index]
         )
 
-    def sample(self, user_priors: bool = False):
+    @override
+    def sample_value(self, *, user_priors: bool = False) -> Any:
         if user_priors and self.default is not None:
             probabilities = self._compute_user_prior_probabilities()
-        else:
-            probabilities = self.probabilities
+            return np.random.choice(self.choices, p=probabilities)
 
-        idx = np.random.choice(a=self.num_choices, replace=True, p=probabilities)
-        self.value = self.choices[int(idx)]
+        return np.random.choice(self.choices)
 
+    @override
     def mutate(
         self,
-        parent=None,
+        parent: Self | None = None,
         mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Self:
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
 
@@ -150,8 +158,7 @@ class CategoricalParameter(Parameter):
             child = copy(self)
             child.sample()
         elif mutation_strategy == "local_search":
-            confidences = kwargs["confidences"] if "confidences" in kwargs else None
-            child = self._get_neighbours(num_neighbours=1, confidences=confidences)[0]
+            child = self._get_neighbours(num_neighbours=1)[0]
         else:
             raise NotImplementedError
 
@@ -160,74 +167,84 @@ class CategoricalParameter(Parameter):
 
         return child
 
-    def crossover(self, parent1, parent2=None):
+    @override
+    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
         if self.is_fidelity:
             raise ValueError("Trying to crossover fidelity param!")
+
         if parent2 is None:
             parent2 = self
 
+        assert parent1.value is not None
+        assert parent2.value is not None
+
         child1 = deepcopy(parent1)
+        child1.set_value(parent2.value)
+
         child2 = deepcopy(parent2)
+        child2.set_value(parent1.value)
 
-        child1.value = parent2.value
-        child2.value = parent1.value
+        return child1, child2
 
-        children = [child1, child2]
+    @override
+    def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]:
+        assert self._value_index is not None
 
-        if all(not c for c in children):
-            raise Exception("Cannot create crossover")
-        # expected len(children) == num_neighbours
-        return children
+        # TODO(eddiebergman): What the hell to do when there's only one choice
+        # and it's the current value?
+        if len(self.choices) == 1:
+            return []
 
-    def _get_neighbours(self, num_neighbours: int = 1, confidences: Iterable = None):
-        neighbours: list[CategoricalParameter] = []
-
-        idx = 0
-        choices = self.choices.copy()
-        # allows the different choices to have different confidence of selection by
-        # adding more of that choice in the choices list to increase chance of selection
-        if confidences is not None:
-            for k, v in confidences.items():
-                if k in choices and v > 1:
-                    choices += [k] * v
-        random.shuffle(choices)
-
-        while len(neighbours) < num_neighbours:
-            # `num_choices` contains the unique set of choices unlike `choices`
-            # which can contain duplicated choices
-            if num_neighbours > self.num_choices - 1:
-                # when more neighbours required than choices available,
-                # select a random choice each time
-                choice = choices[np.random.randint(0, len(choices))]
-            else:
-                # when number of neigbours required is lesser than number of unique
-                # choices, shuffle the list of choices and iterate over it
-                choice = choices[idx]
-                idx += 1
-            if choice == self.value and len(self.choices) > 1:
-                # this condition is triggered only for one value and as long as choice
-                # list is at least 2, this condition will not be triggered for certain
-                continue
-            neighbour = deepcopy(self)
-            neighbour.value = choice
-            neighbours.append(neighbour)
-
-        return neighbours
-
-    def normalized(self):
-        hp = CategoricalParameter(
-            choices=list(range(len(self.choices))),
-            is_fidelity=self.is_fidelity,
+        indices = np.arange(len(self.choices))
+        bot = indices[: self._value_index]
+        top = indices[self._value_index + 1 :]
+        selected_indices = np.random.choice(
+            np.concatenate([bot, top]), size=num_neighbours, replace=True
         )
-        if self.value is not None:
-            hp.value = self.choices.index(self.value)
-        return hp
 
-    def serialize(self):
-        return self.value
+        new_neighbours: list[Self] = []
+        for value_index in selected_indices:
+            new_param = deepcopy(self)
+            new_param.set_value(self.choices[value_index])
+            new_neighbours.append(new_param)
 
-    def load_from(self, value):
-        self.value = value
+        return new_neighbours
 
-    def set_default_confidence_score(self, default_confidence):
-        self.default_confidence_score = CATEGORICAL_CONFIDENCE_SCORES[default_confidence]
+    @override
+    def value_to_normalized(self, value: Any) -> float:
+        if np.isnan(value):
+            raise ValueError("Float parameter value is NaN!")
+
+        return float(self.choices.index(value))
+
+    @override
+    def normalized_to_value(self, normalized_value: float) -> Any:
+        return self.choices[int(np.rint(normalized_value))]
+
+    @override
+    def set_default(self, default: Any | None) -> None:
+        if default is None:
+            self.default = None
+            self._default_index = None
+            self.has_prior = False
+            return
+
+        if default not in self.choices:
+            raise ValueError(
+                f"Default value {default} is not in the provided choices {self.choices}"
+            )
+
+        self.default = default
+        self._default_index = self.choices.index(default)
+
+    @override
+    def set_value(self, value: Any | None) -> None:
+        if value is None:
+            self._value = None
+            self._value_index = None
+            self.normalized_value = None
+            return
+
+        self._value = value
+        self._value_index = self.choices.index(value)
+        self.normalized_value = float(self._value_index)

@@ -957,6 +957,11 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                     logger.exception(e)
                     tb = traceback.format_exc()
                     report = trial.error(e, tb=tb, time_end=time.time())
+
+                    shared_state.evaluated_trials[trial.id] = report
+                    shared_state.pending_trials.pop(trial.id, None)
+                    shared_state.in_progress_trials.pop(trial.id, None)
+
                     serialize({"err": str(e), "tb": tb}, report.disk.error_file)
                     serialize(report.metadata, report.disk.metadata_file)
             else:
@@ -968,6 +973,10 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                     )
 
                 with shared_state.lock(poll=_poll, timeout=_timeout):
+                    shared_state.evaluated_trials[trial.id] = report
+                    shared_state.pending_trials.pop(trial.id, None)
+                    shared_state.in_progress_trials.pop(trial.id, None)
+
                     eval_cost = report.cost
                     account_for_cost = False
                     if eval_cost is not None:

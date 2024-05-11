@@ -1,11 +1,36 @@
-from .architecture.api import ArchitectureParameter, FunctionParameter
-from .architecture.graph_grammar import (
+from neps.search_spaces.architecture.api import ArchitectureParameter, FunctionParameter
+from neps.search_spaces.architecture.graph_grammar import (
     GraphGrammar,
     GraphGrammarCell,
     GraphGrammarRepetitive,
 )
-from .hyperparameters.categorical import CategoricalParameter
-from .hyperparameters.constant import ConstantParameter
-from .hyperparameters.float import FloatParameter
-from .hyperparameters.integer import IntegerParameter
-from .hyperparameters.numerical import NumericalParameter
+from neps.search_spaces.hyperparameters import (
+    CategoricalParameter,
+    ConstantParameter,
+    FloatParameter,
+    IntegerParameter,
+    NumericalParameter,
+)
+from neps.search_spaces.parameter import (
+    MutatableParameter,
+    Parameter,
+    ParameterWithPrior,
+)
+from neps.search_spaces.search_space import SearchSpace
+
+__all__ = [
+    "ArchitectureParameter",
+    "CategoricalParameter",
+    "ConstantParameter",
+    "FloatParameter",
+    "FunctionParameter",
+    "GraphGrammar",
+    "GraphGrammarCell",
+    "GraphGrammarRepetitive",
+    "IntegerParameter",
+    "NumericalParameter",
+    "Parameter",
+    "ParameterWithPrior",
+    "MutatableParameter",
+    "SearchSpace",
+]

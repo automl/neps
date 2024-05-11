@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from neps.utils.types import ConfigResult
-from ...search_spaces.search_space import SearchSpace
-from ..base_optimizer import BaseOptimizer
+from neps.utils.types import ConfigResult, RawConfig
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.base_optimizer import BaseOptimizer
 
 
 class RandomSearch(BaseOptimizer):
@@ -19,7 +19,7 @@ class RandomSearch(BaseOptimizer):
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         config = self.pipeline_space.sample(
             patience=self.patience,
             user_priors=self.use_priors,

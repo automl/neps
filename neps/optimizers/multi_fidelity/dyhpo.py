@@ -1,28 +1,26 @@
-# mypy: disable-error-code = assignment
-# type: ignore
 from __future__ import annotations
 
 from typing import Any
 
 import numpy as np
 
-from neps.utils.types import ConfigResult
+from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
-from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
-from ..base_optimizer import BaseOptimizer
-from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
-from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
     BaseAcquisition,
 )
-from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+from neps.optimizers.bayesian_optimization.acquisition_samplers import (
+    AcquisitionSamplerMapping,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from ..bayesian_optimization.kernels.get_kernels import get_kernels
-from .mf_bo import FreezeThawModel, PFNSurrogate
-
-# MFEIDeepModel, MFEIModel
-from .utils import MFObservedData
+from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_kernels
+from neps.optimizers.multi_fidelity.mf_bo import FreezeThawModel, PFNSurrogate
+from neps.optimizers.multi_fidelity.utils import MFObservedData
 
 
 class MFEIBO(BaseOptimizer):
@@ -33,7 +31,7 @@ class MFEIBO(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        budget: int = None,
+        budget: int | None = None,
         step_size: int | float = 1,
         optimal_assignment: bool = False,
         use_priors: bool = False,
@@ -46,18 +44,18 @@ class MFEIBO(BaseOptimizer):
         logger=None,
         # arguments for model
         surrogate_model: str | Any = "deep_gp",
-        surrogate_model_args: dict = None,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
+        surrogate_model_args: dict | None = None,
+        domain_se_kernel: str | None = None,
+        graph_kernels: list | None = None,
+        hp_kernels: list | None = None,
         acquisition: str | BaseAcquisition = acquisition,
-        acquisition_args: dict = None,
+        acquisition_args: dict | None = None,
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
-        acquisition_sampler_args: dict = None,
+        acquisition_sampler_args: dict | None = None,
         model_policy: Any = FreezeThawModel,
         initial_design_fraction: float = 0.75,
         initial_design_size: int = 10,
-        initial_design_budget: int = None,
+        initial_design_budget: int | None = None,
     ):
         """Initialise
 
@@ -86,9 +84,7 @@ class MFEIBO(BaseOptimizer):
             ignore_errors=ignore_errors,
             logger=logger,
         )
-        self.raw_tabular_space = (
-            None  # placeholder, can be populated using pre_load_hook
-        )
+        self.raw_tabular_space = None  # placeholder, can be populated using pre_load_hook
         self._budget_list: list[int | float] = []
         self.step_size: int | float = step_size
         self.min_budget = self.pipeline_space.fidelity.lower
@@ -409,9 +405,7 @@ class MFEIBO(BaseOptimizer):
         config.fidelity.value = new_fidelity
         return config, _config_id
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:

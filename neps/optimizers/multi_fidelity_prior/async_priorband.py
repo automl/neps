@@ -5,19 +5,21 @@ import typing
 import numpy as np
 from typing_extensions import Literal
 
-from neps.utils.types import ConfigResult
-from ...search_spaces.search_space import SearchSpace
-from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+from neps.utils.types import ConfigResult, RawConfig
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
     BaseAcquisition,
 )
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from ..multi_fidelity.mf_bo import MFBOBase
-from ..multi_fidelity.promotion_policy import AsyncPromotionPolicy
-from ..multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
-from ..multi_fidelity.successive_halving import AsynchronousSuccessiveHalvingWithPriors
-from ..multi_fidelity_prior.priorband import PriorBandBase
+from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
+from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
+from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
+from neps.optimizers.multi_fidelity.successive_halving import (
+    AsynchronousSuccessiveHalvingWithPriors,
+)
+from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
 
 
 class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
@@ -119,7 +121,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
 
     def get_config_and_ids(
         self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    ) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -265,16 +267,13 @@ class PriorBandAshaHB(PriorBandAsha):
         # Since in this version, we see the full SH rung, we fix the K to max_rung
         K = self.max_rung
         bracket_probs = [
-            self.eta ** (K - s) * (K + 1) / (K - s + 1)
-            for s in range(self.max_rung + 1)
+            self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
         bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
         return bracket_next
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:

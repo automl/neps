@@ -268,7 +268,7 @@ class DeepGP:
                 label = hp.value
                 categorical_encoding[np.argwhere(self.categories_array == label)] = 1
             else:
-                continuous_values.append(hp.normalized().value)
+                continuous_values.append(hp.value_to_normalized(hp.value))
 
         continuous_encoding = np.array(continuous_values)
 

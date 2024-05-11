@@ -1,18 +1,25 @@
+"""Float hyperparameter for search spaces."""
+
 from __future__ import annotations
 
-from copy import deepcopy
+from typing import TYPE_CHECKING, ClassVar, Literal, Mapping
+from typing_extensions import override
 
-from typing_extensions import Literal
+import numpy as np
 
 from neps.search_spaces.hyperparameters.float import FloatParameter
+from neps.search_spaces.hyperparameters.numerical import NumericalParameter
+
+if TYPE_CHECKING:
+    from neps.types import Number
 
 
-class IntegerParameter(FloatParameter):
+class IntegerParameter(NumericalParameter[int]):
     """An integer value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
-    to represent hyperparameters with continuous integer values, optionally specifying if it exists
-    on a log scale.
+    to represent hyperparameters with continuous integer values, optionally specifying
+    f it exists on a log scale.
     For example, `batch_size` could be a value in `(32, 128)`, while the `num_layers`
     hyperparameter in a neural network search space can be a `IntegerParameter`
     with a range of `(1, 1000)` but on a log scale.
@@ -25,14 +32,20 @@ class IntegerParameter(FloatParameter):
     ```
     """
 
+    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {
+        "low": 0.5,
+        "medium": 0.25,
+        "high": 0.125,
+    }
+
     def __init__(
         self,
-        lower: float | int,
-        upper: float | int,
+        lower: Number,
+        upper: Number,
         *,
         log: bool = False,
         is_fidelity: bool = False,
-        default: None | float | int = None,
+        default: Number | None = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Create a new `IntegerParameter`.
@@ -46,13 +59,12 @@ class IntegerParameter(FloatParameter):
             default_confidence: confidence score for the default value, used when
                 condsider prior based optimization.
         """
-
         super().__init__(
-            lower,
-            upper,
+            lower=int(np.rint(lower)),
+            upper=int(np.rint(upper)),
             log=log,
             is_fidelity=is_fidelity,
-            default=default,
+            default=int(np.rint(default)) if default is not None else None,
             default_confidence=default_confidence,
         )
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
@@ -66,89 +78,63 @@ class IntegerParameter(FloatParameter):
             default=default,
             default_confidence=default_confidence,
         )
-        self.value: None | int = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Integer, range: [{self.lower}, {self.upper}], value: {self.value}>"
 
-    def load_from(self, value):
-        super().load_from(int(value))
+    @override
+    def load_from(self, value: Number) -> None:
+        self._value = int(np.rint(value))
 
-    def _set_float_hp_val(self):
-        # IMPORTANT function to call wherever `self.float_hp` is used in this class
-        self.float_hp.value = None if self.value is None else float(self.value)
-        self.float_hp.default = None if self.default is None else float(self.default)
+    @override
+    def set_default(self, default: int | None) -> None:
+        if default is None:
+            self.default = None
+            self.float_hp.set_default(None)
+        else:
+            _default = int(round(default))
+            self.default = _default
+            self.float_hp.set_default(_default)
+
+    @override
+    def set_value(self, value: int | None) -> None:
+        if value is None:
+            self._value = None
+            self.normalized_value = None
+            self.log_value = None
+            self.float_hp.set_value(None)
+            return
+
+        value = int(np.rint(value))
+
+        if not self.lower <= value <= self.upper:
+            cls_name = self.__class__.__name__
+            raise ValueError(
+                f"{cls_name} parameter: default bounds error. Expected lower <= default"
+                f" <= upper, but got lower={self.lower}, value={value},"
+                f" upper={self.upper}"
+            )
+
+        self.float_hp.set_value(value)
+        self._value = value
+        self.normalized_value = self.value_to_normalized(value)
         if self.log:
-            self.float_hp._set_log_values()
+            self.log_value = np.log(value)
 
-    def sample(self, user_priors: bool = False):
-        self.float_hp.sample(user_priors=user_priors)
-        self.value = int(round(self.float_hp.value))  # type: ignore[arg-type]
+    @override
+    def sample_value(self, *, user_priors: bool = False) -> int:
+        val = self.float_hp.sample_value(user_priors=user_priors)
+        return int(np.rint(val))
 
-    def mutate(
-        self,
-        parent=None,
-        mutation_rate: float = 1.0,
-        mutation_strategy: str = "local_search",
-        **kwargs,
-    ):
-        if self.is_fidelity:
-            raise ValueError("Trying to mutate fidelity param!")
-        self._set_float_hp_val()
-        mutant = self.float_hp.mutate(
-            parent=parent,
-            mutation_rate=mutation_rate,
-            mutation_strategy=mutation_strategy,
-            **kwargs,
-        )
-        child = float_to_integer(mutant)
-        return child
+    @override
+    def value_to_normalized(self, value: int) -> float:
+        return self.float_hp.value_to_normalized(float(np.rint(value)))
 
-    def crossover(self, parent1, parent2=None):
-        if self.is_fidelity:
-            raise ValueError("Trying to crossover fidelity param!")
-        if parent2 is None:
-            parent2 = self
+    @override
+    def normalized_to_value(self, normalized_value: float) -> int:
+        return int(np.rint(self.float_hp.normalized_to_value(normalized_value)))
 
-        proxy_self = deepcopy(self)
-        proxy_self.value = round((parent1.value + parent2.value) / 1)
-        children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)
-
-        if all(not c for c in children):
-            raise Exception("Cannot create crossover")
-        # expected len(children) == num_neighbours
-        return children
-
-    def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
-        self._set_float_hp_val()
-        neighbours = self.float_hp._get_neighbours(std, num_neighbours)
-        for idx, neighbour in enumerate(neighbours):
-            neighbours[idx] = float_to_integer(neighbour)
-        return neighbours
-
-    def normalized(self):
-        hp = FloatParameter(
-            lower=self.lower,
-            upper=self.upper,
-            log=self.log,
-            is_fidelity=self.is_fidelity,
-            default=self.default,
-        )
-        hp.value = self.value
-        return hp.normalized()
-
-    def set_default_confidence_score(self, default_confidence):
-        self._set_float_hp_val()
+    @override
+    def set_default_confidence_score(self, default_confidence: str) -> None:
         self.float_hp.set_default_confidence_score(default_confidence)
         super().set_default_confidence_score(default_confidence)
-
-
-def float_to_integer(float_hp):
-    int_hp = IntegerParameter(
-        lower=int(round(float_hp.lower)),
-        upper=int(round(float_hp.upper)),
-        log=float_hp.log,
-    )
-    int_hp.value = None if float_hp.value is None else int(round(float_hp.value))
-
-    return int_hp
