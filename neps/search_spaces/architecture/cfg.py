@@ -294,54 +294,34 @@ class Grammar(CFG):
         return tree, depth, num_prod
 
     def compute_prior(self, string_tree: str, log: bool = True) -> float:
-        def skip_char(char: str) -> bool:
-            if char in [" ", "\t", "\n"]:
-                return True
-            # special case: "(" is (part of) a terminal
-            if (
-                i != 0
-                and char == "("
-                and string_tree[i - 1] == " "
-                and string_tree[i + 1] == " "
-            ):
-                return False
-            if char == "(":
-                return True
-            return False
-
-        def find_longest_match(
-            i: int, string_tree: str, symbols: list, max_match: int
-        ) -> int:
-            # search for longest matching symbol and add it
-            # assumes that the longest match is the true match
-            j = min(i + max_match, len(string_tree) - 1)
-            while j > i and j < len(string_tree):
-                if string_tree[i:j] in symbols:
-                    break
-                j -= 1
-            if j == i:
-                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
-            return j
-
         prior_prob = 1.0 if not log else 0.0
 
         symbols = self.nonterminals + self.terminals
-        max_match = max(map(len, symbols))
-        find_longest_match_func = partial(
-            find_longest_match,
-            string_tree=string_tree,
-            symbols=symbols,
-            max_match=max_match,
-        )
-
         q_production_rules: LifoQueue = LifoQueue()
+        symbols_sorted_by_longest = sorted(
+            [(sym, len(sym)) for sym in symbols],
+            key=lambda x: x[1],
+            reverse=True,
+        )
 
         i = 0
         while i < len(string_tree):
             char = string_tree[i]
-            if skip_char(char):
-                pass
-            elif char == ")" and not string_tree[i - 1] == " ":
+            if char in (" ", "\t", "\n"):
+                i += 1
+                continue
+
+            if char == "(":
+                if i == 0:
+                    i += 1
+                    continue
+
+                # special case: "(" is (part of) a terminal
+                if string_tree[i - 1: i + 2] != " ( ":
+                    i+=1
+                    continue
+
+            if char == ")" and not string_tree[i - 1] == " ":
                 # closing symbol of production
                 production = q_production_rules.get(block=False)[0][0]
                 idx = self.productions(production.lhs()).index(production)
@@ -349,30 +329,39 @@ class Grammar(CFG):
                     prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-1000)
                 else:
                     prior_prob *= self.prior[str(production.lhs())][idx]
-            else:
-                j = find_longest_match_func(i)
-                sym = string_tree[i:j]
-                i = j - 1
+                i+=1
+                continue
 
-                if sym in self.terminals:
+            sym: str
+            length: int
+            # Loop exits out when it finds a matching symbol
+            for sym, length in symbols_sorted_by_longest:
+                if string_tree[i : i + length] == sym:
+                    break
+            else:
+                raise RuntimeError(f"Terminal or nonterminal at position {i} does not exist")
+
+            i += length - 1
+
+            if sym in self.terminals:
+                q_production_rules.queue[-1][0] = [
+                    production
+                    for production in q_production_rules.queue[-1][0]
+                    if production.rhs()[q_production_rules.queue[-1][1]] == sym
+                ]
+                q_production_rules.queue[-1][1] += 1
+            elif sym in self.nonterminals:
+                if not q_production_rules.empty():
                     q_production_rules.queue[-1][0] = [
                         production
                         for production in q_production_rules.queue[-1][0]
-                        if production.rhs()[q_production_rules.queue[-1][1]] == sym
+                        if str(production.rhs()[q_production_rules.queue[-1][1]])
+                        == sym
                     ]
                     q_production_rules.queue[-1][1] += 1
-                elif sym in self.nonterminals:
-                    if not q_production_rules.empty():
-                        q_production_rules.queue[-1][0] = [
-                            production
-                            for production in q_production_rules.queue[-1][0]
-                            if str(production.rhs()[q_production_rules.queue[-1][1]])
-                            == sym
-                        ]
-                        q_production_rules.queue[-1][1] += 1
-                    q_production_rules.put([self.productions(lhs=Nonterminal(sym)), 0])
-                else:
-                    raise Exception(f"Unknown symbol {sym}")
+                q_production_rules.put([self.productions(lhs=Nonterminal(sym)), 0])
+            else:
+                raise Exception(f"Unknown symbol {sym}")
             i += 1
 
         if not q_production_rules.empty():
