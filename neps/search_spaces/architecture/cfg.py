@@ -10,6 +10,7 @@ from typing import Deque, Tuple, Hashable
 import numpy as np
 from nltk import CFG
 from nltk.grammar import Nonterminal
+from torch import Value
 
 
 class Grammar(CFG):
@@ -297,12 +298,12 @@ class Grammar(CFG):
         prior_prob = 1.0 if not log else 0.0
 
         symbols = self.nonterminals + self.terminals
-        q_production_rules: LifoQueue = LifoQueue()
         symbols_sorted_by_longest = sorted(
             [(sym, len(sym)) for sym in symbols],
             key=lambda x: x[1],
             reverse=True,
         )
+        q_production_rules: list[tuple[list, int]] = []
 
         i = 0
         while i < len(string_tree):
@@ -323,7 +324,7 @@ class Grammar(CFG):
 
             if char == ")" and not string_tree[i - 1] == " ":
                 # closing symbol of production
-                production = q_production_rules.get(block=False)[0][0]
+                production = q_production_rules.pop()[0][0]
                 idx = self.productions(production.lhs()).index(production)
                 if log:
                     prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-1000)
@@ -344,27 +345,30 @@ class Grammar(CFG):
             i += length - 1
 
             if sym in self.terminals:
-                q_production_rules.queue[-1][0] = [
+                _productions, _count = q_production_rules[-1]
+                new_productions = [
                     production
-                    for production in q_production_rules.queue[-1][0]
-                    if production.rhs()[q_production_rules.queue[-1][1]] == sym
+                    for production in _productions
+                    if production.rhs()[_count] == sym
                 ]
-                q_production_rules.queue[-1][1] += 1
+                q_production_rules[-1] = (new_productions, _count + 1)
             elif sym in self.nonterminals:
-                if not q_production_rules.empty():
-                    q_production_rules.queue[-1][0] = [
+                if len(q_production_rules) > 0:
+                    _productions, _count = q_production_rules[-1]
+                    new_productions = [
                         production
-                        for production in q_production_rules.queue[-1][0]
-                        if str(production.rhs()[q_production_rules.queue[-1][1]])
+                        for production in _productions
+                        if str(production.rhs()[_count])
                         == sym
                     ]
-                    q_production_rules.queue[-1][1] += 1
-                q_production_rules.put([self.productions(lhs=Nonterminal(sym)), 0])
+                    q_production_rules[-1] = (new_productions, _count + 1)
+
+                q_production_rules.append((self.productions(lhs=Nonterminal(sym)), 0))
             else:
                 raise Exception(f"Unknown symbol {sym}")
             i += 1
 
-        if not q_production_rules.empty():
+        if len(q_production_rules) > 0:
             raise Exception(f"Error in prior computation for {string_tree}")
 
         return prior_prob
