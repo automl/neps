@@ -32,5 +32,5 @@ jobs:
           cache: 'poetry'
           cache-dependency-path: '**/pyproject.toml'
       - run: poetry install
-      - run: poetry run pytest
+      - run: poetry run pytest -m ""  # Run all markers
 
