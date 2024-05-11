@@ -11,7 +11,7 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler
 from neps.optimizers.bayesian_optimization.acquisition_samplers.random_sampler import RandomSampler
 
 if TYPE_CHECKING:
-    from neps.types import Array
+    from neps.utils.types import Array
     from neps.search_spaces.search_space import SearchSpace
 
 

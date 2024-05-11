@@ -11,7 +11,7 @@ from neps.search_spaces.hyperparameters.float import FloatParameter
 from neps.search_spaces.hyperparameters.numerical import NumericalParameter
 
 if TYPE_CHECKING:
-    from neps.types import Number
+    from neps.utils.types import Number
 
 
 class IntegerParameter(NumericalParameter[int]):

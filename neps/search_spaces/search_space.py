@@ -29,7 +29,7 @@ from neps.search_spaces.yaml_search_space_utils import (
     SearchSpaceFromYamlFileError,
     deduce_and_validate_param_type,
 )
-from neps.types import NotSet, _NotSet
+from neps.utils.types import NotSet, _NotSet
 
 if TYPE_CHECKING:
     import pandas as pd

@@ -9,7 +9,7 @@ from typing import Callable
 import numpy as np
 import yaml
 
-from neps.types import RawConfig
+from neps.utils.types import RawConfig
 
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer

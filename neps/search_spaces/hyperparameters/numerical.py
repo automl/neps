@@ -33,7 +33,7 @@ from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 if TYPE_CHECKING:
     from neps.search_spaces.hyperparameters.float import FloatParameter
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
-    from neps.types import TruncNorm
+    from neps.utils.types import TruncNorm
 
 T = TypeVar("T", int, float)
 

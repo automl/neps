@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Sequence, Callable
 
-from neps.types import Array
+from neps.utils.types import Array
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace

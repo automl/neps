@@ -20,7 +20,7 @@ from more_itertools import all_unique
 from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
 if TYPE_CHECKING:
-    from neps.types import f64
+    from neps.utils.types import f64
 
 CategoricalTypes: TypeAlias = Union[float, int, str]
 
