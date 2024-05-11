@@ -1,21 +1,26 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
 import torch
 from more_itertools import first
+from typing_extensions import override
 
-from .base_acq_sampler import AcquisitionSampler
-from .random_sampler import RandomSampler
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import AcquisitionSampler
+from neps.optimizers.bayesian_optimization.acquisition_samplers.random_sampler import RandomSampler
+
+if TYPE_CHECKING:
+    from neps.utils.types import Array
+    from neps.search_spaces.search_space import SearchSpace
 
 
 def _propose_location(
-    acquisition_function,
-    candidates: list,
+    acquisition_function: Callable,
+    candidates: list[SearchSpace],
     top_n: int = 5,
     return_distinct: bool = True,
-) -> tuple[Iterable, np.ndarray, np.ndarray]:
+) -> tuple[list[SearchSpace], np.ndarray | torch.Tensor, np.ndarray]:
     """top_n: return the top n candidates wrt the acquisition function."""
     if return_distinct:
         eis = acquisition_function(candidates, asscalar=True)  # faster
@@ -29,6 +34,7 @@ def _propose_location(
     else:
         eis = torch.tensor([acquisition_function(c) for c in candidates])
         _, indices = eis.topk(top_n)
+
     xs = [candidates[int(i)] for i in indices]
     return xs, eis, indices
 
@@ -39,7 +45,7 @@ class MutationSampler(AcquisitionSampler):
         pipeline_space,
         pool_size: int = 250,
         n_best: int = 10,
-        mutate_size: int = None,
+        mutate_size: int | None = None,
         allow_isomorphism: bool = False,
         check_isomorphism_history: bool = True,
         patience: int = 50,
@@ -57,14 +63,21 @@ class MutationSampler(AcquisitionSampler):
             pipeline_space=pipeline_space, patience=patience
         )
 
-    def set_state(self, x, y) -> None:
+    @override
+    def set_state(self, x: list[SearchSpace], y: Sequence[float] | Array) -> None:
         super().set_state(x, y)
         self.random_sampling.set_state(x, y)
 
-    def sample(self, acquisition_function) -> tuple[list, list, np.ndarray]:
-        return first(self.sample_batch(acquisition_function, 1))
+    @override
+    def sample(self, acquisition_function: Callable) -> SearchSpace:
+        return first(self.sample_batch(acquisition_function, batch=1))
 
-    def sample_batch(self, acquisition_function, batch):
+    @override
+    def sample_batch(
+        self,
+        acquisition_function: Callable,
+        batch: int,
+    ) -> list[SearchSpace]:
         pool = self.create_pool(acquisition_function, self.pool_size)
 
         samples, _, _ = _propose_location(
@@ -74,7 +87,11 @@ class MutationSampler(AcquisitionSampler):
         )
         return samples
 
-    def create_pool(self, acquisition_function, pool_size: int) -> list:
+    def create_pool(
+        self,
+        acquisition_function: Callable,
+        pool_size: int,
+    ) -> list[SearchSpace]:
         if len(self.x) == 0:
             return self.random_sampling.sample_batch(acquisition_function, pool_size)
 
@@ -89,8 +106,14 @@ class MutationSampler(AcquisitionSampler):
         best_configs = [
             x for (_, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
         ][:n_best]
+
+        seen: set[int] = set()
+        def _hash(_config: SearchSpace) -> int:
+            return hash(_config.hp_values().values())
+
         evaluation_pool = []
         per_arch = mutate_size // n_best
+
         for config in best_configs:
             remaining_patience = self.patience
             for _ in range(per_arch):
@@ -101,15 +124,17 @@ class MutationSampler(AcquisitionSampler):
                     except Exception:
                         remaining_patience -= 1
                         continue
+                    hash_child = _hash(child)
 
                     if not self.allow_isomorphism:
                         # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs.
                         # For now we do not check the isomorphism in all of the previous graphs though
-                        if child == config or child in evaluation_pool:
+                        if child == config or hash_child in seen:
                             remaining_patience -= 1
                             continue
 
                     evaluation_pool.append(child)
+                    seen.add(hash_child)
                     break
 
         # Fill missing pool with random samples

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING, Sequence, Callable
 
-import torch
+from neps.utils.types import Array
 
-from ....search_spaces.search_space import SearchSpace
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
 
 
 class AcquisitionSampler:
@@ -14,17 +16,17 @@ class AcquisitionSampler:
 
         self.pipeline_space = pipeline_space
         self.acquisition_function = None
-        self.x: list = []
-        self.y: list = []
+        self.x: list[SearchSpace] = []
+        self.y: Sequence[float] | Array = []
         self.patience = patience
 
     @abstractmethod
-    def sample(self, acquisition_function) -> SearchSpace:
+    def sample(self, acquisition_function: Callable) -> SearchSpace:
         raise NotImplementedError
 
-    def sample_batch(self, acquisition_function, batch) -> list[SearchSpace]:
+    def sample_batch(self, acquisition_function: Callable, batch: int) -> list[SearchSpace]:
         return [self.sample(acquisition_function) for _ in range(batch)]
 
-    def set_state(self, x: list, y: list | torch.Tensor) -> None:
+    def set_state(self, x: list[SearchSpace], y: Sequence[float] | Array) -> None:
         self.x = x
         self.y = y

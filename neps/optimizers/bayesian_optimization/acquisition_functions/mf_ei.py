@@ -55,13 +55,13 @@ class MFEI(ComprehensiveExpectedImprovement):
 
                 if np.less_equal(target_fidelity, config.fidelity.upper):
                     # only consider the configs with fidelity lower than the max fidelity
-                    config.fidelity.value = target_fidelity
+                    config.fidelity.set_value(target_fidelity)
                     budget_list.append(self.get_budget_level(config))
                 else:
                     # if the target_fidelity higher than the max drop the configuration
                     indices_to_drop.append(i)
             else:
-                config.fidelity.value = target_fidelity
+                config.fidelity.set_value(target_fidelity)
                 budget_list.append(self.get_budget_level(config))
 
         # Drop unused configs

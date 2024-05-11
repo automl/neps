@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from typing import Any
 
 import numpy as np
@@ -190,7 +189,7 @@ class EnsemblePolicy(SamplingPolicy):
                 user_priors = False
 
             if inc is None:
-                inc = deepcopy(self.pipeline_space.sample_default_configuration())
+                inc = self.pipeline_space.sample_default_configuration().clone()
                 self.logger.warning(
                     "No incumbent config found, using default as the incumbent."
                 )
@@ -200,7 +199,7 @@ class EnsemblePolicy(SamplingPolicy):
                 config = self.sample_neighbour(inc, distance)
             elif self.inc_type == "gaussian":
                 # use inc to set the defaults of the configuration
-                _inc = deepcopy(inc)
+                _inc = inc.clone()
                 _inc.set_defaults_to_current_values()
                 # then sample with prior=True from that configuration
                 # since the defaults are treated as the prior

@@ -1,26 +1,25 @@
+"""Float hyperparameter for search spaces."""
+
 from __future__ import annotations
 
 import math
-from copy import deepcopy
-from typing import Literal
+from typing import TYPE_CHECKING, ClassVar, Literal, Mapping
+from typing_extensions import Self, override
 
 import numpy as np
-import scipy.stats
 
-from .numerical import NumericalParameter
+from neps.search_spaces.hyperparameters.numerical import NumericalParameter
 
-FLOAT_CONFIDENCE_SCORES = {
-    "low": 0.5,
-    "medium": 0.25,
-    "high": 0.125,
-}
+if TYPE_CHECKING:
+    from neps.utils.types import Number
 
 
-class FloatParameter(NumericalParameter):
+class FloatParameter(NumericalParameter[float]):
     """A float value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
-    to represent hyperparameters with continuous float values, optionally specifying if it exists
+    to represent hyperparameters with continuous float values, optionally specifying if
+    it exists
     on a log scale.
     For example, `l2_norm` could be a value in `(0.1)`, while the `learning_rate`
     hyperparameter in a neural network search space can be a `FloatParameter`
@@ -32,16 +31,25 @@ class FloatParameter(NumericalParameter):
     l2_norm = neps.FloatParameter(0, 1)
     learning_rate = neps.FloatParameter(1e-4, 1e-1, log=True)
     ```
+
+    Please see the [`NumericalParameter`][neps.search_spaces.numerical.NumericalParameter]
+    class for more details on the methods available for this class.
     """
+
+    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {
+        "low": 0.5,
+        "medium": 0.25,
+        "high": 0.125,
+    }
 
     def __init__(
         self,
-        lower: float | int,
-        upper: float | int,
+        lower: Number,
+        upper: Number,
         *,
         log: bool = False,
         is_fidelity: bool = False,
-        default: None | float | int = None,
+        default: Number | None = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Create a new `FloatParameter`.
@@ -53,97 +61,83 @@ class FloatParameter(NumericalParameter):
             is_fidelity: whether the hyperparameter is fidelity.
             default: default value for the hyperparameter.
             default_confidence: confidence score for the default value, used when
-                condsider prior based optimization.
+                condsidering prior based optimization..
         """
-        super().__init__(is_fidelity=is_fidelity)
-
-        self.default = default
-        self.default_confidence_score = FLOAT_CONFIDENCE_SCORES[default_confidence]
-        self.has_prior = self.default is not None
-
-        self.lower = float(lower)
-        self.upper = float(upper)
-
-        if self.lower >= self.upper:
-            raise ValueError(
-                f"Float parameter: bounds error (lower >= upper). Actual values: "
-                f"lower={self.lower}, upper={self.upper}"
-            )
-
-        if self.default is not None:
-            if not self.lower <= self.default <= self.upper:
-                raise ValueError(
-                    f"Float parameter: default bounds error. Expected lower <= default"
-                    f" <= upper, but got lower={self.lower}, default={self.default},"
-                    f" upper={self.upper}"
-                )
-
-        # Validate 'log' and 'is_fidelity' types to prevent configuration errors
-        # from the YAML input
-        for param, value in {"log": log, "is_fidelity": is_fidelity}.items():
-            if not isinstance(value, bool):
-                raise TypeError(
-                    f"Expected '{param}' to be a boolean, but got type: "
-                    f"{type(value).__name__}"
-                )
-
-        self.log = log
-
-        if self.log:
-            self._set_log_values()
-
-        self.value: None | float = None
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return (
-            self.lower == other.lower
-            and self.upper == other.upper
-            and self.log == other.log
-            and self.is_fidelity == other.is_fidelity
-            and self.value == other.value
-            and self.default == other.default
-            and self.default_confidence_score == other.default_confidence_score
+        super().__init__(
+            lower=float(lower),
+            upper=float(upper),
+            log=log,
+            default=float(default) if default is not None else None,
+            default_confidence=default_confidence,
+            is_fidelity=is_fidelity,
         )
 
-    def __repr__(self):
-        float_repr = f"{self.value:.07f}" if self.value is not None else "None"
-        return f"<Float, range: [{self.lower}, {self.upper}], value: {float_repr}>"
+    @override
+    def clone(self) -> Self:
+        clone = self.__class__(
+            lower=self.lower,
+            upper=self.upper,
+            log=self.log,
+            is_fidelity=self.is_fidelity,
+            default=self.default,
+            default_confidence=self.default_confidence_choice,
+        )
+        if self.value is not None:
+            clone.set_value(self.value)
 
-    def _set_log_values(self):
-        if self.lower <= 0:
-            raise ValueError("Float parameter: bounds error (log scale).")
-        self._lower = np.log(self.lower)
-        self._upper = np.log(self.upper)
-        if self.default is not None:
-            self._default = np.log(self.default)
-        else:
-            self._default = None
+        return clone
 
-    def _get_low_high_default(self):
+    @override
+    def set_default(self, default: float | None) -> None:
+        if default is None:
+            self.default = None
+            self.has_prior = False
+            self.log_default = None
+            return
+
+        if not self.lower <= default <= self.upper:
+            cls_name = self.__class__.__name__
+            raise ValueError(
+                f"{cls_name} parameter: default bounds error. Expected lower <= default"
+                f" <= upper, but got lower={self.lower}, default={default},"
+                f" upper={self.upper}"
+            )
+
+        self.default = float(default)
+        self.has_prior = True
         if self.log:
-            self._set_log_values()
-            return self._lower, self._upper, self._default
+            self.log_default = np.log(self.default)
+
+    @override
+    def set_value(self, value: float | None) -> None:
+        if value is None:
+            self._value = None
+            self.normalized_value = None
+            self.log_value = None
+            return
+
+        if not self.lower <= value <= self.upper:
+            cls_name = self.__class__.__name__
+            raise ValueError(
+                f"{cls_name} parameter: default bounds error. Expected lower <= default"
+                f" <= upper, but got lower={self.lower}, value={value},"
+                f" upper={self.upper}"
+            )
+
+        value = float(value)
+        self._value = value
+        self.normalized_value = self.value_to_normalized(value)
+        if self.log:
+            self.log_value = np.log(value)
+
+    @override
+    def sample_value(self, *, user_priors: bool = False) -> float:
+        if self.log:
+            assert self.log_bounds is not None
+            low, high = self.log_bounds
+            default = self.log_default
         else:
-            return self.lower, self.upper, self.default
-
-    def _get_truncnorm_prior_and_std(self):
-        low, high, default = self._get_low_high_default()
-        std = (high - low) * self.default_confidence_score
-        a, b = (low - default) / std, (high - default) / std
-        return scipy.stats.truncnorm(a, b), std
-
-    def compute_prior(self, log: bool = False):
-        _, _, default = self._get_low_high_default()
-        value = np.log(self.value) if self.log else self.value
-        value -= default
-        dist, std = self._get_truncnorm_prior_and_std()
-        value /= std
-        return np.log(dist.pdf(value) + 1e-12) if log else dist.pdf(value)
-
-    def sample(self, user_priors: bool = False):
-        low, high, default = self._get_low_high_default()
+            low, high, default = self.lower, self.upper, self.default
 
         if user_priors and self.has_prior:
             dist, std = self._get_truncnorm_prior_and_std()
@@ -154,96 +148,57 @@ class FloatParameter(NumericalParameter):
         if self.log:
             value = math.exp(value)
 
-        self.value = min(self.upper, max(self.lower, value))
+        return float(min(self.upper, max(self.lower, value)))
 
-    def mutate(
-        self,
-        parent=None,
-        mutation_rate: float = 1.0,
-        mutation_strategy: str = "local_search",
-        **kwargs,
-    ):
-        if self.is_fidelity:
-            raise ValueError("Trying to mutate fidelity param!")
-        if parent is None:
-            parent = self
-
-        if mutation_strategy == "simple":
-            child = deepcopy(self)
-            child.sample()
-        elif mutation_strategy == "local_search":
-            if "std" in kwargs:
-                child = self._get_neighbours(std=kwargs["std"], num_neighbours=1)[
-                    0
-                ]
-            else:
-                child = self._get_neighbours(num_neighbours=1)[
-                    0
-                ]
+    @override
+    def value_to_normalized(self, value: float) -> float:
+        if self.log:
+            assert self.log_bounds is not None
+            low, high = self.log_bounds
         else:
-            raise NotImplementedError
+            low, high = self.lower, self.upper
 
-        if parent.value == child.value:
-            raise ValueError("Parent is the same as child!")
+        value = np.log(value) if self.log else value
+        return float((value - low) / (high - low))
 
-        # child.value = min(1.0, max(0.0, child.value))
-        return child
+    @override
+    def normalized_to_value(self, normalized_value: float) -> float:
+        if self.log:
+            assert self.log_bounds is not None
+            low, high = self.log_bounds
+        else:
+            low, high = self.lower, self.upper
 
-    def crossover(self, parent1, parent2=None):
-        if self.is_fidelity:
-            raise ValueError("Trying to crossover fidelity param!")
-        if parent2 is None:
-            parent2 = self
+        normalized_value = normalized_value * (high - low) + low
+        return np.exp(normalized_value) if self.log else normalized_value
 
-        proxy_self = deepcopy(self)
-        proxy_self.value = (parent1.value + parent2.value) / 2
-        children = proxy_self._get_neighbours(std=0.1, num_neighbours=2)
+    @override
+    def _get_non_unique_neighbors(
+        self,
+        num_neighbours: int,
+        *,
+        std: float = 0.2,
+    ) -> list[Self]:
+        neighbours: list[Self] = []
 
-        if all(not c for c in children):
-            raise Exception("Cannot create crossover")
-        # expected len(children) == num_neighbours
-        return children
+        assert self.value is not None
+        vectorized_val = self.value_to_normalized(self.value)
 
-    def _get_neighbours(self, std: float = 0.2, num_neighbours: int = 1):
-        neighbours: list[FloatParameter] = []
-        cur_value = self._normalize_value(self.value)
-
+        # TODO(eddiebergman): This whole thing can be vectorized, not sure
+        # if we ever have enough num_neighbours to make it worth it
         while len(neighbours) < num_neighbours:
-            n_val = np.random.normal(cur_value, std)
+            n_val = np.random.normal(vectorized_val, std)
             if n_val < 0 or n_val > 1:
                 continue
-            neighbour = deepcopy(self)
-            neighbour.value = neighbour._normalization_inv(n_val)
+
+            sampled_value = self.normalized_to_value(n_val)
+
+            neighbour = self.clone()
+            neighbour.set_value(sampled_value)
             neighbours.append(neighbour)
 
         return neighbours
 
-    def _normalize_value(self, value):
-        if value != value:
-            raise ValueError("Float parameter value is NaN!")
-
-        if value is not None:
-            low, up, _ = self._get_low_high_default()
-            value = np.log(value) if self.log else value
-            return (value - low) / (up - low)
-
-    def _normalization_inv(self, value):
-        if value != value:
-            raise ValueError("Float parameter value is NaN!")
-
-        if value is not None:
-            low, up, _ = self._get_low_high_default()
-            value = value * (up - low) + low
-            return np.exp(value) if self.log else value
-
-    def normalized(self):
-        hp = super().normalized()
-        hp.value = self._normalize_value(self.value)
-        hp.default = self._normalize_value(self.default)
-        hp.low = 0
-        hp.high = 1
-        hp.log = False
-        return hp
-
-    def set_default_confidence_score(self, default_confidence):
-        self.default_confidence_score = FLOAT_CONFIDENCE_SCORES[default_confidence]
+    def __repr__(self) -> str:
+        float_repr = f"{self.value:.07f}" if self.value is not None else "None"
+        return f"<Float, range: [{self.lower}, {self.upper}], value: {float_repr}>"

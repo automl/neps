@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from copy import deepcopy
 from typing import Any, Iterator, Mapping
 from typing_extensions import Self
 from contextlib import contextmanager
 from pathlib import Path
 
-from neps.utils.types import ConfigResult
+from neps.utils.types import ConfigResult, RawConfig, ERROR, ResultDict
 from neps.utils.files import serialize, deserialize
-from ..search_spaces.search_space import SearchSpace
+from neps.search_spaces.search_space import SearchSpace
 from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
 
 
@@ -50,7 +49,7 @@ class BaseOptimizer:
         raise NotImplementedError
 
     @abstractmethod
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """Sample a new configuration
 
         Returns:
@@ -75,11 +74,11 @@ class BaseOptimizer:
         self.used_budget = state["used_budget"]
 
     def load_config(self, config_dict: Mapping[str, Any]) -> SearchSpace:
-        config = deepcopy(self.pipeline_space)
+        config = self.pipeline_space.clone()
         config.load_from(config_dict)
         return config
 
-    def get_loss(self, result: str | dict | float) -> float | Any:
+    def get_loss(self, result: ERROR | ResultDict | float) -> float | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes."""
         return _get_loss(
@@ -88,7 +87,7 @@ class BaseOptimizer:
             ignore_errors=self.ignore_errors,
         )
 
-    def get_cost(self, result: str | dict | float) -> float | Any:
+    def get_cost(self, result: ERROR | ResultDict | float) -> float | Any:
         """Calls result.utils.get_cost() and passes the error handling through.
         Please use self.get_cost() instead of get_cost() in all optimizer classes."""
         return _get_cost(

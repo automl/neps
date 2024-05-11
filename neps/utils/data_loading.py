@@ -7,7 +7,7 @@ import os
 import re
 from itertools import chain
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, Mapping, TypedDict
 
 import numpy as np
 import yaml
@@ -45,7 +45,7 @@ def _get_loss(
 
 
 def _get_cost(
-    result: str | dict | float,
+    result: ERROR | ResultDict | float,
     cost_value_on_error: float | None = None,
     *,
     ignore_errors: bool = False,
@@ -65,7 +65,7 @@ def _get_cost(
 
         return cost_value_on_error
 
-    if isinstance(result, dict):
+    if isinstance(result, Mapping):
         return float(result["cost"])
 
     return float(result)

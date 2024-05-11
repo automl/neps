@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Mapping, Union
 from typing_extensions import TypeAlias
 
+import numpy as np
+import torch
+
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
 
@@ -15,10 +18,26 @@ if TYPE_CHECKING:
 # point to prevent having to isinstance and str match
 ERROR: TypeAlias = Literal["error"]
 
+Number: TypeAlias = Union[int, float, np.number]
+Array: TypeAlias = Union[np.ndarray, torch.Tensor]
+
 ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
 Metadata: TypeAlias = Dict[str, Any]
 ResultDict: TypeAlias = Mapping[str, Any]
+
+# NOTE(eddiebergman): Getting types for scipy distributions sucks
+# this is more backwards compatible and easier to work with
+TruncNorm: TypeAlias = Any
+
+
+class _NotSet:
+    def __repr__(self) -> str:
+        return "NotSet"
+
+
+NotSet = _NotSet()
+
 
 POST_EVAL_HOOK_SIGNATURE: TypeAlias = Callable[
     [
@@ -30,6 +49,9 @@ POST_EVAL_HOOK_SIGNATURE: TypeAlias = Callable[
     ],
     None,
 ]
+
+f64 = np.float64
+i64 = np.int64
 
 
 # TODO(eddiebergman): Ideally, use `Trial` objects which can carry a lot more

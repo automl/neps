@@ -37,8 +37,8 @@ def test_filelock() -> None:
     #   perform some predefined operation which is known to this test. If the example
     #   changes in some unexpected way, it may break this test
     results_dir = Path("results") / "hyperparameters_example" / "results"
+    assert not results_dir.exists(), "Please delete this directory before running the test"
     try:
-        assert not results_dir.exists()
         # Wait for them
         p_list = launch_example_processes(n_workers=2)
         for p in p_list:
@@ -49,13 +49,17 @@ def test_filelock() -> None:
             pending_re = r"#Pending configs with worker:\s+(\d+)"
             eval_re = r"#Evaluated configs:\s+(\d+)"
 
-            evaluated = first_true(re.match(eval_re, l) for l in lines)  # noqa
+            evaluated = first_true((re.match(eval_re, l) for l in lines), default=0)  # noqa
             pending = first_true((re.match(pending_re, l) for l in lines), default=0)  # noqa
 
             assert evaluated is not None
             assert pending is not None
 
-            evaluated_configs = int(evaluated.groups()[0])
+            if evaluated == 0:
+                evaluated_configs = 0
+            else:
+                evaluated_configs = int(evaluated.groups()[0])  # type: ignore
+
             if pending == 0:
                 pending_configs = 0
             else:

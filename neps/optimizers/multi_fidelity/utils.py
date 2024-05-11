@@ -18,14 +18,14 @@ def continuous_to_tabular(
     Convert the continuous parameters in the config into categorical ones based on
     the categorical_space provided
     """
-    result = config.copy()
+    result = config.clone()
     for hp_name, _ in config.items():
         if hp_name in categorical_space.keys():
             choices = np.array(categorical_space[hp_name].choices)
             diffs = choices - config[hp_name].value
             # NOTE: in case of a tie the first value in the choices array will be returned
             closest = choices[np.abs(diffs).argmin()]
-            result[hp_name].value = closest
+            result[hp_name].set_value(closest)
 
     return result
 
