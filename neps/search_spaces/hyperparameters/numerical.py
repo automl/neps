@@ -22,6 +22,7 @@ and [`crossover()`][neps.search_spaces.NumericalParameter.crossover] operations.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Mapping, TypeVar
 from typing_extensions import Self, override
 
@@ -36,6 +37,22 @@ if TYPE_CHECKING:
     from neps.utils.types import TruncNorm
 
 T = TypeVar("T", int, float)
+
+
+# OPTIM(eddiebergman): When calculating priors over and over,
+# creating this scipy.rvs is surprisingly slow. Since we do not
+# mutate them, we just cache them. This is done across instances so
+# we also can access this cache with new copies of the hyperparameters.
+@lru_cache(maxsize=128, typed=False)
+def _get_truncnorm_prior_and_std(
+    low: int | float,
+    high: int | float,
+    default: int | float,
+    confidence_score: float,
+) -> tuple[TruncNorm, float]:
+    std = (high - low) * confidence_score
+    a, b = (low - default) / std, (high - default) / std
+    return scipy.stats.truncnorm(a, b), float(std)
 
 
 class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
@@ -222,10 +239,12 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             default = self.default
 
         assert default is not None
-
-        std = (high - low) * self.default_confidence_score
-        a, b = (low - default) / std, (high - default) / std
-        return scipy.stats.truncnorm(a, b), float(std)
+        return _get_truncnorm_prior_and_std(
+            low=low,
+            high=high,
+            default=default,
+            confidence_score=self.default_confidence_score,
+        )
 
     def to_integer(self) -> IntegerParameter:
         """Convert the numerical hyperparameter to an integer hyperparameter."""

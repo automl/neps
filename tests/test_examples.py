@@ -25,12 +25,12 @@ def no_logs_gte_error(caplog):
 
 
 core_examples = [  # Run locally and on github actions
-    "basic_usage/hyperparameters",
+    "basic_usage/hyperparameters",  # NOTE: This needs to be first for the test below...
     "basic_usage/analyse",
     "experimental/expert_priors_for_architecture_and_hyperparameters",
     "efficiency/multi_fidelity",
 ]
-all_examples = core_examples + [  # Run on github actions
+ci_examples = [  # Run on github actions
     "basic_usage/architecture_and_hyperparameters",
     "experimental/hierarchical_architecture",
     "efficiency/expert_priors_for_hyperparameters",
@@ -43,7 +43,7 @@ all_examples = core_examples + [  # Run on github actions
 
 examples_folder = Path(__file__, "..", "..", "neps_examples").resolve()
 core_examples_scripts = [examples_folder / f"{example}.py" for example in core_examples]
-all_examples_scripts = [examples_folder / f"{example}.py" for example in all_examples]
+ci_examples_scripts = [examples_folder / f"{example}.py" for example in ci_examples]
 
 
 @pytest.mark.core_examples
@@ -56,7 +56,7 @@ def test_core_examples(example):
     runpy.run_path(example, run_name="__main__")
 
 
-@pytest.mark.all_examples
-@pytest.mark.parametrize("example", all_examples_scripts, ids=all_examples)
-def test_all_examples(example):
+@pytest.mark.ci_examples
+@pytest.mark.parametrize("example", ci_examples_scripts, ids=ci_examples)
+def test_ci_examples(example):
     test_core_examples(example)

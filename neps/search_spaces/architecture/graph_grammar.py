@@ -6,6 +6,7 @@ from copy import deepcopy
 from functools import partial
 from typing import Any, ClassVar, Mapping
 from typing_extensions import override, Self
+from neps.utils.types import NotSet, _NotSet
 
 import networkx as nx
 import numpy as np
@@ -41,6 +42,7 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
     DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {"not_in_use": 1.0}
     default_confidence_choice = "not_in_use"
     has_prior: bool
+    input_kwargs: dict[str, Any]
 
     @property
     @abstractmethod
@@ -70,10 +72,6 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
 
     @abstractmethod
     def compute_prior(self, normalized_value: float) -> float: ...
-
-    @override
-    def serialize_value(self) -> str:
-        return self.id  # type: ignore
 
     @override
     def set_value(self, value: str | None) -> None:
@@ -156,9 +154,29 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
 
     @override
     def clone(self) -> Self:
-        # NOTE(eddiebergman): We don't have any safe way better than a deepcopy
-        # I think
-        return deepcopy(self)
+        new_self =  self.__class__(**self.input_kwargs)
+
+        # HACK(eddiebergman): It seems the subclasses all have these and
+        # so we just copy over those attributes, deepcloning anything that is mutable
+        if self._value is not None:
+            _attrs_that_subclasses_use_to_reoresent_a_value = (
+                ("_value", True),
+                ("string_tree", False),
+                ("string_tree_list", False),
+                ("nxTree", False),
+                ("_function_id", False),
+            )
+            for _attr, is_mutable in _attrs_that_subclasses_use_to_reoresent_a_value:
+                retrieved_attr = getattr(self, _attr, NotSet)
+                if retrieved_attr is NotSet:
+                    continue
+
+                if is_mutable:
+                    setattr(new_self, _attr, deepcopy(retrieved_attr))
+                else:
+                    setattr(new_self, _attr, retrieved_attr)
+
+        return new_self
 
 class GraphGrammar(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar"
@@ -207,7 +225,7 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
 
     @override
     def sample(self, *, user_priors: bool = False) -> Self:
-        copy_self = deepcopy(self)
+        copy_self = self.clone()
         copy_self.reset()
         copy_self.string_tree = copy_self.grammars[0].sampler(1, user_priors=user_priors)[0]
         _ = copy_self.value  # required for checking if graph is valid!
@@ -386,7 +404,7 @@ class GraphGrammarCell(GraphGrammar):
         raise NotImplementedError
 
 
-class GraphGrammarRepetitive(CoreGraphGrammar, GraphParameter):
+class GraphGrammarRepetitive(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar_repetitive"
 
     def __init__(
@@ -487,7 +505,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, GraphParameter):
 
     @override
     def sample(self, *, user_priors: bool = False) -> Self:
-        copy_self = deepcopy(self)
+        copy_self = self.clone()
         copy_self.reset()
         copy_self.string_tree_list = [grammar.sampler(1)[0] for grammar in copy_self.grammars]
         copy_self.string_tree = copy_self.assemble_trees(
@@ -614,7 +632,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, GraphParameter):
         )
 
 
-class GraphGrammarMultipleRepetitive(CoreGraphGrammar, GraphParameter):
+class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar_multiple_repetitive"
 
     def __init__(
@@ -734,7 +752,7 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, GraphParameter):
 
     @override
     def sample(self, *, user_priors: bool = False) -> Self:
-        copy_self = deepcopy(self)
+        copy_self = self.clone()
         copy_self.reset()
         copy_self.string_tree_list = [
             grammar.sampler(1, user_priors=user_priors)[0]

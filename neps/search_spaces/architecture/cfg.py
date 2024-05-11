@@ -1,14 +1,17 @@
+from __future__ import annotations
 import itertools
 import math
 import sys
 from collections import defaultdict, deque
 from functools import partial
 from queue import LifoQueue
-from typing import Deque, Tuple
+from typing import Deque, Tuple, Hashable
 
 import numpy as np
-from nltk import CFG
+from nltk import CFG, Production
 from nltk.grammar import Nonterminal
+from scipy.integrate._ivp.radau import P
+from torch import Value
 
 
 class Grammar(CFG):
@@ -192,10 +195,12 @@ class Grammar(CFG):
                 for i in range(0, n)
             ]
 
-    def _sampler(self, symbol=None, user_priors: bool = False):
+    def _sampler(self, symbol=None, user_priors: bool = False, *, _cache: dict[Hashable, str] | None = None):
         # simple sampler where each production is sampled uniformly from all possible productions
         # Tree choses if return tree or list of terminals
         # recursive implementation
+        if _cache is None:
+            _cache = {}
 
         # init the sequence
         tree = "(" + str(symbol)
@@ -208,12 +213,19 @@ class Grammar(CFG):
             production = choice(productions, probs=self._prior[str(symbol)])
         else:
             production = choice(productions)
+
         for sym in production.rhs():
             if isinstance(sym, str):
-                # if terminal then add string to sequence
+                ## if terminal then add string to sequence
                 tree = tree + " " + sym
             else:
-                tree = tree + " " + self._sampler(sym, user_priors=user_priors) + ")"
+                cached = _cache.get(sym)
+                if cached is None:
+                    cached = self._sampler(sym, user_priors=user_priors, _cache=_cache)
+                    _cache[sym] = cached
+
+                tree = tree + " " + cached + ")"
+
         return tree
 
     def sampler_maxMin_func(self, symbol: str = None, largest: bool = True):
@@ -284,88 +296,83 @@ class Grammar(CFG):
         return tree, depth, num_prod
 
     def compute_prior(self, string_tree: str, log: bool = True) -> float:
-        def skip_char(char: str) -> bool:
-            if char in [" ", "\t", "\n"]:
-                return True
-            # special case: "(" is (part of) a terminal
-            if (
-                i != 0
-                and char == "("
-                and string_tree[i - 1] == " "
-                and string_tree[i + 1] == " "
-            ):
-                return False
-            if char == "(":
-                return True
-            return False
-
-        def find_longest_match(
-            i: int, string_tree: str, symbols: list, max_match: int
-        ) -> int:
-            # search for longest matching symbol and add it
-            # assumes that the longest match is the true match
-            j = min(i + max_match, len(string_tree) - 1)
-            while j > i and j < len(string_tree):
-                if string_tree[i:j] in symbols:
-                    break
-                j -= 1
-            if j == i:
-                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
-            return j
-
         prior_prob = 1.0 if not log else 0.0
 
         symbols = self.nonterminals + self.terminals
-        max_match = max(map(len, symbols))
-        find_longest_match_func = partial(
-            find_longest_match,
-            string_tree=string_tree,
-            symbols=symbols,
-            max_match=max_match,
-        )
+        q_production_rules: list[tuple[list, int]] = []
+        non_terminal_productions: dict[str, list[Production]] = {
+            sym: self.productions(lhs=Nonterminal(sym))
+            for sym in self.nonterminals
+        }
 
-        q_production_rules: LifoQueue = LifoQueue()
+        _symbols_by_size = sorted(symbols, key=len, reverse=True)
+        _longest = len(_symbols_by_size[0])
 
         i = 0
-        while i < len(string_tree):
+        _tree_len = len(string_tree)
+        while i < _tree_len:
             char = string_tree[i]
-            if skip_char(char):
-                pass
-            elif char == ")" and not string_tree[i - 1] == " ":
-                # closing symbol of production
-                production = q_production_rules.get(block=False)[0][0]
-                idx = self.productions(production.lhs()).index(production)
-                if log:
-                    prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-1000)
-                else:
-                    prior_prob *= self.prior[str(production.lhs())][idx]
-            else:
-                j = find_longest_match_func(i)
-                sym = string_tree[i:j]
-                i = j - 1
+            if char in " \t\n":
+                i += 1
+                continue
 
-                if sym in self.terminals:
-                    q_production_rules.queue[-1][0] = [
-                        production
-                        for production in q_production_rules.queue[-1][0]
-                        if production.rhs()[q_production_rules.queue[-1][1]] == sym
-                    ]
-                    q_production_rules.queue[-1][1] += 1
-                elif sym in self.nonterminals:
-                    if not q_production_rules.empty():
-                        q_production_rules.queue[-1][0] = [
-                            production
-                            for production in q_production_rules.queue[-1][0]
-                            if str(production.rhs()[q_production_rules.queue[-1][1]])
-                            == sym
-                        ]
-                        q_production_rules.queue[-1][1] += 1
-                    q_production_rules.put([self.productions(lhs=Nonterminal(sym)), 0])
+            if char == "(":
+                if i == 0:
+                    i += 1
+                    continue
+
+                # special case: "(" is (part of) a terminal
+                if string_tree[i - 1: i + 2] != " ( ":
+                    i += 1
+                    continue
+
+            if char == ")" and not string_tree[i - 1] == " ":
+                # closing symbol of production
+                production = q_production_rules.pop()[0][0]
+                lhs_production = production.lhs()
+
+                idx = self.productions(lhs=lhs_production).index(production)
+                if log:
+                    prior_prob += np.log(self.prior[(lhs_production)][idx] + 1e-15)
                 else:
-                    raise Exception(f"Unknown symbol {sym}")
+                    prior_prob *= self.prior[str(lhs_production)][idx]
+                i+=1
+                continue
+
+            _s = string_tree[i : i + _longest]
+            for sym in _symbols_by_size:
+                if _s.startswith(sym):
+                    break
+            else:
+                raise RuntimeError(f"Terminal or nonterminal at position {i} does not exist")
+
+            i += len(sym) - 1
+
+            if sym in self.terminals:
+                _productions, _count = q_production_rules[-1]
+                new_productions = [
+                    production
+                    for production in _productions
+                    if production.rhs()[_count] == sym
+                ]
+                q_production_rules[-1] = (new_productions, _count + 1)
+            elif sym in self.nonterminals:
+                if len(q_production_rules) > 0:
+                    _productions, _count = q_production_rules[-1]
+                    new_productions = [
+                        production
+                        for production in _productions
+                        if str(production.rhs()[_count])
+                        == sym
+                    ]
+                    q_production_rules[-1] = (new_productions, _count + 1)
+
+                q_production_rules.append((non_terminal_productions[sym], 0))
+            else:
+                raise Exception(f"Unknown symbol {sym}")
             i += 1
 
-        if not q_production_rules.empty():
+        if len(q_production_rules) > 0:
             raise Exception(f"Error in prior computation for {string_tree}")
 
         return prior_prob

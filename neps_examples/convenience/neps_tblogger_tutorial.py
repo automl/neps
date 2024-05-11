@@ -96,7 +96,7 @@ def set_seed(seed=123):
 def MNIST(
     batch_size: int = 256,
     n_train_size: float = 0.9,
-    data_reduction_factor: float = 0.3,
+    data_reduction_factor: float = 0.5,
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
@@ -261,7 +261,7 @@ def run_pipeline(lr, optim, weight_decay):
 
     # Load the MNIST dataset for training, validation, and testing.
     train_loader, validation_loader, test_loader = MNIST(
-        batch_size=96, n_train_size=0.9, data_reduction_factor=0.3
+        batch_size=96, n_train_size=0.6, data_reduction_factor=0.75
     )
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
@@ -336,7 +336,7 @@ def run_pipeline(lr, optim, weight_decay):
 if __name__ == "__main__":
     """
     When running this code without any arguments, it will by default
-    run bayesian optimization with 10 evaluations of 9 epochs each:
+    run bayesian optimization with 3 evaluations total.
 
     ```bash
     python neps_tblogger_tutorial.py
