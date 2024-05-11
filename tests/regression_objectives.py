@@ -4,7 +4,6 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable
 
-import jahs_bench
 import numpy as np
 from typing_extensions import Literal
 
@@ -68,6 +67,7 @@ class JAHSObjective(RegressionObjectiveBase):
         """
         If the optimizer is cost aware, return the evaluation function with cost
         """
+        import jahs_bench
 
         self.benchmark = jahs_bench.Benchmark(
             task=self.task, kind="surrogate", download=True, save_dir=self.save_dir
