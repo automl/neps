@@ -8,8 +8,9 @@ from queue import LifoQueue
 from typing import Deque, Tuple, Hashable
 
 import numpy as np
-from nltk import CFG
+from nltk import CFG, Production
 from nltk.grammar import Nonterminal
+from scipy.integrate._ivp.radau import P
 from torch import Value
 
 
@@ -298,17 +299,20 @@ class Grammar(CFG):
         prior_prob = 1.0 if not log else 0.0
 
         symbols = self.nonterminals + self.terminals
-        symbols_sorted_by_longest = sorted(
-            [(sym, len(sym)) for sym in symbols],
-            key=lambda x: x[1],
-            reverse=True,
-        )
         q_production_rules: list[tuple[list, int]] = []
+        non_terminal_productions: dict[str, list[Production]] = {
+            sym: self.productions(lhs=Nonterminal(sym))
+            for sym in self.nonterminals
+        }
+
+        _symbols_by_size = sorted(symbols, key=len, reverse=True)
+        _longest = len(_symbols_by_size[0])
 
         i = 0
-        while i < len(string_tree):
+        _tree_len = len(string_tree)
+        while i < _tree_len:
             char = string_tree[i]
-            if char in (" ", "\t", "\n"):
+            if char in " \t\n":
                 i += 1
                 continue
 
@@ -319,30 +323,30 @@ class Grammar(CFG):
 
                 # special case: "(" is (part of) a terminal
                 if string_tree[i - 1: i + 2] != " ( ":
-                    i+=1
+                    i += 1
                     continue
 
             if char == ")" and not string_tree[i - 1] == " ":
                 # closing symbol of production
                 production = q_production_rules.pop()[0][0]
-                idx = self.productions(production.lhs()).index(production)
+                lhs_production = production.lhs()
+
+                idx = self.productions(lhs=lhs_production).index(production)
                 if log:
-                    prior_prob += np.log(self.prior[str(production.lhs())][idx] + 1e-1000)
+                    prior_prob += np.log(self.prior[(lhs_production)][idx] + 1e-15)
                 else:
-                    prior_prob *= self.prior[str(production.lhs())][idx]
+                    prior_prob *= self.prior[str(lhs_production)][idx]
                 i+=1
                 continue
 
-            sym: str
-            length: int
-            # Loop exits out when it finds a matching symbol
-            for sym, length in symbols_sorted_by_longest:
-                if string_tree[i : i + length] == sym:
+            _s = string_tree[i : i + _longest]
+            for sym in _symbols_by_size:
+                if _s.startswith(sym):
                     break
             else:
                 raise RuntimeError(f"Terminal or nonterminal at position {i} does not exist")
 
-            i += length - 1
+            i += len(sym) - 1
 
             if sym in self.terminals:
                 _productions, _count = q_production_rules[-1]
@@ -363,7 +367,7 @@ class Grammar(CFG):
                     ]
                     q_production_rules[-1] = (new_productions, _count + 1)
 
-                q_production_rules.append((self.productions(lhs=Nonterminal(sym)), 0))
+                q_production_rules.append((non_terminal_productions[sym], 0))
             else:
                 raise Exception(f"Unknown symbol {sym}")
             i += 1
