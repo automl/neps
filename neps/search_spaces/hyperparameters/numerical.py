@@ -246,10 +246,6 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             confidence_score=self.default_confidence_score,
         )
 
-        std = (high - low) * self.default_confidence_score
-        a, b = (low - default) / std, (high - default) / std
-        return scipy.stats.truncnorm(a, b), float(std)
-
     def to_integer(self) -> IntegerParameter:
         """Convert the numerical hyperparameter to an integer hyperparameter."""
         from neps.search_spaces.hyperparameters.integer import IntegerParameter
