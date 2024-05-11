@@ -25,7 +25,7 @@ def continuous_to_tabular(
             diffs = choices - config[hp_name].value
             # NOTE: in case of a tie the first value in the choices array will be returned
             closest = choices[np.abs(diffs).argmin()]
-            result[hp_name].value = closest
+            result[hp_name].set_value(closest)
 
     return result
 

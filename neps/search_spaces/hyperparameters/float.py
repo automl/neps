@@ -89,7 +89,7 @@ class FloatParameter(NumericalParameter[float]):
             )
 
         self.default = float(default)
-        self.has_prior = default is not None
+        self.has_prior = True
         if self.log:
             self.log_default = np.log(self.default)
 
@@ -137,9 +137,6 @@ class FloatParameter(NumericalParameter[float]):
 
     @override
     def value_to_normalized(self, value: float) -> float:
-        if np.isnan(value):
-            raise ValueError("Float parameter value is NaN!")
-
         if self.log:
             assert self.log_bounds is not None
             low, high = self.log_bounds
@@ -151,9 +148,6 @@ class FloatParameter(NumericalParameter[float]):
 
     @override
     def normalized_to_value(self, normalized_value: float) -> float:
-        if np.isnan(normalized_value):
-            raise ValueError("Float parameter value is NaN!")
-
         if self.log:
             assert self.log_bounds is not None
             low, high = self.log_bounds

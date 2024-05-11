@@ -13,6 +13,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         pibo_beta=10,
         log: bool = False,
     ):
+        super().__init__()
         self.pibo_beta = pibo_beta
         self.base_acquisition = base_acquisition
         self.log = log
@@ -23,11 +24,11 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
         x: Iterable,
         **base_acquisition_kwargs,
     ) -> Union[np.ndarray, torch.Tensor, float]:
-        super().__init__()
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
 
         if self.log:
             min_acq_val = abs(min(acquisition)) if min(acquisition) < 0 else 0
+
         for i, candidate in enumerate(x):
             prior_weight = candidate.compute_prior(log=self.log)
             if prior_weight != 1.0:

@@ -364,12 +364,14 @@ class SearchSpace(Mapping[str, Any]):
                         sampled_hps[name] = hp.sample(user_priors=user_priors)
                     else:
                         sampled_hps[name] = hp.sample()
-
+                    break
                 except ValueError:
                     pass
-            raise ValueError(
-                f"Could not sample valid config for {name} in {patience} tries!"
-            )
+            else:
+                raise ValueError(
+                    f"Could not sample valid value for hyperparameter {name}"
+                    f" in {patience} tries!"
+                )
 
         return SearchSpace(**sampled_hps)
 
@@ -424,7 +426,9 @@ class SearchSpace(Mapping[str, Any]):
             try:
                 mutated_param = hp.mutate(**kwargs)
             except Exception as e:  # noqa: BLE001
-                logger.warning(f"{chosen_hp_name} failed to mutate! Error: {e}")
+                logger.warning(f"{chosen_hp_name} failed to mutate! Error: {e}, {kwargs}")
+
+                # -x- sdf print(traceback.format_exc())  # noq-a: T201
                 continue
 
             new_params = {
@@ -536,20 +540,19 @@ class SearchSpace(Mapping[str, Any]):
             # worked previously for graphs
             if isinstance(hp, GraphParameter):
                 hps["graphs"].append(hp.value)
-                continue
 
-            if isinstance(hp, CategoricalParameter):
+            elif isinstance(hp, CategoricalParameter):
                 assert hp.value is not None
                 hp_value = hp.value_to_normalized(hp.value)
                 hps["categorical"].append(hp_value)
 
             # TODO(eddiebergman): Technically integer is not continuous
-            if isinstance(hp, NumericalParameter):
+            elif isinstance(hp, NumericalParameter):
                 assert hp.value is not None
                 hp_value = hp.value_to_normalized(hp.value)
                 hps["continuous"].append(hp_value)
-
-            raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
+            else:
+                raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
 
         return hps
 
@@ -586,11 +589,6 @@ class SearchSpace(Mapping[str, Any]):
         Returns:
             The vectorial dimension
         """
-        # TODO(eddiebergman): Right now this ignores graph parameters,
-        # what should we do about this...
-        if any(isinstance(hp, GraphParameter) for hp in self.values()):
-            raise ValueError("Trying to get vectorial dimension for graphs!")
-
         if not any(
             isinstance(hp, (NumericalParameter, CategoricalParameter, ConstantParameter))
             for hp in self.values()
@@ -603,12 +601,16 @@ class SearchSpace(Mapping[str, Any]):
         }
         for hp in self.values():
             if isinstance(hp, ConstantParameter):
-                continue
-
-            if isinstance(hp, CategoricalParameter):
+                pass
+            elif isinstance(hp, GraphParameter):
+                # TODO(eddiebergman): This was what the old behaviour would do...
+                pass
+            elif isinstance(hp, CategoricalParameter):
                 features["categorical"] += 1
             elif isinstance(hp, NumericalParameter):
                 features["continuous"] += 1
+            else:
+                raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
 
         return features
 
@@ -694,9 +696,16 @@ class SearchSpace(Mapping[str, Any]):
 
     def serialize(self) -> dict[str, Hashable]:
         """Serialize the configuration to a dictionary that can be written to disk."""
-        return {key: hp.serialize() for key, hp in self.hyperparameters.items()}
+        serialized_config = {}
+        for name, hp in self.hyperparameters.items():
+            if hp.value is None:
+                raise ValueError(
+                    f"Hyperparameter {name} has no value set and can't" " be serialized!"
+                )
+            serialized_config[name] = hp.serialize_value(hp.value)
+        return serialized_config
 
-    def load_from(self, config: Mapping[str, Any]) -> None:
+    def load_from(self, config: Mapping[str, Any | GraphParameter]) -> None:
         """Load a configuration from a dictionary, setting all the values."""
         for name, val in config.items():
             self.hyperparameters[name].load_from(val)

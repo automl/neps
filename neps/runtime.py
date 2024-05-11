@@ -798,6 +798,17 @@ def _sample_trial_from_optimizer(
     if prev_config_id is not None:
         previous = evaluated_trials[prev_config_id]
 
+    # NOTE(eddiebergman): So weirdly enough, `SearchSpace.hp_values()` will
+    # get the raw .value of everything, EXCEPT for `GraphParameter` which will
+    # just give the whole parameter. This assertion is used to check those
+    # are the only two things coming through here...
+    # This caused some nightmare to debug bug which led to a hack
+    # in the `SearchSpace.load_from()`
+    #
+    # -- from neps.search_spaces import GraphParameter, Parameter
+    # -- for k, v in config.items():
+    # --   assert isinstance(v, GraphParameter) or not isinstance(v, Parameter)
+
     time_sampled = time.time()
     return Trial(
         id=config_id,

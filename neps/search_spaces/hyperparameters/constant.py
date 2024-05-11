@@ -11,7 +11,7 @@ from neps.search_spaces.parameter import Parameter
 T = TypeVar("T", int, float, str)
 
 
-class ConstantParameter(Parameter[T]):
+class ConstantParameter(Parameter[T, T]):
     """A constant value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
@@ -147,3 +147,13 @@ class ConstantParameter(Parameter[T]):
     @override
     def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]:
         return []
+
+    @override
+    @classmethod
+    def serialize_value(cls, value: T) -> T:
+        return value
+
+    @override
+    @classmethod
+    def deserialize_value(cls, value: T) -> T:
+        return value

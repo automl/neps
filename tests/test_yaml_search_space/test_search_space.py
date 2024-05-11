@@ -23,13 +23,13 @@ def test_correct_yaml_files():
         assert int1.__eq__(pipeline_space["param_int1"]) is True
         int2 = IntegerParameter(100, 30000, log=True, is_fidelity=False)
         assert int2.__eq__(pipeline_space["param_int2"]) is True
-        float2 = FloatParameter(3.3e-5, 0.15, log=False,is_fidelity= False)
+        float2 = FloatParameter(3.3e-5, 0.15, log=False)
         assert float2.__eq__(pipeline_space["param_float2"]) is True
-        cat1 = CategoricalParameter([2, "sgd", 10e-3],is_fidelity= False)
+        cat1 = CategoricalParameter([2, "sgd", 10e-3])
         assert cat1.__eq__(pipeline_space["param_cat"]) is True
-        const1 = ConstantParameter(0.5,is_fidelity= False)
+        const1 = ConstantParameter(0.5)
         assert const1.__eq__(pipeline_space["param_const1"]) is True
-        const2 = ConstantParameter(1e3,is_fidelity= True)
+        const2 = ConstantParameter(1e3)
         assert const2.__eq__(pipeline_space["param_const2"]) is True
 
     test_correct_yaml_file(BASE_PATH + "correct_config.yaml")
@@ -47,9 +47,9 @@ def test_correct_including_priors_yaml_file():
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
     int1 = IntegerParameter(3, 30, log=False, is_fidelity=True, default=10)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
-    cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], is_fidelity=False, default=90e-3, default_confidence="medium")
+    cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], default=90e-3, default_confidence="medium")
     assert cat1.__eq__(pipeline_space["optimizer"]) is True
-    const1 = ConstantParameter(1e3, is_fidelity=True)
+    const1 = ConstantParameter(1e3)
     assert const1.__eq__(pipeline_space["dropout_rate"]) is True
 
 
@@ -135,16 +135,6 @@ def test_float_is_fidelity_not_boolean():
         )
     assert excinfo.value.exception_type == "TypeError"
 
-
-@pytest.mark.neps_api
-def test_cat_is_fidelity_not_boolean():
-    """Test if an exception is raised when for CategoricalParameter the 'is_fidelity'
-    attribute is not boolean."""
-    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(
-            BASE_PATH + "not_boolean_type_is_fidelity_cat_config.yaml"
-        )
-    assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api

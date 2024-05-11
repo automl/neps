@@ -3,6 +3,7 @@ from neps.search_spaces.architecture.graph_grammar import (
     GraphGrammar,
     GraphGrammarCell,
     GraphGrammarRepetitive,
+    GraphParameter,
 )
 from neps.search_spaces.hyperparameters import (
     CategoricalParameter,
@@ -27,6 +28,7 @@ __all__ = [
     "GraphGrammar",
     "GraphGrammarCell",
     "GraphGrammarRepetitive",
+    "GraphParameter",
     "IntegerParameter",
     "NumericalParameter",
     "Parameter",

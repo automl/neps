@@ -402,7 +402,7 @@ class MFEIBO(BaseOptimizer):
         # calculating fidelity value
         new_fidelity = self.get_budget_value(budget + 1)
         # settingt the config fidelity
-        config.fidelity.value = new_fidelity
+        config.fidelity.set_value(new_fidelity)
         return config, _config_id
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
@@ -419,7 +419,9 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            config.fidelity.value = self.min_budget
+            assert config.fidelity is not None
+            config.fidelity.set_value(self.min_budget)
+
             _config_id = self.observed_configs.next_config_id()
         elif self.is_init_phase(budget_based=True) or self._model_update_failed:
             # promote a config randomly if initial design size is satisfied but the
@@ -434,6 +436,7 @@ class MFEIBO(BaseOptimizer):
             # main acquisition call here after initial design is turned off
             self.logger.info("acquiring...")
             # generates candidate samples for acquisition calculation
+            assert self.pipeline_space.fidelity is not None
             samples = self.acquisition_sampler.sample(
                 set_new_sample_fidelity=self.pipeline_space.fidelity.lower
             )  # fidelity values here should be the observations or min. fidelity
@@ -454,7 +457,7 @@ class MFEIBO(BaseOptimizer):
 
             # Is this "config = _samples.loc[_config_id]"?
             config = samples.loc[_config_id]
-            config.fidelity.value = _samples.loc[_config_id].fidelity.value
+            config.fidelity.set_value(_samples.loc[_config_id].fidelity.value)
         # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
             config_id = f"{_config_id}_{self.get_budget_level(config)}"

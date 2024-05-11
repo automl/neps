@@ -608,7 +608,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         current_rung = self.inverse_rung_map[next_config.fidelity.value]
         self.old_configs_per_fid[current_rung].append(next_config.copy())
         new_fidelity = self.rung_map[current_rung + 1]
-        next_config.fidelity.value = new_fidelity
+        next_config.fidelity.set_value(new_fidelity)
         return next_config
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
@@ -617,20 +617,20 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            config.fidelity.value = self.rung_map[self.min_rung]
+            config.fidelity.set_value(self.rung_map[self.min_rung])
 
         elif self.is_init_phase():
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True
             )
-            config.fidelity.value = self.rung_map[self.min_rung]
+            config.fidelity.set_value(self.rung_map[self.min_rung])
 
         elif random.random() < self._random_interleave_prob:
             # TODO only at lowest fidelity
             config = self.pipeline_space.sample(
                 patience=self.patience, ignore_fidelity=False, user_priors=False
             )
-            config.fidelity.value = self.rung_map[self.min_rung]
+            config.fidelity.set_vlaue(self.rung_map[self.min_rung])
         elif len(self._get_promotable_configs(self.train_x_configs)) > 0:
             configs_for_promotion = self._get_promotable_configs(self.train_x_configs)
             config = self._promote_existing(configs_for_promotion)
@@ -638,7 +638,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
             print([hp.value for hp in config.hyperparameters.values()])
-            config.fidelity.value = self.rung_map[self.min_rung]
+            config.fidelity.set_value(self.rung_map[self.min_rung])
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
         return config.hp_values(), config_id, None

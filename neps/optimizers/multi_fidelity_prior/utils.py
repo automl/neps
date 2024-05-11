@@ -10,7 +10,7 @@ from ...search_spaces.search_space import SearchSpace
 
 
 def update_fidelity(config, fidelity):
-    config.fidelity.value = fidelity
+    config.fidelity.set_value(fidelity)
     return config
 
 
@@ -31,7 +31,7 @@ def local_mutation(
             elif isinstance(hp, IntegerParameter) or isinstance(hp, FloatParameter):
                 kwargs["std"] = std
             _val = hp.mutate(**kwargs).value
-            hp.value = _val
+            hp.set_value(_val)
         if not config.is_equal_value(new_config, include_fidelity=False):
             # if the new config doesn't differ from the original config then regenerate
             break
@@ -55,7 +55,7 @@ def custom_crossover(
         for key, hyperparameter in config1.items():
             if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
                 # crossing over config2 values into config1
-                child_config[key].value = config2[key].value
+                child_config[key].set_value(config2[key].value)
         if not child_config.is_equal_value(config1):
             # breaks and returns only if the generated config is not the same
             # thus requiring at least 1 HP to be crossed-over

@@ -187,7 +187,6 @@ class BayesianOptimization(BaseOptimizer):
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
         self._enhance_priors()
-        print()
 
     def _enhance_priors(self, confidence_score: dict = None) -> None:
         """Only applicable when priors are given along with a confidence.

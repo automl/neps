@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 from copy import copy, deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Iterable, Literal, Mapping, Union
-from typing_extensions import Self, override
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Iterable,
+    Literal,
+    Mapping,
+    Union,
+)
+from typing_extensions import Self, TypeAlias, override
 
 import numpy as np
 import numpy.typing as npt
@@ -15,9 +23,11 @@ from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 if TYPE_CHECKING:
     from neps.types import f64
 
+CategoricalTypes: TypeAlias = Union[float, int, str]
+
 
 class CategoricalParameter(
-    ParameterWithPrior[Union[float, int, str]],
+    ParameterWithPrior[CategoricalTypes, CategoricalTypes],
     MutatableParameter,
 ):
     """A list of **unordered** choices for a parameter.
@@ -66,6 +76,21 @@ class CategoricalParameter(
                 condsider prior based optimization.
         """
         super().__init__(value=None, is_fidelity=False, default=default)
+
+        for choice in choices:
+            if not isinstance(choice, (float, int, str)):
+                raise TypeError(
+                    f'Choice "{choice}" is not of a valid type (float, int, str)'
+                )
+
+        if not all_unique(choices):
+            raise ValueError(f"Choices must be unique but got duplicates.\n{choices}")
+
+        if default is not None and default not in choices:
+            raise ValueError(
+                f"Default value {default} is not in the provided choices {choices}"
+            )
+
         self.choices = list(choices)
 
         # NOTE(eddiebergman): If there's ever a very large categorical,
@@ -75,27 +100,13 @@ class CategoricalParameter(
         # a lookup table.
         # For now we can just cache the index of the value and default.
         self._value_index: int | None = None
-        self._default_index: int | None = None
 
         self.default_confidence_choice = default_confidence
         self.default_confidence_score = self.DEFAULT_CONFIDENCE_SCORES[default_confidence]
         self.has_prior = self.default is not None
-
-        for choice in self.choices:
-            if not isinstance(choice, (float, int, str)):
-                raise TypeError(
-                    f'Choice "{choice}" is not of a valid type (float, int, str)'
-                )
-
-        if not all_unique(self.choices):
-            raise ValueError(
-                f"Choices must be unique but got duplicates.\n{self.choices}"
-            )
-
-        if default is not None and default not in self.choices:
-            raise ValueError(
-                f"Default value {default} is not in the provided choices {self.choices}"
-            )
+        self._default_index: int | None = (
+            self.choices.index(default) if default is not None else None
+        )
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, self.__class__):
@@ -198,8 +209,13 @@ class CategoricalParameter(
         indices = np.arange(len(self.choices))
         bot = indices[: self._value_index]
         top = indices[self._value_index + 1 :]
+        available_neighbours = np.concatenate([bot, top])
+        should_replace = len(available_neighbours) < num_neighbours
+
         selected_indices = np.random.choice(
-            np.concatenate([bot, top]), size=num_neighbours, replace=True
+            available_neighbours,
+            size=num_neighbours,
+            replace=should_replace,
         )
 
         new_neighbours: list[Self] = []
@@ -212,9 +228,6 @@ class CategoricalParameter(
 
     @override
     def value_to_normalized(self, value: Any) -> float:
-        if np.isnan(value):
-            raise ValueError("Float parameter value is NaN!")
-
         return float(self.choices.index(value))
 
     @override
@@ -236,6 +249,7 @@ class CategoricalParameter(
 
         self.default = default
         self._default_index = self.choices.index(default)
+        self.has_prior = True
 
     @override
     def set_value(self, value: Any | None) -> None:
@@ -248,3 +262,13 @@ class CategoricalParameter(
         self._value = value
         self._value_index = self.choices.index(value)
         self.normalized_value = float(self._value_index)
+
+    @override
+    @classmethod
+    def serialize_value(cls, value: CategoricalTypes) -> CategoricalTypes:
+        return value
+
+    @override
+    @classmethod
+    def deserialize_value(cls, value: CategoricalTypes) -> CategoricalTypes:
+        return value

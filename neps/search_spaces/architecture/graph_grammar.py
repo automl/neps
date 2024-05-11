@@ -24,15 +24,29 @@ from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_
 # parameters, in the future we probably better just have these as two seperate
 # classes. For now, this class sort of captures the overlap between
 # `Parameter` and Graph based parameters.
-# I'm also unsure of the **value type** of these parameters, is it a
-# `str` or a `nx.DiGraph`? For now I've chosen as `nx.DiGraph`.
-class GraphParameter(ParameterWithPrior[nx.DiGraph], MutatableParameter):
+# The problem here is that the `Parameter` expects the `load_from`
+# and the `.value` to be the same type, which is not the case for
+# graph based parameters.
+class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
+    # NOTE(eddiebergman): What I've managed to learn so far is that
+    # these hyperparameters work mostly with strings externally,
+    # i.e. setting the value through `load_from` or `set_value` should be a string.
+    # At that point, the actual `.value` is a graph object created from said
+    # string. This would most likely break with a few things in odd places
+    # and I'm surprised it's lasted this long.
+    # At serialization time, it doesn't actually serialize the .value but instead
+    # relies on the string it was passed initially, I'm not actually sure if there's
+    # a way to go from the graph object to the string in this code...
+    # Essentially on the outside, we need to ensure we don't pass ih the graph object itself
     DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {"not_in_use": 1.0}
     default_confidence_choice = "not_in_use"
     has_prior: bool
 
+    @property
+    @abstractmethod
+    def id(self) -> str: ...
+
     # NOTE(eddiebergman): Unlike traditional parameters, it seems
-    # like graph parameters **always** can generate a value...
     @property
     @abstractmethod
     def value(self) -> nx.DiGraph: ...
@@ -47,29 +61,40 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph], MutatableParameter):
     @abstractmethod
     def reset(self) -> None: ...
 
-    @abstractmethod
-    def compute_prior(self, normalized_value: float) -> nx.DiGraph: ...
-
-    # NOTE(eddiebergman): Typing here is incorrect as the values it generates
-    # are not serializable (i.e the `str` return does not match the type variable
-    # given to `Paramter` as `nx.DiGraph`, this has to be fixed at some point
-    # but likely easier to address this whenever we can seperate them out to
-    # be their own parameter type.
     @override
-    def serialize(self) -> str:
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, GraphGrammar):
+            return NotImplemented
+
+        return self.id == other.id
+
+    @abstractmethod
+    def compute_prior(self, normalized_value: float) -> float: ...
+
+    @override
+    def serialize_value(self) -> str:
         return self.id  # type: ignore
 
     @override
-    def set_value(self, value: nx.DiGraph | None) -> None:
+    def set_value(self, value: str | None) -> None:
         # NOTE(eddiebergman): Not entirely sure how this should be done
         # as previously this would have just overwritten a property method
         # `self.value = None`
+        if not isinstance(value, str):
+            raise ValueError(
+                f"Expected a string for setting value a `GraphParameter`",
+                f" got {type(value)}"
+            )
         self.reset()
-        self._value = value
         self.normalized_value = value
 
+        if value is None:
+            return
+
+        self.create_from_id(value)
+
     @override
-    def set_default(self, default: nx.DiGraph | None) -> None:
+    def set_default(self, default: str | None) -> None:
         # TODO(eddiebergman): Could find no mention of the word 'default' in the
         # GraphGrammers' hence... well this is all I got
         self.default = default
@@ -81,22 +106,37 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph], MutatableParameter):
         # of it.
         return self.sample(user_priors=user_priors).value
 
-    @override
-    def load_from(self, value: str) -> None:
-        self.create_from_id(value)
+    @classmethod
+    def serialize_value(cls, value: nx.DiGraph) -> str:
+        """Functionality relying on this for GraphParameters should
+        special case and use `self.id`.
 
-    # NOTE(eddiebergman): None of them seem to have an implementation for this
-    @override
-    def _get_neighbours(self, num_neighbours: int) -> list[Self]:
+        !!! warning
+
+            Graph parameters don't directly support serialization.
+            Instead they rely on holding on to the original string value
+            from which they were created from.
+        """
         raise NotImplementedError
 
-    # NOTE(eddiebergman): None of them seem to have an implementation for this
-    @abstractmethod
-    def value_to_normalized(self, value: nx.DiGraph) -> float: ...
+    @classmethod
+    def deserialize_value(cls, value: str) -> nx.DiGraph:
+        """Functionality relying on this for GraphParameters should
+        special case for whever this is needed...
 
-    # NOTE(eddiebergman): None of them seem to have an implementation for this
-    @abstractmethod
-    def normalized_to_value(self, normalized_value: float) -> nx.DiGraph: ...
+        !!! warning
+
+            Graph parameters don't directly support serialization.
+            Instead they rely on holding on to the original string value
+            from which they were created from.
+        """
+        raise NotImplementedError
+
+    @override
+    def load_from(self, value: str | Self) -> None:
+        if isinstance(value, GraphParameter):
+            value = value.id
+        self.create_from_id(value)
 
     @abstractmethod
     def mutate(self, parent: Self | None = None) -> Self: ...
@@ -105,7 +145,17 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph], MutatableParameter):
     def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
         ...
 
-class GraphGrammar(CoreGraphGrammar, GraphParameter):
+    def _get_neighbours(self, num_neighbours: int) -> list[Self]:
+        raise NotImplementedError
+
+    def value_to_normalized(self, value: nx.DiGraph) -> float:
+        raise NotImplementedError
+
+    def normalized_to_value(self, normalized_value: float) -> nx.DiGraph:
+        raise NotImplementedError
+
+
+class GraphGrammar(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar"
 
     def __init__(
@@ -168,6 +218,7 @@ class GraphGrammar(CoreGraphGrammar, GraphParameter):
                     self.grammars[0],
                     edge_attr=self.edge_attr,
                 )
+                assert isinstance(self._value, nx.DiGraph)
             else:
                 _value = self.from_stringTree_to_graph_repr(
                     self.string_tree,
@@ -175,7 +226,9 @@ class GraphGrammar(CoreGraphGrammar, GraphParameter):
                     valid_terminals=self.terminal_to_op_names.keys(),
                     edge_attr=self.edge_attr,
                 )
-                assert isinstance(_value, nx.DiGraph)
+                # NOTE: This asumption was not true but I don't really know
+                # how to handle it otherwise, will just leave it as is for now
+                #  -x- assert isinstance(_value, nx.DiGraph), _value
                 self._value = _value
         return self._value
 
@@ -239,11 +292,12 @@ class GraphGrammar(CoreGraphGrammar, GraphParameter):
         return self._function_id
 
     @id.setter
-    def id(self, value):
+    def id(self, value: str) -> None:
         self._function_id = value
 
     def create_from_id(self, identifier: str) -> None:
         self.reset()
+        self._function_id = identifier
         self.id = identifier
         self.string_tree = self.id_to_string_tree(self.id)
         _ = self.value  # required for checking if graph is valid!
@@ -255,12 +309,6 @@ class GraphGrammar(CoreGraphGrammar, GraphParameter):
     @staticmethod
     def string_tree_to_id(string_tree: str) -> str:
         return string_tree
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, GraphGrammar):
-            return NotImplemented
-
-        return self.id == other.id
 
     @property
     def search_space_size(self) -> int:

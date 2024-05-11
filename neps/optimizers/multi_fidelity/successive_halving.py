@@ -11,17 +11,13 @@ import pandas as pd
 from typing_extensions import Literal
 
 from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces.hyperparameters.categorical import (
-    CATEGORICAL_CONFIDENCE_SCORES,
+from neps.search_spaces import (
     CategoricalParameter,
-)
-from neps.search_spaces.hyperparameters.constant import ConstantParameter
-from neps.search_spaces.hyperparameters.float import (
-    FLOAT_CONFIDENCE_SCORES,
+    ConstantParameter,
     FloatParameter,
+    IntegerParameter,
+    SearchSpace
 )
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
-from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
@@ -32,10 +28,10 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     RandomUniformPolicy,
 )
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(CategoricalParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -412,7 +408,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             config = deepcopy(row["config"])
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
-            config.fidelity.value = self.rung_map[rung]
+            config.fidelity.set_value(self.rung_map[rung])
             # updating config IDs
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
@@ -441,7 +437,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 config = self.sample_new_config(rung=rung_id)
 
             fidelity_value = self.rung_map[rung_id]
-            config.fidelity.value = fidelity_value
+            config.fidelity.set_value(fidelity_value)
 
             previous_config_id = None
             config_id = f"{self._generate_new_config_id()}_{rung_id}"

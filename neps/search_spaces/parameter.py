@@ -27,10 +27,11 @@ from copy import deepcopy
 from typing import Any, ClassVar, Generic, Mapping, TypeVar, runtime_checkable
 from typing_extensions import Protocol, Self
 
-T = TypeVar("T")
+ValueT = TypeVar("ValueT")
+SerializedT = TypeVar("SerializedT")
 
 
-class Parameter(ABC, Generic[T]):
+class Parameter(ABC, Generic[ValueT, SerializedT]):
     """A base class for hyperparameters.
 
     Attributes:
@@ -47,8 +48,8 @@ class Parameter(ABC, Generic[T]):
     def __init__(
         self,
         *,
-        value: T | None,
-        default: T | None,
+        value: ValueT | None,
+        default: ValueT | None,
         is_fidelity: bool,
     ):
         """Create a new `Parameter`.
@@ -79,7 +80,13 @@ class Parameter(ABC, Generic[T]):
     #
     def __eq__(self, other: Any) -> bool:
         # Assuming that two different classes should represent two different parameters
-        return isinstance(other, self.__class__) and self.serialize() == other.serialize()
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+
+        if self.value is not None and other.value is not None:
+            return self.serialize_value(self.value) == self.serialize_value(other.value)
+
+        return False
 
     # TODO(eddiebergman): The reason to use the word `clone()` instead of `copy()`
     # is so we can find it throughout the codebase if we migrate away from copies.
@@ -88,7 +95,7 @@ class Parameter(ABC, Generic[T]):
         return deepcopy(self)
 
     @property
-    def value(self) -> T | None:
+    def value(self) -> ValueT | None:
         """Get the value of the hyperparameter, or `None` if not set."""
         return self._value
 
@@ -107,11 +114,11 @@ class Parameter(ABC, Generic[T]):
         return copy_self
 
     @abstractmethod
-    def sample_value(self) -> T:
+    def sample_value(self) -> ValueT:
         """Sample a new value."""
 
     @abstractmethod
-    def set_default(self, default: T | None) -> None:
+    def set_default(self, default: ValueT | None) -> None:
         """Set the default value for the hyperparameter.
 
         The `default=` is used as a prior and used to inform
@@ -122,7 +129,7 @@ class Parameter(ABC, Generic[T]):
         """
 
     @abstractmethod
-    def set_value(self, value: T | None) -> None:
+    def set_value(self, value: ValueT | None) -> None:
         """Set the value for the hyperparameter.
 
         Args:
@@ -130,7 +137,7 @@ class Parameter(ABC, Generic[T]):
         """
 
     @abstractmethod
-    def value_to_normalized(self, value: T) -> float:
+    def value_to_normalized(self, value: ValueT) -> float:
         """Convert a value to a normalized value.
 
         Normalization is different per hyperparameter type,
@@ -150,7 +157,7 @@ class Parameter(ABC, Generic[T]):
         """
 
     @abstractmethod
-    def normalized_to_value(self, normalized_value: float) -> T:
+    def normalized_to_value(self, normalized_value: float) -> ValueT:
         """Convert a normalized value back to value in the defined hyperparameter range.
 
         Args:
@@ -163,26 +170,36 @@ class Parameter(ABC, Generic[T]):
     @abstractmethod
     def _get_neighbours(self, num_neighbours: int, *, std: float = 0.2) -> list[Self]: ...
 
-    def serialize(self) -> T | None:
+    @classmethod
+    @abstractmethod
+    def serialize_value(cls, value: ValueT) -> SerializedT:
         """Ensure the hyperparameter value is in a serializable format.
 
 
         Returns:
-            A serializable version of the hyperparameter value, or `None`
-            if it was not set.
+            A serializable version of the hyperparameter value
         """
-        return self.value
 
-    def load_from(self, value: T) -> None:
+    @classmethod
+    @abstractmethod
+    def deserialize_value(cls, value: SerializedT) -> ValueT:
+        """Deserialize a serialized value into the hyperparameter's value.
+
+        Args:
+            value: value to deserialize.
+        """
+
+    def load_from(self, value: SerializedT) -> None:
         """Load a serialized value into the hyperparameter's value.
 
         Args:
             value: value to load.
         """
-        self._value = value
+        deserialized_value = self.deserialize_value(value)
+        self.set_value(deserialized_value)
 
 
-class ParameterWithPrior(Parameter[T]):
+class ParameterWithPrior(Parameter[ValueT, SerializedT]):
     """A base class for hyperparameters with priors.
 
     Attributes:
@@ -209,7 +226,7 @@ class ParameterWithPrior(Parameter[T]):
 
     # NOTE(eddiebergman): Like the normal `Parameter.sample` but with `user_priors`.
     @abstractmethod
-    def sample_value(self, *, user_priors: bool = False) -> T:
+    def sample_value(self, *, user_priors: bool = False) -> ValueT:
         """Sample a new value.
 
         Similar to

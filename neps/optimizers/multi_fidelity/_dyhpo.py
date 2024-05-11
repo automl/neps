@@ -365,7 +365,7 @@ class MFEIBO(BaseOptimizer):
                     if np.less_equal(
                         self.get_budget_value(next_budget), config.fidelity.upper
                     ):
-                        config.fidelity.value = self.get_budget_value(next_budget)
+                        config.fidelity.set_value(self.get_budget_value(next_budget))
                         _config_id = promoted_config_id
                         fidelity_value_set = True
                         break
@@ -393,7 +393,7 @@ class MFEIBO(BaseOptimizer):
                 )
 
         if not fidelity_value_set:
-            config.fidelity.value = self.get_budget_value(0)
+            config.fidelity.set_value(self.get_budget_value(0))
 
         if _config_id is None:
             _config_id = (

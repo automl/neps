@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 T = TypeVar("T", int, float)
 
 
-class NumericalParameter(ParameterWithPrior[T], MutatableParameter):
+class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
     """A numerical hyperparameter is bounded by a lower and upper value.
 
     Attributes:
@@ -302,3 +302,13 @@ class NumericalParameter(ParameterWithPrior[T], MutatableParameter):
             self.normalized_to_value(x)
             for x in np.linspace(0, 1, num=size, endpoint=include_endpoint)
         ]
+
+    @override
+    @classmethod
+    def serialize_value(cls, value: T) -> T:
+        return value
+
+    @override
+    @classmethod
+    def deserialize_value(cls, value: T) -> T:
+        return value

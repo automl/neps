@@ -90,10 +90,12 @@ class IntegerParameter(NumericalParameter[int]):
     def set_default(self, default: int | None) -> None:
         if default is None:
             self.default = None
+            self.has_prior = False
             self.float_hp.set_default(None)
         else:
             _default = int(round(default))
             self.default = _default
+            self.has_prior = True
             self.float_hp.set_default(_default)
 
     @override
