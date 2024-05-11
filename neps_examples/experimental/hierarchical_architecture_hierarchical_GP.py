@@ -134,7 +134,7 @@ neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hierarchical_architecture_example_new",
-    max_evaluations_total=15,
+    max_evaluations_total=5,
     searcher="bayesian_optimization",
     surrogate_model=surrogate_model,
     surrogate_model_args=surrogate_model_args,
