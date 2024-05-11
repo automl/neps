@@ -262,7 +262,7 @@ max-args = 10 # Changed from default of 5
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m 'neps_api or core_examples'"
 markers = [
-  "all_examples",
+  "ci_examples",
   "core_examples",
   "regression_all",
   "runtime",
