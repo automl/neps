@@ -43,8 +43,11 @@ jobs:
           path: ~/.cache
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - run: poetry install --no-interaction --no-root
-      - run: poetry install --no-interaction
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+      - name: Install NePS
+        run: poetry install --no-interaction
       - timeout-minutes: 15
         run: |
           source $VENV
