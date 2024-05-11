@@ -18,31 +18,35 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11']
         os: [ubuntu-latest, macos-latest, windows-latest]
-        exclude:
-          - os: macos-latest  # Segmentation fault on github actions that we can not reproduce in the wild
-            python-version: '3.8'
+    defaults:
+      run:
+        shell: bash
 
     runs-on: ${{ matrix.os }}
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
+        id: setup-python
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Temporary bugfix see https://github.com/pre-commit/pre-commit/issues/2178
-      - name: Pin virtualenv version
-        run: pip install virtualenv==20.10.0
-
       - name: Install Poetry
-        uses: abatilo/actions-poetry@v2.3.0
+        uses: snok/install-poetry@v1
         with:
-          poetry-version: 1.3.2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
-      - name: Run poetry install
-        run: poetry install
+      - name: Load cached venv
+        id: cached-pip-wheels
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Run pytest
-        timeout-minutes: 15
-        run: poetry run pytest -m ""  # Run everything
+      - run: poetry install --no-interaction --no-root
+      - run: poetry install --no-interaction
+      - timeout-minutes: 15
+        run: |
+          source $VENV
+          pytest --version
+
