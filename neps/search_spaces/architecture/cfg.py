@@ -1,10 +1,11 @@
+from __future__ import annotations
 import itertools
 import math
 import sys
 from collections import defaultdict, deque
 from functools import partial
 from queue import LifoQueue
-from typing import Deque, Tuple
+from typing import Deque, Tuple, Hashable
 
 import numpy as np
 from nltk import CFG
@@ -192,10 +193,12 @@ class Grammar(CFG):
                 for i in range(0, n)
             ]
 
-    def _sampler(self, symbol=None, user_priors: bool = False):
+    def _sampler(self, symbol=None, user_priors: bool = False, *, _cache: dict[Hashable, str] | None = None):
         # simple sampler where each production is sampled uniformly from all possible productions
         # Tree choses if return tree or list of terminals
         # recursive implementation
+        if _cache is None:
+            _cache = {}
 
         # init the sequence
         tree = "(" + str(symbol)
@@ -208,12 +211,19 @@ class Grammar(CFG):
             production = choice(productions, probs=self._prior[str(symbol)])
         else:
             production = choice(productions)
+
         for sym in production.rhs():
             if isinstance(sym, str):
-                # if terminal then add string to sequence
+                ## if terminal then add string to sequence
                 tree = tree + " " + sym
             else:
-                tree = tree + " " + self._sampler(sym, user_priors=user_priors) + ")"
+                cached = _cache.get(sym)
+                if cached is None:
+                    cached = self._sampler(sym, user_priors=user_priors, _cache=_cache)
+                    _cache[sym] = cached
+
+                tree = tree + " " + cached + ")"
+
         return tree
 
     def sampler_maxMin_func(self, symbol: str = None, largest: bool = True):
