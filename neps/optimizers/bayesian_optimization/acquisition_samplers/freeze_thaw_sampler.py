@@ -13,7 +13,7 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-    
+
     SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
@@ -119,8 +119,8 @@ class FreezeThawSampler(AcquisitionSampler):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=False
             )
-            config["id"].value = _new_configs[index]
-            config.fidelity.value = set_new_sample_fidelity
+            config["id"].set_value(_new_configs[index])
+            config.fidelity.set_value(set_new_sample_fidelity)
             return config
 
         if self.is_tabular:
@@ -131,7 +131,7 @@ class FreezeThawSampler(AcquisitionSampler):
             # accounting for unseen configs only, samples remaining table if flag is set
             max_n = len(_all_ids) + 1 if self.sample_full_table else _n
             _n = min(max_n, len(_all_ids - _partial_ids))
-            
+
             _new_configs = np.random.choice(
                 list(_all_ids - _partial_ids), size=_n, replace=False
             )
@@ -145,13 +145,13 @@ class FreezeThawSampler(AcquisitionSampler):
 
         elif set_new_sample_fidelity is not None:
             for config in new_configs:
-                config.fidelity.value = set_new_sample_fidelity
+                config.fidelity.set_value(set_new_sample_fidelity)
 
         # Deep copy configs for fidelity updates
         partial_configs_list = []
         index_list = []
         for idx, config in partial_configs.items():
-            _config = deepcopy(config)
+            _config = config.clone()
             partial_configs_list.append(_config)
             index_list.append(idx)
 

@@ -102,7 +102,8 @@ src = ["neps"]
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
   "neps/optimizers/**/*.py",
-  "neps/search_spaces/**/*.py",
+  "neps/search_spaces/architecture/**/*.py",
+  "neps/search_spaces/yaml_search_space_utils.py",
   "neps/utils/run_args_from_yaml.py",
   "neps/api.py",
   "tests",
@@ -206,7 +207,8 @@ ignore = [
   "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
   "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
   "PLR2004", # No magic numbers inline
-  # These tend to be lighweight and confuse pyright
+  "N817",    # CamelCase import as (ignore for ConfigSpace)
+  "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
 ]
 
 
@@ -260,7 +262,7 @@ max-args = 10 # Changed from default of 5
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m 'neps_api or core_examples'"
 markers = [
-  "all_examples",
+  "ci_examples",
   "core_examples",
   "regression_all",
   "runtime",
@@ -298,7 +300,8 @@ check_untyped_defs = true
 module = [
   "neps.api",
   "neps.optimizers.*",
-  "neps.search_spaces.*",
+  "neps.search_spaces.architecture.*",
+  "neps.search_spaces.yaml_search_space_utils",
   "neps.utils.run_args_from_yaml",
 ]
 ignore_errors = true

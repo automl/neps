@@ -3,9 +3,17 @@ from __future__ import annotations
 from functools import partial
 from typing import Callable
 
-from .ei import ComprehensiveExpectedImprovement
-from .mf_ei import MFEI
-from .ucb import UpperConfidenceBound, MF_UCB
+from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
+    ComprehensiveExpectedImprovement,
+)
+from neps.optimizers.bayesian_optimization.acquisition_functions.mf_ei import MFEI
+from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
+    UpperConfidenceBound,
+    MF_UCB,
+)
+from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
+    DecayingPriorWeightedAcquisition,
+)
 
 
 AcquisitionMapping: dict[str, Callable] = {
@@ -41,3 +49,12 @@ AcquisitionMapping: dict[str, Callable] = {
         maximize=False,
     ),
 }
+
+__all__ = [
+    "AcquisitionMapping",
+    "ComprehensiveExpectedImprovement",
+    "MFEI",
+    "UpperConfidenceBound",
+    "MF_UCB",
+    "DecayingPriorWeightedAcquisition",
+]

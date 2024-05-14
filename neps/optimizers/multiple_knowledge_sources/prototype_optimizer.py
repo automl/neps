@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from neps.utils.types import ConfigResult
-from ...search_spaces.search_space import SearchSpace
-from ...utils.data_loading import read_tasks_and_dev_stages_from_disk
-from .. import BaseOptimizer
+from neps.utils.types import ConfigResult, RawConfig
+from neps.search_spaces.search_space import SearchSpace
+from neps.utils.data_loading import read_tasks_and_dev_stages_from_disk
+from neps.optimizers.base_optimizer import BaseOptimizer
 
 
 # TODO: Test if anything breaks after the recent changes
@@ -23,7 +23,7 @@ class KnowledgeSampling(BaseOptimizer):
         **optimizer_kwargs,
     ):
         super().__init__(**optimizer_kwargs)
-        self.prev_task_dev_search_space = self.pipeline_space.copy()
+        self.prev_task_dev_search_space = self.pipeline_space.clone()
         self._num_previous_configs: int = 0
         self.paths_prev_task_and_dev = paths_prev_task_and_dev
         self.prev_task_dev_results = None
@@ -50,7 +50,7 @@ class KnowledgeSampling(BaseOptimizer):
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         config = None
         i = self._num_previous_configs
         if i == 0:

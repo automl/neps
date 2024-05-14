@@ -1,7 +1,12 @@
-from typing import Tuple
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Tuple
 
 import networkx as nx
 import numpy as np
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
 
 
 def transform_to_undirected(gr: list):
@@ -17,7 +22,7 @@ def transform_to_undirected(gr: list):
     return undirected_gr
 
 
-def extract_configs(configs: list) -> Tuple[list, list]:
+def extract_configs(configs: list[SearchSpace]) -> Tuple[list, list]:
     """Extracts graph & HPs from configs objects
 
     Args:

@@ -118,10 +118,6 @@ class CoreGraphGrammar(Graph):
         if len(graph) == 0 or graph.number_of_edges() == 0:
             raise ValueError("Invalid DAG")
 
-    @abstractmethod
-    def get_graphs(self):
-        raise NotImplementedError
-
     def prune_tree(
         self,
         tree: nx.DiGraph,
@@ -1643,7 +1639,7 @@ class CoreGraphGrammar(Graph):
 
         return composed_function
 
-    def graph_to_self(self, graph: nx.DiGraph, clear_self: bool = True):
+    def graph_to_self(self, graph: nx.DiGraph, clear_self: bool = True) -> None:
         """Copies graph to self
 
         Args:
@@ -1658,7 +1654,7 @@ class CoreGraphGrammar(Graph):
             self.nodes[n].update(**data)
 
     def _unparse_tree(
-        self, identifier: str, grammar: Grammar, as_composition: bool = True
+        self, identifier: str, grammar: Grammar, as_composition: bool = True,
     ):
         descriptor = self.id_to_string_tree(identifier)
 

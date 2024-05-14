@@ -52,7 +52,6 @@ import time
 import traceback
 import warnings
 from contextlib import contextmanager
-from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -742,8 +741,6 @@ def _evaluate_config(
 
     logger.info(f"Start evaluating config {config_id}")
 
-    config = deepcopy(config)
-
     # If pipeline_directory and previous_pipeline_directory are included in the
     # signature we supply their values, otherwise we simply do nothing.
     directory_params: list[Path | None] = []
@@ -797,6 +794,17 @@ def _sample_trial_from_optimizer(
     previous = None
     if prev_config_id is not None:
         previous = evaluated_trials[prev_config_id]
+
+    # NOTE(eddiebergman): So weirdly enough, `SearchSpace.hp_values()` will
+    # get the raw .value of everything, EXCEPT for `GraphParameter` which will
+    # just give the whole parameter. This assertion is used to check those
+    # are the only two things coming through here...
+    # This caused some nightmare to debug bug which led to a hack
+    # in the `SearchSpace.load_from()`
+    #
+    # -- from neps.search_spaces import GraphParameter, Parameter
+    # -- for k, v in config.items():
+    # --   assert isinstance(v, GraphParameter) or not isinstance(v, Parameter)
 
     time_sampled = time.time()
     return Trial(
@@ -957,6 +965,11 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                     logger.exception(e)
                     tb = traceback.format_exc()
                     report = trial.error(e, tb=tb, time_end=time.time())
+
+                    shared_state.evaluated_trials[trial.id] = report
+                    shared_state.pending_trials.pop(trial.id, None)
+                    shared_state.in_progress_trials.pop(trial.id, None)
+
                     serialize({"err": str(e), "tb": tb}, report.disk.error_file)
                     serialize(report.metadata, report.disk.metadata_file)
             else:
@@ -968,6 +981,10 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                     )
 
                 with shared_state.lock(poll=_poll, timeout=_timeout):
+                    shared_state.evaluated_trials[trial.id] = report
+                    shared_state.pending_trials.pop(trial.id, None)
+                    shared_state.in_progress_trials.pop(trial.id, None)
+
                     eval_cost = report.cost
                     account_for_cost = False
                     if eval_cost is not None:

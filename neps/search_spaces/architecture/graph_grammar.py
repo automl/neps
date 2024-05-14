@@ -4,12 +4,15 @@ from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from functools import partial
+from typing import Any, ClassVar, Mapping
+from typing_extensions import override, Self
+from neps.utils.types import NotSet, _NotSet
 
 import networkx as nx
 import numpy as np
 from nltk import Nonterminal
 
-from ..parameter import Parameter
+from ..parameter import ParameterWithPrior, MutatableParameter
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
 from .core_graph_grammar import CoreGraphGrammar
@@ -17,7 +20,165 @@ from .crossover import repetitive_search_space_crossover, simple_crossover
 from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_mutate
 
 
-class GraphGrammar(CoreGraphGrammar, Parameter):
+# TODO(eddiebergman): This is a halfway solution, but essentially a lot
+# of things `Parameter` does, does not fit nicely with a Graph based
+# parameters, in the future we probably better just have these as two seperate
+# classes. For now, this class sort of captures the overlap between
+# `Parameter` and Graph based parameters.
+# The problem here is that the `Parameter` expects the `load_from`
+# and the `.value` to be the same type, which is not the case for
+# graph based parameters.
+class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
+    # NOTE(eddiebergman): What I've managed to learn so far is that
+    # these hyperparameters work mostly with strings externally,
+    # i.e. setting the value through `load_from` or `set_value` should be a string.
+    # At that point, the actual `.value` is a graph object created from said
+    # string. This would most likely break with a few things in odd places
+    # and I'm surprised it's lasted this long.
+    # At serialization time, it doesn't actually serialize the .value but instead
+    # relies on the string it was passed initially, I'm not actually sure if there's
+    # a way to go from the graph object to the string in this code...
+    # Essentially on the outside, we need to ensure we don't pass ih the graph object itself
+    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {"not_in_use": 1.0}
+    default_confidence_choice = "not_in_use"
+    has_prior: bool
+    input_kwargs: dict[str, Any]
+
+    @property
+    @abstractmethod
+    def id(self) -> str: ...
+
+    # NOTE(eddiebergman): Unlike traditional parameters, it seems
+    @property
+    @abstractmethod
+    def value(self) -> nx.DiGraph: ...
+
+    # NOTE(eddiebergman): This is a function common to the three graph
+    # parameters that is used for `load_from`
+    @abstractmethod
+    def create_from_id(self, value: str) -> None: ...
+
+    # NOTE(eddiebergman): Function shared between graph parameters.
+    # Used to `set_value()`
+    @abstractmethod
+    def reset(self) -> None: ...
+
+    @override
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, GraphGrammar):
+            return NotImplemented
+
+        return self.id == other.id
+
+    @abstractmethod
+    def compute_prior(self, normalized_value: float) -> float: ...
+
+    @override
+    def set_value(self, value: str | None) -> None:
+        # NOTE(eddiebergman): Not entirely sure how this should be done
+        # as previously this would have just overwritten a property method
+        # `self.value = None`
+        if not isinstance(value, str):
+            raise ValueError(
+                f"Expected a string for setting value a `GraphParameter`",
+                f" got {type(value)}"
+            )
+        self.reset()
+        self.normalized_value = value
+
+        if value is None:
+            return
+
+        self.create_from_id(value)
+
+    @override
+    def set_default(self, default: str | None) -> None:
+        # TODO(eddiebergman): Could find no mention of the word 'default' in the
+        # GraphGrammers' hence... well this is all I got
+        self.default = default
+
+    @override
+    def sample_value(self, *, user_priors: bool = False) -> nx.DiGraph:
+        # TODO(eddiebergman): This could definitely be optimized
+        # Right now it copies the entire object just to get a value out
+        # of it.
+        return self.sample(user_priors=user_priors).value
+
+    @classmethod
+    def serialize_value(cls, value: nx.DiGraph) -> str:
+        """Functionality relying on this for GraphParameters should
+        special case and use `self.id`.
+
+        !!! warning
+
+            Graph parameters don't directly support serialization.
+            Instead they rely on holding on to the original string value
+            from which they were created from.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def deserialize_value(cls, value: str) -> nx.DiGraph:
+        """Functionality relying on this for GraphParameters should
+        special case for whever this is needed...
+
+        !!! warning
+
+            Graph parameters don't directly support serialization.
+            Instead they rely on holding on to the original string value
+            from which they were created from.
+        """
+        raise NotImplementedError
+
+    @override
+    def load_from(self, value: str | Self) -> None:
+        if isinstance(value, GraphParameter):
+            value = value.id
+        self.create_from_id(value)
+
+    @abstractmethod
+    def mutate(self, parent: Self | None = None, *, mutation_strategy: str = "bananas") -> Self: ...
+
+    @abstractmethod
+    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
+        ...
+
+    def _get_non_unique_neighbors(self, num_neighbours: int) -> list[Self]:
+        raise NotImplementedError
+
+    def value_to_normalized(self, value: nx.DiGraph) -> float:
+        raise NotImplementedError
+
+    def normalized_to_value(self, normalized_value: float) -> nx.DiGraph:
+        raise NotImplementedError
+
+    @override
+    def clone(self) -> Self:
+        new_self =  self.__class__(**self.input_kwargs)
+
+        # HACK(eddiebergman): It seems the subclasses all have these and
+        # so we just copy over those attributes, deepcloning anything that is mutable
+        if self._value is not None:
+            _attrs_that_subclasses_use_to_reoresent_a_value = (
+                ("_value", True),
+                ("string_tree", False),
+                ("string_tree_list", False),
+                ("nxTree", False),
+                ("_function_id", False),
+            )
+            for _attr, is_mutable in _attrs_that_subclasses_use_to_reoresent_a_value:
+                retrieved_attr = getattr(self, _attr, NotSet)
+                if retrieved_attr is NotSet:
+                    continue
+
+                if is_mutable:
+                    setattr(new_self, _attr, deepcopy(retrieved_attr))
+                else:
+                    setattr(new_self, _attr, retrieved_attr)
+
+        return new_self
+
+class GraphGrammar(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar"
 
     def __init__(
@@ -51,81 +212,28 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             scope=scope,
             **kwargs,
         )
-        Parameter.__init__(self, set_default_value=False)
+        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
 
         self.string_tree: str = ""
         self._function_id: str = ""
-        self.nxTree: nx.DiGraph = None
-        self._value: nx.DiGraph = None
+        self.nxTree: nx.DiGraph | None = None
         self.new_graph_repr_func = new_graph_repr_func
 
         if prior is not None:
             self.grammars[0].prior = prior
         self.has_prior = prior is not None
 
-    @property
-    def id(self):
-        if self._function_id is None or self._function_id == "":
-            if self.string_tree == "":
-                raise ValueError("Cannot infer identifier!")
-            self._function_id = self.string_tree_to_id(self.string_tree)
-        return self._function_id
-
-    @id.setter
-    def id(self, value):
-        self._function_id = value
-
-    @staticmethod
-    def id_to_string_tree(identifier: str):
-        return identifier
-
-    @staticmethod
-    def string_tree_to_id(string_tree: str):
-        return string_tree
-
-    def __eq__(self, other):
-        return self.id == other.id
+    @override
+    def sample(self, *, user_priors: bool = False) -> Self:
+        copy_self = self.clone()
+        copy_self.reset()
+        copy_self.string_tree = copy_self.grammars[0].sampler(1, user_priors=user_priors)[0]
+        _ = copy_self.value  # required for checking if graph is valid!
+        return copy_self
 
     @property
-    def search_space_size(self) -> int:
-        return self.grammars[0].compute_space_size
-
-    @abstractmethod
-    def create_new_instance_from_id(self, identifier: str):
-        raise NotImplementedError
-
-    def reset(self):
-        self.clear_graph()
-        self.string_tree = ""
-        self.nxTree = None
-        self._value = None
-        self._function_id = ""
-
-    def compose_functions(self, flatten_graph: bool = True):
-        return self._compose_functions(self.id, self.grammars[0], flatten_graph)
-
-    def unparse_tree(self, identifier: str, as_composition: bool = True):
-        return self._unparse_tree(identifier, self.grammars[0], as_composition)
-
-    def get_dictionary(self) -> dict:
-        return {"graph_grammar": self.id}
-
-    def get_graphs(self):
-        return self.value
-
-    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
-        nxTree = self.from_stringTree_to_nxTree(string_tree, self.grammars[0])
-        return self.prune_tree(
-            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
-        )
-
-    def sample(self, user_priors: bool = False):
-        self.reset()
-        self.string_tree = self.grammars[0].sampler(1, user_priors=user_priors)[0]
-        _ = self.value  # required for checking if graph is valid!
-
-    @property
-    def value(self):
+    @override
+    def value(self) -> nx.DiGraph:
         if self._value is None:
             if self.new_graph_repr_func:
                 self._value = self.get_graph_representation(
@@ -133,34 +241,27 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
                     self.grammars[0],
                     edge_attr=self.edge_attr,
                 )
+                assert isinstance(self._value, nx.DiGraph)
             else:
-                self._value = self.from_stringTree_to_graph_repr(
+                _value = self.from_stringTree_to_graph_repr(
                     self.string_tree,
                     self.grammars[0],
                     valid_terminals=self.terminal_to_op_names.keys(),
                     edge_attr=self.edge_attr,
                 )
+                # NOTE: This asumption was not true but I don't really know
+                # how to handle it otherwise, will just leave it as is for now
+                #  -x- assert isinstance(_value, nx.DiGraph), _value
+                self._value = _value
         return self._value
 
-    def create_from_id(self, identifier: str):
-        self.reset()
-        self.id = identifier
-        self.string_tree = self.id_to_string_tree(self.id)
-        _ = self.value  # required for checking if graph is valid!
-
-    # TODO: does this serialization really work for every graph ?
-    def serialize(self):
-        return self.id
-
-    def load_from(self, data):
-        self.create_from_id(data)
-
+    @override
     def mutate(
         self,
-        parent: GraphGrammar = None,
+        parent: GraphGrammar | None = None,
         mutation_rate: float = 1.0,
         mutation_strategy: str = "bananas",
-    ):
+    ) -> Self:
         if parent is None:
             parent = self
         parent_string_tree = parent.string_tree
@@ -184,7 +285,8 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
             self.string_tree_to_id(child_string_tree)
         )
 
-    def crossover(self, parent1: GraphGrammar, parent2: GraphGrammar = None):
+    @override
+    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
         if parent2 is None:
             parent2 = self
         parent1_string_tree = parent1.string_tree
@@ -194,13 +296,72 @@ class GraphGrammar(CoreGraphGrammar, Parameter):
         )
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
-        return [
+
+        return tuple(
             parent2.create_new_instance_from_id(self.string_tree_to_id(child))
             for child in children
-        ]
+        )
 
-    def compute_prior(self, log: bool = True) -> float:
+    @override
+    def compute_prior(self, *, log: bool = True) -> float:
         return self.grammars[0].compute_prior(self.string_tree, log=log)
+
+    @property
+    def id(self) -> str:
+        if self._function_id is None or self._function_id == "":
+            if self.string_tree == "":
+                raise ValueError("Cannot infer identifier!")
+            self._function_id = self.string_tree_to_id(self.string_tree)
+        return self._function_id
+
+    @id.setter
+    def id(self, value: str) -> None:
+        self._function_id = value
+
+    def create_from_id(self, identifier: str) -> None:
+        self.reset()
+        self._function_id = identifier
+        self.id = identifier
+        self.string_tree = self.id_to_string_tree(self.id)
+        _ = self.value  # required for checking if graph is valid!
+
+    @staticmethod
+    def id_to_string_tree(identifier: str) -> str:
+        return identifier
+
+    @staticmethod
+    def string_tree_to_id(string_tree: str) -> str:
+        return string_tree
+
+    @property
+    def search_space_size(self) -> int:
+        return self.grammars[0].compute_space_size
+
+    @abstractmethod
+    def create_new_instance_from_id(self, identifier: str):
+        raise NotImplementedError
+
+    def reset(self) -> None:
+        self.clear_graph()
+        self.string_tree = ""
+        self.nxTree = None
+        self._value = None
+        self._function_id = ""
+
+    def compose_functions(self, flatten_graph: bool = True) -> nx.DiGraph:
+        return self._compose_functions(self.id, self.grammars[0], flatten_graph)
+
+    def unparse_tree(self, identifier: str, as_composition: bool = True):
+        return self._unparse_tree(identifier, self.grammars[0], as_composition)
+
+    def get_dictionary(self) -> dict[str, str]:
+        return {"graph_grammar": self.id}
+
+    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
+        nxTree = self.from_stringTree_to_nxTree(string_tree, self.grammars[0])
+        return self.prune_tree(
+            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
+        )
 
 
 class GraphGrammarCell(GraphGrammar):
@@ -234,7 +395,7 @@ class GraphGrammarCell(GraphGrammar):
 
         self.cell = None
 
-    def reset(self):
+    def reset(self) -> None:
         super().reset()
         self.cell = None
 
@@ -243,7 +404,7 @@ class GraphGrammarCell(GraphGrammar):
         raise NotImplementedError
 
 
-class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
+class GraphGrammarRepetitive(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar_repetitive"
 
     def __init__(
@@ -272,98 +433,25 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
             name=name,
             scope=scope,
         )
-        Parameter.__init__(self, set_default_value=False)
+        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
 
         self.id: str = ""
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
-        self.nxTree: nx.DiGraph = None
-        self._value: nx.DiGraph = None
+        self.nxTree: nx.DiGraph | None = None
+        self._value: nx.DiGraph | None = None
 
         self.full_grammar = self.get_full_grammar(self.grammars)
         self.terminal_to_sublanguage_map = terminal_to_sublanguage_map
         self.number_of_repetitive_motifs = number_of_repetitive_motifs
 
-    def __eq__(self, other):
-        return self.id == other.id
-
-    def reset(self):
-        self.clear_graph()
-        self.string_tree_list = []
-        self.string_tree = ""
-        self.nxTree = None
-        self._value = None
-        self.id = ""
-
-    @staticmethod
-    def get_full_grammar(grammars):
-        full_grammar = deepcopy(grammars[0])
-        rules = full_grammar.productions()
-        nonterminals = full_grammar.nonterminals
-        terminals = full_grammar.terminals
-        for g in grammars[1:]:
-            rules.extend(g.productions())
-            nonterminals.extend(g.nonterminals)
-            terminals.extend(g.terminals)
-        return full_grammar
-
-    @abstractmethod
-    def create_graph_from_string(self, child: list[str]):
-        raise NotImplementedError
-
-    def get_dictionary(self) -> dict:
-        return {"graph_grammar": "\n".join(self.string_tree_list)}
-
-    def get_graphs(self):
-        return self.value
-
-    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
-        nxTree = self.from_stringTree_to_nxTree(string_tree, self.full_grammar)
-        return self.prune_tree(
-            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
-        )
-
-    def sample(self, user_priors: bool = False):
-        self.reset()
-        self.string_tree_list = [grammar.sampler(1)[0] for grammar in self.grammars]
-        self.string_tree = self.assemble_trees(
-            self.string_tree_list[0],
-            self.string_tree_list[1:],
-            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
-        )
-        self.id = "\n".join(self.string_tree_list)
-        _ = self.value  # required for checking if graph is valid!
-
-    @property
-    def value(self):
-        if self._value is None:
-            self._value = self.from_stringTree_to_graph_repr(
-                self.string_tree,
-                self.full_grammar,
-                valid_terminals=self.terminal_to_op_names.keys(),
-                edge_attr=self.edge_attr,
-            )
-        return self._value
-
-    def create_from_id(self, identifier: str | list):
-        self.reset()
-        self.string_tree_list = (
-            identifier.split("\n") if isinstance(identifier, str) else identifier
-        )
-        self.string_tree = self.assemble_trees(
-            self.string_tree_list[0],
-            self.string_tree_list[1:],
-            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
-        )
-        self.id = "\n".join(self.string_tree_list)
-        _ = self.value  # required for checking if graph is valid!
-
+    @override
     def mutate(
         self,
-        parent: GraphGrammarRepetitive = None,
+        parent: Self | None = None,
         mutation_rate: float = 1.0,
         mutation_strategy: str = "bananas",
-    ):
+    ) -> Self:
         raise NotImplementedError
         if parent is None:
             parent = self
@@ -394,9 +482,12 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
 
         return self.create_graph_from_string(child_string_tree_list)
 
+    @override
     def crossover(
-        self, parent1: GraphGrammarRepetitive, parent2: GraphGrammarRepetitive = None
-    ):
+        self,
+        parent1: Self,
+        parent2: Self | None = None,
+    ) -> tuple[Self, Self]:
         raise NotImplementedError
         if parent2 is None:
             parent2 = self
@@ -411,6 +502,97 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
         return [parent2.create_graph_from_string(child) for child in children]
+
+    @override
+    def sample(self, *, user_priors: bool = False) -> Self:
+        copy_self = self.clone()
+        copy_self.reset()
+        copy_self.string_tree_list = [grammar.sampler(1)[0] for grammar in copy_self.grammars]
+        copy_self.string_tree = copy_self.assemble_trees(
+            copy_self.string_tree_list[0],
+            copy_self.string_tree_list[1:],
+            terminal_to_sublanguage_map=copy_self.terminal_to_sublanguage_map,
+        )
+        copy_self.id = "\n".join(copy_self.string_tree_list)
+        _ = copy_self.value  # required for checking if graph is valid!
+        return copy_self
+
+    @property
+    @override
+    def value(self) -> nx.DiGraph:
+        if self._value is None:
+            _val = self.from_stringTree_to_graph_repr(
+                self.string_tree,
+                self.full_grammar,
+                valid_terminals=self.terminal_to_op_names.keys(),
+                edge_attr=self.edge_attr,
+            )
+            assert isinstance(_val, nx.DiGraph)
+            self._value = _val
+        return self._value
+
+    @override
+    def compute_prior(self, *, log: bool = True) -> float:
+        prior_probs = [
+            g.compute_prior(st, log=log)
+            for g, st in zip(self.grammars, self.string_tree_list)
+        ]
+        if log:
+            return sum(prior_probs)
+        else:
+            return np.prod(prior_probs)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, GraphGrammarRepetitive):
+            return NotImplemented
+
+        return self.id == other.id
+
+    def reset(self) -> None:
+        self.clear_graph()
+        self.string_tree_list = []
+        self.string_tree = ""
+        self.nxTree = None
+        self._value = None
+        self.id = ""
+
+    @staticmethod
+    def get_full_grammar(grammars):
+        full_grammar = deepcopy(grammars[0])
+        rules = full_grammar.productions()
+        nonterminals = full_grammar.nonterminals
+        terminals = full_grammar.terminals
+        for g in grammars[1:]:
+            rules.extend(g.productions())
+            nonterminals.extend(g.nonterminals)
+            terminals.extend(g.terminals)
+        return full_grammar
+
+    @abstractmethod
+    def create_graph_from_string(self, child: list[str]):
+        raise NotImplementedError
+
+    def get_dictionary(self) -> dict[str, str]:
+        return {"graph_grammar": "\n".join(self.string_tree_list)}
+
+    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
+        nxTree = self.from_stringTree_to_nxTree(string_tree, self.full_grammar)
+        return self.prune_tree(
+            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
+        )
+
+    def create_from_id(self, identifier: str | list[str]) -> None:
+        self.reset()
+        self.string_tree_list = (
+            identifier.split("\n") if isinstance(identifier, str) else identifier
+        )
+        self.string_tree = self.assemble_trees(
+            self.string_tree_list[0],
+            self.string_tree_list[1:],
+            terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+        )
+        self.id = "\n".join(self.string_tree_list)
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def search_space_size(self) -> int:
@@ -450,7 +632,7 @@ class GraphGrammarRepetitive(CoreGraphGrammar, Parameter):
         )
 
 
-class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
+class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar_multiple_repetitive"
 
     def __init__(
@@ -550,13 +732,13 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             scope=scope,
             **kwargs,
         )
-        Parameter.__init__(self, set_default_value=False)
+        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
 
         self._function_id: str = ""
         self.string_tree: str = ""
         self.string_tree_list: list[str] = []
-        self.nxTree: nx.DiGraph = None
-        self._value: nx.DiGraph = None
+        self.nxTree: nx.DiGraph | None = None
+        self._value: nx.DiGraph | None = None
 
         if self.fixed_macro_grammar:
             self.fixed_macro_string_tree = self.macro_grammar.sampler(1)[0]
@@ -568,113 +750,24 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         else:
             self.full_grammar = self.get_full_grammar(self.grammars)
 
-    @property
-    def id(self) -> str:
-        if self._function_id is None or self._function_id == "":
-            if len(self.string_tree_list) == 0:
-                raise ValueError("Cannot infer identifier")
-            self._function_id = self.string_tree_list_to_id(self.string_tree_list)
-        return self._function_id
-
-    @id.setter
-    def id(self, value: str):
-        self._function_id = value
-
-    @staticmethod
-    def id_to_string_tree_list(identifier: str) -> list[str]:
-        return identifier.split("\n")
-
-    def id_to_string_tree(self, identifier: str) -> str:
-        string_tree_list = self.id_to_string_tree_list(identifier)
-        return self.assemble_string_tree(string_tree_list)
-
-    @staticmethod
-    def string_tree_list_to_id(string_tree_list: list[str]) -> str:
-        return "\n".join(string_tree_list)
-
-    def string_tree_to_id(self, string_tree: str) -> str:
-        raise NotImplementedError
-
-    def assemble_string_tree(self, string_tree_list: list[str]) -> str:
-        if self.fixed_macro_grammar:
-            string_tree = self.assemble_trees(
-                self.fixed_macro_string_tree,
-                string_tree_list,
-                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
-            )
-        else:
-            string_tree = self.assemble_trees(
-                string_tree_list[0],
-                string_tree_list[1:],
-                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
-            )
-        return string_tree
-
-    def __eq__(self, other):
-        return self.id == other.id
-
-    def reset(self):
-        self.clear_graph()
-        self.string_tree_list = []
-        self.string_tree = ""
-        self.nxTree = None
-        self._value = None
-        self._function_id = ""
-
-    def compose_functions(self, flatten_graph: bool = True):
-        return self._compose_functions(self.id, self.full_grammar, flatten_graph)
-
-    def unparse_tree(self, identifier: str, as_composition: bool = True):
-        return self._unparse_tree(identifier, self.full_grammar, as_composition)
-
-    @staticmethod
-    def get_full_grammar(grammars):
-        full_grammar = deepcopy(grammars[0])
-        rules = full_grammar.productions()
-        nonterminals = full_grammar.nonterminals
-        terminals = full_grammar.terminals
-        for g in grammars[1:]:
-            rules.extend(g.productions())
-            nonterminals.extend(g.nonterminals)
-            terminals.extend(g.terminals)
-        return full_grammar
-
-    def serialize(self):
-        return self.id
-
-    def load_from(self, data):
-        self.create_from_id(data)
-
-    @abstractmethod
-    def create_new_instance_from_id(self, child: str):
-        raise NotImplementedError
-
-    def get_dictionary(self) -> dict:
-        return {"graph_grammar": self.id}
-
-    def get_graphs(self):
-        return self.value
-
-    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
-        nxTree = self.from_stringTree_to_nxTree(string_tree, self.full_grammar)
-        return self.prune_tree(
-            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
-        )
-
-    def sample(self, user_priors: bool = False):
-        self.reset()
-        self.string_tree_list = [
+    @override
+    def sample(self, *, user_priors: bool = False) -> Self:
+        copy_self = self.clone()
+        copy_self.reset()
+        copy_self.string_tree_list = [
             grammar.sampler(1, user_priors=user_priors)[0]
             for grammar, number_of_motifs in zip(
-                self.grammars, self.number_of_repetitive_motifs_per_grammar
+                copy_self.grammars, copy_self.number_of_repetitive_motifs_per_grammar
             )
             for _ in range(number_of_motifs)
         ]
-        self.string_tree = self.assemble_string_tree(self.string_tree_list)
-        _ = self.value  # required for checking if graph is valid!
+        copy_self.string_tree = copy_self.assemble_string_tree(copy_self.string_tree_list)
+        _ = copy_self.value  # required for checking if graph is valid!
+        return copy_self
 
     @property
-    def value(self):
+    @override
+    def value(self) -> nx.DiGraph:
         if self._value is None:
             if self.fixed_macro_grammar:
                 self._value = []
@@ -716,19 +809,13 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                     nx.set_node_attributes(subgraph, new_node_labels, name="op_name")
         return self._value
 
-    def create_from_id(self, identifier: str):
-        self.reset()
-        self.id = identifier
-        self.string_tree_list = self.id_to_string_tree_list(self.id)
-        self.string_tree = self.id_to_string_tree(self.id)
-        _ = self.value  # required for checking if graph is valid!
-
+    @override
     def mutate(
         self,
-        parent: GraphGrammarMultipleRepetitive = None,
+        parent: Self | None = None,
         mutation_rate: float = 1.0,
         mutation_strategy: str = "bananas",
-    ):
+    ) -> Self:
         if parent is None:
             parent = self
 
@@ -762,11 +849,12 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
             self.string_tree_list_to_id(child_string_tree_list)
         )
 
+    @override
     def crossover(
         self,
-        parent1: GraphGrammarMultipleRepetitive,
-        parent2: GraphGrammarMultipleRepetitive = None,
-    ):
+        parent1: Self,
+        parent2: Self | None = None,
+    ) -> tuple[Self, Self]:
         if parent2 is None:
             parent2 = self
         children = repetitive_search_space_crossover(
@@ -788,14 +876,119 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
         )
         if all(not c for c in children):
             raise Exception("Cannot create crossover")
-        return [
+
+        return tuple(
             parent2.create_new_instance_from_id(
                 self.string_tree_list_to_id(
                     child[1:] if self.fixed_macro_grammar else child
                 )
             )
             for child in children
+        )
+
+    @override
+    def compute_prior(self, *, log: bool = True) -> float:
+        prior_probs = [
+            g.compute_prior(st, log=log)
+            for g, st in zip(self.grammars, self.string_tree_list)
         ]
+        if log:
+            return sum(prior_probs)
+        else:
+            return np.prod(prior_probs)
+
+    @property
+    def id(self) -> str:
+        if self._function_id is None or self._function_id == "":
+            if len(self.string_tree_list) == 0:
+                raise ValueError("Cannot infer identifier")
+            self._function_id = self.string_tree_list_to_id(self.string_tree_list)
+        return self._function_id
+
+    @id.setter
+    def id(self, value: str) -> None:
+        self._function_id = value
+
+    @staticmethod
+    def id_to_string_tree_list(identifier: str) -> list[str]:
+        return identifier.split("\n")
+
+    def id_to_string_tree(self, identifier: str) -> str:
+        string_tree_list = self.id_to_string_tree_list(identifier)
+        return self.assemble_string_tree(string_tree_list)
+
+    @staticmethod
+    def string_tree_list_to_id(string_tree_list: list[str]) -> str:
+        return "\n".join(string_tree_list)
+
+    def string_tree_to_id(self, string_tree: str) -> str:
+        raise NotImplementedError
+
+    def assemble_string_tree(self, string_tree_list: list[str]) -> str:
+        if self.fixed_macro_grammar:
+            string_tree = self.assemble_trees(
+                self.fixed_macro_string_tree,
+                string_tree_list,
+                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+            )
+        else:
+            string_tree = self.assemble_trees(
+                string_tree_list[0],
+                string_tree_list[1:],
+                terminal_to_sublanguage_map=self.terminal_to_sublanguage_map,
+            )
+        return string_tree
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, GraphGrammarMultipleRepetitive):
+            return NotImplemented
+        return self.id == other.id
+
+    def reset(self) -> None:
+        self.clear_graph()
+        self.string_tree_list = []
+        self.string_tree = ""
+        self.nxTree = None
+        self._value = None
+        self._function_id = ""
+
+    def compose_functions(self, flatten_graph: bool = True):
+        return self._compose_functions(self.id, self.full_grammar, flatten_graph)
+
+    def unparse_tree(self, identifier: str, as_composition: bool = True):
+        return self._unparse_tree(identifier, self.full_grammar, as_composition)
+
+    @staticmethod
+    def get_full_grammar(grammars):
+        full_grammar = deepcopy(grammars[0])
+        rules = full_grammar.productions()
+        nonterminals = full_grammar.nonterminals
+        terminals = full_grammar.terminals
+        for g in grammars[1:]:
+            rules.extend(g.productions())
+            nonterminals.extend(g.nonterminals)
+            terminals.extend(g.terminals)
+        return full_grammar
+
+    @abstractmethod
+    def create_new_instance_from_id(self, child: str):
+        raise NotImplementedError
+
+    def get_dictionary(self) -> dict[str, str]:
+        return {"graph_grammar": self.id}
+
+    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
+        nxTree = self.from_stringTree_to_nxTree(string_tree, self.full_grammar)
+        return self.prune_tree(
+            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
+        )
+
+    def create_from_id(self, identifier: str) -> None:
+        self.reset()
+        self.id = identifier
+        self.string_tree_list = self.id_to_string_tree_list(self.id)
+        self.string_tree = self.id_to_string_tree(self.id)
+        _ = self.value  # required for checking if graph is valid!
 
     @property
     def search_space_size(self) -> int:
@@ -853,13 +1046,3 @@ class GraphGrammarMultipleRepetitive(CoreGraphGrammar, Parameter):
                 // self.number_of_repetitive_motifs_per_grammar[1]
                 * motif_space_size
             )
-
-    def compute_prior(self, log: bool = True) -> float:
-        prior_probs = [
-            g.compute_prior(st, log=log)
-            for g, st in zip(self.grammars, self.string_tree_list)
-        ]
-        if log:
-            return sum(prior_probs)
-        else:
-            return np.prod(prior_probs)

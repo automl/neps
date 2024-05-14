@@ -1,36 +1,43 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, TYPE_CHECKING, Literal
 
-from typing_extensions import Literal
-
-from neps.utils.types import ConfigResult
+from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
-from ...search_spaces.hyperparameters.categorical import (
-    CATEGORICAL_CONFIDENCE_SCORES,
+from neps.search_spaces import (
     CategoricalParameter,
-)
-from ...search_spaces.hyperparameters.constant import ConstantParameter
-from ...search_spaces.hyperparameters.float import (
-    FLOAT_CONFIDENCE_SCORES,
+    ConstantParameter,
     FloatParameter,
+    IntegerParameter,
+    SearchSpace,
 )
-from ...search_spaces.hyperparameters.integer import IntegerParameter
-from ...search_spaces.search_space import SearchSpace
-from ..base_optimizer import BaseOptimizer
-from .acquisition_functions import AcquisitionMapping
-from .acquisition_functions.base_acquisition import BaseAcquisition
-from .acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
-from .acquisition_samplers import AcquisitionSamplerMapping
-from .acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from .kernels.get_kernels import get_kernels
-from .models import SurrogateModelMapping
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.bayesian_optimization.acquisition_functions import (
+    AcquisitionMapping,
+    DecayingPriorWeightedAcquisition,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers import (
+    AcquisitionSamplerMapping,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_kernels
+from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+if TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+
+# TODO(eddiebergman): Why not just include in the definition of the parameters.
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
+    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
+)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -152,9 +159,9 @@ class BayesianOptimization(BaseOptimizer):
             raise ValueError("No kernels are provided!")
 
         if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = self.pipeline_space.get_vectorial_dim()
+            surrogate_model_args["vectorial_features"] = (
+                self.pipeline_space.get_vectorial_dim()
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
@@ -180,7 +187,6 @@ class BayesianOptimization(BaseOptimizer):
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
         self._enhance_priors()
-        print()
 
     def _enhance_priors(self, confidence_score: dict = None) -> None:
         """Only applicable when priors are given along with a confidence.
@@ -267,7 +273,7 @@ class BayesianOptimization(BaseOptimizer):
                     ) from runtime_error
                 self._model_update_failed = True
 
-    def get_config_and_ids(self) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         if (
             self._num_train_x == 0
             and self.sample_default_first

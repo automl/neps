@@ -1,43 +1,72 @@
-from copy import deepcopy
-from typing import Union
+from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import scipy
 
-from ...search_spaces import CategoricalParameter, FloatParameter, IntegerParameter
-from ...search_spaces.search_space import SearchSpace
+from neps.search_spaces import (
+    CategoricalParameter,
+    ConstantParameter,
+    NumericalParameter,
+    Parameter,
+    GraphParameter,
+    SearchSpace,
+)
 
 
 def update_fidelity(config, fidelity):
-    config.fidelity.value = fidelity
+    config.fidelity.set_value(fidelity)
     return config
 
 
+# TODO(eddiebergman): Previously this just ignored graphs,
+# now it will likely raise if it encounters one...
 def local_mutation(
-    config: SearchSpace, std: float = 0.25, mutation_rate: float = 0.5, patience: int = 50
+    config: SearchSpace,
+    std: float = 0.25,
+    mutation_rate: float = 0.5,
+    patience: int = 50,
+    mutate_categoricals: bool = True,
+    mutate_graphs: bool = True,
 ) -> SearchSpace:
     """Performs a local search by mutating randomly chosen hyperparameters."""
     for _ in range(patience):
-        new_config = deepcopy(config)
-        config_hp_names = list(new_config.keys())
-        for hp_name in config_hp_names:
-            hp = new_config.get(hp_name)
-            if hp.is_fidelity or np.random.uniform() > mutation_rate:
-                continue
-            kwargs = {"mutation_strategy": "local_search"}
-            if isinstance(hp, CategoricalParameter):
-                confidences = {hp.value: len(hp.choices)}
-                kwargs["confidences"] = confidences
-            elif isinstance(hp, IntegerParameter) or isinstance(hp, FloatParameter):
-                kwargs["std"] = std
-            _val = hp.mutate(**kwargs).value
-            hp.value = _val
-        if not config.is_equal_value(new_config, include_fidelity=False):
-            # if the new config doesn't differ from the original config then regenerate
-            break
+        new_config: dict[str, Parameter] = {}
 
-    return new_config
+        for hp_name, hp in config.items():
+
+            if hp.is_fidelity or np.random.uniform() > mutation_rate:
+                new_config[hp_name] = hp.clone()
+
+            elif isinstance(hp, CategoricalParameter):
+                if mutate_categoricals:
+                    new_config[hp_name] = hp.mutate(mutation_strategy="local_search")
+                else:
+                    new_config[hp_name] = hp.clone()
+
+            elif isinstance(hp, GraphParameter):
+                if mutate_graphs:
+                    new_config[hp_name] = hp.mutate(mutation_strategy="bananas")
+                else:
+                    new_config[hp_name] = hp.clone()
+
+            elif isinstance(hp, NumericalParameter):
+                new_config[hp_name] = hp.mutate(
+                    mutation_strategy="local_search",
+                    std=std,
+                )
+            elif isinstance(hp, ConstantParameter):
+                new_config[hp_name] = hp.clone()
+
+            else:
+                raise NotImplementedError(f"Unknown hp type for {hp_name}: {type(hp)}")
+
+        # if the new config doesn't differ from the original config then regenerate
+        _new_ss = SearchSpace(**new_config)
+        if not config.is_equal_value(_new_ss, include_fidelity=False):
+            return _new_ss
+
+    return config.clone()
 
 
 def custom_crossover(
@@ -52,23 +81,23 @@ def custom_crossover(
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
     for _ in range(patience):
-        child_config = deepcopy(config1)
+
+        child_config = config1.clone()
         for key, hyperparameter in config1.items():
             if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
-                # crossing over config2 values into config1
-                child_config[key].value = config2[key].value
+                child_config[key].set_value(config2[key].value)
+
         if not child_config.is_equal_value(config1):
-            # breaks and returns only if the generated config is not the same
-            # thus requiring at least 1 HP to be crossed-over
-            break
-    else:
-        # fail safe check to handle edge cases where config1=config2 or
-        # config1 extremely local to config2 such that crossover fails to
-        # generate new config in a discrete (sub-)space
-        child_config = config1.sample(
-            patience=patience, user_priors=False, ignore_fidelity=True
-        )
-    return child_config
+            return SearchSpace(**child_config)
+
+    # fail safe check to handle edge cases where config1=config2 or
+    # config1 extremely local to config2 such that crossover fails to
+    # generate new config in a discrete (sub-)space
+    return config1.sample(
+        patience=patience,
+        user_priors=False,
+        ignore_fidelity=True,
+    )
 
 
 def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
@@ -99,15 +128,17 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
 
 
 def compute_scores(
-    config: SearchSpace, prior: SearchSpace, inc: SearchSpace
-) -> Union[float, float]:
+    config: SearchSpace,
+    prior: SearchSpace,
+    inc: SearchSpace,
+) -> tuple[float, float]:
     """Scores the config by a Gaussian around the prior and the incumbent."""
-    _prior = deepcopy(prior)
+    _prior = prior.clone()
     _prior.set_hyperparameters_from_dict(config.hp_values(), defaults=False)
     # compute the score of config if it was sampled from the prior (as the default)
     prior_score = _prior.compute_prior()
 
-    _inc = deepcopy(inc)
+    _inc = inc.clone()
     # setting the default to be the incumbent
     _inc.set_defaults_to_current_values()
     _inc.set_hyperparameters_from_dict(config.hp_values(), defaults=False)

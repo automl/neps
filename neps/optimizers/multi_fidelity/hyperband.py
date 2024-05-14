@@ -1,5 +1,3 @@
-# type: ignore
-
 from __future__ import annotations
 
 import typing
@@ -9,23 +7,26 @@ from typing import Any
 import numpy as np
 from typing_extensions import Literal
 
-from neps.utils.types import ConfigResult
-from ...search_spaces.search_space import SearchSpace
-from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+from neps.utils.types import ConfigResult, RawConfig
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
     BaseAcquisition,
 )
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from .mf_bo import MFBOBase
-from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
-from .sampling_policy import (
+from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
+from neps.optimizers.multi_fidelity.promotion_policy import (
+    AsyncPromotionPolicy,
+    SyncPromotionPolicy,
+)
+from neps.optimizers.multi_fidelity.sampling_policy import (
     EnsemblePolicy,
     FixedPriorPolicy,
     ModelPolicy,
     RandomUniformPolicy,
 )
-from .successive_halving import (
+from neps.optimizers.multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     SuccessiveHalving,
     SuccessiveHalvingBase,
@@ -103,7 +104,6 @@ class HyperbandBase(SuccessiveHalvingBase):
         bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
         bracket.observed_configs = self.observed_configs.copy()
 
-
     def clear_old_brackets(self):
         """Enforces reset at each new bracket."""
         # unlike synchronous SH, the state is not reset at each rung and a configuration
@@ -132,9 +132,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -215,9 +213,7 @@ class Hyperband(HyperbandBase):
         sh_bracket._handle_promotions()
         # self._handle_promotion() need not be called as it is called by load_results()
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -396,16 +392,13 @@ class AsynchronousHyperband(HyperbandBase):
         # Since in this version, we see the full SH rung, we fix the K to max_rung
         K = self.max_rung
         bracket_probs = [
-            self.eta ** (K - s) * (K + 1) / (K - s + 1)
-            for s in range(self.max_rung + 1)
+            self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
         bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
         return bracket_next
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:

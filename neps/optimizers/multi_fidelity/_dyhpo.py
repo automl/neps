@@ -1,25 +1,26 @@
-# mypy: disable-error-code = assignment
+from __future__ import annotations
+
 from typing import Any, List, Union
 
 import numpy as np
 
-from neps.utils.types import ConfigResult
-from ...search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
-from ..base_optimizer import BaseOptimizer
-from ..bayesian_optimization.acquisition_functions.base_acquisition import (
+from neps.utils.types import ConfigResult, RawConfig
+from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
     BaseAcquisition,
 )
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from .promotion_policy import PromotionPolicy
-from .sampling_policy import (
+from neps.optimizers.multi_fidelity.promotion_policy import PromotionPolicy
+from neps.optimizers.multi_fidelity.sampling_policy import (
     BaseDynamicModelPolicy,
     ModelPolicy,
     RandomPromotionDynamicPolicy,
     SamplingPolicy,
 )
-from .utils import MFObservedData
+from neps.optimizers.multi_fidelity.utils import MFObservedData
 
 
 class MFEIBO(BaseOptimizer):
@@ -279,9 +280,7 @@ class MFEIBO(BaseOptimizer):
         ID of the promoted configuration, else return None.
         """
         if promotion_type == "model":
-            config_id = self.model_policy.sample(
-                is_promotion=True, **self.sampling_args
-            )
+            config_id = self.model_policy.sample(is_promotion=True, **self.sampling_args)
         elif promotion_type == "policy":
             config_id = self.promotion_policy.retrieve_promotions()
         elif promotion_type is None:
@@ -322,9 +321,7 @@ class MFEIBO(BaseOptimizer):
 
         return config
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, Union[str, None]]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, Union[str, None]]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -368,7 +365,7 @@ class MFEIBO(BaseOptimizer):
                     if np.less_equal(
                         self.get_budget_value(next_budget), config.fidelity.upper
                     ):
-                        config.fidelity.value = self.get_budget_value(next_budget)
+                        config.fidelity.set_value(self.get_budget_value(next_budget))
                         _config_id = promoted_config_id
                         fidelity_value_set = True
                         break
@@ -396,7 +393,7 @@ class MFEIBO(BaseOptimizer):
                 )
 
         if not fidelity_value_set:
-            config.fidelity.value = self.get_budget_value(0)
+            config.fidelity.set_value(self.get_budget_value(0))
 
         if _config_id is None:
             _config_id = (

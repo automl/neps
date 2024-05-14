@@ -10,26 +10,28 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Literal
 
-from neps.utils.types import ConfigResult
-from ...search_spaces.hyperparameters.categorical import (
-    CATEGORICAL_CONFIDENCE_SCORES,
+from neps.utils.types import ConfigResult, RawConfig
+from neps.search_spaces import (
     CategoricalParameter,
-)
-from ...search_spaces.hyperparameters.constant import ConstantParameter
-from ...search_spaces.hyperparameters.float import (
-    FLOAT_CONFIDENCE_SCORES,
+    ConstantParameter,
     FloatParameter,
+    IntegerParameter,
+    SearchSpace
 )
-from ...search_spaces.hyperparameters.integer import IntegerParameter
-from ...search_spaces.search_space import SearchSpace
-from ..base_optimizer import BaseOptimizer
-from .promotion_policy import AsyncPromotionPolicy, SyncPromotionPolicy
-from .sampling_policy import FixedPriorPolicy, RandomUniformPolicy
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.multi_fidelity.promotion_policy import (
+    AsyncPromotionPolicy,
+    SyncPromotionPolicy,
+)
+from neps.optimizers.multi_fidelity.sampling_policy import (
+    FixedPriorPolicy,
+    RandomUniformPolicy,
+)
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = FLOAT_CONFIDENCE_SCORES.copy()
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = CATEGORICAL_CONFIDENCE_SCORES.copy()
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(CategoricalParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -176,9 +178,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         assert s <= self.stopping_rate_limit
         new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
-            np.floor(
-                np.log(self.max_budget / new_min_budget) / np.log(self.eta)
-            ).astype(int)
+            np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
+                int
+            )
             + 1
         )
         _max_budget = self.max_budget
@@ -197,9 +199,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         assert s <= self.stopping_rate_limit
         new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
-            np.floor(
-                np.log(self.max_budget / new_min_budget) / np.log(self.eta)
-            ).astype(int)
+            np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
+                int
+            )
             + 1
         )
         s_max = self.stopping_rate_limit + 1
@@ -307,7 +309,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
 
-
     def clear_old_brackets(self):
         return
 
@@ -376,9 +377,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return config
 
     def _generate_new_config_id(self):
-        return (
-            self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
-        )
+        return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
 
     def get_default_configuration(self):
         pass
@@ -396,9 +395,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 break
         return rung_to_promote
 
-    def get_config_and_ids(
-        self,
-    ) -> tuple[SearchSpace, str, str | None]:
+    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -408,10 +405,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
         if rung_to_promote is not None:
             # promotes the first recorded promotable config in the argsort-ed rung
             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
-            config = deepcopy(row["config"])
+            config = row["config"].clone()
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
-            config.fidelity.value = self.rung_map[rung]
+            config.fidelity.set_value(self.rung_map[rung])
             # updating config IDs
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
@@ -426,9 +423,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 if self.sample_default_at_target:
                     # sets the default config to be evaluated at the target fidelity
                     rung_id = self.max_rung
-                    self.logger.info(
-                        "Next config will be evaluated at target fidelity."
-                    )
+                    self.logger.info("Next config will be evaluated at target fidelity.")
                 self.logger.info("Sampling the default configuration...")
                 config = self.pipeline_space.sample_default_configuration()
 
@@ -442,7 +437,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 config = self.sample_new_config(rung=rung_id)
 
             fidelity_value = self.rung_map[rung_id]
-            config.fidelity.value = fidelity_value
+            config.fidelity.set_value(fidelity_value)
 
             previous_config_id = None
             config_id = f"{self._generate_new_config_id()}_{rung_id}"
@@ -509,6 +504,9 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         # iterates over the different SH brackets which span start-end by index
         while end <= len(self.observed_configs):
             # for the SH bracket in start-end, calculate total SH budget used
+
+            # TODO(eddiebergman): Not idea what the type is of the stuff in the deepcopy
+            # but should work on removing the deepcopy
             bracket_budget_used = self._calc_budget_used_in_bracket(
                 deepcopy(self.observed_configs.rung.values[start:end])
             )
