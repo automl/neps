@@ -5,6 +5,7 @@ import yaml
 from neps.optimizers.base_optimizer import BaseOptimizer
 from typing import Callable, Optional, Dict, Tuple, List, Any
 import inspect
+from neps.search_spaces.search_space import pipeline_space_from_yaml
 
 logger = logging.getLogger("neps")
 
@@ -189,9 +190,9 @@ def handle_special_argument_cases(settings: Dict, special_configs: Dict) -> None
     """
     # Load the value of each key from a dictionary specifying "path" and "name".
     process_config_key(
-        settings, special_configs, [PIPELINE_SPACE, SEARCHER, RUN_PIPELINE]
+        settings, special_configs, [SEARCHER, RUN_PIPELINE]
     )
-
+    process_pipeline_space(PIPELINE_SPACE, special_configs, settings)
     if special_configs[SEARCHER_KWARGS] is not None:
         configs = {}
         # Check if values of keys is not None and then add the dict to settings
@@ -234,6 +235,12 @@ def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> Non
             elif isinstance(value, dict):
                 # dict that should contain 'path' and 'name' for loading value
                 # (function, dict, class)
+                expected_keys = {"path", "name"}
+                # Convert the dictionary's keys to a set and compare
+                actual_keys = set(value.keys())
+                if expected_keys != actual_keys:
+                    settings[key] = value
+                    continue
                 try:
                     func = load_and_return_object(value["path"], value["name"], key)
                     settings[key] = func
@@ -254,6 +261,32 @@ def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> Non
                         f"Value for {key} must be a string or a dictionary, "
                         f"but got {type(value).__name__}."
                     )
+
+
+def process_pipeline_space(key, special_configs, settings):
+    if special_configs.get(key) is not None:
+        pipeline_space = special_configs[key]
+        if isinstance(pipeline_space, dict):
+            # determine if dict contains path_loading or the actual search space
+            expected_keys = {"path", "name"}
+            actual_keys = set(pipeline_space.keys())
+            if expected_keys != actual_keys:
+                # pipeline_space directly defined in run_args yaml
+                processed_pipeline_space = pipeline_space_from_yaml(pipeline_space)
+            else:
+                # pipeline_space stored in a python dict, not using a yaml
+                processed_pipeline_space = load_and_return_object(pipeline_space["path"],
+                                                             pipeline_space[
+                    "name"], PIPELINE_SPACE)
+        elif isinstance(pipeline_space, str):
+            # load yaml from path
+            processed_pipeline_space = pipeline_space_from_yaml(pipeline_space)
+        else:
+            raise TypeError(
+                f"Value for {PIPELINE_SPACE} must be a string or a dictionary, "
+                f"but got {type(pipeline_space).__name__}."
+            )
+        settings[key] = processed_pipeline_space
 
 
 def load_and_return_object(module_path: str, object_name: str, key: str) -> object:

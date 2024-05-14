@@ -67,8 +67,7 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(
-    yaml_file_path: str | Path,
+def pipeline_space_from_yaml(config: str | Path | dict,
 ) -> dict[
     str, FloatParameter | IntegerParameter | CategoricalParameter | ConstantParameter
 ]:
@@ -109,20 +108,20 @@ def pipeline_space_from_yaml(
         pipeline_space = pipeline_space_from_yaml('config.yaml')
     """
     try:
-        # try to load the YAML file
-        try:
-            with open(yaml_file_path) as file:
-                config = yaml.safe_load(file)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(
-                f"Unable to find the specified file for 'pipeline_space' at "
-                f"'{yaml_file_path}'. Please verify the path specified in the "
-                f"'pipeline_space' argument and try again."
-            ) from e
-        except yaml.YAMLError as e:
-            raise ValueError(
-                f"The file at {str(yaml_file_path)} is not a valid YAML file."
-            ) from e
+        if isinstance(config, str):
+            try:
+                with open(config) as file:
+                    config = yaml.safe_load(file)
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"Unable to find the specified file for 'pipeline_space' at "
+                    f"'{config}'. Please verify the path specified in the "
+                    f"'pipeline_space' argument and try again."
+                ) from e
+            except yaml.YAMLError as e:
+                raise ValueError(
+                    f"The file at {config} is not a valid YAML file."
+                ) from e
 
         # Initialize the pipeline space
         pipeline_space = {}

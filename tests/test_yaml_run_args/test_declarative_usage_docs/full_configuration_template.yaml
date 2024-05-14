@@ -1,6 +1,6 @@
 # Full Configuration Template for NePS
 run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the Python file that contains your run_pipeline
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py  # Path to the Python file that contains your run_pipeline
   name: run_pipeline                  # Name of your run_pipeline function within this file
 
 pipeline_space:
@@ -10,7 +10,8 @@ pipeline_space:
     log: True
   optimizer:
     choices: [adam, sgd, adamw]
-  epochs: 50
+  epochs:
+    value: 50
 
 root_directory: path/to/results       # Directory for result storage
 max_evaluations_total: 20             # Budget
