@@ -90,7 +90,9 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(config: str | Path | dict) -> dict[
+def pipeline_space_from_yaml(
+    config: str | Path | dict,
+) -> dict[
     str, FloatParameter | IntegerParameter | CategoricalParameter | ConstantParameter
 ]:
     """Reads configuration details from a YAML file and constructs a pipeline space
