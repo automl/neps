@@ -230,17 +230,10 @@ def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> Non
         if special_configs.get(key) is not None:
             value = special_configs[key]
             if isinstance(value, str) and key != RUN_PIPELINE:
-                # pipeline_space and searcher can also be a string
+                # searcher can be a string
                 settings[key] = value
             elif isinstance(value, dict):
                 # dict that should contain 'path' and 'name' for loading value
-                # (function, dict, class)
-                expected_keys = {"path", "name"}
-                # Convert the dictionary's keys to a set and compare
-                actual_keys = set(value.keys())
-                if expected_keys != actual_keys:
-                    settings[key] = value
-                    continue
                 try:
                     func = load_and_return_object(value["path"], value["name"], key)
                     settings[key] = func
@@ -267,6 +260,8 @@ def process_pipeline_space(key, special_configs, settings):
     if special_configs.get(key) is not None:
         pipeline_space = special_configs[key]
         if isinstance(pipeline_space, dict):
+            #TODO: was ist wenn ein argument fehlt
+
             # determine if dict contains path_loading or the actual search space
             expected_keys = {"path", "name"}
             actual_keys = set(pipeline_space.keys())

@@ -1,4 +1,4 @@
-pipeline_space: "/path"
+pipeline_space: "tests/test_yaml_run_args/pipeline_space.yaml"
 root_directory: "test_yaml"
 
 budget:

@@ -1,7 +1,7 @@
 run_pipeline:
     path: "tests/test_yaml_run_args/test_yaml_run_args" # check if without .py also works
     name: "run_pipeline"
-pipeline_space: "pipeline_space.yaml"
+pipeline_space: "tests/test_yaml_run_args/pipeline_space.yaml"
 root_directory: "test_yaml"
 max_evaluations_total: 20
 max_cost_total: 4.2

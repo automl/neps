@@ -90,9 +90,7 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(
-    config: str | Path | dict,
-) -> dict[
+def pipeline_space_from_yaml(config: str | Path | dict) -> dict[
     str, FloatParameter | IntegerParameter | CategoricalParameter | ConstantParameter
 ]:
     """Reads configuration details from a YAML file and constructs a pipeline space
@@ -103,7 +101,7 @@ def pipeline_space_from_yaml(
     maps parameter names to their respective configuration objects.
 
     Args:
-        yaml_file_path (str | Path): Path to the YAML file containing parameter
+        config (str | Path): Path to the YAML file containing parameter
         configurations.
 
     Returns:
@@ -130,22 +128,23 @@ def pipeline_space_from_yaml(
         To use this function with a YAML file 'config.yaml', you can do:
         pipeline_space = pipeline_space_from_yaml('config.yaml')
     """
-    yaml_file_path = Path(yaml_file_path)
     try:
-        # try to load the YAML file
-        try:
-            with yaml_file_path.open("r") as file:
-                config = yaml.safe_load(file)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(
-                f"Unable to find the specified file for 'pipeline_space' at "
-                f"'{yaml_file_path}'. Please verify the path specified in the "
-                f"'pipeline_space' argument and try again."
-            ) from e
-        except yaml.YAMLError as e:
-            raise ValueError(
-                f"The file at {yaml_file_path!s} is not a valid YAML file."
-            ) from e
+        if isinstance(config, (str, Path)):
+            # try to load the YAML file
+            try:
+                yaml_file_path = Path(config)
+                with yaml_file_path.open("r") as file:
+                    config = yaml.safe_load(file)
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"Unable to find the specified file for 'pipeline_space' at "
+                    f"'{yaml_file_path}'. Please verify the path specified in the "
+                    f"'pipeline_space' argument and try again."
+                ) from e
+            except yaml.YAMLError as e:
+                raise ValueError(
+                    f"The file at {yaml_file_path!s} is not a valid YAML file."
+                ) from e
 
         # Initialize the pipeline space
         pipeline_space: dict[str, Parameter] = {}
