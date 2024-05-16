@@ -59,50 +59,96 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
 
 ## Different Use Cases
 ### Customizing neps optimizer
-```yaml
---8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"
-```
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"
+    ```
+
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
 # TODO
 link here optimizer page, regarding arguments of optimizers
 
 
 ### Load your own optimizer
-```yaml
---8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
-```
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
+    ```
+
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
 ### How to define hooks?
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/defining_hooks.yaml"
+    ```
 
-```yaml
---8<-- "docs/doc_yamls/defining_hooks.yaml"
-```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
 ### What if your search space is big?
-```yaml
---8<-- "docs/doc_yamls/outsourcing_pipeline_space.yaml"
-```
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/outsourcing_pipeline_space.yaml"
+    ```
 
-pipeline_space.yaml
-```yaml
---8<-- "docs/doc_yamls/pipeline_space.yaml"
-```
+=== "pipeline_space.yaml"
+    ```yaml
+    --8<-- "docs/doc_yamls/pipeline_space.yaml"
+    ```
+
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
 
 ### If you experimenting a lot with different optimizer settings
-```yaml
---8<-- "docs/doc_yamls/outsourcing_optimizer.yaml"
-```
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/outsourcing_optimizer.yaml"
+    ```
 
-searcher_setup.yaml:
-```yaml
---8<-- "docs/doc_yamls/set_up_optimizer.yaml"
-```
+=== "searcher_setup.yaml"
+    ```yaml
+    --8<-- "docs/doc_yamls/set_up_optimizer.yaml"
+    ```
+
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
 
 ### Architecture search space (Loading Dict)
-```yaml
---8<-- "docs/doc_yamls/loading_pipeline_space_dict.yaml"
-```
-search_space.py
-```python
-search_space = {}
-```
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/loading_pipeline_space_dict.yaml"
+    ```
+
+=== "search_space.py"
+    ```python
+    search_space = {}
+    ```
+
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
 ### Multi-fidelity
 
 ### Prior-Band
