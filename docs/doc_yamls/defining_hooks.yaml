@@ -1,0 +1,20 @@
+# Basic NEPS Configuration Example
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: example_run                   # Function name within the file
+
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: True  # Log scale for learning rate
+  optimizer:
+    choices: [adam, sgd, adamw]
+  epochs: 50
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20               # Budget
+
+pre_load_hooks:
+    hook1: path/to/your/hooks.py # (function_name: Path to the function's file)
+    hook2: path/to/your/hooks.py # Different function name from the same file source

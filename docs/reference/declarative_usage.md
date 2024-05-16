@@ -9,7 +9,7 @@ This approach simplifies sharing, reproducing, and modifying configurations.
 Below is a straightforward YAML configuration example for NePS covering the required arguments.
 === "config.yaml"
     ```yaml
-    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example.yaml"
+    --8<-- "docs/doc_yamls/simple_example.yaml"
     ```
 
 === "run_neps.py"
@@ -26,7 +26,7 @@ In addition to setting experimental parameters via YAML, this configuration exam
 and its location, enabling more flexible project structures.
 === "config.yaml"
     ```yaml
-    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example_including_run_pipeline.yaml"
+    --8<-- "docs/doc_yamls/simple_example_including_run_pipeline.yaml"
     ```
 === "run_neps.py"
     ```python
@@ -40,7 +40,7 @@ This example showcases a more comprehensive YAML configuration, which includes n
 but also advanced settings for more complex setups:
 === "config.yaml"
     ```yaml
-    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/full_configuration_template.yaml"
+    --8<-- "docs/doc_yamls/full_configuration_template.yaml"
     ```
 
 === "run_neps.py"
@@ -60,7 +60,7 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
 ## Different Use Cases
 ### Customizing neps optimizer
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/customizing_neps_optimizer.yaml"
+--8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"
 ```
 # TODO
 link here optimizer page, regarding arguments of optimizers
@@ -68,36 +68,36 @@ link here optimizer page, regarding arguments of optimizers
 
 ### Load your own optimizer
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/loading_own_optimizer.yaml"
+--8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
 ```
 ### How to define hooks?
 
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/defining_hooks.yaml"
+--8<-- "docs/doc_yamls/defining_hooks.yaml"
 ```
 ### What if your search space is big?
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/outsourcing_pipeline_space.yaml"
+--8<-- "docs/doc_yamls/outsourcing_pipeline_space.yaml"
 ```
 
 pipeline_space.yaml
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/pipeline_space.yaml"
+--8<-- "docs/doc_yamls/pipeline_space.yaml"
 ```
 
 ### If you experimenting a lot with different optimizer settings
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/outsourcing_optimizer.yaml"
+--8<-- "docs/doc_yamls/outsourcing_optimizer.yaml"
 ```
 
 searcher_setup.yaml:
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/set_up_optimizer.yaml"
+--8<-- "docs/doc_yamls/set_up_optimizer.yaml"
 ```
 
 ### Architecture search space (Loading Dict)
 ```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/loading_pipeline_space_dict.yaml"
+--8<-- "docs/doc_yamls/loading_pipeline_space_dict.yaml"
 ```
 search_space.py
 ```python
