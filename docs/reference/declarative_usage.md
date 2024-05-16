@@ -37,7 +37,7 @@ and its location, enabling more flexible project structures.
 
 #### Extended Configuration
 This example showcases a more comprehensive YAML configuration, which includes not only the essential parameters
-but also advanced settings for more complex setups:
+but also advanced settings for more complex setups.
 === "config.yaml"
     ```yaml
     --8<-- "docs/doc_yamls/full_configuration_template.yaml"
@@ -59,6 +59,7 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
 
 ## Different Use Cases
 ### Customizing neps optimizer
+Customize an internal NePS optimizer by specifying its parameters directly in the `config.yaml`.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"
@@ -70,11 +71,12 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-# TODO
-link here optimizer page, regarding arguments of optimizers
+For detailed information about the available optimizers and their parameters, please visit the [optimizer page](optimizers.md#list-available-searching-algorithms)
 
 
-### Load your own optimizer
+
+### Integrate Your Own Optimizer
+You can also load your own custom optimizer and change its arguments in `config.yaml`.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
@@ -86,7 +88,8 @@ link here optimizer page, regarding arguments of optimizers
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-### How to define hooks?
+### Defining Hooks
+Define hooks in your YAML configuration to extend the functionality of your experiment.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/defining_hooks.yaml"
@@ -98,7 +101,9 @@ link here optimizer page, regarding arguments of optimizers
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-### What if your search space is big?
+### Managing Large Search Spaces
+Manage large search spaces by outsourcing the pipeline space configuration in a separate YAML file or for keeping track
+of your experiments.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/outsourcing_pipeline_space.yaml"
@@ -115,7 +120,8 @@ link here optimizer page, regarding arguments of optimizers
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-### If you experimenting a lot with different optimizer settings
+### Experimenting with Different Optimizer Settings
+Simplify experiments with multiple optimizer settings by outsourcing the optimizer configuration.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/outsourcing_optimizer.yaml"
@@ -132,7 +138,9 @@ link here optimizer page, regarding arguments of optimizers
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-### Architecture search space (Loading Dict)
+### Using Architecture Search Spaces
+Since the option for defining the search space via YAML is limited to HPO, grammar-based search spaces or architecture
+search spaces must be loaded via a dictionary, which is then referenced in the `config.yaml`.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/loading_pipeline_space_dict.yaml"
@@ -149,8 +157,8 @@ link here optimizer page, regarding arguments of optimizers
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-### Multi-fidelity
+### Enable Multi-fidelity
 
-### Prior-Band
+### Utilizing Prior-Band Method
 
 
