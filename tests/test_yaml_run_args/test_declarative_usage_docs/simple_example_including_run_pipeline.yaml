@@ -1,8 +1,7 @@
 # Extended NePS Configuration Example with External Pipeline Function
 run_pipeline:
-  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py  # Path to the Python file
-  # that contains your run_pipeline
-  name: run_pipeline                  # Name of your run_pipeline function within this file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+  name: run_pipeline
 
 pipeline_space:
   learning_rate:
@@ -11,8 +10,7 @@ pipeline_space:
     log: True
   optimizer:
     choices: [adam, sgd, adamw]
-  epochs:
-    value: 50
+  epochs: 50
 
 root_directory: path/to/results       # Directory for result storage
 max_evaluations_total: 20             # Budget

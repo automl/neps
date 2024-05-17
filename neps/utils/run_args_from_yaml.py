@@ -260,7 +260,7 @@ def process_pipeline_space(key, special_configs, settings):
     if special_configs.get(key) is not None:
         pipeline_space = special_configs[key]
         if isinstance(pipeline_space, dict):
-            #TODO: was ist wenn ein argument fehlt
+            # TODO: was ist wenn ein argument fehlt
 
             # determine if dict contains path_loading or the actual search space
             expected_keys = {"path", "name"}

@@ -8,5 +8,4 @@ learning_rate:
   log: False
 optimizer:
   choices: ["a", "b", "c"]
-batch_size:
-  value: 64
+batch_size: 64

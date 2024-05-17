@@ -27,7 +27,11 @@ from neps.search_spaces.hyperparameters import (
 from neps.search_spaces.parameter import MutatableParameter, Parameter, ParameterWithPrior
 from neps.search_spaces.yaml_search_space_utils import (
     SearchSpaceFromYamlFileError,
-    deduce_and_validate_param_type,
+    deduce_type,
+    formatting_constant,
+    validate_categorical_parameter,
+    validate_float_parameter,
+    validate_integer_parameter,
 )
 from neps.utils.types import NotSet, _NotSet
 
@@ -90,11 +94,7 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(
-    config: str | Path | dict,
-) -> dict[
-    str, FloatParameter | IntegerParameter | CategoricalParameter | ConstantParameter
-]:
+def pipeline_space_from_yaml(config: str | Path | dict) -> dict[str, Parameter]:
     """Reads configuration details from a YAML file and constructs a pipeline space
     dictionary.
 
@@ -137,6 +137,12 @@ def pipeline_space_from_yaml(
                 yaml_file_path = Path(config)
                 with yaml_file_path.open("r") as file:
                     config = yaml.safe_load(file)
+                if not isinstance(config, dict):
+                    raise ValueError(
+                        "The loaded pipeline_space is not a valid dictionary. Please "
+                        "ensure that you use a proper structure. See the documentation "
+                        "for more details."
+                    )
             except FileNotFoundError as e:
                 raise FileNotFoundError(
                     f"Unable to find the specified file for 'pipeline_space' at "
@@ -154,48 +160,34 @@ def pipeline_space_from_yaml(
         # Iterate over the items in the YAML configuration
         for name, details in config.items():
             # get parameter type
-            param_type = deduce_and_validate_param_type(name, details)
+            param_type = deduce_type(name, details)
 
             # init parameter by checking type
             if param_type in ("int", "integer"):
                 # Integer Parameter
-                pipeline_space[name] = IntegerParameter(
-                    lower=details["lower"],
-                    upper=details["upper"],
-                    log=details.get("log", False),
-                    is_fidelity=details.get("is_fidelity", False),
-                    default=details.get("default", None),
-                    default_confidence=details.get("default_confidence", "low"),
-                )
+                formatted_details = validate_integer_parameter(name, details)
+                pipeline_space[name] = IntegerParameter(**formatted_details)
             elif param_type == "float":
                 # Float Parameter
-                pipeline_space[name] = FloatParameter(
-                    lower=details["lower"],
-                    upper=details["upper"],
-                    log=details.get("log", False),
-                    is_fidelity=details.get("is_fidelity", False),
-                    default=details.get("default", None),
-                    default_confidence=details.get("default_confidence", "low"),
-                )
+                formatted_details = validate_float_parameter(name, details)
+                pipeline_space[name] = FloatParameter(**formatted_details)
             elif param_type in ("cat", "categorical"):
                 # Categorical parameter
-                pipeline_space[name] = CategoricalParameter(
-                    choices=details["choices"],
-                    default=details.get("default", None),
-                    default_confidence=details.get("default_confidence", "low"),
-                )
-            elif param_type in ("const", "constant"):
+                formatted_details = validate_categorical_parameter(name, details)
+                pipeline_space[name] = CategoricalParameter(**formatted_details)
+            elif param_type == "const":
                 # Constant parameter
-                pipeline_space[name] = ConstantParameter(value=details["value"])
+                formatted_details = formatting_constant(name, details)
+                pipeline_space[name] = ConstantParameter(formatted_details)
             else:
                 # Handle unknown parameter type
                 raise TypeError(
-                    f"Unsupported parameter type{details['type']} for '{name}'.\n"
+                    f"Unsupported parameter with details: {details} for '{name}'.\n"
                     f"Supported Types for argument type are:\n"
                     "For integer parameter: int, integer\n"
                     "For float parameter: float\n"
                     "For categorical parameter: cat, categorical\n"
-                    "For constant parameter: const, constant\n"
+                    "Constant parameter was not detect\n"
                 )
     except (KeyError, TypeError, ValueError, FileNotFoundError) as e:
         raise SearchSpaceFromYamlFileError(e) from e

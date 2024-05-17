@@ -6,5 +6,4 @@ epochs:
   upper: 10
 optimizer:
   choices: [adam, sgd, adamw]
-batch_size:
-  value: 64
+batch_size: 64

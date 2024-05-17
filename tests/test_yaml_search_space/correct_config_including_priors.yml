@@ -16,6 +16,4 @@ optimizer:
   default: 90E-3
   default_confidence: "medium"
 
-dropout_rate:
-  value: 1E3
-  is_fidelity: true
+dropout_rate: 1E3
