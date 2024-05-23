@@ -109,9 +109,7 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
       type: categorical
       choices: ["adam", "sgd", "rmsprop"]
 
-    dropout_rate:
-      type: constant
-      value: 0.5
+    dropout_rate: 0.5
     ```
 
 === "`run.py`"
