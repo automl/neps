@@ -9,7 +9,6 @@ num_epochs:
   lower: 3
   upper: 30
   is_fidelity: True
-  default: 1e1
 
 optimizer:
   choices: [adam, 90E-3, rmsprop]

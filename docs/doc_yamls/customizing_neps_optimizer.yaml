@@ -1,6 +1,6 @@
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_run                   # Function name within the file
+  name: example_pipeline              # Function name within the file
 
 pipeline_space:
   learning_rate:
@@ -19,10 +19,6 @@ searcher:
   initial_design_size: 7
   surrogate_model: gp
   acquisition: EI
-  log_prior_weighted: false
   acquisition_sampler: random
   random_interleave_prob: 0.1
-  disable_priors: false
-  prior_confidence: high
-  sample_default_first: false
 

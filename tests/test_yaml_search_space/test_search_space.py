@@ -45,7 +45,7 @@ def test_correct_including_priors_yaml_file():
     assert isinstance(pipeline_space, dict)
     float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False, default=3.3e-2, default_confidence="high")
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
-    int1 = IntegerParameter(3, 30, log=False, is_fidelity=True, default=10)
+    int1 = IntegerParameter(3, 30, log=False, is_fidelity=True)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
     cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], default=90e-3, default_confidence="medium")
     assert cat1.__eq__(pipeline_space["optimizer"]) is True

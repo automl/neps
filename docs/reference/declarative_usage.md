@@ -15,9 +15,15 @@ Below is a straightforward YAML configuration example for NePS covering the requ
 === "run_neps.py"
     ```python
     import neps
+
     def run_pipeline(learning_rate, optimizer, epochs):
-        pass
-    neps.run(run_pipeline, run_args="path/to/your/config.yaml")
+        model = initialize_model()
+        training_loss = train_model(model, optimizer, learning_rate, epochs)
+        evaluation_loss = evaluate_model(model)
+        return {"loss": evaluation_loss, "training_loss": training_loss}
+
+    if __name__ == "__main__":
+        neps.run(run_pipeline, run_args="path/to/your/config.yaml")
     ```
 
 
@@ -27,6 +33,10 @@ and its location, enabling more flexible project structures.
 === "config.yaml"
     ```yaml
     --8<-- "docs/doc_yamls/simple_example_including_run_pipeline.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_extended.py"
     ```
 === "run_neps.py"
     ```python
@@ -42,7 +52,10 @@ but also advanced settings for more complex setups.
     ```yaml
     --8<-- "docs/doc_yamls/full_configuration_template.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_extended.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -59,12 +72,16 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
 
 ## Different Use Cases
 ### Customizing NePS optimizer
-Customize an internal NePS optimizer by specifying its parameters directly in the `config.yaml`.
+Customize an internal NePS optimizer by specifying its parameters directly under the key `searcher` in the
+`config.yaml` file.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -80,12 +97,14 @@ Simplify experiments with multiple optimizer settings by outsourcing the optimiz
     ```yaml
         --8<-- "docs/doc_yamls/outsourcing_optimizer.yaml"
     ```
-
 === "searcher_setup.yaml"
     ```yaml
     --8<-- "docs/doc_yamls/set_up_optimizer.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -104,7 +123,10 @@ of your experiments.
     ```yaml
     --8<-- "docs/doc_yamls/pipeline_space.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_big_search_space.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -122,9 +144,12 @@ search spaces must be loaded via a dictionary, which is then referenced in the `
 
 === "search_space.py"
     ```python
-    search_space = {}
+    --8<-- "docs/doc_yamls/architecture_search_space.py"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_architecture.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -138,7 +163,10 @@ You can also load your own custom optimizer and change its arguments in `config.
     ```yaml
         --8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -151,7 +179,10 @@ Define hooks in your YAML configuration to extend the functionality of your expe
     ```yaml
         --8<-- "docs/doc_yamls/defining_hooks.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_extended.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
