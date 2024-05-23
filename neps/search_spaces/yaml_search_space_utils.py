@@ -1,9 +1,6 @@
 from __future__ import annotations
-
 import logging
 import re
-from neps.search_spaces.hyperparameters import ConstantParameter, CategoricalParameter,\
-    FloatParameter, IntegerParameter
 
 logger = logging.getLogger(__name__)
 
@@ -85,33 +82,36 @@ class SearchSpaceFromYamlFileError(Exception):
 
 
 def deduce_type(
-    name: str, details: dict[str, str | int | float]
+    name: str, details: dict[str, str | int | float] | str | int | float
 ) -> str:
     """
-    Deduces the parameter type from details and formats them.
+    Deduces the parameter type from details.
 
     Args:
         name (str): The name of the parameter.
-        details (dict): A dictionary containing parameter specifications.
+        details (dict | str | int | float): A dictionary containing parameter
+                specifications or a direct value (string, integer, or float).
 
     Returns:
         str: The deduced parameter type ('int', 'float', 'categorical', or 'constant').
 
     Raises:
         TypeError: If the type cannot be deduced or the details don't align with expected
-        constraints.
-    """
+                constraints.
+        """
     try:
         # Deduce type
         if "type" in details:
             param_type = details.pop("type").lower()
         else:
+            # because details could be string
             if isinstance(details, (str, int, float)):
                 param_type = "const"
                 return param_type
             else:
                 param_type = deduce_param_type(name, details)
     except TypeError as e:
+        # because details could be int, float
         if isinstance(details, (str, int, float)):
             param_type = "const"
             return param_type
@@ -128,7 +128,7 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
 
     The function interprets the 'details' dictionary to determine the parameter type.
     The dictionary should include key-value pairs that describe the parameter's
-    characteristics, such as lower, upper, default value, or possible choices.
+    characteristics, such as lower, upper and choices.
 
 
     Args:
@@ -137,7 +137,7 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
         specifications.
 
     Returns:
-        str: The deduced parameter type ('int', 'float', 'categorical', or 'constant').
+        str: The deduced parameter type ('int', 'float' or 'categorical').
 
     Raises:
         TypeError: If the parameter type cannot be deduced from the details, or if the
@@ -194,25 +194,25 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
     return param_type
 
 
-def validate_integer_parameter(name: str, details: dict[str, str | int | float]):
+def formatting_int(name: str, details: dict[str, str | int | float]):
     """
-    Validates and processes an integer parameter's details, converting scientific
-    notation to integers where necessary.
+     Converts scientific notation values to integers.
 
-    This function checks the type of 'lower' and 'upper', and the 'default'
-    value (if present) for an integer parameter. It also handles conversion of values
-    in scientific notation (e.g., 1e2) to integers.
+    This function converts the 'lower' and 'upper' bounds, as well as the 'default'
+    value (if present), from scientific notation to integers.
 
     Args:
         name (str): The name of the integer parameter.
         details (dict[str, str | int | float]): A dictionary containing the parameter's
                                                 specifications. Expected keys include
-                                                'lower', 'upper', and optionally 'default',
-                                                among others.
+                                                'lower', 'upper', and optionally 'default'.
 
     Raises:
-        TypeError: If 'lower', 'upper', or 'default' are not valid integers or cannot
-                   be converted from scientific notation to integers.
+        TypeError: If 'lower', 'upper', or 'default' cannot be converted from scientific
+                   notation to integers.
+
+    Returns:
+        The dictionary with the converted integer parameter details.
     """
     if not isinstance(details["lower"], int) or not isinstance(details["upper"], int):
         try:
@@ -223,7 +223,7 @@ def validate_integer_parameter(name: str, details: dict[str, str | int | float])
             upper, flag_upper = convert_scientific_notation(
                 details["upper"], show_usage_flag=True
             )
-            # check if one value format is e notation and if its an integer
+            # check if one value format is e notation and if it's an integer
             if flag_lower or flag_upper:
                 if lower == int(lower) and upper == int(upper):
                     details["lower"] = int(lower)
@@ -253,25 +253,25 @@ def validate_integer_parameter(name: str, details: dict[str, str | int | float])
     return details
 
 
-def validate_float_parameter(name: str, details: dict[str, str | int | float]):
+def formatting_float(name: str, details: dict[str, str | int | float]):
     """
-    Validates and processes a float parameter's details, converting scientific
-    notation values to float where necessary.
+    Converts scientific notation values to floats.
 
-    This function checks the type of 'lower' and 'upper', and the 'default'
-    value (if present) for a float parameter. It handles conversion of values in
-    scientific notation (e.g., 1e-5) to float.
+    This function converts the 'lower' and 'upper' bounds, as well as the 'default'
+    value (if present), from scientific notation to floats.
 
     Args:
         name: The name of the float parameter.
         details: A dictionary containing the parameter's specifications. Expected keys
-                 include 'lower', 'upper', and optionally 'default', among others.
+                 include 'lower', 'upper', and optionally 'default'.
 
     Raises:
-        TypeError: If 'lower', 'upper', or 'default' are not valid floats or cannot
-                   be converted from scientific notation to floats.
+        TypeError: If 'lower', 'upper', or 'default' cannot be converted from scientific
+                   notation to floats.
+
+    Returns:
+        The dictionary with the converted float parameter details.
     """
-    # check if all keys are allowed to use and if the mandatory ones are provided
 
     if not isinstance(details["lower"], float) or not isinstance(details["upper"], float):
         try:
@@ -280,7 +280,7 @@ def validate_float_parameter(name: str, details: dict[str, str | int | float]):
             details["upper"] = convert_scientific_notation(details["upper"])
         except ValueError as e:
             raise TypeError(
-                f"'lower' and 'upper' must be integer for " f"integer parameter '{name}'."
+                f"'lower' and 'upper' must be float for " f"float parameter '{name}'."
             ) from e
     if "default" in details:
         if not isinstance(details["default"], float):
@@ -294,25 +294,23 @@ def validate_float_parameter(name: str, details: dict[str, str | int | float]):
     return details
 
 
-def validate_categorical_parameter(name: str, details: dict[str, str | int | float]):
+def formatting_cat(name: str, details: dict[str, str | int | float]):
     """
-    Validates a categorical parameter, including conversion of scientific notation
-    values to floats within the choices.
-
     This function ensures that the 'choices' key in the details is a list and attempts
-    to convert any elements in scientific notation to floats. It also handles the
-    'default' value, converting it from scientific notation if necessary.
+    to convert any elements expressed in scientific notation to floats. It also handles
+    the 'default' value, converting it from scientific notation if necessary.
 
     Args:
         name: The name of the categorical parameter.
-        details: A dictionary containing the parameter's specifications. Required key
-                 is 'choices', with 'default' being optional.
+        details: A dictionary containing the parameter's specifications. The required key
+                 is 'choices', which must be a list. The 'default' key is optional.
 
     Raises:
-        TypeError: If 'choices' is not a list
-    """
-    # check if all keys are allowed to use and if the mandatory ones are provided
+        TypeError: If 'choices' is not a list.
 
+    Returns:
+        The validated and possibly converted categorical parameter details.
+    """
     if not isinstance(details["choices"], list):
         raise TypeError(f"The 'choices' for '{name}' must be a list.")
     for i, element in enumerate(details["choices"]):
@@ -340,22 +338,21 @@ def validate_categorical_parameter(name: str, details: dict[str, str | int | flo
     return details
 
 
-def formatting_constant(name: str, details: str | int | float):
+def formatting_const(details: str | int | float):
     """
-    Validates a constant parameter, including conversion of values in scientific
-    notation to floats.
+    Validates and converts a constant parameter.
 
-    This function checks the 'value' key in the details dictionary and converts any
-    value expressed in scientific notation to a float. It ensures that the mandatory
-    'value' key is provided and appropriately formatted.
+    This function checks if the 'details' parameter contains a value expressed in
+    scientific notation and converts it to a float. It ensures that the input
+    is appropriately formatted, either as a string, integer, or float.
 
     Args:
-        name: The name of the constant parameter.
-        details: A dictionary containing the parameter's specifications. The required
-                 key is 'value'.
+        details: A constant parameter that can be a string, integer, or float.
+                 If the value is in scientific notation, it will be converted to a float.
+
+    Returns:
+        The validated and possibly converted constant parameter.
     """
-    # check if all keys are allowed to use and if the mandatory ones are provided
-    # check_keys(name, details, {"value", "type", "is_fidelity"}, {"value"})
 
     # check for e notation and convert it to float
     e_flag = False

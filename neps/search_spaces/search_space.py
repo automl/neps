@@ -28,10 +28,10 @@ from neps.search_spaces.parameter import MutatableParameter, Parameter, Paramete
 from neps.search_spaces.yaml_search_space_utils import (
     SearchSpaceFromYamlFileError,
     deduce_type,
-    formatting_constant,
-    validate_categorical_parameter,
-    validate_float_parameter,
-    validate_integer_parameter,
+    formatting_cat,
+    formatting_const,
+    formatting_float,
+    formatting_int,
 )
 from neps.utils.types import NotSet, _NotSet
 
@@ -95,40 +95,20 @@ def pipeline_space_from_configspace(
 
 
 def pipeline_space_from_yaml(config: str | Path | dict) -> dict[str, Parameter]:
-    """Reads configuration details from a YAML file and constructs a pipeline space
-    dictionary.
-
-    This function extracts parameter configurations from a YAML file, validating and
-    translating them into corresponding parameter objects. The resulting dictionary
-    maps parameter names to their respective configuration objects.
+    """Reads configuration details from a YAML file or a dictionary and constructs a
+    pipeline space dictionary.
 
     Args:
-        config (str | Path): Path to the YAML file containing parameter
-        configurations.
+        config (str | Path | dict): Path to the YAML file or a dictionary containing
+        parameter configurations.
 
     Returns:
-        dict: A dictionary where keys are parameter names and values are parameter
-              objects (like IntegerParameter, FloatParameter, etc.).
+        dict[str, Parameter]: A dictionary where keys are parameter names and values
+        are parameter objects.
 
     Raises:
-        SearchSpaceFromYamlFileError: This custom exception is raised if there are issues
-        with the YAML file's format or contents. It encapsulates underlying exceptions
-        (KeyError, TypeError, ValueError) that occur during the processing of the YAML
-        file. This approach localizes error handling, providing clearer context and
-        diagnostics. The raised exception includes the type of the original error and
-        a descriptive message.
-
-    Note:
-        The YAML file should be properly structured with valid keys and values as per the
-        expected parameter types. The function employs modular validation and type
-        deduction logic, ensuring each parameter's configuration adheres to expected
-        formats and constraints. Any deviation results in an appropriately raised error,
-        which is then captured by SearchSpaceFromYamlFileError for streamlined error
-        handling.
-
-    Example:
-        To use this function with a YAML file 'config.yaml', you can do:
-        pipeline_space = pipeline_space_from_yaml('config.yaml')
+        SearchSpaceFromYamlFileError: Raised if there are issues with the YAML file's
+        format, contents, or if the dictionary is invalid.
     """
     try:
         if isinstance(config, (str, Path)):
@@ -146,13 +126,11 @@ def pipeline_space_from_yaml(config: str | Path | dict) -> dict[str, Parameter]:
             except FileNotFoundError as e:
                 raise FileNotFoundError(
                     f"Unable to find the specified file for 'pipeline_space' at "
-                    f"'{yaml_file_path}'. Please verify the path specified in the "
+                    f"'{config}'. Please verify the path specified in the "
                     f"'pipeline_space' argument and try again."
                 ) from e
             except yaml.YAMLError as e:
-                raise ValueError(
-                    f"The file at {yaml_file_path!s} is not a valid YAML file."
-                ) from e
+                raise ValueError(f"The file at {config} is not a valid YAML file.") from e
 
         # Initialize the pipeline space
         pipeline_space: dict[str, Parameter] = {}
@@ -165,19 +143,19 @@ def pipeline_space_from_yaml(config: str | Path | dict) -> dict[str, Parameter]:
             # init parameter by checking type
             if param_type in ("int", "integer"):
                 # Integer Parameter
-                formatted_details = validate_integer_parameter(name, details)
+                formatted_details = formatting_int(name, details)
                 pipeline_space[name] = IntegerParameter(**formatted_details)
             elif param_type == "float":
                 # Float Parameter
-                formatted_details = validate_float_parameter(name, details)
+                formatted_details = formatting_float(name, details)
                 pipeline_space[name] = FloatParameter(**formatted_details)
             elif param_type in ("cat", "categorical"):
                 # Categorical parameter
-                formatted_details = validate_categorical_parameter(name, details)
+                formatted_details = formatting_cat(name, details)
                 pipeline_space[name] = CategoricalParameter(**formatted_details)
             elif param_type == "const":
                 # Constant parameter
-                formatted_details = formatting_constant(name, details)
+                formatted_details = formatting_const(details)
                 pipeline_space[name] = ConstantParameter(formatted_details)
             else:
                 # Handle unknown parameter type
