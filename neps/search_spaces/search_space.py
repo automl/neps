@@ -94,7 +94,9 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(config: str | Path | dict) -> dict[str, Parameter]:
+def pipeline_space_from_yaml(  # noqa: C901, PLR0912
+    config: str | Path | dict,
+) -> dict[str, Parameter]:
     """Reads configuration details from a YAML file or a dictionary and constructs a
     pipeline space dictionary.
 
