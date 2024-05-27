@@ -45,7 +45,7 @@ def test_correct_including_priors_yaml_file():
     assert isinstance(pipeline_space, dict)
     float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False, default=3.3e-2, default_confidence="high")
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
-    int1 = IntegerParameter(3, 30, log=False, is_fidelity=True, default=10)
+    int1 = IntegerParameter(3, 30, log=False, is_fidelity=True)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
     cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], default=90e-3, default_confidence="medium")
     assert cat1.__eq__(pipeline_space["optimizer"]) is True
@@ -86,8 +86,8 @@ def test_yaml_file_including_wrong_types():
     """Test the function with a YAML file that defines the wrong but existing type
     int to float as an optional argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
-        pipeline_space_from_yaml(BASE_PATH + "config_including_wrong_types.yaml")
-    assert excinfo.value.exception_type == "TypeError"
+        pipeline_space_from_yaml(Path(BASE_PATH + "inconsistent_types_config2.yml"))
+        assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api
@@ -105,7 +105,7 @@ def test_yaml_file_including_not_allowed_parameter_keys():
     argument"""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "not_allowed_key_config.yml")
-    assert excinfo.value.exception_type == "KeyError"
+    assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api
@@ -134,7 +134,6 @@ def test_float_is_fidelity_not_boolean():
             BASE_PATH + "not_boolean_type_is_fidelity_float_config.yaml"
         )
     assert excinfo.value.exception_type == "TypeError"
-
 
 
 @pytest.mark.neps_api

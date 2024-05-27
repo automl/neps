@@ -9,13 +9,10 @@ num_epochs:
   lower: 3
   upper: 30
   is_fidelity: True
-  default: 1e1
 
 optimizer:
   choices: [adam, 90E-3, rmsprop]
   default: 90E-3
   default_confidence: "medium"
 
-dropout_rate:
-  value: 1E3
-  is_fidelity: true
+dropout_rate: 1E3

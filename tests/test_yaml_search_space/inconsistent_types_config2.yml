@@ -12,6 +12,4 @@ num_epochs:
 optimizer:
   choices: ["adam", "sgd", "rmsprop"]
 
-dropout_rate:
-  value: 0.5
-  is_fidelity: True
+dropout_rate: 0.5

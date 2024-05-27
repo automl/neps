@@ -1,0 +1,20 @@
+# Simple NePS configuration including run_pipeline
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: example_pipeline                   # Function name within the file
+
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: True  # Log scale for learning rate
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: True
+  optimizer:
+    choices: [adam, sgd, adamw]
+  batch_size: 64
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20             # Budget

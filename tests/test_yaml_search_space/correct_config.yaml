@@ -23,9 +23,6 @@ param_float2:
 param_cat:
   choices: [2, "sgd", 10e-3]
 
-param_const1:
-  value: 0.5
+param_const1: 0.5
 
-param_const2:
-  value: 1e3
-  is_fidelity: TRUE
+param_const2: 1e3

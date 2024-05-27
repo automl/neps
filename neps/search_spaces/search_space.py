@@ -27,7 +27,11 @@ from neps.search_spaces.hyperparameters import (
 from neps.search_spaces.parameter import MutatableParameter, Parameter, ParameterWithPrior
 from neps.search_spaces.yaml_search_space_utils import (
     SearchSpaceFromYamlFileError,
-    deduce_and_validate_param_type,
+    deduce_type,
+    formatting_cat,
+    formatting_const,
+    formatting_float,
+    formatting_int,
 )
 from neps.utils.types import NotSet, _NotSet
 
@@ -90,58 +94,45 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(yaml_file_path: str | Path) -> dict[str, Parameter]:
-    """Reads configuration details from a YAML file and constructs a pipeline space
-    dictionary.
-
-    This function extracts parameter configurations from a YAML file, validating and
-    translating them into corresponding parameter objects. The resulting dictionary
-    maps parameter names to their respective configuration objects.
+def pipeline_space_from_yaml(  # noqa: C901, PLR0912
+    config: str | Path | dict,
+) -> dict[str, Parameter]:
+    """Reads configuration details from a YAML file or a dictionary and constructs a
+    pipeline space dictionary.
 
     Args:
-        yaml_file_path (str | Path): Path to the YAML file containing parameter
-        configurations.
+        config (str | Path | dict): Path to the YAML file or a dictionary containing
+        parameter configurations.
 
     Returns:
-        dict: A dictionary where keys are parameter names and values are parameter
-              objects (like IntegerParameter, FloatParameter, etc.).
+        dict[str, Parameter]: A dictionary where keys are parameter names and values
+        are parameter objects.
 
     Raises:
-        SearchSpaceFromYamlFileError: This custom exception is raised if there are issues
-        with the YAML file's format or contents. It encapsulates underlying exceptions
-        (KeyError, TypeError, ValueError) that occur during the processing of the YAML
-        file. This approach localizes error handling, providing clearer context and
-        diagnostics. The raised exception includes the type of the original error and
-        a descriptive message.
-
-    Note:
-        The YAML file should be properly structured with valid keys and values as per the
-        expected parameter types. The function employs modular validation and type
-        deduction logic, ensuring each parameter's configuration adheres to expected
-        formats and constraints. Any deviation results in an appropriately raised error,
-        which is then captured by SearchSpaceFromYamlFileError for streamlined error
-        handling.
-
-    Example:
-        To use this function with a YAML file 'config.yaml', you can do:
-        pipeline_space = pipeline_space_from_yaml('config.yaml')
+        SearchSpaceFromYamlFileError: Raised if there are issues with the YAML file's
+        format, contents, or if the dictionary is invalid.
     """
-    yaml_file_path = Path(yaml_file_path)
     try:
-        # try to load the YAML file
-        try:
-            with yaml_file_path.open("r") as file:
-                config = yaml.safe_load(file)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(
-                f"Unable to find the specified file for 'pipeline_space' at "
-                f"'{yaml_file_path}'. Please verify the path specified in the "
-                f"'pipeline_space' argument and try again."
-            ) from e
-        except yaml.YAMLError as e:
-            raise ValueError(
-                f"The file at {yaml_file_path!s} is not a valid YAML file."
-            ) from e
+        if isinstance(config, (str, Path)):
+            # try to load the YAML file
+            try:
+                yaml_file_path = Path(config)
+                with yaml_file_path.open("r") as file:
+                    config = yaml.safe_load(file)
+                if not isinstance(config, dict):
+                    raise ValueError(
+                        "The loaded pipeline_space is not a valid dictionary. Please "
+                        "ensure that you use a proper structure. See the documentation "
+                        "for more details."
+                    )
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"Unable to find the specified file for 'pipeline_space' at "
+                    f"'{config}'. Please verify the path specified in the "
+                    f"'pipeline_space' argument and try again."
+                ) from e
+            except yaml.YAMLError as e:
+                raise ValueError(f"The file at {config} is not a valid YAML file.") from e
 
         # Initialize the pipeline space
         pipeline_space: dict[str, Parameter] = {}
@@ -149,48 +140,34 @@ def pipeline_space_from_yaml(yaml_file_path: str | Path) -> dict[str, Parameter]
         # Iterate over the items in the YAML configuration
         for name, details in config.items():
             # get parameter type
-            param_type = deduce_and_validate_param_type(name, details)
+            param_type = deduce_type(name, details)
 
             # init parameter by checking type
             if param_type in ("int", "integer"):
                 # Integer Parameter
-                pipeline_space[name] = IntegerParameter(
-                    lower=details["lower"],
-                    upper=details["upper"],
-                    log=details.get("log", False),
-                    is_fidelity=details.get("is_fidelity", False),
-                    default=details.get("default", None),
-                    default_confidence=details.get("default_confidence", "low"),
-                )
+                formatted_details = formatting_int(name, details)
+                pipeline_space[name] = IntegerParameter(**formatted_details)
             elif param_type == "float":
                 # Float Parameter
-                pipeline_space[name] = FloatParameter(
-                    lower=details["lower"],
-                    upper=details["upper"],
-                    log=details.get("log", False),
-                    is_fidelity=details.get("is_fidelity", False),
-                    default=details.get("default", None),
-                    default_confidence=details.get("default_confidence", "low"),
-                )
+                formatted_details = formatting_float(name, details)
+                pipeline_space[name] = FloatParameter(**formatted_details)
             elif param_type in ("cat", "categorical"):
                 # Categorical parameter
-                pipeline_space[name] = CategoricalParameter(
-                    choices=details["choices"],
-                    default=details.get("default", None),
-                    default_confidence=details.get("default_confidence", "low"),
-                )
-            elif param_type in ("const", "constant"):
+                formatted_details = formatting_cat(name, details)
+                pipeline_space[name] = CategoricalParameter(**formatted_details)
+            elif param_type == "const":
                 # Constant parameter
-                pipeline_space[name] = ConstantParameter(value=details["value"])
+                formatted_details = formatting_const(details)
+                pipeline_space[name] = ConstantParameter(formatted_details)
             else:
                 # Handle unknown parameter type
                 raise TypeError(
-                    f"Unsupported parameter type{details['type']} for '{name}'.\n"
+                    f"Unsupported parameter with details: {details} for '{name}'.\n"
                     f"Supported Types for argument type are:\n"
                     "For integer parameter: int, integer\n"
                     "For float parameter: float\n"
                     "For categorical parameter: cat, categorical\n"
-                    "For constant parameter: const, constant\n"
+                    "Constant parameter was not detect\n"
                 )
     except (KeyError, TypeError, ValueError, FileNotFoundError) as e:
         raise SearchSpaceFromYamlFileError(e) from e

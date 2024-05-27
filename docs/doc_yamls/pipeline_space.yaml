@@ -1,0 +1,22 @@
+# pipeline_space including priors and fidelity
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: True  # Log scale for learning rate
+    default: 1e-2
+    default_confidence: "medium"
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: True
+  dropout_rate:
+    lower: 0.1
+    upper: 0.5
+    default: 0.2
+    default_confidence: "high"
+  optimizer:
+    choices: [adam, sgd, adamw]
+    default: adam
+    # default confidence low
+  batch_size: 64

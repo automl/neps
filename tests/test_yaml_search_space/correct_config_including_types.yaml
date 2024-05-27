@@ -26,11 +26,6 @@ param_cat:
   type: cat
   choices: [2, "sgd", 10E-3]
 
-param_const1:
-  type: const
-  value: 0.5
+param_const1: 0.5
 
-param_const2:
-  type: const
-  value: 1e3
-  is_fidelity: true
+param_const2: 1e3

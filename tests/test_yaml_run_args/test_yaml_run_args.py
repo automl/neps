@@ -5,8 +5,12 @@ from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from typing import Union, Callable, Dict, List, Type
 
 BASE_PATH = "tests/test_yaml_run_args/"
-pipeline_space = dict(lr=neps.FloatParameter(lower=1.2, upper=4.2),
-                      epochs=neps.IntegerParameter(lower=1, upper=10))
+pipeline_space = dict(lr=neps.FloatParameter(lower=1e-3, upper=0.1),
+                      optimizer=neps.CategoricalParameter(choices=["adam", "sgd",
+                                                                   "adamw"]),
+                      epochs=neps.IntegerParameter(lower=1, upper=10),
+                      batch_size=neps.ConstantParameter(value=64))
+
 
 
 def run_pipeline():
@@ -95,7 +99,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
             "run_args_full.yaml",
             {
                 "run_pipeline": run_pipeline,
-                "pipeline_space": "pipeline_space.yaml",
+                "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
                 "max_cost_total": 3,
@@ -118,7 +122,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
             "run_args_full_same_level.yaml",
             {
                 "run_pipeline": run_pipeline,
-                "pipeline_space": "pipeline_space.yaml",
+                "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
                 "max_cost_total": 4.2,
@@ -140,7 +144,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_partial.yaml",
             {
-                "pipeline_space": "pipeline_space.yaml",
+                "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
                 "overwrite_working_directory": True,

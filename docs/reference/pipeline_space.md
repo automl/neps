@@ -109,9 +109,7 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
       type: categorical
       choices: ["adam", "sgd", "rmsprop"]
 
-    dropout_rate:
-      type: constant
-      value: 0.5
+    dropout_rate: 0.5
     ```
 
 === "`run.py`"
@@ -119,11 +117,6 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
     ```python
     neps.run(.., pipeline_space="./pipeline_space.yaml")
     ```
-
-!!! tip
-
-    Ensure your YAML file starts with `pipeline_space:`.
-    This is the root key under which all parameter configurations are defined.
 
 When defining the `pipeline_space` using a YAML file, if the `type` argument is not specified,
 the NePS will automatically infer the data type based on the value provided.

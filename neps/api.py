@@ -292,8 +292,7 @@ def run(
     # special case if you load your own optimizer via run_args
     if inspect.isclass(searcher):
         if issubclass(searcher, BaseOptimizer):
-            search_space = pipeline_space_from_yaml(pipeline_space)
-            search_space = SearchSpace(**search_space)
+            search_space = SearchSpace(**pipeline_space)
             searcher = searcher(search_space)
         else:
             # Raise an error if searcher is not a subclass of BaseOptimizer

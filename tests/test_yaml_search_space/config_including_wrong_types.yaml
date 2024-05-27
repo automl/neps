@@ -1,5 +1,5 @@
 learning_rate:
-  type: int
+  type: int  # wrong type
   lower: 0.00001
   upper: 0.1
   log: true
@@ -14,6 +14,4 @@ optimizer:
   type: cat
   choices: ["adam", "sgd", "rmsprop"]
 
-dropout_rate:
-  type: const
-  value: 0.5
+dropout_rate: 0.5

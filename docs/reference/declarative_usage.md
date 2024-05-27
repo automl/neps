@@ -9,24 +9,34 @@ This approach simplifies sharing, reproducing, and modifying configurations.
 Below is a straightforward YAML configuration example for NePS covering the required arguments.
 === "config.yaml"
     ```yaml
-    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example.yaml"
+    --8<-- "docs/doc_yamls/simple_example.yaml"
     ```
 
 === "run_neps.py"
     ```python
     import neps
+
     def run_pipeline(learning_rate, optimizer, epochs):
-        pass
-    neps.run(run_pipeline, run_args="path/to/your/config.yaml")
+        model = initialize_model()
+        training_loss = train_model(model, optimizer, learning_rate, epochs)
+        evaluation_loss = evaluate_model(model)
+        return {"loss": evaluation_loss, "training_loss": training_loss}
+
+    if __name__ == "__main__":
+        neps.run(run_pipeline, run_args="path/to/your/config.yaml")
     ```
 
 
-#### Advanced Configuration with External Pipeline
+#### Including `run_pipeline` in config.yaml for External Referencing
 In addition to setting experimental parameters via YAML, this configuration example also specifies the pipeline function
 and its location, enabling more flexible project structures.
 === "config.yaml"
     ```yaml
-    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/simple_example_including_run_pipeline.yaml"
+    --8<-- "docs/doc_yamls/simple_example_including_run_pipeline.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_extended.py"
     ```
 === "run_neps.py"
     ```python
@@ -35,14 +45,17 @@ and its location, enabling more flexible project structures.
     neps.run(run_args="path/to/your/config.yaml")
     ```
 
-#### Extended Configuration
+#### Comprehensive YAML Configuration Template
 This example showcases a more comprehensive YAML configuration, which includes not only the essential parameters
-but also advanced settings for more complex setups:
+but also advanced settings for more complex setups.
 === "config.yaml"
     ```yaml
-    --8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/full_configuration_template.yaml"
+    --8<-- "docs/doc_yamls/full_configuration_template.yaml"
     ```
-
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_extended.py"
+    ```
 === "run_neps.py"
     ```python
     import neps
@@ -58,50 +71,120 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
     omitted.
 
 ## Different Use Cases
-### Customizing neps optimizer
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/customizing_neps_optimizer.yaml"
-```
-TODO
-information where to find parameters of included searcher, where to find optimizers names...link
+### Customizing NePS optimizer
+Customize an internal NePS optimizer by specifying its parameters directly under the key `searcher` in the
+`config.yaml` file.
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline.py"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
+For detailed information about the available optimizers and their parameters, please visit the [optimizer page](optimizers.md#list-available-searching-algorithms)
 
 
-### Load your own optimizer
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/loading_own_optimizer.yaml"
-```
-### How to define hooks?
+### Testing Multiple Optimizer Configurations
+Simplify experiments with multiple optimizer settings by outsourcing the optimizer configuration.
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/outsourcing_optimizer.yaml"
+    ```
+=== "searcher_setup.yaml"
+    ```yaml
+    --8<-- "docs/doc_yamls/set_up_optimizer.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline.py"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
 
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/defining_hooks.yaml"
-```
-### What if your search space is big?
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/outsourcing_pipeline_space.yaml"
-```
+### Handling Large Search Spaces
+Manage large search spaces by outsourcing the pipeline space configuration in a separate YAML file or for keeping track
+of your experiments.
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/outsourcing_pipeline_space.yaml"
+    ```
 
-pipeline_space.yaml
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/pipeline_space.yaml"
-```
-
-### If you experimenting a lot with different optimizer settings
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/outsourcing_optimizer.yaml"
-```
-
-searcher_setup.yaml:
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/set_up_optimizer.yaml"
-```
-
-### Architecture search space (Loading Dict)
-```yaml
---8<-- "tests/test_yaml_run_args/test_declarative_usage_docs/loading_pipeline_space_dict.yaml"
-```
-search_space.py
-```python
-search_space = {}
-```
+=== "pipeline_space.yaml"
+    ```yaml
+    --8<-- "docs/doc_yamls/pipeline_space.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_big_search_space.py"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
 
 
+### Using Architecture Search Spaces
+Since the option for defining the search space via YAML is limited to HPO, grammar-based search spaces or architecture
+search spaces must be loaded via a dictionary, which is then referenced in the `config.yaml`.
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/loading_pipeline_space_dict.yaml"
+    ```
+
+=== "search_space.py"
+    ```python
+    --8<-- "docs/doc_yamls/architecture_search_space.py"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_architecture.py"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
+
+### Integrating Custom Optimizers
+You can also load your own custom optimizer and change its arguments in `config.yaml`.
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline.py"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
+
+### Adding Custom Hooks to Your Configuration
+Define hooks in your YAML configuration to extend the functionality of your experiment.
+=== "config.yaml"
+    ```yaml
+        --8<-- "docs/doc_yamls/defining_hooks.yaml"
+    ```
+=== "run_pipeline.py"
+    ```python
+    --8<-- "docs/doc_yamls/run_pipeline_extended.py"
+    ```
+=== "run_neps.py"
+    ```python
+    import neps
+    neps.run(run_args="path/to/your/config.yaml")
+    ```
