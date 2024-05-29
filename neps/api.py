@@ -222,7 +222,6 @@ def run(
     logger = logging.getLogger("neps")
 
     if run_args:
-
         optim_settings = get_run_args_from_yaml(run_args)
         check_double_reference(run, locals(), optim_settings)
 

@@ -1,16 +1,20 @@
 # Full Configuration Template for NePS
 run_pipeline:
-  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py  # Path to the Python file that contains your run_pipeline
-  name: run_pipeline                  # Name of your run_pipeline function within this file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+  name: run_pipeline_constant
 
 pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
-    log: True
+    log: True  # Log scale for learning rate
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: True
   optimizer:
     choices: [adam, sgd, adamw]
-  epochs: 50
+  batch_size: 64
 
 root_directory: path/to/results       # Directory for result storage
 max_evaluations_total: 20             # Budget
@@ -32,7 +36,7 @@ cost_value_on_error:
 ignore_errors:
 
 # Customization Options
-searcher: bayesian_optimization       # Internal key to select a NePS optimizer.
+searcher: hyperband       # Internal key to select a NePS optimizer.
 
 # Hooks
 pre_load_hooks:
