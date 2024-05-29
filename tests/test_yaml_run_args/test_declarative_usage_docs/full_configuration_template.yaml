@@ -16,13 +16,13 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   batch_size: 64
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: path/to/results/full_config      # Directory for result storage
 max_evaluations_total: 20             # Budget
 max_cost_total:
 
 # Debug and Monitoring
 overwrite_working_directory: True
-post_run_summary: True
+post_run_summary: False
 development_stage_id:
 task_id:
 

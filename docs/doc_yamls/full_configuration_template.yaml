@@ -22,7 +22,7 @@ max_cost_total:
 
 # Debug and Monitoring
 overwrite_working_directory: True
-post_run_summary: True
+post_run_summary: False
 development_stage_id:
 task_id:
 

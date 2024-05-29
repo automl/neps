@@ -12,5 +12,5 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   batch_size: 64
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: path/to/results/simple_example       # Directory for result storage
 max_evaluations_total: 20             # Budget
