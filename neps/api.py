@@ -10,7 +10,7 @@ from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
 from neps.utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml,\
-    check_arg_defaults
+    check_double_reference
 
 from neps.utils.common import instance_from_map
 from neps.runtime import launch_runtime
@@ -221,46 +221,38 @@ def run(
         del searcher_kwargs["budget"]
     logger = logging.getLogger("neps")
 
-    # if arguments via run_args provided overwrite them
     if run_args:
-        # Check if the user provided other arguments directly to neps.run().
-        # If so, raise an error.
-        check_arg_defaults(run, locals())
-
-        # Warning if the user has specified default values for arguments that differ
-        # from those specified in 'run_args'. These user-defined changes are not applied.
-        warnings.warn(
-            "WARNING: Loading arguments from 'run_args'. Arguments directly provided "
-            "to neps.run(...) will be not used!"
-        )
 
         optim_settings = get_run_args_from_yaml(run_args)
+        check_double_reference(run, locals(), optim_settings)
 
-        # Update each argument based on optim_settings. If not key is not provided in yaml
-        # use default value. Currently strict but will change in the future.
-        run_pipeline = optim_settings.get("run_pipeline", None)
-        root_directory = optim_settings.get("root_directory", None)
-        pipeline_space = optim_settings.get("pipeline_space", None)
+        run_pipeline = optim_settings.get("run_pipeline", run_pipeline)
+        root_directory = optim_settings.get("root_directory", root_directory)
+        pipeline_space = optim_settings.get("pipeline_space", pipeline_space)
         overwrite_working_directory = optim_settings.get(
-            "overwrite_working_directory", False
+            "overwrite_working_directory", overwrite_working_directory
         )
-        post_run_summary = optim_settings.get("post_run_summary", False)
-        development_stage_id = optim_settings.get("development_stage_id", None)
-        task_id = optim_settings.get("task_id", None)
-        max_evaluations_total = optim_settings.get("max_evaluations_total", None)
-        max_evaluations_per_run = optim_settings.get("max_evaluations_per_run", None)
+        post_run_summary = optim_settings.get("post_run_summary", post_run_summary)
+        development_stage_id = optim_settings.get("development_stage_id",
+                                                  development_stage_id)
+        task_id = optim_settings.get("task_id", task_id)
+        max_evaluations_total = optim_settings.get("max_evaluations_total",
+                                                   max_evaluations_total)
+        max_evaluations_per_run = optim_settings.get("max_evaluations_per_run",
+                                                     max_evaluations_per_run)
         continue_until_max_evaluation_completed = optim_settings.get(
             "continue_until_max_evaluation_completed",
-            False,
-        )
-        max_cost_total = optim_settings.get("max_cost_total", None)
-        ignore_errors = optim_settings.get("ignore_errors", False)
-        loss_value_on_error = optim_settings.get("loss_value_on_error", None)
-        cost_value_on_error = optim_settings.get("cost_value_on_error", None)
-        pre_load_hooks = optim_settings.get("pre_load_hooks", None)
-        searcher = optim_settings.get("searcher", "default")
-        searcher_path = optim_settings.get("searcher_path", None)
-        for key, value in optim_settings.get("searcher_kwargs", {}).items():
+            continue_until_max_evaluation_completed)
+        max_cost_total = optim_settings.get("max_cost_total", max_cost_total)
+        ignore_errors = optim_settings.get("ignore_errors", ignore_errors)
+        loss_value_on_error = optim_settings.get("loss_value_on_error",
+                                                 loss_value_on_error)
+        cost_value_on_error = optim_settings.get("cost_value_on_error",
+                                                 cost_value_on_error)
+        pre_load_hooks = optim_settings.get("pre_load_hooks", pre_load_hooks)
+        searcher = optim_settings.get("searcher", searcher)
+        searcher_path = optim_settings.get("searcher_path", searcher_path)
+        for key, value in optim_settings.get("searcher_kwargs", searcher_kwargs).items():
             searcher_kwargs[key] = value
 
     # check if necessary arguments are provided.

@@ -468,6 +468,7 @@ def check_essential_arguments(
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
     if not pipeline_space:
+        # ToDO: irg was falsch
         # handling special case for searcher instance, in which user doesn't have to
         # provide the search_space because it's the argument of the searcher.
         if run_args or not isinstance(searcher, BaseOptimizer):
@@ -480,29 +481,34 @@ def check_essential_arguments(
         )
 
 
-def check_arg_defaults(func: Callable, provided_arguments: Dict) -> Any:
+def check_double_reference(func: Callable, func_arguments: Dict, yaml_arguments: Dict) -> Any:
     """
-    Checks if provided arguments deviate from default values defined in the function's
-    signature.
+    Checks if no argument is defined both via function arguments and YAML.
 
     Parameters:
     - func (Callable): The function to check arguments against.
-    - provided_arguments: A dictionary containing the provided arguments and their
-    values.
+    - func_arguments (Dict): A dictionary containing the provided arguments to the
+    function and their values.
+    - yaml_arguments (Dict): A dictionary containing the arguments provided via a YAML
+    file.
 
     Raises:
-    - ValueError: If any provided argument differs from its default value in the function
-    signature.
+    - ValueError: If any provided argument is defined both via function arguments and the
+    YAML file.
     """
     sig = inspect.signature(func)
+
     for name, param in sig.parameters.items():
-        if param.default != provided_arguments[name]:
+        if param.default != func_arguments[name]:
             if name == RUN_ARGS:
-                # ignoring run_args argument
+                # Ignoring run_args argument
                 continue
             if name == SEARCHER_KWARGS:
                 # searcher_kwargs does not have a default specified by inspect
-                if provided_arguments[name] == {}:
+                if func_arguments[name] == {}:
                     continue
-            raise ValueError(
-                f"Argument '{name}' must not be set directly when 'run_args' is used.")
+            if name in yaml_arguments:
+                raise ValueError(
+                    f"Conflict for argument '{name}': Argument is defined both via "
+                    f"function arguments and YAML, which is not allowed."
+                )
