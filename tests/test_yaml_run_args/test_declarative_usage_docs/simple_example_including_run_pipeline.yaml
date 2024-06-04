@@ -18,3 +18,5 @@ pipeline_space:
 
 root_directory: path/to/results/simple_example_including_run_pipeline       # Directory for result storage
 max_evaluations_total: 20             # Budget
+
+overwrite_working_directory: True

@@ -8,7 +8,8 @@ BASE_PATH = "tests/test_yaml_run_args/test_declarative_usage_docs/"
 @pytest.mark.neps_api
 @pytest.mark.parametrize("yaml_file", [
     "simple_example_including_run_pipeline.yaml",
-    "full_configuration_template.yaml"
+    "full_configuration_template.yaml",
+    "defining_hooks.yaml"
 ])
 def test_run_with_yaml(yaml_file: str) -> None:
     """

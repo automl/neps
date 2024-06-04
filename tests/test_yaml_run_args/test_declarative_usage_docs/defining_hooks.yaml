@@ -1,7 +1,7 @@
 # Basic NEPS Configuration Example
 run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_pipeline              # Function name within the file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+  name: run_pipeline_constant
 
 pipeline_space:
   learning_rate:
@@ -16,9 +16,10 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   batch_size: 64
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: path/to/results/hooks       # Directory for result storage
 max_evaluations_total: 20               # Budget
 
 pre_load_hooks:
-    hook1: path/to/your/hooks.py # (function_name: Path to the function's file)
-    hook2: path/to/your/hooks.py # Different function name from the same file source
+    hook1: tests/test_yaml_run_args/test_declarative_usage_docs/hooks.py
+
+overwrite_working_directory: True

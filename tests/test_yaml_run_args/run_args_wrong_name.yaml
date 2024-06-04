@@ -31,9 +31,5 @@ search:
     surrogate_model: gp
 
 pre_load_hooks:
-  hook1:
-    path: "tests/test_yaml_run_args/test_yaml_run_args.py"
-    name: hook1
-  hook2:
-    path: "tests/test_yaml_run_args/test_yaml_run_args.py"
-    name: hook2
+  hook1: "tests/test_yaml_run_args/test_yaml_run_args.py"
+  hook2: "tests/test_yaml_run_args/test_yaml_run_args.py"

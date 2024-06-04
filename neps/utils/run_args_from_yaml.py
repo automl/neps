@@ -346,32 +346,18 @@ def load_and_return_object(module_path: str, object_name: str, key: str) -> obje
 
 def load_hooks_from_config(pre_load_hooks_dict: Dict) -> List:
     """
-    Loads hook functions from configurations.
-
-    Iterates through a dictionary of pre-load hooks, dynamically imports each
-    specified function by its 'path' and 'name', and accumulates the loaded
-    functions into a list.
+    Loads hook functions from a dictionary of configurations.
 
     Args:
-        pre_load_hooks_dict (dict): Dictionary of hook configurations, each
-        containing 'path' and 'name' keys for the hook function.
+        pre_load_hooks_dict (Dict): Dictionary with hook names as keys and paths as values
 
     Returns:
-        list: List of loaded hook functions.
-
-    Raises:
-        KeyError: If any hook configuration lacks 'path' or 'name' keys.
+        List: List of loaded hook functions.
     """
     loaded_hooks = []
-    for hook_config in pre_load_hooks_dict.values():
-        if "path" in hook_config and "name" in hook_config:
-            hook_func = load_and_return_object(hook_config["path"], hook_config[
-                "name"], PRE_LOAD_HOOKS)
-            loaded_hooks.append(hook_func)
-        else:
-            raise KeyError(
-                f"Expected keys 'path' and 'name' for hook, but got: " f"{hook_config}."
-            )
+    for name, path in pre_load_hooks_dict.items():
+        hook_func = load_and_return_object(path, name, PRE_LOAD_HOOKS)
+        loaded_hooks.append(hook_func)
     return loaded_hooks
 
 
