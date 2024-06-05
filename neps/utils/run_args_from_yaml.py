@@ -257,11 +257,28 @@ def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> Non
 
 
 def process_pipeline_space(key, special_configs, settings):
+    """
+    Process or load the pipeline space configuration.
+
+    This function checks if the given key exists in the `special_configs` dictionary.
+    If it exists, it processes the associated value, which can be either a dictionary
+    or a string. Based on the keys of the dictionary it decides if the pipeline_space
+    have to be loaded or needs to be converted into a neps search_space structure.
+    The processed pipeline space is then stored in the `settings`
+    dictionary under the given key.
+
+    Args:
+        key (str): The key to check in the `special_configs` dictionary.
+        special_configs (dict): The dictionary containing special configuration values.
+        settings (dict): The dictionary where the processed pipeline space will be stored.
+
+    Raises:
+        TypeError: If the value associated with the key is neither a string nor a
+        dictionary.
+        """
     if special_configs.get(key) is not None:
         pipeline_space = special_configs[key]
         if isinstance(pipeline_space, dict):
-            # TODO: was ist wenn ein argument fehlt
-
             # determine if dict contains path_loading or the actual search space
             expected_keys = {"path", "name"}
             actual_keys = set(pipeline_space.keys())
@@ -454,7 +471,6 @@ def check_essential_arguments(
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
     if not pipeline_space:
-        # ToDO: irg was falsch
         # handling special case for searcher instance, in which user doesn't have to
         # provide the search_space because it's the argument of the searcher.
         if run_args or not isinstance(searcher, BaseOptimizer):
