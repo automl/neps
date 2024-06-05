@@ -85,7 +85,11 @@ def get_run_args_from_yaml(path: str) -> dict:
         if parameter in expected_parameters:
             settings[parameter] = value
         else:
-            raise KeyError(f"Parameter '{parameter}' is not an argument of neps.run().")
+            raise KeyError(f"Parameter '{parameter}' is not an argument of neps.run() "
+                           f"provided via run_args."
+                           f"See here all valid arguments:"
+                           f" {', '.join(expected_parameters)}, "
+                           f"'run_pipeline', 'preload_hooks', 'pipeline_space'")
 
     # Process complex configurations (e.g., 'pipeline_space', 'searcher') and integrate
     # them into 'settings'.

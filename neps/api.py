@@ -438,10 +438,11 @@ def _run_args(
         # Fetching the searcher data, throws an error when the searcher is not found
         config = get_searcher_data(searcher)
 
-    searcher_alg = config["searcher_init"]["algorithm"]
-    searcher_config = (
-        {} if config["searcher_kwargs"] is None else config["searcher_kwargs"]
-    )
+    if "algorithm" in config:
+        searcher_alg = config.pop("algorithm")
+    else:
+        raise KeyError(f"Missing key algorithm in searcher config:{config}")
+    searcher_config = config
 
     logger.info(f"Running {searcher} as the searcher")
     logger.info(f"Algorithm: {searcher_alg}")
