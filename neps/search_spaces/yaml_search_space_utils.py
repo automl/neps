@@ -99,26 +99,16 @@ def deduce_type(
         TypeError: If the type cannot be deduced or the details don't align with expected
                 constraints.
         """
-    try:
-        # Deduce type
+    if isinstance(details, (str,  int, float)):
+        param_type = "const"
+    elif isinstance(details, dict):
         if "type" in details:
             param_type = details.pop("type").lower()
         else:
-            # because details could be string
-            if isinstance(details, (str, int, float)):
-                param_type = "const"
-                return param_type
-            else:
-                param_type = deduce_param_type(name, details)
-    except TypeError as e:
-        # because details could be int, float
-        if isinstance(details, (str, int, float)):
-            param_type = "const"
-            return param_type
-        else:
-            raise TypeError(
-                f"Unable to deduce parameter type for '{name}' with details '{details}'.") \
-                from e
+            param_type = deduce_param_type(name, details)
+    else:
+        raise TypeError(
+            f"Unable to deduce parameter type for '{name}' with details '{details}'.")
 
     return param_type
 
