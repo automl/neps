@@ -19,7 +19,6 @@ parallelization_setup:
 
 search:
   searcher:
-  searcher_path:
   searcher_kwargs:
     initial_design_size:
     surrogate_model:

@@ -112,7 +112,6 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "cost_value_on_error": 3.7,
                 "ignore_errors": True,
                 "searcher": "bayesian_optimization",
-                "searcher_path": "/path/to/model",
                 "searcher_kwargs": {"initial_design_size": 5, "surrogate_model": "gp"},
                 "pre_load_hooks": [hook1, hook2],
             },
@@ -135,7 +134,6 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": "bayesian_optimization",
-                "searcher_path": "/path/to/searcher",
                 "searcher_kwargs": {"initial_design_size": 5, "surrogate_model": "gp"},
                 "pre_load_hooks": [hook1],
             },
@@ -181,7 +179,6 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
             "cost_value_on_error": 2.1,
             "ignore_errors": False,
             "searcher": BayesianOptimization,
-            "searcher_path": "/path/to/searcher",
             "searcher_kwargs": {
                 "initial_design_size": 5,
                 "surrogate_model": "gp"

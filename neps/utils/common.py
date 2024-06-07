@@ -193,21 +193,19 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
 
 def get_searcher_data(
-    searcher: str,
-    searcher_path: Path | str | None = None,
-) -> dict[str, Any]:
+    searcher: str | Path, loading_custom_searcher: bool = False
+) -> (dict[str, Any], str):
     """Returns the data from the YAML file associated with the specified searcher.
 
     Args:
         searcher: The name of the searcher.
-        searcher_path: The path to the directory where the searcher defined YAML file
-            is located.
+        loading_custom_searcher: Flag if searcher contains a custom yaml
 
     Returns:
-        The content of the YAML file.
+        The content of the YAML file and searcher name.
     """
-    if searcher_path is not None:
-        user_yaml_path = Path(searcher_path, searcher).with_suffix(".yaml")
+    if loading_custom_searcher:
+        user_yaml_path = Path(searcher).with_suffix(".yaml")
 
         if not user_yaml_path.exists():
             raise FileNotFoundError(
@@ -217,6 +215,9 @@ def get_searcher_data(
 
         with user_yaml_path.open("r") as file:
             data = yaml.safe_load(file)
+
+        file_name = user_yaml_path.stem
+        searcher = data.get("name", file_name)
 
     else:
         # TODO(eddiebergman): This is a bad idea as it relies on folder structure to be
@@ -246,7 +247,7 @@ def get_searcher_data(
         with resource_path.open() as file:
             data = yaml.safe_load(file)
 
-    return data  # type: ignore
+    return data, searcher  # type: ignore
 
 
 # TODO(eddiebergman): This seems like a bad function name, I guess this is used for a

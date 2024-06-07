@@ -11,5 +11,4 @@ continue_until_max_evaluation_completed: True
 loss_value_on_error: None
 ignore_errors: True
 searcher:
-searcher_path:
 pre_load_hooks: None

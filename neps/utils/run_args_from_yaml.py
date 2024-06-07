@@ -25,7 +25,6 @@ LOSS_VALUE_ON_ERROR = "loss_value_on_error"
 COST_VALUE_ON_ERROR = "cost_value_on_error"
 IGNORE_ERROR = "ignore_errors"
 SEARCHER = "searcher"
-SEARCHER_PATH = "searcher_path"
 PRE_LOAD_HOOKS = "pre_load_hooks"
 SEARCHER_KWARGS = "searcher_kwargs"
 MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
@@ -73,7 +72,6 @@ def get_run_args_from_yaml(path: str) -> dict:
         LOSS_VALUE_ON_ERROR,
         COST_VALUE_ON_ERROR,
         IGNORE_ERROR,
-        SEARCHER_PATH,
     ]
 
     # Flatten the YAML file's structure to separate flat parameters (flat_config) and
@@ -412,7 +410,6 @@ def check_run_args(settings: Dict) -> None:
         LOSS_VALUE_ON_ERROR: float,
         COST_VALUE_ON_ERROR: float,
         IGNORE_ERROR: bool,
-        SEARCHER_PATH: str,
         SEARCHER_KWARGS: dict,
     }
     for param, value in settings.items():

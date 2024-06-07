@@ -26,6 +26,17 @@ from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
 from neps.utils.data_loading import _get_loss
 
+VALID_SEARCHER = [
+    "default",
+    "bayesian_optimization",
+    "random_search",
+    "hyperband",
+    "priorband",
+    "mobster",
+    "asha",
+    "regularized_evolution",
+]
+
 
 def _post_evaluation_hook_function(
     _loss_value_on_error: None | float, _ignore_errors: bool
@@ -132,9 +143,8 @@ def run(
             "asha",
             "regularized_evolution",
         ]
-        | BaseOptimizer
+        | BaseOptimizer | Path
     ) = "default",
-    searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -176,9 +186,8 @@ def run(
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
         pre_load_hooks: List of functions that will be called before load_results().
-        searcher: Which optimizer to use. This is usually only needed by neps developers.
-        searcher_path: The path to the user created searcher. None when the user
-            is using NePS designed searchers.
+        searcher: Which optimizer to use. Can be a string identifier, an
+            instance of BaseOptimizer, or a Path to a custom optimizer.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -250,7 +259,6 @@ def run(
                                                  cost_value_on_error)
         pre_load_hooks = optim_settings.get("pre_load_hooks", pre_load_hooks)
         searcher = optim_settings.get("searcher", searcher)
-        searcher_path = optim_settings.get("searcher_path", searcher_path)
         for key, value in optim_settings.get("searcher_kwargs", searcher_kwargs).items():
             searcher_kwargs[key] = value
 
@@ -310,7 +318,6 @@ def run(
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             searcher=searcher,
-            searcher_path=searcher_path,
             **searcher_kwargs,
         )
 
@@ -380,7 +387,6 @@ def _run_args(
         ]
         | BaseOptimizer
     ) = "default",
-    searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:
     try:
@@ -412,11 +418,11 @@ def _run_args(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if isinstance(searcher, str) and searcher_path is not None:
+    if isinstance(searcher, (str, Path)) and searcher not in VALID_SEARCHER:
         # The users has their own custom searcher.
         logging.info("Preparing to run user created searcher")
 
-        config = get_searcher_data(searcher, searcher_path)
+        config, searcher = get_searcher_data(searcher, loading_custom_searcher=True)
         searcher_info["searcher_selection"] = "user-yaml"
         searcher_info["neps_decision_tree"] = False
     else:
@@ -436,7 +442,7 @@ def _run_args(
             searcher_info["neps_decision_tree"] = False
             searcher_info["searcher_selection"] = "neps-default"
         # Fetching the searcher data, throws an error when the searcher is not found
-        config = get_searcher_data(searcher)
+        config, searcher = get_searcher_data(searcher)
 
     if "algorithm" in config:
         searcher_alg = config.pop("algorithm")
