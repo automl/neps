@@ -193,8 +193,8 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
 
 def get_searcher_data(
-    searcher: str | Path, loading_custom_searcher: bool = False
-) -> (dict[str, Any], str):
+    searcher: str | Path, *, loading_custom_searcher: bool = False
+) -> tuple[dict[str, Any], str]:
     """Returns the data from the YAML file associated with the specified searcher.
 
     Args:
