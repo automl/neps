@@ -12,8 +12,8 @@ from typing import Any, Mapping, TypedDict
 import numpy as np
 import yaml
 
-from neps.runtime import ErrorReport, SharedState
-from neps.utils.types import ERROR, ResultDict, _ConfigResultForStats
+from neps.runtime import ErrorReport, SharedState, Trial
+from neps.utils.types import ERROR, ConfigID, ResultDict, _ConfigResultForStats
 
 
 def _get_loss(
@@ -137,16 +137,26 @@ def read_tasks_and_dev_stages_from_disk(
 
             state = SharedState(Path(dev_dir_path))
             state.update_from_disk()
-            result = {
-                _id: _ConfigResultForStats(
-                    _id,
-                    report.config,
-                    "error" if isinstance(report, ErrorReport) else report.results,
-                    report.metadata,
+            trials_by_state = state.trials_by_state()
+
+            evaluated: dict[ConfigID, _ConfigResultForStats] = {}
+
+            for trial in chain(
+                trials_by_state[Trial.State.SUCCESS],
+                trials_by_state[Trial.State.ERROR],
+            ):
+                assert trial.report is not None
+                _result_for_stats = _ConfigResultForStats(
+                    trial.id,
+                    trial.config,
+                    "error"
+                    if isinstance(trial.report, ErrorReport)
+                    else trial.report.results,
+                    trial.metadata,
                 )
-                for _id, report in state.evaluated_trials.items()
-            }
-            results[task_id][dev_id] = result
+                evaluated[trial.id] = _result_for_stats
+
+            results[task_id][dev_id] = evaluated
 
     return results
 
@@ -172,16 +182,26 @@ def read_user_prior_results_from_disk(
             continue
 
         state = SharedState(prior_dir)
-        with state.sync():
-            results[prior_dir.name] = {
-                _id: _ConfigResultForStats(
-                    _id,
-                    report.config,
-                    "error" if isinstance(report, ErrorReport) else report.results,
-                    report.metadata,
+        with state.sync(lock=False):
+            evaluated: dict[ConfigID, _ConfigResultForStats] = {}
+            trials_by_state = state.trials_by_state()
+
+            for trial in chain(
+                trials_by_state[Trial.State.SUCCESS],
+                trials_by_state[Trial.State.ERROR],
+            ):
+                assert trial.report is not None
+                _result_for_stats = _ConfigResultForStats(
+                    trial.id,
+                    trial.config,
+                    "error"
+                    if isinstance(trial.report, ErrorReport)
+                    else trial.report.results,
+                    trial.metadata,
                 )
-                for _id, report in state.evaluated_trials.items()
-            }
+                evaluated[trial.id] = _result_for_stats
+
+            results[prior_dir.name] = evaluated
 
     return results
 
@@ -265,7 +285,7 @@ class BestLossesDict(TypedDict):
 
 # TODO(unknown): Implement summarize results for nested working directories
 # with multiple experiments
-def summarize_results(
+def summarize_results(  # noqa: C901
     working_dir: str | Path,
     final_task_id: int | None = None,
     final_dev_id: int | None = None,
@@ -301,6 +321,7 @@ def summarize_results(
         if sub_dir:
             seed_dir = seed_dir / sub_dir  # noqa: PLW2901
 
+        final_results: dict[ConfigID, _ConfigResultForStats]
         if final_task_id is not None and final_dev_id is not None:
             results = read_tasks_and_dev_stages_from_disk([seed_dir])
 
@@ -308,16 +329,24 @@ def summarize_results(
             final_results = results[final_task_id][final_dev_id]
         else:
             state = SharedState(Path(seed_dir))
-            with state.sync():
-                final_results = {
-                    _id: _ConfigResultForStats(
-                        _id,
-                        report.config,
-                        "error" if isinstance(report, ErrorReport) else report.results,
-                        report.metadata,
+            with state.sync(lock=False):
+                trials_by_state = state.trials_by_state()
+
+                final_results = {}
+                for trial in chain(
+                    trials_by_state[Trial.State.SUCCESS],
+                    trials_by_state[Trial.State.ERROR],
+                ):
+                    assert trial.report is not None
+                    _result_for_stats = _ConfigResultForStats(
+                        trial.id,
+                        trial.config,
+                        "error"
+                        if isinstance(trial.report, ErrorReport)
+                        else trial.report.results,
+                        trial.metadata,
                     )
-                    for _id, report in state.evaluated_trials.items()
-                }
+                    final_results[trial.id] = _result_for_stats
 
         # This part is copied from neps.status()
         best_loss: float = float("inf")

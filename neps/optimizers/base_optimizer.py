@@ -6,6 +6,7 @@ from typing import Any, Iterator, Mapping
 from typing_extensions import Self
 from contextlib import contextmanager
 from pathlib import Path
+from neps.optimizers.ask_and_tell import AskAndTellWrapper
 
 from neps.utils.types import ConfigResult, RawConfig, ERROR, ResultDict
 from neps.utils.files import serialize, deserialize
@@ -121,3 +122,6 @@ class BaseOptimizer:
     def is_out_of_budget(self) -> bool:
         """Check if the optimizer has used all of its budget, if any."""
         return self.budget is not None and self.used_budget >= self.budget
+
+    def to_ask_and_tell(self, working_dir: Path | str) -> AskAndTellWrapper:
+        return AskAndTellWrapper(working_dir=Path(working_dir), optimizer=self)
