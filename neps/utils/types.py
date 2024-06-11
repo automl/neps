@@ -91,7 +91,7 @@ class _ConfigResultForStats:
     @property
     def loss(self) -> float | ERROR:
         if isinstance(self.result, dict):
-            return self.result["loss"]
+            return float(self.result["loss"])
         return "error"
 
 

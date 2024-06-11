@@ -170,7 +170,8 @@ class FloatParameter(NumericalParameter[float]):
             low, high = self.lower, self.upper
 
         normalized_value = normalized_value * (high - low) + low
-        return np.exp(normalized_value) if self.log else normalized_value
+        _value = np.exp(normalized_value) if self.log else normalized_value
+        return float(_value)
 
     @override
     def _get_non_unique_neighbors(

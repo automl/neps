@@ -3,14 +3,15 @@
 # ruff: noqa: T201
 from __future__ import annotations
 
+from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.runtime import ErrorReport, SharedState
+from neps.runtime import ErrorReport, SharedState, Trial
 from neps.utils._locker import Locker
-from neps.utils.types import _ConfigResultForStats
+from neps.utils.types import ConfigID, _ConfigResultForStats
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -38,19 +39,27 @@ def get_summary_dict(
     shared_state = SharedState(root_directory)
     shared_state.update_from_disk()
 
-    evaluated = {
-        _id: _ConfigResultForStats(
-            _id,
-            report.config,
-            "error" if isinstance(report, ErrorReport) else report.results,
-            report.metadata,
+    trials_by_state = shared_state.trials_by_state()
+
+    evaluated: dict[ConfigID, _ConfigResultForStats] = {}
+
+    for trial in chain(
+        trials_by_state[Trial.State.SUCCESS],
+        trials_by_state[Trial.State.ERROR],
+    ):
+        assert trial.report is not None
+        _result_for_stats = _ConfigResultForStats(
+            trial.id,
+            trial.config,
+            "error" if isinstance(trial.report, ErrorReport) else trial.report.results,
+            trial.metadata,
         )
-        for _id, report in shared_state.evaluated_trials.items()
-    }
+        evaluated[trial.id] = _result_for_stats
+
     in_progress = {
-        _id: trial.config for _id, trial in shared_state.in_progress_trials.items()
+        trial.id: trial.config for trial in trials_by_state[Trial.State.IN_PROGRESS]
     }
-    pending = {_id: trial.config for _id, trial in shared_state.pending_trials.items()}
+    pending = {trial.id: trial.config for trial in trials_by_state[Trial.State.PENDING]}
 
     summary: dict[str, Any] = {}
 
