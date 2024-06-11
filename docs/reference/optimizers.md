@@ -59,18 +59,17 @@ The library will then load your custom settings and use them for optimization.
 Here's the format of a custom YAML (`custom_bo.yaml`) configuration using `Bayesian Optimization` as an example:
 
 ```yaml
-searcher_init:
-  algorithm: bayesian_optimization
-searcher_kwargs:  # Specific arguments depending on the searcher
-  initial_design_size: 7
-  surrogate_model: gp
-  acquisition: EI
-  log_prior_weighted: false
-  acquisition_sampler: random
-  random_interleave_prob: 0.1
-  disable_priors: false
-  prior_confidence: high
-  sample_default_first: false
+algorithm: bayesian_optimization
+# Specific arguments depending on the searcher
+initial_design_size: 7
+surrogate_model: gp
+acquisition: EI
+log_prior_weighted: false
+acquisition_sampler: random
+random_interleave_prob: 0.1
+disable_priors: false
+prior_confidence: high
+sample_default_first: false
 ```
 
 ```python

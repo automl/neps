@@ -1,6 +1,6 @@
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_run                   # Function name within the file
+  name: example_pipeline              # Function name within the file
 
 pipeline_space:
   learning_rate:

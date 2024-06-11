@@ -85,7 +85,11 @@ def get_run_args_from_yaml(path: str) -> dict:
         if parameter in expected_parameters:
             settings[parameter] = value
         else:
-            raise KeyError(f"Parameter '{parameter}' is not an argument of neps.run().")
+            raise KeyError(f"Parameter '{parameter}' is not an argument of neps.run() "
+                           f"provided via run_args."
+                           f"See here all valid arguments:"
+                           f" {', '.join(expected_parameters)}, "
+                           f"'run_pipeline', 'preload_hooks', 'pipeline_space'")
 
     # Process complex configurations (e.g., 'pipeline_space', 'searcher') and integrate
     # them into 'settings'.
@@ -257,11 +261,28 @@ def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> Non
 
 
 def process_pipeline_space(key, special_configs, settings):
+    """
+    Process or load the pipeline space configuration.
+
+    This function checks if the given key exists in the `special_configs` dictionary.
+    If it exists, it processes the associated value, which can be either a dictionary
+    or a string. Based on the keys of the dictionary it decides if the pipeline_space
+    have to be loaded or needs to be converted into a neps search_space structure.
+    The processed pipeline space is then stored in the `settings`
+    dictionary under the given key.
+
+    Args:
+        key (str): The key to check in the `special_configs` dictionary.
+        special_configs (dict): The dictionary containing special configuration values.
+        settings (dict): The dictionary where the processed pipeline space will be stored.
+
+    Raises:
+        TypeError: If the value associated with the key is neither a string nor a
+        dictionary.
+        """
     if special_configs.get(key) is not None:
         pipeline_space = special_configs[key]
         if isinstance(pipeline_space, dict):
-            # TODO: was ist wenn ein argument fehlt
-
             # determine if dict contains path_loading or the actual search space
             expected_keys = {"path", "name"}
             actual_keys = set(pipeline_space.keys())
@@ -346,32 +367,18 @@ def load_and_return_object(module_path: str, object_name: str, key: str) -> obje
 
 def load_hooks_from_config(pre_load_hooks_dict: Dict) -> List:
     """
-    Loads hook functions from configurations.
-
-    Iterates through a dictionary of pre-load hooks, dynamically imports each
-    specified function by its 'path' and 'name', and accumulates the loaded
-    functions into a list.
+    Loads hook functions from a dictionary of configurations.
 
     Args:
-        pre_load_hooks_dict (dict): Dictionary of hook configurations, each
-        containing 'path' and 'name' keys for the hook function.
+        pre_load_hooks_dict (Dict): Dictionary with hook names as keys and paths as values
 
     Returns:
-        list: List of loaded hook functions.
-
-    Raises:
-        KeyError: If any hook configuration lacks 'path' or 'name' keys.
+        List: List of loaded hook functions.
     """
     loaded_hooks = []
-    for hook_config in pre_load_hooks_dict.values():
-        if "path" in hook_config and "name" in hook_config:
-            hook_func = load_and_return_object(hook_config["path"], hook_config[
-                "name"], PRE_LOAD_HOOKS)
-            loaded_hooks.append(hook_func)
-        else:
-            raise KeyError(
-                f"Expected keys 'path' and 'name' for hook, but got: " f"{hook_config}."
-            )
+    for name, path in pre_load_hooks_dict.items():
+        hook_func = load_and_return_object(path, name, PRE_LOAD_HOOKS)
+        loaded_hooks.append(hook_func)
     return loaded_hooks
 
 
@@ -480,29 +487,34 @@ def check_essential_arguments(
         )
 
 
-def check_arg_defaults(func: Callable, provided_arguments: Dict) -> Any:
+def check_double_reference(func: Callable, func_arguments: Dict, yaml_arguments: Dict) -> Any:
     """
-    Checks if provided arguments deviate from default values defined in the function's
-    signature.
+    Checks if no argument is defined both via function arguments and YAML.
 
     Parameters:
     - func (Callable): The function to check arguments against.
-    - provided_arguments: A dictionary containing the provided arguments and their
-    values.
+    - func_arguments (Dict): A dictionary containing the provided arguments to the
+    function and their values.
+    - yaml_arguments (Dict): A dictionary containing the arguments provided via a YAML
+    file.
 
     Raises:
-    - ValueError: If any provided argument differs from its default value in the function
-    signature.
+    - ValueError: If any provided argument is defined both via function arguments and the
+    YAML file.
     """
     sig = inspect.signature(func)
+
     for name, param in sig.parameters.items():
-        if param.default != provided_arguments[name]:
+        if param.default != func_arguments[name]:
             if name == RUN_ARGS:
-                # ignoring run_args argument
+                # Ignoring run_args argument
                 continue
             if name == SEARCHER_KWARGS:
                 # searcher_kwargs does not have a default specified by inspect
-                if provided_arguments[name] == {}:
+                if func_arguments[name] == {}:
                     continue
-            raise ValueError(
-                f"Argument '{name}' must not be set directly when 'run_args' is used.")
+            if name in yaml_arguments:
+                raise ValueError(
+                    f"Conflict for argument '{name}': Argument is defined both via "
+                    f"function arguments and YAML, which is not allowed."
+                )

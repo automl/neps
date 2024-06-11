@@ -3,10 +3,17 @@ pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
-    log: True
+    log: True  # Log scale for learning rate
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: True
   optimizer:
     choices: [adam, sgd, adamw]
-  epochs: 50
+  batch_size: 64
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: path/to/results/simple_example       # Directory for result storage
 max_evaluations_total: 20             # Budget
+
+
+overwrite_working_directory: True

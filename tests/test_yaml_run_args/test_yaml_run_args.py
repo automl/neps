@@ -12,7 +12,6 @@ pipeline_space = dict(lr=neps.FloatParameter(lower=1e-3, upper=0.1),
                       batch_size=neps.ConstantParameter(value=64))
 
 
-
 def run_pipeline():
     """func to test loading of run_pipeline"""
     return

@@ -1,11 +1,9 @@
-searcher_init:
-  algorithm: regularized_evolution
-searcher_kwargs:
-  # Arguments that can be modified by the user
-  population_size: 30
-  sample_size: 10
-  assisted: false
+algorithm: regularized_evolution
+# Arguments that can be modified by the user
+population_size: 30
+sample_size: 10
+assisted: false
 
-  # Other arguments
-  # assisted_zero_cost_proxy: None # type: Callable
-  # assisted_init_population_dir: None # type: str | Path
+# Other arguments
+# assisted_zero_cost_proxy: None # type: Callable
+# assisted_init_population_dir: None # type: str | Path

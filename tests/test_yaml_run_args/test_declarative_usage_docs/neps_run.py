@@ -1,15 +1,7 @@
 import argparse
-import numpy as np
 import neps
-
-
-def run_pipeline(learning_rate, optimizer, epochs):
-    """func for test loading of run_pipeline"""
-    if optimizer == "a":
-        eval_score = np.random.choice([learning_rate, epochs], 1)
-    else:
-        eval_score = 5.0
-    return {"loss": eval_score}
+from tests.test_yaml_run_args.test_declarative_usage_docs.run_pipeline import \
+    run_pipeline_constant
 
 
 if __name__ == "__main__":
@@ -17,5 +9,11 @@ if __name__ == "__main__":
         description="Run NEPS optimization with run_args.yml."
     )
     parser.add_argument("run_args", type=str, help="Path to the YAML configuration file.")
+    parser.add_argument("--run_pipeline", action="store_true")
     args = parser.parse_args()
-    neps.run(run_args=args.run_args)
+
+    if args.run_pipeline:
+        neps.run(run_args=args.run_args, run_pipeline=run_pipeline_constant)
+    else:
+        neps.run(run_args=args.run_args)
+

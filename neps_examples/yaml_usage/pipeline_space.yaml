@@ -1,16 +1,15 @@
-pipeline_space:
-  epochs:
-    lower: 1
-    upper: 5
-  learning_rate:
-    lower: 1e-5
-    upper: 1e-1
-    log: True
-  num_layers:
-    lower: 1
-    upper: 5
-  optimizer:
-    choices: ["adam", "sgd"]
-  num_neurons:
-    lower: 64
-    upper: 128
+epochs:
+  lower: 1
+  upper: 5
+learning_rate:
+  lower: 1e-5
+  upper: 1e-1
+  log: True
+num_layers:
+  lower: 1
+  upper: 5
+optimizer:
+  choices: ["adam", "sgd"]
+num_neurons:
+  lower: 64
+  upper: 128
