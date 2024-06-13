@@ -217,7 +217,7 @@ def get_searcher_data(
             data = yaml.safe_load(file)
 
         file_name = user_yaml_path.stem
-        searcher = data.get("name", file_name)
+        searcher = data.pop("name", file_name)
 
     else:
         # TODO(eddiebergman): This is a bad idea as it relies on folder structure to be

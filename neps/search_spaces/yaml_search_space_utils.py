@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import re
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("neps")
 
 
 def convert_scientific_notation(value: str | int | float, show_usage_flag=False) \

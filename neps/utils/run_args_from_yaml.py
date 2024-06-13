@@ -97,9 +97,8 @@ def get_run_args_from_yaml(path: str) -> dict:
     check_run_args(settings)
 
     logger.debug(
-        f"'run_args' are extracted and type-tested from the referenced YAML file. "
-        f"These arguments will now be overwritten: {settings}."
-    )
+        f"The 'run_args' arguments: {settings} are now extracted and type-tested from "
+        f"referenced YAML.")
 
     return settings
 

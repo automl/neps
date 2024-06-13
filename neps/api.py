@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
-from neps.utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml,\
+from neps.utils.run_args_from_yaml import check_essential_arguments, \
+    get_run_args_from_yaml, \
     check_double_reference
 
 from neps.utils.common import instance_from_map
@@ -25,17 +26,7 @@ from neps.search_spaces.search_space import (
 from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
 from neps.utils.data_loading import _get_loss
-
-VALID_SEARCHER = [
-    "default",
-    "bayesian_optimization",
-    "random_search",
-    "hyperband",
-    "priorband",
-    "mobster",
-    "asha",
-    "regularized_evolution",
-]
+from neps.optimizers.info import SearcherConfigs
 
 
 def _post_evaluation_hook_function(
@@ -418,7 +409,8 @@ def _run_args(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if isinstance(searcher, (str, Path)) and searcher not in VALID_SEARCHER:
+    if isinstance(searcher, (str, Path)) and searcher not in \
+        SearcherConfigs.get_searchers() and searcher is not "default":
         # The users has their own custom searcher.
         logging.info("Preparing to run user created searcher")
 
