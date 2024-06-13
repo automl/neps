@@ -1,17 +1,21 @@
 run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_pipeline              # Function name within the file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+  name: run_pipeline_constant
 
 pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
     log: True  # Log scale for learning rate
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: True
   optimizer:
     choices: [adam, sgd, adamw]
-  epochs: 50
+  batch_size: 64
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: path/to/results/custominizing_neps_optimizer       # Directory for result storage
 max_evaluations_total: 20               # Budget
 searcher:
   algorithm: bayesian_optimization    # name linked with neps keywords, more information click here..?
@@ -22,3 +26,4 @@ searcher:
   acquisition_sampler: random
   random_interleave_prob: 0.1
 
+overwrite_working_directory: True

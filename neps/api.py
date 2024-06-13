@@ -314,7 +314,7 @@ def run(
 
     # Check to verify if the target directory contains history of another optimizer state
     # This check is performed only when the `searcher` is built during the run
-    if not isinstance(searcher, (BaseOptimizer, str)):
+    if not isinstance(searcher, (BaseOptimizer, str, dict)):
         raise ValueError(
             f"Unrecognized `searcher` of type {type(searcher)}. Not str or BaseOptimizer."
         )
@@ -415,6 +415,11 @@ def _run_args(
         logging.info("Preparing to run user created searcher")
 
         config, searcher = get_searcher_data(searcher, loading_custom_searcher=True)
+        searcher_info["searcher_selection"] = "user-yaml"
+        searcher_info["neps_decision_tree"] = False
+    elif isinstance(searcher, dict):
+        config = searcher
+        searcher = config.pop("name", "unnamed-custom-searcher")
         searcher_info["searcher_selection"] = "user-yaml"
         searcher_info["neps_decision_tree"] = False
     else:

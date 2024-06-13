@@ -6,6 +6,7 @@ from neps.optimizers.base_optimizer import BaseOptimizer
 from typing import Callable, Optional, Dict, Tuple, List, Any
 import inspect
 from neps.search_spaces.search_space import pipeline_space_from_yaml
+from pathlib import Path
 
 logger = logging.getLogger("neps")
 
@@ -189,11 +190,10 @@ def handle_special_argument_cases(settings: Dict, special_configs: Dict) -> None
     - None: The function modifies 'settings' in place.
 
     """
-    # Load the value of each key from a dictionary specifying "path" and "name".
-    process_config_key(
-        settings, special_configs, [SEARCHER, RUN_PIPELINE]
-    )
+    # process special configs
+    process_run_pipeline(RUN_PIPELINE, special_configs, settings)
     process_pipeline_space(PIPELINE_SPACE, special_configs, settings)
+    process_searcher(SEARCHER, special_configs, settings)
     if special_configs[SEARCHER_KWARGS] is not None:
         configs = {}
         # Check if values of keys is not None and then add the dict to settings
@@ -209,55 +209,7 @@ def handle_special_argument_cases(settings: Dict, special_configs: Dict) -> None
         settings[PRE_LOAD_HOOKS] = load_hooks_from_config(special_configs[PRE_LOAD_HOOKS])
 
 
-def process_config_key(settings: Dict, special_configs: Dict, keys: List) -> None:
-    """
-    Enhance 'settings' by adding keys and their corresponding values or loaded objects
-    from 'special_configs'. Keys in 'special_configs' are processed to directly insert
-    their values into 'settings' or to load functions/objects using 'path' and 'name'.
-    Key handling varies: 'RUN_PIPELINE' requires a dictionary defining a loadable function
-    , whereas other keys may accept either strings or dictionaries
-
-    Parameters:
-    - settings (dict): Dictionary to update.
-    - special_configs (dict): Contains keys and values for processing.
-    - keys (list): List of keys to process in 'special_configs'.
-
-    Raises:
-    - KeyError: Missing 'path'/'name' for dictionaries.
-    - TypeError: Incorrect type for key's value; RUN_PIPELINE must be a dict,
-    others can be dict or string.
-    """
-    for key in keys:
-        if special_configs.get(key) is not None:
-            value = special_configs[key]
-            if isinstance(value, str) and key != RUN_PIPELINE:
-                # searcher can be a string
-                settings[key] = value
-            elif isinstance(value, dict):
-                # dict that should contain 'path' and 'name' for loading value
-                try:
-                    func = load_and_return_object(value["path"], value["name"], key)
-                    settings[key] = func
-                except KeyError as e:
-                    raise KeyError(
-                        f"Missing key for argument {key}: {e}. Expect 'path' "
-                        f"and 'name' as keys when loading '{key}' "
-                        f"from 'run_args'"
-                    ) from e
-            else:
-                if key == RUN_PIPELINE:
-                    raise TypeError(
-                        f"Value for {key} must be a dictionary, but got "
-                        f"{type(value).__name__}."
-                    )
-                else:
-                    raise TypeError(
-                        f"Value for {key} must be a string or a dictionary, "
-                        f"but got {type(value).__name__}."
-                    )
-
-
-def process_pipeline_space(key, special_configs, settings):
+def process_pipeline_space(key: str, special_configs: Dict, settings: Dict):
     """
     Process or load the pipeline space configuration.
 
@@ -289,17 +241,52 @@ def process_pipeline_space(key, special_configs, settings):
             else:
                 # pipeline_space stored in a python dict, not using a yaml
                 processed_pipeline_space = load_and_return_object(pipeline_space["path"],
-                                                             pipeline_space[
-                    "name"], PIPELINE_SPACE)
+                                                                  pipeline_space["name"],
+                                                                  key)
         elif isinstance(pipeline_space, str):
             # load yaml from path
             processed_pipeline_space = pipeline_space_from_yaml(pipeline_space)
         else:
             raise TypeError(
-                f"Value for {PIPELINE_SPACE} must be a string or a dictionary, "
+                f"Value for {key} must be a string or a dictionary, "
                 f"but got {type(pipeline_space).__name__}."
             )
         settings[key] = processed_pipeline_space
+
+
+def process_searcher(key: str, special_configs: Dict, settings: Dict):
+    if special_configs.get(key) is not None:
+        searcher = special_configs[key]
+        if isinstance(searcher, dict):
+            # determine if dict contains path_loading or the actual searcher config
+            expected_keys = {"path", "name"}
+            actual_keys = set(searcher.keys())
+            if expected_keys == actual_keys:
+                searcher = load_and_return_object(searcher["path"],
+                                                             searcher[
+                    "name"], key)
+        elif isinstance(searcher, (str, Path)):
+            pass
+        else:
+            raise TypeError(
+                f"Value for {key} must be a string or a dictionary, "
+                f"but got {type(searcher).__name__}."
+            )
+        settings[key] = searcher
+
+
+def process_run_pipeline(key: str, special_configs: Dict, settings: Dict):
+    if special_configs.get(key) is not None:
+        config = special_configs[key]
+        try:
+            func = load_and_return_object(config["path"], config["name"], key)
+            settings[key] = func
+        except KeyError as e:
+            raise KeyError(
+                f"Missing key for argument {key}: {e}. Expect 'path' "
+                f"and 'name' as keys when loading '{key}' "
+                f"from 'run_args'"
+            ) from e
 
 
 def load_and_return_object(module_path: str, object_name: str, key: str) -> object:
