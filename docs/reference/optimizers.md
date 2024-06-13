@@ -53,13 +53,14 @@ For more optimizers, please refer [here](#list-available-searchers) .
 
 For users who want more control over the optimizer's hyperparameters, you can create your own YAML configuration file.
 In this file, you can specify the hyperparameters for your preferred optimizer. To use this custom configuration,
-provide the path to your YAML file using the `searcher_path` parameter when running the optimizer.
+provide the path to your YAML file using the `searcher` parameter when running the optimizer.
 The library will then load your custom settings and use them for optimization.
 
 Here's the format of a custom YAML (`custom_bo.yaml`) configuration using `Bayesian Optimization` as an example:
 
 ```yaml
 algorithm: bayesian_optimization
+name: my_custom_bo  # # optional; otherwise, your searcher will be named after your YAML file, here 'custom_bo'.
 # Specific arguments depending on the searcher
 initial_design_size: 7
 surrogate_model: gp
@@ -78,16 +79,16 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
-    # searcher specified, along with an argument
-    searcher_path = "custom/path/to/directory"
-    # `custom_bo.yaml` should be in `searcher_path`
-    searcher="custom_bo",
+    searcher="path/to/custom_bo.yaml",
 )
 ```
 
 ### 4. Hyperparameter Overrides
 
-If you want to make on-the-fly adjustments to the optimizer's hyperparameters without modifying the YAML configuration file, you can do so by passing keyword arguments (kwargs) to the neps.run function itself. This enables you to fine-tune specific hyperparameters without the need for YAML file updates. Any hyperparameter values provided as kwargs will take precedence over those specified in the YAML configuration.
+If you want to make on-the-fly adjustments to the optimizer's hyperparameters without modifying the YAML configuration
+file, you can do so by passing keyword arguments (kwargs) to the neps.run function itself. This enables you to fine-tune
+specific hyperparameters without the need for YAML file updates. Any hyperparameter values provided as kwargs will take
+precedence over those specified in the YAML configuration.
 
 ```python
 neps.run(
@@ -95,12 +96,9 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
-    # searcher specified, along with an argument
-    searcher_path = "custom/path/to/directory"
-    # `custom_bo.yaml` should be in `searcher_path`
-    searcher="custom_bo",
+    searcher="path/to/custom_bo.yaml",
     initial_design_size=5,        # overrides value in custom_bo.yaml
-    random_interleave_prob: 0.25  # overrides value in custom_bo.yaml
+    random_interleave_prob=0.25  # overrides value in custom_bo.yaml
 )
 ```
 

@@ -124,7 +124,7 @@ the NePS will automatically infer the data type based on the value provided.
 * If `lower` and `upper` are provided, then if they are both integers, the type will be inferred as `int`,
     otherwise as `float`. You can provide scientific notation for floating-point numbers as well.
 * If `choices` are provided, the type will be inferred as `categorical`.
-* If `value` is provided, the type will be inferred as `constant`.
+* If just a numeric or string is provided, the type will be inferred as `constant`.
 
 If none of these hold, an error will be raised.
 
