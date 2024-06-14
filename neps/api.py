@@ -283,7 +283,7 @@ def run(
     if inspect.isclass(searcher):
         if issubclass(searcher, BaseOptimizer):
             search_space = SearchSpace(**pipeline_space)
-            searcher = searcher(search_space)
+            searcher = searcher(search_space, **searcher_kwargs)
         else:
             # Raise an error if searcher is not a subclass of BaseOptimizer
             raise TypeError(
@@ -410,7 +410,7 @@ def _run_args(
         raise TypeError(message) from e
 
     if isinstance(searcher, (str, Path)) and searcher not in \
-        SearcherConfigs.get_searchers() and searcher is not "default":
+        SearcherConfigs.get_searchers() and searcher != "default":
         # The users has their own custom searcher.
         logging.info("Preparing to run user created searcher")
 
@@ -440,15 +440,6 @@ def _run_args(
             searcher_info["searcher_selection"] = "neps-default"
         # Fetching the searcher data, throws an error when the searcher is not found
         config, searcher = get_searcher_data(searcher)
-
-    # Check for deprecated 'algorithm' argument
-    if "algorithm" in config:
-        warnings.warn(
-            "The 'algorithm' argument is deprecated and will be removed in future versions. Please use 'strategy' instead.",
-            DeprecationWarning
-        )
-        # Map the old 'algorithm' argument to 'strategy'
-        config['strategy'] = config.pop("algorithm")
 
     # Check for deprecated 'algorithm' argument
     if "algorithm" in config:

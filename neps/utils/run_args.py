@@ -61,7 +61,7 @@ def get_run_args_from_yaml(path: str) -> dict:
     settings = {}
 
     # List allowed NEPS run arguments with simple types (e.g., string, int). Parameters
-    # like 'searcher_kwargs', 'run_pipeline', 'preload_hooks', 'pipeline_space',
+    # like 'run_pipeline', 'preload_hooks', 'pipeline_space',
     # and 'searcher' are excluded due to needing specialized processing.
     expected_parameters = [
         ROOT_DIRECTORY,
@@ -147,7 +147,7 @@ def config_loader(path: str) -> dict:
 
 def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, dict]:
     """Recursive function to extract leaf keys and their values from a nested dictionary.
-    Special keys (e.g. 'searcher_kwargs', 'run_pipeline') are also extracted if present
+    Special keys (e.g.'run_pipeline') are also extracted if present
     and their corresponding values (dict) at any level in the nested structure.
 
     :param d: The dictionary to extract values from.
@@ -157,7 +157,6 @@ def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, 
     """
     if special_keys is None:
         special_keys = {
-            SEARCHER_KWARGS: None,
             RUN_PIPELINE: None,
             PRE_LOAD_HOOKS: None,
             SEARCHER: None,
@@ -183,8 +182,8 @@ def handle_special_argument_cases(settings: dict, special_configs: dict) -> None
     This function updates 'settings' with values from 'special_configs'. It handles
     specific keys that require more complex processing, such as 'pipeline_space' and
     'searcher', which may need to load a function/dict from paths. It also manages nested
-    configurations like 'searcher_kwargs' and 'pre_load_hooks' which need individual
-    processing or function loading.
+    configurations like 'pre_load_hooks' which need individual processing or function
+    loading.
 
     Parameters:
     - settings (dict): The dictionary to be updated with processed configurations.
@@ -269,8 +268,12 @@ def process_searcher(key: str, special_configs: dict, settings: dict):
             # determine if dict contains path_loading or the actual searcher config
             expected_keys = {"path", "name"}
             actual_keys = set(searcher.keys())
-            if expected_keys == actual_keys:
-                searcher = load_and_return_object(searcher["path"], searcher["name"], key)
+            if expected_keys.issubset(actual_keys):
+                path = searcher.pop("path")
+                name = searcher.pop("name")
+                settings[SEARCHER_KWARGS] = searcher
+                searcher = load_and_return_object(path, name, key)
+
         elif isinstance(searcher, (str, Path)):
             pass
         else:
@@ -426,7 +429,7 @@ def check_run_args(settings: dict) -> None:
             if not all(callable(item) for item in value):
                 raise TypeError("All items in 'pre_load_hooks' must be callable.")
         elif param == SEARCHER:
-            if not (isinstance(param, str) or issubclass(param, BaseOptimizer)):
+            if not (isinstance(param, (str, dict)) or issubclass(param, BaseOptimizer)):
                 raise TypeError(
                     "Parameter 'searcher' must be a string or a class that is a subclass "
                     "of BaseOptimizer."
@@ -510,6 +513,9 @@ def check_double_reference(
             if name == RUN_ARGS:
                 # Ignoring run_args argument
                 continue
+            if name == SEARCHER_KWARGS and func_arguments[name] == {}:
+                continue
+
             if name in yaml_arguments:
                 raise ValueError(
                     f"Conflict for argument '{name}': Argument is defined both via "
