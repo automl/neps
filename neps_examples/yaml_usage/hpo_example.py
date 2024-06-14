@@ -25,9 +25,9 @@ with NePS for hyperparameter optimization, focusing on the MNIST dataset.
 
 Usage:
 1. Define model architecture and training logic in `SimpleNN` and `training_pipeline`.
-2. Configure hyperparameters and optimization settings in 'run_args.yaml'.
+2. Configure hyperparameters and optimization settings in 'config.yaml'.
 3. Launch optimization with NePS by calling `neps.run`, specifying the training pipeline,
-    pipeline_space(pipeline_space.yaml) and configuration file(run_args.yaml).
+and configuration file(config.yaml).
 """
 
 
@@ -122,7 +122,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     # Run optimization using neps.run(...). Arguments can be provided directly to neps.run
-    # or defined in a configuration file (e.g., "run_args.yaml") passed through
+    # or defined in a configuration file (e.g., "config.yaml") passed through
     # the run_args parameter.
-    neps.run(run_args="run_args.yaml")
-    # neps.run(run_args="run_args_alternative.yaml")
+    neps.run(run_args="config.yaml")

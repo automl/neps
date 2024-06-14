@@ -1,6 +1,6 @@
 import pytest
 import neps
-from neps.utils.run_args_from_yaml import get_run_args_from_yaml
+from neps.utils.run_args import get_run_args_from_yaml
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from typing import Union, Callable, Dict, List, Type
 

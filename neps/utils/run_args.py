@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import importlib.util
+import inspect
 import logging
 import sys
-import yaml
-from neps.optimizers.base_optimizer import BaseOptimizer
-from typing import Callable, Optional, Dict, Tuple, List, Any
-import inspect
-from neps.search_spaces.search_space import pipeline_space_from_yaml
 from pathlib import Path
+from typing import Any, Callable
+
+import yaml
+
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.search_spaces.search_space import pipeline_space_from_yaml
 
 logger = logging.getLogger("neps")
 
@@ -32,8 +36,7 @@ MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
 
 
 def get_run_args_from_yaml(path: str) -> dict:
-    """
-    Load and validate NEPS run arguments from a specified YAML configuration file
+    """Load and validate NEPS run arguments from a specified YAML configuration file
     provided via run_args.
 
     This function reads a YAML file, extracts the arguments required by NEPS,
@@ -84,11 +87,13 @@ def get_run_args_from_yaml(path: str) -> dict:
         if parameter in expected_parameters:
             settings[parameter] = value
         else:
-            raise KeyError(f"Parameter '{parameter}' is not an argument of neps.run() "
-                           f"provided via run_args."
-                           f"See here all valid arguments:"
-                           f" {', '.join(expected_parameters)}, "
-                           f"'run_pipeline', 'preload_hooks', 'pipeline_space'")
+            raise KeyError(
+                f"Parameter '{parameter}' is not an argument of neps.run() "
+                f"provided via run_args."
+                f"See here all valid arguments:"
+                f" {', '.join(expected_parameters)}, "
+                f"'run_pipeline', 'preload_hooks', 'pipeline_space'"
+            )
 
     # Process complex configurations (e.g., 'pipeline_space', 'searcher') and integrate
     # them into 'settings'.
@@ -99,14 +104,14 @@ def get_run_args_from_yaml(path: str) -> dict:
 
     logger.debug(
         f"The 'run_args' arguments: {settings} are now extracted and type-tested from "
-        f"referenced YAML.")
+        f"referenced YAML."
+    )
 
     return settings
 
 
-def config_loader(path: str) -> Dict:
-    """
-    Loads a YAML file and returns the contents under the 'run_args' key.
+def config_loader(path: str) -> dict:
+    """Loads a YAML file and returns the contents under the 'run_args' key.
 
     Validates the existence and format of the YAML file and checks for the presence of
     the 'run_args' as the only top level key. If any conditions are not met,
@@ -129,18 +134,19 @@ def config_loader(path: str) -> Dict:
         with open(path) as file:
             config = yaml.safe_load(file)
     except FileNotFoundError as e:
-        raise FileNotFoundError(f"The specified file was not found: '{path}'."
-                                f" Please make sure that the path is correct and "
-                                f"try again.") from e
+        raise FileNotFoundError(
+            f"The specified file was not found: '{path}'."
+            f" Please make sure that the path is correct and "
+            f"try again."
+        ) from e
     except yaml.YAMLError as e:
         raise ValueError(f"The file at {path} is not a valid YAML file.") from e
 
     return config
 
 
-def extract_leaf_keys(d: Dict, special_keys: Dict = None) -> Tuple[Dict, Dict]:
-    """
-    Recursive function to extract leaf keys and their values from a nested dictionary.
+def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, dict]:
+    """Recursive function to extract leaf keys and their values from a nested dictionary.
     Special keys (e.g. 'searcher_kwargs', 'run_pipeline') are also extracted if present
     and their corresponding values (dict) at any level in the nested structure.
 
@@ -171,9 +177,8 @@ def extract_leaf_keys(d: Dict, special_keys: Dict = None) -> Tuple[Dict, Dict]:
     return leaf_keys, special_keys
 
 
-def handle_special_argument_cases(settings: Dict, special_configs: Dict) -> None:
-    """
-    Process and integrate special configuration cases into the 'settings' dictionary.
+def handle_special_argument_cases(settings: dict, special_configs: dict) -> None:
+    """Process and integrate special configuration cases into the 'settings' dictionary.
 
     This function updates 'settings' with values from 'special_configs'. It handles
     specific keys that require more complex processing, such as 'pipeline_space' and
@@ -194,24 +199,14 @@ def handle_special_argument_cases(settings: Dict, special_configs: Dict) -> None
     process_run_pipeline(RUN_PIPELINE, special_configs, settings)
     process_pipeline_space(PIPELINE_SPACE, special_configs, settings)
     process_searcher(SEARCHER, special_configs, settings)
-    if special_configs[SEARCHER_KWARGS] is not None:
-        configs = {}
-        # Check if values of keys is not None and then add the dict to settings
-        # Increase flexibility to let value of a key in yaml file empty
-        for key, value in special_configs[SEARCHER_KWARGS].items():
-            if value is not None:
-                configs[key] = value
-        if len(configs) != 0:
-            settings[SEARCHER_KWARGS] = configs
 
     if special_configs[PRE_LOAD_HOOKS] is not None:
         # Loads the pre_load_hooks functions and add them in a list to settings.
         settings[PRE_LOAD_HOOKS] = load_hooks_from_config(special_configs[PRE_LOAD_HOOKS])
 
 
-def process_pipeline_space(key: str, special_configs: Dict, settings: Dict):
-    """
-    Process or load the pipeline space configuration.
+def process_pipeline_space(key: str, special_configs: dict, settings: dict):
+    """Process or load the pipeline space configuration.
 
     This function checks if the given key exists in the `special_configs` dictionary.
     If it exists, it processes the associated value, which can be either a dictionary
@@ -228,7 +223,7 @@ def process_pipeline_space(key: str, special_configs: Dict, settings: Dict):
     Raises:
         TypeError: If the value associated with the key is neither a string nor a
         dictionary.
-        """
+    """
     if special_configs.get(key) is not None:
         pipeline_space = special_configs[key]
         if isinstance(pipeline_space, dict):
@@ -240,9 +235,9 @@ def process_pipeline_space(key: str, special_configs: Dict, settings: Dict):
                 processed_pipeline_space = pipeline_space_from_yaml(pipeline_space)
             else:
                 # pipeline_space stored in a python dict, not using a yaml
-                processed_pipeline_space = load_and_return_object(pipeline_space["path"],
-                                                                  pipeline_space["name"],
-                                                                  key)
+                processed_pipeline_space = load_and_return_object(
+                    pipeline_space["path"], pipeline_space["name"], key
+                )
         elif isinstance(pipeline_space, str):
             # load yaml from path
             processed_pipeline_space = pipeline_space_from_yaml(pipeline_space)
@@ -254,7 +249,20 @@ def process_pipeline_space(key: str, special_configs: Dict, settings: Dict):
         settings[key] = processed_pipeline_space
 
 
-def process_searcher(key: str, special_configs: Dict, settings: Dict):
+def process_searcher(key: str, special_configs: dict, settings: dict):
+    """Processes the searcher configuration and updates the settings dictionary.
+
+    Checks if the key exists in special_configs. If found, it processes the
+    value based on its type. Updates settings with the processed searcher.
+
+    Parameters:
+    key (str): Key to look up in special_configs.
+    special_configs (dict): Dictionary of special configurations.
+    settings (dict): Dictionary to update with the processed searcher.
+
+    Raises:
+    TypeError: If the value for the key is neither a string, Path, nor a dictionary.
+    """
     if special_configs.get(key) is not None:
         searcher = special_configs[key]
         if isinstance(searcher, dict):
@@ -262,9 +270,7 @@ def process_searcher(key: str, special_configs: Dict, settings: Dict):
             expected_keys = {"path", "name"}
             actual_keys = set(searcher.keys())
             if expected_keys == actual_keys:
-                searcher = load_and_return_object(searcher["path"],
-                                                             searcher[
-                    "name"], key)
+                searcher = load_and_return_object(searcher["path"], searcher["name"], key)
         elif isinstance(searcher, (str, Path)):
             pass
         else:
@@ -275,7 +281,17 @@ def process_searcher(key: str, special_configs: Dict, settings: Dict):
         settings[key] = searcher
 
 
-def process_run_pipeline(key: str, special_configs: Dict, settings: Dict):
+def process_run_pipeline(key: str, special_configs: dict, settings: dict):
+    """Processes the run pipeline configuration and updates the settings dictionary.
+
+    Parameters:
+    key (str): Key to look up in special_configs.
+    special_configs (dict): Dictionary of special configurations.
+    settings (dict): Dictionary to update with the processed function.
+
+    Raises:
+    KeyError: If required keys ('path' and 'name') are missing in the config.
+    """
     if special_configs.get(key) is not None:
         config = special_configs[key]
         try:
@@ -290,8 +306,7 @@ def process_run_pipeline(key: str, special_configs: Dict, settings: Dict):
 
 
 def load_and_return_object(module_path: str, object_name: str, key: str) -> object:
-    """
-    Dynamically loads an object from a given module file path.
+    """Dynamically loads an object from a given module file path.
 
     This function attempts to dynamically import an object by its name from a specified
     module path. If the initial import fails, it retries with a '.py' extension appended
@@ -309,12 +324,16 @@ def load_and_return_object(module_path: str, object_name: str, key: str) -> obje
     Raises:
         ImportError: If the module or object cannot be found, with a message detailing
         the issue.
-        """
+    """
+
     def import_object(path):
         try:
             # Convert file system path to module path, removing '.py' if present.
-            module_name = path[:-3].replace("/", ".") if path.endswith(
-                '.py') else path.replace("/", ".")
+            module_name = (
+                path[:-3].replace("/", ".")
+                if path.endswith(".py")
+                else path.replace("/", ".")
+            )
 
             # Dynamically import the module.
             spec = importlib.util.spec_from_file_location(module_name, path)
@@ -337,21 +356,22 @@ def load_and_return_object(module_path: str, object_name: str, key: str) -> obje
     if imported_object is None:
         # If the object could not be imported, attempt again by appending '.py',
         # if not already present.
-        if not module_path.endswith('.py'):
-            module_path += '.py'
+        if not module_path.endswith(".py"):
+            module_path += ".py"
             imported_object = import_object(module_path)
 
         if imported_object is None:
-            raise ImportError(f"Failed to import '{object_name}' for argument '{key}'. "
-                              f"Module path '{module_path}' not found or object does not "
-                              f"exist.")
+            raise ImportError(
+                f"Failed to import '{object_name}' for argument '{key}'. "
+                f"Module path '{module_path}' not found or object does not "
+                f"exist."
+            )
 
     return imported_object
 
 
-def load_hooks_from_config(pre_load_hooks_dict: Dict) -> List:
-    """
-    Loads hook functions from a dictionary of configurations.
+def load_hooks_from_config(pre_load_hooks_dict: dict) -> list:
+    """Loads hook functions from a dictionary of configurations.
 
     Args:
         pre_load_hooks_dict (Dict): Dictionary with hook names as keys and paths as values
@@ -366,9 +386,8 @@ def load_hooks_from_config(pre_load_hooks_dict: Dict) -> List:
     return loaded_hooks
 
 
-def check_run_args(settings: Dict) -> None:
-    """
-    Validates the types of NePS configuration settings.
+def check_run_args(settings: dict) -> None:
+    """Validates the types of NePS configuration settings.
 
     Checks that each setting's value type matches its expected type. Raises
     TypeError for type mismatches.
@@ -399,7 +418,7 @@ def check_run_args(settings: Dict) -> None:
         SEARCHER_KWARGS: dict,
     }
     for param, value in settings.items():
-        if param == DEVELOPMENT_STAGE_ID or param == TASK_ID:
+        if param in (DEVELOPMENT_STAGE_ID, TASK_ID):
             # this argument can be Any
             continue
         elif param == PRE_LOAD_HOOKS:
@@ -425,16 +444,15 @@ def check_run_args(settings: Dict) -> None:
 
 
 def check_essential_arguments(
-    run_pipeline: Optional[Callable],
-    root_directory: Optional[str],
-    pipeline_space: Optional[dict],
-    max_cost_total: Optional[int],
-    max_evaluation_total: Optional[int],
-    searcher: Optional[BaseOptimizer],
-    run_args: Optional[str],
+    run_pipeline: Callable | None,
+    root_directory: str | None,
+    pipeline_space: dict | None,
+    max_cost_total: int | None,
+    max_evaluation_total: int | None,
+    searcher: BaseOptimizer | None,
+    run_args: str | None,
 ) -> None:
-    """
-    Validates essential NEPS configuration arguments.
+    """Validates essential NEPS configuration arguments.
 
     Ensures 'run_pipeline', 'root_directory', 'pipeline_space', and either
     'max_cost_total' or 'max_evaluation_total' are provided for NePS execution.
@@ -457,11 +475,10 @@ def check_essential_arguments(
         raise ValueError("'run_pipeline' is required but was not provided.")
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
-    if not pipeline_space:
+    if not pipeline_space and (run_args or not isinstance(searcher, BaseOptimizer)):
         # handling special case for searcher instance, in which user doesn't have to
         # provide the search_space because it's the argument of the searcher.
-        if run_args or not isinstance(searcher, BaseOptimizer):
-            raise ValueError("'pipeline_space' is required but was not provided.")
+        raise ValueError("'pipeline_space' is required but was not provided.")
 
     if not max_evaluation_total and not max_cost_total:
         raise ValueError(
@@ -470,9 +487,10 @@ def check_essential_arguments(
         )
 
 
-def check_double_reference(func: Callable, func_arguments: Dict, yaml_arguments: Dict) -> Any:
-    """
-    Checks if no argument is defined both via function arguments and YAML.
+def check_double_reference(
+    func: Callable, func_arguments: dict, yaml_arguments: dict
+) -> Any:
+    """Checks if no argument is defined both via function arguments and YAML.
 
     Parameters:
     - func (Callable): The function to check arguments against.
@@ -492,10 +510,6 @@ def check_double_reference(func: Callable, func_arguments: Dict, yaml_arguments:
             if name == RUN_ARGS:
                 # Ignoring run_args argument
                 continue
-            if name == SEARCHER_KWARGS:
-                # searcher_kwargs does not have a default specified by inspect
-                if func_arguments[name] == {}:
-                    continue
             if name in yaml_arguments:
                 raise ValueError(
                     f"Conflict for argument '{name}': Argument is defined both via "

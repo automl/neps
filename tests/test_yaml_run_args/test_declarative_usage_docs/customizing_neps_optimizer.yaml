@@ -18,7 +18,7 @@ pipeline_space:
 root_directory: path/to/results/custominizing_neps_optimizer       # Directory for result storage
 max_evaluations_total: 20               # Budget
 searcher:
-  algorithm: bayesian_optimization    # name linked with neps keywords, more information click here..?
+  strategy: bayesian_optimization    # name linked with neps keywords, more information click here..?
   # Specific arguments depending on the searcher
   initial_design_size: 7
   surrogate_model: gp

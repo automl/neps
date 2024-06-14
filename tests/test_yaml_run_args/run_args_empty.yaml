@@ -19,8 +19,5 @@ parallelization_setup:
 
 search:
   searcher:
-  searcher_kwargs:
-    initial_design_size:
-    surrogate_model:
 
 pre_load_hooks: None

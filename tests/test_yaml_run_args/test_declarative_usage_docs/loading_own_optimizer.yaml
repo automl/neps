@@ -1,6 +1,6 @@
 run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_pipeline              # Function name within the file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+  name: run_pipeline
 
 pipeline_space:
   learning_rate:
@@ -14,9 +14,11 @@ pipeline_space:
 root_directory: path/to/results       # Directory for result storage
 max_evaluations_total: 20               # Budget
 searcher:
-  path: path/to/your/searcher.py  # Path to the class
-  name: CustomOptimizer           # class name within the file
+  path: "neps/optimizers/bayesian_optimization/optimizer.py"
+  name: BayesianOptimization
   # Specific arguments depending on your searcher
   initial_design_size: 7
   surrogate_model: gp
   acquisition: EI
+
+overwrite_working_directory: True

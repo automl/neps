@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
-from neps.utils.run_args_from_yaml import check_essential_arguments, \
+from neps.utils.run_args import check_essential_arguments, \
     get_run_args_from_yaml, \
     check_double_reference
 
@@ -441,14 +441,32 @@ def _run_args(
         # Fetching the searcher data, throws an error when the searcher is not found
         config, searcher = get_searcher_data(searcher)
 
+    # Check for deprecated 'algorithm' argument
     if "algorithm" in config:
-        searcher_alg = config.pop("algorithm")
+        warnings.warn(
+            "The 'algorithm' argument is deprecated and will be removed in future versions. Please use 'strategy' instead.",
+            DeprecationWarning
+        )
+        # Map the old 'algorithm' argument to 'strategy'
+        config['strategy'] = config.pop("algorithm")
+
+    # Check for deprecated 'algorithm' argument
+    if "algorithm" in config:
+        warnings.warn(
+            "The 'algorithm' argument is deprecated and will be removed in future versions. Please use 'strategy' instead.",
+            DeprecationWarning
+        )
+        # Map the old 'algorithm' argument to 'strategy'
+        config['strategy'] = config.pop("algorithm")
+
+    if "strategy" in config:
+        searcher_alg = config.pop("strategy")
     else:
-        raise KeyError(f"Missing key algorithm in searcher config:{config}")
+        raise KeyError(f"Missing key strategy in searcher config:{config}")
     searcher_config = config
 
     logger.info(f"Running {searcher} as the searcher")
-    logger.info(f"Algorithm: {searcher_alg}")
+    logger.info(f"Strategy: {searcher_alg}")
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.

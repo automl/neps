@@ -1,0 +1,30 @@
+experiment:
+  root_directory: "example_run"
+  max_evaluations_total: 20
+  overwrite_working_directory: True
+  post_run_summary: True
+  development_stage_id: "beta"
+
+run_pipeline:
+  path: "hpo_example.py"
+  name: "training_pipeline"
+
+pipeline_space:
+  epochs: 5
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: True
+  num_layers:
+    lower: 1
+    upper: 5
+  optimizer:
+    choices: [ "adam", "sgd" ]
+  num_neurons:
+    lower: 64
+    upper: 128
+
+searcher:
+  strategy: "bayesian_optimization"
+  initial_design_size: 5
+  surrogate_model: gp
