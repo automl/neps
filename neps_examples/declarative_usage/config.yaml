@@ -1,13 +1,9 @@
 experiment:
-  root_directory: "example_run"
+  root_directory: "results/example_run"
   max_evaluations_total: 20
   overwrite_working_directory: True
   post_run_summary: True
   development_stage_id: "beta"
-
-run_pipeline:
-  path: "hpo_example.py"
-  name: "training_pipeline"
 
 pipeline_space:
   epochs: 5
@@ -19,7 +15,7 @@ pipeline_space:
     lower: 1
     upper: 5
   optimizer:
-    choices: [ "adam", "sgd" ]
+    choices: ["adam", "sgd"]
   num_neurons:
     lower: 64
     upper: 128
