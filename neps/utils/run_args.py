@@ -1,3 +1,7 @@
+"""This module provides utility functions for handling yaml content of run_args.
+It includes functions for loading and processing configurations.
+"""
+
 from __future__ import annotations
 
 import importlib.util
@@ -131,7 +135,7 @@ def config_loader(path: str) -> dict:
         KeyError: If 'run_args' is not the only top level key
     """
     try:
-        with open(path) as file:
+        with open(path) as file:  # noqa: PTH123
             config = yaml.safe_load(file)
     except FileNotFoundError as e:
         raise FileNotFoundError(
@@ -204,7 +208,7 @@ def handle_special_argument_cases(settings: dict, special_configs: dict) -> None
         settings[PRE_LOAD_HOOKS] = load_hooks_from_config(special_configs[PRE_LOAD_HOOKS])
 
 
-def process_pipeline_space(key: str, special_configs: dict, settings: dict):
+def process_pipeline_space(key: str, special_configs: dict, settings: dict) -> None:
     """Process or load the pipeline space configuration.
 
     This function checks if the given key exists in the `special_configs` dictionary.
@@ -248,7 +252,7 @@ def process_pipeline_space(key: str, special_configs: dict, settings: dict):
         settings[key] = processed_pipeline_space
 
 
-def process_searcher(key: str, special_configs: dict, settings: dict):
+def process_searcher(key: str, special_configs: dict, settings: dict) -> None:
     """Processes the searcher configuration and updates the settings dictionary.
 
     Checks if the key exists in special_configs. If found, it processes the
@@ -284,7 +288,7 @@ def process_searcher(key: str, special_configs: dict, settings: dict):
         settings[key] = searcher
 
 
-def process_run_pipeline(key: str, special_configs: dict, settings: dict):
+def process_run_pipeline(key: str, special_configs: dict, settings: dict) -> None:
     """Processes the run pipeline configuration and updates the settings dictionary.
 
     Parameters:
@@ -424,7 +428,7 @@ def check_run_args(settings: dict) -> None:
         if param in (DEVELOPMENT_STAGE_ID, TASK_ID):
             # this argument can be Any
             continue
-        elif param == PRE_LOAD_HOOKS:
+        elif param == PRE_LOAD_HOOKS:  # noqa: RET507
             # check if all items in pre_load_hooks are callable objects
             if not all(callable(item) for item in value):
                 raise TypeError("All items in 'pre_load_hooks' must be callable.")
