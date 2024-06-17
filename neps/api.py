@@ -224,7 +224,6 @@ def run(
     if run_args:
         optim_settings = get_run_args_from_yaml(run_args)
         check_double_reference(run, locals(), optim_settings)
-
         run_pipeline = optim_settings.get("run_pipeline", run_pipeline)
         root_directory = optim_settings.get("root_directory", root_directory)
         pipeline_space = optim_settings.get("pipeline_space", pipeline_space)
@@ -250,8 +249,8 @@ def run(
                                                  cost_value_on_error)
         pre_load_hooks = optim_settings.get("pre_load_hooks", pre_load_hooks)
         searcher = optim_settings.get("searcher", searcher)
-        for key, value in optim_settings.get("searcher_kwargs", searcher_kwargs).items():
-            searcher_kwargs[key] = value
+        # considers arguments of a provided SubClass of BaseOptimizer
+        searcher_class_arguments = optim_settings.get("custom_class_searcher_kwargs", {})
 
     # check if necessary arguments are provided.
     check_essential_arguments(
@@ -283,7 +282,10 @@ def run(
     if inspect.isclass(searcher):
         if issubclass(searcher, BaseOptimizer):
             search_space = SearchSpace(**pipeline_space)
-            searcher = searcher(search_space, **searcher_kwargs)
+            # aligns with the behavior of the internal neps searcher which also overwrites
+            # its arguments by using searcher_kwargs
+            merge_kwargs = {**searcher_class_arguments, **searcher_kwargs}
+            searcher = searcher(search_space, **merge_kwargs)
         else:
             # Raise an error if searcher is not a subclass of BaseOptimizer
             raise TypeError(

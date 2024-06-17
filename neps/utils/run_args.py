@@ -35,7 +35,9 @@ COST_VALUE_ON_ERROR = "cost_value_on_error"
 IGNORE_ERROR = "ignore_errors"
 SEARCHER = "searcher"
 PRE_LOAD_HOOKS = "pre_load_hooks"
-SEARCHER_KWARGS = "searcher_kwargs"
+# searcher_kwargs is used differently in yaml and just play a role for considering
+# arguments of a custom searcher class (BaseOptimizer)
+SEARCHER_KWARGS = "custom_class_searcher_kwargs"
 MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
 
 
@@ -229,6 +231,7 @@ def process_pipeline_space(key: str, special_configs: dict, settings: dict) -> N
     """
     if special_configs.get(key) is not None:
         pipeline_space = special_configs[key]
+        # Define the type of processed_pipeline_space to accommodate both situations
         if isinstance(pipeline_space, dict):
             # determine if dict contains path_loading or the actual search space
             expected_keys = {"path", "name"}
@@ -240,7 +243,7 @@ def process_pipeline_space(key: str, special_configs: dict, settings: dict) -> N
                 # pipeline_space stored in a python dict, not using a yaml
                 processed_pipeline_space = load_and_return_object(
                     pipeline_space["path"], pipeline_space["name"], key
-                )
+                )  # type: ignore
         elif isinstance(pipeline_space, str):
             # load yaml from path
             processed_pipeline_space = pipeline_space_from_yaml(pipeline_space)
@@ -333,7 +336,7 @@ def load_and_return_object(module_path: str, object_name: str, key: str) -> obje
         the issue.
     """
 
-    def import_object(path):
+    def import_object(path: str) -> object | None:
         try:
             # Convert file system path to module path, removing '.py' if present.
             module_name = (
@@ -433,7 +436,7 @@ def check_run_args(settings: dict) -> None:
             if not all(callable(item) for item in value):
                 raise TypeError("All items in 'pre_load_hooks' must be callable.")
         elif param == SEARCHER:
-            if not (isinstance(param, (str, dict)) or issubclass(param, BaseOptimizer)):
+            if not (isinstance(value, (str, dict)) or issubclass(value, BaseOptimizer)):
                 raise TypeError(
                     "Parameter 'searcher' must be a string or a class that is a subclass "
                     "of BaseOptimizer."
@@ -443,7 +446,7 @@ def check_run_args(settings: dict) -> None:
                 expected_type = expected_types[param]
             except KeyError as e:
                 raise KeyError(f"{param} is not a valid argument of neps") from e
-            if not isinstance(value, expected_type):
+            if not isinstance(value, expected_type):  # type: ignore
                 raise TypeError(
                     f"Parameter '{param}' expects a value of type {expected_type}, got "
                     f"{type(value)} instead."
@@ -517,9 +520,6 @@ def check_double_reference(
             if name == RUN_ARGS:
                 # Ignoring run_args argument
                 continue
-            if name == SEARCHER_KWARGS and func_arguments[name] == {}:
-                continue
-
             if name in yaml_arguments:
                 raise ValueError(
                     f"Conflict for argument '{name}': Argument is defined both via "

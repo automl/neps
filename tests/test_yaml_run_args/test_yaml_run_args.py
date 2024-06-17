@@ -17,14 +17,14 @@ def run_pipeline():
     return
 
 
-def hook1():
+def hook1(sampler):
     """func to test loading of pre_load_hooks"""
-    return
+    return sampler
 
 
-def hook2():
+def hook2(sampler):
     """func to test loading of pre_load_hooks"""
-    return
+    return sampler
 
 
 def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
@@ -178,8 +178,9 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
             "loss_value_on_error": 2.4,
             "cost_value_on_error": 2.1,
             "ignore_errors": False,
-            "searcher": {"strategy": "bayesian_optimization", "initial_design_size": 5,
-                         "surrogate_model": "gp"},
+            "searcher": BayesianOptimization,
+            "custom_class_searcher_kwargs": {'initial_design_size': 5,
+                                             'surrogate_model': 'gp'},
             "pre_load_hooks": [hook1]
 
         })
