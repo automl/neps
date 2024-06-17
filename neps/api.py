@@ -87,7 +87,7 @@ def _post_evaluation_hook_function(
 
             logger.info(
                 f"Finished evaluating config {config_id}"
-                f" -- new best with loss {float(loss) :.3f}"
+                f" -- new best with loss {float(loss) :.6f}"
             )
 
         else:
