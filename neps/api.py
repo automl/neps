@@ -285,6 +285,7 @@ def run(
             # aligns with the behavior of the internal neps searcher which also overwrites
             # its arguments by using searcher_kwargs
             merge_kwargs = {**searcher_class_arguments, **searcher_kwargs}
+            searcher_info["searcher_args"] = merge_kwargs
             searcher = searcher(search_space, **merge_kwargs)
         else:
             # Raise an error if searcher is not a subclass of BaseOptimizer
