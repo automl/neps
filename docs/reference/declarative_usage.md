@@ -1,10 +1,8 @@
-!!! note "Work in Progress"
-    This document is currently a work in progress and may contain incomplete or preliminary information.
 
 ## Introduction
 ### Configuring with YAML
 Configure your experiments using a YAML file, which serves as a central reference for setting up your project.
-This approach simplifies sharing, reproducing, and modifying configurations.
+This approach simplifies sharing, reproducing and modifying configurations.
 #### Simple YAML Example
 Below is a straightforward YAML configuration example for NePS covering the required arguments.
 === "config.yaml"
@@ -27,7 +25,7 @@ Below is a straightforward YAML configuration example for NePS covering the requ
     ```
 
 
-#### Including `run_pipeline` in config.yaml for External Referencing
+#### Including `run_pipeline` in `run_args` for External Referencing
 In addition to setting experimental parameters via YAML, this configuration example also specifies the pipeline function
 and its location, enabling more flexible project structures.
 === "config.yaml"
@@ -65,7 +63,7 @@ but also advanced settings for more complex setups.
 
 The `searcher` key used in the YAML configuration corresponds to the same keys used for selecting an optimizer directly
 through `neps.run`. For a detailed list of integrated optimizers, see [here](optimizers.md#list-available-searchers)
-!!! note "Note on Undefined Keys"
+!!! note "Note on undefined keys in `run_args` (config.yaml)"
     Not all configurations are explicitly defined in this template. Any undefined key in the YAML file is mapped to
     the internal default settings of NePS. This ensures that your experiments can run even if certain parameters are
     omitted.
@@ -158,7 +156,10 @@ search spaces must be loaded via a dictionary, which is then referenced in the `
 
 
 ### Integrating Custom Optimizers
-You can also load your own custom optimizer and change its arguments in `config.yaml`.
+For people who want to write their own optimizer class as a subclass of the base optimizer, you can load your own
+custom optimizer class and define its arguments in `config.yaml`.
+
+Note: You can still overwrite arguments via searcher_kwargs of `neps.run` like for the internal searchers.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/loading_own_optimizer.yaml"
@@ -172,6 +173,8 @@ You can also load your own custom optimizer and change its arguments in `config.
     import neps
     neps.run(run_args="path/to/your/config.yaml")
     ```
+
+
 
 ### Adding Custom Hooks to Your Configuration
 Define hooks in your YAML configuration to extend the functionality of your experiment.

@@ -1,11 +1,11 @@
 # Loading pipeline space from a python dict
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_pipeline                   # Function name within the file
+  name: example_pipeline              # Function name within the file
 
 pipeline_space:
   path: path/to/your/search_space.py  # Path to the dict file
-  name: pipeline_space                  # Name of the dict instance
+  name: pipeline_space                # Name of the dict instance
 
 root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
+max_evaluations_total: 20             # Budget

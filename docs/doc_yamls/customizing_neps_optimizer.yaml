@@ -1,3 +1,4 @@
+# Customizing NePS Searcher
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
@@ -12,9 +13,10 @@ pipeline_space:
   epochs: 50
 
 root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
+max_evaluations_total: 20             # Budget
 searcher:
-  strategy: bayesian_optimization    # name linked with neps keywords, more information click here..?
+  strategy: bayesian_optimization     # key for neps searcher
+  name: "my_bayesian"                 # optional; changing the searcher_name for better recognition
   # Specific arguments depending on the searcher
   initial_design_size: 7
   surrogate_model: gp

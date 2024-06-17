@@ -1,4 +1,4 @@
-# pipeline_space including priors and fidelity
+# Pipeline_space including priors and fidelity
 learning_rate:
   lower: 1e-5
   upper: 1e-1

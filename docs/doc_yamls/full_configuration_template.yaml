@@ -7,7 +7,7 @@ pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
-    log: True  # Log scale for learning rate
+    log: True
   epochs:
     lower: 5
     upper: 20

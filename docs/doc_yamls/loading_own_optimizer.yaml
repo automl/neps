@@ -1,3 +1,4 @@
+# Loading Optimizer Class
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
@@ -12,10 +13,10 @@ pipeline_space:
   epochs: 50
 
 root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
+max_evaluations_total: 20             # Budget
 searcher:
-  path: path/to/your/searcher.py  # Path to the class
-  name: CustomOptimizer           # class name within the file
+  path: path/to/your/searcher.py      # Path to the class
+  name: CustomOptimizer               # class name within the file
   # Specific arguments depending on your searcher
   initial_design_size: 7
   surrogate_model: gp

@@ -128,9 +128,6 @@ the NePS will automatically infer the data type based on the value provided.
 
 If none of these hold, an error will be raised.
 
-Details on how YAML interpret boolean values can be found later on,
-[here](#important-note-on-yaml-data-type-interpretation)
-
 
 ## Using ConfigSpace
 

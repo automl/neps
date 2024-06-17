@@ -59,8 +59,8 @@ The library will then load your custom settings and use them for optimization.
 Here's the format of a custom YAML (`custom_bo.yaml`) configuration using `Bayesian Optimization` as an example:
 
 ```yaml
-algorithm: bayesian_optimization
-name: my_custom_bo  # # optional; otherwise, your searcher will be named after your YAML file, here 'custom_bo'.
+strategy: bayesian_optimization
+name: my_custom_bo  # optional; otherwise, your searcher will be named after your YAML file, here 'custom_bo'.
 # Specific arguments depending on the searcher
 initial_design_size: 7
 surrogate_model: gp
