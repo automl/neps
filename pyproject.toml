@@ -56,7 +56,7 @@ networkx = "^2.6.3"
 nltk = "^3.6.4"
 scipy = "^1"
 # torch = ">=1.7.0,<=2.1, !=2.0.1, !=2.1.0" # fix from: https://stackoverflow.com/a/76647180
-torch = ">1.7.0"
+torch = ">1.7.0,!=2.0.1, !=2.1.0"
 matplotlib = "^3"
 more-itertools = "*"
 portalocker = "^2"
