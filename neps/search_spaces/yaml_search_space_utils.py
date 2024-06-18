@@ -184,7 +184,7 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
     return param_type
 
 
-def formatting_int(name: str, details: dict[str, str | int | float]):
+def formatting_int(name: str, details: dict[str, str | int | float]) -> dict:
     """
      Converts scientific notation values to integers.
 
@@ -243,7 +243,7 @@ def formatting_int(name: str, details: dict[str, str | int | float]):
     return details
 
 
-def formatting_float(name: str, details: dict[str, str | int | float]):
+def formatting_float(name: str, details: dict[str, str | int | float]) -> dict:
     """
     Converts scientific notation values to floats.
 
@@ -284,7 +284,7 @@ def formatting_float(name: str, details: dict[str, str | int | float]):
     return details
 
 
-def formatting_cat(name: str, details: dict[str, str | int | float]):
+def formatting_cat(name: str, details: dict[str, str | int | float]) -> dict:
     """
     This function ensures that the 'choices' key in the details is a list and attempts
     to convert any elements expressed in scientific notation to floats. It also handles
@@ -328,7 +328,7 @@ def formatting_cat(name: str, details: dict[str, str | int | float]):
     return details
 
 
-def formatting_const(details: str | int | float):
+def formatting_const(details: str | int | float) -> str | int | float:
     """
     Validates and converts a constant parameter.
 

@@ -3,6 +3,11 @@
 ### Configuring with YAML
 Configure your experiments using a YAML file, which serves as a central reference for setting up your project.
 This approach simplifies sharing, reproducing and modifying configurations.
+
+!!! note
+    You can partially define arguments in the YAML file and partially provide the arguments directly to `neps.run`.
+    However, double referencing is not allowed. You cannot define the same argument in both places.
+
 #### Simple YAML Example
 Below is a straightforward YAML configuration example for NePS covering the required arguments.
 === "config.yaml"
@@ -72,6 +77,11 @@ through `neps.run`. For a detailed list of integrated optimizers, see [here](opt
 ### Customizing NePS optimizer
 Customize an internal NePS optimizer by specifying its parameters directly under the key `searcher` in the
 `config.yaml` file.
+
+!!! note
+    For `searcher_kwargs` of `neps.run`, the optimizer arguments passed via the YAML file and those passed directly via
+    `neps.run` will be merged. In this special case, if the same argument is referenced in both places,
+    `searcher_kwargs` will be prioritized and set for this argument.
 === "config.yaml"
     ```yaml
         --8<-- "docs/doc_yamls/customizing_neps_optimizer.yaml"

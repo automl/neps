@@ -157,7 +157,7 @@ def pipeline_space_from_yaml(  # noqa: C901, PLR0912
                 pipeline_space[name] = CategoricalParameter(**formatted_details)
             elif param_type == "const":
                 # Constant parameter
-                formatted_details = formatting_const(details)
+                formatted_details = formatting_const(details)  # type: ignore
                 pipeline_space[name] = ConstantParameter(formatted_details)
             else:
                 # Handle unknown parameter type
