@@ -71,7 +71,7 @@ pre-commit = "^3"
 mypy = "^1"
 pytest = "^7"
 types-PyYAML = "^6"
-torchvision = "<0.16.0"                               # Used in examples
+torchvision = ">=0.8.0"                               # Used in examples
 mkdocs-material = "*"
 mkdocs-autorefs = "*"
 mkdocs-gen-files = "*"
