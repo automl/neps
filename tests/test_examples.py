@@ -51,9 +51,9 @@ ci_examples_scripts = [examples_folder / f"{example}.py" for example in ci_examp
 def test_core_examples(example):
     if example.name == "analyse.py":
         # Run hyperparameters example to have something to analyse
-        runpy.run_path(core_examples_scripts[0], run_name="__main__")
+        runpy.run_path(str(core_examples_scripts[0]), run_name="__main__")
 
-    runpy.run_path(example, run_name="__main__")
+    runpy.run_path(str(example), run_name="__main__")
 
 
 @pytest.mark.ci_examples

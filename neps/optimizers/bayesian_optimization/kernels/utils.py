@@ -33,11 +33,16 @@ def extract_configs(configs: list[SearchSpace]) -> Tuple[list, list]:
     """
     config_hps = [conf.get_normalized_hp_categories() for conf in configs]
     graphs = [hps["graphs"] for hps in config_hps]
-
-    _nested_graphs = np.array(graphs, dtype=object)
-    if _nested_graphs.ndim == 3:
-        graphs = _nested_graphs[:, :, 0].reshape(-1).tolist()
-
+    # Don't call np.array on structured objects
+    # https://github.com/numpy/numpy/issues/24546#issuecomment-1693913119
+    # _nested_graphs = np.array(graphs, dtype=object)
+    # if _nested_graphs.ndim == 3
+    #   graphs = _nested_graphs[:, :, 0].reshape(-1).tolist()
+    # Long hand way of doing the above
+    if (len(graphs) > 0 and isinstance(graphs[0], list)
+        and len(graphs[0]) > 0 and isinstance(graphs[0][0], list)):
+        res = [_list for list_of_list in graphs for _list in list_of_list]
+        graphs = res
     return graphs, config_hps
 
 
