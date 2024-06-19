@@ -295,7 +295,7 @@ def run(
 
     if isinstance(searcher, BaseOptimizer):
         searcher_instance = searcher
-        searcher_info["searcher_name"] = "custom-baseoptimizer"
+        searcher_info["searcher_name"] = "baseoptimizer"
         searcher_info["searcher_alg"] = searcher.whoami()
         searcher_info["searcher_selection"] = "user-instantiation"
         searcher_info["neps_decision_tree"] = False
