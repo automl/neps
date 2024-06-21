@@ -1,4 +1,4 @@
-algorithm: random_search
+strategy: random_search
 # Arguments that can be modified by the user
 use_priors: false
 ignore_fidelity: true

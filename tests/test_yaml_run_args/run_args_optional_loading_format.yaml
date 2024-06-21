@@ -7,20 +7,18 @@ pipeline_space: # Optional loading
 root_directory: "test_yaml"
 max_evaluations_total: 20
 max_cost_total: 4.2
-overwrite_working_directory: True
-post_run_summary: False
+overwrite_working_directory: true
+post_run_summary: false
 development_stage_id: 9
 task_id:
 max_evaluations_per_run: 5
-continue_until_max_evaluation_completed: True
+continue_until_max_evaluation_completed: true
 loss_value_on_error: 2.4
 cost_value_on_error: 2.1
-ignore_errors: False
+ignore_errors: false
 searcher: # Optional Loading
   path: "neps/optimizers/bayesian_optimization/optimizer.py"
   name: BayesianOptimization
-searcher_path: "/path/to/searcher"
-searcher_kwargs:
   initial_design_size: 5
   surrogate_model: gp
 pre_load_hooks:

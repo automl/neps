@@ -190,11 +190,7 @@ Any new workers that come online will automatically pick up work and work togeth
 
 ## YAML Configuration
 You have the option to configure all arguments using a YAML file through [`neps.run(run_args=...)`][neps.api.run].
-For more on yaml usage, please visit the dedicated [page on usage of YAML with NePS](../reference/yaml_usage.md).
-
-!!! example "In Progress"
-
-    This feature is currently in development and is subject to change.
+For more on yaml usage, please visit the dedicated [page on usage of YAML with NePS](../reference/declarative_usage.md).
 
 Parameters not explicitly defined within this file will receive their default values.
 
@@ -203,18 +199,17 @@ Parameters not explicitly defined within this file will receive their default va
 
     ```yaml
     # path/to/your/config.yaml
-    run_args:
-      run_pipeline:
-        path: "path/to/your/run_pipeline.py" # File path of the run_pipeline function
-        name: "name_of_your_run_pipeline" # Function name
-      pipeline_space: "path/to/your/search_space.yaml" # Path of the search space yaml file
-      root_directory: "neps_results"  # Output directory for results
-      max_evaluations_total: 100
-      post_run_summary: # Defaults applied if left empty
-      searcher: "bayesian_optimization"
-      searcher_kwargs:
-        initial_design_size: 5
-        surrogate_model: "gp"
+    run_pipeline:
+      path: "path/to/your/run_pipeline.py" # File path of the run_pipeline function
+      name: "name_of_your_run_pipeline" # Function name
+    pipeline_space: "path/to/your/search_space.yaml" # Path of the search space yaml file
+    root_directory: "neps_results"  # Output directory for results
+    max_evaluations_total: 100
+    post_run_summary: # Defaults applied if left empty
+    searcher:
+      strategy: "bayesian_optimization"
+      initial_design_size: 5
+      surrogate_model: "gp"
     ```
 
 === "Python"
@@ -222,13 +217,6 @@ Parameters not explicitly defined within this file will receive their default va
     ```python
     neps.run(run_args="path/to/your/config.yaml")
     ```
-
-!!! warning
-
-    Currently we have a strict usage for `run_args`.
-    So you can define either all arguments by providing them directly to neps.run or via the yaml file.
-    This might change in the future.
-    If you use yaml, directly provided arguments get overwritten either by the defined yaml config or the default value.
 
 ## Handling Errors
 Things go wrong during optimization runs and it's important to consider what to do in these cases.

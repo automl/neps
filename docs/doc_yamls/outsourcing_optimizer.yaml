@@ -7,12 +7,12 @@ pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
-    log: True  # Log scale for learning rate
+    log: true  # Log scale for learning rate
   optimizer:
     choices: [adam, sgd, adamw]
   epochs: 50
 
 root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
+max_evaluations_total: 20             # Budget
 
 searcher: path/to/your/searcher_setup.yaml

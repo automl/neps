@@ -9,7 +9,12 @@ BASE_PATH = "tests/test_yaml_run_args/test_declarative_usage_docs/"
 @pytest.mark.parametrize("yaml_file", [
     "simple_example_including_run_pipeline.yaml",
     "full_configuration_template.yaml",
-    "defining_hooks.yaml"
+    "defining_hooks.yaml",
+    "customizing_neps_optimizer.yaml",
+    "loading_own_optimizer.yaml",
+    "loading_pipeline_space_dict.yaml",
+    "outsourcing_optimizer.yaml",
+    "outsourcing_pipeline_space.yaml"
 ])
 def test_run_with_yaml(yaml_file: str) -> None:
     """

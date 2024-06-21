@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal
 
 import ConfigSpace as CS
-from neps.utils.run_args_from_yaml import check_essential_arguments, get_run_args_from_yaml,\
+from neps.utils.run_args import check_essential_arguments, \
+    get_run_args_from_yaml, \
     check_double_reference
 
 from neps.utils.common import instance_from_map
@@ -25,6 +26,7 @@ from neps.search_spaces.search_space import (
 from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
 from neps.utils.data_loading import _get_loss
+from neps.optimizers.info import SearcherConfigs
 
 
 def _post_evaluation_hook_function(
@@ -132,9 +134,8 @@ def run(
             "asha",
             "regularized_evolution",
         ]
-        | BaseOptimizer
+        | BaseOptimizer | Path
     ) = "default",
-    searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> None:
     """Run a neural pipeline search.
@@ -176,9 +177,8 @@ def run(
         cost_value_on_error: Setting this and loss_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
         pre_load_hooks: List of functions that will be called before load_results().
-        searcher: Which optimizer to use. This is usually only needed by neps developers.
-        searcher_path: The path to the user created searcher. None when the user
-            is using NePS designed searchers.
+        searcher: Which optimizer to use. Can be a string identifier, an
+            instance of BaseOptimizer, or a Path to a custom optimizer.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
             neps develolpers.
 
@@ -224,7 +224,6 @@ def run(
     if run_args:
         optim_settings = get_run_args_from_yaml(run_args)
         check_double_reference(run, locals(), optim_settings)
-
         run_pipeline = optim_settings.get("run_pipeline", run_pipeline)
         root_directory = optim_settings.get("root_directory", root_directory)
         pipeline_space = optim_settings.get("pipeline_space", pipeline_space)
@@ -250,9 +249,8 @@ def run(
                                                  cost_value_on_error)
         pre_load_hooks = optim_settings.get("pre_load_hooks", pre_load_hooks)
         searcher = optim_settings.get("searcher", searcher)
-        searcher_path = optim_settings.get("searcher_path", searcher_path)
-        for key, value in optim_settings.get("searcher_kwargs", searcher_kwargs).items():
-            searcher_kwargs[key] = value
+        # considers arguments of a provided SubClass of BaseOptimizer
+        searcher_class_arguments = optim_settings.get("custom_class_searcher_kwargs", {})
 
     # check if necessary arguments are provided.
     check_essential_arguments(
@@ -284,7 +282,11 @@ def run(
     if inspect.isclass(searcher):
         if issubclass(searcher, BaseOptimizer):
             search_space = SearchSpace(**pipeline_space)
-            searcher = searcher(search_space)
+            # aligns with the behavior of the internal neps searcher which also overwrites
+            # its arguments by using searcher_kwargs
+            merge_kwargs = {**searcher_class_arguments, **searcher_kwargs}
+            searcher_info["searcher_args"] = merge_kwargs
+            searcher = searcher(search_space, **merge_kwargs)
         else:
             # Raise an error if searcher is not a subclass of BaseOptimizer
             raise TypeError(
@@ -310,13 +312,12 @@ def run(
             cost_value_on_error=cost_value_on_error,
             logger=logger,
             searcher=searcher,
-            searcher_path=searcher_path,
             **searcher_kwargs,
         )
 
     # Check to verify if the target directory contains history of another optimizer state
     # This check is performed only when the `searcher` is built during the run
-    if not isinstance(searcher, (BaseOptimizer, str)):
+    if not isinstance(searcher, (BaseOptimizer, str, dict, Path)):
         raise ValueError(
             f"Unrecognized `searcher` of type {type(searcher)}. Not str or BaseOptimizer."
         )
@@ -380,7 +381,6 @@ def _run_args(
         ]
         | BaseOptimizer
     ) = "default",
-    searcher_path: Path | str | None = None,
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:
     try:
@@ -412,11 +412,17 @@ def _run_args(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
-    if isinstance(searcher, str) and searcher_path is not None:
+    if isinstance(searcher, (str, Path)) and searcher not in \
+        SearcherConfigs.get_searchers() and searcher != "default":
         # The users has their own custom searcher.
         logging.info("Preparing to run user created searcher")
 
-        config = get_searcher_data(searcher, searcher_path)
+        config, searcher = get_searcher_data(searcher, loading_custom_searcher=True)
+        searcher_info["searcher_selection"] = "user-yaml"
+        searcher_info["neps_decision_tree"] = False
+    elif isinstance(searcher, dict):
+        config = searcher
+        searcher = config.pop("name", "unnamed-custom-searcher")
         searcher_info["searcher_selection"] = "user-yaml"
         searcher_info["neps_decision_tree"] = False
     else:
@@ -436,16 +442,25 @@ def _run_args(
             searcher_info["neps_decision_tree"] = False
             searcher_info["searcher_selection"] = "neps-default"
         # Fetching the searcher data, throws an error when the searcher is not found
-        config = get_searcher_data(searcher)
+        config, searcher = get_searcher_data(searcher)
 
+    # Check for deprecated 'algorithm' argument
     if "algorithm" in config:
-        searcher_alg = config.pop("algorithm")
+        warnings.warn(
+            "The 'algorithm' argument is deprecated and will be removed in future versions. Please use 'strategy' instead.",
+            DeprecationWarning
+        )
+        # Map the old 'algorithm' argument to 'strategy'
+        config['strategy'] = config.pop("algorithm")
+
+    if "strategy" in config:
+        searcher_alg = config.pop("strategy")
     else:
-        raise KeyError(f"Missing key algorithm in searcher config:{config}")
+        raise KeyError(f"Missing key strategy in searcher config:{config}")
     searcher_config = config
 
     logger.info(f"Running {searcher} as the searcher")
-    logger.info(f"Algorithm: {searcher_alg}")
+    logger.info(f"Strategy: {searcher_alg}")
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.

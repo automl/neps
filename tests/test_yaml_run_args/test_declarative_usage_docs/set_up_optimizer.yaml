@@ -1,4 +1,4 @@
-algorithm: bayesian_optimization
+strategy: bayesian_optimization
 # Specific arguments depending on the searcher
 initial_design_size: 7
 surrogate_model: gp

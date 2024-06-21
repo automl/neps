@@ -1,11 +1,11 @@
 # Loading pipeline space from a python dict
 run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
-  name: example_pipeline                   # Function name within the file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+  name: run_pipeline_constant
 
 pipeline_space:
-  path: path/to/your/search_space.py  # Path to the dict file
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/pipeline_space.py
   name: pipeline_space                  # Name of the dict instance
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: path/to/results_loading_pipeline_space       # Directory for result storage
 max_evaluations_total: 20               # Budget

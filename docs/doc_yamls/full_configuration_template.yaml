@@ -7,11 +7,11 @@ pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
-    log: True  # Log scale for learning rate
+    log: true
   epochs:
     lower: 5
     upper: 20
-    is_fidelity: True
+    is_fidelity: true
   optimizer:
     choices: [adam, sgd, adamw]
   batch_size: 64
@@ -21,14 +21,14 @@ max_evaluations_total: 20             # Budget
 max_cost_total:
 
 # Debug and Monitoring
-overwrite_working_directory: True
-post_run_summary: False
+overwrite_working_directory: true
+post_run_summary: false
 development_stage_id:
 task_id:
 
 # Parallelization Setup
 max_evaluations_per_run:
-continue_until_max_evaluation_completed: False
+continue_until_max_evaluation_completed: false
 
 # Error Handling
 loss_value_on_error:

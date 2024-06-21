@@ -1,4 +1,4 @@
-algorithm: successive_halving_prior
+strategy: successive_halving_prior
 # Arguments that can be modified by the user
 eta: 3
 early_stopping_rate: 0

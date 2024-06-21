@@ -1,4 +1,4 @@
-# Pipeline space settings from YAML
+# Pipeline space settings from separate YAML
 run_pipeline:
   path: path/to/your/run_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
@@ -6,5 +6,5 @@ run_pipeline:
 pipeline_space: path/to/your/pipeline_space.yaml
 
 root_directory: path/to/results       # Directory for result storage
-max_evaluations_total: 20               # Budget
+max_evaluations_total: 20             # Budget
 

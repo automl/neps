@@ -103,7 +103,7 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
       type: int
       lower: 3
       upper: 30
-      is_fidelity: True
+      is_fidelity: true
 
     optimizer:
       type: categorical
@@ -124,12 +124,9 @@ the NePS will automatically infer the data type based on the value provided.
 * If `lower` and `upper` are provided, then if they are both integers, the type will be inferred as `int`,
     otherwise as `float`. You can provide scientific notation for floating-point numbers as well.
 * If `choices` are provided, the type will be inferred as `categorical`.
-* If `value` is provided, the type will be inferred as `constant`.
+* If just a numeric or string is provided, the type will be inferred as `constant`.
 
 If none of these hold, an error will be raised.
-
-Details on how YAML interpret boolean values can be found later on,
-[here](#important-note-on-yaml-data-type-interpretation)
 
 
 ## Using ConfigSpace

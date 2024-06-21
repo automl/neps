@@ -56,7 +56,7 @@ class SearcherConfigs:
                 file_path = os.path.join(folder_path, filename)
                 with open(file_path) as file:
                     searcher_config = yaml.safe_load(file)
-                    algorithm = searcher_config["searcher_init"].get("algorithm")
+                    algorithm = searcher_config.get("strategy")
                     if algorithm:
                         prev_algorithms.add(algorithm)
 
@@ -81,7 +81,7 @@ class SearcherConfigs:
                 file_path = os.path.join(folder_path, filename)
                 with open(file_path) as file:
                     searcher_config = yaml.safe_load(file)
-                    if searcher_config["searcher_init"].get("algorithm") == algorithm:
+                    if searcher_config.get("strategy") == algorithm:
                         searchers.append(os.path.splitext(filename)[0])
 
         return searchers
