@@ -317,7 +317,7 @@ def run(
 
     # Check to verify if the target directory contains history of another optimizer state
     # This check is performed only when the `searcher` is built during the run
-    if not isinstance(searcher, (BaseOptimizer, str, dict)):
+    if not isinstance(searcher, (BaseOptimizer, str, dict, Path)):
         raise ValueError(
             f"Unrecognized `searcher` of type {type(searcher)}. Not str or BaseOptimizer."
         )
