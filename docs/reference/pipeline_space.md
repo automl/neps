@@ -103,7 +103,7 @@ Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definition
       type: int
       lower: 3
       upper: 30
-      is_fidelity: True
+      is_fidelity: true
 
     optimizer:
       type: categorical

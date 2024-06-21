@@ -2,13 +2,13 @@
 learning_rate:
   lower: 1e-5
   upper: 1e-1
-  log: True  # Log scale for learning rate
+  log: true  # Log scale for learning rate
   default: 1e-2
   default_confidence: "medium"
 epochs:
   lower: 5
   upper: 20
-  is_fidelity: True
+  is_fidelity: true
 dropout_rate:
   lower: 0.1
   upper: 0.5

@@ -7,7 +7,7 @@ pipeline_space:
   learning_rate:
     lower: 1e-5
     upper: 1e-1
-    log: True  # Log scale for learning rate
+    log: true  # Log scale for learning rate
   optimizer:
     choices: [adam, sgd, adamw]
   epochs: 50

@@ -9,19 +9,19 @@ budget:
   max_cost_total: 3
 
 monitoring:
-  overwrite_working_directory: True
-  post_run_summary: True
+  overwrite_working_directory: true
+  post_run_summary: true
   development_stage_id: "Early_Stage"
   task_id: 4
 
 parallelization_setup:
   max_evaluations_per_run: 5
-  continue_until_max_evaluation_completed: True
+  continue_until_max_evaluation_completed: true
 
 error_handling:
   loss_value_on_error: 4.2
   cost_value_on_error: 3.7
-  ignore_errors: True
+  ignore_errors: true
 
 search:
   searcher:

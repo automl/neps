@@ -9,14 +9,14 @@ budget:
     max_cost_total:
 
 monitoring:
-  overwrite_working_directory: True
-  post_run_summary: False
+  overwrite_working_directory: true
+  post_run_summary: false
   development_stage_id: None
   task_id: None
 
 parallelization_setup:
   max_evaluations_per_run: None
-  continue_until_max_evaluation_completed: False
+  continue_until_max_evaluation_completed: false
 
 search:
   searcher:
