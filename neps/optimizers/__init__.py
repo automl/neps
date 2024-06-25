@@ -28,7 +28,7 @@ from .regularized_evolution.optimizer import RegularizedEvolution
 
 SearcherMapping: dict[str, Callable] = {
     "bayesian_optimization": BayesianOptimization,
-    "pibo": partial(BayesianOptimization, user_priors=True),
+    "pibo": partial(BayesianOptimization, disable_priors=False),
     "cost_cooling_bayesian_optimization": CostCooling,
     "random_search": RandomSearch,
     "cost_cooling": CostCooling,
