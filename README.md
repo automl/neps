@@ -137,18 +137,14 @@ For more details and features please have a look at our [documentation](https://
 
 ## Analysing runs
 
-See our [documentation on analysing runs](https://automl.github.io/neps/latest/analyse).
+See our [documentation on analysing runs](https://automl.github.io/neps/latest/reference/analyse/).
 
 ## Contributing
 
-Please see the [documentation for contributors](https://automl.github.io/neps/latest/contributing/).
+Please see the [documentation for contributors](https://automl.github.io/neps/latest/dev_docs/contributing/).
 
 ## Citations
 
 Please consider citing us if you use our tool!
 
 Refer to our [documentation on citations](https://automl.github.io/neps/latest/citations/).
-
-## Alternatives
-
-NePS does not cover your use-case? Have a look at [some alternatives](https://automl.github.io/neps/latest/alternatives).
