@@ -174,7 +174,7 @@ traceback and the environment in which you are running, i.e. python version, OS,
 
 Regression tests are run on each push to the repository to assure the performance of the optimizers don't degrade.
 
-Currently, regression runs are recorded on JAHS-Bench-201 data for 2 tasks: `cifar10` and `fashion_mnist` and only for optimizers: `random_search`, `bayesian_optimization`, `mf_bayesian_optimization`, `regularized_evolution`.
+Currently, regression runs are recorded on JAHS-Bench-201 data for 2 tasks: `hartmann3` and `hartmann6` and only for optimizers: `random_search`, `bayesian_optimization`, `regularized_evolution`.
 This information is stored in the `tests/regression_runner.py` as two lists: `TASKS`, `OPTIMIZERS`.
 The recorded results are stored as a json dictionary in the `tests/losses.json` file.
 
