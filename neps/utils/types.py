@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Mapping, Union
+from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, Union
 from typing_extensions import TypeAlias
 
 import numpy as np
@@ -38,17 +36,6 @@ class _NotSet:
 
 NotSet = _NotSet()
 
-
-POST_EVAL_HOOK_SIGNATURE: TypeAlias = Callable[
-    [
-        Mapping[str, Any],
-        str,
-        Path,
-        Union[Dict[str, Any], ERROR],
-        logging.Logger,
-    ],
-    None,
-]
 
 f64 = np.float64
 i64 = np.int64

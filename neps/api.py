@@ -16,7 +16,6 @@ from neps.utils.run_args import check_essential_arguments, \
 from neps.utils.common import instance_from_map
 from neps.runtime import launch_runtime
 from neps.optimizers import BaseOptimizer, SearcherMapping
-from neps.plot.tensorboard_eval import tblogger
 from neps.search_spaces.parameter import Parameter
 from neps.search_spaces.search_space import (
     SearchSpace,
@@ -25,79 +24,7 @@ from neps.search_spaces.search_space import (
 )
 from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
-from neps.utils.data_loading import _get_loss
 from neps.optimizers.info import SearcherConfigs
-
-
-def _post_evaluation_hook_function(
-    _loss_value_on_error: None | float, _ignore_errors: bool
-):
-    def _post_evaluation_hook(
-        config,
-        config_id,
-        config_working_directory,
-        result,
-        logger,
-        loss_value_on_error=_loss_value_on_error,
-        ignore_errors=_ignore_errors,
-    ):
-        working_directory = Path(config_working_directory, "../../")
-        loss = _get_loss(result, loss_value_on_error, ignore_errors=ignore_errors)
-
-        # 1. Write all configs and losses
-        all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
-
-        def write_loss_and_config(file_handle, loss_, config_id_, config_):
-            file_handle.write(f"Loss: {loss_}\n")
-            file_handle.write(f"Config ID: {config_id_}\n")
-            file_handle.write(f"Config: {config_}\n")
-            file_handle.write(79 * "-" + "\n")
-
-        with all_configs_losses.open("a", encoding="utf-8") as f:
-            write_loss_and_config(f, loss, config_id, config)
-
-        # no need to handle best loss cases if an error occurred
-        if result == "error":
-            return
-
-        # The "best" loss exists only in the pareto sense for multi-objective
-        is_multi_objective = isinstance(loss, dict)
-        if is_multi_objective:
-            logger.info(f"Finished evaluating config {config_id}")
-            return
-
-        # 2. Write best losses/configs
-        best_loss_trajectory_file = Path(working_directory, "best_loss_trajectory.txt")
-        best_loss_config_trajectory_file = Path(
-            working_directory, "best_loss_with_config_trajectory.txt"
-        )
-
-        if not best_loss_trajectory_file.exists():
-            is_new_best = result != "error"
-        else:
-            best_loss_trajectory = best_loss_trajectory_file.read_text(encoding="utf-8")
-            best_loss_trajectory = list(best_loss_trajectory.rstrip("\n").split("\n"))
-            best_loss = best_loss_trajectory[-1]
-            is_new_best = float(best_loss) > loss
-
-        if is_new_best:
-            with best_loss_trajectory_file.open("a", encoding="utf-8") as f:
-                f.write(f"{loss}\n")
-
-            with best_loss_config_trajectory_file.open("a", encoding="utf-8") as f:
-                write_loss_and_config(f, loss, config_id, config)
-
-            logger.info(
-                f"Finished evaluating config {config_id}"
-                f" -- new best with loss {float(loss) :.6f}"
-            )
-
-        else:
-            logger.info(f"Finished evaluating config {config_id}")
-
-        tblogger.end_of_config()
-
-    return _post_evaluation_hook
 
 
 def run(
@@ -342,9 +269,8 @@ def run(
         max_evaluations_per_run=max_evaluations_per_run,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         logger=logger,
-        post_evaluation_hook=_post_evaluation_hook_function(
-            loss_value_on_error, ignore_errors
-        ),
+        loss_value_on_error=loss_value_on_error,
+        ignore_errors=ignore_errors,
         overwrite_optimization_dir=overwrite_working_directory,
         pre_load_hooks=pre_load_hooks,
     )
