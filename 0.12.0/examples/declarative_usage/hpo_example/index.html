@@ -9,25 +9,25 @@
       
       
       
-        <link rel="prev" href="../optimizers/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../run_pipeline/">
+        <link rel="next" href="../../efficiency/">
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.20">
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.27">
     
     
       
-        <title>YAML Usage - NePS</title>
+        <title>Hpo example - NePS</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.66ac8b77.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.6543a935.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -46,11 +46,11 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../stylesheets/custom.css">
+      <link rel="stylesheet" href="../../../stylesheets/custom.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -75,11 +75,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#yaml-usage" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -96,7 +91,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="NePS" class="md-header__button md-logo" aria-label="NePS" data-md-component="logo">
+    <a href="../../.." title="NePS" class="md-header__button md-logo" aria-label="NePS" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -116,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              YAML Usage
+              Hpo example
             
           </span>
         </div>
@@ -186,7 +181,7 @@
       
     </form>
     <div class="md-search__output">
-      <div class="md-search__scrollwrap" data-md-scrollfix>
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
         <div class="md-search-result" data-md-component="search-result">
           <div class="md-search-result__meta">
             Initializing search
@@ -224,7 +219,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
     
@@ -241,7 +236,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../getting_started/" class="md-tabs__link">
+      <a href="../../../getting_started/" class="md-tabs__link">
         
   
     
@@ -256,13 +251,11 @@
         
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../neps_run/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../../reference/neps_run/" class="md-tabs__link">
           
   
   Reference
@@ -276,11 +269,13 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../examples/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
           
   
   Examples
@@ -298,7 +293,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+        <a href="../../../api/" class="md-tabs__link">
           
   
   API
@@ -316,7 +311,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../dev_docs/contributing/" class="md-tabs__link">
+        <a href="../../../dev_docs/contributing/" class="md-tabs__link">
           
   
   Contributing
@@ -332,7 +327,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../citations/" class="md-tabs__link">
+      <a href="../../../citations/" class="md-tabs__link">
         
   
     
@@ -374,7 +369,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="NePS" class="md-nav__button md-logo" aria-label="NePS" data-md-component="logo">
+    <a href="../../.." title="NePS" class="md-nav__button md-logo" aria-label="NePS" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -404,7 +399,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -424,7 +419,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting_started/" class="md-nav__link">
+      <a href="../../../getting_started/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -433,6 +428,179 @@
   
 
       </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/neps_run/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Run
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/pipeline_space/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Search Space
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/optimizers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Optimizers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/declarative_usage/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/run_pipeline/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    The Run Function
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/analyse/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Analysing Runs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -461,193 +629,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
-            
-  
-  <span class="md-ellipsis">
-    Reference
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_3">
-            <span class="md-nav__icon md-icon"></span>
-            Reference
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../neps_run/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Run
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../pipeline_space/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Search Space
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../optimizers/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Optimizers
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    YAML Usage
-  </span>
-  
-
-      </a>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../run_pipeline/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    The Run Function
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../analyse/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Analysing Runs
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
-        
-          
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -658,7 +643,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Examples
@@ -672,7 +657,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/" class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -698,17 +683,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -733,7 +721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/basic_usage/analyse/" class="md-nav__link">
+      <a href="../../basic_usage/analyse/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -754,7 +742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/basic_usage/architecture/" class="md-nav__link">
+      <a href="../../basic_usage/architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -775,7 +763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/basic_usage/architecture_and_hyperparameters/" class="md-nav__link">
+      <a href="../../basic_usage/architecture_and_hyperparameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -796,7 +784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/basic_usage/hpo_usage_example/" class="md-nav__link">
+      <a href="../../basic_usage/hpo_usage_example/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -817,7 +805,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/basic_usage/hyperparameters/" class="md-nav__link">
+      <a href="../../basic_usage/hyperparameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -851,17 +839,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -886,7 +877,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/convenience/logging_additional_info/" class="md-nav__link">
+      <a href="../../convenience/logging_additional_info/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -907,7 +898,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/convenience/neps_tblogger_tutorial/" class="md-nav__link">
+      <a href="../../convenience/neps_tblogger_tutorial/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -928,7 +919,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/convenience/neps_x_lightning/" class="md-nav__link">
+      <a href="../../convenience/neps_x_lightning/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -949,7 +940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/convenience/working_directory_per_pipeline/" class="md-nav__link">
+      <a href="../../convenience/working_directory_per_pipeline/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -975,25 +966,131 @@
                 
   
   
+    
   
   
+  
     
     
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Declarative usage
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            Declarative usage
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Declarative Usage in NePS for Neural Network Optimization
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Hpo example
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1004,8 +1101,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
             <span class="md-nav__icon md-icon"></span>
             Efficiency
           </label>
@@ -1018,7 +1115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/efficiency/" class="md-nav__link">
+      <a href="../../efficiency/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1039,7 +1136,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/efficiency/expert_priors_for_hyperparameters/" class="md-nav__link">
+      <a href="../../efficiency/expert_priors_for_hyperparameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1060,7 +1157,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/efficiency/multi_fidelity/" class="md-nav__link">
+      <a href="../../efficiency/multi_fidelity/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1081,7 +1178,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/efficiency/multi_fidelity_and_expert_priors/" class="md-nav__link">
+      <a href="../../efficiency/multi_fidelity_and_expert_priors/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1115,17 +1212,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
         
           
-          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1136,8 +1236,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
             <span class="md-nav__icon md-icon"></span>
             Experimental
           </label>
@@ -1150,7 +1250,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/experimental/cost_aware/" class="md-nav__link">
+      <a href="../../experimental/cost_aware/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1171,7 +1271,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/experimental/expert_priors_for_architecture_and_hyperparameters/" class="md-nav__link">
+      <a href="../../experimental/expert_priors_for_architecture_and_hyperparameters/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1192,7 +1292,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/experimental/fault_tolerance/" class="md-nav__link">
+      <a href="../../experimental/fault_tolerance/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1213,7 +1313,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/experimental/hierarchical_architecture/" class="md-nav__link">
+      <a href="../../experimental/hierarchical_architecture/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1234,7 +1334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/experimental/hierarchical_architecture_hierarchical_GP/" class="md-nav__link">
+      <a href="../../experimental/hierarchical_architecture_hierarchical_GP/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1255,7 +1355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/experimental/user_priors_from_arbitrary_densities/" class="md-nav__link">
+      <a href="../../experimental/user_priors_from_arbitrary_densities/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1289,17 +1389,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
         
           
-          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -1310,8 +1413,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_6">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
             <span class="md-nav__icon md-icon"></span>
             Template
           </label>
@@ -1324,7 +1427,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/template/basic_template/" class="md-nav__link">
+      <a href="../../template/basic_template/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1345,7 +1448,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/template/lightning_template/" class="md-nav__link">
+      <a href="../../template/lightning_template/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1366,101 +1469,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/template/priorband_template/" class="md-nav__link">
+      <a href="../../template/priorband_template/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
     Priorband template
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    
-    
-    
-      
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
-        
-          
-          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
-            
-  
-  <span class="md-ellipsis">
-    Yaml usage
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4_7">
-            <span class="md-nav__icon md-icon"></span>
-            Yaml usage
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/yaml_usage/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    YAML Usage in NePS for MNIST Classification
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/yaml_usage/hpo_example/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Hpo example
   </span>
   
 
@@ -1532,7 +1545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../../../api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1593,7 +1606,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/api/" class="md-nav__link">
+      <a href="../../../api/neps/api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1614,32 +1627,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/runtime/" class="md-nav__link">
+      <a href="../../../api/neps/runtime/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
     Runtime
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/neps/types/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Types
   </span>
   
 
@@ -1668,10 +1660,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4" id="__nav_5_2_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3" id="__nav_5_2_3_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1682,8 +1674,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3">
             <span class="md-nav__icon md-icon"></span>
             Optimizers
           </label>
@@ -1696,7 +1688,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/base_optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/base_optimizer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1717,7 +1709,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/info/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/info/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1738,7 +1730,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/utils/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/utils/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1771,10 +1763,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_4" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_4" id="__nav_5_2_4_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_4" id="__nav_5_2_3_4_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1785,8 +1777,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_4">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_4">
             <span class="md-nav__icon md-icon"></span>
             Bayesian optimization
           </label>
@@ -1799,7 +1791,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/cost_cooling/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/cost_cooling/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1820,7 +1812,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/mf_tpe/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/mf_tpe/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1841,7 +1833,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/optimizer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1874,10 +1866,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_4_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_4_4" id="__nav_5_2_4_4_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_4_4" id="__nav_5_2_3_4_4_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -1888,8 +1880,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_4_4_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_4_4">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_3_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_4_4">
             <span class="md-nav__icon md-icon"></span>
             Acquisition functions
           </label>
@@ -1902,7 +1894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_functions/base_acquisition/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_functions/base_acquisition/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1923,7 +1915,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_functions/cost_cooling/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_functions/cost_cooling/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1944,7 +1936,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_functions/ei/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_functions/ei/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1965,7 +1957,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_functions/mf_ei/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_functions/mf_ei/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1986,7 +1978,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_functions/prior_weighted/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_functions/prior_weighted/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2007,7 +1999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_functions/ucb/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_functions/ucb/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2048,10 +2040,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_4_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_4_5" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_4_5" id="__nav_5_2_4_4_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_4_5" id="__nav_5_2_3_4_5_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2062,8 +2054,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_4_4_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_4_5">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_3_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_4_5">
             <span class="md-nav__icon md-icon"></span>
             Acquisition samplers
           </label>
@@ -2076,7 +2068,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/base_acq_sampler/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/base_acq_sampler/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2097,7 +2089,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/evolution_sampler/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/evolution_sampler/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2118,7 +2110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/freeze_thaw_sampler/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/freeze_thaw_sampler/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2139,7 +2131,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/mutation_sampler/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/mutation_sampler/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2160,7 +2152,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/random_sampler/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/acquisition_samplers/random_sampler/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2201,10 +2193,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_4_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_4_6" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_4_6" id="__nav_5_2_4_4_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_4_6" id="__nav_5_2_3_4_6_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2215,8 +2207,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_4_4_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_4_6">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_3_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_4_6">
             <span class="md-nav__icon md-icon"></span>
             Kernels
           </label>
@@ -2229,7 +2221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/combine_kernels/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/combine_kernels/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2250,7 +2242,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/combine_kernels_hierarchy/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/combine_kernels_hierarchy/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2271,7 +2263,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/encoding/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/encoding/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2292,7 +2284,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/get_kernels/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/get_kernels/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2313,7 +2305,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/graph_kernel/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/graph_kernel/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2334,7 +2326,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/utils/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/utils/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2355,7 +2347,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/vectorial_kernels/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/vectorial_kernels/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2376,7 +2368,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/weisfilerlehman/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/weisfilerlehman/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2409,10 +2401,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_4_6_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_4_6_9" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_4_6_9" id="__nav_5_2_4_4_6_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_4_6_9" id="__nav_5_2_3_4_6_9_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2423,8 +2415,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="6" aria-labelledby="__nav_5_2_4_4_6_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_4_6_9">
+        <nav class="md-nav" data-md-level="6" aria-labelledby="__nav_5_2_3_4_6_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_4_6_9">
             <span class="md-nav__icon md-icon"></span>
             Grakel replace
           </label>
@@ -2437,7 +2429,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/edge_histogram/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/edge_histogram/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2458,7 +2450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/utils/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/utils/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2479,7 +2471,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/vertex_histogram/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/vertex_histogram/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2500,7 +2492,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/weisfeiler_lehman/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/kernels/grakel_replace/weisfeiler_lehman/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2549,10 +2541,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_4_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_4_7" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_4_7" id="__nav_5_2_4_4_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_4_7" id="__nav_5_2_3_4_7_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2563,8 +2555,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_4_4_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_4_7">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_3_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_4_7">
             <span class="md-nav__icon md-icon"></span>
             Models
           </label>
@@ -2577,7 +2569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/models/deepGP/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/models/deepGP/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2598,7 +2590,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/models/gp/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/models/gp/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2619,7 +2611,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/bayesian_optimization/models/gp_hierarchy/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/models/gp_hierarchy/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2668,10 +2660,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_5" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_5" id="__nav_5_2_4_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_5" id="__nav_5_2_3_5_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2682,8 +2674,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_5">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_5">
             <span class="md-nav__icon md-icon"></span>
             Grid search
           </label>
@@ -2696,7 +2688,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/grid_search/optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/grid_search/optimizer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2737,10 +2729,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_6" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_6" id="__nav_5_2_4_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_6" id="__nav_5_2_3_6_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2751,8 +2743,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_6">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_6">
             <span class="md-nav__icon md-icon"></span>
             Multi fidelity
           </label>
@@ -2765,7 +2757,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/dyhpo/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/dyhpo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2786,7 +2778,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/hyperband/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/hyperband/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2807,7 +2799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/mf_bo/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/mf_bo/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2828,7 +2820,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/promotion_policy/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/promotion_policy/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2849,7 +2841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/sampling_policy/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/sampling_policy/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2870,7 +2862,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/successive_halving/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/successive_halving/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2891,7 +2883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity/utils/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity/utils/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2932,10 +2924,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_7" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_7" id="__nav_5_2_4_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_7" id="__nav_5_2_3_7_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -2946,8 +2938,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_7">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_7">
             <span class="md-nav__icon md-icon"></span>
             Multi fidelity prior
           </label>
@@ -2960,7 +2952,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity_prior/async_priorband/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity_prior/async_priorband/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2981,7 +2973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity_prior/priorband/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity_prior/priorband/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3002,7 +2994,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multi_fidelity_prior/utils/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multi_fidelity_prior/utils/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3043,10 +3035,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_8" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_8" id="__nav_5_2_4_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_8" id="__nav_5_2_3_8_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3057,8 +3049,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_8">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_8">
             <span class="md-nav__icon md-icon"></span>
             Multiple knowledge sources
           </label>
@@ -3071,7 +3063,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/multiple_knowledge_sources/prototype_optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/multiple_knowledge_sources/prototype_optimizer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3112,10 +3104,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_9" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_9" id="__nav_5_2_4_9_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_9" id="__nav_5_2_3_9_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3126,8 +3118,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_9">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_9">
             <span class="md-nav__icon md-icon"></span>
             Random search
           </label>
@@ -3140,7 +3132,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/random_search/optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/random_search/optimizer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3181,10 +3173,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_3_10" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_4_10" id="__nav_5_2_4_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_3_10" id="__nav_5_2_3_10_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3195,8 +3187,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_4_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_4_10">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_3_10">
             <span class="md-nav__icon md-icon"></span>
             Regularized evolution
           </label>
@@ -3209,7 +3201,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/optimizers/regularized_evolution/optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/regularized_evolution/optimizer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3258,10 +3250,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_4" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_5" id="__nav_5_2_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_4" id="__nav_5_2_4_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3272,8 +3264,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_5">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_4">
             <span class="md-nav__icon md-icon"></span>
             Plot
           </label>
@@ -3286,7 +3278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/plot/plot/" class="md-nav__link">
+      <a href="../../../api/neps/plot/plot/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3307,7 +3299,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/plot/plotting/" class="md-nav__link">
+      <a href="../../../api/neps/plot/plotting/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3328,7 +3320,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/plot/read_results/" class="md-nav__link">
+      <a href="../../../api/neps/plot/read_results/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3349,7 +3341,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/plot/tensorboard_eval/" class="md-nav__link">
+      <a href="../../../api/neps/plot/tensorboard_eval/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3390,10 +3382,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_5" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_6" id="__nav_5_2_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_5" id="__nav_5_2_5_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3404,8 +3396,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_6">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_5">
             <span class="md-nav__icon md-icon"></span>
             Search spaces
           </label>
@@ -3418,7 +3410,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/parameter/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/parameter/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3439,7 +3431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/search_space/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/search_space/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3460,7 +3452,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/yaml_search_space_utils/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/yaml_search_space_utils/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3493,10 +3485,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_6_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_5_4" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_6_4" id="__nav_5_2_6_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_5_4" id="__nav_5_2_5_4_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3507,8 +3499,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_6_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_6_4">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_5_4">
             <span class="md-nav__icon md-icon"></span>
             Architecture
           </label>
@@ -3521,7 +3513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/api/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/api/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3542,7 +3534,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/cfg/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/cfg/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3563,7 +3555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/core_graph_grammar/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/core_graph_grammar/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3584,7 +3576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/crossover/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/crossover/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3605,7 +3597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/graph/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/graph/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3626,7 +3618,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/graph_grammar/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/graph_grammar/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3647,7 +3639,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/mutations/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/mutations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3668,7 +3660,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/primitives/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/primitives/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3689,7 +3681,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/topologies/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/topologies/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3722,10 +3714,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_6_4_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_5_4_10" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_6_4_10" id="__nav_5_2_6_4_10_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_5_4_10" id="__nav_5_2_5_4_10_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3736,8 +3728,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_6_4_10_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_6_4_10">
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_5_2_5_4_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_5_4_10">
             <span class="md-nav__icon md-icon"></span>
             Cfg variants
           </label>
@@ -3750,7 +3742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/cfg_variants/cfg_resolution/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/cfg_variants/cfg_resolution/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3771,7 +3763,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/architecture/cfg_variants/constrained_cfg/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/architecture/cfg_variants/constrained_cfg/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3820,10 +3812,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_6_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_5_5" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_6_5" id="__nav_5_2_6_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_5_5" id="__nav_5_2_5_5_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3834,8 +3826,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_6_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_6_5">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_5_2_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_5_5">
             <span class="md-nav__icon md-icon"></span>
             Hyperparameters
           </label>
@@ -3848,7 +3840,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/hyperparameters/categorical/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/hyperparameters/categorical/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3869,7 +3861,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/hyperparameters/constant/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/hyperparameters/constant/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3890,7 +3882,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/hyperparameters/float/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/hyperparameters/float/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3911,7 +3903,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/hyperparameters/integer/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/hyperparameters/integer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3932,7 +3924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/search_spaces/hyperparameters/numerical/" class="md-nav__link">
+      <a href="../../../api/neps/search_spaces/hyperparameters/numerical/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -3981,10 +3973,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_6" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_7" id="__nav_5_2_7_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_6" id="__nav_5_2_6_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -3995,8 +3987,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_6">
             <span class="md-nav__icon md-icon"></span>
             Status
           </label>
@@ -4009,7 +4001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/status/status/" class="md-nav__link">
+      <a href="../../../api/neps/status/status/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4050,10 +4042,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_2_7" >
         
           
-          <label class="md-nav__link" for="__nav_5_2_8" id="__nav_5_2_8_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5_2_7" id="__nav_5_2_7_label" tabindex="0">
             
   
   <span class="md-ellipsis">
@@ -4064,8 +4056,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_2_8">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_5_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_2_7">
             <span class="md-nav__icon md-icon"></span>
             Utils
           </label>
@@ -4078,7 +4070,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/utils/common/" class="md-nav__link">
+      <a href="../../../api/neps/utils/common/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4099,7 +4091,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/utils/data_loading/" class="md-nav__link">
+      <a href="../../../api/neps/utils/data_loading/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4120,7 +4112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/utils/files/" class="md-nav__link">
+      <a href="../../../api/neps/utils/files/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4141,11 +4133,32 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/utils/run_args_from_yaml/" class="md-nav__link">
+      <a href="../../../api/neps/utils/run_args/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Run args from yaml
+    Run args
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/neps/utils/types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Types
   </span>
   
 
@@ -4225,7 +4238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev_docs/contributing/" class="md-nav__link">
+      <a href="../../../dev_docs/contributing/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4246,7 +4259,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev_docs/roadmap/" class="md-nav__link">
+      <a href="../../../dev_docs/roadmap/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4274,7 +4287,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../citations/" class="md-nav__link">
+      <a href="../../../citations/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -4302,69 +4315,136 @@
                   
 
 
-<h1 id="yaml-usage">YAML Usage<a class="headerlink" href="#yaml-usage" title="Permanent link">#</a></h1>
-<p>For defining <code>run_args=</code>, some settings like <code>run_pipeline=</code>, <code>pre_load_hooks=</code>, and custom <code>searcher=</code> need both a path and a name to dynamically load them.
-This is crucial for components where NePS must find and execute specific code.
-Below, the configurations for dynamic loading are outlined:</p>
-<ul>
-<li>
-<p><code>run_pipeline=</code>:
-    Specify the path and name of the pipeline function. This information allows NePS to find and initiate the desired
-    pipeline.
-    <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">run_pipeline</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_run_pipeline&gt;</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;run_pipeline_name&gt;</span>
-</code></pre></div></p>
-</li>
-<li>
-<p><strong><code>pipeline_space</code></strong>:
-The pipeline_space configuration supports two modes of definition: directly in a YAML file or through a Python
-dictionary that NePS can dynamically load.</p>
-<ul>
-<li><strong>Direct YAML File Path</strong>: Simply specify the path to your search space YAML.
-    <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">pipeline_space</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;path/to/your/search_space.yaml&quot;</span>
-</code></pre></div></li>
-<li><strong>Python Dictionary</strong>: To define pipeline_space as a Python dictionary, specify the file path containing the
-    dictionary and its name. This enables dynamic loading by NePS.
-      <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">pipeline_space</span><span class="p">:</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_pipeline_space&gt;</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;pipeline_space_name&gt;</span>
-</code></pre></div></li>
-</ul>
-</li>
-<li>
-<p><strong><code>searcher</code></strong>:
-Configure the searcher to either utilize a built-in searcher or integrate a custom searcher of your creation.</p>
-<ul>
-<li><strong>Built-in Searcher</strong>: For using an already integrated searcher, simply specify its key. This is the
-    straightforward method for standard optimization scenarios.
-      <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">searcher</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;bayesian_optimization&quot;</span><span class="w"> </span><span class="c1"># key of the searcher</span>
-</code></pre></div></li>
-<li><strong>Custom Searcher</strong>: If you've developed a custom optimization algorithm and wish to employ it within NePS,
-    specify the path and name of your custom searcher class. This allows NePS to dynamically load and use your
-    custom implementation.
-      <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">searcher</span><span class="p">:</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_custom_searcher_class&gt;</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;custom_searcher_class_name&gt;</span>
-</code></pre></div></li>
-</ul>
-</li>
-<li>
-<p><strong><code>pre_load_hooks</code></strong>:
-    Define hooks to be loaded before the main execution process begins. Assign each hook a unique identifier (e.g.
-    hook1, hook2..) and detail the path to its implementation file along with the function name.
-    This setup enables NePS to dynamically import and run these hooks during initialization.
-        <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">pre_load_hooks</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">hook1</span><span class="p">:</span><span class="w">  </span><span class="c1"># # Assign any unique key.</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_hook&gt;</span><span class="w">  </span><span class="c1"># Path to the hook&#39;s implementation file.</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;function_name&gt;</span><span class="w">  </span><span class="c1"># Name of the hook.</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">hook2</span><span class="p">:</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;path_to_hook&gt;</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">&lt;function_name&gt;</span>
-</code></pre></div></p>
-</li>
-</ul>
-<p>For detailed examples and specific use case configurations, visit <a href="../../examples/yaml_usage/">here</a></p>
+  <h1>Hpo example</h1>
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span> <span class="nn">logging</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">import</span> <span class="nn">torch</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">transforms</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="kn">import</span> <span class="nn">neps</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="sd">This script demonstrates the integration of a simple neural network training pipeline</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="sd">with NePS for hyperparameter optimization, focusing on the MNIST dataset.</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="sd">- SimpleNN Class: A PyTorch neural network model that constructs a feedforward</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="sd">  architecture based on input size, number of layers, and neurons per layer.</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="sd">- Training Pipeline: A function that takes hyperparameters (number of layers, neurons,</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="sd">  epochs, learning rate, optimizer type) to train and validate the SimpleNN model on</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="sd">  the MNIST dataset. Supports Adam and SGD optimizers.</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="sd">- NEPS Integration: Shows how to automate hyperparameter tuning using NEPS. Configuration</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="sd">  settings are specified in a YAML file (&#39;run_args.yaml&#39;), which is passed to the NePS</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="sd">  optimization process via the `run_args` parameter.</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="sd">Usage:</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="sd">1. Define model architecture and training logic in `SimpleNN` and `training_pipeline`.</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="sd">2. Configure hyperparameters and optimization settings in &#39;config.yaml&#39;.</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="sd">3. Launch optimization with NePS by calling `neps.run`, specifying the training pipeline,</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="sd">and configuration file(config.yaml).</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="k">class</span> <span class="nc">SimpleNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">num_neurons</span><span class="p">):</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>        <span class="n">layers</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Flatten</span><span class="p">()]</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_layers</span><span class="p">):</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">num_neurons</span><span class="p">))</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>            <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">())</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>            <span class="n">input_size</span> <span class="o">=</span> <span class="n">num_neurons</span>  <span class="c1"># Set input size for the next layer</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>        <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">num_neurons</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>  <span class="c1"># Output layer for 10 classes</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">layers</span><span class="p">)</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="k">def</span> <span class="nf">training_pipeline</span><span class="p">(</span><span class="n">num_layers</span><span class="p">,</span> <span class="n">num_neurons</span><span class="p">,</span> <span class="n">epochs</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">):</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="sd">    Trains and validates a simple neural network on the MNIST dataset.</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="sd">        num_layers (int): Number of hidden layers in the network.</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="sd">        num_neurons (int): Number of neurons in each hidden layer.</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="sd">        epochs (int): Number of training epochs.</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="sd">        learning_rate (float): Learning rate for the optimizer.</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="sd">        optimizer (str): Name of the optimizer to use (&#39;adam&#39; or &#39;sgd&#39;).</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="sd">        float: The average loss over the validation set after training.</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="sd">        KeyError: If the specified optimizer is not supported.</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>    <span class="c1"># Transformations applied on each image</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>    <span class="n">transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">(</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>        <span class="p">[</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>            <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>            <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>                <span class="p">(</span><span class="mf">0.1307</span><span class="p">,),</span> <span class="p">(</span><span class="mf">0.3081</span><span class="p">,)</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a>            <span class="p">),</span>  <span class="c1"># Mean and Std Deviation for MNIST</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a>        <span class="p">]</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>    <span class="p">)</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>    <span class="c1"># Loading MNIST dataset</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>    <span class="n">dataset</span> <span class="o">=</span> <span class="n">datasets</span><span class="o">.</span><span class="n">MNIST</span><span class="p">(</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>        <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./data&quot;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a>    <span class="p">)</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a>    <span class="n">train_set</span><span class="p">,</span> <span class="n">val_set</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">random_split</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="p">[</span><span class="mi">55000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">])</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a>    <span class="n">train_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a>    <span class="n">val_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">val_set</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a>
+<a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a>    <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleNN</span><span class="p">(</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">num_neurons</span><span class="p">)</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a>    <span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a>
+<a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a>    <span class="c1"># Select optimizer</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a>    <span class="k">if</span> <span class="n">optimizer</span> <span class="o">==</span> <span class="s2">&quot;adam&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a>    <span class="k">elif</span> <span class="n">optimizer</span> <span class="o">==</span> <span class="s2">&quot;sgd&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a>        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;optimizer </span><span class="si">{</span><span class="n">optimizer</span><span class="si">}</span><span class="s2"> is not available&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a>
+<a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a>    <span class="c1"># Training loop</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a>
+<a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a>    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a>        <span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a>        <span class="k">for</span> <span class="n">batch_idx</span><span class="p">,</span> <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">train_loader</span><span class="p">):</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a>            <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a>            <span class="n">output</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a>            <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105" href="#__codelineno-0-105"></a>            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<a id="__codelineno-0-106" name="__codelineno-0-106" href="#__codelineno-0-106"></a>            <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+<a id="__codelineno-0-107" name="__codelineno-0-107" href="#__codelineno-0-107"></a>
+<a id="__codelineno-0-108" name="__codelineno-0-108" href="#__codelineno-0-108"></a>    <span class="c1"># Validation loop</span>
+<a id="__codelineno-0-109" name="__codelineno-0-109" href="#__codelineno-0-109"></a>    <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110" href="#__codelineno-0-110"></a>    <span class="n">val_loss</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-111" name="__codelineno-0-111" href="#__codelineno-0-111"></a>    <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112" href="#__codelineno-0-112"></a>        <span class="k">for</span> <span class="n">data</span><span class="p">,</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">val_loader</span><span class="p">:</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113" href="#__codelineno-0-113"></a>            <span class="n">output</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114" href="#__codelineno-0-114"></a>            <span class="n">val_loss</span> <span class="o">+=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+<a id="__codelineno-0-115" name="__codelineno-0-115" href="#__codelineno-0-115"></a>
+<a id="__codelineno-0-116" name="__codelineno-0-116" href="#__codelineno-0-116"></a>    <span class="n">val_loss</span> <span class="o">/=</span> <span class="nb">len</span><span class="p">(</span><span class="n">val_loader</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span>
+<a id="__codelineno-0-117" name="__codelineno-0-117" href="#__codelineno-0-117"></a>    <span class="k">return</span> <span class="n">val_loss</span>
+<a id="__codelineno-0-118" name="__codelineno-0-118" href="#__codelineno-0-118"></a>
+<a id="__codelineno-0-119" name="__codelineno-0-119" href="#__codelineno-0-119"></a>
+<a id="__codelineno-0-120" name="__codelineno-0-120" href="#__codelineno-0-120"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121" href="#__codelineno-0-121"></a>    <span class="c1"># Configure logging to display important messages from NePS.</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122" href="#__codelineno-0-122"></a>    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123" href="#__codelineno-0-123"></a>
+<a id="__codelineno-0-124" name="__codelineno-0-124" href="#__codelineno-0-124"></a>    <span class="c1"># Run optimization using neps.run(...). Arguments can be provided directly to neps.run</span>
+<a id="__codelineno-0-125" name="__codelineno-0-125" href="#__codelineno-0-125"></a>    <span class="c1"># or defined in a configuration file (e.g., &quot;config.yaml&quot;) passed through</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126" href="#__codelineno-0-126"></a>    <span class="c1"># the run_args parameter.</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127" href="#__codelineno-0-127"></a>    <span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">training_pipeline</span><span class="p">,</span> <span class="n">run_args</span><span class="o">=</span><span class="s2">&quot;config.yaml&quot;</span><span class="p">)</span>
+</code></pre></div>
 
 
 
@@ -4394,7 +4474,7 @@ Configure the searcher to either utilize a built-in searcher or integrate a cust
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../optimizers/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Optimizers">
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Declarative Usage in NePS for Neural Network Optimization">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
@@ -4404,20 +4484,20 @@ Configure the searcher to either utilize a built-in searcher or integrate a cust
                 Previous
               </span>
               <div class="md-ellipsis">
-                Optimizers
+                Declarative Usage in NePS for Neural Network Optimization
               </div>
             </div>
           </a>
         
         
           
-          <a href="../run_pipeline/" class="md-footer__link md-footer__link--next" aria-label="Next: The Run Function">
+          <a href="../../efficiency/" class="md-footer__link md-footer__link--next" aria-label="Next: Parallelization">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                The Run Function
+                Parallelization
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -4451,10 +4531,10 @@ Configure the searcher to either utilize a built-in searcher or integrate a cust
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.dd8806f2.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.ad660dcc.min.js"></script>
       
     
   </body>

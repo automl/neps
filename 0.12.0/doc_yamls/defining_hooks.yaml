@@ -1,0 +1,24 @@
+# Hooks
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: example_pipeline              # Function name within the file
+
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: true  # Log scale for learning rate
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: true
+  optimizer:
+    choices: [adam, sgd, adamw]
+  batch_size: 64
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20             # Budget
+
+pre_load_hooks:
+    hook1: path/to/your/hooks.py # (function_name: Path to the function's file)
+    hook2: path/to/your/hooks.py # Different function name 'hook2' from the same file source
