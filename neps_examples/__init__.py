@@ -1,5 +1,5 @@
 all_main_examples = {  # Used for printing in python -m neps_examples
-    "basic_usage": ["analyse", "architecture", "architecture_and_hyperparameters", "hpo_usage_example"],
+    "basic_usage": ["analyse", "architecture", "architecture_and_hyperparameters", "hpo_usage_example", "hyperparameters"],
     "convenience": ["logging_additional_info", "neps_tblogger_tutorial", "neps_x_lightning", "working_directory_per_pipeline"],
     "efficiency": ["expert_priors_for_hyperparameters", "multi_fidelity", "multi_fidelity_and_expert_priors"],
 }
