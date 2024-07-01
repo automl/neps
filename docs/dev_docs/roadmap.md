@@ -1,94 +1,87 @@
 # Roadmap
 
-## Before 0.14.0
+## Next up
 
 ### Features
 
-- ? Allow yaml based input of search space and the target function source to `neps.run`
-- Generate plot after each evaluation
-- ? Support conditionals in ConfigSpace search space
-- ? Support logging of optimizer state details
-- Nice way to handle Multi-fidelity large scale (slurm script modification)
-- Seamless ddp via cli launcher
-- ? Log priors include again
+- Improve handling of multi-fidelity for large scale (slurm script modification)
+- Evaluate and maybe improve ease-of-use of NePS and DDP etc.
+- Optimize dependencies
 
 ### Fixes
 
-- acq search mutation only mutates 1 parameter?
-- Optimize dependencies
-- Double log on neps output
-- Are continuations of errored-out runs removed already?
+- Acq search mutation for HPs potentially only mutates 1 parameter
+- `ignore_errors` should work seamlessly with all optimizers
 
 ### Refactoring
 
-- ? Merge GP and hierarchical GP
-- Branch cleanup
-- Rethink summary/status API
-- Improve placement of \_post_evaluation_hook_function
-- maintained vs unmaintained optimizers
-- ? Renamings
-    - run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
-    - loss = validation_error | error | pipeline_error
-    - XParameter = XSpace
-    - Rename default-x to prior-x
-    - Use max_cost_total everywhere instead of budget
+- Rename: run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
+- Rename: loss = validation_error | error | pipeline_error
+- Rename: XParameter = XSpace or just X?
+- Rename: default-x to prior-x
+- Rename: Use max_cost_total everywhere instead of budget
 
 ### Documentation
 
-- Keep a changelog
 - Keep citations doc up to date
 - Role of analysing runs needs to be higher in docs
 - Explain what optimizers are run per default / papers higher in docs
-- Hier NAS documentation
-- Rework readme
-    - for keyfeatures, 3+4? Mention prior + multi fidelity (cheap approx)
+- Rework README.md
+    - Rethink key features. Who is reading this?  Mention multi-fidelity / scaling algorithmis?
     - Code example of readme should work when copied
-    - ? Sync readme with docs landingpage more nicely
-    - Parallelization link is broken
+    - Keep README synced with docs landingpage more nicely
+
+### Tests
+
+- Regression tests to run on each push
 
 
 ## Before 1.0.0 version
 
 ### Features
 
-- Finegrained control over HP user prior
-- ? Top vs all vs bottom distribution plots
-- ? Tensorboard visualizations (incumbent plot, ..)
-- ? Loss distribution plot
+- Generate plot after each evaluation
+- Finegrained control over user prior
 - Print search space upon run
 - Utility to generate code for best architecture
-- Core Feature set in terms of research
-- ? Modular plug-and-play of BoTorch acquisition functions
-- Generate analysis pdf?
+- Core algorithmic feature set (research)
 
 ### Fixes
 
-- Printing architecture search spaces / search spaces in general
+- Contact https://pypi.org/project/neps/ to free up `pip install neps`
 
 ### Refactoring
 
-- Clean up search spaces classes, unused methods
+- Improve neps.optimizers:
+    - Maintained vs unmaintained optimizers
+    - Remove unnecessary / broken optimizers
 - Break up search space and config aspect
-
-### Tests and tooling
-
-- Add comprehensive regression tests to run manually on the cluster on each version release
-- Regression tests to run on each push
-- ? mdformat for readme
-- ? Darglint
-
-## Later version
 
 ### Documentation
 
-- ? Doing research with NePS / Documentation on that or full setup
+- NAS documentation
+
+### Tests
+
+- Regression tests to run on each push
+
+## After 1.0.0
 
 ### Features
 
-- neps_examples callable for options of examples
 - Utility neps.clean to manage existing run results
 - Collect data optionally via phone-home to webserver
-- Add Info dict to status
+
+### Documentation
+
+- Keep a changelog
 
 
+## Rethink
 
+- Log priors include again
+- Allow yaml based input of search space and the target function source to `neps.run`
+- Support conditionals in ConfigSpace search space
+- Support logging of optimizer state details
+- Merge GP and hierarchical GP
+- Generate analysis pdf
