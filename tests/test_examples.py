@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from neps_examples import ci_examples, core_examples
+
 
 @pytest.fixture(autouse=True)
 def use_tmpdir(tmp_path, request):
@@ -22,23 +24,6 @@ def no_logs_gte_error(caplog):
         record for record in caplog.get_records("call") if record.levelno >= logging.ERROR
     ]
     assert not errors
-
-
-core_examples = [  # Run locally and on github actions
-    "basic_usage/hyperparameters",  # NOTE: This needs to be first for the test below...
-    "basic_usage/analyse",
-    "experimental/expert_priors_for_architecture_and_hyperparameters",
-    "efficiency/multi_fidelity",
-]
-ci_examples = [  # Run on github actions
-    "basic_usage/architecture_and_hyperparameters",
-    "experimental/hierarchical_architecture",
-    "efficiency/expert_priors_for_hyperparameters",
-    "experimental/hierarchical_architecture_hierarchical_GP",
-    "convenience/logging_additional_info",
-    "convenience/working_directory_per_pipeline",
-    "convenience/neps_tblogger_tutorial",
-]
 
 
 examples_folder = Path(__file__, "..", "..", "neps_examples").resolve()
