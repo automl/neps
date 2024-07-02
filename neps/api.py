@@ -338,18 +338,27 @@ def _run_args(
         message = f"The pipeline_space has invalid type: {type(pipeline_space)}"
         raise TypeError(message) from e
 
+    # Load the information of the optimizer
     if isinstance(searcher, (str, Path)) and searcher not in \
         SearcherConfigs.get_searchers() and searcher != "default":
-        # The users has their own custom searcher.
+        # The users have their own custom searcher provided via yaml.
         logging.info("Preparing to run user created searcher")
 
-        config, searcher = get_searcher_data(searcher, loading_custom_searcher=True)
+        searcher_config, file_name = get_searcher_data(searcher,
+                                                      loading_custom_searcher=True)
+        # name defined via key or the filename of the yaml
+        searcher_name = searcher_config.pop("name", file_name)
         searcher_info["searcher_selection"] = "user-yaml"
         searcher_info["neps_decision_tree"] = False
     elif isinstance(searcher, dict):
-        config = searcher
-        searcher = config.pop("name", "unnamed-custom-searcher")
-        searcher_info["searcher_selection"] = "user-yaml"
+        custom_config = searcher
+        default_config, searcher_name = get_searcher_data(searcher["strategy"])
+        searcher_config = {**default_config, **custom_config}
+        if "name" not in searcher_config:
+            searcher_name = "custom_" + searcher_name
+        else:
+            searcher_name = searcher_config.pop("name")
+        searcher_info["searcher_selection"] = "user-run_args-yaml"
         searcher_info["neps_decision_tree"] = False
     else:
         if searcher in ["default", None]:
@@ -368,29 +377,30 @@ def _run_args(
             searcher_info["neps_decision_tree"] = False
             searcher_info["searcher_selection"] = "neps-default"
         # Fetching the searcher data, throws an error when the searcher is not found
-        config, searcher = get_searcher_data(searcher)
+        searcher_config, searcher_name = get_searcher_data(searcher)
 
     # Check for deprecated 'algorithm' argument
-    if "algorithm" in config:
+    if "algorithm" in searcher_config:
         warnings.warn(
-            "The 'algorithm' argument is deprecated and will be removed in future versions. Please use 'strategy' instead.",
+            "The 'algorithm' argument is deprecated and will be removed in "
+            "future versions. Please use 'strategy' instead.",
             DeprecationWarning
         )
         # Map the old 'algorithm' argument to 'strategy'
-        config['strategy'] = config.pop("algorithm")
+        searcher_config['strategy'] = searcher_config.pop("algorithm")
 
-    if "strategy" in config:
-        searcher_alg = config.pop("strategy")
+    if "strategy" in searcher_config:
+        searcher_alg = searcher_config.pop("strategy")
     else:
-        raise KeyError(f"Missing key strategy in searcher config:{config}")
-    searcher_config = config
+        raise KeyError(f"Missing key strategy in searcher config:{searcher_config}")
 
-    logger.info(f"Running {searcher} as the searcher")
+
+    logger.info(f"Running {searcher_name} as the searcher")
     logger.info(f"Strategy: {searcher_alg}")
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
-    searcher_info["searcher_name"] = searcher
+    searcher_info["searcher_name"] = searcher_name
     searcher_info["searcher_alg"] = searcher_alg
 
     # Updating searcher arguments from searcher_kwargs

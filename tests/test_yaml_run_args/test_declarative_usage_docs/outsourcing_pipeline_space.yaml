@@ -5,6 +5,6 @@ run_pipeline:
 
 pipeline_space: tests/test_yaml_run_args/test_declarative_usage_docs/pipeline_space.yaml
 
-root_directory: path/to/results_outsourcing_pipeline_space       # Directory for result storage
+root_directory: "tests_tmpdir/test_declarative_usage_docs/outsourcing_pipeline_space"
 max_evaluations_total: 20               # Budget
 
