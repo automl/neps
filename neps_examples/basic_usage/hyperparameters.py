@@ -8,6 +8,7 @@ import neps
 
 def run_pipeline(float1, float2, categorical, integer1, integer2):
     loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
+    time.sleep(0.7)  # For demonstration purposes
     return loss
 
 

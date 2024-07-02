@@ -73,7 +73,6 @@ from neps.utils._rng import SeedState
 from neps.utils.files import deserialize, empty_file, serialize
 from neps.utils.types import (
     ERROR,
-    POST_EVAL_HOOK_SIGNATURE,
     ConfigID,
     ConfigResult,
     RawConfig,
@@ -752,6 +751,75 @@ def _sample_trial_from_optimizer(
     )
 
 
+def _post_evaluation_hook(  # type: ignore
+    trial: Trial,
+    result: ERROR | dict[str, Any],
+    logger: logging.Logger,
+    loss_value_on_error: float | None,
+    ignore_errors,
+) -> None:
+    # We import here to avoid circular imports
+    from neps.plot.tensorboard_eval import tblogger
+    from neps.utils.data_loading import _get_loss
+
+    working_directory = Path(trial.pipeline_dir, "../../")
+    loss = _get_loss(result, loss_value_on_error, ignore_errors=ignore_errors)
+
+    # 1. Write all configs and losses
+    all_configs_losses = Path(working_directory, "all_losses_and_configs.txt")
+
+    def write_loss_and_config(file_handle, loss_, config_id_, config_):  # type: ignore
+        file_handle.write(f"Loss: {loss_}\n")
+        file_handle.write(f"Config ID: {config_id_}\n")
+        file_handle.write(f"Config: {config_}\n")
+        file_handle.write(79 * "-" + "\n")
+
+    with all_configs_losses.open("a", encoding="utf-8") as f:
+        write_loss_and_config(f, loss, trial.id, trial.config)
+
+    # no need to handle best loss cases if an error occurred
+    if result == "error":
+        return
+
+    # The "best" loss exists only in the pareto sense for multi-objective
+    is_multi_objective = isinstance(loss, dict)
+    if is_multi_objective:
+        logger.info(f"Finished evaluating config {trial.id}")
+        return
+
+    # 2. Write best losses/configs
+    best_loss_trajectory_file = Path(working_directory, "best_loss_trajectory.txt")
+    best_loss_config_trajectory_file = Path(
+        working_directory, "best_loss_with_config_trajectory.txt"
+    )
+
+    if not best_loss_trajectory_file.exists():
+        is_new_best = result != "error"
+    else:
+        best_loss_trajectory: str | list[str]
+        best_loss_trajectory = best_loss_trajectory_file.read_text(encoding="utf-8")
+        best_loss_trajectory = list(best_loss_trajectory.rstrip("\n").split("\n"))
+        best_loss = best_loss_trajectory[-1]
+        is_new_best = float(best_loss) > loss  # type: ignore
+
+    if is_new_best:
+        with best_loss_trajectory_file.open("a", encoding="utf-8") as f:
+            f.write(f"{loss}\n")
+
+        with best_loss_config_trajectory_file.open("a", encoding="utf-8") as f:
+            write_loss_and_config(f, loss, trial.id, trial.config)
+
+        logger.info(
+            f"Finished evaluating config {trial.id}"
+            f" -- new best with loss {float(loss) :.6f}"
+        )
+
+    else:
+        logger.info(f"Finished evaluating config {trial.id}")
+
+    tblogger.end_of_config()
+
+
 def launch_runtime(  # noqa: PLR0913, C901, PLR0915
     *,
     evaluation_fn: Callable[..., float | Mapping[str, Any]],
@@ -762,7 +830,8 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
     logger: logging.Logger | None = None,
-    post_evaluation_hook: POST_EVAL_HOOK_SIGNATURE | None = None,
+    ignore_errors: bool = False,
+    loss_value_on_error: None | float = None,
     overwrite_optimization_dir: bool = False,
     pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
 ) -> None:
@@ -781,7 +850,10 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
         continue_until_max_evaluation_completed: Whether to continue until the maximum
             evaluations are completed.
         logger: The logger to use.
-        post_evaluation_hook: A hook to run after the evaluation.
+        loss_value_on_error: Setting this and cost_value_on_error to any float will
+            supress any error and will use given loss value instead. default: None
+        ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
+            an error. Error configs still count towards max_evaluations_total.
         overwrite_optimization_dir: Whether to overwrite the optimization directory.
         pre_load_hooks: Hooks to run before loading the results.
     """
@@ -950,23 +1022,21 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
                             sampler.used_budget += eval_cost
 
             _result: ERROR | dict[str, Any]
-            if post_evaluation_hook is not None:
-                report = trial.report
-                if isinstance(report, ErrorReport):
-                    _result = "error"
-                elif isinstance(report, SuccessReport):
-                    _result = dict(report.results)
-                else:
-                    _type = type(report)
-                    raise TypeError(f"Unknown result type '{_type}' for report: {report}")
+            report = trial.report
+            if isinstance(report, ErrorReport):
+                _result = "error"
+            elif isinstance(report, SuccessReport):
+                _result = dict(report.results)
+            else:
+                _type = type(report)
+                raise TypeError(f"Unknown result type '{_type}' for report: {report}")
 
-                post_evaluation_hook(
-                    trial.config,
-                    trial.id,
-                    trial.pipeline_dir,
-                    _result,
-                    logger,
-                )
+            _post_evaluation_hook(
+                trial,
+                _result,
+                logger,
+                loss_value_on_error,
+                ignore_errors,
+            )
 
             evaluations_in_this_run += 1
-            logger.info(f"Finished evaluating config {trial.id}")

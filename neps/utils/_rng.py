@@ -149,7 +149,7 @@ class SeedState:
         cls,
         path: Path,
         *,
-        update_on_exit: bool = False,
+        update_on_exit: bool = True,
     ) -> Iterator[SeedState]:
         """Context manager to use a seed state.
 

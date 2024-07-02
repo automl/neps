@@ -55,7 +55,6 @@ pandas = "^2"
 networkx = "^2.6.3"
 nltk = "^3.6.4"
 scipy = "^1"
-# torch = ">=1.7.0,<=2.1, !=2.0.1, !=2.1.0" # fix from: https://stackoverflow.com/a/76647180
 torch = ">1.7.0,!=2.0.1, !=2.1.0"
 matplotlib = "^3"
 more-itertools = "*"
@@ -64,6 +63,7 @@ seaborn = "^0.13"
 pyyaml = "^6"
 tensorboard = "^2"
 typing-extensions = "*"
+torchvision = ">=0.8.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"
@@ -71,7 +71,6 @@ pre-commit = "^3"
 mypy = "^1"
 pytest = "^7"
 types-PyYAML = "^6"
-torchvision = ">=0.8.0"                               # Used in examples
 mkdocs-material = "*"
 mkdocs-autorefs = "*"
 mkdocs-gen-files = "*"
