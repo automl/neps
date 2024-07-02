@@ -16,7 +16,7 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   batch_size: 64
 
-root_directory: path/to/results/simple_example_including_run_pipeline       # Directory for result storage
+root_directory: "tests_tmpdir/test_declarative_usage_docs/simple_example_including_run_pipeline"
 max_evaluations_total: 20             # Budget
 
 overwrite_working_directory: True

@@ -16,7 +16,7 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   batch_size: 64
 
-root_directory: path/to/results/hooks       # Directory for result storage
+root_directory: "tests_tmpdir/test_declarative_usage_docs/hooks"
 max_evaluations_total: 20               # Budget
 
 pre_load_hooks:
