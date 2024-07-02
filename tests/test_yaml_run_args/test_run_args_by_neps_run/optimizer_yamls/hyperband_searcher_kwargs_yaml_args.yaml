@@ -3,7 +3,7 @@ searcher_alg: hyperband
 searcher_selection: user-run_args-yaml
 neps_decision_tree: false
 searcher_args:
-  eta: 8
+  eta: 7
   initial_design_type: max_budget
   use_priors: false
   random_interleave_prob: 0.9
