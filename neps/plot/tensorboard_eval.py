@@ -91,7 +91,7 @@ class tblogger:  # noqa: N801
         # on this object, OR even just use `get_in_process_trial()` in each call directly.
         tblogger.config_working_directory = trial.pipeline_dir
         tblogger.config_previous_directory = trial.disk.previous_pipeline_dir
-        tblogger.optimizer_dir = trial.disk.optimization_dir
+        tblogger.optimizer_dir = trial.disk.optimization_dir.parent
         tblogger.config = trial.config
 
     @staticmethod
