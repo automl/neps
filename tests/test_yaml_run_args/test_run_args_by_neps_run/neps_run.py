@@ -22,9 +22,20 @@ pipeline_space = dict(
 )
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run NEPS optimization with run_args.yml."
-    )
-    parser.add_argument("run_args", type=str, help="Path to the YAML configuration file.")
-    args = parser.parse_args()
-    neps.run(run_args=args.run_args)
+    if __name__ == "__main__":
+        parser = argparse.ArgumentParser(
+            description="Run NEPS optimization with run_args.yml.")
+        parser.add_argument("run_args", type=str,
+                            help="Path to the YAML configuration file.")
+        parser.add_argument("--kwargs_flag", action="store_true",
+                            help="Additional keyword arguments")
+        args = parser.parse_args()
+
+        hyperband_args_optimizer = {"random_interleave_prob": 0.9,
+                                    "sample_default_first": False,
+                                    "sample_default_at_target": False}
+
+        if args.kwargs_flag:
+            neps.run(run_args=args.run_args, **hyperband_args_optimizer)
+        else:
+            neps.run(run_args=args.run_args)

@@ -1,0 +1,13 @@
+searcher_name: custom_bayesian_optimization
+searcher_alg: bayesian_optimization
+searcher_selection: user-run_args-yaml
+neps_decision_tree: false
+searcher_args:
+  initial_design_size: 10
+  surrogate_model: gp
+  acquisition: EI
+  log_prior_weighted: false
+  acquisition_sampler: mutation
+  random_interleave_prob: 0.0
+  disable_priors: true
+  sample_default_first: false

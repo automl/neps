@@ -1,0 +1,23 @@
+searcher_name: custom_priorband
+searcher_alg: priorband
+searcher_selection: user-run_args-yaml
+neps_decision_tree: false
+searcher_args:
+  eta: 3
+  initial_design_type: max_budget
+  prior_confidence: medium
+  random_interleave_prob: 0.0
+  sample_default_first: true
+  sample_default_at_target: false
+  prior_weight_type: geometric
+  inc_sample_type: mutation
+  inc_mutation_rate: 0.5
+  inc_mutation_std: 0.25
+  inc_style: dynamic
+  model_based: true
+  modelling_type: joint
+  initial_design_size: 5
+  surrogate_model: gp
+  acquisition: EI
+  log_prior_weighted: false
+  acquisition_sampler: mutation
