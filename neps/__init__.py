@@ -13,18 +13,29 @@ from neps.search_spaces import (
 )
 from neps.status.status import get_summary_dict, status
 
+Integer = IntegerParameter
+Float = FloatParameter
+Categorical = CategoricalParameter
+Constant = ConstantParameter
+Architecture = ArchitectureParameter
+
 __all__ = [
-    "run",
-    "plot",
+    "Architecture",
+    "Integer",
+    "Float",
+    "Categorical",
+    "Constant",
     "ArchitectureParameter",
     "CategoricalParameter",
     "ConstantParameter",
     "FloatParameter",
+    "IntegerParameter",
     "FunctionParameter",
+    "run",
+    "plot",
+    "get_summary_dict",
+    "status",
     "GraphGrammar",
     "GraphGrammarCell",
     "GraphGrammarRepetitive",
-    "IntegerParameter",
-    "get_summary_dict",
-    "status",
 ]

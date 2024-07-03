@@ -7,6 +7,7 @@
 - Improve handling of multi-fidelity for large scale (slurm script modification)
 - Evaluate and maybe improve ease-of-use of NePS and DDP etc.
 - Optimize dependencies
+- Improved examples
 
 ### Fixes
 
@@ -24,12 +25,6 @@
 ### Documentation
 
 - Keep citations doc up to date
-- Role of analysing runs needs to be higher in docs
-- Explain what optimizers are run per default / papers higher in docs
-- Rework README.md
-    - Rethink key features. Who is reading this?  Mention multi-fidelity / scaling algorithmis?
-    - Code example of readme should work when copied
-    - Keep README synced with docs landingpage more nicely
 
 ### Tests
 
@@ -40,7 +35,7 @@
 
 ### Features
 
-- Generate plot after each evaluation
+- Generate pdf plot after each evaluation
 - Finegrained control over user prior
 - Print search space upon run
 - Utility to generate code for best architecture
@@ -55,15 +50,12 @@
 - Improve neps.optimizers:
     - Maintained vs unmaintained optimizers
     - Remove unnecessary / broken optimizers
+    - Merge GP and hierarchical GP
 - Break up search space and config aspect
 
 ### Documentation
 
 - NAS documentation
-
-### Tests
-
-- Regression tests to run on each push
 
 ## After 1.0.0
 
@@ -75,13 +67,3 @@
 ### Documentation
 
 - Keep a changelog
-
-
-## Rethink
-
-- Log priors include again
-- Allow yaml based input of search space and the target function source to `neps.run`
-- Support conditionals in ConfigSpace search space
-- Support logging of optimizer state details
-- Merge GP and hierarchical GP
-- Generate analysis pdf
