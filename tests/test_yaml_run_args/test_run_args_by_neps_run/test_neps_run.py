@@ -49,7 +49,7 @@ def test_run_with_yaml(config: dict) -> None:
 
 
 def compare_generated_yaml(result_path, optimizer_path):
-
+    """compare generated optimizer settings and solution settings"""
     assert os.path.exists(result_path), \
         "Generated YAML file does not exist."
 
