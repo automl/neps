@@ -15,20 +15,16 @@ Take a look at our [documentation](https://automl.github.io/neps/latest/) for al
 
 In addition to the features offered by traditional HPO and NAS libraries, NePS, e.g., stands out with:
 
-1. [**Hyperparameter Optimization (HPO) with Prior Knowledge and Cheap Proxies:**](neps_examples/template/priorband_template.py)
 
-   - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
+1. [**Hyperparameter Optimization (HPO) with Prior Knowledge and Cheap Proxies:**](neps_examples/template/priorband_template.py) <br /> <br />
+NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
      - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
-     - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051)
-
-1. [**Neural Architecture Search (NAS) with General Search Spaces:**](neps_examples/basic_usage/architecture.py)
-
-   - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
-     - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
-
-1. [**Easy Parallelization and Tailored to DL:**](https://automl.github.io/neps/latest/examples/efficiency/)
-
-   - NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
+     - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051) <br /> <br />
+1. [**Neural Architecture Search (NAS) with General Search Spaces:**](neps_examples/basic_usage/architecture.py) <br /> <br />
+    NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
+     - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842) <br /> <br />
+1. [**Easy Parallelization and Design Tailored to DL:**](https://automl.github.io/neps/latest/examples/efficiency/) <br /> <br />
+     NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
      computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
      DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
 
