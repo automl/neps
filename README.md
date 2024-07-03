@@ -5,9 +5,9 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization (HPO) and neural architecture search (NAS) with its primary goal: enable HPO and NAS for deep learners!
+Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization (HPO) and neural architecture search (NAS) with its primary goal: **make HPO and NAS usable for deep learners in practice**.
 
-NePS houses recently published and also well-established algorithms that can all be run massively parallel on distributed setups, with tools to analyze runs, restart runs, etc., all tailored to the needs of deep learning experts.
+NePS houses recently published and also well-established algorithms that can all be run massively parallel on distributed setups, with tools to analyze runs, restart runs, etc., all **tailored to the needs of deep learning experts**.
 
 Take a look at our [documentation](https://automl.github.io/neps/latest/) for all the details on how to use NePS!
 
@@ -15,26 +15,22 @@ Take a look at our [documentation](https://automl.github.io/neps/latest/) for al
 
 In addition to the features offered by traditional HPO and NAS libraries, NePS, e.g., stands out with:
 
-1. [**Hyperparameter Optimization (HPO) With Prior Knowledge:**](neps_examples/template/priorband_template.py)
+1. [**Hyperparameter Optimization (HPO) with Prior Knowledge and Cheap Proxies:**](neps_examples/template/priorband_template.py)
 
    - NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
      - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
      - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051)
 
-1. [**Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:**](neps_examples/basic_usage/architecture.py)
+1. [**Neural Architecture Search (NAS) with General Search Spaces:**](neps_examples/basic_usage/architecture.py)
 
    - NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
      - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842)
 
-1. [**Easy Parallelization and Resumption of Runs:**](https://automl.github.io/neps/latest/examples/efficiency/)
+1. [**Easy Parallelization and Tailored to DL:**](https://automl.github.io/neps/latest/examples/efficiency/)
 
    - NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
-     computing environments. It also allows users to conveniently resume these optimization tasks after completion to
-     ensure a seamless and efficient workflow for long-running experiments.
-
-1. [**Seamless User Code Integration:**](neps_examples/template/)
-
-   - NePS's modular design ensures flexibility and extensibility. Integrate NePS effortlessly into existing machine learning workflows.
+     computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
+     DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
 
 ## Installation
 
@@ -44,14 +40,11 @@ To install the latest release from PyPI run
 pip install neural-pipeline-search
 ```
 
-To get the latest version from github run
+To get the latest version from Github run
 
 ```bash
 pip install git+https://github.com/automl/neps.git
 ```
-
-> Note: As indicated with the `v0.x.x` version number APIs will change in the future.
-
 
 ## Basic Usage
 
@@ -77,17 +70,10 @@ def run_pipeline(
     model = MyModel(architecture_parameter)
 
     # Train and evaluate the model with your training pipeline
-    validation_error, training_error = train_and_eval(
+    validation_error = train_and_eval(
         model, hyperparameter_a, hyperparameter_b
     )
-
-    return {  # dict or float(validation error)
-        "loss": validation_error,
-        "info_dict": {
-            "training_error": training_error
-            # + Other metrics
-        },
-    }
+    return validation_error
 
 
 # 2. Define a search space of parameters; use the same parameter names as in run_pipeline
@@ -112,15 +98,15 @@ neps.run(
 
 ## Examples
 
-Discover how NePS works through these practical examples:
+Discover how NePS works through these examples:
 
-- **[Hyperparameter Optimization (HPO)](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
-
-- **[Architecture Search with Primitives](neps_examples/basic_usage/architecture.py)**: Dive into architecture search using primitives in NePS.
+- **[Hyperparameter Optimization](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
 
 - **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
 - **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
+
+- **[Architecture Search](neps_examples/basic_usage/architecture.py)**: Dive into (hierarchical) architecture search in NePS.
 
 - **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
 
