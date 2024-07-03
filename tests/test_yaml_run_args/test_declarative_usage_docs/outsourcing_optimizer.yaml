@@ -12,7 +12,7 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   epochs: 50
 
-root_directory: path/to/results_outsourcing_optimizer      # Directory for result storage
+root_directory: "tests_tmpdir/test_declarative_usage_docs/outsourcing_optimizer"
 max_evaluations_total: 20               # Budget
 
 searcher: tests/test_yaml_run_args/test_declarative_usage_docs/set_up_optimizer.yaml

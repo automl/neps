@@ -11,7 +11,7 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   epochs: 50
 
-root_directory: path/to/results       # Directory for result storage
+root_directory: "tests_tmpdir/test_declarative_usage_docs/loading_own_optimizer"
 max_evaluations_total: 20               # Budget
 searcher:
   path: "neps/optimizers/bayesian_optimization/optimizer.py"

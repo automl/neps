@@ -1,0 +1,39 @@
+run_pipeline:
+  path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
+  name: run_pipeline
+pipeline_space: "tests/test_yaml_run_args/test_run_args_by_neps_run/search_space_with_priors.yaml"
+root_directory: "tests_tmpdir/test_run_args_by_neps_run/optimizer_priorband"
+
+max_evaluations_total: 5
+max_cost_total:
+
+monitoring:
+  overwrite_working_directory: true
+  post_run_summary: false
+  development_stage_id: None
+  task_id: None
+
+parallelization_setup:
+  max_evaluations_per_run: None
+  continue_until_max_evaluation_completed:
+
+searcher:
+  strategy: "priorband"
+  initial_design_type: max_budget
+  prior_confidence: medium
+  sample_default_first: true
+  sample_default_at_target: false
+  prior_weight_type: geometric
+  inc_sample_type: mutation
+  inc_mutation_rate: 0.2
+  inc_mutation_std: 0.25
+  inc_style: dynamic
+  model_based: true
+  modelling_type: joint
+  initial_design_size: 5
+  surrogate_model: gp
+  acquisition: EI
+  log_prior_weighted: false
+  acquisition_sampler: mutation
+
+pre_load_hooks: None

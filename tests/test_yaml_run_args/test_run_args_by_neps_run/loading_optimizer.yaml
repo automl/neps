@@ -2,9 +2,9 @@ run_pipeline:
   path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
   name: "run_pipeline"
 pipeline_space: "tests/test_yaml_run_args/test_run_args_by_neps_run/search_space.yaml"
-root_directory: "tests/test_yaml_run_args/test_run_args_by_neps_run/results"
+root_directory: "tests_tmpdir/test_run_args_by_neps_run/results1"
 
-max_evaluations_total: 1
+max_evaluations_total: 5
 max_cost_total:
 
 monitoring:
