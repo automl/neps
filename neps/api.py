@@ -39,7 +39,7 @@ def run(
     ) = None,
     run_args: str | Path | None = None,
     overwrite_working_directory: bool = False,
-    post_run_summary: bool = False,
+    post_run_summary: bool = True,
     development_stage_id=None,
     task_id=None,
     max_evaluations_total: int | None = None,
