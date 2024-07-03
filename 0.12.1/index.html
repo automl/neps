@@ -14,7 +14,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.27">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.28">
     
     
       
@@ -457,35 +457,20 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#getting-started" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
-      Getting Started
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Getting Started">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      1. Installation
+      Installation
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#2-basic-usage" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
-      2. Basic Usage
+      Basic Usage
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -493,6 +478,15 @@
   <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contributing" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contributing
     </span>
   </a>
   
@@ -1016,6 +1010,27 @@
   
   <span class="md-ellipsis">
     Neps x lightning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="examples/convenience/running_on_slurm_scripts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Running on slurm scripts
   </span>
   
 
@@ -4390,43 +4405,37 @@
 <a href="https://pypi.org/project/neural-pipeline-search/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/neural-pipeline-search" /></a>
 <a href="LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/neural-pipeline-search?color=informational" /></a>
 <a href="https://github.com/automl/neps/actions"><img alt="Tests" src="https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg" /></a></p>
-<p>Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization (HPO) and neural architecture search (NAS) with its primary goal: enable HPO adoption in practice for deep learners!</p>
-<p>NePS houses recently published and some more well-established algorithms that are all capable of being run massively parallel on any distributed setup, with tools to analyze runs, restart runs, etc.</p>
+<p>Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization (HPO) and neural architecture search (NAS) with its primary goal: <strong>make HPO and NAS usable for deep learners in practice</strong>.</p>
+<p>NePS houses recently published and also well-established algorithms that can all be run massively parallel on distributed setups, with tools to analyze runs, restart runs, etc., all <strong>tailored to the needs of deep learning experts</strong>.</p>
 <h2 id="key-features">Key Features<a class="headerlink" href="#key-features" title="Permanent link">#</a></h2>
-<p>In addition to the common features offered by traditional HPO and NAS libraries, NePS stands out with the following key features:</p>
+<p>In addition to the features offered by traditional HPO and NAS libraries, NePS, e.g., stands out with:</p>
 <ol>
 <li>
-<p><a href="examples/template/priorband_template/"><strong>Hyperparameter Optimization (HPO) With Prior Knowledge:</strong></a></p>
+<p><a href="./examples/template/priorband_template.py"><strong>Hyperparameter Optimization (HPO) with Prior Knowledge and Cheap Proxies:</strong></a></p>
+</li>
+<li>
+<p>NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:</p>
 <ul>
-<li>NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:<ul>
 <li><a href="https://arxiv.org/abs/2306.12370">PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning</a></li>
 <li><a href="https://arxiv.org/abs/2204.11051">πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization</a></li>
 </ul>
 </li>
-</ul>
+<li>
+<p><a href="./examples/basic_usage/architecture.py"><strong>Neural Architecture Search (NAS) with General Search Spaces:</strong></a></p>
 </li>
 <li>
-<p><a href="examples/basic_usage/architecture/"><strong>Neural Architecture Search (NAS) With Context-free Grammar Search Spaces:</strong></a></p>
+<p>NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:</p>
 <ul>
-<li>NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:<ul>
 <li><a href="https://arxiv.org/abs/2211.01842">Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars</a></li>
 </ul>
 </li>
-</ul>
+<li>
+<p><a href="https://automl.github.io/neps/latest/examples/efficiency/"><strong>Easy Parallelization and Tailored to DL:</strong></a></p>
 </li>
 <li>
-<p><strong>Easy Parallelization and Resumption of Runs:</strong></p>
-<ul>
-<li>NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
-   computing environments. It also allows users to conveniently resume these optimization tasks after completion to
-   ensure a seamless and efficient workflow for long-running experiments.</li>
-</ul>
-</li>
-<li>
-<p><a href="examples/"><strong>Seamless User Code Integration:</strong></a></p>
-<ul>
-<li>NePS's modular design ensures flexibility and extensibility. Integrate NePS effortlessly into existing machine learning workflows.</li>
-</ul>
+<p>NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
+     computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
+     DL tools such as Tensorboard are <a href="https://automl.github.io/neps/latest/reference/analyse/#visualizing-results">embraced</a>.</p>
 </li>
 </ol>
 <div class="admonition tip">
@@ -4438,21 +4447,14 @@
 <li><a href="examples/template/basic_template/">Examples</a> for copy-pastable code to get started.</li>
 </ul>
 </div>
-<h2 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">#</a></h2>
-<h3 id="1-installation">1. Installation<a class="headerlink" href="#1-installation" title="Permanent link">#</a></h3>
-<p>NePS requires Python 3.8 or higher. You can install it via pip or from source.</p>
-<p>Using pip:
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">#</a></h2>
+<p>To install the latest release from PyPI run</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>neural-pipeline-search
-</code></pre></div></p>
-<blockquote>
-<p>Note: As indicated with the <code>v0.x.x</code> version number, NePS is early stage code and APIs might change in the future.</p>
-</blockquote>
-<p>You can install from source by cloning the repository and running:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:automl/neps.git
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>neps
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>poetry<span class="w"> </span>install
-</code></pre></div></p>
-<h3 id="2-basic-usage">2. Basic Usage<a class="headerlink" href="#2-basic-usage" title="Permanent link">#</a></h3>
+</code></pre></div>
+<p>To get the latest version from Github run</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/automl/neps.git
+</code></pre></div>
+<h2 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">#</a></h2>
 <p>Using <code>neps</code> always follows the same pattern:</p>
 <ol>
 <li>Define a <code>run_pipeline</code> function capable of evaluating different architectural and/or hyperparameter configurations
@@ -4473,75 +4475,54 @@
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>    <span class="n">model</span> <span class="o">=</span> <span class="n">MyModel</span><span class="p">(</span><span class="n">architecture_parameter</span><span class="p">)</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="c1"># Train and evaluate the model with your training pipeline</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">validation_error</span><span class="p">,</span> <span class="n">training_error</span> <span class="o">=</span> <span class="n">train_and_eval</span><span class="p">(</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    <span class="n">validation_error</span> <span class="o">=</span> <span class="n">train_and_eval</span><span class="p">(</span>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>        <span class="n">model</span><span class="p">,</span> <span class="n">hyperparameter_a</span><span class="p">,</span> <span class="n">hyperparameter_b</span>
 <a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>    <span class="p">)</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>    <span class="k">return</span> <span class="p">{</span>  <span class="c1"># dict or float(validation error)</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>        <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">validation_error</span><span class="p">,</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>        <span class="s2">&quot;info_dict&quot;</span><span class="p">:</span> <span class="p">{</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>            <span class="s2">&quot;training_error&quot;</span><span class="p">:</span> <span class="n">training_error</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>            <span class="c1"># + Other metrics</span>
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        <span class="p">},</span>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    <span class="p">}</span>
-<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
-<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>
-<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="c1"># 2. Define a search space of parameters; use the same names for the parameters as in run_pipeline</span>
-<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a><span class="n">pipeline_space</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>    <span class="n">hyperparameter_b</span><span class="o">=</span><span class="n">neps</span><span class="o">.</span><span class="n">IntegerParameter</span><span class="p">(</span>
-<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>        <span class="n">lower</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">is_fidelity</span><span class="o">=</span><span class="kc">True</span>
-<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>    <span class="p">),</span>  <span class="c1"># Mark &#39;is_fidelity&#39; as true for a multi-fidelity approach.</span>
-<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a>    <span class="n">hyperparameter_a</span><span class="o">=</span><span class="n">neps</span><span class="o">.</span><span class="n">FloatParameter</span><span class="p">(</span>
-<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>        <span class="n">lower</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span>
-<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    <span class="p">),</span>  <span class="c1"># If True, the search space is sampled in log space.</span>
-<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>    <span class="n">architecture_parameter</span><span class="o">=</span><span class="n">neps</span><span class="o">.</span><span class="n">CategoricalParameter</span><span class="p">(</span>
-<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>        <span class="p">[</span><span class="s2">&quot;option_a&quot;</span><span class="p">,</span> <span class="s2">&quot;option_b&quot;</span><span class="p">,</span> <span class="s2">&quot;option_c&quot;</span><span class="p">]</span>
-<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a>    <span class="p">),</span>
-<a id="__codelineno-2-37" name="__codelineno-2-37" href="#__codelineno-2-37"></a><span class="p">)</span>
-<a id="__codelineno-2-38" name="__codelineno-2-38" href="#__codelineno-2-38"></a>
-<a id="__codelineno-2-39" name="__codelineno-2-39" href="#__codelineno-2-39"></a><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-<a id="__codelineno-2-40" name="__codelineno-2-40" href="#__codelineno-2-40"></a>    <span class="c1"># 3. Run the NePS optimization</span>
-<a id="__codelineno-2-41" name="__codelineno-2-41" href="#__codelineno-2-41"></a>    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
-<a id="__codelineno-2-42" name="__codelineno-2-42" href="#__codelineno-2-42"></a>    <span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-2-43" name="__codelineno-2-43" href="#__codelineno-2-43"></a>        <span class="n">run_pipeline</span><span class="o">=</span><span class="n">run_pipeline</span><span class="p">,</span>
-<a id="__codelineno-2-44" name="__codelineno-2-44" href="#__codelineno-2-44"></a>        <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
-<a id="__codelineno-2-45" name="__codelineno-2-45" href="#__codelineno-2-45"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;path/to/save/results&quot;</span><span class="p">,</span>  <span class="c1"># Replace with the actual path.</span>
-<a id="__codelineno-2-46" name="__codelineno-2-46" href="#__codelineno-2-46"></a>        <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-<a id="__codelineno-2-47" name="__codelineno-2-47" href="#__codelineno-2-47"></a>        <span class="n">searcher</span><span class="o">=</span><span class="s2">&quot;hyperband&quot;</span>  <span class="c1"># Optional specifies the search strategy,</span>
-<a id="__codelineno-2-48" name="__codelineno-2-48" href="#__codelineno-2-48"></a>        <span class="c1"># otherwise NePs decides based on your data.</span>
-<a id="__codelineno-2-49" name="__codelineno-2-49" href="#__codelineno-2-49"></a>    <span class="p">)</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>    <span class="k">return</span> <span class="n">validation_error</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1"># 2. Define a search space of parameters; use the same parameter names as in run_pipeline</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="n">pipeline_space</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>    <span class="n">hyperparameter_a</span><span class="o">=</span><span class="n">neps</span><span class="o">.</span><span class="n">FloatParameter</span><span class="p">(</span>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>        <span class="n">lower</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># The search space is sampled in log space</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>    <span class="p">),</span>
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>    <span class="n">hyperparameter_b</span><span class="o">=</span><span class="n">neps</span><span class="o">.</span><span class="n">IntegerParameter</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mi">42</span><span class="p">),</span>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a>    <span class="n">architecture_parameter</span><span class="o">=</span><span class="n">neps</span><span class="o">.</span><span class="n">CategoricalParameter</span><span class="p">([</span><span class="s2">&quot;option_a&quot;</span><span class="p">,</span> <span class="s2">&quot;option_b&quot;</span><span class="p">]),</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a><span class="p">)</span>
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a><span class="c1"># 3. Run the NePS optimization</span>
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>    <span class="n">run_pipeline</span><span class="o">=</span><span class="n">run_pipeline</span><span class="p">,</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;path/to/save/results&quot;</span><span class="p">,</span>  <span class="c1"># Replace with the actual path.</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>    <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<a id="__codelineno-2-36" name="__codelineno-2-36" href="#__codelineno-2-36"></a><span class="p">)</span>
 </code></pre></div>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">#</a></h2>
-<p>Discover how NePS works through these practical examples:</p>
+<p>Discover how NePS works through these examples:</p>
 <ul>
 <li>
-<p><strong><a href="examples/basic_usage/hpo_usage_example/">Pipeline Space via YAML</a></strong>:
-    Explore how to define the <code>pipeline_space</code> using a YAML file instead of a dictionary.</p>
+<p><strong><a href="./examples/basic_usage/hyperparameters.py">Hyperparameter Optimization</a></strong>: Learn the essentials of hyperparameter optimization with NePS.</p>
 </li>
 <li>
-<p><strong><a href="examples/basic_usage/hyperparameters/">Hyperparameter Optimization (HPO)</a></strong>:
-    Learn the essentials of hyperparameter optimization with NePS.</p>
+<p><strong><a href="./examples/efficiency/multi_fidelity.py">Multi-Fidelity Optimization</a></strong>: Understand how to leverage multi-fidelity optimization for efficient model tuning.</p>
 </li>
 <li>
-<p><strong><a href="examples/basic_usage/architecture/">Architecture Search with Primitives</a></strong>:
-    Dive into architecture search using primitives in NePS.</p>
+<p><strong><a href="./examples/efficiency/expert_priors_for_hyperparameters.py">Utilizing Expert Priors for Hyperparameters</a></strong>: Learn how to incorporate expert priors for more efficient hyperparameter selection.</p>
 </li>
 <li>
-<p><strong><a href="examples/efficiency/multi_fidelity/">Multi-Fidelity Optimization</a></strong>:
-    Understand how to leverage multi-fidelity optimization for efficient model tuning.</p>
+<p><strong><a href="./examples/basic_usage/architecture.py">Architecture Search</a></strong>: Dive into (hierarchical) architecture search in NePS.</p>
 </li>
 <li>
-<p><strong><a href="examples/efficiency/expert_priors_for_hyperparameters/">Utilizing Expert Priors for Hyperparameters</a></strong>:
-    Learn how to incorporate expert priors for more efficient hyperparameter selection.</p>
-</li>
-<li>
-<p><strong><a href="examples/">Additional NePS Examples</a></strong>:
-    Explore more examples, including various use cases and advanced configurations in NePS.</p>
+<p><strong><a href="./examples/">Additional NePS Examples</a></strong>: Explore more examples, including various use cases and advanced configurations in NePS.</p>
 </li>
 </ul>
+<h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">#</a></h2>
+<p>Please see the <a href="./dev_docs/contributing/">documentation for contributors</a>.</p>
 <h2 id="citations">Citations<a class="headerlink" href="#citations" title="Permanent link">#</a></h2>
-<p>Please consider citing us if you use our tool!</p>
-<p>Refer to our <a href="citations/">documentation on citations</a></p>
+<p>For pointers on citing the NePS package and papers refer to our <a href="citations/">documentation on citations</a>.</p>
 
 
 
@@ -4615,7 +4596,7 @@
     <script id="__config" type="application/json">{"base": ".", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="assets/javascripts/bundle.ad660dcc.min.js"></script>
+      <script src="assets/javascripts/bundle.fe8b6f2b.min.js"></script>
       
     
   </body>
