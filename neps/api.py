@@ -39,7 +39,7 @@ def run(
     ) = None,
     run_args: str | Path | None = None,
     overwrite_working_directory: bool = False,
-    post_run_summary: bool = False,
+    post_run_summary: bool = True,
     development_stage_id=None,
     task_id=None,
     max_evaluations_total: int | None = None,
@@ -397,6 +397,7 @@ def _run_args(
 
     logger.info(f"Running {searcher_name} as the searcher")
     logger.info(f"Strategy: {searcher_alg}")
+
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
