@@ -386,7 +386,7 @@ def _run_args(
     searcher_config = config
 
     logger.info(f"Running {searcher} as the searcher")
-    logger.info(f"Strategy: {searcher_alg}")
+    logger.debug(f"Strategy: {searcher_alg}")
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
