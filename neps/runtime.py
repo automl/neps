@@ -69,7 +69,6 @@ from typing_extensions import Self, TypeAlias
 import numpy as np
 
 from neps.utils._locker import Locker
-from neps.utils._rng import SeedState
 from neps.utils.files import deserialize, empty_file, serialize
 from neps.utils.types import (
     ERROR,
@@ -969,7 +968,7 @@ def launch_runtime(  # noqa: PLR0913, C901, PLR0915
             # to know this and the runtime can fill this in for it.
             try:
                 user_result = _evaluate_config(trial, evaluation_fn, logger)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 # TODO(eddiebergman): Right now this never accounts for cost!
                 # NOTE: It's important to lock the shared state such that any
                 # sampling done is with taking this result into account

@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import pytest
 
-from neps.utils._rng import SeedState
+from neps.state.seeds import SeedSnapshot, _serialize_to_directory, _deserialize_from_directory
 
 @pytest.mark.parametrize(
     "make_ints", (
@@ -23,20 +23,30 @@ def test_randomstate_consistent(tmp_path: Path, make_ints: Callable[[], list[int
 
     seed_dir = tmp_path / "seed_dir"
 
-    seed_state = SeedState.get()
+    seed_state = SeedSnapshot.new_capture()
     integers_1 = make_ints()
 
-    seed_state.set_as_global_state()
-    integers_2 = make_ints()
+    seed_state.set_as_global_seed_state()
 
+    integers_2 = make_ints()
     assert integers_1 == integers_2
 
-    SeedState.get().dump(seed_dir)
-    integers_3 = make_ints()
 
+
+    _serialize_to_directory(SeedSnapshot.new_capture(), seed_dir)
+
+    integers_3 = make_ints()
     assert integers_3 != integers_2, "Ensure we have actually changed random state"
 
-    SeedState.load(seed_dir).set_as_global_state()
+    _deserialize_from_directory(seed_dir).set_as_global_seed_state()
     integers_4 = make_ints()
 
     assert integers_3 == integers_4
+
+    before = SeedSnapshot.new_capture()
+    after = SeedSnapshot.new_capture()
+
+    _ = make_ints()
+
+    after.capture()
+    assert before != after

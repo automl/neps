@@ -12,7 +12,7 @@ from typing import Any, Mapping, TypedDict
 import numpy as np
 import yaml
 
-from neps.runtime import ErrorReport, SharedState, Trial
+from neps.state import Trial
 from neps.utils.types import ERROR, ConfigID, ResultDict, _ConfigResultForStats
 
 
