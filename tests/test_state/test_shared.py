@@ -9,7 +9,7 @@ from neps.state.trial import Trial
 import pytest
 from typing import Callable
 from pathlib import Path
-from neps.state import SeedSnapshot, Shared, Trial
+from neps.state import SeedSnapshot, Shared, Trial, JobQueue, EvaluateJob, SampleJob
 
 @case
 def case_trial_1(tmp_path: Path) -> tuple[Shared[Trial, Path], Callable[[Trial], None]]:
@@ -110,6 +110,28 @@ def case_trial_6(tmp_path: Path) -> tuple[Shared[Trial, Path], Callable[[Trial],
         trial.reset()
 
     return trial.as_filesystem_shared(tmp_path / "1"), _mutate
+
+@case
+def case_jobqueue_sample(tmp_path: Path) -> tuple[Shared[JobQueue, Path], Callable[[JobQueue], None]]:
+    jobqueue = JobQueue()
+    jobqueue.push(SampleJob.new(issued_by="worker_1"))
+
+    def _mutate(jobqueue: JobQueue) -> None:
+        jobqueue.pop()
+
+    return jobqueue.as_filesystem_shared(tmp_path / "jobqueue"), _mutate
+
+@case
+def case_jobqueue_evaluate(tmp_path: Path) -> tuple[Shared[JobQueue, Path], Callable[[JobQueue], None]]:
+    jobqueue = JobQueue()
+    jobqueue.push(SampleJob.new(issued_by="worker_1"))
+    jobqueue.push(EvaluateJob.new(issued_by="worker_1", trial_id="1"))
+
+    def _mutate(jobqueue: JobQueue) -> None:
+        jobqueue.pop()
+        jobqueue.pop()
+
+    return jobqueue.as_filesystem_shared(tmp_path / "jobqueue"), _mutate
 
 @case
 def case_seed_snapshot(tmp_path: Path) -> tuple[Shared[SeedSnapshot, Path], Callable[[SeedSnapshot], None]]:

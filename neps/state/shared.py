@@ -151,6 +151,12 @@ class Shared(Generic[T, K]):
         store: VersionedStore[T, K],
         locker: Locker,
     ) -> Self:
+        """Load an existing shared resource from disk.
+
+        Args:
+            store: The store that manages the shared resource.
+            locker: The locker to lock the shared resource with.
+        """
         with locker.lock():
             data, version = store.get()
 
@@ -158,6 +164,13 @@ class Shared(Generic[T, K]):
 
     @classmethod
     def new(cls, data: T, *, store: VersionedStore[T, K], locker: Locker) -> Self:
+        """Create a new shared resource.
+
+        Args:
+            data: The data to store in the shared resource.
+            store: The store that manages the shared resource.
+            locker: The locker to lock the shared resource with.
+        """
         with locker.lock():
             if store.current_version() is not None:
                 raise cls.ResourceExistsError(
@@ -169,14 +182,20 @@ class Shared(Generic[T, K]):
         return cls(data, version, store, locker)
 
     def pull_latest(self) -> T:
+        """Lock and pull the latest version of the shared resource.
+
+        If the resource is the latest version, it will not be updated.
+        """
         with self._locker.lock():
             self.unsafe_pull_latest()
         return self._current
 
     def current(self) -> T:
+        """Get the current version of the shared resource."""
         return self._current
 
     def version(self) -> str:
+        """Get the version of the shared resource."""
         return self._version
 
     def is_stale(self) -> bool:
@@ -223,6 +242,7 @@ class Shared(Generic[T, K]):
         self._version = self._store.put(data, self._version)
 
     def unsafe_pull_latest(self) -> None:
+        """Pull the latest version of the shared resource without acquiring the lock."""
         if self._store.current_version() != self._version:
             self._current, self._version = self._store.get()
 
@@ -236,6 +256,16 @@ class Shared(Generic[T, K]):
         lockname: str = ".lock",
         version_filename: str = ".version",
     ) -> Shared[T, Path]:
+        """Create a new shared resource using a directory to store the resource.
+
+        Args:
+            data: The data to store in the shared resource.
+            directory: The directory to store the shared resource.
+            serialize: The function to serialize the data to disk.
+            deserialize: The function to deserialize the data from disk.
+            lockname: The name of the lock file.
+            version_filename: The name of the version file.
+        """
         return Shared.new(
             data,
             store=VersionedDirectoryStore(

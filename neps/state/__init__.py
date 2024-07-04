@@ -1,3 +1,5 @@
+from neps.state.jobqueue import JobQueue
+from neps.state.jobs import JOB_MAPPING, EvaluateJob, Job, SampleJob
 from neps.state.locker import FileLocker, Locker
 from neps.state.seeds import SeedSnapshot
 from neps.state.shared import Shared
@@ -13,4 +15,9 @@ __all__ = [
     "Trial",
     "VersionedDirectoryStore",
     "VersionedStore",
+    "JobQueue",
+    "JOB_MAPPING",
+    "Job",
+    "SampleJob",
+    "EvaluateJob",
 ]

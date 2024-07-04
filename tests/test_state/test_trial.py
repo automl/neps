@@ -138,6 +138,7 @@ def test_trial_as_success_after_being_progress() -> None:
         time_end=time_end,
     )
     assert trial.report == Trial.Report(
+        trial_id=trial_id,
         loss=loss,
         cost=cost,
         account_for_cost=account_for_cost,
@@ -192,6 +193,7 @@ def test_trial_as_failed_with_nan_loss_and_in_cost() -> None:
         time_end=time_end,
     )
     assert trial.report == Trial.Report(
+        trial_id=trial_id,
         loss=loss,
         cost=cost,
         account_for_cost=account_for_cost,
@@ -244,6 +246,7 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
         time_end=time_end,
     )
     assert trial.report == Trial.Report(
+        trial_id=trial_id,
         loss=None,
         cost=None,
         account_for_cost=False,
