@@ -64,8 +64,13 @@ tensorboard = "^2"
 typing-extensions = "*"
 torchvision = ">=0.8.0"
 
+[tool.poetry.dependencies.ifbo]
+version = ">=0.3,<0.4"
+python = ">=3.10,<3.12"
+optional = true
+
 [tool.poetry.extras]
-ifbo = ["ifbo>=0.3,<0.4 ; { python_version >= '3.10' , python_version < '3.12' }"]
+ifbo = ["ifbo"]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"
