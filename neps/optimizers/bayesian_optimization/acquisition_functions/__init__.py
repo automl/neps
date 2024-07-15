@@ -7,6 +7,7 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
     ComprehensiveExpectedImprovement,
 )
 from neps.optimizers.bayesian_optimization.acquisition_functions.mf_ei import MFEI
+from neps.optimizers.bayesian_optimization.acquisition_functions.mf_pi import MFPI_Random
 from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
     UpperConfidenceBound,
     MF_UCB,
@@ -37,6 +38,11 @@ AcquisitionMapping: dict[str, Callable] = {
     ),
     "MFEI": partial(
         MFEI,
+        in_fill="best",
+        augmented_ei=False,
+    ),
+    "MFPI-random": partial(
+        MFPI_Random,
         in_fill="best",
         augmented_ei=False,
     ),

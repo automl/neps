@@ -44,7 +44,7 @@ class MFEIBO(BaseOptimizer):
         ignore_errors: bool = False,
         logger=None,
         # arguments for model
-        surrogate_model: str | Any = "deep_gp",
+        surrogate_model: str | Any = "gp",
         surrogate_model_args: dict = None,
         domain_se_kernel: str = None,
         graph_kernels: list = None,
@@ -125,7 +125,9 @@ class MFEIBO(BaseOptimizer):
         self._prep_model_args(self.hp_kernels, self.graph_kernels, pipeline_space)
 
         # TODO: Better solution than branching based on the surrogate name is needed
-        if surrogate_model in ["deep_gp", "gp", "dpl"]:
+        if surrogate_model in ["deep_gp", "dpl"]:
+            raise NotImplementedError
+        elif surrogate_model == "gp":
             model_policy = FreezeThawModel
         elif surrogate_model == "pfn":
             model_policy = PFNSurrogate
@@ -422,7 +424,10 @@ class MFEIBO(BaseOptimizer):
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            config.fidelity.value = self.min_budget
+            _config_dict = config.hp_values()
+            _config_dict.update({config.fidelity_name: self.min_budget})
+            config.set_hyperparameters_from_dict(_config_dict)
+            # config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
         elif self.is_init_phase() or self._model_update_failed:
             # promote a config randomly if initial design size is satisfied but the
