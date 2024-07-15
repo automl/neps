@@ -615,6 +615,13 @@ class SearchSpace(Mapping[str, Any]):
 
             Does not support graph parameters currently.
 
+        !!! note "TODO"
+
+            Include default hyperparameters in the grid.
+            If all HPs have a `default` then add a single configuration.
+            If only partial HPs have defaults then add all combinations of defaults, but only to 
+                the end of the list of configs.
+
         Args:
             size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
             include_endpoints: Whether to include the endpoints of the grid.

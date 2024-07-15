@@ -45,5 +45,5 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
     "mobster": MOBSTER,
-    "mf_ei_bo": MFEIBO,
+    "ifbo_ei": MFEIBO,
 }

@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ...optimizers.utils import map_real_hyperparameters_from_tabular_ids
-from ...search_spaces.search_space import SearchSpace
+from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
+from neps.search_spaces.search_space import SearchSpace
 
 
 def continuous_to_tabular(
@@ -53,6 +53,7 @@ class MFObservedData:
     default_config_col = "config"
     default_perf_col = "perf"
     default_lc_col = "learning_curves"
+    # TODO: deepcopy all the mutable outputs from the dataframe
 
     def __init__(
         self,
@@ -77,6 +78,7 @@ class MFObservedData:
 
         self.config_idx = index_names[0]
         self.budget_idx = index_names[1]
+        self.index_names = index_names
 
         index = pd.MultiIndex.from_tuples([], names=index_names)
 
@@ -127,8 +129,9 @@ class MFObservedData:
             data_list = data
 
         if not self.df.index.isin(index_list).any():
-            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index_list)
-            self.df = pd.concat((self.df, _df))
+            index = pd.MultiIndex.from_tuples(index_list, names=self.index_names)
+            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index)
+            self.df = _df.copy() if self.df.empty else pd.concat((self.df, _df))
         elif error:
             raise ValueError(
                 f"Data with at least one of the given indices already "
@@ -176,7 +179,7 @@ class MFObservedData:
         Returns a series object with the best partial configuration for each budget id
 
         Note: this will always map the best lowest ID if two configurations
-              has the same performance at the same fidelity
+              have the same performance at the same fidelity
         """
         learning_curves = self.get_learning_curves()
         if maximize:
@@ -202,6 +205,16 @@ class MFObservedData:
             performance = learning_curves.min(axis=0)
 
         return performance
+
+    def get_budget_level_for_best_performance(self, maximize: bool = False) -> int:
+        """Returns the lowest budget level at which the highest performance was recorded.
+        """
+        perf_per_z = self.get_best_performance_for_each_budget(maximize=maximize)
+        y_star = self.get_best_seen_performance(maximize=maximize)
+        # uses the minimum of the budget that see the maximum obseved score
+        op = max if maximize else min
+        z_inc = int(op([_z for _z, _y in perf_per_z.items() if _y == y_star]))
+        return z_inc
 
     def get_best_learning_curve_id(self, maximize: bool = False):
         """
@@ -238,7 +251,17 @@ class MFObservedData:
     def get_partial_configs_at_max_seen(self):
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
-    def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+    def extract_learning_curve(
+        self, config_id: int, budget_id: int | None = None
+    ) -> list[float]:
+        if budget_id is None:
+            # budget_id only None when predicting
+            # extract full observed learning curve for prediction pipeline
+            budget_id = max(self.df.loc[config_id].index.get_level_values("budget_id").values) + 1
+
+        # For the first epoch we have no learning curve available
+        if budget_id == 0:
+            return []
         # reduce budget_id to discount the current validation loss
         # both during training and prediction phase
         budget_id = max(0, budget_id - 1)
@@ -247,11 +270,12 @@ class MFObservedData:
         else:
             lcs = self.get_learning_curves()
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
-        return lc
+        return deepcopy(lc)
 
     def get_training_data_4DyHPO(
         self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
     ):
+        start = time.time()
         configs = []
         learning_curves = []
         performance = []
@@ -266,7 +290,33 @@ class MFObservedData:
                 configs.append(row[self.config_col])
             performance.append(row[self.perf_col])
             learning_curves.append(self.extract_learning_curve(config_id, budget_id))
+        # print("-" * 50)
+        # print(f"| Time for `get_training_data_4DyHPO()`: {time.time()-start:.2f}s")
+        # print("-" * 50)
         return configs, learning_curves, performance
+
+    def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
+        """Returns the best score recorded per config across fidelities seen.
+        """
+        op = np.max if maximize else np.min
+        perf = (
+            self.df
+            .sort_values("budget_id", ascending=False)  # sorts with largest budget first
+            .groupby("config_id")  # retains only config_id
+            .first()  # retrieves the largest budget seen for each config_id
+            .learning_curves  # extracts all values seen till largest budget for a config
+            .apply(op)  # finds the minimum over per-config learning curve
+        )
+        return perf
+
+    def get_max_observed_fidelity_level_per_config(self) -> pd.Series:
+        """Returns the highest fidelity level recorded per config seen.
+        """
+        max_z_observed = {
+            _id: self.df.loc[_id,:].index.sort_values()[-1]
+            for _id in self.df.index.get_level_values("config_id").sort_values()
+        }
+        return pd.Series(max_z_observed)
 
     def get_tokenized_data(self, df: pd.DataFrame):
         idxs = df.index.values
