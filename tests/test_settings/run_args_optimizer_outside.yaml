@@ -1,0 +1,20 @@
+run_pipeline:
+  name: run_pipeline
+  path: "tests/test_settings/test_settings.py"
+pipeline_space:
+  name: pipeline_space
+  path: "tests/test_settings/test_settings.py"
+
+root_directory: "path/to/root_directory"
+max_evaluations_total: 10            # Budget
+searcher:
+  path: "tests/test_settings/test_settings.py"
+  name: my_bayesian
+  # Specific arguments depending on the searcher
+  initial_design_size: 7
+  surrogate_model: gp
+  acquisition: EI
+  acquisition_sampler: random
+  random_interleave_prob: 0.1
+
+overwrite_working_directory: True

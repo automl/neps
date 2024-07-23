@@ -1,0 +1,14 @@
+max_cost_total:
+overwrite_working_directory: True
+post_run_summary: False
+development_stage_id:
+task_id:
+max_evaluations_per_run:
+continue_until_max_evaluation_completed: False
+max_evaluations_total: 11 # get ignored
+root_directory: "get/ignored"
+loss_value_on_error:
+cost_value_on_error:
+ignore_errors:
+searcher: hyperband
+pre_load_hooks:
