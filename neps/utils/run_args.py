@@ -543,6 +543,7 @@ class Settings:
                 else:
                     dict_settings[key] = value
 
+        # drop run_args, not needed as a setting attribute
         del dict_settings[RUN_ARGS]
         self.assign(dict_settings)
         self.check()
@@ -551,6 +552,8 @@ class Settings:
         """Merge func_args and yaml_args. func_args gets priority over yaml_args."""
         # Initialize with YAML settings
         merged_settings = yaml_args.copy()
+
+        # overwrite or merge keys
         for key, value in func_args.items():
             # Handle searcher_kwargs for BaseOptimizer case
             if key == SEARCHER_KWARGS:
