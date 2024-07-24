@@ -5,11 +5,10 @@ It includes functions for loading and processing configurations.
 from __future__ import annotations
 
 import importlib.util
-import inspect
 import logging
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 import yaml
 
@@ -37,7 +36,7 @@ SEARCHER = "searcher"
 PRE_LOAD_HOOKS = "pre_load_hooks"
 # searcher_kwargs is used differently in yaml and just play a role for considering
 # arguments of a custom searcher class (BaseOptimizer)
-SEARCHER_KWARGS = "custom_class_searcher_kwargs"
+SEARCHER_KWARGS = "searcher_kwargs"
 MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
 
 
@@ -452,8 +451,7 @@ def check_essential_arguments(
     pipeline_space: dict | None,
     max_cost_total: int | None,
     max_evaluation_total: int | None,
-    searcher: BaseOptimizer | None,
-    run_args: str | None,
+    searcher: BaseOptimizer | dict | str | None,
 ) -> None:
     """Validates essential NePS configuration arguments.
 
@@ -469,7 +467,6 @@ def check_essential_arguments(
         max_cost_total: Max allowed total cost for experiments.
         max_evaluation_total: Max allowed evaluations.
         searcher: Optimizer for the configuration space.
-        run_args: A YAML file containing the configuration settings.
 
     Raises:
         ValueError: Missing or invalid essential arguments.
@@ -478,7 +475,7 @@ def check_essential_arguments(
         raise ValueError("'run_pipeline' is required but was not provided.")
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
-    if not pipeline_space and (run_args or not isinstance(searcher, BaseOptimizer)):
+    if not pipeline_space and not isinstance(searcher, BaseOptimizer):
         # handling special case for searcher instance, in which user doesn't have to
         # provide the search_space because it's the argument of the searcher.
         raise ValueError("'pipeline_space' is required but was not provided.")
@@ -490,31 +487,148 @@ def check_essential_arguments(
         )
 
 
-def check_double_reference(
-    func: Callable, func_arguments: dict, yaml_arguments: dict
-) -> None:
-    """Checks if no argument is defined both via function arguments and YAML.
+# Handle Settings
 
-    Args:
-        func (Callable): The function to check arguments against.
-        func_arguments (Dict): A dictionary containing the provided arguments to the
-        function and their values.
-        yaml_arguments (Dict): A dictionary containing the arguments provided via a YAML
-        file.
 
-    Raises:
-        ValueError: If any provided argument is defined both via function arguments and
-        the YAML file.
+class Sentinel:
+    """Introduce a sentinel object as default value for checking variable assignment."""
+
+    def __repr__(self) -> str:
+        return "<Sentinel>"
+
+
+UNSET = Sentinel()
+
+
+class Settings:
+    """Centralizes and manages configuration settings from various sources of NePS
+    arguments (run_args (yaml) and neps func_args).
     """
-    sig = inspect.signature(func)
 
-    for name, param in sig.parameters.items():
-        if param.default != func_arguments[name]:
-            if name == RUN_ARGS:
-                # Ignoring run_args argument
-                continue
-            if name in yaml_arguments:
-                raise ValueError(
-                    f"Conflict for argument '{name}': Argument is defined both via "
-                    f"function arguments and YAML, which is not allowed."
-                )
+    def __init__(self, func_args: dict, yaml_args: str | Default | None = None):
+        """Initializes the Settings object by merging function arguments with YAML
+        configuration settings and assigning them to class attributes. It checks for
+        necessary configurations and handles default values where specified.
+
+        Args:
+        func_args (dict): The function arguments directly passed to NePS.
+        yaml_args (dict | None): Optional. YAML file arguments provided via run_args.
+        """
+        self.run_pipeline = UNSET
+        self.root_directory = UNSET
+        self.pipeline_space = UNSET
+        self.overwrite_working_directory = UNSET
+        self.post_run_summary = UNSET
+        self.development_stage_id = UNSET
+        self.task_id = UNSET
+        self.max_evaluations_total = UNSET
+        self.max_evaluations_per_run = UNSET
+        self.continue_until_max_evaluation_completed = UNSET
+        self.max_cost_total = UNSET
+        self.ignore_errors = UNSET
+        self.loss_value_on_error = UNSET
+        self.cost_value_on_error = UNSET
+        self.pre_load_hooks = UNSET
+        self.searcher = UNSET
+        self.searcher_kwargs = UNSET
+
+        if not isinstance(yaml_args, Default) and yaml_args is not None:
+            yaml_settings = get_run_args_from_yaml(yaml_args)
+            dict_settings = self.merge(func_args, yaml_settings)
+        else:
+            dict_settings = {}
+            for key, value in func_args.items():
+                if isinstance(value, Default):
+                    dict_settings[key] = value.value
+                else:
+                    dict_settings[key] = value
+
+        # drop run_args, not needed as a setting attribute
+        del dict_settings[RUN_ARGS]
+        self.assign(dict_settings)
+        self.check()
+
+    def merge(self, func_args: dict, yaml_args: dict) -> dict:
+        """Merge func_args and yaml_args. func_args gets priority over yaml_args."""
+        # Initialize with YAML settings
+        merged_settings = yaml_args.copy()
+
+        # overwrite or merge keys
+        for key, value in func_args.items():
+            # Handle searcher_kwargs for BaseOptimizer case
+            if key == SEARCHER_KWARGS:
+                merged_settings[SEARCHER_KWARGS] = {
+                    **yaml_args.pop(SEARCHER_KWARGS, {}),
+                    **func_args[SEARCHER_KWARGS],
+                }
+            elif not isinstance(value, Default):
+                merged_settings[key] = value
+            elif key not in yaml_args:
+                # If the key is not in yaml_args, set it from Default
+                merged_settings[key] = value.value
+        return merged_settings
+
+    def assign(self, dict_settings: dict) -> None:
+        """Updates existing attributes with values from `dict_settings`.
+        Raises AttributeError if any attribute in `dict_settings` does not exist.
+        """
+        for key, value in dict_settings.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise AttributeError(f"'Settings' object has no attribute '{key}'")
+
+    def check_unassigned_attributes(self) -> list:
+        """Check for UNSET and Default class."""
+        return [
+            key
+            for key, value in self.__dict__.items()
+            if value is UNSET or isinstance(value, Default)
+        ]
+
+    def check(self) -> None:
+        """Check if all values are assigned and if the essentials are provided
+        correctly.
+        """
+        unassigned_attributes = self.check_unassigned_attributes()
+        if unassigned_attributes:
+            raise ValueError(
+                f"Unassigned or default-initialized attributes detected: "
+                f"{', '.join(unassigned_attributes)}"
+            )
+        check_essential_arguments(
+            self.run_pipeline,  # type: ignore
+            self.root_directory,  # type: ignore
+            self.pipeline_space,  # type: ignore
+            self.max_cost_total,  # type: ignore
+            self.max_evaluations_total,  # type: ignore
+            self.searcher,  # type: ignore
+        )
+
+
+class Default:
+    """A class to enable default detection.
+
+    Attributes:
+        value: The value to be stored as the default.
+
+    Methods:
+        __init__(self, value): Initializes the Default object with a value.
+        __repr__(self): Returns a string representation of the Default object.
+    """
+
+    def __init__(self, value: Any):
+        """Initialize the Default object with the specified value.
+
+        Args:
+            value: The value to store as default. Can be any data type.
+        """
+        self.value = value
+
+    def __repr__(self) -> str:
+        """Return the string representation of the Default object.
+
+        Returns:
+            A string that represents the Default object in the format <default: value>.
+        """
+        return f"<default: {self.value}>"

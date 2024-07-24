@@ -4,9 +4,12 @@
 Configure your experiments using a YAML file, which serves as a central reference for setting up your project.
 This approach simplifies sharing, reproducing and modifying configurations.
 
-!!! note
-    You can partially define arguments in the YAML file and partially provide the arguments directly to `neps.run`.
-    However, double referencing is not allowed. You cannot define the same argument in both places.
+!!! note "Argument Handling and Prioritization"
+    You can partially define and provide arguments via `run_args` (YAML file) and partially provide the arguments
+    directly to `neps.run`. Arguments directly provided to `neps.run` get prioritized over those defined in the YAML file. An exception to this
+    is for `searcher_kwargs` where a merge happens between the configurations. In this case, the directly provided arguments
+    are still prioritized, but the values from both the directly provided arguments and the YAML file are merged.
+
 
 #### Simple YAML Example
 Below is a straightforward YAML configuration example for NePS covering the required arguments.
