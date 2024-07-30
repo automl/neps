@@ -17,7 +17,32 @@ def init_config(args: argparse.Namespace) -> None:
     config_path = Path(args.config_path) if args.config_path else Path("config.yaml")
     if not config_path.exists():
         with config_path.open("w") as file:
-            file.write("# Add your NEPS configuration settings here\n")
+            file.write(
+                """# Add your NEPS configuration settings here
+
+run_pipeline:
+  path: "path/to/your/run_pipeline.py"
+  name: name_of_your_pipeline_function
+
+pipeline_space:
+  float_parameter_name:
+    type: "float"
+    lower:
+    upper:
+    log: false
+  int_parameter_name:
+    type: "int"
+    lower:
+    upper:
+  categorical_parameter_name:
+    choices: ["choice1", "choice2", "choice3"]
+  constant_parameter_name: 17
+
+root_directory: "set/path/for/root_directory"
+max_evaluations_total:
+overwrite_working_directory:
+"""
+            )
     else:
         pass
 
@@ -45,6 +70,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     # Collect arguments from args and prepare them for neps.run
     options = {
         "run_args": args.run_args,
+        "pipeline_space": args.pipeline_space,
         "root_directory": args.root_directory,
         "overwrite_working_directory": args.overwrite_working_directory,
         "post_run_summary": args.post_run_summary,
@@ -98,8 +124,16 @@ def main() -> None:
     parser_run.add_argument(
         "run_args",
         type=str,
-        help="Path to the YAML configuration file. This file must include the "
-        "'run_pipeline' settings.",
+        help="Path to the YAML configuration file. For CLI usage this file must include "
+        "the 'run_pipeline' settings.",
+    )
+    parser_run.add_argument(
+        "--pipeline-space",
+        type=str,
+        default=Default(None),
+        help="Path to the YAML file defining the search space for the optimization. "
+        "This can be provided here or defined within the 'run_args' YAML file. "
+        "(default: %(default)s)",
     )
     parser_run.add_argument(
         "--root-directory",
