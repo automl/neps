@@ -24,6 +24,7 @@ from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
 from neps.optimizers.info import SearcherConfigs
 
+
 def run(
     run_pipeline: Callable | None = Default(None),
     root_directory: str | Path | None = Default(None),

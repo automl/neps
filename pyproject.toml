@@ -306,3 +306,6 @@ module = [
   "neps.utils.run_args_from_yaml",
 ]
 ignore_errors = true
+
+[tool.poetry.scripts]
+neps = "neps.utils.cli:main"
