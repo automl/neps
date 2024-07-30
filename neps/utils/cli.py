@@ -48,12 +48,32 @@ overwrite_working_directory:
 
 
 def parse_kv_pairs(kv_list: list[str]) -> dict:
-    """Parse a list of key=value strings into a dictionary."""
+    """Parse a list of key=value strings into a dictionary with appropriate types."""
+
+    def convert_value(value: str) -> int | float | str:
+        """Convert the value to the appropriate type."""
+        # Check for boolean
+        if value.lower() in ("true", "false"):
+            return value.lower() == "true"
+
+        # Check for float if value contains '.' or 'e'
+        if "." in value or "e" in value.lower():
+            try:
+                return float(value)
+            except ValueError:
+                return value  # Return as string if conversion fails
+
+        # Check for integer
+        try:
+            return int(value)
+        except ValueError:
+            return value  # Return as string if conversion fails
+
     result = {}
     for item in kv_list:
         if "=" in item:
             key, value = item.split("=", 1)
-            result[key] = value
+            result[key] = convert_value(value)
         else:
             raise ValueError("Each kwarg must be in key=value format.")
     return result
@@ -152,14 +172,14 @@ def main() -> None:
     )
     parser_run.add_argument(
         "--development-stage-id",
-        type=int,
+        type=str,
         default=Default(None),
         help="Identifier for the current development stage, used in multi-stage "
         "projects. (default: %(default)s)",
     )
     parser_run.add_argument(
         "--task-id",
-        type=int,
+        type=str,
         default=Default(None),
         help="Identifier for the current task, useful in projects with multiple tasks. "
         "(default: %(default)s)",
