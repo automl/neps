@@ -94,23 +94,21 @@ def pipeline_space_from_configspace(
     return pipeline_space
 
 
-def pipeline_space_from_yaml(  # noqa: C901, PLR0912
+def pipeline_space_from_yaml(  # noqa: C901
     config: str | Path | dict,
 ) -> dict[str, Parameter]:
     """Reads configuration details from a YAML file or a dictionary and constructs a
     pipeline space dictionary.
 
     Args:
-        config (str | Path | dict): Path to the YAML file or a dictionary containing
-        parameter configurations.
+        config: Path to the YAML file or a dictionary containing parameter configurations.
 
     Returns:
-        dict[str, Parameter]: A dictionary where keys are parameter names and values
-        are parameter objects.
+        A dictionary where keys are parameter names and values are parameter objects.
 
     Raises:
         SearchSpaceFromYamlFileError: Raised if there are issues with the YAML file's
-        format, contents, or if the dictionary is invalid.
+            format, contents, or if the dictionary is invalid.
     """
     try:
         if isinstance(config, (str, Path)):
@@ -134,31 +132,23 @@ def pipeline_space_from_yaml(  # noqa: C901, PLR0912
             except yaml.YAMLError as e:
                 raise ValueError(f"The file at {config} is not a valid YAML file.") from e
 
-        # Initialize the pipeline space
         pipeline_space: dict[str, Parameter] = {}
 
-        # Iterate over the items in the YAML configuration
         for name, details in config.items():
-            # get parameter type
             param_type = deduce_type(name, details)
 
-            # init parameter by checking type
             if param_type in ("int", "integer"):
-                # Integer Parameter
                 formatted_details = formatting_int(name, details)
                 pipeline_space[name] = IntegerParameter(**formatted_details)
             elif param_type == "float":
-                # Float Parameter
                 formatted_details = formatting_float(name, details)
                 pipeline_space[name] = FloatParameter(**formatted_details)
             elif param_type in ("cat", "categorical"):
-                # Categorical parameter
                 formatted_details = formatting_cat(name, details)
                 pipeline_space[name] = CategoricalParameter(**formatted_details)
             elif param_type == "const":
-                # Constant parameter
-                formatted_details = formatting_const(details)  # type: ignore
-                pipeline_space[name] = ConstantParameter(formatted_details)
+                const_details = formatting_const(details)
+                pipeline_space[name] = ConstantParameter(const_details)
             else:
                 # Handle unknown parameter type
                 raise TypeError(
@@ -683,10 +673,17 @@ class SearchSpace(Mapping[str, Any]):
             serialized_config[name] = hp.serialize_value(hp.value)
         return serialized_config
 
-    def load_from(self, config: Mapping[str, Any | GraphParameter]) -> None:
-        """Load a configuration from a dictionary, setting all the values."""
+    def from_dict(self, config: Mapping[str, Any | GraphParameter]) -> SearchSpace:
+        """Create a new instance of this search space with parameters set from the config.
+
+        Args:
+            config: The dictionary of hyperparameters to set with values.
+        """
+        new = self.clone()
         for name, val in config.items():
-            self.hyperparameters[name].load_from(val)
+            new.hyperparameters[name].load_from(val)
+
+        return new
 
     def clone(self, *, _with_tabular: bool = False) -> SearchSpace:
         """Create a copy of the search space."""

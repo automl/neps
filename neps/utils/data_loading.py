@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from dataclasses import asdict
 from itertools import chain
 from pathlib import Path
 from typing import Any, Mapping, TypedDict
@@ -12,7 +13,7 @@ from typing import Any, Mapping, TypedDict
 import numpy as np
 import yaml
 
-from neps.state import Trial
+from neps.state.filebased import load_filebased_neps_state
 from neps.utils.types import ERROR, ConfigID, ResultDict, _ConfigResultForStats
 
 
@@ -135,24 +136,20 @@ def read_tasks_and_dev_stages_from_disk(
             if dev_id is None:
                 continue
 
-            state = SharedState(Path(dev_dir_path))
-            state.update_from_disk()
-            trials_by_state = state.trials_by_state()
+            state = load_filebased_neps_state(Path(dev_dir_path))
+            trials = state.get_all_trials()
 
             evaluated: dict[ConfigID, _ConfigResultForStats] = {}
 
-            for trial in chain(
-                trials_by_state[Trial.State.SUCCESS],
-                trials_by_state[Trial.State.ERROR],
-            ):
-                assert trial.report is not None
+            for trial in trials.values():
+                if trial.report is None:
+                    continue
+
                 _result_for_stats = _ConfigResultForStats(
                     trial.id,
                     trial.config,
-                    "error"
-                    if isinstance(trial.report, ErrorReport)
-                    else trial.report.results,
-                    trial.metadata,
+                    trial.report.to_deprecate_result_dict(),
+                    asdict(trial.metadata),
                 )
                 evaluated[trial.id] = _result_for_stats
 
@@ -181,27 +178,24 @@ def read_user_prior_results_from_disk(
         if not prior_dir.is_dir():
             continue
 
-        state = SharedState(prior_dir)
-        with state.sync(lock=False):
-            evaluated: dict[ConfigID, _ConfigResultForStats] = {}
-            trials_by_state = state.trials_by_state()
+        state = load_filebased_neps_state(Path(prior_dir))
+        trials = state.get_all_trials()
+        evaluated: dict[ConfigID, _ConfigResultForStats] = {}
 
-            for trial in chain(
-                trials_by_state[Trial.State.SUCCESS],
-                trials_by_state[Trial.State.ERROR],
-            ):
-                assert trial.report is not None
-                _result_for_stats = _ConfigResultForStats(
-                    trial.id,
-                    trial.config,
-                    "error"
-                    if isinstance(trial.report, ErrorReport)
-                    else trial.report.results,
-                    trial.metadata,
-                )
-                evaluated[trial.id] = _result_for_stats
+        for trial in trials.values():
+            if trial.report is None:
+                continue
 
-            results[prior_dir.name] = evaluated
+            assert trial.report is not None
+            _result_for_stats = _ConfigResultForStats(
+                trial.id,
+                trial.config,
+                trial.report.to_deprecate_result_dict(),
+                asdict(trial.metadata),
+            )
+            evaluated[trial.id] = _result_for_stats
+
+        results[prior_dir.name] = evaluated
 
     return results
 
@@ -328,25 +322,22 @@ def summarize_results(  # noqa: C901
             # TODO(unknown): only use IDs if provided
             final_results = results[final_task_id][final_dev_id]
         else:
-            state = SharedState(Path(seed_dir))
-            with state.sync(lock=False):
-                trials_by_state = state.trials_by_state()
+            state = load_filebased_neps_state(Path(seed_dir))
+            trials = state.get_all_trials()
 
-                final_results = {}
-                for trial in chain(
-                    trials_by_state[Trial.State.SUCCESS],
-                    trials_by_state[Trial.State.ERROR],
-                ):
-                    assert trial.report is not None
-                    _result_for_stats = _ConfigResultForStats(
-                        trial.id,
-                        trial.config,
-                        "error"
-                        if isinstance(trial.report, ErrorReport)
-                        else trial.report.results,
-                        trial.metadata,
-                    )
-                    final_results[trial.id] = _result_for_stats
+            final_results = {}
+            for trial in trials.values():
+                if trial.report is None:
+                    continue
+
+                assert trial.report is not None
+                _result_for_stats = _ConfigResultForStats(
+                    trial.id,
+                    trial.config,
+                    trial.report.to_deprecate_result_dict(),
+                    asdict(trial.metadata),
+                )
+                final_results[trial.id] = _result_for_stats
 
         # This part is copied from neps.status()
         best_loss: float = float("inf")

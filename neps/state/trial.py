@@ -2,101 +2,27 @@
 
 from __future__ import annotations
 
-import datetime
 import logging
-import os
-import time
 from dataclasses import asdict, dataclass
 from enum import Enum
-from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Literal,
-    Mapping,
-)
-from typing_extensions import Self, TypeAlias
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal, Mapping
+from typing_extensions import Self
 
-from neps.state.report import Report
-from neps.state.shared import Shared
-from neps.utils.files import deserialize, empty_file, serialize
-from neps.utils.types import ConfigResult, RawConfig
+import numpy as np
+
+from neps.exceptions import NePSError
+from neps.utils.types import ConfigResult
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
+    from neps.utils.types import ERROR, RawConfig
 
 
 logger = logging.getLogger(__name__)
 
-TrialID: TypeAlias = str
 
-
-class NotReportedYetError(RuntimeError):
+class NotReportedYetError(NePSError):
     """Raised when trying to access a report that has not been reported yet."""
-
-
-class DeserializedError(Exception):
-    """An exception that was deserialized from a file."""
-
-
-@dataclass
-class _TrialPaths:
-    directory: Path
-
-    def __post_init__(self) -> None:
-        self.config_file = self.directory / "config.yaml"
-        self.metadata_file = self.directory / "metadata.yaml"
-        self.report_file = self.directory / "report.yaml"
-
-        self.previous_trial_id_file = self.directory / ".previous_config"
-        self.version_file = self.directory / ".version_sha"
-        self.state_file = self.directory / ".state"
-
-
-def _deserialize_from_directory(directory: Path) -> Trial:
-    """Deserialize a trial from a directory."""
-    paths = _TrialPaths(directory)
-    state_str = paths.state_file.read_text()
-    state = State(state_str)
-
-    if empty_file(paths.config_file):
-        raise FileNotFoundError(f"Config file not found at {paths.config_file}")
-
-    config = deserialize(paths.config_file)
-    assert isinstance(config, dict)
-
-    if empty_file(paths.metadata_file):
-        raise FileNotFoundError(f"Metadata file not found at {paths.metadata_file}")
-
-    metadata = MetaData(**deserialize(paths.metadata_file))
-
-    report = None
-    if not empty_file(paths.report_file):
-        report_data = deserialize(paths.report_file)
-        _err = report_data.get("err")
-        report_data["err"] = DeserializedError(_err) if _err is not None else None
-        report = Report(**report_data)
-
-    return Trial(state=state, config=config, report=report, metadata=metadata)
-
-
-def _serialize_to_directory(trial: Trial, directory: Path) -> None:
-    """Serialize a trial to directory."""
-    paths = _TrialPaths(directory)
-    paths.state_file.write_text(trial.state.value)
-    serialize(trial.metadata, paths.metadata_file)
-    serialize(trial.config, paths.config_file)
-    if trial.report is None and paths.report_file.exists():
-        isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        new_path = paths.report_file.with_suffix(f".old-{isoformat}.yaml")
-        paths.report_file.rename(new_path)
-    elif trial.report is not None:
-        serialize(trial.report, paths.report_file)
-
-    if trial.metadata.previous_trial_id is not None:
-        paths.previous_trial_id_file.write_text(trial.metadata.previous_trial_id)
 
 
 class State(Enum):
@@ -104,7 +30,7 @@ class State(Enum):
 
     PENDING = "pending"
     SUBMITTED = "submitted"
-    IN_PROGRESS = "in_progress"
+    EVALUATING = "evaluating"
     SUCCESS = "success"
     FAILED = "failed"
     CRASHED = "crashed"
@@ -112,46 +38,110 @@ class State(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass(kw_only=True)
+@dataclass
 class MetaData:
     """Metadata for a trial."""
 
     id: str
-    previous_trial_id: TrialID | None
+    location: str
+    previous_trial_id: Trial.ID | None
+    previous_trial_location: str | None
     sampling_worker_id: str
     time_sampled: float
-    # Mutable
+
     evaluating_worker_id: str | None = None
-    time_end: float | None = None
+    evaluation_duration: float | None = None
+
     time_submitted: float | None = None
     time_started: float | None = None
+    time_end: float | None = None
 
 
-@dataclass(kw_only=True)
+@dataclass
+class Report:
+    """A failed report of the evaluation of a configuration."""
+
+    trial_id: Trial.ID
+    loss: float | None
+    cost: float | None
+    learning_curve: list[float] | None  # TODO: Serializing a large list into yaml sucks!
+    extra: Mapping[str, Any]
+    err: Exception | None
+    tb: str | None
+    reported_as: Literal["success", "failed", "crashed"]
+    evaluation_duration: float | None
+
+    def __post_init__(self) -> None:
+        if isinstance(self.err, str):
+            self.err = Exception(self.err)  # type: ignore
+
+    def to_deprecate_result_dict(self) -> dict[str, Any] | ERROR:
+        """Return the report as a dictionary."""
+        if self.reported_as == "success":
+            d = {"loss": self.loss, "cost": self.cost, **self.extra}
+
+            # HACK: Backwards compatibility. Not sure how much this is needed
+            # but it should be removed once optimizers stop calling the
+            # `get_loss`, `get_cost`, `get_learning_curve` methods of `BaseOptimizer`
+            # and just use the `Report` directly.
+            if "info_dict" not in d and "learning_curve" not in d["info_dict"]:
+                d.setdefault("info_dict", {})["learning_curve"] = self.learning_curve
+
+        return "error"
+
+    def __eq__(self, value: Any, /) -> bool:
+        # HACK : Since it could be probably that one of loss or cost is nan,
+        # we need a custom comparator for this object
+        # HACK : We also have to skip over the `Err` object since when it's deserialized,
+        # we can not recover the original object/type.
+        if not isinstance(value, Report):
+            return False
+
+        other_items = value.__dict__
+        for k, v in self.__dict__.items():
+            other_v = other_items[k]
+
+            # HACK: Deserialization of `Err` means we can only compare
+            # the string representation of the error.
+            if k == "err":
+                if str(v) != str(other_v):
+                    return False
+            elif k in ("loss", "cost"):
+                if v is not None and np.isnan(v):
+                    if other_v is None or not np.isnan(other_v):
+                        return False
+                elif v != other_v:
+                    return False
+            elif v != other_v:
+                return False
+
+        return True
+
+
+@dataclass
 class Trial:
-    """A trial is a configuration and it's associated data.
+    """A trial is a configuration and it's associated data."""
 
-    The object is considered mutable and the global trial currently being
-    evaluated can be access using `get_in_progress_trial()`.
-    """
-
+    ID: ClassVar = str
     State: ClassVar = State
     Report: ClassVar = Report
     MetaData: ClassVar = MetaData
     NotReportedYetError: ClassVar = NotReportedYetError
 
-    metadata: MetaData
-    state: Trial.State
     config: Mapping[str, Any]
+    metadata: MetaData
+    state: State
     report: Report | None
 
     @classmethod
     def new(
         cls,
         *,
-        trial_id: TrialID,
+        trial_id: Trial.ID,
         config: Mapping[str, Any],
-        previous_trial: TrialID | None,
+        location: str,
+        previous_trial: Trial.ID | None,
+        previous_trial_location: str | None,
         time_sampled: float,
         worker_id: int | str,
     ) -> Self:
@@ -162,37 +152,29 @@ class Trial:
             config=config,
             metadata=MetaData(
                 id=trial_id,
+                location=location,
                 time_sampled=time_sampled,
                 previous_trial_id=previous_trial,
+                previous_trial_location=previous_trial_location,
                 sampling_worker_id=worker_id,
             ),
             report=None,
         )
 
-    def as_filesystem_shared(self, directory: Path) -> Shared[Trial, Path]:
-        """Return the trial as a shared object."""
-        return Shared.using_directory(
-            self,
-            directory,
-            serialize=_serialize_to_directory,
-            deserialize=_deserialize_from_directory,
-            lockname=".trialinfo_lock",
-            version_filename=".trialinfo_sha",
-        )
-
     @property
-    def id(self) -> TrialID:
+    def id(self) -> Trial.ID:
         """Return the id of the trial."""
         return self.metadata.id
 
-    def to_config_result(
+    def into_config_result(
         self,
         config_to_search_space: Callable[[RawConfig], SearchSpace],
     ) -> ConfigResult:
-        """Convert the report to a `ConfigResult` object."""
+        """Convert the trial and report to a `ConfigResult` object."""
         if self.report is None:
-            raise NotReportedYetError("The trial has not been reported yet.")
+            raise self.NotReportedYetError("The trial has not been reported yet.")
 
+        result: dict[str, Any] | ERROR
         if self.report.reported_as == "success":
             result = {
                 **self.report.extra,
@@ -209,132 +191,59 @@ class Trial:
             metadata=asdict(self.metadata),
         )
 
-    def set_submitted(self, *, time_submitted: float | None = None) -> None:
+    def set_submitted(self, *, time_submitted: float) -> None:
         """Set the trial as submitted."""
-        self.metadata.time_submitted = (
-            time_submitted if time_submitted is not None else time.time()
-        )
+        self.metadata.time_submitted = time_submitted
         self.state = State.SUBMITTED
 
-    def set_in_progress(
-        self,
-        *,
-        time_started: float | None = None,
-        worker_id: int | str | None = None,
-    ) -> None:
+    def set_evaluating(self, *, time_started: float, worker_id: int | str) -> None:
         """Set the trial as in progress."""
-        self.metadata.time_started = (
-            time_started if time_started is not None else time.time()
-        )
-        self.metadata.evaluating_worker_id = (
-            str(worker_id) if worker_id is not None else str(os.getpid())
-        )
-        self.state = State.IN_PROGRESS
+        self.metadata.time_started = time_started
+        self.metadata.evaluating_worker_id = str(worker_id)
+        self.state = State.EVALUATING
 
-    def _set_report(
+    def set_complete(
         self,
         *,
-        state: Literal[State.SUCCESS, State.FAILED, State.CRASHED],
-        time_end: float | None = None,
-        loss: float | None = None,
-        err: Exception | None = None,
-        tb: str | None = None,
-        cost: float | None = None,
-        extra: Mapping[str, Any] | None = None,
-        account_for_cost: bool = False,
-    ) -> None:
+        report_as: Literal["success", "failed", "crashed"],
+        time_end: float,
+        loss: float | None,
+        cost: float | None,
+        learning_curve: list[float] | None,
+        err: Exception | None,
+        tb: str | None,
+        extra: Mapping[str, Any] | None,
+        evaluation_duration: float | None,
+    ) -> Report:
         """Set the report for the trial."""
-        if state == State.SUCCESS:
+        if report_as == "success":
             self.state = State.SUCCESS
-            report_as = "success"
-        elif state == State.FAILED:
+        elif report_as == "failed":
             self.state = State.FAILED
-            report_as = "failed"
-        elif state == State.CRASHED:
+        elif report_as == "crashed":
             self.state = State.CRASHED
-            report_as = "crashed"
         else:
-            raise ValueError(f"Invalid state {state}")
+            raise ValueError(f"Invalid report_as: '{report_as}'")
 
-        self.report = Report(
+        self.metadata.time_end = time_end
+
+        extra = {} if extra is None else extra
+
+        loss = float(loss) if loss is not None else None
+        cost = float(cost) if cost is not None else None
+        if learning_curve is not None:
+            learning_curve = [float(v) for v in learning_curve]
+
+        return Report(
             trial_id=self.metadata.id,
             reported_as=report_as,
-            loss=float(loss) if loss is not None else None,
-            cost=float(cost) if cost is not None else None,
-            account_for_cost=account_for_cost,
-            extra={} if extra is None else extra,
-            err=err,
-            tb=tb,
-        )
-        self.metadata.time_end = time.time() if time_end is None else time_end
-
-    def set_success(
-        self,
-        *,
-        time_end: float | None = None,
-        loss: float | None = None,
-        err: Exception | None = None,
-        tb: str | None = None,
-        cost: float | None = None,
-        extra: Mapping[str, Any] | None = None,
-        account_for_cost: bool = False,
-    ) -> None:
-        """Set the report for the trial."""
-        self._set_report(
-            state=State.SUCCESS,
-            time_end=time_end,
+            evaluation_duration=evaluation_duration,
             loss=loss,
+            cost=cost,
+            learning_curve=learning_curve,
+            extra=extra,
             err=err,
             tb=tb,
-            cost=cost,
-            extra=extra,
-            account_for_cost=account_for_cost,
-        )
-
-    def set_fail(
-        self,
-        *,
-        time_end: float | None = None,
-        loss: float | None = None,
-        err: Exception | None = None,
-        tb: str | None = None,
-        cost: float | None = None,
-        extra: Mapping[str, Any] | None = None,
-        account_for_cost: bool = False,
-    ) -> None:
-        """Set the report for the trial."""
-        self._set_report(
-            state=State.FAILED,
-            time_end=time_end,
-            loss=loss,
-            err=err,
-            tb=tb,
-            cost=cost,
-            extra=extra,
-            account_for_cost=account_for_cost,
-        )
-
-    def set_crashed(
-        self,
-        *,
-        time_end: float | None = None,
-        loss: float | None = None,
-        err: Exception | None = None,
-        tb: str | None = None,
-        cost: float | None = None,
-        extra: Mapping[str, Any] | None = None,
-        account_for_cost: bool = False,
-    ) -> None:
-        """Set the report for the trial."""
-        self._set_report(
-            state=State.CRASHED,
-            time_end=time_end,
-            loss=loss,
-            err=err,
-            tb=tb,
-            cost=cost,
-            extra=extra,
-            account_for_cost=account_for_cost,
         )
 
     def set_corrupted(self) -> None:
@@ -344,10 +253,35 @@ class Trial:
     def reset(self) -> None:
         """Reset the trial to a pending state."""
         self.state = State.PENDING
-        self.report = None
         self.metadata = MetaData(
             id=self.metadata.id,
+            location=self.metadata.location,
             previous_trial_id=self.metadata.previous_trial_id,
+            previous_trial_location=self.metadata.previous_trial_location,
             time_sampled=self.metadata.time_sampled,
             sampling_worker_id=self.metadata.sampling_worker_id,
         )
+
+
+def to_config_result(
+    trial: Trial,
+    report: Report,
+    config_to_search_space: Callable[[RawConfig], SearchSpace],
+) -> ConfigResult:
+    """Convert the trial and report to a `ConfigResult` object."""
+    result: dict[str, Any] | ERROR
+    if report.reported_as == "success":
+        result = {
+            **report.extra,
+            "loss": report.loss,
+            "cost": report.cost,
+        }
+    else:
+        result = "error"
+
+    return ConfigResult(
+        trial.id,
+        config=config_to_search_space(trial.config),
+        result=result,
+        metadata=asdict(trial.metadata),
+    )

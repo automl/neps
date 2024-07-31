@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import random
 from typing import Any, TYPE_CHECKING, Literal
+from typing_extensions import override
 
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
 from neps.search_spaces import (
@@ -228,10 +230,13 @@ class BayesianOptimization(BaseOptimizer):
             return False
         return True
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]

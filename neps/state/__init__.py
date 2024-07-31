@@ -1,23 +1,19 @@
-from neps.state.jobqueue import JobQueue
-from neps.state.jobs import JOB_MAPPING, EvaluateJob, Job, SampleJob
-from neps.state.locker import FileLocker, Locker
-from neps.state.seeds import SeedSnapshot
-from neps.state.shared import Shared
-from neps.state.trial import DeserializedError, Trial
-from neps.state.versioned_store import VersionedDirectoryStore, VersionedStore
+from neps.state.protocols import (
+    Locker,
+    ReaderWriter,
+    Synced,
+    VersionedResource,
+    Versioner,
+)
+from neps.state.seed_snapshot import SeedSnapshot
+from neps.state.trial import Trial
 
 __all__ = [
-    "DeserializedError",
-    "FileLocker",
     "Locker",
     "SeedSnapshot",
-    "Shared",
+    "Synced",
     "Trial",
-    "VersionedDirectoryStore",
-    "VersionedStore",
-    "JobQueue",
-    "JOB_MAPPING",
-    "Job",
-    "SampleJob",
-    "EvaluateJob",
+    "ReaderWriter",
+    "Versioner",
+    "VersionedResource",
 ]

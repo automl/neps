@@ -8,7 +8,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from typing_extensions import Literal
+from typing_extensions import Literal, override
 
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces import (
@@ -16,7 +16,7 @@ from neps.search_spaces import (
     ConstantParameter,
     FloatParameter,
     IntegerParameter,
-    SearchSpace
+    SearchSpace,
 )
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.multi_fidelity.promotion_policy import (
@@ -31,7 +31,9 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
 CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(CategoricalParameter.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
+    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
+)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -317,18 +319,15 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # if adding model-based search to the basic multi-fidelity algorithm
         return
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
-        """This is basically the fit method.
-
-        Args:
-            previous_results (dict[str, ConfigResult]): [description]
-            pending_evaluations (dict[str, ConfigResult]): [description]
-        """
-
+        """This is basically the fit method."""
         self.rung_histories = {
             rung: {"config": [], "perf": []}
             for rung in range(self.min_rung, self.max_rung + 1)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from typing import Any, List, Union
+from typing_extensions import override
 
 import numpy as np
 
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -206,10 +208,13 @@ class MFEIBO(BaseOptimizer):
     def num_train_configs(self):
         return len(self.observed_configs.completed_runs)
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
         """This is basically the fit method.
 

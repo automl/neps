@@ -1,12 +1,27 @@
 from __future__ import annotations
+
 import logging
 import re
+from typing import Literal, overload
 
 logger = logging.getLogger("neps")
 
 
-def convert_scientific_notation(value: str | int | float, show_usage_flag=False) \
-        -> float | (float, bool):
+@overload
+def convert_scientific_notation(
+    value: str | int | float, show_usage_flag: Literal[False] = False
+) -> float: ...
+
+
+@overload
+def convert_scientific_notation(
+    value: str | int | float, show_usage_flag: Literal[True]
+) -> tuple[float, bool]: ...
+
+
+def convert_scientific_notation(
+    value: str | int | float, show_usage_flag: bool = False
+) -> float | tuple[float, bool]:
     """
     Convert a given value to a float if it's a string that matches scientific e notation.
     This is especially useful for numbers like "3.3e-5" which YAML parsers may not
@@ -72,7 +87,7 @@ class SearchSpaceFromYamlFileError(Exception):
             raise SearchSpaceFromYamlFileError(e)
     """
 
-    def __init__(self, exception):
+    def __init__(self, exception: Exception) -> None:
         self.exception_type = type(exception).__name__
         self.message = (
             f"Error occurred during initialization of search space from "
@@ -84,33 +99,34 @@ class SearchSpaceFromYamlFileError(Exception):
 def deduce_type(
     name: str, details: dict[str, str | int | float] | str | int | float
 ) -> str:
-    """
-    Deduces the parameter type from details.
+    """Deduces the parameter type from details.
 
     Args:
-        name (str): The name of the parameter.
-        details (dict | str | int | float): A dictionary containing parameter
-                specifications or a direct value (string, integer, or float).
+        name: The name of the parameter.
+        details: A dictionary containing parameter specifications or
+            a direct value (string, integer, or float).
 
     Returns:
-        str: The deduced parameter type ('int', 'float', 'categorical', or 'constant').
+        The deduced parameter type ('int', 'float', 'categorical', or 'constant').
 
     Raises:
         TypeError: If the type cannot be deduced or the details don't align with expected
                 constraints.
-        """
-    if isinstance(details, (str,  int, float)):
-        param_type = "const"
-    elif isinstance(details, dict):
-        if "type" in details:
-            param_type = details.pop("type").lower()
-        else:
-            param_type = deduce_param_type(name, details)
-    else:
-        raise TypeError(
-            f"Unable to deduce parameter type for '{name}' with details '{details}'.")
+    """
+    if isinstance(details, (str, int, float)):
+        return "const"
 
-    return param_type
+    if isinstance(details, dict):
+        if "type" in details:
+            param_type = details.pop("type")
+            assert isinstance(param_type, str)
+            return param_type.lower()
+
+        return deduce_param_type(name, details)
+
+    raise TypeError(
+        f"Unable to deduce parameter type for '{name}' with details '{details}'."
+    )
 
 
 def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
@@ -284,7 +300,7 @@ def formatting_float(name: str, details: dict[str, str | int | float]) -> dict:
     return details
 
 
-def formatting_cat(name: str, details: dict[str, str | int | float]) -> dict:
+def formatting_cat(name: str, details: dict[str, list | str | int | float]) -> dict:
     """
     This function ensures that the 'choices' key in the details is a list and attempts
     to convert any elements expressed in scientific notation to floats. It also handles
@@ -303,34 +319,44 @@ def formatting_cat(name: str, details: dict[str, str | int | float]) -> dict:
     """
     if not isinstance(details["choices"], list):
         raise TypeError(f"The 'choices' for '{name}' must be a list.")
+
     for i, element in enumerate(details["choices"]):
         try:
             converted_value, e_flag = convert_scientific_notation(
                 element, show_usage_flag=True
             )
+
             if e_flag:
-                details["choices"][
-                    i
-                ] = converted_value  # Replace the element at the same position
+                # Replace the element at the same position
+                details["choices"][i] = converted_value
         except ValueError:
             pass  # If a ValueError occurs, simply continue to the next element
+
     if "default" in details:
         e_flag = False
+        extracted_default = details["default"]
+        if not isinstance(extracted_default, (str, int, float)):
+            raise TypeError(
+                f"The 'default' value for '{name}' must be a string, integer, or float."
+                f" Got {type(extracted_default).__name__}."
+            )
+
         try:
             # check if e notation, if then convert to number
             default, e_flag = convert_scientific_notation(
-                details["default"], show_usage_flag=True
+                extracted_default, show_usage_flag=True
             )
         except ValueError:
             pass  # if default value is not in a numeric format, Value Error occurs
+
         if e_flag is True:
             details["default"] = default
+
     return details
 
 
 def formatting_const(details: str | int | float) -> str | int | float:
-    """
-    Validates and converts a constant parameter.
+    """Validates and converts a constant parameter.
 
     This function checks if the 'details' parameter contains a value expressed in
     scientific notation and converts it to a float. It ensures that the input
@@ -354,8 +380,8 @@ def formatting_const(details: str | int | float) -> str | int | float:
         # if the value is not able to convert to float a ValueError get raised by
         # convert_scientific_notation function
         pass
+
     if e_flag:
         details = converted_value
+
     return details
-
-

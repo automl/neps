@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from typing_extensions import override
 
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces.search_space import SearchSpace
 from neps.utils.data_loading import read_tasks_and_dev_stages_from_disk
@@ -43,10 +45,13 @@ class KnowledgeSampling(BaseOptimizer):
             hp_values, delete_previous_defaults=True, delete_previous_values=True
         )
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 

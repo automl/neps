@@ -1,5 +1,8 @@
 from __future__ import annotations
+from typing import Any
+from typing_extensions import override
 
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -12,10 +15,13 @@ class RandomSearch(BaseOptimizer):
         self.use_priors = use_priors
         self.ignore_fidelity = ignore_fidelity
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
         self._num_previous_configs = len(previous_results) + len(pending_evaluations)
 

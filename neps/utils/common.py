@@ -10,7 +10,7 @@ from typing import Any, Iterable, Mapping, Sequence
 import torch
 import yaml
 
-from neps.runtime import get_in_progress_trial
+from neps.runtime import get_in_progress_trial, get_workers_neps_state
 
 
 # TODO(eddiebergman): I feel like this function should throw an error if it can't
@@ -36,13 +36,10 @@ def load_checkpoint(
     """
     if directory is None:
         trial = get_in_progress_trial()
-
-        if trial is None:
-            return None
-
-        directory = trial.disk.previous_pipeline_dir
+        directory = trial.metadata.previous_trial_location
         if directory is None:
             return None
+        assert isinstance(directory, str)
 
     directory = Path(directory)
     checkpoint_path = (directory / checkpoint_name).with_suffix(".pth")
@@ -79,14 +76,7 @@ def save_checkpoint(
     """
     if directory is None:
         in_progress_trial = get_in_progress_trial()
-
-        if in_progress_trial is None:
-            raise ValueError(
-                "No current trial was found to save the checkpoint! This should not"
-                " happen. Please report this issue and in the meantime you may provide a"
-                " directory manually."
-            )
-        directory = in_progress_trial.pipeline_dir
+        directory = in_progress_trial.metadata.location
 
     directory = Path(directory)
     checkpoint_path = (directory / checkpoint_name).with_suffix(".pth")
@@ -115,8 +105,8 @@ def load_lightning_checkpoint(
     checkpoint data.
 
     Args:
-        previous_pipeline_directory: The previous pipeline directory.
         checkpoint_dir: The directory where checkpoint files are stored.
+        previous_pipeline_directory: The previous pipeline directory.
 
     Returns:
         A tuple containing the checkpoint path (str) and the loaded checkpoint data (dict)
@@ -124,9 +114,7 @@ def load_lightning_checkpoint(
     """
     if previous_pipeline_directory is None:
         trial = get_in_progress_trial()
-        if trial is not None:
-            previous_pipeline_directory = trial.disk.previous_pipeline_dir
-
+        previous_pipeline_directory = trial.metadata.previous_trial_location
         if previous_pipeline_directory is None:
             return None, None
 
@@ -151,6 +139,9 @@ def load_lightning_checkpoint(
     return checkpoint_path, checkpoint
 
 
+# TODO: We should have a better way to have a shared folder between trials.
+# Right now, the fidelity lineage is linear, however this will be a difficulty
+# when/if we have a tree structure.
 def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     """Find the initial directory based on its existence and the presence of
     the "previous_config.id" file.
@@ -161,35 +152,24 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     Returns:
         The initial directory.
     """
+    neps_state = get_workers_neps_state()
     if pipeline_directory is not None:
         pipeline_directory = Path(pipeline_directory)
+        # TODO: Hard coded assumption
+        config_id = pipeline_directory.name.split("_", maxsplit=1)[-1]
+        trial = neps_state.get_trial_by_id(config_id)
     else:
         trial = get_in_progress_trial()
-        if trial is None:
-            raise ValueError(
-                "No current trial was found to get the initial directory! This should not"
-                " happen. Please report this issue and in the meantime you may provide"
-                " a directory manually."
-            )
-        pipeline_directory = trial.pipeline_dir
-
-    # TODO(eddiebergman): Can we just make this a method of the Trial class somehow?
-    # This relies on the fact it's always called "previous_config.id" which could subtly
-    # break, if it were to be updated.
 
     # Recursively find the initial directory
-    current_pipeline_directory = pipeline_directory
-    while True:
-        previous_pipeline_directory_id = current_pipeline_directory / "previous_config.id"
-        if not previous_pipeline_directory_id.exists():
-            # Initial directory found
-            return pipeline_directory
+    while (prev_trial_id := trial.metadata.previous_trial_id) is not None:
+        trial = neps_state.get_trial_by_id(prev_trial_id)
 
-        optim_result_dir = pipeline_directory.parent
-        with previous_pipeline_directory_id.open("r") as config_id_file:
-            config_id = config_id_file.read()
+    initial_dir = trial.metadata.location
 
-        current_pipeline_directory = optim_result_dir / f"config_{config_id}"
+    # TODO: Hard coded assumption that we are operating in a filebased neps
+    assert isinstance(initial_dir, str)
+    return Path(initial_dir)
 
 
 def get_searcher_data(
@@ -363,14 +343,14 @@ def instance_from_map(  # noqa: C901, PLR0912
 
     # Give the arguments to the class
     if args_dict:
-        instance = partial(instance, **args_dict)
+        instance = partial(instance, **args_dict)  # type: ignore
 
     if as_class:
         return instance
 
     if is_partial_class(instance):
         try:
-            instance = instance()
+            instance = instance()  # type: ignore
         except TypeError as e:
             raise TypeError(f"{e} when calling {instance} with {args_dict}") from e
 
