@@ -5,21 +5,32 @@ from __future__ import annotations
 import datetime
 import logging
 import os
+import shutil
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generic, Iterator, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    TypeVar,
+)
 
 from neps.exceptions import NePSError, VersionMismatchError
 from neps.state._eval import evaluate_trial
-from neps.state.settings import OnErrorPossibilities
+from neps.state.filebased import create_or_load_filebased_neps_state
+from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
+from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.state.trial import Trial
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
     from neps.state.neps_state import NePSState
-    from neps.state.settings import WorkerSettings
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +116,7 @@ class DefaultWorker(Generic[Loc]):
     settings: WorkerSettings
     """The settings for the worker."""
 
-    evaluation_fn: Callable[..., float | dict[str, Any]]
+    evaluation_fn: Callable[..., float | Mapping[str, Any]]
     """The evaluation function to use for the worker."""
 
     optimizer: BaseOptimizer
@@ -133,7 +144,7 @@ class DefaultWorker(Generic[Loc]):
         state: NePSState,
         optimizer: BaseOptimizer,
         settings: WorkerSettings,
-        evaluation_fn: Callable[..., float | dict[str, Any]],
+        evaluation_fn: Callable[..., float | Mapping[str, Any]],
         _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
     ) -> DefaultWorker:
         """Create a new worker."""
@@ -358,3 +369,76 @@ class DefaultWorker(Generic[Loc]):
             logger.debug(
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
+
+
+# TODO: This should be done directly in `api.run` at some point to make it clearer at an
+# entryy point how the woerer is set up to run if someone reads the entry point code.
+def _launch_runtime(  # noqa: PLR0913
+    *,
+    evaluation_fn: Callable[..., float | Mapping[str, Any]],
+    optimizer: BaseOptimizer,
+    optimizer_info: dict,
+    optimization_dir: Path,
+    max_cost_total: float | None = None,
+    ignore_errors: bool = False,
+    loss_value_on_error: float | None = None,
+    cost_value_on_error: float | None = None,
+    continue_until_max_evaluation_completed: bool = False,
+    overwrite_optimization_dir: bool = False,
+    max_evaluations_total: int | None = None,
+    max_evaluations_for_worker: int | None = None,
+    pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
+) -> None:
+    if overwrite_optimization_dir and optimization_dir.exists():
+        logger.info(
+            f"Overwriting optimization directory '{optimization_dir}' as"
+            " `overwrite_optimization_dir=True`."
+        )
+        shutil.rmtree(optimization_dir)
+
+    neps_state = create_or_load_filebased_neps_state(
+        directory=optimization_dir,
+        optimizer_info=OptimizerInfo(optimizer_info),
+        optimizer_state=OptimizationState(
+            budget=(
+                BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
+                if max_cost_total is not None
+                else None
+            ),
+            shared_state={},  # TODO: Unused for the time being...
+        ),
+    )
+
+    settings = WorkerSettings(
+        on_error=(
+            OnErrorPossibilities.IGNORE
+            if ignore_errors
+            else OnErrorPossibilities.RAISE_ANY_ERROR
+        ),
+        default_report_values=DefaultReportValues(
+            loss_value_on_error=loss_value_on_error,
+            cost_value_on_error=cost_value_on_error,
+            cost_if_not_provided=None,  # TODO: User can't specify yet
+            learning_curve_on_error=None,  # TODO: User can't specify yet
+            learning_curve_if_not_provided="loss",  # report the loss as single value LC
+        ),
+        max_evaluations_total=max_evaluations_total,
+        include_in_progress_evaluations_towards_maximum=(
+            not continue_until_max_evaluation_completed
+        ),
+        max_cost_total=max_cost_total,
+        max_evaluations_for_worker=max_evaluations_for_worker,
+        max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
+        max_wallclock_time_for_worker_seconds=None,  # TODO: User can't specify yet
+        max_evaluation_time_for_worker_seconds=None,  # TODO: User can't specify yet
+        max_cost_for_worker=None,  # TODO: User can't specify yet
+    )
+
+    worker = DefaultWorker.new(
+        state=neps_state,
+        optimizer=optimizer,
+        evaluation_fn=evaluation_fn,
+        settings=settings,
+        _pre_sample_hooks=list(pre_load_hooks) if pre_load_hooks is not None else None,
+    )
+    worker.run()

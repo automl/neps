@@ -1,5 +1,5 @@
-"""API for the neps package.
-"""
+"""API for the neps package."""
+
 from __future__ import annotations
 
 import inspect
@@ -23,6 +23,8 @@ from neps.search_spaces.search_space import (
 from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
 from neps.optimizers.info import SearcherConfigs
+
+logger = logging.getLogger(__name__)
 
 
 def run(
@@ -59,7 +61,8 @@ def run(
             "asha",
             "regularized_evolution",
         ]
-        | BaseOptimizer | Path
+        | BaseOptimizer
+        | Path
     ) = Default("default"),
     **searcher_kwargs,
 ) -> None:
@@ -144,13 +147,13 @@ def run(
         )
         max_cost_total = searcher_kwargs["budget"]
         del searcher_kwargs["budget"]
+
     settings = Settings(locals(), run_args)
     # TODO: check_essentials,
 
     logger = logging.getLogger("neps")
 
     # DO NOT use any neps arguments directly; instead, access them via the Settings class.
-
     if settings.pre_load_hooks is None:
         settings.pre_load_hooks = []
 
@@ -175,8 +178,9 @@ def run(
             # TODO habe hier searcher kwargs gedroppt, sprich das merging muss davor statt
             # finden
             searcher_info["searcher_args"] = settings.searcher_kwargs
-            settings.searcher = settings.searcher(search_space,
-                                                  **settings.searcher_kwargs)
+            settings.searcher = settings.searcher(
+                search_space, **settings.searcher_kwargs
+            )
         else:
             # Raise an error if searcher is not a subclass of BaseOptimizer
             raise TypeError(
@@ -220,11 +224,13 @@ def run(
         )
 
     if settings.task_id is not None:
-        settings.root_directory = Path(settings.root_directory) / (f"task_"
-                                                          f"{settings.task_id}")
+        settings.root_directory = Path(settings.root_directory) / (
+            f"task_" f"{settings.task_id}"
+        )
     if settings.development_stage_id is not None:
-        settings.root_directory = (Path(settings.root_directory) /
-                          f"dev_{settings.development_stage_id}")
+        settings.root_directory = (
+            Path(settings.root_directory) / f"dev_{settings.development_stage_id}"
+        )
 
     launch_runtime(
         evaluation_fn=settings.run_pipeline,
@@ -233,8 +239,7 @@ def run(
         optimization_dir=settings.root_directory,
         max_evaluations_total=settings.max_evaluations_total,
         max_evaluations_per_run=settings.max_evaluations_per_run,
-        continue_until_max_evaluation_completed
-        =settings.continue_until_max_evaluation_completed,
+        continue_until_max_evaluation_completed=settings.continue_until_max_evaluation_completed,
         logger=logger,
         loss_value_on_error=settings.loss_value_on_error,
         ignore_errors=settings.ignore_errors,
@@ -260,7 +265,6 @@ def _run_args(
     ignore_errors: bool = False,
     loss_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
-    logger=None,
     searcher: (
         Literal[
             "default",
@@ -306,13 +310,17 @@ def _run_args(
         raise TypeError(message) from e
 
     # Load the information of the optimizer
-    if isinstance(searcher, (str, Path)) and searcher not in \
-        SearcherConfigs.get_searchers() and searcher != "default":
+    if (
+        isinstance(searcher, (str, Path))
+        and searcher not in SearcherConfigs.get_searchers()
+        and searcher != "default"
+    ):
         # The users have their own custom searcher provided via yaml.
         logging.info("Preparing to run user created searcher")
 
-        searcher_config, file_name = get_searcher_data(searcher,
-                                                      loading_custom_searcher=True)
+        searcher_config, file_name = get_searcher_data(
+            searcher, loading_custom_searcher=True
+        )
         # name defined via key or the filename of the yaml
         searcher_name = searcher_config.pop("name", file_name)
         searcher_info["searcher_selection"] = "user-yaml"
@@ -351,20 +359,18 @@ def _run_args(
         warnings.warn(
             "The 'algorithm' argument is deprecated and will be removed in "
             "future versions. Please use 'strategy' instead.",
-            DeprecationWarning
+            DeprecationWarning,
         )
         # Map the old 'algorithm' argument to 'strategy'
-        searcher_config['strategy'] = searcher_config.pop("algorithm")
+        searcher_config["strategy"] = searcher_config.pop("algorithm")
 
     if "strategy" in searcher_config:
         searcher_alg = searcher_config.pop("strategy")
     else:
         raise KeyError(f"Missing key strategy in searcher config:{searcher_config}")
 
-
     logger.info(f"Running {searcher_name} as the searcher")
     logger.info(f"Strategy: {searcher_alg}")
-
 
     # Used to create the yaml holding information about the searcher.
     # Also important for testing and debugging the api.
