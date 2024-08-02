@@ -151,8 +151,6 @@ def run(
     settings = Settings(locals(), run_args)
     # TODO: check_essentials,
 
-    logger = logging.getLogger("neps")
-
     # DO NOT use any neps arguments directly; instead, access them via the Settings class.
     if settings.pre_load_hooks is None:
         settings.pre_load_hooks = []
@@ -204,7 +202,6 @@ def run(
             ignore_errors=settings.ignore_errors,
             loss_value_on_error=settings.loss_value_on_error,
             cost_value_on_error=settings.cost_value_on_error,
-            logger=logger,
             searcher=settings.searcher,
             **settings.searcher_kwargs,
         )
@@ -232,16 +229,17 @@ def run(
             Path(settings.root_directory) / f"dev_{settings.development_stage_id}"
         )
 
-    launch_runtime(
+    _launch_runtime(
         evaluation_fn=settings.run_pipeline,
-        sampler=searcher_instance,
+        optimizer=searcher_instance,
         optimizer_info=searcher_info,
-        optimization_dir=settings.root_directory,
+        max_cost_total=settings.max_cost_total,
+        optimization_dir=Path(settings.root_directory),
         max_evaluations_total=settings.max_evaluations_total,
-        max_evaluations_per_run=settings.max_evaluations_per_run,
+        max_evaluations_for_worker=settings.max_evaluations_per_run,
         continue_until_max_evaluation_completed=settings.continue_until_max_evaluation_completed,
-        logger=logger,
         loss_value_on_error=settings.loss_value_on_error,
+        cost_value_on_error=settings.cost_value_on_error,
         ignore_errors=settings.ignore_errors,
         overwrite_optimization_dir=settings.overwrite_working_directory,
         pre_load_hooks=settings.pre_load_hooks,
