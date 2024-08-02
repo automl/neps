@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+import pytest
 from dataclasses import dataclass
 from pandas.core.common import contextlib
-import pytest
 from pathlib import Path
 from pytest_cases import fixture, parametrize
+
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace

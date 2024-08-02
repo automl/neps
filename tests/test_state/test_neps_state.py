@@ -4,6 +4,7 @@ for now we're just testing the filebased implementation."""
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -181,6 +182,10 @@ def test_sample_trial(
     for k, v in trial1.config.items():
         assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
+
+    # HACK: Unfortunatly due to windows, who's time.time() is not very
+    # precise, we need to introduce a sleep -_-
+    time.sleep(0.1)
 
     assert neps_state.get_all_trials() == {trial1.id: trial1}
     assert neps_state.get_next_pending_trial() == trial1

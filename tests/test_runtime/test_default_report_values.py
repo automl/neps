@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from pathlib import Path
 from pytest_cases import fixture
+
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace
