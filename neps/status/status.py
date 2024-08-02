@@ -3,13 +3,14 @@
 # ruff: noqa: T201
 from __future__ import annotations
 
-from itertools import chain
+from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.runtime import ErrorReport, SharedState, Trial
+from neps.state.filebased import load_filebased_neps_state
+from neps.state.trial import Trial
 from neps.utils._locker import Locker
 from neps.utils.types import ConfigID, _ConfigResultForStats
 
@@ -36,30 +37,34 @@ def get_summary_dict(
 
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
-    shared_state = SharedState(root_directory)
-    shared_state.update_from_disk()
+    shared_state = load_filebased_neps_state(root_directory)
 
-    trials_by_state = shared_state.trials_by_state()
+    trials = shared_state.get_all_trials()
 
     evaluated: dict[ConfigID, _ConfigResultForStats] = {}
 
-    for trial in chain(
-        trials_by_state[Trial.State.SUCCESS],
-        trials_by_state[Trial.State.ERROR],
-    ):
-        assert trial.report is not None
+    for trial in trials.values():
+        if trial.report is None:
+            continue
+
         _result_for_stats = _ConfigResultForStats(
-            trial.id,
-            trial.config,
-            "error" if isinstance(trial.report, ErrorReport) else trial.report.results,
-            trial.metadata,
+            id=trial.id,
+            config=trial.config,
+            result=trial.report.to_deprecate_result_dict(),
+            metadata=asdict(trial.metadata),
         )
         evaluated[trial.id] = _result_for_stats
 
     in_progress = {
-        trial.id: trial.config for trial in trials_by_state[Trial.State.IN_PROGRESS]
+        trial.id: trial.config
+        for trial in trials.values()
+        if trial.State == Trial.State.EVALUATING
     }
-    pending = {trial.id: trial.config for trial in trials_by_state[Trial.State.PENDING]}
+    pending = {
+        trial.id: trial.config
+        for trial in trials.values()
+        if trial.State == Trial.State.PENDING
+    }
 
     summary: dict[str, Any] = {}
 

@@ -15,6 +15,10 @@ from ..kernels.utils import extract_configs_hierarchy
 from ..kernels.vectorial_kernels import Stationary
 from ..kernels.weisfilerlehman import WeisfilerLehman
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 # Code for psd_safe_cholesky from gypytorch
 class _value_context:
@@ -69,20 +73,12 @@ class _dtype_value_context:
         if half_value is not None:
             cls._global_half_value = half_value
 
-    def __init__(
-        self, float=None, double=None, half=None
-    ):
-        self._orig_float_value = (
-            self.__class__.value()
-        )
+    def __init__(self, float=None, double=None, half=None):
+        self._orig_float_value = self.__class__.value()
         self._instance_float_value = float
-        self._orig_double_value = (
-            self.__class__.value()
-        )
+        self._orig_double_value = self.__class__.value()
         self._instance_double_value = double
-        self._orig_half_value = (
-            self.__class__.value()
-        )
+        self._orig_half_value = self.__class__.value()
         self._instance_half_value = half
 
     def __enter__(
@@ -459,7 +455,6 @@ class ComprehensiveGPHierarchy:
                             K, self.likelihood, self.gpytorch_kinv
                         )
                         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
-                        # print(i, nlml)
                         if nlml < best_nlml:
                             best_nlml = nlml
                             best_subtree_depth = h_i
@@ -468,9 +463,7 @@ class ComprehensiveGPHierarchy:
                     self.combined_kernel.kernels[0].change_kernel_params(
                         {"h": best_subtree_depth}
                     )
-                    self.combined_kernel._gram = (
-                        best_K
-                    )
+                    self.combined_kernel._gram = best_K
 
     def fit(self, train_x: Iterable, train_y: Union[Iterable, torch.Tensor]):
         self._fit(train_x, train_y, **self.surrogate_model_fit_args)
@@ -483,7 +476,8 @@ class ComprehensiveGPHierarchy:
         optimizer: str = "adam",
         wl_subtree_candidates: tuple = tuple(range(5)),
         wl_lengthscales: tuple = tuple(
-            np.e**i for i in range(-2, 3)  # type: ignore[name-defined]
+            np.e**i
+            for i in range(-2, 3)  # type: ignore[name-defined]
         ),
         optimize_lik: bool = True,
         max_lik: float = 0.5,
@@ -589,7 +583,7 @@ class ComprehensiveGPHierarchy:
                 nlml = -compute_log_marginal_likelihood(K_i, logDetK, self.y)
                 nlml.backward(create_graph=True)
                 if self.verbose and i % 10 == 0:
-                    print(
+                    logger.info(
                         "Iteration:",
                         i,
                         "/",
@@ -646,20 +640,6 @@ class ComprehensiveGPHierarchy:
                 k.update_hyperparameters(lengthscale=torch.exp(theta_vector))
 
         self.combined_kernel.weights = weights.clone()
-        if self.verbose:
-            print("Optimisation summary: ")
-            print("Optimal NLML: ", nlml)
-            print("Lengthscales: ", torch.exp(theta_vector))
-            try:
-                print(
-                    "Optimal h: ",
-                    self.domain_kernels[0]._h,
-                )
-            except AttributeError:
-                pass
-            print("Weights: ", self.weights)
-            print("Lik:", self.likelihood)
-            print("Optimal layer weights", layer_weights)
 
     def predict(self, x_configs, preserve_comp_graph: bool = False):
         """Kriging predictions"""
@@ -993,17 +973,12 @@ def _grid_search_wl_kernel(
             k.change_se_params({"lengthscale": i[1]})
         k.change_kernel_params({"h": i[0]})
         K = k.fit_transform(train_x, rebuild_model=True, save_gram_matrix=True)
-        # print(K)
         K_i, logDetK = compute_pd_inverse(K, lik, gpytorch_kinv)
-        # print(train_y)
         nlml = -compute_log_marginal_likelihood(K_i, logDetK, train_y)
-        # print(i, nlml)
         if nlml < best_nlml:
             best_nlml = nlml
             best_subtree_depth, best_lengthscale = i
             best_K = torch.clone(K)
-    # print("h: ", best_subtree_depth, "theta: ", best_lengthscale)
-    # print(best_subtree_depth)
     k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})

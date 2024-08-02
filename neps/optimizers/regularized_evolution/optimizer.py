@@ -4,12 +4,14 @@ import math
 import os
 import random
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
+from typing_extensions import override
 
 import numpy as np
 import yaml
 
-from neps.utils.types import RawConfig
+from neps.state.optimizer import BudgetInfo, OptimizationState
+from neps.utils.types import ConfigResult, RawConfig
 
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -52,7 +54,14 @@ class RegularizedEvolution(BaseOptimizer):
             self.assisted_init_population_dir = Path(assisted_init_population_dir)
             self.assisted_init_population_dir.mkdir(exist_ok=True)
 
-    def load_results(self, previous_results: dict, pending_evaluations: dict) -> None:
+    @override
+    def load_optimization_state(
+        self,
+        previous_results: dict[str, ConfigResult],
+        pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
+    ) -> None:
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
         self.num_train_x = len(train_x)
@@ -68,7 +77,6 @@ class RegularizedEvolution(BaseOptimizer):
         if len(self.population) < self.population_size:
             if self.assisted:
                 if 0 == len(os.listdir(self.assisted_init_population_dir)):
-                    print("Generate initial design with assistance")
                     cur_population_size = self.population_size - len(self.population)
                     configs = [
                         self.pipeline_space.sample(
@@ -93,7 +101,6 @@ class RegularizedEvolution(BaseOptimizer):
                             encoding="utf-8",
                         ) as f:
                             yaml.dump(configs[config_idx].serialize(), f)
-                print("Pick config from pre-computed population")
                 config_yaml = sorted(os.listdir(self.assisted_init_population_dir))[0]
                 with open(
                     self.assisted_init_population_dir / config_yaml, encoding="utf-8"

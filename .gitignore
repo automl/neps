@@ -44,3 +44,6 @@ jahs_bench_data/
 
 # MacOS
 *.DS_Store
+
+# Yaml tests
+path

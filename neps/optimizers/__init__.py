@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable
+from typing import Callable, Mapping
 
 from .base_optimizer import BaseOptimizer
 from .bayesian_optimization.cost_cooling import CostCooling
@@ -26,7 +26,8 @@ from .multi_fidelity_prior.priorband import PriorBand
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
 
-SearcherMapping: dict[str, Callable] = {
+# TODO: Rename Searcher to Optimizer...
+SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "bayesian_optimization": BayesianOptimization,
     "pibo": partial(BayesianOptimization, disable_priors=False),
     "cost_cooling_bayesian_optimization": CostCooling,

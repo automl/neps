@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from typing import Any
+from typing_extensions import override
 
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map
 from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
@@ -9,11 +11,19 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling im
 )
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
-from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import DecayingPriorWeightedAcquisition
-from neps.optimizers.bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from neps.optimizers.bayesian_optimization.kernels import get_kernels
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
+from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
+    DecayingPriorWeightedAcquisition,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers import (
+    AcquisitionSamplerMapping,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_kernels
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
@@ -133,9 +143,9 @@ class CostCooling(BayesianOptimization):
             raise ValueError("No kernels are provided!")
 
         if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = self.pipeline_space.get_vectorial_dim()
+            surrogate_model_args["vectorial_features"] = (
+                self.pipeline_space.get_vectorial_dim()
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
@@ -153,9 +163,9 @@ class CostCooling(BayesianOptimization):
             raise ValueError("No kernels are provided!")
 
         if "vectorial_features" not in cost_model_args:
-            cost_model_args[
-                "vectorial_features"
-            ] = self.pipeline_space.get_vectorial_dim()
+            cost_model_args["vectorial_features"] = (
+                self.pipeline_space.get_vectorial_dim()
+            )
 
         self.cost_model = instance_from_map(
             SurrogateModelMapping,
@@ -184,12 +194,23 @@ class CostCooling(BayesianOptimization):
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
         # TODO(Jan): read out cost and fit cost model
+        if budget_info is None:
+            raise ValueError(
+                "Used budget is not set in the optimizer state but is required"
+                " for cost cooling, please return a `'cost'` when you return results"
+                " and/or a `max_cost_budget` when running NePS!"
+            )
+        self.used_budget = budget_info.used_cost_budget
+
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
         train_cost = [self.get_cost(el.result) for el in previous_results.values()]
@@ -214,7 +235,8 @@ class CostCooling(BayesianOptimization):
                 # TODO: set acquisition state
                 self.acquisition.set_state(
                     self.surrogate_model,
-                    alpha=1 - (self.used_budget / self.budget),
+                    alpha=1
+                    - (budget_info.used_cost_budget / budget_info.max_cost_budget),
                     cost_model=self.cost_model,
                 )
                 self.acquisition_sampler.set_state(x=train_x, y=train_y)

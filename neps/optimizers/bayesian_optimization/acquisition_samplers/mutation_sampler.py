@@ -7,11 +7,14 @@ import torch
 from more_itertools import first
 from typing_extensions import override
 
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import AcquisitionSampler
-from neps.optimizers.bayesian_optimization.acquisition_samplers.random_sampler import RandomSampler
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+from neps.optimizers.bayesian_optimization.acquisition_samplers.random_sampler import (
+    RandomSampler,
+)
 
 if TYPE_CHECKING:
-    from neps.utils.types import Array
     from neps.search_spaces.search_space import SearchSpace
 
 
@@ -64,7 +67,9 @@ class MutationSampler(AcquisitionSampler):
         )
 
     @override
-    def set_state(self, x: list[SearchSpace], y: Sequence[float] | Array) -> None:
+    def set_state(
+        self, x: list[SearchSpace], y: Sequence[float] | np.ndarray | torch.Tensor
+    ) -> None:
         super().set_state(x, y)
         self.random_sampling.set_state(x, y)
 
@@ -108,6 +113,7 @@ class MutationSampler(AcquisitionSampler):
         ][:n_best]
 
         seen: set[int] = set()
+
         def _hash(_config: SearchSpace) -> int:
             return hash(_config.hp_values().values())
 

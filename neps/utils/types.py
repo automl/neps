@@ -7,18 +7,15 @@ from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, Union
 from typing_extensions import TypeAlias
 
 import numpy as np
-import torch
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
+    from neps.state.trial import Trial
 
 # TODO(eddiebergman): We can turn this to an enum at some
 # point to prevent having to isinstance and str match
 ERROR: TypeAlias = Literal["error"]
-
 Number: TypeAlias = Union[int, float, np.number]
-Array: TypeAlias = Union[np.ndarray, torch.Tensor]
-
 ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
 Metadata: TypeAlias = Dict[str, Any]
@@ -54,9 +51,7 @@ class ConfigResult:
     config: SearchSpace
     """Configuration that was evaluated."""
 
-    # TODO(eddiebergman): Check about using a `TypedDict` here since I'm pretty sure
-    # there's always a "loss" key
-    result: ResultDict | ERROR
+    result: Trial.Report | ResultDict | ERROR
     """Some dictionary of results."""
 
     metadata: dict

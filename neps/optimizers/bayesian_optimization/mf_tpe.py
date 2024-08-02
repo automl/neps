@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import random
 from copy import deepcopy
-from typing import Iterable
+from typing import Any, Iterable
 
 import numpy as np
 import torch
 from scipy.stats import spearmanr
-from typing_extensions import Literal
+from typing_extensions import Literal, override
 
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
 from neps.search_spaces import (
@@ -457,10 +458,13 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             return False
         return True
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, Any],
     ) -> None:
         # TODO remove doubles from previous results
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
@@ -637,7 +641,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
-            print([hp.value for hp in config.hyperparameters.values()])
             config.fidelity.set_value(self.rung_map[self.min_rung])
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)

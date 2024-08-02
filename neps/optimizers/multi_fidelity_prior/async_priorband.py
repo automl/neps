@@ -3,8 +3,9 @@ from __future__ import annotations
 import typing
 
 import numpy as np
-from typing_extensions import Literal
+from typing_extensions import Literal, override
 
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
@@ -245,12 +246,20 @@ class PriorBandAshaHB(PriorBandAsha):
             bracket.observed_configs = self.observed_configs.copy()
             bracket.rung_histories = self.rung_histories
 
-    def load_results(
+    @override
+    def load_optimization_state(
         self,
         previous_results: dict[str, ConfigResult],
         pending_evaluations: dict[str, SearchSpace],
+        budget_info: BudgetInfo | None,
+        optimizer_state: dict[str, typing.Any],
     ) -> None:
-        super().load_results(previous_results, pending_evaluations)
+        super().load_optimization_state(
+            previous_results=previous_results,
+            pending_evaluations=pending_evaluations,
+            budget_info=budget_info,
+            optimizer_state=optimizer_state
+        )
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
 

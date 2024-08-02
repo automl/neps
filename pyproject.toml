@@ -71,6 +71,7 @@ ruff = "^0.4"
 pre-commit = "^3"
 mypy = "^1"
 pytest = "^7"
+pytest-cases = "^3"
 types-PyYAML = "^6"
 mkdocs-material = "*"
 mkdocs-autorefs = "*"
@@ -261,7 +262,7 @@ convention = "google"
 max-args = 10 # Changed from default of 5
 
 [tool.pytest.ini_options]
-addopts = "--basetemp ./tests_tmpdir -m 'neps_api or core_examples'"
+addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
 markers = [
   "ci_examples",
   "core_examples",
@@ -302,7 +303,6 @@ module = [
   "neps.api",
   "neps.optimizers.*",
   "neps.search_spaces.architecture.*",
-  "neps.search_spaces.yaml_search_space_utils",
   "neps.utils.run_args_from_yaml",
 ]
 ignore_errors = true

@@ -12,7 +12,7 @@ import torch
 from torch.utils.tensorboard.summary import hparams
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from neps.runtime import get_in_progress_trial
+from neps.runtime import get_in_progress_trial, get_workers_neps_state
 from neps.status.status import get_summary_dict
 from neps.utils.common import get_initial_directory
 
@@ -85,13 +85,19 @@ class tblogger:  # noqa: N801
         operating on.
         """
         trial = get_in_progress_trial()
-        assert trial is not None
+        neps_state = get_workers_neps_state()
 
-        # TODO(eddiebergman): We could just save the instance of the trial
-        # on this object, OR even just use `get_in_process_trial()` in each call directly.
-        tblogger.config_working_directory = trial.pipeline_dir
-        tblogger.config_previous_directory = trial.disk.previous_pipeline_dir
-        tblogger.optimizer_dir = trial.disk.optimization_dir.parent
+        # We are assuming that neps state is all filebased here
+        root_dir = Path(neps_state.location)
+        assert root_dir.exists()
+
+        tblogger.config_working_directory = Path(trial.metadata.location)
+        tblogger.config_previous_directory = (
+            Path(trial.metadata.previous_trial_location)
+            if trial.metadata.previous_trial_location is not None
+            else None
+        )
+        tblogger.optimizer_dir = root_dir
         tblogger.config = trial.config
 
     @staticmethod

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import runpy
@@ -54,11 +56,11 @@ def test_default_examples(tmp_path):
 
         assert os.path.exists(folder_path), f"Directory does not exist: {folder_path}"
 
-        info_yaml_path = os.path.join(folder_path, ".optimizer_info.yaml")
+        info_yaml_path = os.path.join(folder_path, ".optimizer_info", "info.yaml")
 
         assert os.path.exists(
             str(info_yaml_path)
-        ), f"File does not exist: {info_yaml_path}"
+        ), f"File does not exist: {info_yaml_path}\n{os.listdir(folder_path)}"
 
         # Load the YAML file
         with open(str(info_yaml_path)) as yaml_config:
@@ -85,7 +87,7 @@ def test_baseoptimizer_examples(tmp_path):
 
         assert os.path.exists(folder_path), f"Directory does not exist: {folder_path}"
 
-        info_yaml_path = os.path.join(folder_path, ".optimizer_info.yaml")
+        info_yaml_path = os.path.join(folder_path, ".optimizer_info", "info.yaml")
 
         assert os.path.exists(
             str(info_yaml_path)
@@ -114,7 +116,7 @@ def test_user_created_yaml_examples(tmp_path):
 
         assert os.path.exists(folder_path), f"Directory does not exist: {folder_path}"
 
-        info_yaml_path = os.path.join(folder_path, ".optimizer_info.yaml")
+        info_yaml_path = os.path.join(folder_path, ".optimizer_info", "info.yaml")
 
         assert os.path.exists(
             str(info_yaml_path)

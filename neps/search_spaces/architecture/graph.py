@@ -300,9 +300,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 if isinstance(v, Graph):
                     copied_dict[k] = v.copy()
                 elif isinstance(v, list):
-                    copied_dict[k] = [
-                        i.copy() if isinstance(i, Graph) else i for i in v
-                    ]
+                    copied_dict[k] = [i.copy() if isinstance(i, Graph) else i for i in v]
                 elif isinstance(v, torch.nn.Module) or isinstance(v, AbstractPrimitive):
                     copied_dict[k] = copy.deepcopy(v)
             return copied_dict
@@ -634,6 +632,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                         f"{self.name}-comb_op_at({node_idx})",
                         self.nodes[node_idx]["comb_op"],
                     )
+
             for neigbor_idx in self.neighbors(node_idx):
                 edge_data = self.get_edge_data(node_idx, neigbor_idx)
                 if isinstance(edge_data.op, Graph):
@@ -642,6 +641,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     for primitive in edge_data.op.get_embedded_ops():
                         if isinstance(primitive, Graph):
                             primitive.parse()
+
                 self.add_module(
                     f"{self.name}-edge({node_idx},{neigbor_idx})",
                     edge_data.op,
@@ -705,9 +705,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
             node_data = self.nodes[node_idx]
             if "subgraph" in node_data:
                 graphs.append(node_data["subgraph"])
-                graphs.append(
-                    node_data["subgraph"]._get_child_graphs()
-                )
+                graphs.append(node_data["subgraph"]._get_child_graphs())
 
         for _, _, edge_data in self.edges.data():
             if isinstance(edge_data.op, Graph):
@@ -724,16 +722,12 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 if embedded_ops is not None:
                     if isinstance(embedded_ops, Graph):
                         graphs.append(embedded_ops)
-                        graphs.append(
-                            embedded_ops._get_child_graphs()
-                        )
+                        graphs.append(embedded_ops._get_child_graphs())
                     elif isinstance(embedded_ops, list):
                         for child_op in edge_data.op.get_embedded_ops():
                             if isinstance(child_op, Graph):
                                 graphs.append(child_op)
-                                graphs.append(
-                                    child_op._get_child_graphs()
-                                )
+                                graphs.append(child_op._get_child_graphs())
                     else:
                         logger.debug(
                             "Got embedded op, but is neither a graph nor a list: {}".format(
@@ -971,9 +965,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     in_edges = [
                         (v, data) for v, u, data in in_edges if not data.is_final()
                     ]  # u is same for all
-                    out_edges = list(
-                        graph.out_edges(node_idx, data=True)
-                    )  # (v, u, data)
+                    out_edges = list(graph.out_edges(node_idx, data=True))  # (v, u, data)
                     out_edges = [
                         (u, data) for v, u, data in out_edges if not data.is_final()
                     ]  # v is same for all
