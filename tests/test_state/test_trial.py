@@ -1,3 +1,4 @@
+from __future__ import annotations
 from neps.state import Trial
 import os
 import numpy as np

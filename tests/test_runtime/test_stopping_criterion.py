@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from pytest_cases import fixture
+
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
-import time
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.neps_state import NePSState
