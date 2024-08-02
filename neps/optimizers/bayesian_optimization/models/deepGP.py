@@ -317,9 +317,7 @@ class DeepGP:
         normalize_y: bool = False,
         normalize_budget: bool = True,
     ):
-        self.normalize_budget = (
-            normalize_budget
-        )
+        self.normalize_budget = normalize_budget
         self.normalize_y = normalize_y
 
         x_train, train_budgets, learning_curves = self._preprocess_input(
@@ -329,12 +327,8 @@ class DeepGP:
         y_train = self._preprocess_y(y_train, normalize_y)
 
         self.x_train = x_train
-        self.train_budgets = (
-            train_budgets
-        )
-        self.learning_curves = (
-            learning_curves
-        )
+        self.train_budgets = train_budgets
+        self.learning_curves = learning_curves
         self.y_train = y_train
 
     def _preprocess_input(
@@ -446,13 +440,11 @@ class DeepGP:
         self.model.train()
         self.likelihood.train()
         self.nn.train()
-        self.optimizer = (
-            torch.optim.Adam(
-                [
-                    dict({"params": self.model.parameters()}, **optimizer_args),
-                    dict({"params": self.nn.parameters()}, **optimizer_args),
-                ]
-            )
+        self.optimizer = torch.optim.Adam(
+            [
+                dict({"params": self.model.parameters()}, **optimizer_args),
+                dict({"params": self.nn.parameters()}, **optimizer_args),
+            ]
         )
 
         count_down = patience
@@ -547,9 +539,7 @@ class DeepGP:
             #     break
 
     def set_prediction_learning_curves(self, learning_curves: list[list[float]]):
-
         self.prediction_learning_curves = learning_curves
-
 
     def predict(
         self, x: list[SearchSpace], learning_curves: list[list[float]] | None = None
@@ -642,30 +632,3 @@ class DeepGP:
 
     def delete_checkpoint(self):
         self.checkpoint_path.unlink(missing_ok=True)
-
-
-if __name__ == "__main__":
-    print(torch.version.__version__)
-
-    pipe_space = SearchSpace(
-        float_=FloatParameter(lower=0.0, upper=5.0),
-        e=IntegerParameter(lower=0, upper=10, is_fidelity=True),
-    )
-
-    configs = [pipe_space.sample(ignore_fidelity=False) for _ in range(100)]
-
-    y = np.random.random(100).tolist()
-
-    lcs = [
-        np.random.random(size=np.random.randint(low=1, high=50)).tolist()
-        for _ in range(100)
-    ]
-
-    deep_gp = DeepGP(pipe_space, neural_network_args={})
-
-    deep_gp.fit(x_train=configs, learning_curves=lcs, y_train=y)
-
-    means, stds = deep_gp.predict(configs, lcs)
-
-    print(list(zip(means, y)))
-    print(stds)

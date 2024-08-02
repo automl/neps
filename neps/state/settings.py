@@ -11,16 +11,16 @@ from typing import Literal
 class DefaultReportValues:
     """Values to use when an error occurs."""
 
-    loss_value_on_error: float | None
+    loss_value_on_error: float | None = None
     """The value to use for the loss when an error occurs."""
 
-    cost_value_on_error: float | None
+    cost_value_on_error: float | None = None
     """The value to use for the cost when an error occurs."""
 
-    cost_if_not_provided: float | None
+    cost_if_not_provided: float | None = None
     """The value to use for the cost when the evaluation function does not provide one."""
 
-    learning_curve_on_error: list[float] | None
+    learning_curve_on_error: list[float] | None = None
     """The value to use for the learning curve when an error occurs.
 
     If `'loss'`, the learning curve will be set to the loss value but as

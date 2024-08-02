@@ -8,7 +8,7 @@ import os
 import shutil
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -17,11 +17,16 @@ from typing import (
     Generic,
     Iterable,
     Iterator,
+    Literal,
     Mapping,
     TypeVar,
 )
 
-from neps.exceptions import NePSError, VersionMismatchError
+from neps.exceptions import (
+    NePSError,
+    VersionMismatchError,
+    WorkerFailedToGetPendingTrialsError,
+)
 from neps.state._eval import evaluate_trial
 from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
@@ -39,6 +44,9 @@ def _default_worker_name() -> str:
     isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return f"{os.getpid()}-{isoformat}"
 
+
+N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 10
+N_FAILED_TO_SET_TRIAL_STATE = 10
 
 Loc = TypeVar("Loc")
 
@@ -122,7 +130,7 @@ class DefaultWorker(Generic[Loc]):
     optimizer: BaseOptimizer
     """The optimizer that is in use by the worker."""
 
-    worker_id: str = field(default_factory=_default_worker_name)
+    worker_id: str
     """The id of the worker."""
 
     _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None
@@ -146,6 +154,7 @@ class DefaultWorker(Generic[Loc]):
         settings: WorkerSettings,
         evaluation_fn: Callable[..., float | Mapping[str, Any]],
         _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
+        worker_id: str | None = None,
     ) -> DefaultWorker:
         """Create a new worker."""
         return DefaultWorker(
@@ -153,6 +162,7 @@ class DefaultWorker(Generic[Loc]):
             optimizer=optimizer,
             settings=settings,
             evaluation_fn=evaluation_fn,
+            worker_id=worker_id if worker_id is not None else _default_worker_name(),
             _pre_sample_hooks=_pre_sample_hooks,
         )
 
@@ -181,7 +191,7 @@ class DefaultWorker(Generic[Loc]):
         *,
         time_monotonic_start: float,
         error_from_this_worker: Exception | None,
-    ) -> bool:
+    ) -> str | Literal[False]:
         # NOTE: Sorry this code is kind of ugly but it's pretty straightforward, just a
         # lot of conditional checking and making sure to check cheaper conditions first.
         # It would look a little nicer with a match statement but we've got to wait
@@ -191,30 +201,61 @@ class DefaultWorker(Generic[Loc]):
         # cheaper and doesn't require anything from the state.
         if error_from_this_worker and self.settings.on_error in (
             OnErrorPossibilities.RAISE_WORKER_ERROR,
+            OnErrorPossibilities.RAISE_ANY_ERROR,
             OnErrorPossibilities.STOP_WORKER_ERROR,
+            OnErrorPossibilities.STOP_ANY_ERROR,
         ):
-            if self.settings.on_error == OnErrorPossibilities.RAISE_WORKER_ERROR:
+            if self.settings.on_error in (
+                OnErrorPossibilities.RAISE_WORKER_ERROR,
+                OnErrorPossibilities.RAISE_ANY_ERROR,
+            ):
                 raise error_from_this_worker
-            return True
+            return (
+                "Error occurred while evaluating a configuration with this worker and"
+                f" the worker is set to stop with {self.settings.on_error}."
+            )
 
         if (
             self.settings.max_evaluations_for_worker is not None
             and self.worker_cumulative_eval_count
             >= self.settings.max_evaluations_for_worker
         ):
-            return True
+            return (
+                "Worker has reached the maximum number of evaluations it is allowed to do"
+                f" as given by `{self.settings.max_evaluations_for_worker=}`."
+                "\nTo allow more evaluations, increase this value or use a different"
+                " stopping criterion."
+            )
 
         if (
             self.settings.max_cost_for_worker is not None
             and self.worker_cumulative_eval_cost >= self.settings.max_cost_for_worker
         ):
-            return True
+            return (
+                "Worker has reached the maximum cost it is allowed to spend"
+                f" which is given by `{self.settings.max_cost_for_worker=}`."
+                f" This worker has spend '{self.worker_cumulative_eval_cost}'."
+                "\n To allow more evaluations, increase this value or use a different"
+                " stopping criterion."
+            )
 
         if self.settings.max_wallclock_time_for_worker_seconds is not None and (
             time.monotonic() - time_monotonic_start
             >= self.settings.max_wallclock_time_for_worker_seconds
         ):
-            return True
+            return (
+                "Worker has reached the maximum wallclock time it is allowed to spend"
+                f", given by `{self.settings.max_wallclock_time_for_worker_seconds=}`."
+            )
+
+        if self.settings.max_evaluation_time_for_worker_seconds is not None and (
+            self.worker_cumulative_evaluation_time_seconds
+            >= self.settings.max_evaluation_time_for_worker_seconds
+        ):
+            return (
+                "Worker has reached the maximum evaluation time it is allowed to spend"
+                f", given by `{self.settings.max_evaluation_time_for_worker_seconds=}`."
+            )
 
         # We check this global error stopping criterion as it's much
         # cheaper than sweeping the state from all trials.
@@ -227,12 +268,17 @@ class DefaultWorker(Generic[Loc]):
                 if self.settings.on_error == OnErrorPossibilities.RAISE_ANY_ERROR:
                     raise err
 
-                return True
+                return (
+                    "An error occurred in another worker and this worker is set to stop"
+                    f" with {self.settings.on_error}."
+                    "\n To allow more evaluations, use a different stopping criterion."
+                )
 
+        # If there are no global stopping criterion, we can no just return early.
         if (
             self.settings.max_evaluations_total is None
-            and self.settings.max_cost_total is not None
-            and self.settings.max_evaluation_time_total_seconds is not None
+            and self.settings.max_cost_total is None
+            and self.settings.max_evaluation_time_total_seconds is None
         ):
             return False
 
@@ -254,7 +300,12 @@ class DefaultWorker(Generic[Loc]):
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
 
             if count >= self.settings.max_evaluations_total:
-                return True
+                return (
+                    "The total number of evaluations has reached the maximum allowed of"
+                    f" `{self.settings.max_evaluations_total=}`."
+                    " To allow more evaluations, increase this value or use a different"
+                    " stopping criterion."
+                )
 
         if self.settings.max_cost_total is not None:
             cost = sum(
@@ -263,7 +314,11 @@ class DefaultWorker(Generic[Loc]):
                 if trial.report is not None and trial.report.cost is not None
             )
             if cost >= self.settings.max_cost_total:
-                return True
+                return (
+                    f"The maximum cost `{self.settings.max_cost_total=}` has been"
+                    " reached by all of the evaluated trials. To allow more evaluations,"
+                    " increase this value or use a different stopping criterion."
+                )
 
         if self.settings.max_evaluation_time_total_seconds is not None:
             time_spent = sum(
@@ -273,11 +328,16 @@ class DefaultWorker(Generic[Loc]):
                 if trial.report.evaluation_duration is not None
             )
             if time_spent >= self.settings.max_evaluation_time_total_seconds:
-                return True
+                return (
+                    "The maximum evaluation time of"
+                    f" `{self.settings.max_evaluation_time_total_seconds=}` has been"
+                    " reached. To allow more evaluations, increase this value or use"
+                    " a different stopping criterion."
+                )
 
         return False
 
-    def run(self) -> None:
+    def run(self) -> None:  # noqa: C901, PLR0915
         """Run the worker.
 
         Will keep running until one of the criterion defined by the `WorkerSettings`
@@ -290,20 +350,36 @@ class DefaultWorker(Generic[Loc]):
         _time_monotonic_start = time.monotonic()
         _error_from_evaluation: Exception | None = None
 
+        _repeated_fail_get_next_trial_count = 0
         while True:
             # NOTE: We rely on this function to do logging and raising errors if it should
-            if self._check_if_should_stop(
+            should_stop = self._check_if_should_stop(
                 time_monotonic_start=_time_monotonic_start,
                 error_from_this_worker=_error_from_evaluation,
-            ):
+            )
+            if should_stop is not False:
+                logger.info(should_stop)
                 break
 
             try:
                 trial_to_eval = self._get_next_trial_from_state()
-            except Exception:
+                _repeated_fail_get_next_trial_count = 0
+            except Exception as e:
+                _repeated_fail_get_next_trial_count += 1
                 logger.error(
                     "Error while trying to get the next trial to evaluate.", exc_info=True
                 )
+
+                # NOTE: This is to prevent any infinite loops if we can't get a trial
+                if (
+                    _repeated_fail_get_next_trial_count
+                    >= N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR
+                ):
+                    raise WorkerFailedToGetPendingTrialsError(
+                        "Worker '%s' failed to get pending trials %d times in a row."
+                        " Bailing!"
+                    ) from e
+
                 continue
 
             # If we can't set this working to evaluating, then just retry the loop
@@ -313,19 +389,30 @@ class DefaultWorker(Generic[Loc]):
                     worker_id=self.worker_id,
                 )
                 self.state.put_updated_trial(trial_to_eval)
+                n_failed_set_trial_state = 0
             except VersionMismatchError:
+                n_failed_set_trial_state += 1
                 logger.debug(
                     f"Another worker has managed to change trial '{trial_to_eval.id}'"
                     " to evaluate and put back into state. This is fine and likely means"
                     " the other worker is evaluating it.",
                     exc_info=True,
                 )
-                continue
             except Exception:
+                n_failed_set_trial_state += 1
                 logger.error(
                     f"Error trying to set trial '{trial_to_eval.id}' to evaluating.",
                     exc_info=True,
                 )
+
+            # NOTE: This is to prevent infinite looping if it somehow keeps getting
+            # the same trial and can't set it to evaluating.
+            if n_failed_set_trial_state != 0:
+                if n_failed_set_trial_state >= N_FAILED_TO_SET_TRIAL_STATE:
+                    raise WorkerFailedToGetPendingTrialsError(
+                        "Worker '%s' failed to set trial to evaluating %d times in a row."
+                        " Bailing!"
+                    )
                 continue
 
             # We (this worker) has managed to set it to evaluating, now we can evaluate it
@@ -335,6 +422,9 @@ class DefaultWorker(Generic[Loc]):
                     evaluation_fn=self.evaluation_fn,
                     default_report_values=self.settings.default_report_values,
                 )
+                evaluation_duration = evaluated_trial.metadata.evaluation_duration
+                assert evaluation_duration is not None
+                self.worker_cumulative_evaluation_time_seconds += evaluation_duration
 
             self.worker_cumulative_eval_count += 1
 
@@ -379,15 +469,15 @@ def _launch_runtime(  # noqa: PLR0913
     optimizer: BaseOptimizer,
     optimizer_info: dict,
     optimization_dir: Path,
-    max_cost_total: float | None = None,
+    max_cost_total: float | None,
     ignore_errors: bool = False,
-    loss_value_on_error: float | None = None,
-    cost_value_on_error: float | None = None,
-    continue_until_max_evaluation_completed: bool = False,
-    overwrite_optimization_dir: bool = False,
-    max_evaluations_total: int | None = None,
-    max_evaluations_for_worker: int | None = None,
-    pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
+    loss_value_on_error: float | None,
+    cost_value_on_error: float | None,
+    continue_until_max_evaluation_completed: bool,
+    overwrite_optimization_dir: bool,
+    max_evaluations_total: int | None,
+    max_evaluations_for_worker: int | None,
+    pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None,
 ) -> None:
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(

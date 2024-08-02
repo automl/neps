@@ -398,7 +398,6 @@ class SearchSpace(Mapping[str, Any]):
                 mutated_param = hp.mutate(**kwargs)
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"{chosen_hp_name} failed to mutate! Error: {e}, {kwargs}")
-                # !- print(traceback.format_exc())  # noq-a: T201
                 continue
 
             new_params = {

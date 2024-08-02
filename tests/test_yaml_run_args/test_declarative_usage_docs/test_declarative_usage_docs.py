@@ -2,20 +2,24 @@ import pytest
 import os
 import subprocess
 import sys
+
 BASE_PATH = "tests/test_yaml_run_args/test_declarative_usage_docs/"
 
 
 @pytest.mark.neps_api
-@pytest.mark.parametrize("yaml_file", [
-    "simple_example_including_run_pipeline.yaml",
-    "full_configuration_template.yaml",
-    "defining_hooks.yaml",
-    "customizing_neps_optimizer.yaml",
-    "loading_own_optimizer.yaml",
-    "loading_pipeline_space_dict.yaml",
-    "outsourcing_optimizer.yaml",
-    "outsourcing_pipeline_space.yaml"
-])
+@pytest.mark.parametrize(
+    "yaml_file",
+    [
+        "simple_example_including_run_pipeline.yaml",
+        "full_configuration_template.yaml",
+        "defining_hooks.yaml",
+        "customizing_neps_optimizer.yaml",
+        "loading_own_optimizer.yaml",
+        "loading_pipeline_space_dict.yaml",
+        "outsourcing_optimizer.yaml",
+        "outsourcing_pipeline_space.yaml",
+    ],
+)
 def test_run_with_yaml(yaml_file: str) -> None:
     """
     Test 'neps.run' with various run_args.yaml settings to simulate loading options
@@ -25,11 +29,11 @@ def test_run_with_yaml(yaml_file: str) -> None:
     assert os.path.exists(yaml_path), f"{yaml_file} does not exist."
 
     try:
-        subprocess.check_call(
-            [sys.executable, BASE_PATH + 'neps_run.py', yaml_path])
+        subprocess.check_call([sys.executable, BASE_PATH + "neps_run.py", yaml_path])
     except subprocess.CalledProcessError as e:
         pytest.fail(
-            f"NePS run failed for configuration: {yaml_file} with error: {str(e)}")
+            f"NePS run failed for configuration: {yaml_file} with error: {str(e)}"
+        )
 
 
 @pytest.mark.neps_api
@@ -43,8 +47,9 @@ def test_run_with_yaml_and_run_pipeline() -> None:
 
     try:
         subprocess.check_call(
-            [sys.executable, BASE_PATH + 'neps_run.py', yaml_path, "--run_pipeline"]
+            [sys.executable, BASE_PATH + "neps_run.py", yaml_path, "--run_pipeline"]
         )
     except subprocess.CalledProcessError as e:
         pytest.fail(
-            f"NePS run failed for configuration: simple_example.yaml with error: {str(e)}")
+            f"NePS run failed for configuration: simple_example.yaml with error: {str(e)}"
+        )

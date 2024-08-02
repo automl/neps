@@ -641,7 +641,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
 
         else:
             config = self.acquisition_sampler.sample(self.acquisition)
-            print([hp.value for hp in config.hyperparameters.values()])
             config.fidelity.set_value(self.rung_map[self.min_rung])
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)

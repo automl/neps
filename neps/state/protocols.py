@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, ClassVar, Generic, Iterable, Iterator, TypeVar
 from typing_extensions import Protocol, Self
@@ -524,12 +525,9 @@ class Synced(Generic[T, K]):
             self._resource.sync()
             yield self._resource.current(), self._put_unsafe
 
-    def clone(self) -> Self:
+    def deepcopy(self) -> Self:
         """Create a deep copy of the shared resource."""
-        return self.__class__(
-            _resource=self._resource,
-            _locker=self._locker,
-        )
+        return deepcopy(self)
 
     def _components(self) -> tuple[T, K, Versioner, ReaderWriter[T, K], Locker]:
         """Get the components of the shared resource."""

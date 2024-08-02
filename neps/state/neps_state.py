@@ -10,8 +10,9 @@ For an actual instantiation of this object, see
 
 from __future__ import annotations
 
+import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Generic, TypeVar, overload
 
 from more_itertools import take
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from neps.state.protocols import Synced, TrialRepo
     from neps.state.seed_snapshot import SeedSnapshot
 
+logger = logging.getLogger(__name__)
 
 # TODO: Technically we don't need the same Location type for all shared objects.
 Loc = TypeVar("Loc")
@@ -37,11 +39,11 @@ class NePSState(Generic[Loc]):
 
     location: str
 
-    _trials: TrialRepo[Loc]
+    _trials: TrialRepo[Loc] = field(repr=False)
     _optimizer_info: Synced[OptimizerInfo, Loc]
-    _seed_state: Synced[SeedSnapshot, Loc]
+    _seed_state: Synced[SeedSnapshot, Loc] = field(repr=False)
     _optimizer_state: Synced[OptimizationState, Loc]
-    _shared_errors: Synced[ErrDump, Loc]
+    _shared_errors: Synced[ErrDump, Loc] = field(repr=False)
 
     def put_updated_trial(self, trial: Trial, /) -> None:
         """Update the trial with the new information.
@@ -158,7 +160,11 @@ class NePSState(Generic[Loc]):
         """
         shared_trial = self._trials.get_by_id(trial.id)
         # TODO: This would fail if some other worker has already updated the trial.
+
+        # IMPORTANT: We need to attach the report to the trial before updating the things.
+        trial.report = report
         shared_trial.put(trial)
+        logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
         with self._optimizer_state.acquire() as (opt_state, put_opt_state):
             optimizer.update_state_post_evaluation(opt_state.shared_state, report)
 
@@ -176,7 +182,7 @@ class NePSState(Generic[Loc]):
                 trial_err = ErrDump.SerializableTrialError(
                     trial_id=trial.id,
                     worker_id=worker_id,
-                    err_type=str(type(report.err)),
+                    err_type=type(report.err).__name__,
                     err=str(report.err),
                     tb=report.tb,
                 )

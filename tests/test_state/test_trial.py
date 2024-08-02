@@ -153,6 +153,7 @@ def test_trial_as_success_after_being_progress() -> None:
         previous_trial_id=previous_trial,
         sampling_worker_id=sampling_worker_id,
         evaluating_worker_id=evaluating_worker_id,
+        evaluation_duration=time_end - time_started,
         time_submitted=time_submitted,
         time_started=time_started,
         time_end=time_end,
@@ -219,6 +220,7 @@ def test_trial_as_failed_with_nan_loss_and_in_cost() -> None:
         location="1",
         time_started=time_started,
         time_end=time_end,
+        evaluation_duration=time_end - time_started,
     )
     assert report == Trial.Report(
         trial_id=trial_id,
@@ -283,6 +285,7 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
         location="1",
         time_started=time_started,
         time_end=time_end,
+        evaluation_duration=time_end - time_started,
     )
     assert report == Trial.Report(
         trial_id=trial_id,

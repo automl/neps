@@ -84,8 +84,9 @@ class Report:
             # but it should be removed once optimizers stop calling the
             # `get_loss`, `get_cost`, `get_learning_curve` methods of `BaseOptimizer`
             # and just use the `Report` directly.
-            if "info_dict" not in d and "learning_curve" not in d["info_dict"]:
+            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
                 d.setdefault("info_dict", {})["learning_curve"] = self.learning_curve
+            return d
 
         return "error"
 
@@ -226,6 +227,7 @@ class Trial:
             raise ValueError(f"Invalid report_as: '{report_as}'")
 
         self.metadata.time_end = time_end
+        self.metadata.evaluation_duration = evaluation_duration
 
         extra = {} if extra is None else extra
 

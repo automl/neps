@@ -65,7 +65,6 @@ class NASBOTDistance(GraphKernels):
             return 0.0
         if l is None:
             l = self.lengthscale
-        # print(dist)
         return np.exp(-dist / (l**2))
 
     def _compute_dist(
@@ -141,10 +140,7 @@ class NASBOTDistance(GraphKernels):
         save_gram_matrix: bool = False,
         **kwargs,
     ):
-        if (
-            not rebuild_model
-            and self._gram is not None
-        ):
+        if not rebuild_model and self._gram is not None:
             return self._gram
         K = self.forward(*gr, l=l)
         if save_gram_matrix:
@@ -152,9 +148,7 @@ class NASBOTDistance(GraphKernels):
             self._train_x = gr[:]
         return K
 
-    def transform(
-        self, gr: list, l: float = None, **kwargs
-    ):
+    def transform(self, gr: list, l: float = None, **kwargs):
         if self._gram is None:
             raise ValueError("The kernel has not been fitted. Run fit_transform first")
         n = len(gr)

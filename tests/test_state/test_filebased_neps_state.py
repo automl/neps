@@ -45,7 +45,7 @@ def test_create_with_new_filebased_neps_state(
     )
     assert neps_state.optimizer_info() == optimizer_info
     assert neps_state.optimizer_state() == optimizer_state
-    assert neps_state.all_trial_ids() == []
+    assert neps_state.all_trial_ids() == set()
     assert neps_state.get_all_trials() == {}
     assert neps_state.get_errors() == ErrDump(errs=[])
     assert neps_state.get_next_pending_trial() is None

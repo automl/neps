@@ -391,7 +391,6 @@ class MFEIBO(BaseOptimizer):
                 # if the returned config already observed,
                 # set the fidelity to the next budget level if not max already
                 # else set the fidelity to the minimum budget level
-                # print(config_condition)
             else:
                 config = self.pipeline_space.sample(
                     patience=self.patience, user_priors=True, ignore_fidelity=False
@@ -407,5 +406,4 @@ class MFEIBO(BaseOptimizer):
                 else 0
             )
         config_id = f"{_config_id}_{self.get_budget_level(config)}"
-        # print(self.observed_configs)
         return config.hp_values(), config_id, None

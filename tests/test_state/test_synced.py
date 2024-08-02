@@ -393,7 +393,7 @@ def test_put_updates_current_data_and_is_not_stale(
 
 @parametrize_with_cases("shared1, mutate", cases=".")
 def test_share_synced_mutate_and_put(shared1: Synced, mutate: Callable) -> None:
-    shared2 = shared1.clone()
+    shared2 = shared1.deepcopy()
     assert shared1 == shared2
     assert not shared1._is_locked()
     assert not shared2._is_locked()

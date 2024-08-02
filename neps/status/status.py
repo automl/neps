@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.runtime_old import Trial
 from neps.state.filebased import load_filebased_neps_state
+from neps.state.trial import Trial
 from neps.utils._locker import Locker
 from neps.utils.types import ConfigID, _ConfigResultForStats
 
@@ -58,7 +58,7 @@ def get_summary_dict(
     in_progress = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.IN_PROGRESS
+        if trial.State == Trial.State.EVALUATING
     }
     pending = {
         trial.id: trial.config

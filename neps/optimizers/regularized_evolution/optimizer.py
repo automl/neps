@@ -77,7 +77,6 @@ class RegularizedEvolution(BaseOptimizer):
         if len(self.population) < self.population_size:
             if self.assisted:
                 if 0 == len(os.listdir(self.assisted_init_population_dir)):
-                    print("Generate initial design with assistance")
                     cur_population_size = self.population_size - len(self.population)
                     configs = [
                         self.pipeline_space.sample(
@@ -102,7 +101,6 @@ class RegularizedEvolution(BaseOptimizer):
                             encoding="utf-8",
                         ) as f:
                             yaml.dump(configs[config_idx].serialize(), f)
-                print("Pick config from pre-computed population")
                 config_yaml = sorted(os.listdir(self.assisted_init_population_dir))[0]
                 with open(
                     self.assisted_init_population_dir / config_yaml, encoding="utf-8"

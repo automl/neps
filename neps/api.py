@@ -12,7 +12,7 @@ import ConfigSpace as CS
 from neps.utils.run_args import Settings, Default
 
 from neps.utils.common import instance_from_map
-from neps.runtime import launch_runtime
+from neps.runtime import _launch_runtime
 from neps.optimizers import BaseOptimizer, SearcherMapping
 from neps.search_spaces.parameter import Parameter
 from neps.search_spaces.search_space import (

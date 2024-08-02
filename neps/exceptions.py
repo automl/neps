@@ -41,3 +41,7 @@ class TrialAlreadyExistsError(VersionedResourceAlreadyExistsError):
 
 class TrialNotFoundError(VersionedResourceDoesNotExistsError):
     """Raised when a trial already exists in the store."""
+
+
+class WorkerFailedToGetPendingTrialsError(NePSError):
+    """Raised when a worker failed to get pending trials."""

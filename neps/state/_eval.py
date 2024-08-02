@@ -93,8 +93,14 @@ def parse_user_result(
         extra = user_result
     else:
         extracted_loss = user_result
-        extracted_learning_curve = [user_result]
-        extracted_cost = None
+        extracted_learning_curve = (
+            None
+            if default_learning_curve is None
+            else [user_result]
+            if default_learning_curve == "loss"
+            else default_learning_curve
+        )
+        extracted_cost = default_cost_value
         extra = {}
 
     loss = _check_float(extracted_loss, "loss")

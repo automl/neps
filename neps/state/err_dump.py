@@ -41,10 +41,10 @@ class SerializableTrialError:
             f"An error occurred during the evaluation of a trial '{self.trial_id}' which"
             f" was evaluted by worker '{self.worker_id}'. The original error could not"
             " be deserialized but had the following information:"
-            "\n\n"
-            f"{self.tb}"
             "\n"
             f"{self.err_type}: {self.err}"
+            "\n\n"
+            f"{self.tb}"
         )
 
 

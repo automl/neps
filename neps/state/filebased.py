@@ -376,13 +376,13 @@ class ReaderWriterOptimizerInfo(ReaderWriter[OptimizerInfo, Path]):
     @classmethod
     def read(cls, directory: Path) -> OptimizerInfo:
         info_path = directory / cls.INFO_FILENAME
-        return OptimizerInfo(**deserialize(info_path))
+        return OptimizerInfo(info=deserialize(info_path))
 
     @override
     @classmethod
-    def write(cls, info: OptimizerInfo, directory: Path) -> None:
+    def write(cls, optimizer_info: OptimizerInfo, directory: Path) -> None:
         info_path = directory / cls.INFO_FILENAME
-        serialize(asdict(info), info_path)
+        serialize(optimizer_info.info, info_path)
 
 
 # TODO(eddiebergman): If an optimizer wants to store some hefty state, i.e. a numpy array
@@ -618,7 +618,8 @@ def create_or_load_filebased_neps_state(
         if existing_info != optimizer_info:
             raise NePSError(
                 "The optimizer info on disk does not match the one provided."
-                f"On disk: {existing_info}\nProvided: {optimizer_info}",
+                f"\nOn disk: {existing_info}\nProvided: {optimizer_info}"
+                f"\n\nLoaded the one on disk from {optimizer_info_dir}."
             )
 
     return NePSState(
