@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import pytest
+import os
 from dataclasses import dataclass
 from pandas.core.common import contextlib
+import signal
 from pathlib import Path
 from pytest_cases import fixture, parametrize
+from multiprocessing import Process
+import time
 
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
@@ -198,3 +202,63 @@ def test_worker_does_not_raise_when_error_in_other_worker(
 
     assert neps_state.get_next_pending_trial() is None
     assert len(neps_state.get_errors()) == 1
+
+
+def sleep_function(*args, **kwargs) -> float:
+    time.sleep(10)
+    return 10
+
+
+SIGNALS: list[signal.Signals] = []
+for name in ("SIGINT", "SIGTERM", "CTRL_C_EVENT"):
+    if hasattr(signal.Signals, name):
+        sig: signal.Signals = getattr(signal.Signals, name)
+        SIGNALS.append(sig)
+
+
+@pytest.mark.parametrize("signal", SIGNALS)
+def test_worker_reset_evaluating_to_pending_on_ctrl_c(
+    signal: signal.Signals,
+    neps_state: NePSState,
+) -> None:
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    settings = WorkerSettings(
+        on_error=OnErrorPossibilities.IGNORE,  # <- Highlight
+        default_report_values=DefaultReportValues(),
+        max_evaluations_total=None,
+        include_in_progress_evaluations_towards_maximum=False,
+        max_cost_total=None,
+        max_evaluations_for_worker=1,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_for_worker_seconds=None,
+        max_evaluation_time_for_worker_seconds=None,
+        max_cost_for_worker=None,
+    )
+
+    worker1 = DefaultWorker.new(
+        state=neps_state,
+        optimizer=optimizer,
+        evaluation_fn=sleep_function,
+        settings=settings,
+        _pre_sample_hooks=None,
+    )
+
+    p = Process(target=worker1.run)
+    p.start()
+
+    time.sleep(0.5)
+    assert p.pid is not None
+    assert p.is_alive()
+
+    # Should be evaluating at this stage
+    trials = neps_state.get_all_trials()
+    assert len(trials) == 1
+    assert next(iter(trials.values())).state == Trial.State.EVALUATING
+
+    # Kill the process while it's evaluting using signals
+    os.kill(p.pid, signal)
+    p.join()
+
+    trials2 = neps_state.get_all_trials()
+    assert len(trials2) == 1
+    assert next(iter(trials2.values())).state == Trial.State.PENDING

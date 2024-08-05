@@ -6,6 +6,7 @@ import datetime
 import logging
 import os
 import shutil
+import signal
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -144,6 +145,8 @@ class DefaultWorker(Generic[Loc]):
 
     worker_cumulative_evaluation_time_seconds: float = 0.0
     """The time spent evaluating configurations by this worker."""
+
+    _SIGNAL_HANDLER_FIRED: bool = False
 
     @classmethod
     def new(
@@ -344,6 +347,8 @@ class DefaultWorker(Generic[Loc]):
         is met.
         """
         _set_workers_neps_state(self.state)
+        signal.signal(signal.SIGINT, self._emergency_cleanup)
+        signal.signal(signal.SIGTERM, self._emergency_cleanup)
 
         logger.info("Launching NePS")
 
@@ -416,15 +421,20 @@ class DefaultWorker(Generic[Loc]):
                 continue
 
             # We (this worker) has managed to set it to evaluating, now we can evaluate it
-            with _set_global_trial(trial_to_eval):
-                evaluated_trial, report = evaluate_trial(
-                    trial=trial_to_eval,
-                    evaluation_fn=self.evaluation_fn,
-                    default_report_values=self.settings.default_report_values,
-                )
-                evaluation_duration = evaluated_trial.metadata.evaluation_duration
-                assert evaluation_duration is not None
-                self.worker_cumulative_evaluation_time_seconds += evaluation_duration
+            try:
+                with _set_global_trial(trial_to_eval):
+                    evaluated_trial, report = evaluate_trial(
+                        trial=trial_to_eval,
+                        evaluation_fn=self.evaluation_fn,
+                        default_report_values=self.settings.default_report_values,
+                    )
+            except KeyboardInterrupt:
+                if not self._SIGNAL_HANDLER_FIRED:
+                    self._emergency_cleanup(signum=signal.SIGINT, frame=None)
+
+            evaluation_duration = evaluated_trial.metadata.evaluation_duration
+            assert evaluation_duration is not None
+            self.worker_cumulative_evaluation_time_seconds += evaluation_duration
 
             self.worker_cumulative_eval_count += 1
 
@@ -459,6 +469,31 @@ class DefaultWorker(Generic[Loc]):
             logger.debug(
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
+
+    def _emergency_cleanup(self, signum: int, frame: Any) -> None:  # noqa: ARG002
+        """Handle signals."""
+        self._SIGNAL_HANDLER_FIRED = True
+
+        global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
+        logger.info(
+            f"Worker '{self.worker_id}' received signal {signum}. Stopping worker now!"
+        )
+        if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None:
+            logger.info(
+                "Worker '%s' was interrupted while evaluating trial: %s. Setting"
+                " trial to pending!",
+                self.worker_id,
+                _CURRENTLY_RUNNING_TRIAL_IN_PROCESS.id,
+            )
+            _CURRENTLY_RUNNING_TRIAL_IN_PROCESS.reset()
+            try:
+                self.state.put_updated_trial(_CURRENTLY_RUNNING_TRIAL_IN_PROCESS)
+            except NePSError as e:
+                logger.exception(e)
+            finally:
+                _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
+
+        raise KeyboardInterrupt(f"Worker was interrupted by signal {signum}.")
 
 
 # TODO: This should be done directly in `api.run` at some point to make it clearer at an
