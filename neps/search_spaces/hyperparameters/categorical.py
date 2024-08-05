@@ -72,7 +72,7 @@ class CategoricalParameter(
             default: default value for the hyperparameter, must be in `choices=`
                 if provided.
             default_confidence: confidence score for the default value, used when
-                condsider prior based optimization.
+                considering prior based optimization.
         """
         choices = list(choices)
         if len(choices) <= 1:

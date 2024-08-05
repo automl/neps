@@ -54,11 +54,11 @@ neps.run(.., pipeline_space=pipeline_space)
 
 
 ## Using your knowledge, providing a Prior
-When optimizing, you can provide your own knowledge using the parameters `default=`.
-By indicating a `default=` we take this to be your user prior,
+When optimizing, you can provide your own knowledge using the parameter `default`.
+By indicating a `default` we take this to be your user prior,
 **your knowledge about where a good value for this parameter lies**.
 
-You can also specify a `default_confidence=` to indicate how strongly you want NePS,
+You can also specify a `default_confidence` to indicate how strongly you want NePS,
 to focus on these, one of either `"low"`, `"medium"`, or `"high"`.
 
 Currently the two major algorithms that exploit this in NePS are `PriorBand`
@@ -77,14 +77,14 @@ neps.run(
     }
 )
 ```
-!!! warning "Must set `default=` for all parameters, if any"
+!!! warning "Must set `default` for all parameters, if any"
 
-    If you specify `default=` for one parameter, you must do so for all your variables.
+    If you specify `default` for one parameter, you must do so for all your variables.
     This will be improved in future versions.
 
 !!! warning "Interaction with `is_fidelity`"
 
-    If you specify `is_fidelity=True` for one parameter, the `default=` and `default_confidence=` are ignored.
+    If you specify `is_fidelity=True` for one parameter, the `default` and `default_confidence` are ignored.
     This will be dissallowed in future versions.
 
 ## Defining a pipeline space using YAML
@@ -131,7 +131,7 @@ If none of these hold, an error will be raised.
 
 ## Using ConfigSpace
 
-For users familiar with the [`ConfigSpace`](https://automl.github.io/ConfigSpace/main/) library,
+For users familiar with the [`ConfigSpace`](https://automl.github.io/ConfigSpace/latest/) library,
 can also define the `pipeline_space` through `ConfigurationSpace()`
 
 ```python

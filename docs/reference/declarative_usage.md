@@ -44,12 +44,7 @@ and its location, enabling more flexible project structures.
     ```python
     --8<-- "docs/doc_yamls/run_pipeline_extended.py"
     ```
-=== "run_neps.py"
-    ```python
-    import neps
-    # No need to define run_pipeline here. NePS loads it directly from the specified path.
-    neps.run(run_args="path/to/your/config.yaml")
-    ```
+
 
 #### Comprehensive YAML Configuration Template
 This example showcases a more comprehensive YAML configuration, which includes not only the essential parameters
@@ -61,12 +56,6 @@ but also advanced settings for more complex setups.
 === "run_pipeline.py"
     ```python
     --8<-- "docs/doc_yamls/run_pipeline_extended.py"
-    ```
-=== "run_neps.py"
-    ```python
-    import neps
-    # Executes the configuration specified in your YAML file
-    neps.run(run_args="path/to/your/config.yaml")
     ```
 
 The `searcher` key used in the YAML configuration corresponds to the same keys used for selecting an optimizer directly
@@ -93,11 +82,6 @@ Customize an internal NePS optimizer by specifying its parameters directly under
     ```python
     --8<-- "docs/doc_yamls/run_pipeline.py"
     ```
-=== "run_neps.py"
-    ```python
-    import neps
-    neps.run(run_args="path/to/your/config.yaml")
-    ```
 
 For detailed information about the available optimizers and their parameters, please visit the [optimizer page](optimizers.md#list-available-searching-algorithms)
 
@@ -116,11 +100,6 @@ Simplify experiments with multiple optimizer settings by outsourcing the optimiz
     ```python
     --8<-- "docs/doc_yamls/run_pipeline.py"
     ```
-=== "run_neps.py"
-    ```python
-    import neps
-    neps.run(run_args="path/to/your/config.yaml")
-    ```
 
 ### Handling Large Search Spaces
 Manage large search spaces by outsourcing the pipeline space configuration in a separate YAML file or for keeping track
@@ -138,12 +117,6 @@ of your experiments.
     ```python
     --8<-- "docs/doc_yamls/run_pipeline_big_search_space.py"
     ```
-=== "run_neps.py"
-    ```python
-    import neps
-    neps.run(run_args="path/to/your/config.yaml")
-    ```
-
 
 ### Using Architecture Search Spaces
 Since the option for defining the search space via YAML is limited to HPO, grammar-based search spaces or architecture
@@ -161,11 +134,6 @@ search spaces must be loaded via a dictionary, which is then referenced in the `
     ```python
     --8<-- "docs/doc_yamls/run_pipeline_architecture.py"
     ```
-=== "run_neps.py"
-    ```python
-    import neps
-    neps.run(run_args="path/to/your/config.yaml")
-    ```
 
 
 ### Integrating Custom Optimizers
@@ -181,13 +149,6 @@ Note: You can still overwrite arguments via searcher_kwargs of `neps.run` like f
     ```python
     --8<-- "docs/doc_yamls/run_pipeline.py"
     ```
-=== "run_neps.py"
-    ```python
-    import neps
-    neps.run(run_args="path/to/your/config.yaml")
-    ```
-
-
 
 ### Adding Custom Hooks to Your Configuration
 Define hooks in your YAML configuration to extend the functionality of your experiment.
@@ -198,9 +159,4 @@ Define hooks in your YAML configuration to extend the functionality of your expe
 === "run_pipeline.py"
     ```python
     --8<-- "docs/doc_yamls/run_pipeline_extended.py"
-    ```
-=== "run_neps.py"
-    ```python
-    import neps
-    neps.run(run_args="path/to/your/config.yaml")
     ```
