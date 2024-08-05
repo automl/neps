@@ -480,7 +480,7 @@ class SearchSpace(Mapping[str, Any]):
         *,
         ignore_fidelity: bool = False,
     ) -> dict[Literal["continuous", "categorical", "graphs"], list[Any]]:
-        """Get the normalized values for each hyperparameter in the configuraiton.
+        """Get the normalized values for each hyperparameter in the configuration.
 
         Args:
             ignore_fidelity: Whether to ignore the fidelity parameter when getting the
