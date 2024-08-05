@@ -428,9 +428,10 @@ class DefaultWorker(Generic[Loc]):
                         evaluation_fn=self.evaluation_fn,
                         default_report_values=self.settings.default_report_values,
                     )
-            except KeyboardInterrupt:
+            except KeyboardInterrupt as e:
                 if not self._SIGNAL_HANDLER_FIRED:
-                    self._emergency_cleanup(signum=signal.SIGINT, frame=None)
+                    # This throws and we have stopped the worker at this point
+                    self._emergency_cleanup(signum=signal.SIGINT, frame=None, rethrow=e)
 
             evaluation_duration = evaluated_trial.metadata.evaluation_duration
             assert evaluation_duration is not None
@@ -470,7 +471,12 @@ class DefaultWorker(Generic[Loc]):
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
-    def _emergency_cleanup(self, signum: int, frame: Any) -> None:  # noqa: ARG002
+    def _emergency_cleanup(
+        self,
+        signum: int,
+        frame: Any,  # noqa: ARG002
+        rethrow: KeyboardInterrupt | None = None,
+    ) -> None:
         """Handle signals."""
         self._SIGNAL_HANDLER_FIRED = True
 
@@ -493,6 +499,8 @@ class DefaultWorker(Generic[Loc]):
             finally:
                 _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
 
+        if rethrow is not None:
+            raise rethrow
         raise KeyboardInterrupt(f"Worker was interrupted by signal {signum}.")
 
 
