@@ -113,7 +113,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
 
     # Worker2 should not run and immeditaly error out, however
     # it will have loaded in a serialized error
-    with pytest.raises(SerializedError):
+    with pytest.raises(WorkerRaiseError):
         worker2.run()
 
     trials = neps_state.get_all_trials()
