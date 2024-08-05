@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from neps.exceptions import WorkerRaiseError
 import pytest
 from dataclasses import dataclass
 from pandas.core.common import contextlib
@@ -59,7 +60,7 @@ def test_worker_raises_when_error_in_self(
         settings=settings,
         _pre_sample_hooks=None,
     )
-    with pytest.raises(ValueError, match="This is an error"):
+    with pytest.raises(WorkerRaiseError):
         worker.run()
 
     trials = neps_state.get_all_trials()
