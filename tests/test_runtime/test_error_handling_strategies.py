@@ -108,7 +108,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     )
 
     # Worker1 should run 1 and error out
-    with contextlib.suppress(ValueError):
+    with contextlib.suppress(WorkerRaiseError):
         worker1.run()
 
     # Worker2 should not run and immeditaly error out, however
@@ -177,7 +177,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
 
     # Worker1 should run 1 and error out
     evaler.do_raise = True
-    with contextlib.suppress(ValueError):
+    with contextlib.suppress(WorkerRaiseError):
         worker1.run()
     assert worker1.worker_cumulative_eval_count == 1
 
