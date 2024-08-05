@@ -481,11 +481,11 @@ class DefaultWorker(Generic[Loc]):
         self._SIGNAL_HANDLER_FIRED = True
 
         global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
-        logger.info(
+        logger.error(
             f"Worker '{self.worker_id}' received signal {signum}. Stopping worker now!"
         )
         if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None:
-            logger.info(
+            logger.error(
                 "Worker '%s' was interrupted while evaluating trial: %s. Setting"
                 " trial to pending!",
                 self.worker_id,
