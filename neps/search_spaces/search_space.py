@@ -890,3 +890,17 @@ class SearchSpace(Mapping[str, Any]):
                 return False
 
         return True
+
+    def update_hp_values(self, new_values: dict[str, Any]) -> None:
+        """Update the hyperparameter values with new values.
+
+        Args:
+            new_values: The new values to set for the hyperparameters.
+        """
+        _hp_dict = self.hp_values()
+        _intersect = set(_hp_dict.keys()) & set(new_values.keys())
+        assert len(_intersect) == len(new_values), \
+            "All hyperparameters must be present! "\
+            f"{set(_hp_dict.keys()) - set(new_values.keys())} are missing"
+        _hp_dict.update(new_values)
+        self.set_hyperparameters_from_dict(_hp_dict)

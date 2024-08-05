@@ -104,11 +104,7 @@ class FreezeThawSampler(AcquisitionSampler):
         set_new_sample_fidelity: int | float = None,
     ) -> list():
         """Samples a new set and returns the total set of observed + new configs."""
-        start = time.time()
         partial_configs = self.observations.get_partial_configs_at_max_seen()
-        # print("-" * 50)
-        # print(f"| freeze-thaw:get_partial_at_max_seen(): {time.time()-start:.2f}s")
-        # print("-" * 50)
 
         _n = n if n is not None else self.SAMPLES_TO_DRAW
         if self.is_tabular:
@@ -121,7 +117,6 @@ class FreezeThawSampler(AcquisitionSampler):
             max_n = len(_all_ids) + 1 if self.sample_full_table else _n
             _n = min(max_n, len(_all_ids - _partial_ids))
 
-            start = time.time()
             _new_configs = np.random.choice(
                 list(_all_ids - _partial_ids), size=_n, replace=False
             )
@@ -132,9 +127,6 @@ class FreezeThawSampler(AcquisitionSampler):
             for _i, val in enumerate(_new_configs):
                 _configs[_i]["id"].value = val
 
-            # print("-" * 50)
-            # print(f"| freeze-thaw:sample:new_configs_extraction: {time.time()-start:.2f}s")
-            # print("-" * 50)
             new_configs = pd.Series(
                 _configs,
                 index=np.arange(
@@ -155,19 +147,11 @@ class FreezeThawSampler(AcquisitionSampler):
             )
 
         # Updating fidelity values
-        start = time.time()
         if set_new_sample_fidelity is not None:
             for config in new_configs:
-                config.fidelity.value = set_new_sample_fidelity
-        # print("-" * 50)
-        # print(f"| freeze-thaw:sample:new_configs_set_fidelity: {time.time()-start:.2f}s")
-        # print("-" * 50)
+                config.update_hp_values({config.fidelity_name: set_new_sample_fidelity})
 
-        start = time.time()
         configs = pd.concat([deepcopy(partial_configs), new_configs])
-        # print("-" * 50)
-        # print(f"| freeze-thaw:sample:concat_configs: {time.time()-start:.2f}s")
-        # print("-" * 50)
 
         return configs
 

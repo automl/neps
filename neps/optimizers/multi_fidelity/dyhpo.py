@@ -405,7 +405,7 @@ class MFEIBO(BaseOptimizer):
         # calculating fidelity value
         new_fidelity = self.get_budget_value(budget + 1)
         # setting the config fidelity
-        config.fidelity.value = new_fidelity
+        config.update_hp_values({config.fidelity_name: new_fidelity})
         return config, _config_id
 
     def get_config_and_ids(  # pylint: disable=no-self-use
@@ -427,7 +427,6 @@ class MFEIBO(BaseOptimizer):
             _config_dict = config.hp_values()
             _config_dict.update({config.fidelity_name: self.min_budget})
             config.set_hyperparameters_from_dict(_config_dict)
-            # config.fidelity.value = self.min_budget
             _config_id = self.observed_configs.next_config_id()
         elif self.is_init_phase() or self._model_update_failed:
             # promote a config randomly if initial design size is satisfied but the
@@ -496,7 +495,7 @@ class MFEIBO(BaseOptimizer):
             config = samples.loc[_config_id]
             # IMPORTANT: setting the fidelity value appropriately
 
-            config.fidelity.value = (
+            _fid_value = (
                 config.fidelity.lower
                 if best_idx > max(self.observed_configs.seen_config_ids)
                 else (
@@ -508,6 +507,7 @@ class MFEIBO(BaseOptimizer):
                     + self.step_size  # ONE-STEP FIDELITY QUERY
                 )
             )
+            config.update_hp_values({config.fidelity_name: _fid_value})
         # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
             config_id = f"{_config_id}_{self.get_budget_level(config)}"

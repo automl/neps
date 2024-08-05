@@ -31,4 +31,3 @@ jobs:
     - run: pip install pre-commit
     - run: pre-commit install
     - run: pre-commit run --all-files
-

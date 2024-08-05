@@ -80,7 +80,7 @@ def run(
         root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         run_args: An option for providing the optimization settings e.g.
-            max_evaluation_total in a YAML file.
+            max_evaluations_total in a YAML file.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a run_pipeline function.
         post_run_summary: If True, creates a csv file after each worker is done,

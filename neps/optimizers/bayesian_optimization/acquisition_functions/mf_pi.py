@@ -68,13 +68,13 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
 
                 if np.less_equal(target_fidelity, config.fidelity.upper):
                     # only consider the configs with fidelity lower than the max fidelity
-                    config.fidelity.value = target_fidelity
+                    config.update_hp_values({config.fidelity_name: target_fidelity})
                     budget_list.append(self.get_budget_level(config))
                 else:
                     # if the target_fidelity higher than the max drop the configuration
                     indices_to_drop.append(i)
             else:
-                config.fidelity.value = target_fidelity
+                config.update_hp_values({config.fidelity_name: target_fidelity})
                 budget_list.append(self.get_budget_level(config))
 
         # Drop unused configs
@@ -173,7 +173,7 @@ class MFPI_AtMax(MFPI):
                 # if the target_fidelity already reached, drop the configuration
                 indices_to_drop.append(i)
             else:
-                config.fidelity.value = target_fidelity
+                config.update_hp_values({config.fidelity_name: target_fidelity})
                 budget_list.append(self.get_budget_level(config))
 
         # drop unused configs
@@ -214,23 +214,11 @@ class MFPI_Dyna(MFPI_AtMax):
         ## marker 2: the maximum fidelity value recorded in observation history
         pseudo_z_max = self.b_step * pseudo_z_level_max + self.pipeline_space.fidelity.lower
 
-        # TODO: compare with this first draft logic
-        # def update_fidelity(config):
-        #     ### DO NOT DELETE THIS FUNCTION YET
-        #     # for all configs, set the min(max(current fidelity + step, z_inc), pseudo_z_max)
-        #     ## that is, choose the next highest marker from 1 and 2
-        #     z_extrapolate = min(
-        #         max(config.fidelity.value + self.b_step, z_inc),
-        #         pseudo_z_max
-        #     )
-        #     config.fidelity.value = z_extrapolate
-        #     return config
-
         def update_fidelity(config):
             # for all configs, set to pseudo_z_max
             ## that is, choose the highest seen fidelity in observation history
             z_extrapolate = pseudo_z_max
-            config.fidelity.value = z_extrapolate
+            config.update_hp_values({config.fidelity_name: z_extrapolate})
             return config
 
         # collect IDs for partial configurations
@@ -345,12 +333,16 @@ class MFPI_Random(MFPI):
                 else:
                     # a candidate partial training run to continue
                     target_fidelity = config.fidelity.value + horizon
-                    config.fidelity.value = min(config.fidelity.value + horizon, config.fidelity.upper) # if horizon exceeds max, query at max
+                    config.update_hp_values({
+                        config.fidelity_name: min(
+                            config.fidelity.value + horizon, config.fidelity.upper
+                        )  # if horizon exceeds max, query at max
+                    }) 
                     inc_list.append(inc_value)
             else:
                 # a candidate new training run that we would need to start
                 current_fidelity = 0
-                config.fidelity.value = horizon
+                config.update_hp_values({config.fidelity_name: horizon})
                 inc_list.append(inc_value)
             #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
@@ -430,12 +422,14 @@ class MFPI_Random_HiT(MFPI):
                     # a candidate partial training run to continue
                     target_fidelity = config.fidelity.value + horizon
                     # if horizon exceeds max, query at max
-                    config.fidelity.value = min(config.fidelity.value + horizon, config.fidelity.upper)
+                    config.update_hp_values({config.fidelity_name: min(
+                        config.fidelity.value + horizon, config.fidelity.upper
+                    )})
                     inc_list.append(inc_value)
             else:
                 # a candidate new training run that we would need to start
                 current_fidelity = 0
-                config.fidelity.value = horizon
+                config.update_hp_values({config.fidelity_name: horizon})
                 inc_list.append(inc_value)
             #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 

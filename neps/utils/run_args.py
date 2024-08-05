@@ -451,13 +451,13 @@ def check_essential_arguments(
     root_directory: str | None,
     pipeline_space: dict | None,
     max_cost_total: int | None,
-    max_evaluation_total: int | None,
+    max_evaluations_total: int | None,
     searcher: BaseOptimizer | dict | str | None,
 ) -> None:
     """Validates essential NePS configuration arguments.
 
     Ensures 'run_pipeline', 'root_directory', 'pipeline_space', and either
-    'max_cost_total' or 'max_evaluation_total' are provided for NePS execution.
+    'max_cost_total' or 'max_evaluations_total' are provided for NePS execution.
     Raises ValueError with missing argument details. Additionally, checks 'searcher'
     is a BaseOptimizer if 'pipeline_space' is absent.
 
@@ -466,7 +466,7 @@ def check_essential_arguments(
         root_directory (str): Directory path for data storage.
         pipeline_space: search space for this run.
         max_cost_total: Max allowed total cost for experiments.
-        max_evaluation_total: Max allowed evaluations.
+        max_evaluations_total: Max allowed evaluations.
         searcher: Optimizer for the configuration space.
 
     Raises:
@@ -481,9 +481,9 @@ def check_essential_arguments(
         # provide the search_space because it's the argument of the searcher.
         raise ValueError("'pipeline_space' is required but was not provided.")
 
-    if not max_evaluation_total and not max_cost_total:
+    if not max_evaluations_total and not max_cost_total:
         raise ValueError(
-            "'max_evaluation_total' or 'max_cost_total' is required but "
+            "'max_evaluations_total' or 'max_cost_total' is required but "
             "both were not provided."
         )
 
