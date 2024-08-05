@@ -8,10 +8,13 @@ import pandas as pd
 import torch
 
 from neps.utils.common import instance_from_map
-from ..bayesian_optimization.models import SurrogateModelMapping
-from ..multi_fidelity.utils import normalize_vectorize_config
-from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
-from ..utils import map_real_hyperparameters_from_tabular_ids
+# from ..bayesian_optimization.models import SurrogateModelMapping
+from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
+# from ..multi_fidelity.utils import normalize_vectorize_config
+from neps.optimizers.multi_fidelity.utils import normalize_vectorize_config
+# from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
+from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
+from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 
 
 class MFBOBase:
@@ -142,7 +145,7 @@ class MFBOBase:
     def sample_new_config(
         self,
         rung: int = None,
-        **kwargs,
+        **kwargs,  # pylint: disable=unused-argument
     ):
         """Samples configuration from policies or random."""
         if self.model_based and not self.is_init_phase():
@@ -187,7 +190,7 @@ class FreezeThawModel:
     def __init__(
         self,
         pipeline_space,
-        surrogate_model: str = "deep_gp",
+        surrogate_model: str = "pfn",
         surrogate_model_args: dict = None,
     ):
         self.observed_configs = None
@@ -198,6 +201,11 @@ class FreezeThawModel:
         )
         if self.surrogate_model_name in ["deep_gp", "pfn"]:
             self.surrogate_model_args.update({"pipeline_space": pipeline_space})
+        elif self.surrogate_model_name == "dpl":
+            self.surrogate_model_args.update(
+                {"pipeline_space": self.pipeline_space,
+                 "observed_data": self.observed_configs}
+            )
 
         # instantiate the surrogate model
         self.surrogate_model = instance_from_map(
@@ -233,7 +241,7 @@ class FreezeThawModel:
     def _fit(self, train_x, train_y, train_lcs):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             self.surrogate_model.fit(train_x, train_y)
-        elif self.surrogate_model_name in ["deep_gp", "pfn"]:
+        elif self.surrogate_model_name in ["deep_gp", "pfn", "dpl"]:
             self.surrogate_model.fit(train_x, train_y, train_lcs)
         else:
             # check neps/optimizers/bayesian_optimization/models/__init__.py for options
@@ -244,7 +252,7 @@ class FreezeThawModel:
     def _predict(self, test_x, test_lcs):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             return self.surrogate_model.predict(test_x)
-        elif self.surrogate_model_name in ["deep_gp", "pfn"]:
+        elif self.surrogate_model_name in ["deep_gp", "pfn", "dpl"]:
             return self.surrogate_model.predict(test_x, test_lcs)
         else:
             # check neps/optimizers/bayesian_optimization/models/__init__.py for options
@@ -256,19 +264,47 @@ class FreezeThawModel:
         self,
         pipeline_space,
         surrogate_model_args,
-        **kwargs,
+        **kwargs,  # pylint: disable=unused-argument
     ):
         self.pipeline_space = pipeline_space
         self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
+        if self.surrogate_model_name == "dpl":
+            self.surrogate_model_args.update(
+                {"pipeline_space": self.pipeline_space,
+                 "observed_data": self.observed_configs}
+            )
+            self.surrogate_model = instance_from_map(
+                SurrogateModelMapping,
+                self.surrogate_model_name,
+                name="surrogate model",
+                kwargs=self.surrogate_model_args,
+            )
+
         # only to handle tabular spaces
         if self.pipeline_space.has_tabular:
             if self.surrogate_model_name in ["deep_gp", "pfn"]:
                 self.surrogate_model_args.update(
                     {"pipeline_space": self.pipeline_space.raw_tabular_space}
                 )
+            elif self.surrogate_model_name == "dpl":
+                self.surrogate_model_args.update(
+                    {"pipeline_space": self.pipeline_space,
+                    "observed_data": self.observed_configs}
+                )
             # instantiate the surrogate model, again, with the new pipeline space
+            self.surrogate_model = instance_from_map(
+                SurrogateModelMapping,
+                self.surrogate_model_name,
+                name="surrogate model",
+                kwargs=self.surrogate_model_args,
+            )
+        elif self.surrogate_model_name == "dpl":
+            self.surrogate_model_args.update(
+                {"pipeline_space": self.pipeline_space,
+                 "observed_data": self.observed_configs}
+            )
             self.surrogate_model = instance_from_map(
                 SurrogateModelMapping,
                 self.surrogate_model_name,
@@ -286,9 +322,7 @@ class FreezeThawModel:
 
         if decay_t is None:
             decay_t = len(train_x)
-        train_x, train_y, train_lcs = self._fantasize_pending(
-            train_x, train_y, pending_x
-        )
+        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
         self._fit(train_x, train_y, train_lcs)
 
         return self.surrogate_model, decay_t
@@ -302,7 +336,7 @@ class PFNSurrogate(FreezeThawModel):
         self.train_x = None
         self.train_y = None
 
-    def _fit(self, *args):
+    def _fit(self, *args):  # pylint: disable=unused-argument
         assert self.surrogate_model_name == "pfn"
         self.preprocess_training_set()
         self.surrogate_model.fit(self.train_x, self.train_y)
@@ -324,6 +358,8 @@ class PFNSurrogate(FreezeThawModel):
         configs, idxs, performances = self.observed_configs.get_tokenized_data(
             self.observed_configs.df.copy().assign(config=_configs)
         )
+        idxs = idxs.astype(float)
+        idxs[:, 1] = idxs[:, 1] / _configs[0].fidelity.upper
         # TODO: account for fantasization
         self.train_x = torch.Tensor(np.hstack([idxs, configs])).to(device)
         self.train_y = torch.Tensor(performances).to(device)

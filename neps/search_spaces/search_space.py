@@ -612,6 +612,13 @@ class SearchSpace(Mapping[str, Any]):
 
             Does not support graph parameters currently.
 
+        !!! note "TODO"
+
+            Include default hyperparameters in the grid.
+            If all HPs have a `default` then add a single configuration.
+            If only partial HPs have defaults then add all combinations of defaults, but only to 
+                the end of the list of configs.
+
         Args:
             size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
             include_endpoints: Whether to include the endpoints of the grid.
@@ -878,3 +885,17 @@ class SearchSpace(Mapping[str, Any]):
                 return False
 
         return True
+
+    def update_hp_values(self, new_values: dict[str, Any]) -> None:
+        """Update the hyperparameter values with new values.
+
+        Args:
+            new_values: The new values to set for the hyperparameters.
+        """
+        _hp_dict = self.hp_values()
+        _intersect = set(_hp_dict.keys()) & set(new_values.keys())
+        assert len(_intersect) == len(new_values), \
+            "All hyperparameters must be present! "\
+            f"{set(_hp_dict.keys()) - set(new_values.keys())} are missing"
+        _hp_dict.update(new_values)
+        self.set_hyperparameters_from_dict(_hp_dict)
