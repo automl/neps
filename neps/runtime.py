@@ -26,6 +26,7 @@ from neps.exceptions import (
     NePSError,
     VersionMismatchError,
     WorkerFailedToGetPendingTrialsError,
+    WorkerRaiseError,
 )
 from neps.state._eval import evaluate_trial
 from neps.state.filebased import create_or_load_filebased_neps_state
@@ -205,15 +206,27 @@ class DefaultWorker(Generic[Loc]):
             OnErrorPossibilities.STOP_WORKER_ERROR,
             OnErrorPossibilities.STOP_ANY_ERROR,
         ):
+            msg = (
+                "Error occurred while evaluating a configuration with this worker and"
+                f" the worker is set to stop with {self.settings.on_error}."
+                "\n"
+                "\n"
+                "If this was a bug in the evaluation code while you were developing your"
+                " pipeline and you have set ignore_errors=True, please delete"
+                " your results folder and fix the error before re-running."
+                "\n"
+                "If this is an issue specifically with the configuration, considering"
+                " setting `ignore_errors=False` to allow the worker to continue"
+                " evaluating other configurations, even if this one failed."
+                "\n"
+                "\n"
+            )
             if self.settings.on_error in (
                 OnErrorPossibilities.RAISE_WORKER_ERROR,
                 OnErrorPossibilities.RAISE_ANY_ERROR,
             ):
-                raise error_from_this_worker
-            return (
-                "Error occurred while evaluating a configuration with this worker and"
-                f" the worker is set to stop with {self.settings.on_error}."
-            )
+                raise WorkerRaiseError(msg) from error_from_this_worker
+            return msg
 
         if (
             self.settings.max_evaluations_for_worker is not None
@@ -265,14 +278,23 @@ class DefaultWorker(Generic[Loc]):
         ):
             err = self.state._shared_errors.synced().latest_err_as_raisable()
             if err is not None:
-                if self.settings.on_error == OnErrorPossibilities.RAISE_ANY_ERROR:
-                    raise err
-
-                return (
+                msg = (
                     "An error occurred in another worker and this worker is set to stop"
                     f" with {self.settings.on_error}."
-                    "\n To allow more evaluations, use a different stopping criterion."
+                    "\n"
+                    "If this was a bug in the evaluation code while you were developing"
+                    " your pipeline and you have set ignore_errors=True, please delete"
+                    " your results folder and fix the error before re-running."
+                    "\n"
+                    "If this is an issue specifically with the configuration, considering"
+                    " setting `ignore_errors=False` to allow the worker to continue"
+                    " evaluating other configurations, even if any worker fails."
+                    "\n"
                 )
+                if self.settings.on_error == OnErrorPossibilities.RAISE_ANY_ERROR:
+                    raise WorkerRaiseError(msg) from err
+
+                return msg
 
         # If there are no global stopping criterion, we can no just return early.
         if (
