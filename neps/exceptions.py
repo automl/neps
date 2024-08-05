@@ -45,3 +45,10 @@ class TrialNotFoundError(VersionedResourceDoesNotExistsError):
 
 class WorkerFailedToGetPendingTrialsError(NePSError):
     """Raised when a worker failed to get pending trials."""
+
+
+class WorkerRaiseError(NePSError):
+    """Raised from a worker when an error is raised.
+
+    Includes additional information on how to recover
+    """
