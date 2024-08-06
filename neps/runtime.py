@@ -23,6 +23,8 @@ from typing import (
     TypeVar,
 )
 
+from pandas.core.common import contextlib
+
 from neps.exceptions import (
     NePSError,
     VersionMismatchError,
@@ -50,6 +52,7 @@ SIGNALS_TO_HANDLE_IF_AVAILABLE = [
     "SIGINT",
     "SIGTERM",
     "CTRL_C_EVENT",
+    "CTRL_BREAK_EVENT",
 ]
 
 
@@ -347,18 +350,22 @@ class DefaultWorker(Generic[Loc]):
 
         return False
 
-    def run(self) -> None:  # noqa: C901, PLR0915, PLR0912
+    def _set_signal_handlers(self) -> None:
+        for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
+            if hasattr(signal.Signals, name):
+                sig = getattr(signal.Signals, name)
+                # HACK: Despite what python documentation says, the existance of a signal
+                # is not enough to guarantee that it can be caught.
+                with contextlib.suppress(ValueError):
+                    signal.signal(sig, self._emergency_cleanup)
+
+    def run(self) -> None:  # noqa: C901, PLR0915
         """Run the worker.
 
         Will keep running until one of the criterion defined by the `WorkerSettings`
         is met.
         """
-        for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
-            if hasattr(signal.Signals, name):
-                sig = getattr(signal.Signals, name)
-                signal.signal(sig, self._emergency_cleanup)
-                signal.signal(sig, self._emergency_cleanup)
-
+        self._set_signal_handlers()
         _set_workers_neps_state(self.state)
 
         logger.info("Launching NePS")

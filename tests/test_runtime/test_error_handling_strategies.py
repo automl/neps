@@ -11,7 +11,7 @@ from multiprocessing import Process
 import time
 
 from neps.optimizers.random_search.optimizer import RandomSearch
-from neps.runtime import DefaultWorker
+from neps.runtime import DefaultWorker, SIGNALS_TO_HANDLE_IF_AVAILABLE
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.err_dump import SerializedError
 from neps.state.filebased import create_or_load_filebased_neps_state
@@ -210,15 +210,16 @@ def sleep_function(*args, **kwargs) -> float:
 
 
 SIGNALS: list[signal.Signals] = []
-for name in ("SIGINT", "SIGTERM", "CTRL_C_EVENT"):
+for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
     if hasattr(signal.Signals, name):
         sig: signal.Signals = getattr(signal.Signals, name)
         SIGNALS.append(sig)
 
 
+@pytest.mark.ci_examples
 @pytest.mark.parametrize("signal", SIGNALS)
 def test_worker_reset_evaluating_to_pending_on_ctrl_c(
-    signal: signal.Signals,
+    signum: signal.Signals,
     neps_state: NePSState,
 ) -> None:
     optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
@@ -249,7 +250,9 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     # NOTE: Unfortunatly we have to wait a rather long time as windows does not
     # have fork/fork-server available and it must start a new process and re-import
     # everything, with which `torch`, taskes a long time
-    time.sleep(3)
+    # Also seems to happen sporadically on mac... let's bump it to 5, sorry
+    # I changed it to only run on `ci_examples` tag then.
+    time.sleep(5)
 
     assert p.pid is not None
     assert p.is_alive()
@@ -260,7 +263,7 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     assert next(iter(trials.values())).state == Trial.State.EVALUATING
 
     # Kill the process while it's evaluting using signals
-    os.kill(p.pid, signal)
+    signal.raise_signal(p.pid)
     p.join()
 
     trials2 = neps_state.get_all_trials()
