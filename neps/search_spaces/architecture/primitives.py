@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
 
 import torch
@@ -5,8 +7,7 @@ from torch import nn
 
 
 class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
-    """
-    Use this class when creating new operations for edges.
+    """Use this class when creating new operations for edges.
 
     This is required because we are agnostic to operations
     at the edges. As a consequence, they can contain subgraphs
@@ -24,15 +25,12 @@ class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
 
     @abstractmethod
     def forward(self, x):
-        """
-        The forward processing of the operation.
-        """
+        """The forward processing of the operation."""
         raise NotImplementedError
 
     @abstractmethod
     def get_embedded_ops(self):
-        """
-        Return any embedded ops so that they can be
+        """Return any embedded ops so that they can be
         analysed whether they contain a child graph, e.g.
         a 'motif' in the hierachical search space.
 
@@ -55,9 +53,7 @@ class AbstractPrimitive(_AbstractPrimitive):
 
 
 class Identity(AbstractPrimitive):
-    """
-    An implementation of the Identity operation.
-    """
+    """An implementation of the Identity operation."""
 
     def __init__(self, **kwargs):
         super().__init__(locals())
@@ -67,14 +63,12 @@ class Identity(AbstractPrimitive):
 
 
 class Zero(AbstractPrimitive):
-    """
-    Implementation of the zero operation. It removes
+    """Implementation of the zero operation. It removes
     the connection by multiplying its input with zero.
     """
 
     def __init__(self, stride, **kwargs):
-        """
-        When setting stride > 1 then it is assumed that the
+        """When setting stride > 1 then it is assumed that the
         channels must be doubled.
         """
         super().__init__(locals())
@@ -91,14 +85,12 @@ class Zero(AbstractPrimitive):
 
 
 class Zero1x1(AbstractPrimitive):
-    """
-    Implementation of the zero operation. It removes
+    """Implementation of the zero operation. It removes
     the connection by multiplying its input with zero.
     """
 
     def __init__(self, stride, **kwargs):
-        """
-        When setting stride > 1 then it is assumed that the
+        """When setting stride > 1 then it is assumed that the
         channels must be doubled.
         """
         super().__init__(locals())
@@ -116,8 +108,7 @@ class Zero1x1(AbstractPrimitive):
 
 
 class SepConv(AbstractPrimitive):
-    """
-    Implementation of Separable convolution operation as
+    """Implementation of Separable convolution operation as
     in the DARTS paper, i.e. 2 sepconv directly after another.
     """
 
@@ -170,8 +161,7 @@ class SepConv(AbstractPrimitive):
 
 
 class DilConv(AbstractPrimitive):
-    """
-    Implementation of a dilated separable convolution as
+    """Implementation of a dilated separable convolution as
     used in the DARTS paper.
     """
 
@@ -216,8 +206,7 @@ class DilConv(AbstractPrimitive):
 
 
 class Stem(AbstractPrimitive):
-    """
-    This is used as an initial layer directly after the
+    """This is used as an initial layer directly after the
     image input.
     """
 
@@ -235,8 +224,7 @@ class Stem(AbstractPrimitive):
 
 
 class Sequential(AbstractPrimitive):
-    """
-    Implementation of `torch.nn.Sequential` to be used
+    """Implementation of `torch.nn.Sequential` to be used
     as op on edges.
     """
 
@@ -262,13 +250,11 @@ class MaxPool(AbstractPrimitive):
         self.maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=1)
 
     def forward(self, x):
-        x = self.maxpool(x)
-        return x
+        return self.maxpool(x)
 
 
 class MaxPool1x1(AbstractPrimitive):
-    """
-    Implementation of MaxPool with an optional 1x1 convolution
+    """Implementation of MaxPool with an optional 1x1 convolution
     in case stride > 1. The 1x1 convolution is required to increase
     the number of channels.
     """
@@ -285,7 +271,8 @@ class MaxPool1x1(AbstractPrimitive):
         self.stride = stride
         self.maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=1)
         if stride > 1:
-            assert C_in is not None and C_out is not None
+            assert C_in is not None
+            assert C_out is not None
             self.conv = nn.Conv2d(C_in, C_out, 1, stride=1, padding=0, bias=False)
             self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
@@ -298,9 +285,7 @@ class MaxPool1x1(AbstractPrimitive):
 
 
 class AvgPool(AbstractPrimitive):
-    """
-    Implementation of Avergae Pooling.
-    """
+    """Implementation of Avergae Pooling."""
 
     def __init__(self, kernel_size, stride, **kwargs):
         stride = int(stride)
@@ -308,13 +293,11 @@ class AvgPool(AbstractPrimitive):
         self.avgpool = nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False)
 
     def forward(self, x):
-        x = self.avgpool(x)
-        return x
+        return self.avgpool(x)
 
 
 class AvgPool1x1(AbstractPrimitive):
-    """
-    Implementation of Avergae Pooling with an optional
+    """Implementation of Avergae Pooling with an optional
     1x1 convolution afterwards. The convolution is required
     to increase the number of channels if stride > 1.
     """
@@ -333,7 +316,8 @@ class AvgPool1x1(AbstractPrimitive):
         self.stride = int(stride)
         self.avgpool = nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False)
         if stride > 1:
-            assert C_in is not None and C_out is not None
+            assert C_in is not None
+            assert C_out is not None
             self.conv = nn.Conv2d(C_in, C_out, 1, stride=1, padding=0, bias=False)
             self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
@@ -370,9 +354,7 @@ class ReLUConvBN(AbstractPrimitive):
 
 
 class ConvBnReLU(AbstractPrimitive):
-    """
-    Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation.
-    """
+    """Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation."""
 
     def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
         super().__init__(locals())
@@ -395,9 +377,7 @@ class ConvBnReLU(AbstractPrimitive):
 
 
 class ConvBn(AbstractPrimitive):
-    """
-    Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation.
-    """
+    """Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation."""
 
     def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
         super().__init__(locals())
@@ -419,14 +399,11 @@ class ConvBn(AbstractPrimitive):
 
 
 class Concat1x1(AbstractPrimitive):
-    """
-    Implementation of the channel-wise concatination followed by a 1x1 convolution
+    """Implementation of the channel-wise concatination followed by a 1x1 convolution
     to retain the channel dimension.
     """
 
-    def __init__(
-        self, num_in_edges, C_out, affine=True, **kwargs
-    ):
+    def __init__(self, num_in_edges, C_out, affine=True, **kwargs):
         super().__init__(locals())
         self.conv = nn.Conv2d(
             num_in_edges * C_out, C_out, kernel_size=1, stride=1, padding=0, bias=False
@@ -434,22 +411,18 @@ class Concat1x1(AbstractPrimitive):
         self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
     def forward(self, x):
-        """
-        Expecting a list of input tensors. Stacking them channel-wise
-        and applying 1x1 conv
+        """Expecting a list of input tensors. Stacking them channel-wise
+        and applying 1x1 conv.
         """
         x = torch.cat(x, dim=1)
         x = self.conv(x)
-        x = self.bn(x)
-        return x
+        return self.bn(x)
 
 
 class ResNetBasicblock(AbstractPrimitive):
-    def __init__(
-        self, C_in, C_out, stride, affine=True, **kwargs
-    ):
+    def __init__(self, C_in, C_out, stride, affine=True, **kwargs):
         super().__init__(locals())
-        assert stride == 1 or stride == 2, f"invalid stride {stride}"
+        assert stride in (1, 2), f"invalid stride {stride}"
         self.conv_a = ReLUConvBN(C_in, C_out, 3, stride)
         self.conv_b = ReLUConvBN(C_out, C_out, 3)
         if stride == 2:

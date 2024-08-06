@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import random
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 
-from .cfg import Grammar
+if TYPE_CHECKING:
+    from .cfg import Grammar
 
 
 def simple_crossover(
@@ -12,7 +15,7 @@ def simple_crossover(
     grammar: Grammar,
     patience: int = 50,
     return_crossover_subtrees: bool = False,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     if return_crossover_subtrees:
         return grammar.crossover(
             parent1=parent1,
@@ -28,10 +31,10 @@ def simple_crossover(
 
 
 def repetitive_search_space_crossover(
-    base_parent: Tuple[str, str],
-    motif_parents: Tuple[List[str], List[str]],
+    base_parent: tuple[str, str],
+    motif_parents: tuple[list[str], list[str]],
     base_grammar: Grammar,
-    motif_grammars: List[Grammar],
+    motif_grammars: list[Grammar],
     terminal_to_sublanguage_map: dict,
     number_of_repetitive_motifs_per_grammar: list,
     inner_crossover_strategy: Callable,
@@ -139,38 +142,37 @@ def repetitive_search_space_crossover(
         child2_string_trees[0] = (
             subtrees_child2[0] + subtrees_child1[1] + subtrees_child2[2]
         )
+    elif multiple_repetitive:
+        # TODO more general procedure
+        coin_toss = random.randint(1, len(child1_string_trees) - 1)
+        motif_grammar_idx = next(
+            i
+            for i, x in enumerate(np.cumsum(number_of_repetitive_motifs_per_grammar))
+            if x >= coin_toss
+        )
+        (
+            child1_string_trees[coin_toss],
+            child2_string_trees[coin_toss],
+        ) = inner_crossover_strategy(
+            child1_string_trees[coin_toss],
+            child2_string_trees[coin_toss],
+            motif_grammars[motif_grammar_idx],
+        )
     else:
-        if multiple_repetitive:
-            # TODO more general procedure
-            coin_toss = random.randint(1, len(child1_string_trees) - 1)
-            motif_grammar_idx = next(
-                i
-                for i, x in enumerate(np.cumsum(number_of_repetitive_motifs_per_grammar))
-                if x >= coin_toss
-            )
-            (
-                child1_string_trees[coin_toss],
-                child2_string_trees[coin_toss],
-            ) = inner_crossover_strategy(
-                child1_string_trees[coin_toss],
-                child2_string_trees[coin_toss],
-                motif_grammars[motif_grammar_idx],
-            )
-        else:
-            parent1_random_draw = random.randint(
-                0, len(parent1_potential_motif_candidates) - 1
-            )
-            parent2_random_draw = random.randint(
-                0, len(parent2_potential_motif_candidates) - 1
-            )
-            (
-                child1_string_trees[parent1_random_draw + 1],
-                child2_string_trees[parent2_random_draw + 1],
-            ) = inner_crossover_strategy(
-                child1_string_trees[parent1_random_draw + 1],
-                child2_string_trees[parent2_random_draw + 1],
-                motif_grammars[0],
-            )
+        parent1_random_draw = random.randint(
+            0, len(parent1_potential_motif_candidates) - 1
+        )
+        parent2_random_draw = random.randint(
+            0, len(parent2_potential_motif_candidates) - 1
+        )
+        (
+            child1_string_trees[parent1_random_draw + 1],
+            child2_string_trees[parent2_random_draw + 1],
+        ) = inner_crossover_strategy(
+            child1_string_trees[parent1_random_draw + 1],
+            child2_string_trees[parent2_random_draw + 1],
+            motif_grammars[0],
+        )
 
     if any(not st for st in child1_string_trees) or any(
         not st for st in child2_string_trees

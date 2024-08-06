@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 import queue
 from abc import ABCMeta, abstractmethod
@@ -7,21 +9,23 @@ from typing import Callable
 from .graph import Graph
 
 
-class AbstractTopology(Graph, metaclass=ABCMeta):
-    edge_list: list = []
+class AbstractTopology(Graph, metaclass=ABCMeta):  # noqa: D101
+    edge_list: list = []  # noqa: RUF012
 
-    def __init__(self, name: str = None, scope: str = None, merge_fn: Callable = sum):
+    def __init__(  # noqa: D107
+        self, name: str | None = None, scope: str | None = None, merge_fn: Callable = sum
+    ):
         super().__init__(name=name, scope=scope)
 
         self.merge_fn = merge_fn
 
-    def mutate(self):
+    def mutate(self):  # noqa: D102
         pass
 
-    def sample(self):
+    def sample(self):  # noqa: D102
         pass
 
-    def create_graph(self, vals: dict):
+    def create_graph(self, vals: dict):  # noqa: C901, D102
         def get_args_and_defaults(func):
             signature = inspect.signature(func)
             return list(signature.parameters.keys()), {
@@ -36,11 +40,11 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
             args: dict = {}
             arg_names, default_args = get_args_and_defaults(op)
             for arg_name in arg_names:
-                if arg_name == "self" or arg_name == "kwargs" or arg_name in args.keys():
+                if arg_name in ("self", "kwargs") or arg_name in args:
                     continue
-                if arg_name in val.keys():
+                if arg_name in val:
                     args[arg_name] = val[arg_name]
-                elif arg_name in default_args.keys():
+                elif arg_name in default_args:
                     args[arg_name] = default_args[arg_name]
                 else:
                     args[arg_name] = 42
@@ -57,24 +61,23 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
             if isinstance(val, dict):
                 _val = val
                 _val["op_name"] = get_op_name_from_dict(val)
+            elif isinstance(val, int):  # for synthetic benchmarks
+                _val = {"op": val, "op_name": val}
+            elif hasattr(val, "get_op_name"):
+                _val = {"op": val, "op_name": val.get_op_name}
+            elif callable(val):
+                _val = {"op": val, "op_name": val.__name__}
             else:
-                if isinstance(val, int):  # for synthetic benchmarks
-                    _val = {"op": val, "op_name": val}
-                elif hasattr(val, "get_op_name"):
-                    _val = {"op": val, "op_name": val.get_op_name}
-                elif callable(val):
-                    _val = {"op": val, "op_name": val.__name__}
-                else:
-                    raise Exception(f"Cannot extract op name from {val}")
+                raise Exception(f"Cannot extract op name from {val}")
 
             self.edges[u, v].update(_val)
 
     @property
-    def get_op_name(self):
+    def get_op_name(self):  # noqa: D102
         return type(self).__name__
 
-    def __call__(self, x):
-        cur_node_idx = [node for node in self.nodes if self.in_degree(node) == 0][0]
+    def __call__(self, x):  # noqa: D102
+        cur_node_idx = next(node for node in self.nodes if self.in_degree(node) == 0)
         predecessor_inputs = {cur_node_idx: [x]}
         next_successors = queue.Queue()
         next_successors.put(cur_node_idx)
@@ -103,18 +106,20 @@ class AbstractTopology(Graph, metaclass=ABCMeta):
         return inputs
 
 
-class AbstractVariableTopology(AbstractTopology):
-    def __init__(self, name: str = None, scope: str = None, **kwargs):
+class AbstractVariableTopology(AbstractTopology):  # noqa: D101
+    def __init__(  # noqa: D107
+        self, name: str | None = None, scope: str | None = None, **kwargs
+    ):
         super().__init__(name, scope, **kwargs)
 
     @staticmethod
     @abstractmethod
-    def get_edge_list(**kwargs):
+    def get_edge_list(**kwargs):  # noqa: D102
         raise NotImplementedError
 
 
 class _SequentialNEdge(AbstractTopology):
-    edge_list: list = []
+    edge_list: list = []  # noqa: RUF012
 
     def __init__(self, *edge_vals, number_of_edges: int, **kwargs):
         super().__init__(**kwargs)
@@ -132,18 +137,18 @@ class _SequentialNEdge(AbstractTopology):
 LinearNEdge = _SequentialNEdge
 
 
-def get_sequential_n_edge(number_of_edges: int):
+def get_sequential_n_edge(number_of_edges: int):  # noqa: D103
     return partial(_SequentialNEdge, number_of_edges=number_of_edges)
 
 
-class Residual(AbstractTopology):
-    edge_list = [
+class Residual(AbstractTopology):  # noqa: D101
+    edge_list = [  # noqa: RUF012
         (1, 2),
         (1, 3),
         (2, 3),
     ]
 
-    def __init__(self, *edge_vals, **kwargs):
+    def __init__(self, *edge_vals, **kwargs):  # noqa: D107
         super().__init__(**kwargs)
 
         self.name = "residual"
@@ -151,10 +156,10 @@ class Residual(AbstractTopology):
         self.set_scope(self.name)
 
 
-class Diamond(AbstractTopology):
-    edge_list = [(1, 2), (1, 3), (2, 4), (3, 4)]
+class Diamond(AbstractTopology):  # noqa: D101
+    edge_list = [(1, 2), (1, 3), (2, 4), (3, 4)]  # noqa: RUF012
 
-    def __init__(self, *edge_vals, **kwargs):
+    def __init__(self, *edge_vals, **kwargs):  # noqa: D107
         super().__init__(**kwargs)
 
         self.name = "diamond"
@@ -162,10 +167,10 @@ class Diamond(AbstractTopology):
         self.set_scope(self.name)
 
 
-class DiamondMid(AbstractTopology):
-    edge_list = [(1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]
+class DiamondMid(AbstractTopology):  # noqa: D101
+    edge_list = [(1, 2), (1, 3), (2, 3), (2, 4), (3, 4)]  # noqa: RUF012
 
-    def __init__(self, *edge_vals, **kwargs):
+    def __init__(self, *edge_vals, **kwargs):  # noqa: D107
         super().__init__(**kwargs)
 
         self.name = "diamond_mid"
@@ -174,7 +179,7 @@ class DiamondMid(AbstractTopology):
 
 
 class _DenseNNodeDAG(AbstractTopology):
-    edge_list: list = []
+    edge_list: list = []  # noqa: RUF012
 
     def __init__(self, *edge_vals, number_of_nodes: int, **kwargs):
         super().__init__(**kwargs)
@@ -190,5 +195,5 @@ class _DenseNNodeDAG(AbstractTopology):
         return [(i + 1, j + 1) for j in range(number_of_nodes) for i in range(j)]
 
 
-def get_dense_n_node_dag(number_of_nodes: int):
+def get_dense_n_node_dag(number_of_nodes: int):  # noqa: D103
     return partial(_DenseNNodeDAG, number_of_nodes=number_of_nodes)

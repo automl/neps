@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import random
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable
 
-from .cfg import Grammar
+if TYPE_CHECKING:
+    from .cfg import Grammar
 
 
-def simple_mutate(parent_string_tree: str, grammar: Grammar) -> Tuple[str, bool]:
+def simple_mutate(parent_string_tree: str, grammar: Grammar) -> tuple[str, bool]:
     # works if there is only one grammar
     # randomly choose a subtree from the parent and replace
     # with a new randomly generated subtree
@@ -23,13 +26,13 @@ def bananas_mutate(
     parent_string_tree: str,
     grammar: Grammar,
     mutation_rate: float = 1.0,
-    mutation_prob: float = None,
+    mutation_prob: float | None = None,
     patience: int = 50,
-) -> Tuple[str, bool]:
+) -> tuple[str, bool]:
     split_tree = parent_string_tree.split(" ")
     swappable_indices = [
         i
-        for i in range(0, len(split_tree))
+        for i in range(len(split_tree))
         if split_tree[i][1:] in grammar.swappable_nonterminals
     ]
     _mutation_prob = (
@@ -54,7 +57,7 @@ def bananas_mutate(
             split_tree = child_string_tree.split(" ")
             swappable_indices = [
                 i
-                for i in range(0, len(split_tree))
+                for i in range(len(split_tree))
                 if split_tree[i][1:] in grammar.swappable_nonterminals
             ]
             _mutation_prob = (
@@ -69,16 +72,16 @@ def bananas_mutate(
 
 def repetitive_search_space_mutation(
     base_parent: str,
-    motif_parents: List[str],
+    motif_parents: list[str],
     base_grammar: Grammar,
-    motif_grammars: List[Grammar],
+    motif_grammars: list[Grammar],
     terminal_to_sublanguage_map: dict,
     number_of_repetitive_motifs_per_grammar: list,
     inner_mutation_strategy: Callable,
     mutation_rate: float = 1.0,
-    mutation_prob: float = None,
+    mutation_prob: float | None = None,
     fixed_macro_parent: bool = False,
-) -> Tuple[List[str], List[bool]]:
+) -> tuple[list[str], list[bool]]:
     def _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map):
         return [
             i
@@ -123,15 +126,5 @@ def repetitive_search_space_mutation(
             else:
                 child_string_trees.append((motif_parents[parent_string_idx], True))
             parent_string_idx += 1
-    # child_string_trees.extend(
-    #     [
-    #         inner_mutation_strategy(parent_string_tree, grammar)
-    #         if i in indices and random.random() < mutation_prob
-    #         else (parent_string_tree, True)
-    #         for i, (parent_string_tree, grammar) in enumerate(
-    #             zip(motif_parents, motif_grammars)
-    #         )
-    #     ]
-    # )
 
     return [c[0] for c in child_string_trees], [c[1] for c in child_string_trees]
