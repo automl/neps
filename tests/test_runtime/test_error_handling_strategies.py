@@ -130,14 +130,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     assert len(neps_state.get_errors()) == 1
 
 
-@pytest.mark.parametrize(
-    "on_error",
-    [OnErrorPossibilities.IGNORE, OnErrorPossibilities.RAISE_WORKER_ERROR],
-)
-def test_worker_does_not_raise_when_error_in_other_worker(
-    neps_state: NePSState,
-    on_error: OnErrorPossibilities,
-) -> None:
+def test_worker_does_not_raise_when_error_in_other_worker(neps_state: NePSState) -> None:
     optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_WORKER_ERROR,  # <- Highlight
