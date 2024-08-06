@@ -239,9 +239,7 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     )
 
     # Use multiprocessing.Process
-    p = multiprocessing.Process(
-        target=worker1.run, args=(neps_state, optimizer, settings)
-    )
+    p = multiprocessing.Process(target=worker1.run)
     p.start()
 
     time.sleep(5)
