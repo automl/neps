@@ -448,6 +448,7 @@ class DefaultWorker(Generic[Loc]):
             except KeyboardInterrupt as e:
                 # This throws and we have stopped the worker at this point
                 self._emergency_cleanup(signum=signal.SIGINT, frame=None, rethrow=e)
+                return
 
             evaluation_duration = evaluated_trial.metadata.evaluation_duration
             assert evaluation_duration is not None

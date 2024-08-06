@@ -242,11 +242,7 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     p = multiprocessing.Process(target=worker1.run)
     p.start()
 
-    # Windows is exceptionally slow at starting processes
-    # due to it's spawn and the fact we import torch freshly in
-    # the worker... hence we give it 10 seconds to get there and
-    # only run this test in CI
-    time.sleep(10)
+    time.sleep(5)
     assert p.pid is not None
     assert p.is_alive()
 
