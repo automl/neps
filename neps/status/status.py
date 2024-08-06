@@ -347,13 +347,18 @@ def _save_data_to_csv(
             raise RuntimeError(f"Error during data saving: {e}") from e
 
 
-def post_run_csv(root_directory: str | Path) -> None:
+def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
     """Create CSV files summarizing the run data.
 
     Args:
         root_directory: The root directory of the NePS run.
+
+    Returns:
+        The paths to the configuration data CSV and the run data CSV.
     """
     csv_config_data, csv_rundata, csv_locker = _initiate_summary_csv(root_directory)
+    csv_config_data = Path(csv_config_data).absolute().resolve()
+    csv_rundata = Path(csv_rundata).absolute().resolve()
 
     df_config_data, df_run_data = _get_dataframes_from_summary(
         root_directory,
@@ -369,6 +374,7 @@ def post_run_csv(root_directory: str | Path) -> None:
         df_config_data,
         df_run_data,
     )
+    return csv_config_data, csv_rundata
 
 
 # TODO(eddiebergman): This function name is misleading as it doesn't get anything.
