@@ -247,7 +247,20 @@ def run(
 
     if settings.post_run_summary:
         assert settings.root_directory is not None
-        post_run_csv(settings.root_directory)
+        config_data_path, run_data_path = post_run_csv(settings.root_directory)
+        logger.info(
+            "The post run summary has been created, which is a csv file with the "
+            "output of all data in the run."
+            f"\nYou can find a csv of all the configuratins at: {config_data_path}."
+            f"\nYou can find a csv of results at: {run_data_path}."
+        )
+    else:
+        logger.info(
+            "Skipping the creation of the post run summary, which is a csv file with the "
+            " output of all data in the run."
+            "\nSet `post_run_summary=True` to enable it."
+        )
+
 
 
 def _run_args(
