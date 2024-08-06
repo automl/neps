@@ -210,7 +210,7 @@ for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
 
 
 @pytest.mark.ci_examples
-@pytest.mark.parametrize("signal", SIGNALS)
+@pytest.mark.parametrize("signum", SIGNALS)
 def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     signum: signal.Signals,
     neps_state: NePSState,
