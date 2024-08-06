@@ -46,6 +46,13 @@ def _default_worker_name() -> str:
     return f"{os.getpid()}-{isoformat}"
 
 
+SIGNALS_TO_HANDLE_IF_AVAILABLE = [
+    "SIGINT",
+    "SIGTERM",
+    "CTRL_C_EVENT",
+]
+
+
 N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 10
 N_FAILED_TO_SET_TRIAL_STATE = 10
 
@@ -340,15 +347,19 @@ class DefaultWorker(Generic[Loc]):
 
         return False
 
-    def run(self) -> None:  # noqa: C901, PLR0915
+    def run(self) -> None:  # noqa: C901, PLR0915, PLR0912
         """Run the worker.
 
         Will keep running until one of the criterion defined by the `WorkerSettings`
         is met.
         """
+        for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
+            if hasattr(signal.Signals, name):
+                sig = getattr(signal.Signals, name)
+                signal.signal(sig, self._emergency_cleanup)
+                signal.signal(sig, self._emergency_cleanup)
+
         _set_workers_neps_state(self.state)
-        signal.signal(signal.SIGINT, self._emergency_cleanup)
-        signal.signal(signal.SIGTERM, self._emergency_cleanup)
 
         logger.info("Launching NePS")
 

@@ -246,7 +246,11 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     p = Process(target=worker1.run)
     p.start()
 
-    time.sleep(0.5)
+    # NOTE: Unfortunatly we have to wait a rather long time as windows does not
+    # have fork/fork-server available and it must start a new process and re-import
+    # everything, with which `torch`, taskes a long time
+    time.sleep(3)
+
     assert p.pid is not None
     assert p.is_alive()
 
