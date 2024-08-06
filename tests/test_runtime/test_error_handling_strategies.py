@@ -263,7 +263,7 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     assert next(iter(trials.values())).state == Trial.State.EVALUATING
 
     # Kill the process while it's evaluting using signals
-    signal.raise_signal(p.pid)
+    os.kill(p.pid, signum)
     p.join()
 
     trials2 = neps_state.get_all_trials()
