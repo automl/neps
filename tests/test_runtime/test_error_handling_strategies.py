@@ -7,7 +7,8 @@ from pandas.core.common import contextlib
 import signal
 from pathlib import Path
 from pytest_cases import fixture, parametrize
-from multiprocessing import Process
+import multiprocessing
+import psutil
 import time
 
 from neps.optimizers.random_search.optimizer import RandomSearch
@@ -237,16 +238,13 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
         _pre_sample_hooks=None,
     )
 
-    p = Process(target=worker1.run)
+    # Use multiprocessing.Process
+    p = multiprocessing.Process(
+        target=worker1.run, args=(neps_state, optimizer, settings)
+    )
     p.start()
 
-    # NOTE: Unfortunatly we have to wait a rather long time as windows does not
-    # have fork/fork-server available and it must start a new process and re-import
-    # everything, with which `torch`, taskes a long time
-    # Also seems to happen sporadically on mac... let's bump it to 5, sorry
-    # I changed it to only run on `ci_examples` tag then.
     time.sleep(5)
-
     assert p.pid is not None
     assert p.is_alive()
 
@@ -255,10 +253,16 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     assert len(trials) == 1
     assert next(iter(trials.values())).state == Trial.State.EVALUATING
 
-    # Kill the process while it's evaluting using signals
-    os.kill(p.pid, signum)
-    p.join()
+    # Kill the process while it's evaluating using signals
+    process = psutil.Process(p.pid)
+    process.send_signal(signum)
+    p.join(timeout=10)  # Wait for the process to terminate
 
-    trials2 = neps_state.get_all_trials()
-    assert len(trials2) == 1
-    assert next(iter(trials2.values())).state == Trial.State.PENDING
+    if p.is_alive():
+        p.terminate()  # Force terminate if it's still alive
+        p.join()
+        pytest.fail("Worker did not terminate after receiving signal!")
+    else:
+        trials2 = neps_state.get_all_trials()
+        assert len(trials2) == 1
+        assert next(iter(trials2.values())).state == Trial.State.PENDING
