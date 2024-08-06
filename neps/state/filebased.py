@@ -179,7 +179,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
             TrialRepo.TrialAlreadyExistsError: If the trial already exists in the
                 repository.
         """
-        config_path = self.directory / f"config_{trial.metadata.id}"
+        config_path = self.directory.absolute().resolve() / f"config_{trial.metadata.id}"
         if config_path.exists():
             raise TrialRepo.TrialAlreadyExistsError(
                 f"Trial '{trial.metadata.id}' already exists as '{config_path}'."
