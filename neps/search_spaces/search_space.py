@@ -272,7 +272,7 @@ class SearchSpace(Mapping[str, Any]):
     def compute_prior(self, *, log: bool = False, ignore_fidelity: bool = False) -> float:
         """Compute the prior probability of the search space.
 
-        This is better know as the `pdf` of the configuraiton in the search space, or a
+        This is better know as the `pdf` of the configuration in the search space, or a
         relative measure of how likely this configuration is under the search space.
 
         Args:
@@ -480,7 +480,7 @@ class SearchSpace(Mapping[str, Any]):
         *,
         ignore_fidelity: bool = False,
     ) -> dict[Literal["continuous", "categorical", "graphs"], list[Any]]:
-        """Get the normalized values for each hyperparameter in the configuraiton.
+        """Get the normalized values for each hyperparameter in the configuration.
 
         Args:
             ignore_fidelity: Whether to ignore the fidelity parameter when getting the

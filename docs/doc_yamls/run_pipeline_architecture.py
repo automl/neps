@@ -9,16 +9,6 @@ def example_pipeline(architecture, optimizer, learning_rate):
 
     # E.g., in shape = (N, 3, 32, 32) => out shape = (N, 10)
     model = architecture.to_pytorch()
-    model = nn.Sequential(
-        nn.Conv2d(in_channels, base_channels, 3, padding=1, bias=False),
-        nn.BatchNorm2d(base_channels),
-        model,
-        nn.BatchNorm2d(base_channels * out_channels_factor),
-        nn.ReLU(inplace=True),
-        nn.AdaptiveAvgPool2d(1),
-        nn.Flatten(),
-        nn.Linear(base_channels * out_channels_factor, n_classes),
-    )
     training_loss = train_model(model, optimizer, learning_rate)
     evaluation_loss = evaluate_model(model)
     return {"loss": evaluation_loss, "training_loss": training_loss}
