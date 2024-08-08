@@ -230,40 +230,6 @@ class SearchSpace(Mapping[str, Any]):
         self.raw_tabular_space: SearchSpace | None = None
         self.has_tabular: bool = False
 
-    def set_custom_grid_space(
-        self,
-        grid_table: pd.Series | pd.DataFrame,
-        raw_space: SearchSpace | CS.ConfigurationSpace,
-    ) -> None:
-        """Set a custom grid space for the search space.
-
-        This function is used to set a custom grid space for the pipeline space.
-
-        !!! warning
-
-            The type check and the table format requirement is loose and
-            can break certain components.
-
-        Note:
-            Only to be used if a custom set of hyperparameters from the search space
-            is to be sampled or used for acquisition functions.
-        """
-        if grid_table is None or raw_space is None:
-            raise ValueError(
-                "Both grid_table and raw_space must be set!\n"
-                "A table or list of fixed configs must be supported with a "
-                "continuous space representing the type and bounds of each "
-                "hyperparameter for accurate modeling."
-            )
-
-        self.custom_grid_table = grid_table
-        self.raw_tabular_space = (
-            SearchSpace(**raw_space)
-            if not isinstance(raw_space, SearchSpace)
-            else raw_space
-        )
-        self.has_tabular = True
-
     @property
     def has_fidelity(self) -> bool:
         """Check if the search space has a fidelity parameter."""

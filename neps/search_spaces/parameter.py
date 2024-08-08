@@ -114,6 +114,10 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
     def sample_value(self) -> ValueT:
         """Sample a new value."""
 
+    # TODO: Think I can delete this,
+    # used only by SearchSpace.set_hyperparameters_from_dict
+    # There is a flag `defaults=True` which activates this call.
+    # This flag is only once activated (as a default)
     @abstractmethod
     def set_default(self, default: ValueT | None) -> None:
         """Set the default value for the hyperparameter.

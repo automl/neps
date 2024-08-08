@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, Union
+from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, TypeVar, Union
 from typing_extensions import TypeAlias
 
 import numpy as np
+import numpy.typing as npt
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -20,6 +21,9 @@ ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
 Metadata: TypeAlias = Dict[str, Any]
 ResultDict: TypeAlias = Mapping[str, Any]
+
+DType = TypeVar("DType", bound=np.generic)
+Array: TypeAlias = npt.NDArray[DType]
 
 # NOTE(eddiebergman): Getting types for scipy distributions sucks
 # this is more backwards compatible and easier to work with

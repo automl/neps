@@ -41,6 +41,7 @@ class FloatParameter(NumericalParameter[float]):
         "medium": 0.25,
         "high": 0.125,
     }
+    NORMALIZED_BOUNDS: ClassVar[tuple[float, float]] = (0.0, 1.0)
 
     def __init__(
         self,

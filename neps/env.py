@@ -87,3 +87,8 @@ GLOBAL_ERR_FILELOCK_TIMEOUT = get_env(
     parse=lambda e: None if is_nullable(e) else float(e),
     default=None,
 )
+ALLOW_LARGE_CATEGORIES = get_env(
+    "NEPS_ALLOW_LARGE_CATEGORIES",
+    parse=lambda e: False if is_nullable(e) else bool(int(e)),
+    default=False,
+)
