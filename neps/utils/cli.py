@@ -151,10 +151,10 @@ def main() -> None:
     parser_run = subparsers.add_parser("run", help="Run a neural pipeline search.")
     # Adding arguments to the 'run' subparser with defaults
     parser_run.add_argument(
-        "run_args",
+        "--run-args",
         type=str,
-        help="Path to the YAML configuration file. For CLI usage this file must include "
-        "the 'run_pipeline' settings.",
+        help="Path to the YAML configuration file.",
+        default=Default(None),
     )
     parser_run.add_argument(
         "--run-pipeline",
