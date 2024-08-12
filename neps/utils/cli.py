@@ -8,6 +8,7 @@ from pathlib import Path
 
 import neps
 from neps.api import Default
+from neps.utils.run_args import load_and_return_object
 
 
 def init_config(args: argparse.Namespace) -> None:
@@ -83,6 +84,13 @@ def run_optimization(args: argparse.Namespace) -> None:
     """Collects arguments from the parser and runs the NePS optimization.
     Args: args (argparse.Namespace): Parsed command-line arguments.
     """
+    if not isinstance(args.run_pipeline, Default):
+        module_path, function_name = args.run_pipeline.split(":")
+        run_pipeline = load_and_return_object(module_path, function_name, "run_pipeline")
+
+    else:
+        run_pipeline = args.run_pipeline
+
     kwargs = {}
     if args.searcher_kwargs:
         kwargs = parse_kv_pairs(args.searcher_kwargs)  # convert kwargs
@@ -90,6 +98,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     # Collect arguments from args and prepare them for neps.run
     options = {
         "run_args": args.run_args,
+        "run_pipeline": run_pipeline,
         "pipeline_space": args.pipeline_space,
         "root_directory": args.root_directory,
         "overwrite_working_directory": args.overwrite_working_directory,
@@ -142,11 +151,21 @@ def main() -> None:
     parser_run = subparsers.add_parser("run", help="Run a neural pipeline search.")
     # Adding arguments to the 'run' subparser with defaults
     parser_run.add_argument(
-        "run_args",
+        "--run-args",
         type=str,
-        help="Path to the YAML configuration file. For CLI usage this file must include "
-        "the 'run_pipeline' settings.",
+        help="Path to the YAML configuration file.",
+        default=Default(None),
     )
+    parser_run.add_argument(
+        "--run-pipeline",
+        type=str,
+        help="Optional: Provide the path to a Python file and a function name separated "
+        "by a colon, e.g., 'path/to/module.py:function_name'. "
+        "If provided, it overrides the run_pipeline setting from the YAML "
+        "configuration.",
+        default=Default(None),
+    )
+
     parser_run.add_argument(
         "--pipeline-space",
         type=str,
