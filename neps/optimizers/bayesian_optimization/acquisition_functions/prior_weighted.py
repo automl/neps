@@ -51,9 +51,13 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
             decay_t = kwargs.pop("decay_t")
         else:
             train_x = surrogate_model.x
-            if train_x[0].has_fidelity:
+            if train_x[0].fidelity is not None:
+                max_fidelity = train_x[0].fidelity.upper
                 decay_t = np.sum(
-                    [float(_x.fidelity.value >= _x.fidelity.upper) for _x in train_x]
+                    [
+                        float(_x.deprecated_fidelity_value() >= max_fidelity)
+                        for _x in train_x
+                    ]
                 )
             else:
                 decay_t = len(train_x)

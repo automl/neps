@@ -1,64 +1,35 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal, Any
+from typing_extensions import override
 import numpy as np
 import torch
 from torch.distributions import Normal
 
-from .base_acquisition import BaseAcquisition
+from neps.optimizers.acquisition.base import BaseAcquisition
+from neps.utils.types import Array2D, f64, Arr
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
 
 
+@dataclass
 class ComprehensiveExpectedImprovement(BaseAcquisition):
-    def __init__(
-        self,
-        augmented_ei: bool = False,
-        xi: float = 0.0,
-        in_fill: str = "best",
-        log_ei: bool = False,
-        optimize_on_max_fidelity: bool = True,
-    ):
-        """This is the graph BO version of the expected improvement
-        key differences are:
+    surrogate_model: Any
+    augmented_ei: bool = False
+    xi: float = 0.0
+    in_fill: Literal["best", "posterior"] = "best"
+    log_ei: bool = False
+    optimize_on_max_fidelity: bool = True
 
-        1. The input x2 is a networkx graph instead of a vectorial input
+    def __post_init__(self):
+        if self.in_fill not in ["best", "posterior"]:
+            raise ValueError(f"Invalid value for in_fill ({self.in_fill})")
 
-        2. The search space (a collection of x1_graphs) is discrete, so there is no
-           gradient-based optimisation. Instead, we compute the EI at all candidate points
-           and empirically select the best position during optimisation
-
-        Args:
-            augmented_ei: Using the Augmented EI heuristic modification to the standard
-                expected improvement algorithm according to Huang (2006).
-            xi: manual exploration-exploitation trade-off parameter.
-            in_fill: the criterion to be used for in-fill for the determination of mu_star
-                'best' means the empirical best observation so far (but could be
-                susceptible to noise), 'posterior' means the best *posterior GP mean*
-                encountered so far, and is recommended for optimization of more noisy
-                functions. Defaults to "best".
-            log_ei: log-EI if true otherwise usual EI.
-        """
-        super().__init__()
-
-        if in_fill not in ["best", "posterior"]:
-            raise ValueError(f"Invalid value for in_fill ({in_fill})")
-        self.augmented_ei = augmented_ei
-        self.xi = xi
-        self.in_fill = in_fill
-        self.log_ei = log_ei
-        self.incumbent = None
-        self.optimize_on_max_fidelity = optimize_on_max_fidelity
-
-    def eval(
-        self,
-        x: Sequence[SearchSpace],
-        asscalar: bool = False,
-    ) -> Union[np.ndarray, torch.Tensor, float]:
-        """
-        Return the negative expected improvement at the query point x2
-        """
+    @override
+    def __call__(self, x: Array2D[f64], space: SearchSpace) -> Arr[f64]:
+        """Return the negative expected improvement at the query points."""
         assert self.incumbent is not None, "EI function not fitted on model"
 
         if x[0].fidelity is not None and self.optimize_on_max_fidelity:
@@ -74,6 +45,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         except ValueError as e:
             raise e
             # return -1.0  # in case of error. return ei of -1
+
         std = torch.sqrt(torch.diag(cov))
         mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))

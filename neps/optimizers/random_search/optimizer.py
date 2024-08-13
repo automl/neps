@@ -32,4 +32,4 @@ class RandomSearch(BaseOptimizer):
             ignore_fidelity=self.ignore_fidelity,
         )
         config_id = str(self._num_previous_configs + 1)
-        return config.hp_values(), config_id, None
+        return config.deprecated_hp_values(), config_id, None

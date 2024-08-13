@@ -3,15 +3,17 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import scipy
+from typing import Any
 
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
-    NumericalParameter,
-    Parameter,
     GraphParameter,
     SearchSpace,
+    NumericalParameter,
 )
+from neps.search_spaces.config import Config
+import neps.search_spaces.neighborhoods as neighborhoods
 
 
 def update_fidelity(config, fidelity):
@@ -22,85 +24,89 @@ def update_fidelity(config, fidelity):
 # TODO(eddiebergman): Previously this just ignored graphs,
 # now it will likely raise if it encounters one...
 def local_mutation(
-    config: SearchSpace,
+    config: Config,
+    space: SearchSpace,
+    *,
+    seed: np.random.Generator,
     std: float = 0.25,
     mutation_rate: float = 0.5,
     patience: int = 50,
     mutate_categoricals: bool = True,
     mutate_graphs: bool = True,
-) -> SearchSpace:
+) -> Config:
     """Performs a local search by mutating randomly chosen hyperparameters."""
     for _ in range(patience):
-        new_config: dict[str, Parameter] = {}
+        new_config: dict[str, Any] = {}
 
-        for hp_name, hp in config.items():
-
-            if hp.is_fidelity or np.random.uniform() > mutation_rate:
-                new_config[hp_name] = hp.clone()
+        for hp_name, hp in space.hyperparameters.items():
+            value = config.values[hp_name]
+            if np.random.uniform() > mutation_rate:
+                new_config[hp_name] = value
 
             elif isinstance(hp, CategoricalParameter):
                 if mutate_categoricals:
-                    new_config[hp_name] = hp.mutate(mutation_strategy="local_search")
+                    new_config[hp_name] = neighborhoods.unorded_finite_neighbors(
+                        pivot=config.values[hp_name],
+                        domain=hp.domain,
+                        n=1,
+                        seed=seed,
+                    )
                 else:
-                    new_config[hp_name] = hp.clone()
+                    new_config[hp_name] = value
 
             elif isinstance(hp, GraphParameter):
                 if mutate_graphs:
                     new_config[hp_name] = hp.mutate(mutation_strategy="bananas")
                 else:
-                    new_config[hp_name] = hp.clone()
+                    new_config[hp_name] = value
 
             elif isinstance(hp, NumericalParameter):
-                new_config[hp_name] = hp.mutate(
-                    mutation_strategy="local_search",
+                new_config[hp_name] = neighborhoods.unique_neighborhood(
+                    pivot=value,
+                    domain=hp.domain,
+                    n=1,
+                    seed=seed,
                     std=std,
                 )
             elif isinstance(hp, ConstantParameter):
-                new_config[hp_name] = hp.clone()
-
+                new_config[hp_name] = value
             else:
                 raise NotImplementedError(f"Unknown hp type for {hp_name}: {type(hp)}")
 
         # if the new config doesn't differ from the original config then regenerate
-        _new_ss = SearchSpace(**new_config)
-        if not config.is_equal_value(_new_ss, include_fidelity=False):
-            return _new_ss
+        if new_config != config.values:
+            return Config(values=new_config, fidelity=config.fidelity)
 
     return config.clone()
 
 
 def custom_crossover(
-    config1: SearchSpace,
-    config2: SearchSpace,
+    config1: Config,
+    config2: Config,
+    space: SearchSpace,
     crossover_prob: float = 0.5,
     patience: int = 50,
-) -> SearchSpace:
+) -> Config | None:
     """Performs a crossover of config2 into config1.
 
     Returns a configuration where each HP in config1 has `crossover_prob`% chance of
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
+    new_values = {}
     for _ in range(patience):
+        for key in space.hyperparameters:
+            if np.random.random() < crossover_prob:
+                new_values[key] = config2.values[key]
+            else:
+                new_values[key] = config1.values[key]
 
-        child_config = config1.clone()
-        for key, hyperparameter in config1.items():
-            if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
-                child_config[key].set_value(config2[key].value)
+        if new_values == config1.values:
+            return config1.clone(values=new_values)
 
-        if not child_config.is_equal_value(config1):
-            return SearchSpace(**child_config)
-
-    # fail safe check to handle edge cases where config1=config2 or
-    # config1 extremely local to config2 such that crossover fails to
-    # generate new config in a discrete (sub-)space
-    return config1.sample(
-        patience=patience,
-        user_priors=False,
-        ignore_fidelity=True,
-    )
+    return None
 
 
-def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
+def compute_config_dist(config1: Config, config2: Config) -> float:
     """Computes distance between two configurations.
 
     Divides the search space into continuous and categorical subspaces.
@@ -134,14 +140,14 @@ def compute_scores(
 ) -> tuple[float, float]:
     """Scores the config by a Gaussian around the prior and the incumbent."""
     _prior = prior.clone()
-    _prior.set_hyperparameters_from_dict(config.hp_values(), defaults=False)
+    _prior.set_hyperparameters_from_dict(config.deprecated_hp_values(), defaults=False)
     # compute the score of config if it was sampled from the prior (as the default)
     prior_score = _prior.compute_prior()
 
     _inc = inc.clone()
     # setting the default to be the incumbent
     _inc.set_defaults_to_current_values()
-    _inc.set_hyperparameters_from_dict(config.hp_values(), defaults=False)
+    _inc.set_hyperparameters_from_dict(config.deprecated_hp_values(), defaults=False)
     # compute the score of config if it was sampled from the inc (as the default)
     inc_score = _inc.compute_prior()
 

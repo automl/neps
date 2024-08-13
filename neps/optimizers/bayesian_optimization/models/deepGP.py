@@ -10,10 +10,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from neps.optimizers.bayesian_optimization.models.model import SurrogateModel
+
 from ....search_spaces.search_space import (
     CategoricalParameter,
-    FloatParameter,
-    IntegerParameter,
     SearchSpace,
 )
 
@@ -152,7 +152,7 @@ class GPRegressionModel(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-class DeepGP:
+class DeepGP(SurrogateModel):
     """
     Gaussian process with a deep kernel
     """
@@ -184,8 +184,25 @@ class DeepGP:
             self.root_dir = Path(os.getcwd(), root_directory)
             self.checkpoint_path = Path(os.getcwd(), root_directory, checkpoint_file)
 
-        super().__init__()
-        self.__preprocess_search_space(pipeline_space)
+        self.categories = []
+        self.categorical_hps = []
+
+        parameter_count = 0
+        for hp_name, hp in pipeline_space.items():
+            # Collect all categories in a list for the encoder
+            if isinstance(hp, CategoricalParameter):
+                self.categorical_hps.append(hp_name)
+                self.categories.extend(hp.choices)
+                parameter_count += len(hp.choices)
+            else:
+                parameter_count += 1
+
+        # add 1 for budget
+        self.input_size = parameter_count
+        self.continuous_params_size = self.input_size - len(self.categories)
+        self.min_fidelity = pipeline_space.fidelity.lower
+        self.max_fidelity = pipeline_space.fidelity.upper
+
         # set the categories array for the encoder
         self.categories_array = np.array(self.categories)
 
@@ -236,26 +253,6 @@ class DeepGP:
         ).to(self.device)
         mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model).to(self.device)
         return model, likelihood, mll
-
-    def __preprocess_search_space(self, pipeline_space: SearchSpace):
-        self.categories = []
-        self.categorical_hps = []
-
-        parameter_count = 0
-        for hp_name, hp in pipeline_space.items():
-            # Collect all categories in a list for the encoder
-            if isinstance(hp, CategoricalParameter):
-                self.categorical_hps.append(hp_name)
-                self.categories.extend(hp.choices)
-                parameter_count += len(hp.choices)
-            else:
-                parameter_count += 1
-
-        # add 1 for budget
-        self.input_size = parameter_count
-        self.continuous_params_size = self.input_size - len(self.categories)
-        self.min_fidelity = pipeline_space.fidelity.lower
-        self.max_fidelity = pipeline_space.fidelity.upper
 
     def __encode_config(self, config: SearchSpace):
         categorical_encoding = np.zeros_like(self.categories_array)

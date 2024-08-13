@@ -4,20 +4,22 @@ from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from functools import partial
-from typing import Any, ClassVar, Mapping
-from typing_extensions import override, Self
-from neps.utils.types import NotSet, _NotSet
+from typing import TYPE_CHECKING, Any, ClassVar, Mapping
+from typing_extensions import Self, override
 
 import networkx as nx
 import numpy as np
 from nltk import Nonterminal
 
-from ..parameter import ParameterWithPrior, MutatableParameter
-from .cfg import Grammar
-from .cfg_variants.constrained_cfg import ConstrainedGrammar
+from neps.utils.types import NotSet
+
 from .core_graph_grammar import CoreGraphGrammar
 from .crossover import repetitive_search_space_crossover, simple_crossover
 from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_mutate
+
+if TYPE_CHECKING:
+    from .cfg import Grammar
+    from .cfg_variants.constrained_cfg import ConstrainedGrammar
 
 
 # TODO(eddiebergman): This is a halfway solution, but essentially a lot
@@ -28,7 +30,7 @@ from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_
 # The problem here is that the `Parameter` expects the `load_from`
 # and the `.value` to be the same type, which is not the case for
 # graph based parameters.
-class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
+class GraphParameter:
     # NOTE(eddiebergman): What I've managed to learn so far is that
     # these hyperparameters work mostly with strings externally,
     # i.e. setting the value through `load_from` or `set_value` should be a string.
@@ -43,6 +45,9 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
     default_confidence_choice = "not_in_use"
     has_prior: bool
     input_kwargs: dict[str, Any]
+
+    def __init__(self) -> None:
+        self._value = None
 
     @property
     @abstractmethod
@@ -63,7 +68,6 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
     @abstractmethod
     def reset(self) -> None: ...
 
-    @override
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, GraphGrammar):
             return NotImplemented
@@ -73,15 +77,14 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
     @abstractmethod
     def compute_prior(self, normalized_value: float) -> float: ...
 
-    @override
     def set_value(self, value: str | None) -> None:
         # NOTE(eddiebergman): Not entirely sure how this should be done
         # as previously this would have just overwritten a property method
         # `self.value = None`
         if not isinstance(value, str):
             raise ValueError(
-                f"Expected a string for setting value a `GraphParameter`",
-                f" got {type(value)}"
+                "Expected a string for setting value a `GraphParameter`",
+                f" got {type(value)}",
             )
         self.reset()
         self.normalized_value = value
@@ -91,13 +94,14 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
 
         self.create_from_id(value)
 
-    @override
     def set_default(self, default: str | None) -> None:
         # TODO(eddiebergman): Could find no mention of the word 'default' in the
         # GraphGrammers' hence... well this is all I got
         self.default = default
 
-    @override
+    @abstractmethod
+    def sample(self, *, user_priors: bool = False) -> Self: ...
+
     def sample_value(self, *, user_priors: bool = False) -> nx.DiGraph:
         # TODO(eddiebergman): This could definitely be optimized
         # Right now it copies the entire object just to get a value out
@@ -130,31 +134,23 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
         """
         raise NotImplementedError
 
-    @override
     def load_from(self, value: str | Self) -> None:
         if isinstance(value, GraphParameter):
             value = value.id
         self.create_from_id(value)
 
     @abstractmethod
-    def mutate(self, parent: Self | None = None, *, mutation_strategy: str = "bananas") -> Self: ...
+    def mutate(
+        self, parent: Self | None = None, *, mutation_strategy: str = "bananas"
+    ) -> Self: ...
 
     @abstractmethod
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        ...
+    def crossover(
+        self, parent1: Self, parent2: Self | None = None
+    ) -> tuple[Self, Self]: ...
 
-    def _get_non_unique_neighbors(self, num_neighbours: int) -> list[Self]:
-        raise NotImplementedError
-
-    def value_to_normalized(self, value: nx.DiGraph) -> float:
-        raise NotImplementedError
-
-    def normalized_to_value(self, normalized_value: float) -> nx.DiGraph:
-        raise NotImplementedError
-
-    @override
     def clone(self) -> Self:
-        new_self =  self.__class__(**self.input_kwargs)
+        new_self = self.__class__(**self.input_kwargs)
 
         # HACK(eddiebergman): It seems the subclasses all have these and
         # so we just copy over those attributes, deepcloning anything that is mutable
@@ -178,6 +174,7 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
 
         return new_self
 
+
 class GraphGrammar(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar"
 
@@ -185,17 +182,21 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
-        prior: dict = None,
-        terminal_to_graph_edges: dict = None,
+        prior: dict | None = None,
+        terminal_to_graph_edges: dict | None = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
-        zero_op: list = ["Zero", "zero"],
-        identity_op: list = ["Identity", "id"],
+        zero_op: list | None = None,
+        identity_op: list | None = None,
         new_graph_repr_func: bool = False,
-        name: str = None,
-        scope: str = None,
+        name: str | None = None,
+        scope: str | None = None,
         **kwargs,
     ):
+        if identity_op is None:
+            identity_op = ["Identity", "id"]
+        if zero_op is None:
+            zero_op = ["Zero", "zero"]
         if isinstance(grammar, list) and len(grammar) != 1:
             raise NotImplementedError("Does not support multiple grammars")
 
@@ -212,7 +213,7 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
             scope=scope,
             **kwargs,
         )
-        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
+        GraphParameter.__init__(self)
 
         self.string_tree: str = ""
         self._function_id: str = ""
@@ -223,11 +224,12 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
             self.grammars[0].prior = prior
         self.has_prior = prior is not None
 
-    @override
     def sample(self, *, user_priors: bool = False) -> Self:
         copy_self = self.clone()
         copy_self.reset()
-        copy_self.string_tree = copy_self.grammars[0].sampler(1, user_priors=user_priors)[0]
+        copy_self.string_tree = copy_self.grammars[0].sampler(1, user_priors=user_priors)[
+            0
+        ]
         _ = copy_self.value  # required for checking if graph is valid!
         return copy_self
 
@@ -371,15 +373,19 @@ class GraphGrammarCell(GraphGrammar):
         self,
         grammar: Grammar,
         terminal_to_op_names: dict,
-        terminal_to_graph_edges: dict = None,
+        terminal_to_graph_edges: dict | None = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
-        zero_op: list = ["Zero", "zero"],
-        identity_op: list = ["Identity", "id"],
-        name: str = None,
-        scope: str = None,
+        zero_op: list | None = None,
+        identity_op: list | None = None,
+        name: str | None = None,
+        scope: str | None = None,
         **kwargs,
     ):
+        if identity_op is None:
+            identity_op = ["Identity", "id"]
+        if zero_op is None:
+            zero_op = ["Zero", "zero"]
         super().__init__(
             grammar,
             terminal_to_op_names,
@@ -413,14 +419,18 @@ class GraphGrammarRepetitive(GraphParameter, CoreGraphGrammar):
         terminal_to_op_names: dict,
         terminal_to_sublanguage_map: dict,
         number_of_repetitive_motifs: int,
-        terminal_to_graph_edges: dict = None,
+        terminal_to_graph_edges: dict | None = None,
         edge_attr: bool = True,
         edge_label: str = "op_name",
-        zero_op: list = ["Zero", "zero"],
-        identity_op: list = ["Identity", "id"],
-        name: str = None,
-        scope: str = None,
+        zero_op: list | None = None,
+        identity_op: list | None = None,
+        name: str | None = None,
+        scope: str | None = None,
     ):
+        if identity_op is None:
+            identity_op = ["Identity", "id"]
+        if zero_op is None:
+            zero_op = ["Zero", "zero"]
         CoreGraphGrammar.__init__(
             self,
             grammars=grammars,
@@ -433,7 +443,7 @@ class GraphGrammarRepetitive(GraphParameter, CoreGraphGrammar):
             name=name,
             scope=scope,
         )
-        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
+        GraphParameter.__init__(self)
 
         self.id: str = ""
         self.string_tree: str = ""
@@ -507,7 +517,9 @@ class GraphGrammarRepetitive(GraphParameter, CoreGraphGrammar):
     def sample(self, *, user_priors: bool = False) -> Self:
         copy_self = self.clone()
         copy_self.reset()
-        copy_self.string_tree_list = [grammar.sampler(1)[0] for grammar in copy_self.grammars]
+        copy_self.string_tree_list = [
+            grammar.sampler(1)[0] for grammar in copy_self.grammars
+        ]
         copy_self.string_tree = copy_self.assemble_trees(
             copy_self.string_tree_list[0],
             copy_self.string_tree_list[1:],
@@ -640,17 +652,22 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
         grammars: list[Grammar] | list[ConstrainedGrammar],
         terminal_to_op_names: dict,
         terminal_to_sublanguage_map: dict,
-        prior: list[dict] = None,
-        terminal_to_graph_edges: dict = None,
+        prior: list[dict] | None = None,
+        terminal_to_graph_edges: dict | None = None,
         fixed_macro_grammar: bool = False,
         edge_attr: bool = True,
         edge_label: str = "op_name",
-        zero_op: list = ["Zero", "zero"],
-        identity_op: list = ["Identity", "id"],
-        name: str = None,
-        scope: str = None,
+        zero_op: list | None = None,
+        identity_op: list | None = None,
+        name: str | None = None,
+        scope: str | None = None,
         **kwargs,
     ):
+        if identity_op is None:
+            identity_op = ["Identity", "id"]
+        if zero_op is None:
+            zero_op = ["Zero", "zero"]
+
         def _check_mapping(macro_grammar, motif_grammars, terminal_to_sublanguage_map):
             for terminal, start_symbol in terminal_to_sublanguage_map.items():
                 if terminal not in macro_grammar.terminals:
@@ -698,11 +715,9 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
             grammars.insert(0, self.macro_grammar)
 
         self.terminal_to_sublanguage_map = OrderedDict(terminal_to_sublanguage_map)
-        if any(
-            k in terminal_to_op_names for k in self.terminal_to_sublanguage_map.keys()
-        ):
+        if any(k in terminal_to_op_names for k in self.terminal_to_sublanguage_map):
             raise Exception(
-                f"Terminals {[k for k in self.terminal_to_sublanguage_map.keys()]} already defined in primitives mapping and cannot be used for repetitive substitutions"
+                f"Terminals {list(self.terminal_to_sublanguage_map.keys())} already defined in primitives mapping and cannot be used for repetitive substitutions"
             )
         self.number_of_repetitive_motifs_per_grammar = [
             sum(
@@ -732,7 +747,7 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
             scope=scope,
             **kwargs,
         )
-        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
+        GraphParameter.__init__(self)
 
         self._function_id: str = ""
         self.string_tree: str = ""
@@ -745,7 +760,7 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
 
         if self.fixed_macro_grammar:
             self.full_grammar = self.get_full_grammar(
-                [self.macro_grammar] + self.grammars
+                [self.macro_grammar, *self.grammars]
             )
         else:
             self.full_grammar = self.get_full_grammar(self.grammars)
@@ -993,7 +1008,7 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
     @property
     def search_space_size(self) -> int:
         def recursive_worker(
-            nonterminal: Nonterminal, grammar, lower_level_motifs: dict = None
+            nonterminal: Nonterminal, grammar, lower_level_motifs: dict | None = None
         ) -> int:
             if lower_level_motifs is None:
                 lower_level_motifs = {}
@@ -1012,7 +1027,7 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
                 possibilities_per_edge += [
                     lower_level_motifs[str(rhs_sym)]
                     for rhs_sym in potential_production.rhs()
-                    if str(rhs_sym) in lower_level_motifs.keys()
+                    if str(rhs_sym) in lower_level_motifs
                 ]
                 product = 1
                 for p in possibilities_per_edge:

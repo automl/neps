@@ -77,7 +77,7 @@ class KnowledgeSampling(BaseOptimizer):
             )
             logging.info("Sampling from random search")
 
-        hp_values = config.hp_values()
+        hp_values = config.deprecated_hp_values()
 
         config_id = str(self._num_previous_configs + 1)
         logging.info("Config-ID: " + config_id)

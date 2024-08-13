@@ -11,13 +11,7 @@ import pandas as pd
 from typing_extensions import Literal, override
 
 from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    SearchSpace,
-)
+from neps.search_spaces import Config, IntegerParameter, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
@@ -27,14 +21,6 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     FixedPriorPolicy,
     RandomUniformPolicy,
 )
-
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
-CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
-
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
-)
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
 class SuccessiveHalvingBase(BaseOptimizer):
@@ -48,8 +34,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
+        sampling_policy: typing.Any = type[RandomUniformPolicy],
+        promotion_policy: typing.Any = type[SyncPromotionPolicy],
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
@@ -102,15 +88,25 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
 
-        self.min_budget = self.pipeline_space.fidelity.lower
-        self.max_budget = self.pipeline_space.fidelity.upper
+        if self.pipeline_space.fidelity is None:
+            raise ValueError(
+                "Successive Halving requires fidelity to be define in the search space!"
+            )
+        elif len(self.pipeline_space.fidelity) > 1:
+            raise NotImplementedError(
+                "Successive Halving currently only supports a single fidelity parameter."
+            )
+
+        self.fidelity_name, self.fidelity_parameter = next(
+            iter(self.pipeline_space.fidelity.items())
+        )
+        self.min_budget = self.fidelity_parameter.lower
+        self.max_budget = self.fidelity_parameter.upper
         self.eta = eta
         # SH implicitly sets early_stopping_rate to 0
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
-        self.sampling_policy = sampling_policy(
-            pipeline_space=self.pipeline_space, logger=self.logger
-        )
+        self.sampling_policy = sampling_policy(pipeline_space=self.pipeline_space)
         self.promotion_policy = promotion_policy(self.eta)
 
         # `max_budget_init` checks for the number of configurations that have been
@@ -158,7 +154,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         #############################
         # the std. dev or peakiness of distribution
         self.prior_confidence = prior_confidence
-        self._enhance_priors()
         self.rung_histories = None
 
     @classmethod
@@ -404,19 +399,21 @@ class SuccessiveHalvingBase(BaseOptimizer):
             [type]: [description]
         """
         rung_to_promote = self.is_promotable()
+        config: Config
         if rung_to_promote is not None:
             # promotes the first recorded promotable config in the argsort-ed rung
             row = self.observed_configs.iloc[self.rung_promotions[rung_to_promote][0]]
             config = row["config"].clone()
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
-            config.fidelity.set_value(self.rung_map[rung])
+            config.values[self.fidelity_name] = self.rung_map[rung]
             # updating config IDs
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
+            seed = np.random.default_rng()
             rung_id = self.min_rung
-            # using random instead of np.random to be consistent with NePS BO
+
             if (
                 self.use_priors
                 and self.sample_default_first
@@ -427,52 +424,21 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     rung_id = self.max_rung
                     self.logger.info("Next config will be evaluated at target fidelity.")
                 self.logger.info("Sampling the default configuration...")
-                config = self.pipeline_space.sample_default_configuration()
+
+                config = self.pipeline_space.default_configuration
 
             elif random.random() < self.random_interleave_prob:
-                config = self.pipeline_space.sample(
-                    patience=self.patience,
-                    user_priors=False,  # sample uniformly random
-                    ignore_fidelity=True,
-                )
+                config = self.pipeline_space.sample(seed=seed)
             else:
                 config = self.sample_new_config(rung=rung_id)
 
             fidelity_value = self.rung_map[rung_id]
-            config.fidelity.set_value(fidelity_value)
+            config = config.at_fidelity(fidelity_value)
 
             previous_config_id = None
             config_id = f"{self._generate_new_config_id()}_{rung_id}"
 
-        return config.hp_values(), config_id, previous_config_id  # type: ignore
-
-    def _enhance_priors(self, confidence_score=None):
-        """Only applicable when priors are given along with a confidence.
-
-        Args:
-            confidence_score: dict
-                The confidence scores for the types.
-                Example: {"categorical": 5.2, "numeric": 0.15}
-        """
-        if not self.use_priors and self.prior_confidence is None:
-            return
-        for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
-                continue
-            elif isinstance(v, (FloatParameter, IntegerParameter)):
-                if confidence_score is None:
-                    confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
-                else:
-                    confidence = confidence_score["numeric"]
-                self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
-                if confidence_score is None:
-                    confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
-                        self.prior_confidence
-                    ]
-                else:
-                    confidence = confidence_score["categorical"]
-                self.pipeline_space[k].default_confidence_score = confidence
+        return config.values, config_id, previous_config_id  # type: ignore
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):

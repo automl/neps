@@ -127,7 +127,7 @@ class RegularizedEvolution(BaseOptimizer):
                     break
                 patience -= 1
         config_id = str(self.num_train_x + len(self.pending_evaluations) + 1)
-        return config.hp_values(), config_id, None
+        return config.deprecated_hp_values(), config_id, None
 
     def _mutate(self, parent):
         for _ in range(self.patience):

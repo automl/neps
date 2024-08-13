@@ -1,29 +1,45 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
-from typing import Literal, overload
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, overload
+
+import yaml
+
+from neps.search_spaces.hyperparameters import (
+    CategoricalParameter,
+    ConstantParameter,
+    FloatParameter,
+    IntegerParameter,
+)
+
+if TYPE_CHECKING:
+    from ConfigSpace import ConfigurationSpace
+
+    from neps.search_spaces.hyperparameters import Parameter
 
 logger = logging.getLogger("neps")
 
 
 @overload
 def convert_scientific_notation(
-    value: str | int | float, show_usage_flag: Literal[False] = False
+    value: str | int | float, *, show_usage_flag: Literal[False] = False
 ) -> float: ...
 
 
 @overload
 def convert_scientific_notation(
-    value: str | int | float, show_usage_flag: Literal[True]
+    value: str | int | float, *, show_usage_flag: Literal[True]
 ) -> tuple[float, bool]: ...
 
 
 def convert_scientific_notation(
-    value: str | int | float, show_usage_flag: bool = False
+    value: str | int | float, *, show_usage_flag: bool = False
 ) -> float | tuple[float, bool]:
-    """
-    Convert a given value to a float if it's a string that matches scientific e notation.
+    """Convert a given value to float if it's a string that matches scientific e notation.
+
     This is especially useful for numbers like "3.3e-5" which YAML parsers may not
     directly interpret as floats.
 
@@ -47,7 +63,6 @@ def convert_scientific_notation(
     Raises:
         ValueError: If the value is a string and does not represent a valid number.
     """
-
     e_notation_pattern = r"^-?\d+(\.\d+)?[eE]-?\d+$"
 
     flag = False  # Flag if e notation was detected
@@ -62,34 +77,29 @@ def convert_scientific_notation(
 
     if show_usage_flag is True:
         return float(value), flag
-    else:
-        return float(value)
+
+    return float(value)
 
 
 class SearchSpaceFromYamlFileError(Exception):
-    """
-    Exception raised for errors occurring during the initialization of the search space
+    """Exception raised for errors occurring during the initialization of the search space
     from a YAML file.
 
     Attributes:
-        exception_type (str): The type of the original exception.
-        message (str): A detailed message that includes the type of the original exception
-                       and the error description.
-
-    Args:
-        exception (Exception): The original exception that was raised during the
-                                initialization of the search space from the YAML file.
-
-    Example Usage:
-        try:
-            # Code to initialize search space from YAML file
-        except (KeyError, TypeError, ValueError) as e:
-            raise SearchSpaceFromYamlFileError(e)
+        exception_type: The type of the original exception.
+        message: A detailed message that includes the type of the original exception and
+            the error description.
     """
 
     def __init__(self, exception: Exception) -> None:
-        self.exception_type = type(exception).__name__
-        self.message = (
+        """Initializes the SearchSpaceFromYamlFileError with the original exception.
+
+        Args:
+            exception: The original exception that was raised during the initialization of
+                the search space from the YAML file.
+        """
+        self.exception_type: str = type(exception).__name__
+        self.message: str = (
             f"Error occurred during initialization of search space from "
             f"YAML file.\n {self.exception_type}: {exception}"
         )
@@ -138,9 +148,8 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
 
 
     Args:
-        name (str): The name of the parameter.
-        details ((dict[str, int | str | float])): A dictionary containing parameter
-        specifications.
+        name: The name of the parameter.
+        details: A dictionary containing parameter specifications.
 
     Returns:
         str: The deduced parameter type ('int', 'float' or 'categorical').
@@ -148,11 +157,7 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
     Raises:
         TypeError: If the parameter type cannot be deduced from the details, or if the
         provided details have inconsistent types for expected keys.
-
-    Example:
-        param_type = deduce_param_type('example_param', {'lower': 0, 'upper': 10})"""
-    # Logic to deduce type from details
-
+    """
     # check for int and float conditions
     if "lower" in details and "upper" in details:
         # Determine if it's an integer or float range parameter
@@ -201,17 +206,15 @@ def deduce_param_type(name: str, details: dict[str, int | str | float]) -> str:
 
 
 def formatting_int(name: str, details: dict[str, str | int | float]) -> dict:
-    """
-     Converts scientific notation values to integers.
+    """Converts scientific notation values to integers.
 
     This function converts the 'lower' and 'upper' bounds, as well as the 'default'
     value (if present), from scientific notation to integers.
 
     Args:
-        name (str): The name of the integer parameter.
-        details (dict[str, str | int | float]): A dictionary containing the parameter's
-                                                specifications. Expected keys include
-                                                'lower', 'upper', and optionally 'default'.
+        name: The name of the integer parameter.
+        details: A dictionary containing the parameter's specifications.
+            Expected keys include 'lower', 'upper', and optionally 'default'.
 
     Raises:
         TypeError: If 'lower', 'upper', or 'default' cannot be converted from scientific
@@ -242,26 +245,24 @@ def formatting_int(name: str, details: dict[str, str | int | float]) -> dict:
             raise TypeError(
                 f"'lower' and 'upper' must be integer for " f"integer parameter '{name}'."
             ) from e
-    if "default" in details:
-        if not isinstance(details["default"], int):
-            try:
-                # convert value can raise ValueError
-                default = convert_scientific_notation(details["default"])
-                if default == int(default):
-                    details["default"] = int(default)
-                else:
-                    raise TypeError()  # type of value is not int
-            except (ValueError, TypeError) as e:
-                raise TypeError(
-                    f"default value {details['default']} "
-                    f"must be integer for integer parameter {name}"
-                ) from e
+    if "default" in details and not isinstance(details["default"], int):
+        try:
+            # convert value can raise ValueError
+            default = convert_scientific_notation(details["default"])
+            if default == int(default):
+                details["default"] = int(default)
+            else:
+                raise TypeError()  # type of value is not int
+        except (ValueError, TypeError) as e:
+            raise TypeError(
+                f"default value {details['default']} "
+                f"must be integer for integer parameter {name}"
+            ) from e
     return details
 
 
 def formatting_float(name: str, details: dict[str, str | int | float]) -> dict:
-    """
-    Converts scientific notation values to floats.
+    """Converts scientific notation values to floats.
 
     This function converts the 'lower' and 'upper' bounds, as well as the 'default'
     value (if present), from scientific notation to floats.
@@ -278,7 +279,6 @@ def formatting_float(name: str, details: dict[str, str | int | float]) -> dict:
     Returns:
         The dictionary with the converted float parameter details.
     """
-
     if not isinstance(details["lower"], float) or not isinstance(details["upper"], float):
         try:
             # for numbers like 1e-5 and 10^
@@ -288,21 +288,19 @@ def formatting_float(name: str, details: dict[str, str | int | float]) -> dict:
             raise TypeError(
                 f"'lower' and 'upper' must be float for " f"float parameter '{name}'."
             ) from e
-    if "default" in details:
-        if not isinstance(details["default"], float):
-            try:
-                details["default"] = convert_scientific_notation(details["default"])
-            except ValueError as e:
-                raise TypeError(
-                    f" default'{details['default']}' must be float for float "
-                    f"parameter {name} "
-                ) from e
+    if "default" in details and not isinstance(details["default"], float):
+        try:
+            details["default"] = convert_scientific_notation(details["default"])
+        except ValueError as e:
+            raise TypeError(
+                f" default'{details['default']}' must be float for float "
+                f"parameter {name} "
+            ) from e
     return details
 
 
 def formatting_cat(name: str, details: dict[str, list | str | int | float]) -> dict:
-    """
-    This function ensures that the 'choices' key in the details is a list and attempts
+    """This function ensures that the 'choices' key in the details is a list and attempts
     to convert any elements expressed in scientific notation to floats. It also handles
     the 'default' value, converting it from scientific notation if necessary.
 
@@ -341,13 +339,11 @@ def formatting_cat(name: str, details: dict[str, list | str | int | float]) -> d
                 f" Got {type(extracted_default).__name__}."
             )
 
-        try:
-            # check if e notation, if then convert to number
+        # check if e notation, if then convert to number
+        with contextlib.suppress(ValueError):
             default, e_flag = convert_scientific_notation(
                 extracted_default, show_usage_flag=True
             )
-        except ValueError:
-            pass  # if default value is not in a numeric format, Value Error occurs
 
         if e_flag is True:
             details["default"] = default
@@ -369,19 +365,141 @@ def formatting_const(details: str | int | float) -> str | int | float:
     Returns:
         The validated and possibly converted constant parameter.
     """
-
-    # check for e notation and convert it to float
     e_flag = False
-    try:
+    with contextlib.suppress(ValueError):
+        # if the value is not able to convert to float a ValueError get raised by
+        # convert_scientific_notation function
         converted_value, e_flag = convert_scientific_notation(
             details, show_usage_flag=True
         )
-    except ValueError:
-        # if the value is not able to convert to float a ValueError get raised by
-        # convert_scientific_notation function
-        pass
 
     if e_flag:
         details = converted_value
 
     return details
+
+
+def pipeline_space_from_yaml(  # noqa: C901
+    config: str | Path | dict,
+) -> dict[str, Parameter]:
+    """Reads configuration details from a YAML file or a dictionary and constructs a
+    pipeline space dictionary.
+
+    Args:
+        config: Path to the YAML file or a dictionary containing parameter configurations.
+
+    Returns:
+        A dictionary where keys are parameter names and values are parameter objects.
+
+    Raises:
+        SearchSpaceFromYamlFileError: Raised if there are issues with the YAML file's
+            format, contents, or if the dictionary is invalid.
+    """
+    try:
+        if isinstance(config, (str, Path)):
+            # try to load the YAML file
+            try:
+                yaml_file_path = Path(config)
+                with yaml_file_path.open("r") as file:
+                    config = yaml.safe_load(file)
+                if not isinstance(config, dict):
+                    raise ValueError(
+                        "The loaded pipeline_space is not a valid dictionary. Please "
+                        "ensure that you use a proper structure. See the documentation "
+                        "for more details."
+                    )
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"Unable to find the specified file for 'pipeline_space' at "
+                    f"'{config}'. Please verify the path specified in the "
+                    f"'pipeline_space' argument and try again."
+                ) from e
+            except yaml.YAMLError as e:
+                raise ValueError(f"The file at {config} is not a valid YAML file.") from e
+
+        pipeline_space: dict[str, Parameter] = {}
+
+        for name, details in config.items():
+            param_type = deduce_type(name, details)
+
+            if param_type in ("int", "integer"):
+                formatted_details = formatting_int(name, details)
+                pipeline_space[name] = IntegerParameter(**formatted_details)
+            elif param_type == "float":
+                formatted_details = formatting_float(name, details)
+                pipeline_space[name] = FloatParameter(**formatted_details)
+            elif param_type in ("cat", "categorical"):
+                formatted_details = formatting_cat(name, details)
+                pipeline_space[name] = CategoricalParameter(**formatted_details)
+            elif param_type == "const":
+                const_details = formatting_const(details)
+                pipeline_space[name] = ConstantParameter(const_details)
+            else:
+                # Handle unknown parameter type
+                raise TypeError(
+                    f"Unsupported parameter with details: {details} for '{name}'.\n"
+                    f"Supported Types for argument type are:\n"
+                    "For integer parameter: int, integer\n"
+                    "For float parameter: float\n"
+                    "For categorical parameter: cat, categorical\n"
+                    "Constant parameter was not detect\n"
+                )
+    except (KeyError, TypeError, ValueError, FileNotFoundError) as e:
+        raise SearchSpaceFromYamlFileError(e) from e
+
+    return pipeline_space
+
+
+def pipeline_space_from_configspace(
+    configspace: ConfigurationSpace,
+) -> dict[str, Parameter]:
+    """Constructs the [`Parameter`][neps.search_spaces.parameter.Parameter] objects
+    from a [`ConfigurationSpace`][ConfigSpace.configuration_space.ConfigurationSpace].
+
+    Args:
+        configspace: The configuration space to construct the pipeline space from.
+
+    Returns:
+        A dictionary where keys are parameter names and values are parameter objects.
+    """
+    import ConfigSpace as CS
+
+    pipeline_space = {}
+    parameter: Parameter
+    if any(configspace.get_conditions()) or any(configspace.get_forbiddens()):
+        raise NotImplementedError(
+            "The ConfigurationSpace has conditions or forbidden clauses, "
+            "which are not supported by neps."
+        )
+
+    for hyperparameter in configspace.get_hyperparameters():
+        if isinstance(hyperparameter, CS.Constant):
+            parameter = ConstantParameter(value=hyperparameter.value)
+        elif isinstance(hyperparameter, CS.CategoricalHyperparameter):
+            parameter = CategoricalParameter(
+                hyperparameter.choices,
+                default=hyperparameter.default_value,
+            )
+        elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
+            parameter = CategoricalParameter(
+                hyperparameter.sequence,
+                default=hyperparameter.default_value,
+            )
+        elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
+            parameter = IntegerParameter(
+                lower=hyperparameter.lower,
+                upper=hyperparameter.upper,
+                log=hyperparameter.log,
+                default=hyperparameter.default_value,
+            )
+        elif isinstance(hyperparameter, CS.UniformFloatHyperparameter):
+            parameter = FloatParameter(
+                lower=hyperparameter.lower,
+                upper=hyperparameter.upper,
+                log=hyperparameter.log,
+                default=hyperparameter.default_value,
+            )
+        else:
+            raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
+        pipeline_space[hyperparameter.name] = parameter
+    return pipeline_space

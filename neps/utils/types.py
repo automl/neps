@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.search_spaces.config import Config
     from neps.state.trial import Trial
 
 # TODO(eddiebergman): We can turn this to an enum at some
@@ -18,12 +18,14 @@ if TYPE_CHECKING:
 ERROR: TypeAlias = Literal["error"]
 Number: TypeAlias = Union[int, float, np.number]
 ConfigID: TypeAlias = str
-RawConfig: TypeAlias = Mapping[str, Any]
+RawConfig: TypeAlias = dict[str, Any]
 Metadata: TypeAlias = Dict[str, Any]
 ResultDict: TypeAlias = Mapping[str, Any]
 
 DType = TypeVar("DType", bound=np.generic)
-Array: TypeAlias = npt.NDArray[DType]
+Arr: TypeAlias = npt.NDArray[DType]
+Array2D: TypeAlias = npt.NDArray[DType]
+ArrayOneHot: TypeAlias = npt.NDArray[DType]
 
 # NOTE(eddiebergman): Getting types for scipy distributions sucks
 # this is more backwards compatible and easier to work with
@@ -52,7 +54,7 @@ class ConfigResult:
     id: str
     """Unique identifier for the configuration."""
 
-    config: SearchSpace
+    config: Config
     """Configuration that was evaluated."""
 
     result: Trial.Report | ResultDict | ERROR

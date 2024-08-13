@@ -1,4 +1,4 @@
-""" Boilerplate code to optimize a simple PyTorch model using PriorBand.
+"""Boilerplate code to optimize a simple PyTorch model using PriorBand.
 
 NOTE!!! This code is not meant to be executed.
 It is only to serve as a template to help interface NePS with an existing ML/DL pipeline.
@@ -24,7 +24,6 @@ Overall, running an optimizer from NePS involves 4 clear steps:
 3. Creating the run_pipeline and returning the loss and other wanted metrics.
 4. Using neps run with the optimizer of choice.
 """
-
 
 import logging
 
@@ -109,7 +108,7 @@ def run_pipeline(
         # + Anything else with default value.
 
     # Extracting target epochs from config
-    max_epochs = config.fidelity.value if config.has_fidelity else None
+    max_epochs = config.fidelity.value if config.fidelity is not None else None
     if max_epochs is None:
         raise ValueError("The fidelity parameter is not defined in the config.")
 

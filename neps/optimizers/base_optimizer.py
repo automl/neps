@@ -5,6 +5,7 @@ from abc import abstractmethod
 from typing import Any, Mapping
 
 from dataclasses import asdict, dataclass
+from neps.search_spaces.config import Config
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig, ERROR, ResultDict
 from neps.search_spaces.search_space import SearchSpace
@@ -109,7 +110,7 @@ class BaseOptimizer:
             if trial.report is not None:
                 completed[trial_id] = ConfigResult(
                     id=trial_id,
-                    config=self.pipeline_space.from_dict(trial.config),
+                    config=Config(trial.config),
                     result=trial.report,
                     # TODO: Better if we could just pass around this metadata
                     # object instead of converting to a dict each time.
@@ -120,7 +121,7 @@ class BaseOptimizer:
                 Trial.State.SUBMITTED,
                 Trial.State.EVALUATING,
             ):
-                pending[trial_id] = self.pipeline_space.from_dict(trial.config)
+                pending[trial_id] = Config(trial.config)
 
         self.load_optimization_state(
             previous_results=completed,

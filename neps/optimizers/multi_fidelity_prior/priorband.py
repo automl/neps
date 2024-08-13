@@ -355,11 +355,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self.modelling_type = modelling_type
         self.initial_design_size = initial_design_size
         # counting non-fidelity dimensions in search space
-        ndims = sum(
-            1
-            for _, hp in self.pipeline_space.hyperparameters.items()
-            if not hp.is_fidelity
-        )
+        ndims = len(self.pipeline_space.hyperparameters)
         n_min = ndims + 1
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
         if self.modelling_type == "joint" and self.initial_design_size is not None:
@@ -407,7 +403,7 @@ class PriorBandNoPriorToInc(PriorBand):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # cannot use prior in this version
-        self.pipeline_space.has_prior = False
+        self.pipeline_space.initial_prior = {}
 
     def set_sampling_weights_and_inc(self, rung: int):
         super().set_sampling_weights_and_inc(rung)

@@ -286,9 +286,7 @@ class FreezeThawModel:
 
         if decay_t is None:
             decay_t = len(train_x)
-        train_x, train_y, train_lcs = self._fantasize_pending(
-            train_x, train_y, pending_x
-        )
+        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
         self._fit(train_x, train_y, train_lcs)
 
         return self.surrogate_model, decay_t

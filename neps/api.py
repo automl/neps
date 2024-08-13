@@ -14,11 +14,13 @@ from neps.utils.run_args import Settings, Default
 from neps.utils.common import instance_from_map
 from neps.runtime import _launch_runtime
 from neps.optimizers import BaseOptimizer, SearcherMapping
-from neps.search_spaces.parameter import Parameter
-from neps.search_spaces.search_space import (
+from neps.search_spaces import (
     SearchSpace,
-    pipeline_space_from_configspace,
+    Parameter,
+)
+from neps.search_spaces.utils import (
     pipeline_space_from_yaml,
+    pipeline_space_from_configspace,
 )
 from neps.status.status import post_run_csv
 from neps.utils.common import get_searcher_data, get_value
@@ -348,12 +350,13 @@ def _run_args(
     else:
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
+            assert isinstance(pipeline_space, SearchSpace)
             if pipeline_space.has_prior:
-                searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
+                searcher = "priorband" if pipeline_space.fidelity is not None else "pibo"
             else:
                 searcher = (
                     "hyperband"
-                    if pipeline_space.has_fidelity
+                    if pipeline_space.fidelity is not None
                     else "bayesian_optimization"
                 )
             searcher_info["searcher_selection"] = "neps-default"

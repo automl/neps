@@ -28,14 +28,6 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler
 )
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
-CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
-
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
-)
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
-
 
 class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
     def __init__(
@@ -104,9 +96,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         )
         self.pipeline_space = pipeline_space
         self.good_fraction = good_fraction
-        if self.pipeline_space.has_fidelity:
-            self.min_fidelity = pipeline_space.fidelity.lower
-            self.max_fidelity = pipeline_space.fidelity.upper
+        if pipeline_space.fidelity is not None:
+            self.min_fidelity = pipeline_space.fidelity.domain.lower
+            self.max_fidelity = pipeline_space.fidelity.domain.upper
             self.rung_map, self.inverse_rung_map = self._get_rung_maps()
             self.min_rung = 0
             self.max_rung = len(self.rung_map) - 1
@@ -119,9 +111,9 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             self.rung_map, self.inverse_rung_map = self._get_rung_maps()
 
         if initial_design_size == 0:
-            self._initial_design_size = len(self.pipeline_space) * np.round(
-                1 / self.good_fraction
-            ).astype(int)
+            self._initial_design_size = len(
+                self.pipeline_space.deprecated_hyperparameters
+            ) * np.round(1 / self.good_fraction).astype(int)
         else:
             self._initial_design_size = initial_design_size
         self.promote_from_acq = promote_from_acq
@@ -156,7 +148,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
         self.prior_confidence = prior_confidence
-        self._enhance_priors()
         surrogate_model_args = surrogate_model_args or {}
 
         param_types, num_options, logged_params, is_fidelity = self._get_types()
@@ -207,20 +198,6 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
-
-    def _enhance_priors(self):
-        """Only applicable when priors are given along with a confidence."""
-        if not self.use_priors and self.prior_confidence is None:
-            return
-        for k in self.pipeline_space.keys():
-            if self.pipeline_space[k].is_fidelity:
-                continue
-            elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
-                confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
-                self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(self.pipeline_space[k], CategoricalParameter):
-                confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
-                self.pipeline_space[k].default_confidence_score = confidence
 
     def _get_rung_maps(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
@@ -311,14 +288,16 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 self.surrogate_models["bad"].pdf(x)
             )
 
-    def _split_by_fidelity(self, configs, losses):
-        if self.pipeline_space.has_fidelity:
+    def _split_by_fidelity(self, configs: list[SearchSpace], losses):
+        if self.pipeline_space.fidelity is not None:
             configs_per_fidelity = [[] for i in range(self.num_rungs)]
             losses_per_fidelity = [[] for i in range(self.num_rungs)]
             # per fidelity, add a list to make it a nested list of lists
             # [[config_A at fid1, config_B at fid1], [config_C at fid2], ...]
             for config, loss in zip(configs, losses):
-                rung = self.inverse_rung_map[int(config.fidelity.value)]
+                fidelity_value = config.deprecated_fidelity_value
+                assert fidelity_value is not None
+                rung = self.inverse_rung_map[int(fidelity_value)]
                 configs_per_fidelity[rung].append(config)
                 losses_per_fidelity[rung].append(loss)
             return configs_per_fidelity, losses_per_fidelity
@@ -644,7 +623,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             config.fidelity.set_value(self.rung_map[self.min_rung])
 
         config_id = str(self._num_train_x + len(self._pending_evaluations) + 1)
-        return config.hp_values(), config_id, None
+        return config.deprecated_hp_values(), config_id, None
 
     def visualize_2d(
         self, ax, previous_results, grid_points: int = 101, color: str = "k"

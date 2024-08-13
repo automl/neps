@@ -3,17 +3,12 @@ from __future__ import annotations
 import random
 from typing import Any, TYPE_CHECKING, Literal
 from typing_extensions import override
+import numpy as np
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
-from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    SearchSpace,
-)
+from neps.search_spaces import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.bayesian_optimization.acquisition_functions import (
     AcquisitionMapping,
@@ -32,15 +27,6 @@ if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
         BaseAcquisition,
     )
-
-# TODO(eddiebergman): Why not just include in the definition of the parameters.
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
-CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
-
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
-)
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
 class BayesianOptimization(BaseOptimizer):
@@ -111,7 +97,7 @@ class BayesianOptimization(BaseOptimizer):
             ValueError: if no kernel is provided
         """
         if disable_priors:
-            pipeline_space.has_prior = False
+            pipeline_space.initial_prior = {}
             self.prior_confidence = None
         else:
             self.prior_confidence = prior_confidence
@@ -188,41 +174,6 @@ class BayesianOptimization(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
-        self._enhance_priors()
-
-    def _enhance_priors(self, confidence_score: dict = None) -> None:
-        """Only applicable when priors are given along with a confidence.
-
-        Args:
-            confidence_score: dict
-                The confidence scores for the 2 major variable types.
-                Example: {"categorical": 5.2, "numeric": 0.15}
-        """
-        if self.prior_confidence is None:
-            return
-        if (
-            hasattr(self.pipeline_space, "has_prior")
-            and not self.pipeline_space.has_prior
-        ):
-            return
-        for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
-                continue
-            elif isinstance(v, (FloatParameter, IntegerParameter)):
-                if confidence_score is None:
-                    confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
-                else:
-                    confidence = confidence_score["numeric"]
-                self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
-                if confidence_score is None:
-                    confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
-                        self.prior_confidence
-                    ]
-                else:
-                    confidence = confidence_score["categorical"]
-                self.pipeline_space[k].default_confidence_score = confidence
-        return
 
     def is_init_phase(self) -> bool:
         """Decides if optimization is still under the warmstart phase/model-based search."""
@@ -279,36 +230,32 @@ class BayesianOptimization(BaseOptimizer):
                 self._model_update_failed = True
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
-        if (
-            self._num_train_x == 0
-            and self.sample_default_first
-            and self.pipeline_space.has_prior
-        ):
-            config = self.pipeline_space.sample_default_configuration(
-                patience=self.patience, ignore_fidelity=False
-            )
+        seed = np.random.default_rng()
+        space = self.pipeline_space
+
+        if self._num_train_x == 0 and self.sample_default_first and space.has_prior:
+            config = space.default_configuration
+
         elif self._num_train_x == 0 and self._initial_design_size >= 1:
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
+            config = space.sample(around=space.initial_prior, seed=seed)
+
         elif random.random() < self._random_interleave_prob:
-            config = self.pipeline_space.sample(
-                patience=self.patience, ignore_fidelity=False
-            )
+            config = space.sample(seed=seed)
+
         elif self.is_init_phase() or self._model_update_failed:
-            # initial design space
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
+            config = space.sample(around=space.initial_prior, seed=seed)
+
         else:
             for _ in range(self.patience):
                 config = self.acquisition_sampler.sample(self.acquisition)
                 if config not in self._pending_evaluations:
                     break
             else:
-                config = self.pipeline_space.sample(
-                    patience=self.patience, user_priors=True, ignore_fidelity=False
-                )
+                config = space.sample(around=space.initial_prior, seed=seed)
+
+        if space.fidelity is not None:
+            max_fidelity = space.fidelity.domain.upper
+            config = config.at_fidelity(max_fidelity)
 
         config_id = str(
             self._num_train_x
@@ -316,4 +263,4 @@ class BayesianOptimization(BaseOptimizer):
             + len(self._pending_evaluations)
             + 1
         )
-        return config.hp_values(), config_id, None
+        return config.values, config_id, None

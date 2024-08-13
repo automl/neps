@@ -13,7 +13,7 @@ from typing import Any, Callable
 import yaml
 
 from neps.optimizers.base_optimizer import BaseOptimizer
-from neps.search_spaces.search_space import pipeline_space_from_yaml
+from neps.search_spaces.utils import pipeline_space_from_yaml
 
 logger = logging.getLogger("neps")
 

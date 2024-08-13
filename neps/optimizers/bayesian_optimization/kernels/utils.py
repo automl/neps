@@ -39,8 +39,12 @@ def extract_configs(configs: list[SearchSpace]) -> Tuple[list, list]:
     # if _nested_graphs.ndim == 3
     #   graphs = _nested_graphs[:, :, 0].reshape(-1).tolist()
     # Long hand way of doing the above
-    if (len(graphs) > 0 and isinstance(graphs[0], list)
-        and len(graphs[0]) > 0 and isinstance(graphs[0][0], list)):
+    if (
+        len(graphs) > 0
+        and isinstance(graphs[0], list)
+        and len(graphs[0]) > 0
+        and isinstance(graphs[0][0], list)
+    ):
         res = [_list for list_of_list in graphs for _list in list_of_list]
         graphs = res
     return graphs, config_hps

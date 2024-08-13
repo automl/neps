@@ -1,17 +1,11 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+from neps.utils.types import Arr, Array2D, f64
 
 
+@dataclass
 class BaseAcquisition(ABC):
-    def __init__(self):
-        self.surrogate_model = None
-
     @abstractmethod
-    def eval(self, x, asscalar: bool = False):
+    def __call__(self, x: Array2D[f64]) -> Arr[f64]:
         """Evaluate the acquisition function at point x2."""
-        raise NotImplementedError
-
-    def __call__(self, *args, **kwargs):
-        return self.eval(*args, **kwargs)
-
-    def set_state(self, surrogate_model, **kwargs):
-        self.surrogate_model = surrogate_model

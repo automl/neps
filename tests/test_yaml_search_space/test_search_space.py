@@ -1,12 +1,17 @@
 from pathlib import Path
 
 import pytest
-from neps.search_spaces.search_space import (
+from neps.search_spaces.utils import (
     SearchSpaceFromYamlFileError,
     pipeline_space_from_yaml,
 )
 
-from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
+from neps.search_spaces import (
+    CategoricalParameter,
+    ConstantParameter,
+    FloatParameter,
+    IntegerParameter,
+)
 
 BASE_PATH = "tests/test_yaml_search_space/"
 
@@ -43,11 +48,20 @@ def test_correct_including_priors_yaml_file():
         BASE_PATH + "correct_config_including_priors.yml"
     )
     assert isinstance(pipeline_space, dict)
-    float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False, default=3.3e-2, default_confidence="high")
+    float1 = FloatParameter(
+        0.00001,
+        0.1,
+        log=True,
+        is_fidelity=False,
+        default=3.3e-2,
+        default_confidence="high",
+    )
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
     int1 = IntegerParameter(3, 30, log=False, is_fidelity=True)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
-    cat1 = CategoricalParameter(["adam", 90e-3, "rmsprop"], default=90e-3, default_confidence="medium")
+    cat1 = CategoricalParameter(
+        ["adam", 90e-3, "rmsprop"], default=90e-3, default_confidence="medium"
+    )
     assert cat1.__eq__(pipeline_space["optimizer"]) is True
     const1 = ConstantParameter(1e3)
     assert const1.__eq__(pipeline_space["dropout_rate"]) is True

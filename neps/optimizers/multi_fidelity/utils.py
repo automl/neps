@@ -30,11 +30,9 @@ def continuous_to_tabular(
     return result
 
 
-def normalize_vectorize_config(
-    config: SearchSpace, ignore_fidelity: bool = True
-) -> np.ndarray:
+def normalize_vectorize_config(config: SearchSpace) -> np.ndarray:
     _new_vector = []
-    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity).items():
+    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity=True).items():
         _new_vector.extend(hp_list)
     return np.array(_new_vector)
 

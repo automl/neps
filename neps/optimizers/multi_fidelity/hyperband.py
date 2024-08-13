@@ -136,7 +136,7 @@ class HyperbandBase(SuccessiveHalvingBase):
             previous_results=previous_results,
             pending_evaluations=pending_evaluations,
             budget_info=budget_info,
-            optimizer_state=optimizer_state
+            optimizer_state=optimizer_state,
         )
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
@@ -526,7 +526,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         # counting non-fidelity dimensions in search space
         ndims = sum(
             1
-            for _, hp in self.pipeline_space.hyperparameters.items()
+            for _, hp in self.pipeline_space.deprecated_hyperparameters.items()
             if not hp.is_fidelity
         )
         n_min = ndims + 1

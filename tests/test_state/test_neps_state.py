@@ -125,13 +125,16 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].default is None:
+    if (
+        key in REQUIRES_PRIOR
+        and search_space.deprecated_hyperparameters["a"].default is None
+    ):
         pytest.xfail(f"{key} requires a prior")
 
-    if search_space.has_fidelity and key in OPTIMIZER_FAILS_WITH_FIDELITY:
+    if search_space.fidelity is not None and key in OPTIMIZER_FAILS_WITH_FIDELITY:
         pytest.xfail(f"{key} crashed with a fidelity")
 
-    if key in OPTIMIZER_REQUIRES_FIDELITY and not search_space.has_fidelity:
+    if key in OPTIMIZER_REQUIRES_FIDELITY and search_space.fidelity is None:
         pytest.xfail(f"{key} requires a fidelity parameter")
     kwargs: dict[str, Any] = {
         "pipeline_space": search_space,
@@ -180,7 +183,7 @@ def test_sample_trial(
 
     trial1 = neps_state.sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
-        assert k in optimizer.pipeline_space.hyperparameters
+        assert k in optimizer.pipeline_space.deprecated_hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     # HACK: Unfortunatly due to windows, who's time.time() is not very
@@ -194,7 +197,7 @@ def test_sample_trial(
 
     trial2 = neps_state.sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
-        assert k in optimizer.pipeline_space.hyperparameters
+        assert k in optimizer.pipeline_space.deprecated_hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     assert trial1 != trial2

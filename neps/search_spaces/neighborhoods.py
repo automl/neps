@@ -5,7 +5,7 @@ from typing import TypeVar
 import numpy as np
 
 from neps.search_spaces.domain import Domain
-from neps.utils.types import Array, f64, i64
+from neps.utils.types import Arr, f64, i64
 
 V = TypeVar("V", f64, i64)
 
@@ -27,7 +27,7 @@ def unorded_finite_neighbors(
     *,
     n: int,
     seed: np.random.Generator,
-) -> Array[V]:
+) -> Arr[V]:
     N = domain.cardinality
     assert N is not None, "Domain must be finite."
     if N <= _SMALL:
@@ -35,7 +35,7 @@ def unorded_finite_neighbors(
     else:
         full_range = np.arange(N, dtype=i64)
 
-    range_domain = Domain.range(0, N)
+    range_domain = Domain.indices(N)
     _pivot = range_domain.cast(pivot, frm=domain)
 
     left = full_range[:_pivot]
@@ -56,7 +56,7 @@ def neighbors(
     seed: np.random.Generator,
     n_retries: int = NON_UNIQUE_NEIGHBORS_N_RETRIES,
     sample_multiplier: int = NON_UNIQUE_NEIGHBORS_SAMPLE_MULTIPLIER,
-) -> Array[V]:
+) -> Arr[V]:
     """Create a neighborhood of `n` neighbors around `pivot` with a normal distribution.
 
     If you need unique neighbors, you should use
@@ -107,7 +107,7 @@ def neighbors(
     BUFFER_SIZE = (n + 1) * sample_multiplier
 
     # We extend the range of stds to try to find neighbors
-    neighbors: Array[V] = np.empty(BUFFER_SIZE, dtype=domain.dtype)
+    neighbors: Arr[V] = np.empty(BUFFER_SIZE, dtype=domain.dtype)
     stds = np.linspace(std, 1.0, n_retries + 1, endpoint=True)
 
     lower = domain.lower
@@ -155,7 +155,7 @@ def unique_neighborhood(
     std: float,
     n_retries: int = UNIQUE_NEIGHBOR_GENERATOR_N_RETRIES,
     sample_multiplier: int = UNIQUE_NEIGHBOR_GENERATOR_SAMPLE_MULTIPLIER,
-) -> Array[V]:
+) -> Arr[V]:
     """Create a neighborhood of `n` neighbors around `pivot` with a normal distribution.
 
     The neighborhood is created by sampling from a normal distribution centered around
@@ -211,6 +211,7 @@ def unique_neighborhood(
     # Different than other neighborhoods as it's unnormalized and
     # the quantization is directly integers.
     assert n < 1000000, "Can only generate less than 1 million neighbors."
+    assert 0 < std < 1.0, "Standard deviation must be in the range (0, 1)."
     lower = domain.lower
     upper = domain.upper
 
@@ -218,7 +219,7 @@ def unique_neighborhood(
     # more neighbors than are possible. We then generate all of them.
     # We can do this simply with a range and removing the pivot.
     if domain.cardinality is not None and n >= domain.cardinality - 1:
-        range_domain = Domain.range(0, domain.cardinality)
+        range_domain = Domain.indices(domain.cardinality)
         int_pivot = range_domain.cast(pivot, frm=domain)
 
         if int_pivot == 0:

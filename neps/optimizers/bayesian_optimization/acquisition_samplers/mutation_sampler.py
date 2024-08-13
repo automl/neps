@@ -115,7 +115,7 @@ class MutationSampler(AcquisitionSampler):
         seen: set[int] = set()
 
         def _hash(_config: SearchSpace) -> int:
-            return hash(_config.hp_values().values())
+            return hash(_config.deprecated_hp_values().values())
 
         evaluation_pool = []
         per_arch = mutate_size // n_best

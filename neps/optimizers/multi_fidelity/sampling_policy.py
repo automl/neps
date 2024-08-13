@@ -1,14 +1,18 @@
 # mypy: disable-error-code = assignment
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 from abc import ABC, abstractmethod
 from typing import Any
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd
 import torch
 
+from neps.search_spaces.config import Config
+from neps.search_spaces.samplers.uniform import UniformSampler
 from neps.utils.common import instance_from_map
 from ...search_spaces.search_space import SearchSpace
 from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
@@ -31,6 +35,10 @@ from ..multi_fidelity_prior.utils import (
     update_fidelity,
 )
 
+from logging import getLogger
+
+logger = getLogger(__name__)
+
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
 DELTA_THRESHOLD = 1e-2  # 1%
@@ -40,13 +48,11 @@ TOP_EI_SAMPLE_COUNT = 10
 class SamplingPolicy(ABC):
     """Base class for implementing a sampling strategy for SH and its subclasses"""
 
-    def __init__(self, pipeline_space: SearchSpace, patience: int = 100, logger=None):
+    def __init__(self, pipeline_space: SearchSpace):
         self.pipeline_space = pipeline_space
-        self.patience = patience
-        self.logger = logger or logging.getLogger("neps")
 
     @abstractmethod
-    def sample(self, *args, **kwargs) -> SearchSpace:
+    def sample(self, *, seed: np.random.Generator) -> SearchSpace:
         pass
 
 
@@ -57,17 +63,12 @@ class RandomUniformPolicy(SamplingPolicy):
         SamplingPolicy ([type]): [description]
     """
 
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        logger=None,
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+    def __init__(self, pipeline_space: SearchSpace):
+        super().__init__(pipeline_space)
+        self.uniform_sampler = UniformSampler.new(space=pipeline_space)
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
-        return self.pipeline_space.sample(
-            patience=self.patience, user_priors=False, ignore_fidelity=True
-        )
+    def sample(self, *, seed: np.random.Generator) -> Config:
+        return self.uniform_sampler.sample_configs(n=1, seed=seed)[0]
 
 
 class FixedPriorPolicy(SamplingPolicy):
@@ -75,26 +76,24 @@ class FixedPriorPolicy(SamplingPolicy):
     a fixed fraction from the prior.
     """
 
-    def __init__(
-        self, pipeline_space: SearchSpace, fraction_from_prior: float = 1, logger=None
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+    def __init__(self, pipeline_space: SearchSpace, fraction_from_prior: float = 1):
+        super().__init__(pipeline_space=pipeline_space)
         assert 0 <= fraction_from_prior <= 1
         self.fraction_from_prior = fraction_from_prior
+        self.uniform_sampler = UniformSampler.new(space=pipeline_space)
+        self.pipeline_space = pipeline_space
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
-        """Samples from the prior with a certain probabiliyu
+    @override
+    def sample(self, *, seed: np.random.Generator) -> Config:
+        """Samples from the prior with a certain probability
 
         Returns:
             SearchSpace: [description]
         """
-        user_priors = False
-        if np.random.uniform() < self.fraction_from_prior:
-            user_priors = True
-        config = self.pipeline_space.sample(
-            patience=self.patience, user_priors=user_priors, ignore_fidelity=True
+        return self.pipeline_space.sample(
+            around=self.pipeline_space.initial_prior,
+            seed=seed,
         )
-        return config
 
 
 class EnsemblePolicy(SamplingPolicy):
@@ -108,7 +107,6 @@ class EnsemblePolicy(SamplingPolicy):
         self,
         pipeline_space: SearchSpace,
         inc_type: str = "mutation",
-        logger=None,
     ):
         """Samples a policy as per its weights and performs the selected sampling.
 
@@ -124,38 +122,40 @@ class EnsemblePolicy(SamplingPolicy):
                     50% (mutation_rate=0.5) probability of selecting each hyperparmeter
                     for perturbation, sampling a deviation N(value, mutation_std=0.5))
         """
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        super().__init__(pipeline_space=pipeline_space)
         self.inc_type = inc_type
         # setting all probabilities uniformly
-        self.policy_map = {"random": 0.33, "prior": 0.34, "inc": 0.33}
+        self.policy_map = {"random": 0.3333, "prior": 0.3333, "inc": 0.3333}
 
-    def sample_neighbour(self, incumbent, distance, tolerance=TOLERANCE):
+    def sample_neighbour(
+        self, incumbent, distance, tolerance=TOLERANCE, *, seed: np.random.Generator
+    ):
         """Samples a config from around the `incumbent` within radius as `distance`."""
         # TODO: how does tolerance affect optimization on landscapes of different scale
         sample_counter = 0
         while True:
-            # sampling a config
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=False
-            )
-            # computing distance from incumbent
+            config = self.pipeline_space.sample(seed=seed)
             d = compute_config_dist(config, incumbent)
-            # checking if sample is within the hypersphere around the incumbent
             if d < max(distance, tolerance):
-                # accept sample
                 break
+
             sample_counter += 1
             if sample_counter > SAMPLE_THRESHOLD:
-                # reset counter for next increased radius for hypersphere
                 sample_counter = 0
-                # if no sample falls within the radius, increase the threshold radius 1%
                 distance += distance * DELTA_THRESHOLD
-        # end of while
+
         return config
 
     def sample(
-        self, inc: SearchSpace = None, weights: dict[str, float] = None, *args, **kwargs
-    ) -> SearchSpace:
+        self,
+        *,
+        prior: ConfigWithConfidence | None = None,
+        inc: Config | None = None,
+        weights: dict[str, float] | None = None,
+        hypersphere_distance: float = 0.1,
+        seed: np.random.Generator,
+        mutation: tuple[float, float] | None = None,
+    ) -> Config:
         """Samples from the prior with a certain probability
 
         Returns:
@@ -165,21 +165,16 @@ class EnsemblePolicy(SamplingPolicy):
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value
         else:
-            self.logger.info(f"Using default policy weights: {self.policy_map}")
+            logger.info(f"Using default policy weights: {self.policy_map}")
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 
-        self.logger.info(
-            f"Sampling from {policy} with weights (i, p, r)={prob_weights}"
-        )
+        logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
 
         if policy == "prior":
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=True
-            )
+            config = self.pipeline_space.sample(around=prior, seed=seed)
         elif policy == "inc":
-
             if (
                 hasattr(self.pipeline_space, "has_prior")
                 and self.pipeline_space.has_prior
@@ -189,33 +184,26 @@ class EnsemblePolicy(SamplingPolicy):
                 user_priors = False
 
             if inc is None:
-                inc = self.pipeline_space.sample_default_configuration().clone()
-                self.logger.warning(
+                inc = self.pipeline_space.default_configuration
+                logger.warning(
                     "No incumbent config found, using default as the incumbent."
                 )
 
             if self.inc_type == "hypersphere":
-                distance = kwargs["distance"]
-                config = self.sample_neighbour(inc, distance)
+                config = self.sample_neighbour(inc, hypersphere_distance, seed=seed)
             elif self.inc_type == "gaussian":
-                # use inc to set the defaults of the configuration
-                _inc = inc.clone()
-                _inc.set_defaults_to_current_values()
                 # then sample with prior=True from that configuration
                 # since the defaults are treated as the prior
-                config = _inc.sample(
-                    patience=self.patience,
-                    user_priors=user_priors,
-                    ignore_fidelity=True,
+                inc_with_confidence = inc.with_confidence(
+                    self.pipeline_space.confidence_scores("high")
                 )
+                config = self.pipeline_space.sample(around=inc_with_confidence, seed=seed)
             elif self.inc_type == "crossover":
                 # choosing the configuration for crossover with incumbent
                 # the weight distributed across prior adnd inc
                 _w_priors = 1 - self.policy_map["random"]
                 # re-calculate normalized score ratio for prior-inc
-                w_prior = np.clip(
-                    self.policy_map["prior"] / _w_priors, a_min=0, a_max=1
-                )
+                w_prior = np.clip(self.policy_map["prior"] / _w_priors, a_min=0, a_max=1)
                 w_inc = np.clip(self.policy_map["inc"] / _w_priors, a_min=0, a_max=1)
                 # calculating difference of prior and inc score
                 score_diff = np.abs(w_prior - w_inc)
@@ -224,32 +212,40 @@ class EnsemblePolicy(SamplingPolicy):
                 # if the score difference is large, crossover between incumbent and random
                 probs = [1 - score_diff, score_diff]  # the order is [prior, random]
                 user_priors = np.random.choice([True, False], p=probs)
-                if (
-                    hasattr(self.pipeline_space, "has_prior")
-                    and not self.pipeline_space.has_prior
-                ):
-                    user_priors = False
-                self.logger.info(
-                    f"Crossing over with user_priors={user_priors} with p={probs}"
-                )
-                # sampling a configuration either randomly or from a prior
-                _config = self.pipeline_space.sample(
-                    patience=self.patience,
-                    user_priors=user_priors,
-                    ignore_fidelity=True,
-                )
-                # injecting hyperparameters from the sampled config into the incumbent
-                # TODO: ideally lower crossover prob overtime
-                config = custom_crossover(inc, _config, crossover_prob=0.5)
-            elif self.inc_type == "mutation":
-                if "inc_mutation_rate" in kwargs:
-                    config = local_mutation(
-                        inc,
-                        mutation_rate=kwargs["inc_mutation_rate"],
-                        std=kwargs["inc_mutation_std"],
+
+                if self.pipeline_space.has_prior:
+                    logger.info(f"Crossing over with prior with p={probs}")
+                    # sampling a configuration either randomly or from a prior
+                    _config = self.pipeline_space.sample(
+                        around=self.pipeline_space.initial_prior, seed=seed
                     )
                 else:
-                    config = local_mutation(inc)
+                    _config = self.pipeline_space.sample(seed=seed)
+
+                # injecting hyperparameters from the sampled config into the incumbent
+                # TODO: ideally lower crossover prob overtime
+                maybe_config = custom_crossover(
+                    inc, _config, space=self.pipeline_space, crossover_prob=0.5
+                )
+                if maybe_config is None:
+                    config = self.pipeline_space.sample(seed=seed)
+
+            elif self.inc_type == "mutation":
+                if mutation is None:
+                    config = local_mutation(
+                        inc,
+                        space=self.pipeline_space,
+                        seed=seed,
+                    )
+                else:
+                    rate, std = mutation
+                    config = local_mutation(
+                        inc,
+                        space=self.pipeline_space,
+                        mutation_rate=rate,
+                        std=std,
+                        seed=seed,
+                    )
             else:
                 raise ValueError(
                     f"{self.inc_type} is not in "
@@ -257,9 +253,7 @@ class EnsemblePolicy(SamplingPolicy):
                 )
         else:
             # random
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=True
-            )
+            config = self.pipeline_space.sample(seed=seed)
         return config
 
 
@@ -282,9 +276,8 @@ class ModelPolicy(SamplingPolicy):
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
         patience: int = 100,
-        logger=None,
     ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        super().__init__(pipeline_space=pipeline_space)
 
         surrogate_model_args = surrogate_model_args or {}
 
@@ -302,9 +295,9 @@ class ModelPolicy(SamplingPolicy):
         if not surrogate_model_args["hp_kernels"]:
             raise ValueError("No kernels are provided!")
         if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
+            surrogate_model_args["vectorial_features"] = (
+                pipeline_space.get_vectorial_dim()
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
@@ -373,7 +366,7 @@ class ModelPolicy(SamplingPolicy):
               variable set to the same value. This value is same as that of the fidelity
               value of the configs in the training data.
         """
-        self.logger.info("Acquiring...")
+        logger.info("Acquiring...")
 
         # sampling random configurations
         samples = [
@@ -433,9 +426,8 @@ class BaseDynamicModelPolicy(SamplingPolicy):
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
         patience: int = 100,
-        logger=None,
     ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        super().__init__(pipeline_space=pipeline_space)
 
         surrogate_model_args = surrogate_model_args or {}
 
@@ -453,9 +445,9 @@ class BaseDynamicModelPolicy(SamplingPolicy):
         if not surrogate_model_args["hp_kernels"]:
             raise ValueError("No kernels are provided!")
         if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
+            surrogate_model_args["vectorial_features"] = (
+                pipeline_space.get_vectorial_dim()
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,

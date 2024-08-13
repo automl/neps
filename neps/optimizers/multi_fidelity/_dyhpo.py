@@ -406,4 +406,4 @@ class MFEIBO(BaseOptimizer):
                 else 0
             )
         config_id = f"{_config_id}_{self.get_budget_level(config)}"
-        return config.hp_values(), config_id, None
+        return config.deprecated_hp_values(), config_id, None
