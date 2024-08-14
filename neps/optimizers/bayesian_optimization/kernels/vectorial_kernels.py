@@ -1,8 +1,7 @@
 from __future__ import annotations
 from copy import deepcopy
 from math import sqrt
-from dataclasses import dataclass
-from typing import Iterable
+from dataclasses import dataclass, field
 from typing_extensions import override
 
 import numpy as np
@@ -20,7 +19,8 @@ class Stationary:
     All the classes (i.e. the class of stationary kernel_operators) derived from this
     class use the scaled distance to compute the Gram matrix."""
 
-    lengthscale: float | torch.Tensor = 1.0
+    # A single value applies to all dimensions, a vector applies to each dimension
+    lengthscale: torch.Tensor = field(default_factory=lambda: torch.tensor(1.0))
     lengthscale_bounds: tuple[float, float] = LENGTHSCALE_BOUNDS_DEFAULT
     outputscale: float = 1.0
 
@@ -31,7 +31,7 @@ class Stationary:
         self,
         x1: torch.Tensor,
         x2: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> torch.Tensor:
         lengthscale = l if l is not None else self.lengthscale
         return _scaled_distance(lengthscale, x1, x2)
@@ -39,7 +39,7 @@ class Stationary:
     def fit_transform(
         self,
         x1,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
         rebuild_model: bool = True,
         save_gram_matrix: bool = True,
     ) -> torch.Tensor:
@@ -52,7 +52,7 @@ class Stationary:
             self.gram_ = K.clone()
         return K
 
-    def transform(self, x1, l: float | torch.Tensor | None = None) -> torch.Tensor:
+    def transform(self, x1, l: torch.Tensor | None = None) -> torch.Tensor:
         if self.gram_ is None or self.train_ is None:
             raise ValueError("The kernel has not been fitted. Run fit_transform first")
         return self.forward(self.train_, x1, l=l)
@@ -61,7 +61,7 @@ class Stationary:
         self,
         x2: torch.Tensor,
         x1: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         if x1 is None:
             x1 = torch.tensor(self.train_)
@@ -69,11 +69,8 @@ class Stationary:
         K = self.forward(x1, x2, l)
         return K, x2
 
-    def update_hyperparameters(self, lengthscale: Iterable[torch.Tensor]) -> None:
-        self.lengthscale = [
-            l_.clamp(self.lengthscale_bounds[0], self.lengthscale_bounds[1]).item()
-            for l_ in lengthscale
-        ]
+    def update_hyperparameters(self, lengthscale: torch.Tensor) -> None:
+        self.lengthscale = torch.clamp(lengthscale, *self.lengthscale_bounds)
 
 
 @dataclass
@@ -83,7 +80,7 @@ class RBFKernel(Stationary):
         self,
         x1: torch.Tensor,
         x2: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> torch.Tensor:
         lengthscale = l if l is not None else self.lengthscale
         dist_sq = _scaled_distance(lengthscale, x1, x2, sq_dist=True)
@@ -130,7 +127,7 @@ class Matern32Kernel(Stationary):
         self,
         x1: torch.Tensor,
         x2: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> torch.Tensor:
         lengthscale = l if l is not None else self.lengthscale
         dist = _scaled_distance(lengthscale, x1, x2)
@@ -143,7 +140,7 @@ class Matern52Kernel(Stationary):
         self,
         x1: torch.Tensor,
         x2: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> torch.Tensor:
         lengthscale = l if l is not None else self.lengthscale
         dist = _scaled_distance(lengthscale, x1, x2, sq_dist=True)
@@ -153,12 +150,6 @@ class Matern52Kernel(Stationary):
             * torch.exp(-sqrt(5.0) * dist)
         )
 
-    def update_hyperparameters(self, lengthscale):
-        if lengthscale is None or "continuous" not in lengthscale.keys():
-            raise ValueError("wtf")
-        lengthscale = lengthscale["continuous"]
-        super().update_hyperparameters(lengthscale=lengthscale)
-
 
 @dataclass
 class HammingKernel(Stationary):
@@ -167,17 +158,11 @@ class HammingKernel(Stationary):
         self,
         x1: torch.Tensor,
         x2: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> torch.Tensor:
         lengthscale = l if l is not None else self.lengthscale
         dist = _hamming_distance(lengthscale, x1, x2)
         return self.outputscale * dist
-
-    def update_hyperparameters(self, lengthscale):
-        if lengthscale is None or "categorical" not in lengthscale.keys():
-            raise ValueError("wtf")
-        lengthscale = lengthscale["categorical"]
-        super().update_hyperparameters(lengthscale=lengthscale)
 
 
 @dataclass
@@ -189,7 +174,7 @@ class RationalQuadraticKernel(Stationary):
         self,
         x1: torch.Tensor,
         x2: torch.Tensor | None = None,
-        l: float | torch.Tensor | None = None,
+        l: torch.Tensor | None = None,
     ) -> torch.Tensor:
         lengthscale = l if l is not None else self.lengthscale
         dist_sq = _scaled_distance(lengthscale, x1, x2, sq_dist=True)
@@ -212,7 +197,7 @@ def _unscaled_square_distance(
 
 
 def _scaled_distance(
-    lengthscale: float | torch.Tensor,
+    lengthscale: torch.Tensor,
     X: torch.Tensor,
     X2: torch.Tensor | None = None,
     *,
@@ -224,7 +209,7 @@ def _scaled_distance(
     lengthscale for all dimensions. Otherwise, we have an ARD kernel and in which case
     the length of the lengthscale vector must be the same as the dimensionality of the
     problem."""
-    if isinstance(lengthscale, float):
+    if len(lengthscale) == 1:
         if sq_dist is False:
             return torch.sqrt(_unscaled_square_distance(X, X2)) / (lengthscale**2)
 
@@ -246,7 +231,7 @@ def _scaled_distance(
 
 
 def _hamming_distance(
-    lengthscale: float | torch.Tensor,
+    lengthscale: torch.Tensor,
     X: torch.Tensor,
     X2: torch.Tensor | None = None,
 ) -> torch.Tensor:
@@ -258,7 +243,7 @@ def _hamming_distance(
     scaled_indicator = C * indicator
     diffs = scaled_indicator.sum(dim=2)
 
-    if isinstance(lengthscale, float) or len(lengthscale) == 1:
+    if len(lengthscale) == 1:
         return torch.exp(diffs) / lengthscale
-    else:
-        return torch.exp(diffs)
+
+    return torch.exp(diffs)
