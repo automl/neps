@@ -176,7 +176,7 @@ class DeepGPDataTransformer:
         self.numericals = {
             name: h
             for name, h in self.space.items()
-            if isinstance(h, (FloatParameter, IntegerParameter))
+            if isinstance(h, (FloatParameter, IntegerParameter)) and not h.is_fidelity
         }
         self.categoricals = {
             name: h
@@ -254,18 +254,8 @@ class DeepGPDataTransformer:
 
         return lc_buffer
 
-    def encode_y(
-        self, y: list[float]
-    ) -> tuple[torch.Tensor, None | tuple[int | float, int | float]]:
-        tensor = torch.tensor(y, device=self.device, dtype=torch.float32)
-        if self.fidelity_bounds:
-            _min, _max = tensor.min(), tensor.max()
-            tensor.sub_(_min).div_(_max - _min)
-            bounds = (_min.detach().item(), _max.detach().item())
-        else:
-            bounds = None
-
-        return tensor, bounds
+    def encode_y(self, y: list[float]) -> torch.Tensor:
+        return torch.tensor(y, device=self.device, dtype=torch.float32)
 
 
 def _train_model(
@@ -397,7 +387,8 @@ class DeepGP:
     n_epochs: int = 1000
     patience: int = 10
     refine_epochs: int = 50
-    perf_patience: int = 10
+    perf_patience_factor: float = 1.2  # X * max_fidelity
+    n_initial_full_trainings: int = 10
     device: torch.device = field(
         default_factory=lambda: torch.device("cuda")
         if torch.cuda.is_available()
@@ -412,6 +403,7 @@ class DeepGP:
     # Created from the above arguments
     # TODO: Lift this out of DeepGP and let the optimizer worry about pre-processing
     preprocessor: DeepGPDataTransformer = field(init=False)
+    max_fidelity: int | float = field(init=False)
 
     # Post fit parameters, following scikit-learn convention of appending an underscore
     model_: GPRegressionModel | None = field(init=False)
@@ -419,7 +411,6 @@ class DeepGP:
     nn_: NeuralFeatureExtractor | None = field(init=False)
     projected_x_train_: torch.Tensor | None = field(init=False)
     y_train_: torch.Tensor | None = field(init=False)
-    y_bounds_: tuple[float, float] | None = field(init=False)
 
     def __post_init__(self):
         if any(isinstance(h, GraphParameter) for h in self.pipeline_space.values()):
@@ -436,6 +427,7 @@ class DeepGP:
             ), "neps root_directory must be provided for the checkpointing"
             self.checkpoint_path = self.root_directory / self.checkpoint_file
 
+        self.max_fidelity = self.pipeline_space.fidelity.upper  # type: ignore
         self.preprocessor = DeepGPDataTransformer(
             space=self.pipeline_space,
             fidelity_bounds=budget_bounds,
@@ -447,6 +439,8 @@ class DeepGP:
         self.model_ = None
         self.likelihood_ = None
         self.nn_ = None
+        self.projected_x_train_ = None
+        self.y_train_ = None
 
     def fit(
         self,
@@ -456,11 +450,10 @@ class DeepGP:
     ):
         x_, train_budget = self.preprocessor.encode_configs(x_train)
         curves = self.preprocessor.encode_learning_curves(learning_curves)
-        y_, y_bounds = self.preprocessor.encode_y(y_train)
+        y_ = self.preprocessor.encode_y(y_train)
 
         # Required for predictions later
         self.y_train_ = y_
-        self.y_bounds_ = y_bounds
 
         input_dim = x_.shape[1]
 
@@ -476,7 +469,12 @@ class DeepGP:
             assert self.root_directory is not None
 
             non_improvement_steps = count_non_improvement_steps(self.root_directory)
-            if non_improvement_steps < self.perf_patience:
+
+            patience_steps = self.perf_patience_factor * self.max_fidelity
+            if (
+                len(y_train) >= self.n_initial_full_trainings
+                and non_improvement_steps < patience_steps
+            ):
                 n_epochs = self.refine_epochs
 
                 checkpoint = torch.load(self.checkpoint_path)
@@ -534,14 +532,15 @@ class DeepGP:
             raise SurrogateFailedToFit("DeepGP Failed to fit the training data!") from e
 
     def predict(
-        self, x: list[SearchSpace], learning_curves: list[list[float]]
+        self,
+        x: list[SearchSpace],
+        learning_curves: list[list[float]],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         assert self.model_ is not None, "Please fit the model first"
         assert self.nn_ is not None, "Please fit the model first"
         assert self.likelihood_ is not None, "Please fit the model first"
         assert self.projected_x_train_ is not None, "Please fit the model first"
         assert self.y_train_ is not None, "Please fit the model first"
-        assert self.y_bounds_ is not None, "Please fit the model first"
 
         self.model_.eval()
         self.nn_.eval()
@@ -562,11 +561,6 @@ class DeepGP:
             preds = self.likelihood_(self.model_(projected_test_x))
 
         means = preds.mean.detach().cpu()
-
-        if self.normalize_y:
-            _min, _max = self.y_bounds_
-            means = (means + _min) * (_max - _min)
-
         cov = torch.diag(torch.pow(preds.stddev.detach(), 2)).cpu()
 
         return means, cov
