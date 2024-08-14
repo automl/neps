@@ -4,7 +4,7 @@ from .gp import ComprehensiveGP
 from .gp_hierarchy import ComprehensiveGPHierarchy
 
 try:
-    from .deepGP import DeepGP
+    from neps.optimizers.models.deepGP import DeepGP
 except ImportError as e:
     DeepGP = MissingDependencyError("gpytorch", e)
 
