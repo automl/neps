@@ -46,7 +46,7 @@ class CombineKernel:
         rebuild_model: bool = True,
         save_gram_matrix: bool = True,
         gp_fit: bool = True,
-        feature_lengthscale: list = None,
+        feature_lengthscale: dict[str, torch.Tensor] | None = None,
         **kwargs,
     ):
         N = len(configs)
@@ -147,16 +147,13 @@ class CombineKernel:
 
         return K.t()
 
-    def clamp_theta_vector(self, theta_vector):
-        if theta_vector is None:
-            return None
+    def clamp_theta_vector(
+        self, theta_vector: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
+        for t_ in theta_vector.values():
+            if t_.is_leaf:
+                t_.clamp_(self.lengthscale_bounds[0], self.lengthscale_bounds[1])
 
-        [
-            t_.clamp_(self.lengthscale_bounds[0], self.lengthscale_bounds[1])
-            if t_ is not None and t_.is_leaf
-            else None
-            for t_ in theta_vector.values()
-        ]
         return theta_vector
 
 
@@ -210,6 +207,3 @@ class SumKernel(CombineKernel):
 class ProductKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):
         super().__init__("product", *kernels, **kwargs)
-
-    def dk_dphi(self, weights, gr: list = None, x=None, feature_lengthscale=None):
-        raise NotImplementedError

@@ -243,6 +243,3 @@ class SumKernel(CombineKernel):
 class ProductKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):
         super().__init__("product", *kernels, **kwargs)
-
-    def dk_dphi(self, weights, gr: list = None, x=None, feature_lengthscale=None):
-        raise NotImplementedError
