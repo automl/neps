@@ -637,7 +637,7 @@ class ComprehensiveGPHierarchy:
 
         for k in self.combined_kernel.kernels:
             if isinstance(k, Stationary):
-                k.update_hyperparameters(lengthscale=torch.exp(theta_vector))
+                k.update_lengthscales(lengthscale=torch.exp(theta_vector))
 
         self.combined_kernel.weights = weights.clone()
 
@@ -693,55 +693,6 @@ class ComprehensiveGPHierarchy:
             del combined_kernel_copy
         return mu_s, cov_s
 
-    def predict_single_hierarchy(
-        self, x_configs, hierarchy_id=0, preserve_comp_graph: bool = False
-    ):
-        """Kriging predictions"""
-
-        if not isinstance(x_configs, list):
-            # Convert a single input X_s to a singleton list
-            x_configs = [x_configs]
-
-        if self.K_i is None or self.logDetK is None:
-            raise ValueError(
-                "Inverse of Gram matrix is not instantiated. Please call the optimize function to "
-                "fit on the training data first!"
-            )
-
-        # Concatenate the full list
-        X_configs_all = self.x_configs + x_configs
-
-        # Make a copy of the sum_kernels for this step, to avoid breaking the autodiff if grad guided mutation is used
-        if preserve_comp_graph:
-            combined_kernel_copy = deepcopy(self.combined_kernel)
-        else:
-            combined_kernel_copy = self.combined_kernel
-
-        K_sub_full = combined_kernel_copy.fit_transform_single_hierarchy(
-            self.weights,
-            X_configs_all,
-            normalize=self.normalize_combined_kernel,
-            hierarchy_id=hierarchy_id,
-            feature_lengthscale=torch.exp(self.theta_vector),
-            layer_weights=self.layer_weights,
-            rebuild_model=True,
-            save_gram_matrix=False,
-            gp_fit=False,
-        )
-
-        K_s = K_sub_full[: self.n :, self.n :]
-        K_ss = K_sub_full[self.n :, self.n :]
-        mu_s = K_s.t() @ self.K_i @ self.y
-        cov_s_full = K_ss - K_s.t() @ self.K_i @ K_s
-        cov_s = torch.clamp(cov_s_full, self.likelihood, np.inf)
-        mu_s = unnormalize_y(mu_s, self.y_mean, self.y_std)
-        std_s = torch.sqrt(cov_s)
-        std_s = unnormalize_y(std_s, None, self.y_std, True)
-        cov_s = std_s**2
-        if preserve_comp_graph:
-            del combined_kernel_copy
-        return mu_s, cov_s
-
     @property
     def x(self):
         return self.x_configs
@@ -758,115 +709,6 @@ class ComprehensiveGPHierarchy:
         self.y, self.y_mean, self.y_std = normalize_y(train_y_tensor)
         # The Gram matrix of the training data
         self.K_i, self.logDetK = None, None
-
-    def dmu_dphi(
-        self,
-        X_s=None,
-        # compute_grad_var=False,
-        average_across_features=True,
-        average_across_occurrences=False,
-    ):
-        r"""
-        Compute the derivative of the GP posterior mean at the specified input location with respect to the
-        *vector embedding* of the graph (e.g., if using WL-subtree, this function computes the gradient wrt
-        each subtree pattern)
-
-        The derivative is given by
-        $
-        \frac{\partial \mu^*}{\partial \phi ^*} = \frac{\partial K(\phi, \phi^*)}{\partial \phi ^ *}K(\phi, \phi)^{-1}
-        \mathbf{y}
-        $
-
-        which derives directly from the GP posterior mean formula, and since the term $K(\phi, \phi)^{-1} and \mathbf{y}
-        are both independent of the testing points (X_s, or \phi^*}, the posterior gradient is simply the matrix
-        produce of the kernel gradient with the inverse Gram and the training label vector.
-
-        Parameters
-        ----------
-        X_s: The locations on which the GP posterior mean derivatives should be evaluated. If left blank, the
-        derivatives will be evaluated at the training points.
-
-        compute_grad_var: bool. If true, also compute the gradient variance.
-
-        The derivative of GP is also a GP, and thus the predictive distribution of the posterior gradient is Gaussian.
-        The posterior mean is given above, and the posterior variance is:
-        $
-        \mathbb{V}[\frac{\partial f^*}{\partial \phi^*}]= \frac{\partial^2k(\phi^*, \phi^*)}{\partial \phi^*^2} -
-        \frac{\partial k(\phi^*, \Phi)}{\partial \phi^*}K(X, X)^{-1}\frac{\partial k{(\Phi, \phi^*)}}{\partial \phi^*}
-        $
-
-        Returns
-        -------
-        list of K torch.Tensor of the shape N x2 D, where N is the length of the X_s list (each element of which is a
-        networkx graph), K is the number of kernel_operators in the combined kernel and D is the dimensionality of the
-        feature vector (this is determined by the specific graph kernel.
-
-        OR
-
-        list of K torch.Tensor of shape D, if averaged_over_samples flag is enabled.
-        """
-        if self.K_i is None or self.logDetK is None:
-            raise ValueError(
-                "Inverse of Gram matrix is not instantiated. Please call the optimize "
-                "function to fit on the training data first!"
-            )
-        if self.n_vector_kernels:
-            if X_s is not None:
-                V_s = self._get_vectorial_features(X_s, self.vectorial_feactures)
-                V_s, _, _ = standardize_x(V_s, self.x_features_min, self.x_features_max)
-            else:
-                V_s = self.x_features
-                X_s = self.x[:]
-        else:
-            V_s = None
-            X_s = X_s if X_s is not None else self.x[:]
-
-        alpha = (self.K_i @ self.y).double().reshape(1, -1)
-        dmu_dphi = []
-        # dmu_dphi_var = [] if compute_grad_var else None
-
-        Ks_handles = []
-        feature_matrix = []
-        for j, x_s in enumerate(X_s):
-            jacob_vecs = []
-            if V_s is None:
-                handles = self.combined_kernel.forward_t(
-                    self.weights,
-                    [x_s],
-                )
-            else:
-                handles = self.combined_kernel.forward_t(self.weights, [x_s], V_s[j])
-            Ks_handles.append(handles)
-            # Each handle is a 2-tuple. first element is the Gram matrix, second element is the leaf variable
-            feature_vectors = []
-            for handle in handles:
-                k_s, y, _ = handle
-                # k_s is output, leaf is input, alpha is the K_i @ y term which is constant.
-                # When compute_grad_var is not required, computational graphs do not need to be saved.
-                jacob_vecs.append(
-                    torch.autograd.grad(
-                        outputs=k_s, inputs=y, grad_outputs=alpha, retain_graph=False
-                    )[0]
-                )
-                feature_vectors.append(y)
-            feature_matrix.append(feature_vectors)
-            jacob_vecs = torch.cat(jacob_vecs)
-            dmu_dphi.append(jacob_vecs)
-
-        feature_matrix = torch.cat([f[0] for f in feature_matrix])
-        if average_across_features:
-            dmu_dphi = torch.cat(dmu_dphi)
-            # compute the weighted average of the gradient across N_t.
-            # feature matrix is of shape N_t x K x D
-            avg_mu, avg_var, incidences = get_grad(
-                dmu_dphi, feature_matrix, average_across_occurrences
-            )
-            return avg_mu, avg_var, incidences
-        return (
-            dmu_dphi,
-            None,
-            feature_matrix.sum(dim=0) if average_across_occurrences else feature_matrix,
-        )
 
 
 def get_grad(grad_matrix, feature_matrix, average_occurrences=False):
@@ -982,7 +824,7 @@ def _grid_search_wl_kernel(
     k.change_kernel_params({"h": best_subtree_depth})
     if k.se is not None:
         k.change_se_params({"lengthscale": best_lengthscale})
-    k._gram = best_K
+    k.gram_ = best_K
 
 
 def get_theta_vector(vectorial_features):

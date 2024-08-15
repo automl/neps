@@ -211,7 +211,7 @@ class DeepGPDataTransformer:
         # before inserting the one-hot encoding.
         offset = len(self.numericals)
         for hp_name, hp in self.categoricals.items():
-            budget_tensor = torch.tensor(
+            cat_tensor = torch.tensor(
                 [config[hp_name]._value_index for config in configs],  # type: ignore
                 device=self.device,
                 dtype=torch.float64,
@@ -219,7 +219,7 @@ class DeepGPDataTransformer:
 
             # .. and insert one-hot encoding (ChatGPT solution, verified locally)
             portion = x_buffer[:, offset : offset + len(hp.choices)]
-            portion.scatter_(1, budget_tensor.unsqueeze(1), 1)
+            portion.scatter_(1, cat_tensor.unsqueeze(1), 1)
 
             offset += len(hp.choices)
 

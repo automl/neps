@@ -23,7 +23,7 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers import (
 from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_kernels
+from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_default_kernels
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
@@ -124,7 +124,7 @@ class CostCooling(BayesianOptimization):
 
         surrogate_model_args = surrogate_model_args or {}
         cost_model_args = cost_model_args or {}
-        graph_kernels, hp_kernels = get_kernels(
+        graph_kernels, hp_kernels = get_default_kernels(
             self.pipeline_space,
             domain_se_kernel,
             graph_kernels,

@@ -22,7 +22,7 @@ from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMappi
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from ..bayesian_optimization.kernels.get_kernels import get_kernels
+from ..bayesian_optimization.kernels.get_kernels import get_default_kernels
 from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import (
     compute_config_dist,
@@ -170,16 +170,13 @@ class EnsemblePolicy(SamplingPolicy):
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 
-        self.logger.info(
-            f"Sampling from {policy} with weights (i, p, r)={prob_weights}"
-        )
+        self.logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
 
         if policy == "prior":
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=True
             )
         elif policy == "inc":
-
             if (
                 hasattr(self.pipeline_space, "has_prior")
                 and self.pipeline_space.has_prior
@@ -213,9 +210,7 @@ class EnsemblePolicy(SamplingPolicy):
                 # the weight distributed across prior adnd inc
                 _w_priors = 1 - self.policy_map["random"]
                 # re-calculate normalized score ratio for prior-inc
-                w_prior = np.clip(
-                    self.policy_map["prior"] / _w_priors, a_min=0, a_max=1
-                )
+                w_prior = np.clip(self.policy_map["prior"] / _w_priors, a_min=0, a_max=1)
                 w_inc = np.clip(self.policy_map["inc"] / _w_priors, a_min=0, a_max=1)
                 # calculating difference of prior and inc score
                 score_diff = np.abs(w_prior - w_inc)
@@ -288,7 +283,7 @@ class ModelPolicy(SamplingPolicy):
 
         surrogate_model_args = surrogate_model_args or {}
 
-        graph_kernels, hp_kernels = get_kernels(
+        graph_kernels, hp_kernels = get_default_kernels(
             pipeline_space=pipeline_space,
             domain_se_kernel=domain_se_kernel,
             graph_kernels=graph_kernels,
@@ -302,9 +297,9 @@ class ModelPolicy(SamplingPolicy):
         if not surrogate_model_args["hp_kernels"]:
             raise ValueError("No kernels are provided!")
         if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
+            surrogate_model_args["vectorial_features"] = (
+                pipeline_space.get_vectorial_dim()
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
@@ -439,7 +434,7 @@ class BaseDynamicModelPolicy(SamplingPolicy):
 
         surrogate_model_args = surrogate_model_args or {}
 
-        graph_kernels, hp_kernels = get_kernels(
+        graph_kernels, hp_kernels = get_default_kernels(
             pipeline_space=pipeline_space,
             domain_se_kernel=domain_se_kernel,
             graph_kernels=graph_kernels,
@@ -453,9 +448,9 @@ class BaseDynamicModelPolicy(SamplingPolicy):
         if not surrogate_model_args["hp_kernels"]:
             raise ValueError("No kernels are provided!")
         if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
+            surrogate_model_args["vectorial_features"] = (
+                pipeline_space.get_vectorial_dim()
+            )
 
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,

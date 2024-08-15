@@ -1,4 +1,5 @@
 """The vertex kernel as defined in :cite:`sugiyama2015halting`."""
+
 import logging
 from collections import Counter
 from collections.abc import Iterable
@@ -54,7 +55,7 @@ class VertexHistogram(Kernel):
         sparse="auto",
         oa=False,
         mahalanobis_precision=None,
-        se_kernel: Stationary = None,
+        se_kernel: Stationary | None = None,
         requires_ordered_features: bool = False,
         as_tensor: bool = True,
     ):
@@ -75,6 +76,7 @@ class VertexHistogram(Kernel):
             self.sparse = False
         else:
             self.sparse = sparse
+
         self.oa = oa
         self.se_kernel = se_kernel
         self._initialized.update({"sparse": True})
@@ -220,8 +222,11 @@ class VertexHistogram(Kernel):
 
                 except MemoryError:
                     warn("memory-error: switching to sparse")
-                    self.sparse_, features = True, csr_matrix(
-                        (data, (rows, cols)), shape=(ni, label_length), copy=False
+                    self.sparse_, features = (
+                        True,
+                        csr_matrix(
+                            (data, (rows, cols)), shape=(ni, label_length), copy=False
+                        ),
                     )
 
             if ni == 0:
@@ -257,7 +262,7 @@ class VertexHistogram(Kernel):
                         K[j, i] = K[i, j]
             else:
                 if self.se_kernel is not None:
-                    K = self.se_kernel.forward(self.X, self.X)
+                    K = self.se_kernel._forwardd(self.X, self.X)
                 else:
                     K = self.X @ self.X.T
         else:
@@ -270,7 +275,7 @@ class VertexHistogram(Kernel):
                         )
             else:
                 if self.se_kernel is not None:
-                    K = self.se_kernel.forward(self.X, Y)
+                    K = self.se_kernel._forwardd(self.X, Y)
                 else:
                     K = Y[:, : self.X.shape[1]] @ self.X.T
 

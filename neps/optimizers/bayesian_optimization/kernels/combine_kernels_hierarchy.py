@@ -195,50 +195,6 @@ class SumKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):
         super().__init__("sum", *kernels, **kwargs)
 
-    def forward_t(
-        self,
-        weights: torch.Tensor,
-        gr2: list,
-        x2=None,
-        gr1: list = None,
-        x1=None,
-        feature_lengthscale=None,
-    ):
-        """
-        Compute the kernel gradient w.r.t the feature vector
-        Parameters
-        ----------
-        feature_lengthscale
-        x2
-        x1
-        gr1
-        weights
-        gr2
-
-        Returns
-        -------
-        grads: k list of 2-tuple.
-        (K, x2) where K is the weighted Gram matrix of that matrix, x2 is the leaf variable on which Jacobian-vector
-        product to be computed.
-
-        """
-        weights = transform_weights(weights.clone())
-        grads = []
-        for i, k in enumerate(self.kernels):
-            if isinstance(k, GraphKernels):
-                handle = k.forward_t(gr2, gr1=gr1)
-                grads.append((weights[i] * handle[0], handle[1], handle[2]))
-            elif isinstance(k, Stationary):
-                handle = k.forward_t(x2=x2, x1=x1, l=feature_lengthscale)
-                grads.append((weights[i] * handle[0], handle[1], handle[2]))
-            else:
-                logging.warning(
-                    "Gradient not implemented for kernel type" + str(k.__name__)
-                )
-                grads.append((None, None))
-        assert len(grads) == len(self.kernels)
-        return grads
-
 
 class ProductKernel(CombineKernel):
     def __init__(self, *kernels, **kwargs):

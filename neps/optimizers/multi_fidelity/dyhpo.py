@@ -20,7 +20,7 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers import (
 from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_kernels
+from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_default_kernels
 from neps.optimizers.multi_fidelity.mf_bo import FreezeThawModel, PFNSurrogate
 from neps.optimizers.multi_fidelity.utils import MFObservedData
 
@@ -116,7 +116,7 @@ class MFEIBO(BaseOptimizer):
         )
 
         # Preparing model
-        self.graph_kernels, self.hp_kernels = get_kernels(
+        self.graph_kernels, self.hp_kernels = get_default_kernels(
             pipeline_space=pipeline_space,
             domain_se_kernel=domain_se_kernel,
             graph_kernels=graph_kernels,

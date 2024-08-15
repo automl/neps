@@ -18,7 +18,6 @@ from sklearn.utils.validation import check_is_fitted
 
 from .vertex_histogram import VertexHistogram
 
-warnings.filterwarnings("ignore", message="Importing from numpy.matlib is deprecated ")
 
 class WeisfeilerLehman(Kernel):
     """Compute the Weisfeiler Lehman Kernel.
@@ -71,7 +70,7 @@ class WeisfeilerLehman(Kernel):
         h: int = 5,
         base_graph_kernel=VertexHistogram,
         node_weights=None,
-        layer_weights=None,
+        layer_weights: torch.Tensor | None = None,
         as_tensor: bool = True,
     ):
         """Initialise a `weisfeiler_lehman` kernel."""
@@ -114,7 +113,7 @@ class WeisfeilerLehman(Kernel):
             if base_graph_kernel is None:
                 base_graph_kernel, params = VertexHistogram, dict()
             # TODO: make sure we're always passing like this
-            elif type(base_graph_kernel) is type and issubclass(
+            elif type(base_graph_kernel) is type and issubclass(  # pylint: disable=C0123
                 base_graph_kernel, Kernel
             ):
                 params = dict()
@@ -129,7 +128,7 @@ class WeisfeilerLehman(Kernel):
                     ) from _error
 
                 if not (
-                    type(base_graph_kernel) is type
+                    type(base_graph_kernel) is type  # pylint: disable=C0123
                     and issubclass(base_graph_kernel, Kernel)
                 ):
                     raise TypeError(
@@ -159,10 +158,10 @@ class WeisfeilerLehman(Kernel):
             self._h = self.h + 1
             self._initialized["h"] = True
 
-            if self.layer_weights is None or self.layer_weights.shape[0] != self._h:
-                self.layer_weights = np.ones((self._h,))
-            if self.as_tensor and not isinstance(self.layer_weights, torch.Tensor):
-                self.layer_weights = torch.tensor(self.layer_weights)
+            if self.layer_weights is None:
+                self.layer_weights = torch.ones((self._h,))
+            else:
+                assert len(self.layer_weights) == self._h
 
             self._initialized["h"] = True
             self._initialized["layer_weights"] = True
@@ -424,9 +423,7 @@ class WeisfeilerLehman(Kernel):
                 return K, base_graph_kernel
             return np.sum(K, axis=0), base_graph_kernel
 
-    def fit_transform(
-        self, X: Iterable, y=None, gp_fit: bool = True
-    ):
+    def fit_transform(self, X: Iterable, y=None, gp_fit: bool = True):  # pylint: disable=unused-argument
         """Fit and transform, on the same dataset.
 
         Parameters

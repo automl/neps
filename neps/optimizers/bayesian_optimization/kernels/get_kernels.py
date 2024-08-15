@@ -1,40 +1,58 @@
 from __future__ import annotations
 
-from neps.utils.common import instance_from_map
-from ....search_spaces.architecture.core_graph_grammar import CoreGraphGrammar
-from ....search_spaces.hyperparameters.categorical import CategoricalParameter
-from ....search_spaces.hyperparameters.float import FloatParameter
-from ....search_spaces.hyperparameters.integer import IntegerParameter
-from ....utils.common import has_instance
-from . import GraphKernelMapping, StationaryKernelMapping
+from neps.optimizers.bayesian_optimization.kernels import Kernel
+from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import (
+    HammingKernel,
+    Matern52Kernel,
+)
+import torch
+from neps.optimizers.bayesian_optimization.kernels.weisfilerlehman import WeisfilerLehman
+
+from neps.search_spaces import SearchSpace
 
 
-def get_kernels(
-    pipeline_space, domain_se_kernel, graph_kernels, hp_kernels, optimal_assignment
-):
-    if not graph_kernels:
-        graph_kernels = []
-        if has_instance(pipeline_space.values(), CoreGraphGrammar):
-            graph_kernels.append("wl")
-    if not hp_kernels:
-        hp_kernels = []
-        if has_instance(pipeline_space.values(), FloatParameter, IntegerParameter):
-            hp_kernels.append("m52")
-        if has_instance(pipeline_space.values(), CategoricalParameter):
-            hp_kernels.append("hm")
-    graph_kernels = [
-        instance_from_map(GraphKernelMapping, kernel, "kernel", as_class=True)(
-            oa=optimal_assignment,
-            se_kernel=instance_from_map(
-                StationaryKernelMapping, domain_se_kernel, "se kernel"
-            ),
+# TODO: Option to combine numerical and categorical into one.
+def get_default_kernels(
+    *,
+    space: SearchSpace,
+    optimizable: bool = True,
+) -> list[tuple[Kernel, list[str]],]:
+    kernels: list[tuple[Kernel, list[str]]] = []
+    if any(space.graphs):
+        h = 2
+        if optimizable:
+            layer_weights = torch.nn.Parameter(torch.ones(h + 1))
+        else:
+            layer_weights = None
+
+        kernels.append(
+            (
+                WeisfilerLehman(h=2, layer_weights=layer_weights, oa=True),
+                list(space.graphs.keys()),
+            )
         )
-        for kernel in graph_kernels
-    ]
-    hp_kernels = [
-        instance_from_map(StationaryKernelMapping, kernel, "kernel")
-        for kernel in hp_kernels
-    ]
-    if not graph_kernels and not hp_kernels:
-        raise ValueError("No kernels are provided!")
-    return graph_kernels, hp_kernels
+
+    if any(space.categoricals):
+        if optimizable:
+            lengthscales = torch.nn.Parameter(torch.ones(len(space.categoricals)))
+        else:
+            lengthscales = torch.ones(len(space.categoricals))
+
+            kernels.append(
+                (
+                    HammingKernel(lengthscale=lengthscales),
+                    list(space.categoricals.keys()),
+                )
+            )
+
+    if any(space.numerical):
+        if optimizable:
+            lengthscales = torch.nn.Parameter(torch.ones(len(space.numerical)))
+        else:
+            lengthscales = torch.ones(len(space.numerical))
+
+            kernels.append(
+                (Matern52Kernel(lengthscale=lengthscales), list(space.numerical.keys()))
+            )
+
+    return kernels
