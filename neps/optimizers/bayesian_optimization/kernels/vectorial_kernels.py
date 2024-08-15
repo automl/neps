@@ -89,7 +89,7 @@ def _unscaled_square_distance(
     """The unscaled distance between X and X2."""
     assert X.ndim == 2
     X1sq = torch.sum(X**2, 1)
-    X2sq = X1sq if X is X2 else torch.sum(X**2, 1)
+    X2sq = X1sq if (X2 is None or X is X2) else torch.sum(X2**2, 1)
     X2 = X if X2 is None else X2
 
     r2 = -2 * X @ X2.T + X1sq[:, None] + X2sq[None, :]

@@ -253,13 +253,9 @@ class ComprehensiveGP:
             elif self.combined_kernel == "product":
                 K.mul_(weight * gram)
             else:
-                raise ValueError(f"Invalid combined_kernel {self.combined_kernel}")
-
-        # Concatenate the full list
-        n_test = len(x)
 
         K_s = K[: self.n_train_ :, self.n_train_ :]
-        K_ss = K[self.n_train_ :, self.n_train_ :] + self.likelihood_ * torch.eye(n_test)
+        K_ss = K[self.n_train_ :, self.n_train_ :] + self.likelihood_ * torch.eye(len(x))
 
         mu_s = K_s.t() @ self.K_i_ @ self.y_normalized_
         mu_s = mu_s * self.y_std_ + self.y_mean_
