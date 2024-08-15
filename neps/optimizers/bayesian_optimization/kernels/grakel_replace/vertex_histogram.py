@@ -262,7 +262,7 @@ class VertexHistogram(Kernel):
                         K[j, i] = K[i, j]
             else:
                 if self.se_kernel is not None:
-                    K = self.se_kernel._forwardd(self.X, self.X)
+                    K = self.se_kernel._forward(self.X, self.X)
                 else:
                     K = self.X @ self.X.T
         else:
@@ -275,7 +275,7 @@ class VertexHistogram(Kernel):
                         )
             else:
                 if self.se_kernel is not None:
-                    K = self.se_kernel._forwardd(self.X, Y)
+                    K = self.se_kernel._forward(self.X, Y)
                 else:
                     K = Y[:, : self.X.shape[1]] @ self.X.T
 
