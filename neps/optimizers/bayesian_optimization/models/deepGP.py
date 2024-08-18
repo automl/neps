@@ -1,18 +1,17 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
 
 import logging
 from copy import deepcopy
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import gpytorch
 import numpy as np
 import torch
-import torch.nn as nn
-from neps.search_spaces.architecture.graph_grammar import GraphParameter
+from torch import nn
 
 from neps.exceptions import SurrogateFailedToFit
-
+from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.search_space import (
     CategoricalParameter,
     FloatParameter,
@@ -50,9 +49,7 @@ def count_non_improvement_steps(root_directory: Path | str) -> int:
 
 
 class NeuralFeatureExtractor(nn.Module):
-    """
-    Neural network to be used in the DeepGP
-    """
+    """Neural network to be used in the DeepGP."""
 
     def __init__(self, input_size: int, **kwargs):
         super().__init__()
@@ -121,15 +118,11 @@ class NeuralFeatureExtractor(nn.Module):
 
         # put learning curve features into the last layer along with the higher level features.
         x = torch.cat((x, lc_features), dim=1)
-        x = self.activation(getattr(self, f"fc{self.n_layers}")(x))
-
-        return x
+        return self.activation(getattr(self, f"fc{self.n_layers}")(x))
 
 
 class GPRegressionModel(gpytorch.models.ExactGP):
-    """
-    A simple GP model.
-    """
+    """A simple GP model."""
 
     def __init__(
         self,
@@ -137,8 +130,7 @@ class GPRegressionModel(gpytorch.models.ExactGP):
         train_y: torch.Tensor,
         likelihood: gpytorch.likelihoods.GaussianLikelihood,
     ):
-        """
-        Constructor of the GPRegressionModel.
+        """Constructor of the GPRegressionModel.
 
         Args:
             train_x: The initial train examples for the GP.
@@ -237,7 +229,7 @@ class DeepGPDataTransformer:
     def encode_learning_curves(self, learning_curves: list[list[float]]) -> torch.Tensor:
         lc_height = len(learning_curves)
         lc_width = max(
-            max(len(lc) for lc in learning_curves), self.min_learning_curve_length
+            *(len(lc) for lc in learning_curves), self.min_learning_curve_length
         )
         lc_buffer = torch.full(
             (lc_width, lc_height),
@@ -285,7 +277,7 @@ def _train_model(
 
     optimizer = torch.optim.Adam(
         [
-            dict({"params": model.parameters()}, **optimizer_args),
+            dict({"model_params": model.parameters()}, **optimizer_args),
             dict({"params": nn.parameters()}, **optimizer_args),
         ]
     )
@@ -294,7 +286,7 @@ def _train_model(
     min_avg_loss_val = np.inf
     average_loss: float = 0.0
 
-    for epoch_nr in range(0, n_epochs):
+    for epoch_nr in range(n_epochs):
         if early_stopping and count_down == 0:
             logger.info(
                 f"Epoch: {epoch_nr - 1} surrogate training stops due to early "

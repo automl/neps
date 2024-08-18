@@ -1,4 +1,5 @@
 """The Edge Histogram kernel as defined in :cite:`sugiyama2015halting`."""
+
 from collections import Counter
 from collections.abc import Iterable
 from warnings import warn
@@ -102,9 +103,7 @@ class EdgeHistogram(VertexHistogram):
             # Initialise the feature matrix
             if self._method_calling in [1, 2]:
                 if self.sparse == "auto":
-                    self.sparse_ = (
-                        len(cols) / float(ni * len(labels)) <= 0.5
-                    )
+                    self.sparse_ = len(cols) / float(ni * len(labels)) <= 0.5
                 else:
                     self.sparse_ = bool(self.sparse)
 
@@ -119,8 +118,11 @@ class EdgeHistogram(VertexHistogram):
                     features[rows, cols] = data
                 except MemoryError:
                     warn("memory-error: switching to sparse")
-                    self.sparse_, features = True, csr_matrix(
-                        (data, (rows, cols)), shape=(ni, len(labels)), copy=False
+                    self.sparse_, features = (
+                        True,
+                        csr_matrix(
+                            (data, (rows, cols)), shape=(ni, len(labels)), copy=False
+                        ),
                     )
 
             if ni == 0:

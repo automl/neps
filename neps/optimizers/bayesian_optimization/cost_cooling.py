@@ -23,7 +23,6 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers import (
 from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_default_kernels
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 

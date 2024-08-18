@@ -1,150 +1,103 @@
 from __future__ import annotations
 
 from math import sqrt
-from typing_extensions import override
+from typing import Any, Mapping, Sequence, ClassVar
+from typing_extensions import override, Self
+
+from itertools import product
+import torch
+import torch.nn as nn
+
 from neps.optimizers.bayesian_optimization.kernels.kernel import Kernel
 
-import numpy as np
-import torch
-
-DEFAULT_LENGTHSCALE_BOUNDS = np.exp(-6.754111155189306), np.exp(0.0858637988771976)
+# TODO:
+# We should try some variations of singular length scales
+# (1 scale shared across all dimensions)
+# and individual ARD lengthscales (1 for each dimension)
+# ARD can overfit if not properly tuned...
+LENGTHSCALE_GRID = (1e-2, 1e-1, 1, 1e1, 1e2)
+STD_ENCODED_OUTPUT_SCALE = (1e-2, 1e-1, 1, 1e1, 1e2)
 
 
 class Stationary(Kernel[torch.Tensor]):
-    """Here we follow the structure of GPy to build a sub class of stationary kernel.
-
-    All the classes (i.e. the class of stationary kernel_operators) derived from this
-    class use the scaled distance to compute the Gram matrix.
-    """
+    suggested_grid: ClassVar[Sequence[Mapping[str, Any]]] = [
+        {"lengthscale": l, "output_scale": o}
+        for l, o in product(LENGTHSCALE_GRID, STD_ENCODED_OUTPUT_SCALE)
+    ]
 
     def __init__(
         self,
         *,
-        lengthscale: torch.Tensor,
-        outputscale: float | torch.Tensor = 1.0,
-        lengthscale_bounds: tuple[float, float] = DEFAULT_LENGTHSCALE_BOUNDS,
+        lengthscale: torch.Tensor | None = None,
+        outputscale: torch.Tensor | None = None,
+        lengthscale_bounds: tuple[float, float] | None = (1e-2, 1e2),
+        outputscale_bounds: tuple[float, float] | None = (1e-2, 1e2),
+        device: torch.device | None = None,
     ):
-        self.lengthscale = lengthscale
-        self.outputscale = outputscale
+        super().__init__()
+        self.lengthscale = (
+            torch.as_tensor(lengthscale, dtype=torch.float64, device=device)
+            if lengthscale is not None
+            else torch.tensor(1, dtype=torch.float64, device=device)
+        )
+        self.outputscale = (
+            torch.as_tensor(outputscale, dtype=torch.float64, device=device)
+            if outputscale is not None
+            else torch.tensor(1, dtype=torch.float64, device=device)
+        )
         self.lengthscale_bounds = lengthscale_bounds
+        self.outputscale_bounds = outputscale_bounds
+        self.device = device
 
-        self.gram_: torch.Tensor | None = None
         self.train_: torch.Tensor | None = None
 
-    def fit_transform(self, x: torch.Tensor) -> torch.Tensor:
-        K = self._forward(x)
-        self.train_ = x.clone().detach()
-        return K
+    def as_optimizable(self) -> Self:
+        return self.clone_with(
+            lengthscale=nn.Parameter(self.lengthscale),
+            outputscale=nn.Parameter(self.outputscale),
+        )
 
-    def transform(self, x: torch.Tensor) -> torch.Tensor:
-        if self.train_ is None:
-            raise ValueError("The kernel has not been fitted. Run fit_transform first")
-        return self._forward(self.train_, x)
+    def forward(self, x: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:
+        # NOTE: I don't think this is the right way to do this...
+        with torch.no_grad():
+            self.lengthscale.data.clamp_(*self.lengthscale_bounds)
+            self.outputscale.data.clamp_(*self.outputscale_bounds)
 
-    def _forward(self, x1: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:
-        return _scaled_distance(self.lengthscale, x1, x2)
+        x2 = x if x2 is None else x2
+        return self._forward(x, x2)
+
+    def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        return self.outputscale * torch.cdist(x1, x2, p=2)
 
 
 class RBFKernel(Stationary):
     @override
-    def _forward(
-        self,
-        x1: torch.Tensor,
-        x2: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        dist_sq = _scaled_distance(self.lengthscale, x1, x2, sq_dist=True)
-        return self.outputscale * torch.exp(-0.5 * dist_sq)
+    def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        dist_sq = torch.cdist(x1, x2, p=2) ** 2
+        return self.outputscale * torch.exp(-dist_sq / (2 * self.lengthscale**2))
 
 
 class Matern32Kernel(Stationary):
     @override
-    def _forward(
-        self,
-        x1: torch.Tensor,
-        x2: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        dist = _scaled_distance(self.lengthscale, x1, x2)
-        return self.outputscale * (1 + sqrt(3.0) * dist) * torch.exp(-sqrt(3.0) * dist)
+    def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        dist = torch.cdist(x1, x2, p=2) / self.lengthscale
+        factor = sqrt(3.0) * dist
+        matern32 = (1 + factor) * torch.exp(-factor)
+        return self.outputscale * matern32
+
+
+class HammingKernel(Stationary):
+    @override
+    def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        dists = (x1.unsqueeze(1) != x2.unsqueeze(0)).float().sum(-1) / x1.shape[-1]
+        scaled_dists = dists / self.lengthscale
+        return self.outputscale * torch.exp(-scaled_dists)
 
 
 class Matern52Kernel(Stationary):
     @override
-    def _forward(
-        self,
-        x1: torch.Tensor,
-        x2: torch.Tensor | None = None,
-    ) -> torch.Tensor:
-        dist = _scaled_distance(self.lengthscale, x1, x2, sq_dist=True)
-        return (
-            self.outputscale
-            * (1 + sqrt(5.0) * dist + 5.0 / 3.0 * dist)
-            * torch.exp(-sqrt(5.0) * dist)
-        )
-
-
-def _unscaled_square_distance(
-    X: torch.Tensor,
-    X2: torch.Tensor | None = None,
-) -> torch.Tensor:
-    """The unscaled distance between X and X2."""
-    assert X.ndim == 2
-    X1sq = torch.sum(X**2, 1)
-    X2sq = X1sq if (X2 is None or X is X2) else torch.sum(X2**2, 1)
-    X2 = X if X2 is None else X2
-
-    r2 = -2 * X @ X2.T + X1sq[:, None] + X2sq[None, :]
-    r2 += 1e-15
-    return torch.clamp_min(r2, 0.0)
-
-
-def _scaled_distance(
-    lengthscale: torch.Tensor,
-    X: torch.Tensor,
-    X2: torch.Tensor | None = None,
-    *,
-    sq_dist: bool = False,
-) -> torch.Tensor:
-    """Compute the *scaled* distance between X and x2 (or, if X2 is not supplied,
-    the distance between X and itself) by the lengthscale. if a scalar (float) or a
-    dim=1 lengthscale vector is supplied, then it is assumed that we use one
-    lengthscale for all dimensions. Otherwise, we have an ARD kernel and in which case
-    the length of the lengthscale vector must be the same as the dimensionality of the
-    problem."""
-    if len(lengthscale) == 1:
-        if sq_dist is False:
-            return torch.sqrt(_unscaled_square_distance(X, X2)) / (lengthscale**2)
-
-        return _unscaled_square_distance(X, X2) / lengthscale
-
-    # ARD kernel - one lengthscale per dimension
-    assert len(lengthscale) == X.shape[1], (
-        f"Lengthscale must have the same dimensionality as the input data."
-        f"Got {len(lengthscale)} and {X.shape[1]}"
-    )
-    rescaled_X = X / lengthscale
-    if X2 is None:
-        dist = _unscaled_square_distance(rescaled_X)
-    else:
-        rescaled_X2 = X2 / lengthscale
-        dist = _unscaled_square_distance(rescaled_X, rescaled_X2)
-
-    return dist if sq_dist else torch.sqrt(dist)
-
-
-def _hamming_distance(
-    lengthscale: torch.Tensor,
-    X: torch.Tensor,
-    X2: torch.Tensor | None = None,
-) -> torch.Tensor:
-    if X2 is None:
-        X2 = X
-
-    indicator = X.unsqueeze(1) != X2
-    C = -1 / (2 * lengthscale**2)
-    scaled_indicator = C * indicator
-    diffs = scaled_indicator.sum(dim=2)
-
-    if len(lengthscale) == 1:
-        return torch.exp(diffs) / lengthscale
-
-    return torch.exp(diffs)
+    def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        dist = torch.cdist(x1, x2, p=2) / self.lengthscale
+        factor = sqrt(5.0) * dist
+        matern52 = (1 + factor + (factor**2) / 3) * torch.exp(-factor)
+        return self.outputscale * matern52

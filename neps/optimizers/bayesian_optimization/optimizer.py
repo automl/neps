@@ -3,8 +3,9 @@ from __future__ import annotations
 import random
 from typing import Any, TYPE_CHECKING, Literal
 from typing_extensions import override
+from neps.optimizers.bayesian_optimization.models.gp import ComprehensiveGP
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
 from neps.search_spaces import (
@@ -25,7 +26,6 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers import (
 from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from neps.optimizers.bayesian_optimization.kernels.get_kernels import get_default_kernels
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 
 if TYPE_CHECKING:
@@ -51,11 +51,6 @@ class BayesianOptimization(BaseOptimizer):
         pipeline_space: SearchSpace,
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
-        surrogate_model_args: dict = None,
-        optimal_assignment: bool = False,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
@@ -77,12 +72,6 @@ class BayesianOptimization(BaseOptimizer):
             initial_design_size: Number of 'x' samples that need to be evaluated before
                 selecting a sample using a strategy instead of randomly.
             surrogate_model: Surrogate model
-            surrogate_model_args: Arguments that will be given to the surrogate model
-                (the Gaussian processes model).
-            optimal_assignment: whether the optimal assignment kernel should be used.
-            domain_se_kernel: Stationary kernel name
-            graph_kernels: Kernels for NAS
-            hp_kernels: Kernels for HPO
             acquisition: Acquisition strategy
             log_prior_weighted: if to use log for prior
             acquisition_sampler: Acquisition function fetching strategy
@@ -141,36 +130,21 @@ class BayesianOptimization(BaseOptimizer):
         self._model_update_failed: bool = False
         self.sample_default_first = sample_default_first
 
-        surrogate_model_args = surrogate_model_args or {}
-        graph_kernels, hp_kernels = get_default_kernels(
-            self.pipeline_space,
-            domain_se_kernel,
-            graph_kernels,
-            hp_kernels,
-            optimal_assignment,
-        )
-        if "graph_kernels" not in surrogate_model_args:
-            surrogate_model_args["graph_kernels"] = graph_kernels
-        if "hp_kernels" not in surrogate_model_args:
-            surrogate_model_args["hp_kernels"] = hp_kernels
-
-        if (
-            not surrogate_model_args["graph_kernels"]
-            and not surrogate_model_args["hp_kernels"]
-        ):
-            raise ValueError("No kernels are provided!")
-
-        if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args["vectorial_features"] = (
-                self.pipeline_space.get_vectorial_dim()
-            )
-
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            surrogate_model,
-            name="surrogate model",
-            kwargs=surrogate_model_args,
-        )
+        if isinstance(surrogate_model, str):
+            if surrogate_model == "gp":
+                self.surrogate_model = ComprehensiveGP.get_default(
+                    space=pipeline_space,
+                    include_fidelities=False,
+                )
+            else:
+                self.surrogate_model = instance_from_map(
+                    SurrogateModelMapping,
+                    surrogate_model,
+                    name="surrogate model",
+                    kwargs=surrogate_model_args,
+                )
+        else:
+            self.surrogate_model = surrogate_model
 
         self.acquisition = instance_from_map(
             AcquisitionMapping,

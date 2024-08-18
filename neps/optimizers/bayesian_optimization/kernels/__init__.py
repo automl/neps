@@ -1,13 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass
 
 from functools import partial
 from typing import Callable
-from typing_extensions import TypeAlias
 
-from neps.optimizers.bayesian_optimization.kernels.graph_kernel import GraphKernels
-from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import Stationary
-from .encoding import NASBOTDistance
 from .vectorial_kernels import HammingKernel, Matern32Kernel, Matern52Kernel, RBFKernel
 from .weisfilerlehman import WeisfilerLehman
 
@@ -29,5 +24,4 @@ GraphKernelMapping: dict[str, Callable] = {
         h=0,
         oa=False,
     ),
-    "nasbot": NASBOTDistance,
 }

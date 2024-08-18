@@ -1,7 +1,6 @@
 from neps.utils.common import MissingDependencyError
 
-from .gp import ComprehensiveGP
-from .gp_hierarchy import ComprehensiveGPHierarchy
+from neps.optimizers.bayesian_optimization.models.gp import ComprehensiveGP
 
 try:
     from neps.optimizers.models.deepGP import DeepGP
@@ -16,6 +15,5 @@ except Exception as e:
 SurrogateModelMapping = {
     "deep_gp": DeepGP,
     "gp": ComprehensiveGP,
-    "gp_hierarchy": ComprehensiveGPHierarchy,
     "pfn": PFN_SURROGATE,
 }

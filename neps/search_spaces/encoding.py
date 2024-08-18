@@ -1,132 +1,360 @@
 from __future__ import annotations
 
-from collections.abc import Sized
-
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from grakel.utils import graph_from_networkx
 
-from typing import Sequence, Iterable, TypeAlias
-from typing_extensions import Self
-from more_itertools import split_when
+from typing import Any, TypeAlias, TypeVar, Generic
+from typing_extensions import Self, override, Self
 from itertools import chain
 import torch
+from neps.search_spaces import (
+    CategoricalParameter,
+    IntegerParameter,
+    FloatParameter,
+)
 
-from neps.search_spaces.search_space import SearchSpace
+from neps.search_spaces.search_space import SearchSpace, Parameter
 
 WLInput: TypeAlias = tuple[dict, dict | None, dict | None]
 
 
 @dataclass
-class TensorEncodedConfigs(Sized):
-    _tensor_pack: torch.Tensor | None
-    """Layout such that _tensor_pack[0] is the first config.
+class GraphEncoder:
+    hps: tuple[str]
 
-    In the case that there are no numeric/categorical hyperparameters,
-    this is None.
-
-    index config_row_id | fidelities... | numericals... | one_hot_categoricals...
-           0
-           1
-           2
-          ...
-
-    NOTE: A slight memory innefficiency here is that we store the one-hot encoded
-    as a float tensor, rather than a byte tensor. This makes joint numerical/categorical
-    kernels more efficient, as well as entire config row access at the cost of memory.
-    This should not be a problem if we do not have a large number of categorical
-    hyperparameters with a high number of choices.
-    """
-    _graphs: dict[str, Sequence[WLInput]]
-    _col_lookup: dict[str, tuple[int, int]]  # range(inclusive, exclusive)
-
-    def __len__(self) -> int:
-        return self._tensor_pack.shape[0] if self._tensor_pack is not None else 0
-
-    def wl_graph_input(self, hp: str) -> Sequence[WLInput]:
-        return self._graphs[hp]
-
-    def tensor(self, hps: Iterable[str]) -> torch.Tensor:
-        if self._tensor_pack is None:
-            raise ValueError("No numerical/categorical hyperparameters were encoded.")
-
-        cols: list[tuple[int, int]] = []
-        for hp in hps:
-            _cols = self._col_lookup.get(hp)
-            if _cols is None:
-                raise ValueError(f"Hyperparameter {hp} not found in the lookup table.")
-            cols.append(_cols)
-
-        # OPTIM: This code with `split_when` and `chunks` makes sure to grab
-        # consecutive chunks of memory where possible. For example,
-        # if we want all categoricals, this will just return the entire
-        # categorical tensor, rather than subselecting each part and then concatenating.
-        # Also works for numericals.
-        sorted_indices = sorted(cols)
-        non_consecutive_tuple = lambda x, y: x[1] != y[0]
-        chunks = list(split_when(sorted_indices, non_consecutive_tuple))
-        slices = [slice(chunk[0][0], chunk[-1][1]) for chunk in chunks]
-        tensors = [self._tensor_pack[:, s] for s in slices]
-
-        if len(tensors) == 1:
-            return tensors[0].clone()
-
-        return torch.cat(tensors, dim=1)
-
-    @classmethod
     def encode(
-        cls,
+        self,
+        x: list[dict[str, Any]],
         space: SearchSpace,
-        configs: list[SearchSpace],
-        *,
-        node_label: str = "op_name",
-        device: torch.device,
-    ) -> Self:
-        assert node_label == "op_name", "Only 'op_name' is supported for node_label"
+    ) -> dict[str, list[WLInput]]:
+        return {hp: [config[hp].value for config in x] for hp in self.hps}
 
-        _graphs: dict[str, Sequence[WLInput]] = {}
+
+T = TypeVar("T")
+
+
+@dataclass
+class Transformer(Generic[T]):
+    hps: tuple[str]
+
+    def encode(self, x: list[dict[str, Any]], space: SearchSpace) -> T: ...
+
+    def value_decode(self, x: T, space: SearchSpace) -> dict[str, list[Any]]: ...
+
+    def decode(self, x: T, space: SearchSpace) -> list[dict[str, Any]]:
+        values = self.value_decode(x, space)
+        return [(dict(zip(values, t))) for t in zip(*values.values())]
+
+
+@dataclass
+class WLInputTransformer(Transformer[WLInput]):
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+    ) -> dict[str, list[WLInput]]:
+        _graphs: dict[str, list[WLInput]] = {}
         for hp_name in space.graphs.keys():
-            gs = [conf.graphs[hp_name].value for conf in configs]
-            if (
-                len(gs) > 0
-                and isinstance(gs[0], list)
-                and len(gs[0]) > 0
-                and isinstance(gs[0][0], list)
-            ):
-                gs = [_list for list_of_list in gs for _list in list_of_list]
+            gs = [conf[hp_name].value for conf in x]
             _graphs[hp_name] = graph_from_networkx(gs)  # type: ignore
 
-        _lookup: dict[str, tuple[int, int]] = {}
+        return _graphs
 
-        n_fids = len(space.fidelities)
-        n_nums = len(space.numerical)
-        n_cats = sum(len(hp.choices) for hp in space.categoricals.values())
+    def value_decode(
+        self,
+        x: dict[str, list[WLInput]],
+        space: SearchSpace,
+    ) -> dict[str, list[Any]]:
+        raise NotImplementedError("Cannot decode WLInput to values.")
 
-        width = n_fids + n_nums + n_cats
-        if width == 0:
-            return cls(_graphs=_graphs, _tensor_pack=None, _col_lookup={})
 
-        _tensor_pack = torch.empty(size=(len(configs), width), dtype=torch.float64)
+@dataclass
+class TensorTransformer(Transformer[torch.Tensor]):
+    def output_cols(self, space: SearchSpace) -> int: ...
+
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+        *,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> torch.Tensor:
+        width = len(self.hps)
+        buffer = torch.empty(size=(len(x), width), dtype=dtype, device=device)
+
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, CategoricalParameter)
+            values = torch.tensor(
+                [config[name]._value_index for config in x], dtype=dtype, device=device
+            )
+
+        return buffer
+
+
+@dataclass
+class IntegerCategoricalTransformer(TensorTransformer):
+    def output_cols(self, space: SearchSpace) -> int:
+        return len(self.hps)
+
+    @override
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if dtype is None:
+            dtype = torch.int
+
+        buffer = torch.empty(size=(len(x), len(self.hps)), dtype=dtype, device=device)
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, CategoricalParameter)
+            values = torch.tensor(
+                [config[name].value for config in x], dtype=dtype, device=device
+            )
+            buffer[:, i] = values
+
+        return buffer
+
+    @override
+    def value_decode(self, x: torch.Tensor, space: SearchSpace) -> dict[str, list[Any]]:
+        values: dict[str, list[Any]] = {}
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, CategoricalParameter)
+            enc = x[:, i]
+            values[name] = [hp.choices[i] for i in enc.tolist()]
+
+        return values
+
+
+@dataclass
+class MinMaxNormalizer(TensorTransformer):
+    def output_cols(self, space: SearchSpace) -> int:
+        return len(self.hps)
+
+    @override
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if dtype is None:
+            dtype = torch.float64
+
+        width = len(self.hps)
+        buffer = torch.empty(size=(len(x), width), dtype=dtype, device=device)
+
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, (FloatParameter, IntegerParameter))
+            values = torch.tensor(
+                [config[name].value for config in x], dtype=dtype, device=device
+            )
+            if hp.log_bounds:
+                lower, upper = hp.log_bounds
+                buffer[:, i] = (torch.log(values) - lower) / (upper - lower)
+            else:
+                lower, upper = hp.lower, hp.upper
+                buffer[:, i] = (values - lower) / (upper - lower)
+
+        return buffer
+
+    @override
+    def value_decode(
+        self,
+        x: torch.Tensor,
+        space: SearchSpace,
+    ) -> dict[str, list[Any]]:
+        values: dict[str, list[Any]] = {}
+
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, (FloatParameter, IntegerParameter))
+            enc = x[:, i]
+            if hp.log_bounds:
+                lower, upper = hp.log_bounds
+                enc = torch.exp(enc * (upper - lower) + lower)
+            else:
+                lower, upper = hp.lower, hp.upper
+                enc = enc * (upper - lower) + lower
+
+            if isinstance(hp, IntegerParameter):
+                enc = torch.round(enc).to(torch.int)
+
+            values[name] = enc.tolist()
+
+        return values
+
+
+@dataclass
+class StandardNormalizer(TensorTransformer):
+    std_means: dict[str, tuple[float, float]] = field(default_factory=dict)
+
+    def output_cols(self, space: SearchSpace) -> int:
+        return len(self.hps)
+
+    @override
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if dtype is None:
+            dtype = torch.float64
+
+        width = len(self.hps)
+        buffer = torch.empty(size=(len(x), width), dtype=dtype, device=device)
+        std_means: dict[str, tuple[float, float]] = {}
+
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, (FloatParameter, IntegerParameter))
+            values = torch.tensor(
+                [config[name].value for config in x], dtype=dtype, device=device
+            )
+            if hp.log_bounds:
+                values = torch.log(values)
+
+            mean, std = values.mean(), values.std()
+            std_means[name] = (mean.item(), std.item())
+
+            buffer[:, i] = (values - mean) / std
+
+        self.std_means = std_means
+        return buffer
+
+    @override
+    def value_decode(self, x: torch.Tensor, space: SearchSpace) -> dict[str, list[Any]]:
+        values: dict[str, list[Any]] = {}
+
+        for i, name in enumerate(self.hps):
+            hp = space[name]
+            assert isinstance(hp, Parameter)
+            enc = x[:, i]
+            if isinstance(hp, (FloatParameter, IntegerParameter)):
+                std, mean = self.std_means[name]
+                if hp.log_bounds:
+                    enc = torch.exp(enc * std + mean)
+                else:
+                    enc = enc * std + mean
+
+                if isinstance(hp, IntegerParameter):
+                    enc = torch.round(enc).to(torch.int)
+
+                values[name] = enc.tolist()
+            else:
+                raise ValueError(f"Invalid hyperparameter type: {type(hp)}")
+
+        return values
+
+
+@dataclass
+class OneHotEncoder(TensorTransformer):
+    def output_cols(self, space: SearchSpace) -> int:
+        return sum(len(hp.choices) for hp in (space[name] for name in self.hps))  # type: ignore
+
+    @override
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if dtype is None:
+            dtype = torch.bool
+
+        categoricals: dict[str, CategoricalParameter] = {}
+        for name in self.hps:
+            hp = space[name]
+            assert isinstance(hp, CategoricalParameter)
+            categoricals[name] = hp
+
+        width = sum(len(hp.choices) for hp in categoricals.values())
+        buffer = torch.zeros(size=(len(x), width), dtype=dtype, device=device)
 
         offset = 0
-        for hp_name in chain(space.fidelities, space.numerical):
-            _lookup[hp_name] = (offset, offset + 1)
-            _xs = [config.fidelities[hp_name].normalized_value for config in configs]
-            values = torch.tensor(_xs, torch.float64, device=device)
-
-            _tensor_pack[:, offset] = values
-
-            offset += 1
-
-        for hp_name, cat in space.categoricals.items():
-            n_choices = len(cat.choices)
-            _lookup[hp_name] = (offset, offset + n_choices)
-
-            # .. and insert one-hot encoding (ChatGPT solution, verified locally)
-            _xs = [config[hp_name].normalized_value for config in configs]
-            cat_tensor = torch.tensor(_xs, torch.float64, device=device).unsqueeze(1)
-
-            _tensor_pack[:, offset : offset + n_choices].scatter_(1, cat_tensor, 1)
-
+        for name, hp in categoricals.items():
+            n_choices = len(hp.choices)
+            _xs = [config[name]._value_index for config in x]
+            cat_tensor = torch.tensor(_xs, dtype=torch.int64, device=device).unsqueeze(1)
+            buffer[:, offset : offset + n_choices].scatter_(1, cat_tensor, 1)
             offset += n_choices
 
-        return cls(_graphs=_graphs, _tensor_pack=_tensor_pack, _col_lookup=_lookup)
+        return buffer
+
+    @override
+    def value_decode(
+        self,
+        x: torch.Tensor,
+        space: SearchSpace,
+    ) -> dict[str, list[Any]]:
+        values: dict[str, list[Any]] = {}
+
+        offset = 0
+        for name in self.hps:
+            hp = space[name]
+            assert isinstance(hp, CategoricalParameter)
+            n_choices = len(hp.choices)
+            enc = x[:, offset : offset + n_choices].argmax(dim=1)
+
+            values[name] = [hp.choices[i] for i in enc]
+            offset += n_choices
+
+        return values
+
+
+@dataclass
+class JointTransformer(TensorTransformer):
+    transforms: tuple[TensorTransformer, ...]
+
+    def output_cols(self, space: SearchSpace) -> int:
+        return sum(t.output_cols(space) for t in self.transforms)
+
+    @classmethod
+    def join(cls, *transforms: TensorTransformer) -> Self:
+        hps = tuple(chain.from_iterable(t.hps for t in transforms))
+        return cls(hps, transforms)
+
+    @override
+    def encode(
+        self,
+        x: list[dict[str, Any]],
+        space: SearchSpace,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        return torch.cat(
+            [t.encode(x, space, dtype=dtype, device=device) for t in self.transforms],
+            dim=1,
+        )
+
+    @override
+    def value_decode(
+        self,
+        x: torch.Tensor,
+        space: SearchSpace,
+    ) -> dict[str, list[Any]]:
+        values: dict[str, list[Any]] = {}
+        offset = 0
+        for t in self.transforms:
+            width = t.output_cols(space)
+            t_values = t.value_decode(x[:, offset : offset + width], space)
+            values.update(t_values)
+            offset += width
+
+        return values

@@ -1,29 +1,37 @@
 from __future__ import annotations
 
-import math
-import inspect
 import copy
-from typing import TypeVar, Generic, Any, Sequence, Mapping, Callable
+import inspect
+from abc import ABC, abstractmethod
+import math
+from typing import Any, ClassVar, Generic, Mapping, Sequence, TypeVar
 from typing_extensions import Self
+
 import torch
-import torch.nn as nn
+from torch import nn
 
 from neps.utils.types import NotSet
 
 T = TypeVar("T")
 
 
-class Kernel(nn.Module, Generic[T]):
-    def fit_transform(self, x: T) -> torch.Tensor:
-        raise NotImplementedError
+class Kernel(ABC, nn.Module, Generic[T]):
+    suggested_grid: ClassVar[Sequence[Mapping[str, Any]]]
 
-    def transform(self, x: T) -> torch.Tensor:
+    def __init__(self) -> None:
+        super().__init__()
+
+    @abstractmethod
+    def as_optimizable(self) -> Self: ...
+
+    @abstractmethod
+    def forward(self, x: T, x2: T | None = None) -> torch.Tensor:
         raise NotImplementedError
 
     def clone(self) -> Self:
         return self.clone_with()
 
-    def clone_with(self, **params: dict[str, Any]) -> Self:
+    def clone_with(self, **params: Any) -> Self:
         # h ttps://github.com/scikit-learn/scikit-learn/blob/70fdc843a4b8182d97a3508c1a426acc5e87e980/sklearn/base.py#L197
         sig = inspect.signature(self.__init__)
 
@@ -46,65 +54,114 @@ class Kernel(nn.Module, Generic[T]):
     def grid_search(
         self,
         x: T,
+        y: torch.Tensor,
         *,
         grid: Sequence[Mapping[str, Any]],
-        to_minimize: Callable[[torch.Tensor], float],
-    ) -> tuple[Self, float]:
+        noise_variances: Sequence[float] = (1e-6,),
+    ) -> tuple[Self, float] | Exception:
+        # Returns: (Kernel[T], float) | None if failed
         if len(grid) == 0:
             raise ValueError("Grid must have at least one element.")
 
-        def _fit_and_eval(_params: Mapping[str, Any]) -> tuple[Kernel[T], float]:
+        def _fit_and_eval(
+            _params: Mapping[str, Any],
+        ) -> tuple[Kernel[T], float] | Exception:
             cloned_kernel = self.clone_with(**_params)
-            K = cloned_kernel.fit_transform(x)
-            metric = to_minimize(K)
-            return cloned_kernel, metric
+            K = cloned_kernel.forward(x)
 
-        return min(
-            (_fit_and_eval(params) for params in grid),
-            key=lambda x: x[1],
-        )
+            best_lml = -float("inf")
+            exception: Exception | None = None
+            for noise_variance in noise_variances:
+                K.diag().add_(noise_variance)
+
+                K_inv, logDetK = compute_pd_inverse(K)
+                lml = log_marginal_likelihood(K_inv, logDetK, y).item()
+                if lml > best_lml:
+                    best_lml = lml
+
+                K.diag().sub_(noise_variance)
+
+            if exception is None:
+                return cloned_kernel, best_lml
+
+            return exception
+
+        evals = [_fit_and_eval(params) for params in grid]
+        evals_with_score = [e for e in evals if not isinstance(e, Exception)]
+        if not any(evals_with_score):
+            raise evals[-1]  # type: ignore
+
+        best_eval = max(evals_with_score, key=lambda e: e[1])  # type: ignore
+        return best_eval
 
 
 class NumericKernel(Kernel[torch.Tensor]): ...
 
 
-PI = torch.tensor(math.pi)
+TWO_LOG_2_PI = 2 * torch.log(torch.tensor(2 * math.pi))
 
 
-def compute_normalized_log_marginal_likelihood(
-    K_i: torch.Tensor,
+def log_marginal_likelihood(
+    K_inv: torch.Tensor,
     logDetK: torch.Tensor,
     y: torch.Tensor,
 ) -> torch.Tensor:
-    """Compute the zero mean Gaussian process log marginal likelihood
-    given the inverse of Gram matrix K(x2,x2), its log determinant,
-    and the training label vector y.
-    """
-    lml = -0.5 * (y.t() @ K_i @ y) + 0.5 * logDetK - y.shape[0] / 2.0 * torch.log(2 * PI)
-    return lml / y.shape[0]
+    # y.T @ K_inv @ y  --- Benchmarked to be twice as fast
+    quad_form = torch.matmul(y, torch.matmul(K_inv, y))
+    n = y.shape[0]
+
+    # TODO: We can drop the `n / 2 * TWO_LOG_2_PI` term for the grid
+    # search above as it's constant between the different kernel grids
+    # as it's purely data dependant with the `n`
+    return -0.5 * quad_form + 0.5 * logDetK - n / TWO_LOG_2_PI
 
 
-def compute_pd_inverse(
+class _CholeskyError(RuntimeError):
+    """Raised when the Cholesky decomposition fails."""
+
+
+# https://github.com/cornellius-gp/linear_operator/blob/eec70f9e1cd9106c32b05a3e774ea29d00d71cea/linear_operator/utils/cholesky.py#L12
+def _cholesky_routine(
     K: torch.Tensor,
-    *,
-    jitter: float | torch.Tensor = 1e-9,
-    attempts: int = 3,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Compute the inverse of a postive-(semi)definite matrix K using Cholesky inversion."""
-    n = K.shape[0]
-    assert (
-        isinstance(jitter, float) or jitter.ndim == 0
-    ), "only homoscedastic noise variance is allowed here!"
-    for i in range(attempts):
-        try:
-            jitter_diag = jitter * torch.eye(n, device=K.device) * 10**i
-            Kc = torch.linalg.cholesky(K + jitter_diag)
-            break
-        except RuntimeError:
-            pass
-    else:
-        raise RuntimeError(f"Gram matrix not positive definite despite of jitter:\n{K}")
+    jitter: float | torch.Tensor = 1e-6,
+    max_tries: int = 4,
+) -> torch.Tensor:
+    L, info = torch.linalg.cholesky_ex(K)
+    if not torch.any(info):
+        return L
 
-    logDetK = -2 * torch.sum(torch.log(torch.diag(Kc)))
-    K_i = torch.cholesky_inverse(Kc)
-    return K_i.to(dtype=torch.float64), logDetK.to(dtype=torch.float64)
+    # Clone as we will modify in place, still cheaper
+    # than creating a new full tensor for identity.
+    K_prime = K.clone()
+    jitter_prev = 0
+    for i in range(max_tries):
+        jitter_new = jitter * (10**i)
+        K_prime.diagonal().add_(jitter_new - jitter_prev)
+        L, info = torch.linalg.cholesky_ex(K_prime)
+        if not torch.any(info):
+            return L
+
+        jitter_prev = jitter_new
+
+    raise _CholeskyError("Failed to compute Cholesky decomposition.")
+
+
+def compute_pd_inverse(K: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    # Adding noise to the diagonal of K helps with numerical stability
+    # when K is singular or near-singular, (i.e. it helps K be more "positive") which
+    # is required for the decomposition.
+
+    try:
+        # L @ L.T = K_inv  --- solves for L
+        L = _cholesky_routine(K)
+        logDetK = 2 * torch.sum(torch.log(torch.diag(L)))
+
+        # K_inv = L_inv @ L_inv.T  --- Efficiently solve for K_inv using just L
+        K_inv = torch.cholesky_inverse(L)
+    except _CholeskyError:
+        # If we fail to compute the Cholesky decomposition,
+        # then just compute the inverse directly.
+        K_inv = torch.linalg.inv(K)
+        logDetK = torch.linalg.slogdet(K)[1]
+
+    return K_inv, logDetK

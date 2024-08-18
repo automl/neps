@@ -1,8 +1,13 @@
 from __future__ import annotations
 
-import torch
+from typing import Any, ClassVar, Mapping, Sequence
+from typing_extensions import Self
 
-from typing import Sequence
+import torch
+import torch.nn as nn
+from itertools import product
+
+import numpy as np
 from neps.optimizers.bayesian_optimization.kernels.grakel_replace import (
     VertexHistogram,
     WeisfeilerLehman as _WL,
@@ -11,9 +16,17 @@ from neps.optimizers.bayesian_optimization.kernels.kernel import Kernel
 from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import Stationary
 from neps.search_spaces.encoding import WLInput
 
+GRID_WL_LENGTHSCALES = torch.tensor([np.e**i for i in range(-2, 3)])
+GRID_WL_SUBTREE_CANDIDATES = (1, 2, 3, 4, 5)
+
 
 class WeisfilerLehman(Kernel[Sequence[WLInput]]):
-    """Weisfiler Lehman kernel using grakel functions"""
+    """Weisfiler Lehman kernel using grakel functions."""
+
+    suggested_grid: ClassVar[Sequence[Mapping[str, Any]]] = [
+        {"h": h, "se_kernel": Stationary(lengthscale=l)}
+        for h, l in product(GRID_WL_SUBTREE_CANDIDATES, GRID_WL_LENGTHSCALES)
+    ]
 
     def __init__(
         self,
@@ -44,7 +57,9 @@ class WeisfilerLehman(Kernel[Sequence[WLInput]]):
 
         self.h = h
         self.se_kernel = se_kernel
-        self.layer_weights = layer_weights
+        self.layer_weights = (
+            layer_weights if layer_weights is not None else torch.ones(h + 1)
+        )
         self.oa = oa
         self.node_label = node_label
         if node_label != "op_name":
@@ -52,7 +67,11 @@ class WeisfilerLehman(Kernel[Sequence[WLInput]]):
 
         self.wl_kernel_: _WL | None = None
 
+    def as_optimizable(self) -> Self:
+        return self.clone_with(layer_weights=nn.Parameter(self.layer_weights))
+
     def fit_transform(self, gr: Sequence[WLInput]) -> torch.Tensor:
+        self.layer_weights.clamp_(0, 1)
         self.wl_kernel_ = _WL(
             h=self.h,
             base_graph_kernel=(  # type: ignore
@@ -68,14 +87,12 @@ class WeisfilerLehman(Kernel[Sequence[WLInput]]):
             normalize=True,
         )
 
-        # TODO: This could probably be lifted to the caller
         K = self.wl_kernel_.fit_transform(gr)
-        K = torch.as_tensor(K, dtype=torch.float64)
-        self.layer_weights_ = self.wl_kernel_.layer_weights
         return torch.as_tensor(K, dtype=torch.float64)
 
     def transform(self, gr: Sequence[WLInput]) -> torch.Tensor:
         assert self.wl_kernel_ is not None
+        self.layer_weights.clamp_(0, 1)
 
         K = self.wl_kernel_.transform(gr)
         return torch.as_tensor(K, dtype=torch.float64)

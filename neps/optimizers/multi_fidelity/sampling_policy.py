@@ -22,7 +22,6 @@ from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMappi
 from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
-from ..bayesian_optimization.kernels.get_kernels import get_default_kernels
 from ..bayesian_optimization.models import SurrogateModelMapping
 from ..multi_fidelity_prior.utils import (
     compute_config_dist,
@@ -269,9 +268,6 @@ class ModelPolicy(SamplingPolicy):
         self,
         pipeline_space: SearchSpace,
         surrogate_model: str | Any = "gp",
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
         surrogate_model_args: dict = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
@@ -282,25 +278,6 @@ class ModelPolicy(SamplingPolicy):
         super().__init__(pipeline_space=pipeline_space, logger=logger)
 
         surrogate_model_args = surrogate_model_args or {}
-
-        graph_kernels, hp_kernels = get_default_kernels(
-            pipeline_space=pipeline_space,
-            domain_se_kernel=domain_se_kernel,
-            graph_kernels=graph_kernels,
-            hp_kernels=hp_kernels,
-            optimal_assignment=False,
-        )
-        if "graph_kernels" not in surrogate_model_args:
-            surrogate_model_args["graph_kernels"] = None
-        if "hp_kernels" not in surrogate_model_args:
-            surrogate_model_args["hp_kernels"] = hp_kernels
-        if not surrogate_model_args["hp_kernels"]:
-            raise ValueError("No kernels are provided!")
-        if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args["vectorial_features"] = (
-                pipeline_space.get_vectorial_dim()
-            )
-
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
             surrogate_model,
