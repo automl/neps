@@ -66,7 +66,6 @@ class MutationSampler(AcquisitionSampler):
         self.check_isomorphism_history = (
             check_isomorphism_history  # check for isomorphisms also in previous graphs
         )
-
         self.random_sampling = RandomSampler(
             pipeline_space=pipeline_space, patience=patience
         )

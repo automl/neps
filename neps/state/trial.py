@@ -37,6 +37,10 @@ class State(Enum):
     CORRUPTED = "corrupted"
     UNKNOWN = "unknown"
 
+    def pending(self) -> bool:
+        """Return True if the trial is pending."""
+        return self in (State.PENDING, State.SUBMITTED, State.EVALUATING)
+
 
 @dataclass
 class MetaData:
@@ -129,7 +133,7 @@ class Trial:
     MetaData: ClassVar = MetaData
     NotReportedYetError: ClassVar = NotReportedYetError
 
-    config: Mapping[str, Any]
+    config: dict[str, Any]
     metadata: MetaData
     state: State
     report: Report | None

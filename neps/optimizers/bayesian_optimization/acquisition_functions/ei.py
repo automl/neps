@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
-import numpy as np
+from typing import TYPE_CHECKING, Sequence
+
 import torch
 from torch.distributions import Normal
 
 from .base_acquisition import BaseAcquisition
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from neps.search_spaces import SearchSpace
+
 
 class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(
@@ -51,11 +54,11 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.optimize_on_max_fidelity = optimize_on_max_fidelity
 
     def eval(
-        self, x: Sequence[SearchSpace], asscalar: bool = False,
-    ) -> Union[np.ndarray, torch.Tensor, float]:
-        """
-        Return the negative expected improvement at the query point x2
-        """
+        self,
+        x: Sequence[SearchSpace],
+        asscalar: bool = False,
+    ) -> np.ndarray | torch.Tensor | float:
+        """Return the negative expected improvement at the query point x2."""
         assert self.incumbent is not None, "EI function not fitted on model"
 
         if x[0].has_fidelity and self.optimize_on_max_fidelity:
@@ -70,6 +73,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         except ValueError as e:
             raise e
             # return -1.0  # in case of error. return ei of -1
+
         std = torch.sqrt(torch.diag(cov))
         mu_star = self.incumbent
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
@@ -103,11 +107,9 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
 
         # Compute incumbent
         if self.in_fill == "best":
-            # return torch.max(surrogate_model.y_)
             self.incumbent = torch.min(self.surrogate_model.y_)
         else:
             x = self.surrogate_model.x
             mu_train, _ = self.surrogate_model.predict(x)
-            # incumbent_idx = torch.argmax(mu_train)
             incumbent_idx = torch.argmin(mu_train)
             self.incumbent = self.surrogate_model.y_[incumbent_idx]

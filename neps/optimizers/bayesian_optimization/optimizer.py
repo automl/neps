@@ -1,21 +1,12 @@
 from __future__ import annotations
 
 import random
-from typing import Any, TYPE_CHECKING, Literal
-from typing_extensions import override
-from neps.optimizers.bayesian_optimization.models.gp import ComprehensiveGP
+from itertools import chain
+from typing import TYPE_CHECKING, Any, Literal, Mapping
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
-from neps.utils.common import instance_from_map
-from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    SearchSpace,
-)
-from neps.optimizers.base_optimizer import BaseOptimizer
+import torch
+
+from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.bayesian_optimization.acquisition_functions import (
     AcquisitionMapping,
     DecayingPriorWeightedAcquisition,
@@ -23,15 +14,26 @@ from neps.optimizers.bayesian_optimization.acquisition_functions import (
 from neps.optimizers.bayesian_optimization.acquisition_samplers import (
     AcquisitionSamplerMapping,
 )
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
+from neps.optimizers.bayesian_optimization.models.gp import ComprehensiveGP
+from neps.search_spaces import (
+    CategoricalParameter,
+    ConstantParameter,
+    FloatParameter,
+    IntegerParameter,
+    SearchSpace,
+)
+from neps.search_spaces.encoding import Encoder
+from neps.utils.common import instance_from_map
 
 if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
         BaseAcquisition,
     )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.state import BudgetInfo, Trial
 
 # TODO(eddiebergman): Why not just include in the definition of the parameters.
 CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
@@ -49,6 +51,7 @@ class BayesianOptimization(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
+        *,
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
         acquisition: str | BaseAcquisition = "EI",
@@ -62,7 +65,7 @@ class BayesianOptimization(BaseOptimizer):
         cost_value_on_error: None | float = None,
         logger=None,
         disable_priors: bool = False,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         sample_default_first: bool = False,
     ):
         """Initialise the BO loop.
@@ -124,10 +127,7 @@ class BayesianOptimization(BaseOptimizer):
 
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
-        self._num_train_x: int = 0
         self._num_error_evaluations: int = 0
-        self._pending_evaluations: list = []
-        self._model_update_failed: bool = False
         self.sample_default_first = sample_default_first
 
         if isinstance(surrogate_model, str):
@@ -136,7 +136,11 @@ class BayesianOptimization(BaseOptimizer):
                     space=pipeline_space,
                     include_fidelities=False,
                 )
+                self._encoder = Encoder.default(self.pipeline_space)
             else:
+                raise NotImplementedError(
+                    "Only 'gp' is supported as a surrogate model for now."
+                )
                 self.surrogate_model = instance_from_map(
                     SurrogateModelMapping,
                     surrogate_model,
@@ -162,132 +166,100 @@ class BayesianOptimization(BaseOptimizer):
             name="acquisition sampler function",
             kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
         )
-        self._enhance_priors()
-
-    def _enhance_priors(self, confidence_score: dict = None) -> None:
-        """Only applicable when priors are given along with a confidence.
-
-        Args:
-            confidence_score: dict
-                The confidence scores for the 2 major variable types.
-                Example: {"categorical": 5.2, "numeric": 0.15}
-        """
-        if self.prior_confidence is None:
-            return
-        if (
-            hasattr(self.pipeline_space, "has_prior")
-            and not self.pipeline_space.has_prior
-        ):
-            return
-        for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
-                continue
-            elif isinstance(v, (FloatParameter, IntegerParameter)):
-                if confidence_score is None:
+        if self.pipeline_space.has_prior:
+            for k, v in self.pipeline_space.items():
+                if v.is_fidelity or isinstance(v, ConstantParameter):
+                    continue
+                elif isinstance(v, (FloatParameter, IntegerParameter)):
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
-                else:
-                    confidence = confidence_score["numeric"]
-                self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
-                if confidence_score is None:
+                    self.pipeline_space[k].default_confidence_score = confidence
+                elif isinstance(v, CategoricalParameter):
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
                         self.prior_confidence
                     ]
-                else:
-                    confidence = confidence_score["categorical"]
-                self.pipeline_space[k].default_confidence_score = confidence
-        return
+                    self.pipeline_space[k].default_confidence_score = confidence
 
-    def is_init_phase(self) -> bool:
-        """Decides if optimization is still under the warmstart phase/model-based search."""
-        if self._num_train_x >= self._initial_design_size:
-            return False
-        return True
-
-    @override
-    def load_optimization_state(
+    def ask(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
+        trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
-    ) -> None:
-        train_x = [el.config for el in previous_results.values()]
-        train_y = [self.get_loss(el.result) for el in previous_results.values()]
-        if self.ignore_errors:
-            train_x = [x for x, y in zip(train_x, train_y) if y != "error"]
-            train_y_no_error = [y for y in train_y if y != "error"]
-            self._num_error_evaluations = len(train_y) - len(train_y_no_error)
-            train_y = train_y_no_error
-        self._num_train_x = len(train_x)
-        self._pending_evaluations = [el for el in pending_evaluations.values()]
-        if not self.is_init_phase():
+    ) -> tuple[SampledConfig, dict[str, Any]]:
+        # TODO: Lift this into runtime, let the
+        # optimizer advertise the encoding wants...
+        completed = [
+            t
+            for t in trials.values()
+            if t.report is not None and t.report.loss is not None
+        ]
+        train_x = [t.config for t in completed]
+        train_y: torch.Tensor = torch.as_tensor([t.report.loss for t in completed])  # type: ignore
+
+        pending = [t.config for t in trials.values() if t.state.pending()]
+
+        space = self.pipeline_space
+
+        # TODO: This would be better if we could serialize these
+        # in their encoded form. later...
+        for name, hp in space.categoricals.items():
+            for config in chain(train_x, pending):
+                config[name] = hp.choices.index(config[name])
+        for name, hp in space.graphs.items():
+            for config in chain(train_x, pending):
+                config[name] = hp.clone().load_from(config[name])
+
+        if len(trials) == 0 and self.sample_default_first and space.has_prior:
+            config = space.sample_default_configuration(
+                patience=self.patience, ignore_fidelity=False
+            )
+        elif len(trials) <= self._initial_design_size:
+            config = space.sample(
+                patience=self.patience, user_priors=True, ignore_fidelity=False
+            )
+        elif random.random() < self._random_interleave_prob:
+            config = space.sample(
+                patience=self.patience, user_priors=False, ignore_fidelity=False
+            )
+        else:
             try:
-                if len(self._pending_evaluations) > 0:
+                if len(pending) > 0:
                     # We want to use hallucinated results for the evaluations that have
                     # not finished yet. For this we fit a model on the finished
                     # evaluations and add these to the other results to fit another model.
                     self.surrogate_model.fit(train_x, train_y)
-                    ys, _ = self.surrogate_model.predict(self._pending_evaluations)
-                    train_x += self._pending_evaluations
+                    ys, _ = self.surrogate_model.predict(pending)
+                    train_x += pending
                     train_y += list(ys.detach().numpy())
 
+                # TODO: When using a GP, if we've already fit the
+                # model due to the if stamet above, we only
+                # need to update the model with the new points.
+                # fit on all the data again, only the new points...
                 self.surrogate_model.fit(train_x, train_y)
                 self.acquisition.set_state(self.surrogate_model)
                 self.acquisition_sampler.set_state(x=train_x, y=train_y)
+                for _ in range(self.patience):
+                    config = self.acquisition_sampler.sample(self.acquisition)
+                    if config not in pending:
+                        break
+                else:
+                    config = space.sample(
+                        patience=self.patience, user_priors=True, ignore_fidelity=False
+                    )
 
-                self._model_update_failed = False
-            except RuntimeError as runtime_error:
+            except RuntimeError as e:
                 self.logger.exception(
                     "Model could not be updated due to below error. Sampling will not use"
-                    " the model."
+                    " the model.",
+                    exc_info=e,
                 )
-                if self.loss_value_on_error is None or self.cost_value_on_error is None:
-                    raise ValueError(
-                        "A RuntimeError happened and "
-                        "loss_value_on_error or cost_value_on_error "
-                        "value is not provided, please fix the error or "
-                        "provide the values to continue without "
-                        "updating the model"
-                    ) from runtime_error
-                self._model_update_failed = True
-
-    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
-        if (
-            self._num_train_x == 0
-            and self.sample_default_first
-            and self.pipeline_space.has_prior
-        ):
-            config = self.pipeline_space.sample_default_configuration(
-                patience=self.patience, ignore_fidelity=False
-            )
-        elif self._num_train_x == 0 and self._initial_design_size >= 1:
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
-        elif random.random() < self._random_interleave_prob:
-            config = self.pipeline_space.sample(
-                patience=self.patience, ignore_fidelity=False
-            )
-        elif self.is_init_phase() or self._model_update_failed:
-            # initial design space
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
-        else:
-            for _ in range(self.patience):
-                config = self.acquisition_sampler.sample(self.acquisition)
-                if config not in self._pending_evaluations:
-                    break
-            else:
-                config = self.pipeline_space.sample(
+                config = space.sample(
                     patience=self.patience, user_priors=True, ignore_fidelity=False
                 )
 
-        config_id = str(
-            self._num_train_x
-            + self._num_error_evaluations
-            + len(self._pending_evaluations)
-            + 1
-        )
-        return config.hp_values(), config_id, None
+        config_id = str(len(trials) + 1)
+        return SampledConfig(
+            id=config_id,
+            config=config.hp_values(),
+            previous_config_id=None,
+        ), optimizer_state

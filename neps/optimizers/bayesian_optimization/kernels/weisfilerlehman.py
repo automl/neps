@@ -1,37 +1,38 @@
 from __future__ import annotations
 
+from itertools import product
 from typing import Any, ClassVar, Mapping, Sequence
 from typing_extensions import Self
 
-import torch
-import torch.nn as nn
-from itertools import product
-
 import numpy as np
+import numpy.typing as npt
+import torch
+from torch import nn
+
 from neps.optimizers.bayesian_optimization.kernels.grakel_replace import (
     VertexHistogram,
     WeisfeilerLehman as _WL,
 )
 from neps.optimizers.bayesian_optimization.kernels.kernel import Kernel
-from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import Stationary
-from neps.search_spaces.encoding import WLInput
+from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import NumericKernel
 
 GRID_WL_LENGTHSCALES = torch.tensor([np.e**i for i in range(-2, 3)])
 GRID_WL_SUBTREE_CANDIDATES = (1, 2, 3, 4, 5)
 
 
-class WeisfilerLehman(Kernel[Sequence[WLInput]]):
+class WeisfilerLehman(Kernel[npt.NDArray[np.object_]]):
     """Weisfiler Lehman kernel using grakel functions."""
 
     suggested_grid: ClassVar[Sequence[Mapping[str, Any]]] = [
-        {"h": h, "se_kernel": Stationary(lengthscale=l)}
+        {"h": h, "se_kernel": NumericKernel(lengthscale=l)}
         for h, l in product(GRID_WL_SUBTREE_CANDIDATES, GRID_WL_LENGTHSCALES)
     ]
 
     def __init__(
         self,
+        *,
         h: int = 0,
-        se_kernel: Stationary | None = None,
+        se_kernel: NumericKernel | None = None,
         layer_weights: torch.Tensor | None = None,
         oa: bool = False,
         node_label: str = "op_name",
@@ -70,7 +71,7 @@ class WeisfilerLehman(Kernel[Sequence[WLInput]]):
     def as_optimizable(self) -> Self:
         return self.clone_with(layer_weights=nn.Parameter(self.layer_weights))
 
-    def fit_transform(self, gr: Sequence[WLInput]) -> torch.Tensor:
+    def fit_transform(self, gr: npt.NDArray[np.object_]) -> torch.Tensor:
         self.layer_weights.clamp_(0, 1)
         self.wl_kernel_ = _WL(
             h=self.h,
@@ -87,12 +88,27 @@ class WeisfilerLehman(Kernel[Sequence[WLInput]]):
             normalize=True,
         )
 
-        K = self.wl_kernel_.fit_transform(gr)
+        K = self.wl_kernel_.fit_transform(iter(gr))
         return torch.as_tensor(K, dtype=torch.float64)
 
-    def transform(self, gr: Sequence[WLInput]) -> torch.Tensor:
+    def transform(self, gr: npt.NDArray[np.object_]) -> torch.Tensor:
         assert self.wl_kernel_ is not None
         self.layer_weights.clamp_(0, 1)
 
-        K = self.wl_kernel_.transform(gr)
+        K = self.wl_kernel_.transform(iter(gr))
         return torch.as_tensor(K, dtype=torch.float64)
+
+    def forward(
+        self,
+        x: npt.NDArray[np.object_],
+        x2: npt.NDArray[np.object_] | None = None,
+    ) -> torch.Tensor:
+        if x2 is None:
+            K = self.fit_transform(x)
+            self.wl_kernel_ = None
+            return K
+
+        self.fit_transform(x)
+        K = self.transform(x2)
+        self.wl_kernel_ = None
+        return K

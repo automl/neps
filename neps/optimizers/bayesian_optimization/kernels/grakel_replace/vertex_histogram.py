@@ -1,8 +1,11 @@
 """The vertex kernel as defined in :cite:`sugiyama2015halting`."""
 
+from __future__ import annotations
+
 import logging
 from collections import Counter
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import numpy as np
@@ -14,7 +17,10 @@ from scipy.sparse import csr_matrix
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
-from ..vectorial_kernels import Stationary
+if TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import (
+        NumericKernel,
+    )
 
 
 class VertexHistogram(Kernel):
@@ -42,7 +48,7 @@ class VertexHistogram(Kernel):
         If supplied, the Malahanobis distance with the precision matrix as supplied will be computed in the dot
         product, instead of the vanilla dot product.
 
-    Attributes
+    Attributes:
     ----------
     None.
 
@@ -55,7 +61,7 @@ class VertexHistogram(Kernel):
         sparse="auto",
         oa=False,
         mahalanobis_precision=None,
-        se_kernel: Stationary | None = None,
+        se_kernel: NumericKernel | None = None,
         requires_ordered_features: bool = False,
         as_tensor: bool = True,
     ):
@@ -120,7 +126,7 @@ class VertexHistogram(Kernel):
 
 
 
-        Returns
+        Returns:
         -------
         out : np.array, shape=(len(X), n_labels)
             A np.array for frequency (cols) histograms for all Graphs (rows).
@@ -139,9 +145,9 @@ class VertexHistogram(Kernel):
         if not isinstance(X, Iterable):
             raise TypeError("input must be an iterable\n")
         else:
-            rows, cols, data = list(), list(), list()
+            rows, cols, data = [], [], []
             if self._method_calling in [0, 1, 2]:
-                labels = dict()
+                labels = {}
                 self._labels = labels
             elif self._method_calling == 3:
                 labels = dict(self._labels)
@@ -200,7 +206,7 @@ class VertexHistogram(Kernel):
                 ni += 1
 
             if self.require_ordered_features:
-                label_length = max(label_end_idx - label_start_idx, max(cols)) + 1
+                label_length = max(label_end_idx - label_start_idx, *cols) + 1
             else:
                 label_length = len(labels)
 
@@ -244,7 +250,7 @@ class VertexHistogram(Kernel):
         Y : np.array, default=None
             The array between samples and features.
 
-        Returns
+        Returns:
         -------
         K : numpy array, shape = [n_targets, n_inputs]
             The kernel matrix: a calculation between all pairs of graphs
@@ -260,24 +266,19 @@ class VertexHistogram(Kernel):
                     for j in range(i, self.X.shape[0]):
                         K[i, j] = np.sum(np.minimum(self.X[i, :], self.X[j, :]))
                         K[j, i] = K[i, j]
+            elif self.se_kernel is not None:
+                K = self.se_kernel._forward(self.X, self.X)
             else:
-                if self.se_kernel is not None:
-                    K = self.se_kernel._forward(self.X, self.X)
-                else:
-                    K = self.X @ self.X.T
+                K = self.X @ self.X.T
+        elif self.oa:
+            K = np.zeros((Y.shape[0], self.X.shape[0]))
+            for i in range(Y.shape[0]):
+                for j in range(self.X.shape[0]):
+                    K[i, j] = np.sum(np.minimum(self.X[j, :], Y[i, : self.X.shape[1]]))
+        elif self.se_kernel is not None:
+            K = self.se_kernel._forward(self.X, Y)
         else:
-            if self.oa:
-                K = np.zeros((Y.shape[0], self.X.shape[0]))
-                for i in range(Y.shape[0]):
-                    for j in range(self.X.shape[0]):
-                        K[i, j] = np.sum(
-                            np.minimum(self.X[j, :], Y[i, : self.X.shape[1]])
-                        )
-            else:
-                if self.se_kernel is not None:
-                    K = self.se_kernel._forward(self.X, Y)
-                else:
-                    K = Y[:, : self.X.shape[1]] @ self.X.T
+            K = Y[:, : self.X.shape[1]] @ self.X.T
 
         if self.sparse_:
             return K.toarray()
@@ -291,7 +292,7 @@ class VertexHistogram(Kernel):
         ----------
         None.
 
-        Returns
+        Returns:
         -------
         X_diag : np.array
             The diagonal of the kernel matrix, of the fitted. This consists
@@ -309,11 +310,10 @@ class VertexHistogram(Kernel):
             # Calculate diagonal of X
             if use_tensor:
                 self._X_diag = torch.einsum("ij,ij->i", [self.X_tensor, self.X_tensor])
+            elif self.sparse_:
+                self._X_diag = squeeze(array(self.X.multiply(self.X).sum(axis=1)))
             else:
-                if self.sparse_:
-                    self._X_diag = squeeze(array(self.X.multiply(self.X).sum(axis=1)))
-                else:
-                    self._X_diag = einsum("ij,ij->i", self.X, self.X)
+                self._X_diag = einsum("ij,ij->i", self.X, self.X)
         try:
             check_is_fitted(self, ["_Y"])
             if use_tensor:
@@ -346,7 +346,7 @@ class VertexHistogram(Kernel):
             computing the kernel function). This is used when computing the derivative
             of the kernel w.r.t. the test points/
 
-        Returns
+        Returns:
         -------
         K : numpy array, shape = [n_targets, n_input_graphs]
             corresponding to the kernel matrix, a calculation between
@@ -395,7 +395,7 @@ class VertexHistogram(Kernel):
             There is no need of a target in a transformer, yet the pipeline API
             requires this parameter.
 
-        Returns
+        Returns:
         -------
         K : numpy array, shape = [n_targets, n_input_graphs]
             corresponding to the kernel matrix, a calculation between
@@ -431,7 +431,7 @@ class VertexHistogram(Kernel):
             There is no need of a target in a transformer, yet the pipeline API
             requires this parameter.
 
-        Returns
+        Returns:
         -------
         self : object
         Returns self.

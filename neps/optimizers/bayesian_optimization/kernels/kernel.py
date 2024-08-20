@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import copy
 import inspect
-from abc import ABC, abstractmethod
 import math
+from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Generic, Mapping, Sequence, TypeVar
 from typing_extensions import Self
 
@@ -56,12 +56,11 @@ class Kernel(ABC, nn.Module, Generic[T]):
         x: T,
         y: torch.Tensor,
         *,
-        grid: Sequence[Mapping[str, Any]],
+        grid: Sequence[Mapping[str, Any]] | None = None,
         noise_variances: Sequence[float] = (1e-6,),
-    ) -> tuple[Self, float] | Exception:
+    ) -> tuple[Self, float]:
         # Returns: (Kernel[T], float) | None if failed
-        if len(grid) == 0:
-            raise ValueError("Grid must have at least one element.")
+        grid = grid or self.suggested_grid
 
         def _fit_and_eval(
             _params: Mapping[str, Any],
@@ -70,7 +69,6 @@ class Kernel(ABC, nn.Module, Generic[T]):
             K = cloned_kernel.forward(x)
 
             best_lml = -float("inf")
-            exception: Exception | None = None
             for noise_variance in noise_variances:
                 K.diag().add_(noise_variance)
 
@@ -81,18 +79,14 @@ class Kernel(ABC, nn.Module, Generic[T]):
 
                 K.diag().sub_(noise_variance)
 
-            if exception is None:
-                return cloned_kernel, best_lml
-
-            return exception
+            return cloned_kernel, best_lml
 
         evals = [_fit_and_eval(params) for params in grid]
         evals_with_score = [e for e in evals if not isinstance(e, Exception)]
         if not any(evals_with_score):
             raise evals[-1]  # type: ignore
 
-        best_eval = max(evals_with_score, key=lambda e: e[1])  # type: ignore
-        return best_eval
+        return max(evals_with_score, key=lambda e: e[1])  # type: ignore
 
 
 class NumericKernel(Kernel[torch.Tensor]): ...

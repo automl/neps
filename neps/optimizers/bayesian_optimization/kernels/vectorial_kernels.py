@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from math import sqrt
-from typing import Any, Mapping, Sequence, ClassVar
-from typing_extensions import override, Self
-
+from abc import ABC
 from itertools import product
+from math import sqrt
+from typing import Any, ClassVar, Mapping, Sequence
+from typing_extensions import Self, override
+
 import torch
-import torch.nn as nn
+from torch import nn
 
 from neps.optimizers.bayesian_optimization.kernels.kernel import Kernel
 
@@ -19,10 +20,10 @@ LENGTHSCALE_GRID = (1e-2, 1e-1, 1, 1e1, 1e2)
 STD_ENCODED_OUTPUT_SCALE = (1e-2, 1e-1, 1, 1e1, 1e2)
 
 
-class Stationary(Kernel[torch.Tensor]):
+class NumericKernel(Kernel[torch.Tensor], ABC):
     suggested_grid: ClassVar[Sequence[Mapping[str, Any]]] = [
-        {"lengthscale": l, "output_scale": o}
-        for l, o in product(LENGTHSCALE_GRID, STD_ENCODED_OUTPUT_SCALE)
+        {"lengthscale": _l, "output_scale": o}
+        for _l, o in product(LENGTHSCALE_GRID, STD_ENCODED_OUTPUT_SCALE)
     ]
 
     def __init__(
@@ -59,25 +60,33 @@ class Stationary(Kernel[torch.Tensor]):
 
     def forward(self, x: torch.Tensor, x2: torch.Tensor | None = None) -> torch.Tensor:
         # NOTE: I don't think this is the right way to do this...
-        with torch.no_grad():
-            self.lengthscale.data.clamp_(*self.lengthscale_bounds)
-            self.outputscale.data.clamp_(*self.outputscale_bounds)
+        if self.lengthscale_bounds is not None or self.outputscale_bounds is not None:
+            with torch.no_grad():
+                if self.lengthscale_bounds is not None:
+                    self.lengthscale.data.clamp_(*self.lengthscale_bounds)
+                if self.outputscale_bounds is not None:
+                    self.outputscale.data.clamp_(*self.outputscale_bounds)
 
         x2 = x if x2 is None else x2
         return self._forward(x, x2)
 
+    def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor: ...
+
+
+class Stationary(NumericKernel):
+    @override
     def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
-        return self.outputscale * torch.cdist(x1, x2, p=2)
+        return self.outputscale * torch.cdist(x1, x2, p=2) / self.lengthscale
 
 
-class RBFKernel(Stationary):
+class RBFKernel(NumericKernel):
     @override
     def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         dist_sq = torch.cdist(x1, x2, p=2) ** 2
         return self.outputscale * torch.exp(-dist_sq / (2 * self.lengthscale**2))
 
 
-class Matern32Kernel(Stationary):
+class Matern32Kernel(NumericKernel):
     @override
     def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         dist = torch.cdist(x1, x2, p=2) / self.lengthscale
@@ -86,7 +95,7 @@ class Matern32Kernel(Stationary):
         return self.outputscale * matern32
 
 
-class HammingKernel(Stationary):
+class HammingKernel(NumericKernel):
     @override
     def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         dists = (x1.unsqueeze(1) != x2.unsqueeze(0)).float().sum(-1) / x1.shape[-1]
@@ -94,7 +103,7 @@ class HammingKernel(Stationary):
         return self.outputscale * torch.exp(-scaled_dists)
 
 
-class Matern52Kernel(Stationary):
+class Matern52Kernel(NumericKernel):
     @override
     def _forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
         dist = torch.cdist(x1, x2, p=2) / self.lengthscale

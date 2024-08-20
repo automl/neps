@@ -3,36 +3,36 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
-from typing_extensions import Literal
-import torch.nn as nn
 
 import numpy as np
 import torch
+from torch import nn
+from torch.optim import SGD, Adam  # type: ignore
 
 from neps.optimizers.bayesian_optimization.kernels.kernel import (
     Kernel,
-    log_marginal_likelihood,
     compute_pd_inverse,
+    log_marginal_likelihood,
 )
 from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import (
     HammingKernel,
     Matern52Kernel,
+    NumericKernel,
 )
 from neps.optimizers.bayesian_optimization.kernels.weisfilerlehman import (
     WeisfilerLehman,
 )
 from neps.search_spaces import SearchSpace
 from neps.search_spaces.encoding import (
-    IntegerCategoricalTransformer,
-    JointTransformer,
+    CategoricalToIntegerTransformer,
+    DataPack,
     MinMaxNormalizer,
     OneHotEncoder,
     TensorTransformer,
     Transformer,
     WLInputTransformer,
 )
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
+from neps.search_spaces.hyperparameters import FloatParameter, IntegerParameter
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -47,9 +47,9 @@ NOISE_VARIANCE_GRID = (1e-6, 1e-4, 1e-2, 1, 1e1, 1e2)
 @dataclass
 class ComprehensiveGP:
     space: SearchSpace
-    kernels: dict[str, tuple[Kernel, Transformer]]
-    combined_kernel: Literal["sum", "product"] = "sum"
+    kernels: dict[str, tuple[Sequence[str], Kernel]]
 
+    combined_kernel: Literal["sum", "product"] = "sum"
     noise_variance: Sequence[float] = NOISE_VARIANCE_GRID
     kernel_parameter_grid: Mapping[str, Sequence[Mapping[str, Any]]] | bool = True
 
@@ -60,20 +60,24 @@ class ComprehensiveGP:
 
     # Post fit attributes
     K_inv_: torch.Tensor | None = None
-    n_train_: int | None = None
     likelihood_: float | None = None
     y_: torch.Tensor | None = None
     y_normalized_: torch.Tensor | None = None
     y_mean_: float | None = None
     y_std_: float | None = None
-    optimized_kernels_: dict[str, Kernel] | None = None
-    train_data_: dict[str, Any] | None = None
+    opt_kernels_: dict[str, tuple[Sequence[str], Kernel]] | None = None
+    train_x_: DataPack | None = None
 
     def __post_init__(self):
         # TODO: Remove when search space is just definition and does not hold values.
         self.space = self.space.clone()
 
-    def fit(self, x: list[dict[str, Any]], train_y: torch.Tensor) -> None:
+    def fit(
+        self,
+        *,
+        x: DataPack,
+        train_y: torch.Tensor,
+    ) -> None:
         # Preprocessing
         y_ = torch.as_tensor(train_y, device=self.device, dtype=torch.float64)
 
@@ -83,40 +87,19 @@ class ComprehensiveGP:
         self.y_normalized_ = (y_ - self.y_mean_) / self.y_std_
         self.y_ = y_
 
-        _data = {
-            key: transformer.encode(x, self.space)
-            for key, (_, transformer) in self.kernels.items()
-        }
-
         # optimized kernel parameters + noise variance
         optim_vars: list[nn.Parameter] = []
+        opt_kernels: dict[str, tuple[Sequence[str], Kernel]] = {}
 
-        grids = {
-            name: k.suggested_grid
-            for name, (k, _) in self.kernels.items()
-            if k.suggested_grid is not None
-        }
-
-        kernels: dict[str, Kernel] = {}
-        for kernel_name, (kernel, _) in self.kernels.items():
-            xs = _data[kernel_name]
-            grid = grids[kernel_name]
-
-            maybe_optimized_kernel = kernel.grid_search(
-                x=xs,
+        N: int
+        for _kernel_name, (hps, kernel) in self.kernels.items():
+            data = x.select(hps)
+            opt_kernel, _ = kernel.grid_search(
+                x=data,  # type: ignore
                 y=self.y_normalized_,
-                grid=grid,
             )
-            if isinstance(maybe_optimized_kernel, Exception):
-                raise ValueError(
-                    f"Failed to optimize kernel {kernel_name} with grid {grid}."
-                ) from maybe_optimized_kernel
-
-            opt_kernel, _ = maybe_optimized_kernel
-            gradient_enabled_kernel = opt_kernel.as_optimizable()
-            kernels[kernel_name] = gradient_enabled_kernel
-
-            optim_vars.extend(gradient_enabled_kernel.parameters())
+            optim_vars.extend(opt_kernel.parameters())
+            opt_kernels[_kernel_name] = (hps, opt_kernel)
 
         # Now that we've optimized the kernels, we convert go convert their
         # parameters into a tensor we can further refine with some optimizer iterations
@@ -128,30 +111,25 @@ class ComprehensiveGP:
         optim_vars.append(noise_variance)
 
         if self.optimizer == "adam":
-            optim = torch.optim.Adam(optim_vars, **self.optimizer_kwargs)  # type: ignore
+            optim = Adam(optim_vars, **self.optimizer_kwargs)  # type: ignore
         elif self.optimizer == "sgd":
-            optim = torch.optim.SGD(optim_vars, **self.optimizer_kwargs)  # type: ignore
+            optim = SGD(optim_vars, **self.optimizer_kwargs)  # type: ignore
         else:
             raise ValueError(f"Invalid optimizer {self.optimizer}")
 
         K_inv: torch.Tensor | None = None
+        _init = torch.zeros if self.combined_kernel == "sum" else torch.ones
         N = len(x)
-        for i in range(self.optimizer_iters):
+        K = _init((N, N), device=self.device, dtype=torch.float64)
+        for _i in range(self.optimizer_iters):
             optim.zero_grad()
-            # Now we iterate over kernels to build up K
-            _init = torch.zeros if self.combined_kernel == "sum" else torch.ones
-            K = _init(N, N, device=self.device, dtype=torch.float64)
-            for kernel_name, kernel in kernels.items():
-                data = _data[kernel_name]
-                gram = kernel.forward(data, data)
 
-                if self.combined_kernel == "sum":
-                    K.add_(gram)
-                else:
-                    K.mul_(gram)
+            for _kernel_name, (hps, opt_kernel) in opt_kernels.items():
+                data = x.select(hps)
+                k = opt_kernel.forward(data)
+                K.add_(k) if self.combined_kernel == "sum" else K.mul_(k)
 
             K.diag().add_(noise_variance)
-
             K_inv, logDetK = compute_pd_inverse(K)
             nlml = -log_marginal_likelihood(K_inv, logDetK, y=self.y_normalized_)
 
@@ -166,52 +144,50 @@ class ComprehensiveGP:
         assert K_inv is not None
         self.K_inv_ = K_inv.clone()
         self.noise_variance_ = noise_variance.item()
-        self.optimized_kernels_ = kernels
-        self.n_train_ = N
-        self.train_data_ = _data
+        self.opt_kernels_ = opt_kernels
+        self.train_x_ = x
 
-    def predict(self, x: list[dict[str, Any]]) -> tuple[torch.Tensor, torch.Tensor]:
+    def predict(
+        self,
+        *,
+        x: DataPack,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Kriging predictions."""
         if (
             self.K_inv_ is None
-            or self.n_train_ is None
-            or self.optimized_kernels_ is None
-            or self.train_data_ is None
+            or self.train_x_ is None
             or self.y_normalized_ is None
             or self.y_std_ is None
+            or self.opt_kernels_ is None
         ):
             raise ValueError(
                 "Inverse of Gram matrix is not instantiated. Please call the optimize "
                 "function to fit on the training data first!"
             )
-        _data = {
-            key: transformer.encode(x, self.space)
-            for key, (_, transformer) in self.kernels.items()
-        }
 
         _init = torch.zeros if self.combined_kernel == "sum" else torch.ones
         n_test = len(x)
 
         K_train_test = _init(
-            self.n_train_, n_test, device=self.device, dtype=torch.float64
+            len(self.train_x_), n_test, device=self.device, dtype=torch.float64
         )
+        for _kernel_name, (hps, opt_kernel) in self.opt_kernels_.items():
+            train = self.train_x_.select(hps)
+            test = x.select(hps)
+            k = opt_kernel.forward(train, test)
+            if self.combined_kernel == "sum":
+                K_train_test.add_(k)
+            else:
+                K_train_test.mul_(k)
+
         K_test_test = _init(n_test, n_test, device=self.device, dtype=torch.float64)
-
-        for kernel_name, kernel in self.optimized_kernels_.items():
-            train_x = self.train_data_[kernel_name]
-            test_x = _data[kernel_name]
-
-            gram = kernel.forward(train_x, test_x)
+        for _kernel_name, (hps, opt_kernel) in self.opt_kernels_.items():
+            test = x.select(hps)
+            k = opt_kernel.forward(test, test)
             if self.combined_kernel == "sum":
-                K_train_test.add_(gram)
+                K_test_test.add_(k)
             else:
-                K_train_test.mul_(gram)
-
-            gram = kernel.forward(test_x, test_x)
-            if self.combined_kernel == "sum":
-                K_test_test.add_(gram)
-            else:
-                K_test_test.mul_(gram)
+                K_test_test.mul_(k)
 
         # Compute the predictive mean
 
@@ -220,7 +196,6 @@ class ComprehensiveGP:
         mu_s = mu_s * self.y_std_ + self.y_mean_
 
         cov_s = K_test_test - K_train_test.t() @ self.K_inv_ @ K_train_test
-        cov_s.diagonal().clamp_(self.noise_variance_, np.inf)
         cov_s *= self.y_std_**2
 
         return mu_s, cov_s
@@ -280,7 +255,7 @@ def get_default_kernels(
             transformer = JointTransformer.join(one_hot_encoder, fid_normalizer)
             kernels["vectorial"] = (Matern52Kernel(), transformer)
         else:
-            transformer = IntegerCategoricalTransformer(tuple(space.categoricals))
+            transformer = CategoricalToIntegerTransformer(tuple(space.categoricals))
             kernels["categorical"] = (HammingKernel(), transformer)
 
     return kernels
