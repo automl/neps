@@ -242,9 +242,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
+                if self.observed_configs.empty:
+                    self.observed_configs = _df
+                else:
+                    self.observed_configs = pd.concat(
+                        (self.observed_configs, _df)
+                    ).sort_index()
             # for efficiency, redefining the function to have the
             # `rung_histories` assignment inside the for loop
             # rung histories are collected only for `previous` and not `pending` configs

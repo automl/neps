@@ -91,6 +91,33 @@ neps.run(
     max_evaluations_total=100,
 )
 ```
+## Declarative Usage
+
+NePS offers a declarative approach to efficiently manage experiments. This method is particularly suitable for
+conducting and managing a large number of experiments with different settings. Below is the example from Basic Usage:
+```yaml
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: run_pipeline              # Function name within the file
+root_directory: "path/to/save/results"
+pipeline_space:
+  hyperparameter_a:
+    lower: 1e-3
+    upper: 1e-1
+    log: True  # Log scale for learning rate
+  hyperparameter_b:
+    lower: 1
+    upper: 42
+  architecture_parameter:
+    choices: [option_a, option_b]
+
+max_evaluations_total: 100
+```
+```bash
+neps run --run-args path/to/your/config.yaml
+```
+If you would like to learn more about how to use this,
+[click here](https://automl.github.io/neps/latest/reference/declarative_usage/).
 
 ## Examples
 

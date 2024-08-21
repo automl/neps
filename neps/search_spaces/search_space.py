@@ -134,7 +134,9 @@ def pipeline_space_from_yaml(  # noqa: C901
 
         pipeline_space: dict[str, Parameter] = {}
 
-        for name, details in config.items():
+        if len(config) == 1 and "pipeline_space" in config:
+            config = config["pipeline_space"]
+        for name, details in config.items():  # type: ignore
             param_type = deduce_type(name, details)
 
             if param_type in ("int", "integer"):

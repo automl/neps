@@ -204,3 +204,29 @@ Define hooks in your YAML configuration to extend the functionality of your expe
     import neps
     neps.run(run_args="path/to/your/config.yaml")
     ```
+
+## CLI Usage
+This section provides a brief overview of the primary commands available in the NePS CLI.
+For additional command options, you can directly refer to the help documentation
+provided by each command using --help.
+
+
+### **`init` Command**
+Generates a default `run_args` YAML configuration file, providing a template that you can customize for
+your experiments.
+
+**Example Usage:**
+```bash
+neps init --config-path custom/path/config.yaml
+```
+
+### **`run` Command**
+Executes the optimization based on the provided configuration. This command serves as a CLI wrapper around neps.run,
+effectively mapping each CLI argument to a parameter in neps.run. This setup offers a flexible interface that allows
+you to override the existing settings specified in the YAML configuration file, facilitating dynamic adjustments for
+managing your experiments.
+
+**Example Usage:**
+```bash
+neps run --run-args path/to/config.yaml
+```
