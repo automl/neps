@@ -28,11 +28,14 @@ def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
         if is_topology:
             if isinstance(v, partial):
                 if hasattr(v.func, "get_edge_list"):
-                    func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
+                    func_args = inspect.getfullargspec(
+                        v.func.get_edge_list).args  # type: ignore[attr-defined]
                     kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
-                    topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
+                    topology_edge_lists[k] = v.func.get_edge_list(
+                        **kwargs)  # type: ignore[attr-defined]
                 elif hasattr(v.func, "edge_list"):
-                    topology_edge_lists[k] = v.func.edge_list  # type: ignore[attr-defined]
+                    topology_edge_lists[
+                        k] = v.func.edge_list  # type: ignore[attr-defined]
                 else:
                     raise Exception(
                         f"Please implement a get_edge_list static method for {v.func.__name__} or set edge_list!"
@@ -157,7 +160,7 @@ class CoreGraphGrammar(Graph):
                         tree.nodes[predecessor[0]]["children"] = (
                             old_children[: idx + 1]
                             + [tree.nodes[node]["children"][0]]
-                            + old_children[idx + 1 :]
+                            + old_children[idx + 1:]
                         )
                         tree.nodes[predecessor[0]]["children"].remove(node)
 
@@ -174,165 +177,8 @@ class CoreGraphGrammar(Graph):
         return dfs(set(), tree, self._find_root(tree))
 
     @staticmethod
-    def _find_leafnodes(G):
-        leafnode = []
-        for i in G.nodes:
-            head = []
-            if nx.descendants(G, i) == set():  # find all leaf nodes
-                for a in nx.ancestors(G, i):  # get all ancestors for leaf node
-                    if (
-                        nx.ancestors(G, a) == set()
-                    ):  # Determine if ancestor is a head node
-                        head.append(a)
-            if len(head) == 1:  # if this leaf had only one head then append to leafnode
-                leafnode.append(i)
-        return leafnode
-
-    @staticmethod
-    def _get_neighbors_from_parse_tree(tree: nx.DiGraph, node: int) -> list[int]:
-        return tree.nodes[node]["children"]
-
-    @staticmethod
     def _find_root(G):
         return next(n for n, d in G.in_degree() if d == 0)
-
-    @staticmethod
-    def _relabel_nodes(G: nx.DiGraph, mapping: dict) -> nx.DiGraph:
-        """Relabels the nodes and adjusts children list accordingly.
-
-        Args:
-            G (nx.DiGraph): graph to relabel
-            mapping (dict): node mapping
-
-        Returns:
-            nx.DiGraph: relabeled graph (copied)
-        """
-        # recreation of graph is faster
-        tree_relabeled = nx.DiGraph()
-        tree_relabeled.add_nodes_from(
-            [
-                (
-                    mapping[n[0]],
-                    {
-                        k: v if k != "children" else [mapping[_n] for _n in v]
-                        for k, v in n[1].items()
-                    },
-                )
-                for n in G.nodes(data=True)
-            ]
-        )
-        tree_relabeled.add_edges_from([(mapping[e[0]], mapping[e[1]]) for e in G.edges()])
-        return tree_relabeled
-
-    def assemble_trees(
-        self,
-        base_tree: str | nx.DiGraph,
-        motif_trees: list[str] | list[nx.DiGraph],
-        terminal_to_sublanguage_map: dict | None = None,
-        node_label: str = "op_name",
-    ) -> str | nx.DiGraph:
-        """Assembles the base parse tree with the motif parse trees.
-
-        Args:
-            base_tree (nx.DiGraph): Base parse tree
-            motif_trees (List[nx.DiGraph]): List of motif parse trees
-            node_label (str, optional): node label key. Defaults to "op_name".
-
-        Returns:
-            nx.DiGraph: Assembled parse tree
-        """
-        if not all(isinstance(base_tree, type(tree)) for tree in motif_trees):
-            raise ValueError("All trees must be of the same type!")
-        if isinstance(base_tree, str):
-            ensembled_tree_string = base_tree
-            if terminal_to_sublanguage_map is None:
-                raise NotImplementedError
-
-            for motif, replacement in zip(
-                terminal_to_sublanguage_map.keys(), motif_trees
-            ):
-                if motif in ensembled_tree_string:
-                    ensembled_tree_string = ensembled_tree_string.replace(
-                        motif, replacement
-                    )
-            return ensembled_tree_string
-        elif isinstance(base_tree, nx.DiGraph):
-            raise NotImplementedError
-            leafnodes = self._find_leafnodes(base_tree)
-            root_nodes = [self._find_root(G) for G in motif_trees]
-            root_op_names = np.array(
-                [
-                    motif_tree.nodes[root_node][node_label]
-                    for motif_tree, root_node in zip(motif_trees, root_nodes)
-                ]
-            )
-            largest_node_number = max(base_tree.nodes())
-            # ensembled_tree = base_tree.copy()
-            # recreation is slightly faster
-            ensembled_tree: nx.DiGraph = nx.DiGraph()
-            ensembled_tree.add_nodes_from(base_tree.nodes(data=True))
-            ensembled_tree.add_edges_from(base_tree.edges())
-            for leafnode in leafnodes:
-                idx = np.where(base_tree.nodes[leafnode][node_label] == root_op_names)[0]
-                if len(idx) == 0:
-                    continue
-                if len(idx) > 1:
-                    raise ValueError(
-                        "More than two similar terminal/start symbols are not supported!"
-                    )
-
-                tree = motif_trees[idx[0]]
-                # generate mapping
-                mapping = dict(
-                    zip(
-                        tree.nodes(),
-                        range(
-                            largest_node_number + 1,
-                            largest_node_number + 1 + len(tree),
-                        ),
-                    )
-                )
-                largest_node_number = largest_node_number + 1 + len(tree)
-                tree_relabeled = self._relabel_nodes(G=tree, mapping=mapping)
-
-                # compose trees
-                predecessor_in_base_tree = next(iter(ensembled_tree.pred[leafnode]))
-                motif_tree_root_node = self._find_root(tree_relabeled)
-                successors_in_motif_tree = tree_relabeled.nodes[motif_tree_root_node][
-                    "children"
-                ]
-
-                # delete unnecessary edges
-                ensembled_tree.remove_node(leafnode)
-                tree_relabeled.remove_node(motif_tree_root_node)
-                # add new edges
-                tree_relabeled.add_node(predecessor_in_base_tree)
-                for n in successors_in_motif_tree:
-                    tree_relabeled.add_edge(predecessor_in_base_tree, n)
-
-                ensembled_tree.update(
-                    edges=tree_relabeled.edges(data=True),
-                    nodes=tree_relabeled.nodes(data=True),
-                )
-
-                idx = np.where(
-                    np.array(ensembled_tree.nodes[predecessor_in_base_tree]["children"])
-                    == leafnode
-                )[0][0]
-                old_children = ensembled_tree.nodes[predecessor_in_base_tree]["children"]
-                ensembled_tree.nodes[predecessor_in_base_tree]["children"] = (
-                    old_children[: idx + 1]
-                    + successors_in_motif_tree
-                    + old_children[idx + 1 :]
-                )
-                ensembled_tree.nodes[predecessor_in_base_tree]["children"].remove(
-                    leafnode
-                )
-            return ensembled_tree
-        else:
-            raise NotImplementedError(
-                f"Assembling of trees of type {type(base_tree)} is not supported!"
-            )
 
     @staticmethod
     def from_stringTree_to_nxTree(
@@ -803,11 +649,11 @@ class CoreGraphGrammar(Graph):
                                     [
                                         (n_in, n_out)
                                         for n_in in q_subgraphs[-1]["graph"].predecessors(
-                                            n
-                                        )
+                                        n
+                                    )
                                         for n_out in q_subgraphs[-1]["graph"].successors(
-                                            n
-                                        )
+                                        n
+                                    )
                                     ]
                                 )
                                 q_subgraphs[-1]["graph"].remove_node(n)
@@ -1019,9 +865,9 @@ class CoreGraphGrammar(Graph):
                     if q_nonterminals.qsize() == q_topologies.qsize():
                         topology, number_of_primitives = q_topologies.get(block=False)
                         primitives = [
-                            q_primitives.get(block=False)
-                            for _ in range(number_of_primitives)
-                        ][::-1]
+                                         q_primitives.get(block=False)
+                                         for _ in range(number_of_primitives)
+                                     ][::-1]
                         if (
                             topology in terminal_to_graph
                             and terminal_to_graph[topology] is not None
@@ -1175,7 +1021,8 @@ class CoreGraphGrammar(Graph):
                 nodes[u] = _u
                 if _u not in flattened_graph.nodes:  # type: ignore[union-attr]
                     flattened_graph.add_node(_u)  # type: ignore[union-attr]
-                    flattened_graph.nodes[_u].update(graph.nodes[u])  # type: ignore[union-attr]
+                    flattened_graph.nodes[_u].update(
+                        graph.nodes[u])  # type: ignore[union-attr]
 
             if v in nodes:
                 _v = nodes[v]
@@ -1237,8 +1084,9 @@ class CoreGraphGrammar(Graph):
                 if q_nonterminals.qsize() == q_topologies.qsize():
                     topology, number_of_primitives = q_topologies.get(block=False)
                     primitives = [
-                        q_primitives.get(block=False) for _ in range(number_of_primitives)
-                    ][::-1]
+                                     q_primitives.get(block=False) for _ in
+                                     range(number_of_primitives)
+                                 ][::-1]
                     composed_function = topology(*primitives)
                     if not q_topologies.empty():
                         q_primitives.put(composed_function)
@@ -1256,8 +1104,8 @@ class CoreGraphGrammar(Graph):
                         and issubclass(self.terminal_to_op_names[sym], AbstractTopology)
                         or isinstance(self.terminal_to_op_names[sym], partial)
                         and issubclass(
-                            self.terminal_to_op_names[sym].func, AbstractTopology
-                        )
+                        self.terminal_to_op_names[sym].func, AbstractTopology
+                    )
                     ):
                         is_topology = True
 
@@ -1327,8 +1175,9 @@ class CoreGraphGrammar(Graph):
                 if q_nonterminals.qsize() == q_topologies.qsize():
                     topology, number_of_primitives = q_topologies.get(block=False)
                     primitives = [
-                        q_primitives.get(block=False) for _ in range(number_of_primitives)
-                    ][::-1]
+                                     q_primitives.get(block=False) for _ in
+                                     range(number_of_primitives)
+                                 ][::-1]
                     if as_composition:
                         if topology == "Linear1":
                             composed_function = primitives[0]
@@ -1355,8 +1204,8 @@ class CoreGraphGrammar(Graph):
                         and issubclass(self.terminal_to_op_names[sym], AbstractTopology)
                         or isinstance(self.terminal_to_op_names[sym], partial)
                         and issubclass(
-                            self.terminal_to_op_names[sym].func, AbstractTopology
-                        )
+                        self.terminal_to_op_names[sym].func, AbstractTopology
+                    )
                     ):
                         is_topology = True
 

@@ -57,7 +57,7 @@ def repetitive_search_space_crossover(
         base_parent[1], terminal_to_sublanguage_map
     )
 
-    random_draw = random.randint(
+    random_draw = random.randint(  # noqa: S311
         1 if fixed_macro_parent else 0,
         min(
             len(parent1_potential_motif_candidates),
@@ -65,12 +65,6 @@ def repetitive_search_space_crossover(
         ),
     )
     if random_draw == 0:  # crossover high level grammar, but keep repetitive motifs fixed
-        # parent1_motifs = _motifs_in_base_tree(
-        #     child1_string_trees[0], terminal_to_sublanguage_map
-        # )
-        # parent2_motifs = _motifs_in_base_tree(
-        #     child2_string_trees[0], terminal_to_sublanguage_map
-        # )
         (
             _,
             _,
@@ -84,61 +78,10 @@ def repetitive_search_space_crossover(
         )
         subtrees_child1 = list(subtrees_child1)
         subtrees_child2 = list(subtrees_child2)
-        # new_child1_motifs = _motifs_in_base_tree(
-        #     subtrees_child2[1], terminal_to_sublanguage_map
-        # )
-        # new_child2_motifs = _motifs_in_base_tree(
-        #     subtrees_child1[1], terminal_to_sublanguage_map
-        # )
-
-        # old_child1_string_trees = deepcopy(child1_string_trees)
-        # tmp = number_of_repetitive_motifs_per_grammar[1]
-        # free_motifs = list(set(range(1, tmp + 1)) - set(parent1_motifs))
-        # if len(free_motifs) > 0:
-        #     substitute_terminals = list(terminal_to_sublanguage_map.keys())
-        #     if len(new_child1_motifs) > len(free_motifs):  # too many new child motifs
-        #         new_child1_motifs = random.sample(
-        #             new_child1_motifs,
-        #             k=len(free_motifs),
-        #         )
-        #     elif len(new_child1_motifs) < len(
-        #         free_motifs
-        #     ):  # more free spots than necessary
-        #         free_motifs = random.sample(
-        #             free_motifs,
-        #             k=len(new_child1_motifs),
-        #         )
-        #     for fm, nm in zip(free_motifs, new_child1_motifs):
-        #         child1_string_trees[fm] = child2_string_trees[nm].replace(
-        #             substitute_terminals[nm], substitute_terminals[fm]
-        #         )
-        #         subtrees_child2[1] = subtrees_child2[1].replace(
-        #             substitute_terminals[nm], substitute_terminals[fm]
-        #         )
         child1_string_trees[0] = (
             subtrees_child1[0] + subtrees_child2[1] + subtrees_child1[2]
         )
 
-        # free_motifs = list(set(range(1, tmp + 1)) - set(parent2_motifs))
-        # if len(free_motifs) > 0:
-        #     substitute_terminals = list(terminal_to_sublanguage_map.keys())
-        #     if len(new_child2_motifs) > len(free_motifs):
-        #         new_child2_motifs = random.sample(
-        #             new_child2_motifs,
-        #             k=len(free_motifs),
-        #         )
-        #     elif len(new_child2_motifs) < len(free_motifs):
-        #         free_motifs = random.sample(
-        #             free_motifs,
-        #             k=len(new_child2_motifs),
-        #         )
-        #     for fm, nm in zip(free_motifs, new_child2_motifs):
-        #         child2_string_trees[fm] = old_child1_string_trees[nm].replace(
-        #             substitute_terminals[nm], substitute_terminals[fm]
-        #         )
-        #         subtrees_child1[1] = subtrees_child1[1].replace(
-        #             substitute_terminals[nm], substitute_terminals[fm]
-        #         )
         child2_string_trees[0] = (
             subtrees_child2[0] + subtrees_child1[1] + subtrees_child2[2]
         )

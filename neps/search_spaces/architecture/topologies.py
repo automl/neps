@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: D100
 
 import inspect
 import queue
@@ -50,8 +50,8 @@ class AbstractTopology(Graph, metaclass=ABCMeta):  # noqa: D101
                     args[arg_name] = 42
 
             if "groups" in args and args["groups"] != 1:
-                args["C_in"] = args["groups"]
-                args["C_out"] = args["groups"]
+                args["c_in"] = args["groups"]
+                args["c_out"] = args["groups"]
 
             return op(**args).get_op_name
 

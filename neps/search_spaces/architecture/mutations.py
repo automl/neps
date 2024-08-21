@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: D100
 
 import random
 from typing import TYPE_CHECKING, Callable
@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from .cfg import Grammar
 
 
-def simple_mutate(parent_string_tree: str, grammar: Grammar) -> tuple[str, bool]:
+def simple_mutate(parent_string_tree: str, grammar: Grammar) -> tuple[str, bool]:  # noqa: D103
     # works if there is only one grammar
     # randomly choose a subtree from the parent and replace
     # with a new randomly generated subtree
@@ -22,7 +22,7 @@ def simple_mutate(parent_string_tree: str, grammar: Grammar) -> tuple[str, bool]
     return child_string_tree, parent_string_tree == child_string_tree
 
 
-def bananas_mutate(
+def bananas_mutate(  # noqa: D103
     parent_string_tree: str,
     grammar: Grammar,
     mutation_rate: float = 1.0,
@@ -43,7 +43,7 @@ def bananas_mutate(
     idx = 0
     while idx < len(swappable_indices):
         swap_idx = swappable_indices[idx]
-        if random.random() < _mutation_prob:
+        if random.random() < _mutation_prob:  # noqa: S311
             subtree_node = split_tree[swap_idx][1:]
             subtree_idx = swap_idx
             child_string_tree = grammar.mutate(
@@ -70,7 +70,7 @@ def bananas_mutate(
     return child_string_tree, child_string_tree == parent_string_tree
 
 
-def repetitive_search_space_mutation(
+def repetitive_search_space_mutation(  # noqa: D103
     base_parent: str,
     motif_parents: list[str],
     base_grammar: Grammar,
@@ -80,7 +80,7 @@ def repetitive_search_space_mutation(
     inner_mutation_strategy: Callable,
     mutation_rate: float = 1.0,
     mutation_prob: float | None = None,
-    fixed_macro_parent: bool = False,
+    fixed_macro_parent: bool = False,  # noqa: FBT001, FBT002
 ) -> tuple[list[str], list[bool]]:
     def _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map):
         return [
@@ -100,7 +100,7 @@ def repetitive_search_space_mutation(
         )
 
     child_string_trees = []
-    if not fixed_macro_parent and random.random() < mutation_prob:
+    if not fixed_macro_parent and random.random() < mutation_prob:  # noqa: S311
         child_string_trees.append(inner_mutation_strategy(base_parent, base_grammar))
         indices = _motifs_in_base_tree(base_parent, terminal_to_sublanguage_map)
         mutation_prob = (
@@ -119,7 +119,7 @@ def repetitive_search_space_mutation(
         motif_grammars, _number_of_repetitive_motifs_per_grammar
     ):
         for _ in range(number_of_motifs):
-            if parent_string_idx in indices and random.random() < mutation_prob:
+            if parent_string_idx in indices and random.random() < mutation_prob:  # noqa: S311
                 child_string_trees.append(
                     inner_mutation_strategy(motif_parents[parent_string_idx], grammar)
                 )

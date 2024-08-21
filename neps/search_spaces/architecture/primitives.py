@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: D100
 
 from abc import ABCMeta, abstractmethod
 
@@ -44,21 +44,21 @@ class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
         return type(self).__name__
 
 
-class AbstractPrimitive(_AbstractPrimitive):
-    def forward(self, x):
+class AbstractPrimitive(_AbstractPrimitive):  # noqa: D101
+    def forward(self, x):  # noqa: D102
         raise NotImplementedError
 
-    def get_embedded_ops(self):
+    def get_embedded_ops(self):  # noqa: D102
         return None
 
 
 class Identity(AbstractPrimitive):
     """An implementation of the Identity operation."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs):  # noqa: D107
         super().__init__(locals())
 
-    def forward(self, x):
+    def forward(self, x: object) -> object:  # noqa: D102
         return x
 
 
@@ -74,11 +74,11 @@ class Zero(AbstractPrimitive):
         super().__init__(locals())
         self.stride = int(stride)
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         if self.stride == 1:
             return x.mul(0.0)
-        else:
-            return x[:, :, :: self.stride, :: self.stride].mul(0.0)
+
+        return x[:, :, :: self.stride, :: self.stride].mul(0.0)
 
     def __repr__(self):
         return f"<Zero (stride={self.stride})>"
@@ -96,12 +96,12 @@ class Zero1x1(AbstractPrimitive):
         super().__init__(locals())
         self.stride = int(stride)
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         if self.stride == 1:
             return x.mul(0.0)
-        else:
-            x = x[:, :, :: self.stride, :: self.stride].mul(0.0)
-            return torch.cat([x, x], dim=1)  # double the channels TODO: ugly as hell
+
+        x = x[:, :, :: self.stride, :: self.stride].mul(0.0)
+        return torch.cat([x, x], dim=1)  # double the channels TODO: ugly as hell
 
     def __repr__(self):
         return f"<Zero1x1 (stride={self.stride})>"
@@ -112,11 +112,20 @@ class SepConv(AbstractPrimitive):
     in the DARTS paper, i.e. 2 sepconv directly after another.
     """
 
-    def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True, **kwargs):
+    def __init__(  # noqa: D107
+        self,
+        c_in: int,
+        c_out: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
 
-        C_in = int(C_in)
-        C_out = int(C_out)
+        c_in = int(c_in)
+        c_out = int(c_out)
         kernel_size = int(kernel_size)
         stride = int(stride)
         padding = int(padding)
@@ -126,35 +135,35 @@ class SepConv(AbstractPrimitive):
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
             nn.Conv2d(
-                C_in,
-                C_in,
+                c_in,
+                c_in,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
-                groups=C_in,
+                groups=c_in,
                 bias=False,
             ),
-            nn.Conv2d(C_in, C_in, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_in, affine=affine),
+            nn.Conv2d(c_in, c_in, kernel_size=1, padding=0, bias=False),
+            nn.BatchNorm2d(c_in, affine=affine),
             nn.ReLU(inplace=False),
             nn.Conv2d(
-                C_in,
-                C_in,
+                c_in,
+                c_in,
                 kernel_size=kernel_size,
                 stride=1,
                 padding=padding,
-                groups=C_in,
+                groups=c_in,
                 bias=False,
             ),
-            nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
+            nn.Conv2d(c_in, c_out, kernel_size=1, padding=0, bias=False),
+            nn.BatchNorm2d(c_out, affine=affine),
         )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.op(x)
 
     @property
-    def get_op_name(self):
+    def get_op_name(self):  # noqa: D102
         op_name = super().get_op_name
         op_name += f"{self.kernel_size}x{self.kernel_size}"
         return op_name
@@ -165,13 +174,21 @@ class DilConv(AbstractPrimitive):
     used in the DARTS paper.
     """
 
-    def __init__(
-        self, C_in, C_out, kernel_size, stride, padding, dilation, affine=True, **kwargs
+    def __init__(  # noqa: D107
+        self,
+        c_in: int,
+        c_out: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        dilation: int,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
     ):
         super().__init__(locals())
 
-        C_in = int(C_in)
-        C_out = int(C_out)
+        c_in = int(c_in)
+        c_out = int(c_out)
         kernel_size = int(kernel_size)
         stride = int(stride)
         padding = int(padding)
@@ -182,24 +199,24 @@ class DilConv(AbstractPrimitive):
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
             nn.Conv2d(
-                C_in,
-                C_in,
+                c_in,
+                c_in,
                 kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
                 dilation=dilation,
-                groups=C_in,
+                groups=c_in,
                 bias=False,
             ),
-            nn.Conv2d(C_in, C_out, kernel_size=1, padding=0, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
+            nn.Conv2d(c_in, c_out, kernel_size=1, padding=0, bias=False),
+            nn.BatchNorm2d(c_out, affine=affine),
         )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.op(x)
 
     @property
-    def get_op_name(self):
+    def get_op_name(self):  # noqa: D102
         op_name = super().get_op_name
         op_name += f"{self.kernel_size}x{self.kernel_size}"
         return op_name
@@ -210,16 +227,16 @@ class Stem(AbstractPrimitive):
     image input.
     """
 
-    def __init__(self, C_out, C_in=3, **kwargs):
+    def __init__(self, c_out: int, c_in: int = 3, **kwargs):  # noqa: D107
         super().__init__(locals())
 
-        C_out = int(C_out)
+        c_out = int(c_out)
 
         self.seq = nn.Sequential(
-            nn.Conv2d(C_in, C_out, 3, padding=1, bias=False), nn.BatchNorm2d(C_out)
+            nn.Conv2d(c_in, c_out, 3, padding=1, bias=False), nn.BatchNorm2d(c_out)
         )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.seq(x)
 
 
@@ -228,20 +245,20 @@ class Sequential(AbstractPrimitive):
     as op on edges.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):  # noqa: D107
         super().__init__(locals())
         self.primitives = args
         self.op = nn.Sequential(*args)
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.op(x)
 
-    def get_embedded_ops(self):
+    def get_embedded_ops(self):  # noqa: D102
         return list(self.primitives)
 
 
-class MaxPool(AbstractPrimitive):
-    def __init__(self, kernel_size, stride, **kwargs):
+class MaxPool(AbstractPrimitive):  # noqa: D101
+    def __init__(self, kernel_size: int, stride: int, **kwargs):  # noqa: D107
         super().__init__(locals())
 
         kernel_size = int(kernel_size)
@@ -249,7 +266,7 @@ class MaxPool(AbstractPrimitive):
 
         self.maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=1)
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.maxpool(x)
 
 
@@ -259,24 +276,32 @@ class MaxPool1x1(AbstractPrimitive):
     the number of channels.
     """
 
-    def __init__(self, kernel_size, stride, C_in, C_out, affine=True, **kwargs):
+    def __init__(  # noqa: D107
+        self,
+        kernel_size: int,
+        stride: int,
+        c_in: int,
+        c_out: int,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
 
         kernel_size = int(kernel_size)
         stride = int(stride)
-        C_in = int(C_in)
-        C_out = int(C_out)
+        c_in = int(c_in)
+        c_out = int(c_out)
         affine = bool(affine)
 
         self.stride = stride
         self.maxpool = nn.MaxPool2d(kernel_size, stride=stride, padding=1)
         if stride > 1:
-            assert C_in is not None
-            assert C_out is not None
-            self.conv = nn.Conv2d(C_in, C_out, 1, stride=1, padding=0, bias=False)
-            self.bn = nn.BatchNorm2d(C_out, affine=affine)
+            assert c_in is not None
+            assert c_out is not None
+            self.conv = nn.Conv2d(c_in, c_out, 1, stride=1, padding=0, bias=False)
+            self.bn = nn.BatchNorm2d(c_out, affine=affine)
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         x = self.maxpool(x)
         if self.stride > 1:
             x = self.conv(x)
@@ -287,12 +312,14 @@ class MaxPool1x1(AbstractPrimitive):
 class AvgPool(AbstractPrimitive):
     """Implementation of Avergae Pooling."""
 
-    def __init__(self, kernel_size, stride, **kwargs):
+    def __init__(self, kernel_size: int, stride: int, **kwargs):  # noqa: D107
         stride = int(stride)
         super().__init__(locals())
-        self.avgpool = nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False)
+        self.avgpool = nn.AvgPool2d(
+            kernel_size=3, stride=stride, padding=1, count_include_pad=False
+        )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.avgpool(x)
 
 
@@ -302,13 +329,13 @@ class AvgPool1x1(AbstractPrimitive):
     to increase the number of channels if stride > 1.
     """
 
-    def __init__(
+    def __init__(  # noqa: D107
         self,
-        kernel_size,
-        stride,
-        C_in,
-        C_out,
-        affine=True,
+        kernel_size: int,
+        stride: int,
+        c_in: int,
+        c_out: int,
+        affine: bool = True,  # noqa: FBT001, FBT002
         **kwargs,
     ):
         super().__init__(locals())
@@ -316,12 +343,12 @@ class AvgPool1x1(AbstractPrimitive):
         self.stride = int(stride)
         self.avgpool = nn.AvgPool2d(3, stride=stride, padding=1, count_include_pad=False)
         if stride > 1:
-            assert C_in is not None
-            assert C_out is not None
-            self.conv = nn.Conv2d(C_in, C_out, 1, stride=1, padding=0, bias=False)
-            self.bn = nn.BatchNorm2d(C_out, affine=affine)
+            assert c_in is not None
+            assert c_out is not None
+            self.conv = nn.Conv2d(c_in, c_out, 1, stride=1, padding=0, bias=False)
+            self.bn = nn.BatchNorm2d(c_out, affine=affine)
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         x = self.avgpool(x)
         if self.stride > 1:
             x = self.conv(x)
@@ -329,8 +356,16 @@ class AvgPool1x1(AbstractPrimitive):
         return x
 
 
-class ReLUConvBN(AbstractPrimitive):
-    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
+class ReLUConvBN(AbstractPrimitive):  # noqa: D101
+    def __init__(  # noqa: D107
+        self,
+        c_in: int,
+        c_out: int,
+        kernel_size: int,
+        stride: int = 1,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
         kernel_size = int(kernel_size)
         stride = int(stride)
@@ -339,60 +374,80 @@ class ReLUConvBN(AbstractPrimitive):
         pad = 0 if int(stride) == 1 and kernel_size == 1 else 1
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=pad, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
+            nn.Conv2d(c_in, c_out, kernel_size, stride=stride, padding=pad, bias=False),
+            nn.BatchNorm2d(c_out, affine=affine),
         )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.op(x)
 
     @property
-    def get_op_name(self):
+    def get_op_name(self):  # noqa: D102
         op_name = super().get_op_name
         op_name += f"{self.kernel_size}x{self.kernel_size}"
         return op_name
 
 
 class ConvBnReLU(AbstractPrimitive):
-    """Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation."""
+    """Implementation of 2d convolution, followed by 2d batch normalization and
+    ReLU activation.
+    """
 
-    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
+    def __init__(  # noqa: D107
+        self,
+        c_in: int,
+        c_out: int,
+        kernel_size: int,
+        stride: int = 1,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
         self.kernel_size = kernel_size
         pad = 0 if stride == 1 and kernel_size == 1 else 1
         self.op = nn.Sequential(
-            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=pad, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
+            nn.Conv2d(c_in, c_out, kernel_size, stride=stride, padding=pad, bias=False),
+            nn.BatchNorm2d(c_out, affine=affine),
             nn.ReLU(inplace=False),
         )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.op(x)
 
     @property
-    def get_op_name(self):
+    def get_op_name(self):  # noqa: D102
         op_name = super().get_op_name
         op_name += f"{self.kernel_size}x{self.kernel_size}"
         return op_name
 
 
 class ConvBn(AbstractPrimitive):
-    """Implementation of 2d convolution, followed by 2d batch normalization and ReLU activation."""
+    """Implementation of 2d convolution, followed by 2d batch normalization and ReLU
+    activation.
+    """
 
-    def __init__(self, C_in, C_out, kernel_size, stride=1, affine=True, **kwargs):
+    def __init__(  # noqa: D107
+        self,
+        c_in: int,
+        c_out: int,
+        kernel_size: int,
+        stride=1,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
         self.kernel_size = kernel_size
         pad = 0 if stride == 1 and kernel_size == 1 else 1
         self.op = nn.Sequential(
-            nn.Conv2d(C_in, C_out, kernel_size, stride=stride, padding=pad, bias=False),
-            nn.BatchNorm2d(C_out, affine=affine),
+            nn.Conv2d(c_in, c_out, kernel_size, stride=stride, padding=pad, bias=False),
+            nn.BatchNorm2d(c_out, affine=affine),
         )
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         return self.op(x)
 
     @property
-    def get_op_name(self):
+    def get_op_name(self):  # noqa: D102
         op_name = super().get_op_name
         op_name += f"{self.kernel_size}x{self.kernel_size}"
         return op_name
@@ -403,12 +458,18 @@ class Concat1x1(AbstractPrimitive):
     to retain the channel dimension.
     """
 
-    def __init__(self, num_in_edges, C_out, affine=True, **kwargs):
+    def __init__(  # noqa: D107
+        self,
+        num_in_edges: int,
+        c_out: int,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
         self.conv = nn.Conv2d(
-            num_in_edges * C_out, C_out, kernel_size=1, stride=1, padding=0, bias=False
+            num_in_edges * c_out, c_out, kernel_size=1, stride=1, padding=0, bias=False
         )
-        self.bn = nn.BatchNorm2d(C_out, affine=affine)
+        self.bn = nn.BatchNorm2d(c_out, affine=affine)
 
     def forward(self, x):
         """Expecting a list of input tensors. Stacking them channel-wise
@@ -419,22 +480,28 @@ class Concat1x1(AbstractPrimitive):
         return self.bn(x)
 
 
-class ResNetBasicblock(AbstractPrimitive):
-    def __init__(self, C_in, C_out, stride, affine=True, **kwargs):
+class ResNetBasicblock(AbstractPrimitive):  # noqa: D101
+    def __init__(  # noqa: D107
+        self,
+        c_in: int,
+        c_out: int,
+        stride: int,
+        affine: bool = True,  # noqa: FBT001, FBT002
+        **kwargs,
+    ):
         super().__init__(locals())
         assert stride in (1, 2), f"invalid stride {stride}"
-        self.conv_a = ReLUConvBN(C_in, C_out, 3, stride)
-        self.conv_b = ReLUConvBN(C_out, C_out, 3)
+        self.conv_a = ReLUConvBN(c_in, c_out, 3, stride)
+        self.conv_b = ReLUConvBN(c_out, c_out, 3)
         if stride == 2:
             self.downsample = nn.Sequential(
-                # nn.AvgPool2d(kernel_size=2, stride=2, padding=0),
-                nn.Conv2d(C_in, C_out, kernel_size=1, stride=2, padding=0, bias=False),
-                nn.BatchNorm2d(C_out),
+                nn.Conv2d(c_in, c_out, kernel_size=1, stride=2, padding=0, bias=False),
+                nn.BatchNorm2d(c_out),
             )
         else:
             self.downsample = None
 
-    def forward(self, x):
+    def forward(self, x):  # noqa: D102
         basicblock = self.conv_a(x)
         basicblock = self.conv_b(basicblock)
         residual = self.downsample(x) if self.downsample is not None else x

@@ -7,7 +7,7 @@ import networkx as nx
 
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
-from .graph_grammar import GraphGrammar, GraphGrammarMultipleRepetitive
+from .graph_grammar import GraphGrammar
 
 if TYPE_CHECKING:
     from torch import nn
@@ -57,8 +57,6 @@ def ArchitectureParameter(**kwargs):
         raise ValueError("Factory function requires structure")
     if not isinstance(kwargs["structure"], list) or len(kwargs["structure"]) == 1:
         base = GraphGrammar
-    else:
-        base = GraphGrammarMultipleRepetitive
 
     class _FunctionParameter(base):
         def __init__(
