@@ -174,21 +174,6 @@ class CoreGraphGrammar(Graph):
         return dfs(set(), tree, self._find_root(tree))
 
     @staticmethod
-    def _dfs_preorder_nodes(G: nx.DiGraph, source: str | None = None) -> list[int]:
-        """Generates nodes in DFS pre-ordering starting at source.
-        Note that after pruning we cannot reconstruct the associated string tree!
-
-        Args:
-            G (nx.DiGraph): NetworkX DAG
-            source (str, optional): Starting node for DFS. Defaults to None.
-
-        Returns:
-            generator: List of nodes in a DFS pre-ordering.
-        """
-        edges = nx.dfs_labeled_edges(G, source=source)
-        return [v for _, v, d in edges if d == "forward"]
-
-    @staticmethod
     def _find_leafnodes(G):
         leafnode = []
         for i in G.nodes:
@@ -450,33 +435,6 @@ class CoreGraphGrammar(Graph):
         if len(q.queue) != 0:
             raise Exception("Invalid string_tree")
         return G
-
-    def from_nxTree_to_stringTree(
-        self, nxTree: nx.DiGraph, node_label: str = "op_name"
-    ) -> str:
-        """Transforms parse tree represented as NetworkX DAG to string representation.
-
-        Args:
-            nxTree (nx.DiGraph): parse tree.
-            node_label (str, optional): key to access operation names. Defaults to "op_name".
-
-        Returns:
-            str: parse tree represented as string.
-        """
-
-        def dfs(visited, graph, node):
-            if node not in visited:
-                visited.add(node)
-                if graph.nodes[node]["terminal"]:
-                    return f"{graph.nodes[node][node_label]}"
-                tmp_str = f"{f'({graph.nodes[node][node_label]}'}" + " "
-                # for neighbor in graph.neighbors(node):
-                for neighbor in self._get_neighbors_from_parse_tree(graph, node):
-                    tmp_str += dfs(visited, graph, neighbor) + " "
-                return tmp_str[:-1] + ")"
-            return ""
-
-        return dfs(set(), nxTree, node=self._find_root(nxTree))
 
     def update_op_names(self):
         # update op names
@@ -1189,23 +1147,6 @@ class CoreGraphGrammar(Graph):
                 elif n != tgt_node and len(successors) == 0:
                     graph = _backtrack_remove(graph, n)
         return graph
-
-    def _sampler_maxMin(self, largest: bool = True) -> str | list[str]:
-        """Samples new parse tree(s) based on grammars.
-        Assumes that the first rule of each production leads to
-        smallest DAG and last to largest DAG!
-
-        Args:
-            largest (bool, optional): To find largest DAG, set to True. For smallest DAG set to False. Defaults to True.
-
-        Returns:
-            Union[str, List[str]]: Parse tree or list of parse trees
-        """
-        trees = [
-            grammar.sampler_maxMin_func(grammar.start(), largest) + ")"
-            for grammar in self.grammars
-        ]
-        return trees if len(trees) > 1 else trees[0]
 
     @staticmethod
     def flatten_graph(

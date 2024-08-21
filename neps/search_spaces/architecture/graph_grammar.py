@@ -18,8 +18,6 @@ from .crossover import repetitive_search_space_crossover, simple_crossover
 from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_mutate
 
 if TYPE_CHECKING:
-    from nltk import Nonterminal
-
     from .cfg import Grammar
     from .cfg_variants.constrained_cfg import ConstrainedGrammar
 
@@ -726,72 +724,15 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
     def get_dictionary(self) -> dict[str, str]:
         return {"graph_grammar": self.id}
 
-    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:
+    def create_nx_tree(self, string_tree: str) -> nx.DiGraph: # noqa: D102
         nxTree = self.from_stringTree_to_nxTree(string_tree, self.full_grammar)
         return self.prune_tree(
             nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
         )
 
-    def create_from_id(self, identifier: str) -> None:
+    def create_from_id(self, identifier: str) -> None:  # noqa: D102
         self.reset()
         self.id = identifier
         self.string_tree_list = self.id_to_string_tree_list(self.id)
         self.string_tree = self.id_to_string_tree(self.id)
         _ = self.value  # required for checking if graph is valid!
-
-    @property
-    def search_space_size(self) -> int:
-        def recursive_worker(
-            nonterminal: Nonterminal, grammar, lower_level_motifs: dict | None = None
-        ) -> int:
-            if lower_level_motifs is None:
-                lower_level_motifs = {}
-            potential_productions = grammar.productions(lhs=nonterminal)
-            _possibilites = 0
-            for potential_production in potential_productions:
-                edges_nonterminals = [
-                    rhs_sym
-                    for rhs_sym in potential_production.rhs()
-                    if str(rhs_sym) in grammar.nonterminals
-                ]
-                possibilities_per_edge = [
-                    recursive_worker(e_nonterminal, grammar, lower_level_motifs)
-                    for e_nonterminal in edges_nonterminals
-                ]
-                possibilities_per_edge += [
-                    lower_level_motifs[str(rhs_sym)]
-                    for rhs_sym in potential_production.rhs()
-                    if str(rhs_sym) in lower_level_motifs
-                ]
-                product = 1
-                for p in possibilities_per_edge:
-                    product *= p
-                _possibilites += product
-            return _possibilites
-
-        if self.fixed_macro_grammar:
-            if len(self.grammars) > 1:
-                raise Exception(
-                    "Compute space size for fixed macro only works for one repetitive level"
-                )
-            return np.prod(
-                [
-                    grammar.compute_space_size
-                    for grammar, n_grammar in zip(
-                        self.grammars, self.number_of_repetitive_motifs_per_grammar
-                    )
-                    for _ in range(n_grammar)
-                ]
-            )
-        else:
-            if len(self.grammars) > 2:
-                raise Exception(
-                    "Compute space size for no fixed macro only works for one repetitive level"
-                )
-            macro_space_size = self.grammars[0].compute_space_size
-            motif_space_size = self.grammars[1].compute_space_size
-            return (
-                macro_space_size
-                // self.number_of_repetitive_motifs_per_grammar[1]
-                * motif_space_size
-            )

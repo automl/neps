@@ -396,84 +396,84 @@ class Graph(torch.nn.Module, nx.DiGraph):
                 if self.in_degree(node_idx) == 0:
                     self.nodes[node_idx]["input"] = {0: x[next(input_node_iterator)]}
 
-    def forward(self, x, *args):
-        """Forward some data through the graph. This is done recursively
-        in case there are graphs defined on nodes or as 'op' on edges.
-
-        Args:
-            x (Tensor or dict): The input. If the graph sits on a node the
-                input can be a dict with {source_idx: Tensor} to be routed
-                to the defined input nodes. If the graph sits on an edge,
-                x is the feature tensor.
-            args: This is only required to handle cases where the graph sits
-                on an edge and receives an EdgeData object which will be ignored
-        """
-        logger.debug(f"Graph {self.name} called. Input {log_formats(x)}.")
-
-        # Assign x to the corresponding input nodes
-        self._assign_x_to_nodes(x)
-
-        for node_idx in lexicographical_topological_sort(self):
-            node = self.nodes[node_idx]
-            logger.debug(
-                f"Node {self.name}-{node_idx}, current data {log_formats(node)}, "
-                f"start processing..."
-            )
-
-            # node internal: process input if necessary
-            if ("subgraph" in node and "comb_op" not in node) or (
-                "comb_op" in node and "subgraph" not in node
-            ):
-                log_first_n(
-                    logging.WARN, "Comb_op is ignored if subgraph is defined!", n=1
-                )
-            # TODO: merge 'subgraph' and 'comb_op'. It is basicallly the same thing.
-            #  Also in parse()
-            if "subgraph" in node:
-                x = node["subgraph"].forward(node["input"])
-            elif len(node["input"].values()) == 1:
-                x = next(iter(node["input"].values()))
-            else:
-                x = node["comb_op"](
-                    [node["input"][k] for k in sorted(node["input"].keys())]
-                )
-            node["input"] = {}  # clear the input as we have processed it
-
-            if (
-                len(list(self.neighbors(node_idx))) == 0
-                and node_idx < list(lexicographical_topological_sort(self))[-1]
-            ):
-                # We have more than one output node. This is e.g. the case for
-                # auxillary losses. Attach them to the graph, handling must done
-                # by the user.
-                logger.debug(
-                    f"Graph {self} has more then one output node. Storing output of non-maximum index node {node_idx} at graph dict"
-                )
-                self.graph[f"out_from_{node_idx}"] = x
-            else:
-                # outgoing edges: process all outgoing edges
-                for neigbor_idx in self.neighbors(node_idx):
-                    edge_data = self.get_edge_data(node_idx, neigbor_idx)
-                    # inject edge data only for AbstractPrimitive, not Graphs
-                    if isinstance(edge_data.op, Graph):
-                        edge_output = edge_data.op.forward(x)
-                    elif isinstance(edge_data.op, AbstractPrimitive):
-                        logger.debug(
-                            f"Processing op {edge_data.op} at "
-                            f"edge {node_idx}-{neigbor_idx}"
-                        )
-                        edge_output = edge_data.op.forward(x)
-                    else:
-                        raise ValueError(
-                            f"Unknown class as op: {edge_data.op}. Expected either "
-                            f"Graph or AbstactPrimitive"
-                        )
-                    self.nodes[neigbor_idx]["input"].update({node_idx: edge_output})
-
-            logger.debug(f"Node {self.name}-{node_idx}, processing done.")
-
-        logger.debug(f"Graph {self.name} exiting. Output {log_formats(x)}.")
-        return x
+    # def forward(self, x, *args):
+    #     """Forward some data through the graph. This is done recursively
+    #     in case there are graphs defined on nodes or as 'op' on edges.
+    #
+    #     Args:
+    #         x (Tensor or dict): The input. If the graph sits on a node the
+    #             input can be a dict with {source_idx: Tensor} to be routed
+    #             to the defined input nodes. If the graph sits on an edge,
+    #             x is the feature tensor.
+    #         args: This is only required to handle cases where the graph sits
+    #             on an edge and receives an EdgeData object which will be ignored
+    #     """
+    #     logger.debug(f"Graph {self.name} called. Input {log_formats(x)}.")
+    #
+    #     # Assign x to the corresponding input nodes
+    #     self._assign_x_to_nodes(x)
+    #
+    #     for node_idx in lexicographical_topological_sort(self):
+    #         node = self.nodes[node_idx]
+    #         logger.debug(
+    #             f"Node {self.name}-{node_idx}, current data {log_formats(node)}, "
+    #             f"start processing..."
+    #         )
+    #
+    #         # node internal: process input if necessary
+    #         if ("subgraph" in node and "comb_op" not in node) or (
+    #             "comb_op" in node and "subgraph" not in node
+    #         ):
+    #             log_first_n(
+    #                 logging.WARN, "Comb_op is ignored if subgraph is defined!", n=1
+    #             )
+    #         # TODO: merge 'subgraph' and 'comb_op'. It is basicallly the same thing.
+    #         #  Also in parse()
+    #         if "subgraph" in node:
+    #             x = node["subgraph"].forward(node["input"])
+    #         elif len(node["input"].values()) == 1:
+    #             x = next(iter(node["input"].values()))
+    #         else:
+    #             x = node["comb_op"](
+    #                 [node["input"][k] for k in sorted(node["input"].keys())]
+    #             )
+    #         node["input"] = {}  # clear the input as we have processed it
+    #
+    #         if (
+    #             len(list(self.neighbors(node_idx))) == 0
+    #             and node_idx < list(lexicographical_topological_sort(self))[-1]
+    #         ):
+    #             # We have more than one output node. This is e.g. the case for
+    #             # auxillary losses. Attach them to the graph, handling must done
+    #             # by the user.
+    #             logger.debug(
+    #                 f"Graph {self} has more then one output node. Storing output of non-maximum index node {node_idx} at graph dict"
+    #             )
+    #             self.graph[f"out_from_{node_idx}"] = x
+    #         else:
+    #             # outgoing edges: process all outgoing edges
+    #             for neigbor_idx in self.neighbors(node_idx):
+    #                 edge_data = self.get_edge_data(node_idx, neigbor_idx)
+    #                 # inject edge data only for AbstractPrimitive, not Graphs
+    #                 if isinstance(edge_data.op, Graph):
+    #                     edge_output = edge_data.op.forward(x)
+    #                 elif isinstance(edge_data.op, AbstractPrimitive):
+    #                     logger.debug(
+    #                         f"Processing op {edge_data.op} at "
+    #                         f"edge {node_idx}-{neigbor_idx}"
+    #                     )
+    #                     edge_output = edge_data.op.forward(x)
+    #                 else:
+    #                     raise ValueError(
+    #                         f"Unknown class as op: {edge_data.op}. Expected either "
+    #                         f"Graph or AbstactPrimitive"
+    #                     )
+    #                 self.nodes[neigbor_idx]["input"].update({node_idx: edge_output})
+    #
+    #         logger.debug(f"Node {self.name}-{node_idx}, processing done.")
+    #
+    #     logger.debug(f"Graph {self.name} exiting. Output {log_formats(x)}.")
+    #     return x
 
     def to_pytorch(self, **kwargs) -> nn.Module:
         return self._to_pytorch(**kwargs)
