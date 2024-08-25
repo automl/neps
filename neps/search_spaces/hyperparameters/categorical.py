@@ -160,11 +160,12 @@ class CategoricalParameter(
 
     @override
     def sample_value(self, *, user_priors: bool = False) -> Any:
+        indices = np.arange(len(self.choices))
         if user_priors and self.default is not None:
             probabilities = self._compute_user_prior_probabilities()
-            return np.random.choice(self.choices, p=probabilities)
+            return self.choices[np.random.choice(indices, p=probabilities)]
 
-        return np.random.choice(self.choices)
+        return self.choices[np.random.choice(indices)]
 
     @override
     def mutate(
