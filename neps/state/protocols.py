@@ -6,16 +6,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
-    Callable,
     ClassVar,
     Generic,
-    Iterable,
-    Iterator,
     Protocol,
     TypeVar,
 )

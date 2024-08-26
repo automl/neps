@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar, overload
+from typing import TYPE_CHECKING, Generic, TypeVar, overload
 
 from more_itertools import take
 
@@ -88,10 +89,13 @@ class NePSState(Generic[Loc]):
         Returns:
             The new trial.
         """
-        with self._optimizer_state.acquire() as (
-            opt_state,
-            put_opt,
-        ), self._seed_state.acquire() as (seed_state, put_seed_state):
+        with (
+            self._optimizer_state.acquire() as (
+                opt_state,
+                put_opt,
+            ),
+            self._seed_state.acquire() as (seed_state, put_seed_state),
+        ):
             trials: dict[Trial.ID, Trial] = {}
             for trial_id, shared_trial in self._trials.all().items():
                 trial = shared_trial.synced()

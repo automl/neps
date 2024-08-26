@@ -23,11 +23,11 @@ set or empty, in which case it is `None`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import (
     Any,
     ClassVar,
     Generic,
-    Mapping,
     Protocol,
     TypeVar,
     runtime_checkable,

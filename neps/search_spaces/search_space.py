@@ -7,9 +7,10 @@ from __future__ import annotations
 import logging
 import operator
 import pprint
+from collections.abc import Hashable, Iterator, Mapping
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Hashable, Iterator, Literal, Mapping
+from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import Self
 
 import ConfigSpace as CS
@@ -111,7 +112,7 @@ def pipeline_space_from_yaml(  # noqa: C901
             format, contents, or if the dictionary is invalid.
     """
     try:
-        if isinstance(config, (str, Path)):
+        if isinstance(config, str | Path):
             # try to load the YAML file
             try:
                 yaml_file_path = Path(config)
@@ -559,7 +560,7 @@ class SearchSpace(Mapping[str, Any]):
             The vectorial dimension
         """
         if not any(
-            isinstance(hp, (NumericalParameter, CategoricalParameter, ConstantParameter))
+            isinstance(hp, NumericalParameter | CategoricalParameter | ConstantParameter)
             for hp in self.values()
         ):
             return None
@@ -657,7 +658,9 @@ class SearchSpace(Mapping[str, Any]):
             SearchSpace(
                 **{
                     name: ConstantParameter(value=value)  # type: ignore
-                    for name, value in zip(self.hyperparameters.keys(), config_values)
+                    for name, value in zip(
+                        self.hyperparameters.keys(), config_values, strict=False
+                    )
                 }
             )
             for config_values in full_grid

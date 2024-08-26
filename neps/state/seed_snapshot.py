@@ -5,17 +5,17 @@ from __future__ import annotations
 import contextlib
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, List, Tuple, TypeAlias, Union
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import numpy as np
 
 if TYPE_CHECKING:
     import torch
 
-    NP_RNG_STATE: TypeAlias = Tuple[str, np.ndarray, int, int, float]
-    PY_RNG_STATE: TypeAlias = Tuple[int, Tuple[int, ...], Union[int, None]]
+    NP_RNG_STATE: TypeAlias = tuple[str, np.ndarray, int, int, float]
+    PY_RNG_STATE: TypeAlias = tuple[int, tuple[int, ...], int | None]
     TORCH_RNG_STATE: TypeAlias = torch.Tensor
-    TORCH_CUDA_RNG_STATE: TypeAlias = List[torch.Tensor]
+    TORCH_CUDA_RNG_STATE: TypeAlias = list[torch.Tensor]
 
 
 @dataclass
@@ -104,7 +104,7 @@ class SeedSnapshot:
 
             if not all(
                 torch.equal(a, b)
-                for a, b in zip(self.torch_cuda_rng, other.torch_cuda_rng)
+                for a, b in zip(self.torch_cuda_rng, other.torch_cuda_rng, strict=False)
             ):
                 return False
 
