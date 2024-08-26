@@ -33,18 +33,22 @@ class NumberDomain(Generic[V]):
     bins: int | None = None
 
     dtype: torch.dtype = field(init=False, repr=False)
-    is_unit: bool = field(init=False, repr=False)
+    is_unit_float: bool = field(init=False, repr=False)
     midpoint: V = field(init=False, repr=False)
     is_log: bool = field(init=False, repr=False)
     length: V = field(init=False, repr=False)
     cardinality: int | None = field(init=False, repr=False)
+    bounds: tuple[V, V] = field(init=False, repr=False)
 
     def __post_init__(self):
         assert isinstance(self.lower, type(self.upper))
-        object.__setattr__(self, "is_unit", self.lower == 0 and self.upper == 1)
+        is_int = isinstance(self.lower, int)
         object.__setattr__(self, "is_log", self.log_bounds is not None)
+        object.__setattr__(self, "dtype", torch.int64 if is_int else torch.float64)
         object.__setattr__(
-            self, "dtype", torch.int64 if isinstance(self.lower, int) else torch.float64
+            self,
+            "is_unit_float",
+            self.lower == 0 and self.upper == 1 and is_int and not self.round,
         )
         object.__setattr__(self, "length", self.upper - self.lower)
 
@@ -60,6 +64,7 @@ class NumberDomain(Generic[V]):
         if self.dtype == torch.int64:
             mid = int(round(mid))
         object.__setattr__(self, "midpoint", mid)
+        object.__setattr__(self, "bounds", (self.lower, self.upper))
 
     @classmethod
     def float(
@@ -107,7 +112,7 @@ class NumberDomain(Generic[V]):
         return NumberDomain.int(0, n - 1)
 
     def to_unit(self, x: Tensor) -> Tensor:
-        if self.is_unit:
+        if self.is_unit_float:
             return x  # type: ignore
 
         if self.log_bounds is not None:
@@ -119,7 +124,7 @@ class NumberDomain(Generic[V]):
         return (x - lower) / (upper - lower)
 
     def from_unit(self, x: Tensor) -> Tensor:
-        if self.is_unit:
+        if self.is_unit_float:
             return x
 
         bins = self.bins
@@ -146,10 +151,6 @@ class NumberDomain(Generic[V]):
         x: Tensor,
         frm: Domain,
     ) -> Tensor:
-        if isinstance(frm, OneHotDomain):
-            x = torch.argmax(x, dim=1)
-            frm = frm.int_domain
-
         # NOTE: In general, we should always be able to go through the unit interval
         # [0, 1] to be able to transform between domains. However sometimes we can
         # bypass some steps, dependant on the domains, hence the ugliness...
@@ -168,7 +169,7 @@ class NumberDomain(Generic[V]):
 
         # Shortcut 2. (From normalized)
         # The domain we are coming from is already normalized, we only need to lift
-        if frm.is_unit:
+        if frm.is_unit_float:
             return self.from_unit(x)  # type: ignore
 
         # Shortcut 3. (Log lift)
@@ -289,28 +290,6 @@ class NumberDomain(Generic[V]):
         return UNIT_FLOAT_DOMAIN
 
 
-@dataclass(frozen=True)
-class OneHotDomain:
-    cardinality: int
-    int_domain: NumberDomain[int] = field(init=False, repr=False)
-
-    def __post_init__(self):
-        object.__setattr__(
-            self,
-            "int_domain",
-            NumberDomain.indices(self.cardinality),
-        )
-
-    def cast(self, x: Tensor, frm: NumberDomain[int]) -> Tensor:
-        # Convert to integers first
-        x = self.int_domain.cast(x, frm)
-
-        # Then one hot encode
-        buffer = torch.zeros((len(x), self.cardinality))
-        buffer.scatter_(1, x.unsqueeze(1), 1)
-        return buffer
-
-
 UNIT_FLOAT_DOMAIN = NumberDomain.float(0.0, 1.0)
 
-Domain: TypeAlias = NumberDomain | OneHotDomain
+Domain: TypeAlias = NumberDomain

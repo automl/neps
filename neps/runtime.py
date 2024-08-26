@@ -46,7 +46,7 @@ def _default_worker_name() -> str:
     return f"{os.getpid()}-{isoformat}"
 
 
-N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 10
+N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 0
 N_FAILED_TO_SET_TRIAL_STATE = 10
 
 Loc = TypeVar("Loc")
@@ -388,7 +388,7 @@ class DefaultWorker(Generic[Loc]):
                 _repeated_fail_get_next_trial_count = 0
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
-                logger.error(
+                logger.debug(
                     "Error while trying to get the next trial to evaluate.", exc_info=True
                 )
 

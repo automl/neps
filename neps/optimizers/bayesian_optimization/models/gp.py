@@ -1,261 +1,269 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence
+import math
+from typing import TYPE_CHECKING, Any, Mapping, TypeVar
 
-import numpy as np
+import gpytorch
+import gpytorch.constraints
 import torch
-from torch import nn
-from torch.optim import SGD, Adam  # type: ignore
+from botorch.acquisition.analytic import SingleTaskGP
+from botorch.models import MixedSingleTaskGP
+from botorch.models.gp_regression_mixed import CategoricalKernel
+from botorch.models.transforms.outcome import Standardize
+from botorch.optim import optimize_acqf, optimize_acqf_mixed
+from gpytorch.kernels import MaternKernel, ScaleKernel
 
-from neps.optimizers.bayesian_optimization.kernels.kernel import (
-    Kernel,
-    compute_pd_inverse,
-    log_marginal_likelihood,
-)
-from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import (
-    HammingKernel,
-    Matern52Kernel,
-    NumericKernel,
-)
-from neps.optimizers.bayesian_optimization.kernels.weisfilerlehman import (
-    WeisfilerLehman,
-)
-from neps.search_spaces import SearchSpace
 from neps.search_spaces.encoding import (
     CategoricalToIntegerTransformer,
+    DataEncoder,
     DataPack,
-    MinMaxNormalizer,
-    OneHotEncoder,
-    TensorTransformer,
-    Transformer,
-    WLInputTransformer,
 )
-from neps.search_spaces.hyperparameters import FloatParameter, IntegerParameter
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    from botorch.acquisition import AcquisitionFunction
 
 logger = logging.getLogger(__name__)
 
 
-# The optimization we do for the noise is relatively cheap while the matrices
-NOISE_VARIANCE_GRID = (1e-6, 1e-4, 1e-2, 1, 1e1, 1e2)
+T = TypeVar("T")
 
 
-@dataclass
-class ComprehensiveGP:
-    space: SearchSpace
-    kernels: dict[str, tuple[Sequence[str], Kernel]]
+def default_likelihood_with_prior() -> gpytorch.likelihoods.GaussianLikelihood:
+    # The effect of the likelihood of noise is pretty crucial w.r.t.
+    # whether we are going to overfit every point by overfitting with
+    # the lengthscale, or whether we smooth through and assume variation
+    # is due to noise. Setting it's prior is hard. For a non-noisy
+    # function, we'd want it looooowww, like 1e-8 kind of low. For
+    # even a 0.01% noise, we need that all the way up to 1e-2. Hence
+    #
+    # If we had 10% noise and we allow the noise to easily optimize towards
+    # 1e-8, then the lengthscales are forced to beome very small, essentially
+    # overfitting. If we have 0% noise and we don't allow it to easily get low
+    # then we will drastically underfit.
+    # A guiding principle here is that we should allow the noise to be just
+    # as if not slightly easier to tune than the lengthscales. I.e. we prefer
+    # smoother functions as it is easier to acquisition over. However once we
+    # over smooth and underfit, any new observations that inform us otherwise
+    # could just be attributed to noise.
+    #
+    # TOOD: We may want to move the likelihood inside the GP and decay the
+    # amount the GP can attribute to noise (reduce std and mean) relative
+    # to samples seen, effectively reducing the smoothness of the GP overtime
+    noise_mean = 1e-2
+    noise_std = math.sqrt(3)
+    _noise_prior = gpytorch.priors.LogNormalPrior(
+        math.log(noise_mean) + noise_std**2,
+        noise_std,
+    )
+    return gpytorch.likelihoods.GaussianLikelihood(
+        noise_prior=_noise_prior,
+        # Going below 1e-6 could introduuce a lot of numerical instability in the
+        # kernels, even if it's a noiseless function
+        noise_constraint=gpytorch.constraints.Interval(
+            lower_bound=1e-6,
+            upper_bound=1,
+            initial_value=noise_mean,
+        ),
+    )
 
-    combined_kernel: Literal["sum", "product"] = "sum"
-    noise_variance: Sequence[float] = NOISE_VARIANCE_GRID
-    kernel_parameter_grid: Mapping[str, Sequence[Mapping[str, Any]]] | bool = True
 
-    optimizer: Literal["adam", "sgd"] = "adam"
-    optimizer_kwargs: Mapping[str, Any] = field(default_factory=lambda: {"lr": 0.1})
-    optimizer_iters: int = 20
-    device: torch.device | None = None
+def default_signal_variance_prior() -> gpytorch.priors.NormalPrior:
+    # The outputscale prior is a bit more tricky. Essentially
+    # it describes how much we expect the function to move
+    # around the mean (0 as we normalize the `ys`)
+    # Based on `Vanilla GP work great in High Dimensions` by Carl Hvafner
+    # where it's fixed to `1.0`, we follow suit but allow some minor deviation
+    # with a prior.
+    return gpytorch.priors.NormalPrior(loc=1.0, scale=0.1)
 
-    # Post fit attributes
-    K_inv_: torch.Tensor | None = None
-    likelihood_: float | None = None
-    y_: torch.Tensor | None = None
-    y_normalized_: torch.Tensor | None = None
-    y_mean_: float | None = None
-    y_std_: float | None = None
-    opt_kernels_: dict[str, tuple[Sequence[str], Kernel]] | None = None
-    train_x_: DataPack | None = None
 
-    def __post_init__(self):
-        # TODO: Remove when search space is just definition and does not hold values.
-        self.space = self.space.clone()
+def default_lengthscale_prior(
+    N: int,
+) -> tuple[gpytorch.priors.LogNormalPrior, gpytorch.constraints.Interval]:
+    # Based on `Vanilla GP work great in High Dimensions` by Carl Hvafner
+    # TODO: I'm not convinced entirely that the `std` is independant
+    # of the dimension and number of samples
+    lengthscale_prior = gpytorch.priors.LogNormalPrior(
+        loc=math.sqrt(2.0) + math.log(N) / 2,
+        scale=math.sqrt(3.0),
+    )
+    # NOTE: It's possible to just specify `GreaterThan`, however
+    # digging through the code, if this ends up at botorch's optimize,
+    # it will read this and take the bounds and give it to Scipy's
+    # L-BFGS-B optimizer. Without an upper bound, it defaults to `inf`,
+    # which can impact gradient estimates.
+    # tldr; set a bound if you have one, it always helps
+    lengthscale_constraint = gpytorch.constraints.Interval(
+        lower_bound=1e-4,
+        upper_bound=1e3,
+        initial_value=math.sqrt(2.0) + math.log(N) / 2,
+    )
+    return lengthscale_prior, lengthscale_constraint
 
-    def fit(
-        self,
-        *,
-        x: DataPack,
-        train_y: torch.Tensor,
-    ) -> None:
-        # Preprocessing
-        y_ = torch.as_tensor(train_y, device=self.device, dtype=torch.float64)
 
-        # TODO: Dunno if I like this silent hack, setting std to 1 if no std
-        self.y_std_ = s if (s := torch.std(y_).item()) != 0 else 1
-        self.y_mean_ = torch.mean(y_).item()
-        self.y_normalized_ = (y_ - self.y_mean_) / self.y_std_
-        self.y_ = y_
+def default_mean() -> gpytorch.means.ConstantMean:
+    return gpytorch.means.ConstantMean(
+        constant_prior=gpytorch.priors.NormalPrior(0, 0.2),
+        constant_constraint=gpytorch.constraints.Interval(
+            lower_bound=-1e6,
+            upper_bound=1e6,
+            initial_value=0.0,
+        ),
+    )
 
-        # optimized kernel parameters + noise variance
-        optim_vars: list[nn.Parameter] = []
-        opt_kernels: dict[str, tuple[Sequence[str], Kernel]] = {}
 
-        N: int
-        for _kernel_name, (hps, kernel) in self.kernels.items():
-            data = x.select(hps)
-            opt_kernel, _ = kernel.grid_search(
-                x=data,  # type: ignore
-                y=self.y_normalized_,
-            )
-            optim_vars.extend(opt_kernel.parameters())
-            opt_kernels[_kernel_name] = (hps, opt_kernel)
+def default_matern_kernel(
+    N: int,  # noqa: N803
+    active_dims: tuple[int, ...] | None = None,
+) -> ScaleKernel:
+    lengthscale_prior, lengthscale_constraint = default_lengthscale_prior(N)
 
-        # Now that we've optimized the kernels, we convert go convert their
-        # parameters into a tensor we can further refine with some optimizer iterations
-        # - Optimize kernel-lengthscales, kernel-outputscale, noise-variance
-        #   and any additional parameters they wish to advertise.
-        noise_variance = nn.Parameter(
-            torch.tensor(1e-3, device=self.device, dtype=torch.float64)
+    return ScaleKernel(
+        MaternKernel(
+            nu=2.5,
+            ard_num_dims=N,
+            active_dims=active_dims,
+            lengthscale_prior=lengthscale_prior,
+            lengthscale_constraint=lengthscale_constraint,
+        ),
+    )
+
+
+def default_categorical_kernel(
+    N: int,  # noqa: N803
+    active_dims: tuple[int, ...] | None = None,
+) -> ScaleKernel:
+    # Following BoTorches implementation of the MixedSingleTaskGP
+    return ScaleKernel(
+        CategoricalKernel(
+            ard_num_dims=N,
+            active_dims=active_dims,
+            lengthscale_constraint=gpytorch.constraints.GreaterThan(1e-6),
         )
-        optim_vars.append(noise_variance)
+    )
 
-        if self.optimizer == "adam":
-            optim = Adam(optim_vars, **self.optimizer_kwargs)  # type: ignore
-        elif self.optimizer == "sgd":
-            optim = SGD(optim_vars, **self.optimizer_kwargs)  # type: ignore
+
+def default_single_obj_gp(x: DataPack, y: torch.Tensor) -> SingleTaskGP:
+    encoder = x.encoder
+    assert x.tensor is not None
+    assert encoder.tensors is not None
+    # Here, we will collect all graph encoded hyperparameters and assign each
+    # to its own individual WL kernel.
+    if encoder.graphs is not None:
+        raise NotImplementedError("Graphs are not yet supported.")
+
+    numerics: list[str] = []
+    categoricals: list[str] = []
+    for hp_name, transformer in encoder.tensors.transformers.items():
+        if isinstance(transformer, CategoricalToIntegerTransformer):
+            categoricals.append(hp_name)
         else:
-            raise ValueError(f"Invalid optimizer {self.optimizer}")
+            numerics.append(hp_name)
 
-        K_inv: torch.Tensor | None = None
-        _init = torch.zeros if self.combined_kernel == "sum" else torch.ones
-        N = len(x)
-        K = _init((N, N), device=self.device, dtype=torch.float64)
-        for _i in range(self.optimizer_iters):
-            optim.zero_grad()
+    categorical_indices = encoder.indices(categoricals)
+    numeric_indices = encoder.indices(numerics)
 
-            for _kernel_name, (hps, opt_kernel) in opt_kernels.items():
-                data = x.select(hps)
-                k = opt_kernel.forward(data)
-                K.add_(k) if self.combined_kernel == "sum" else K.mul_(k)
-
-            K.diag().add_(noise_variance)
-            K_inv, logDetK = compute_pd_inverse(K)
-            nlml = -log_marginal_likelihood(K_inv, logDetK, y=self.y_normalized_)
-
-            # TODO: Could early stop here...
-            nlml.backward()
-            optim.step()
-
-            with torch.no_grad():
-                noise_variance.clamp_(1e-6, np.inf)
-
-        # Apply the optimal hyperparameters
-        assert K_inv is not None
-        self.K_inv_ = K_inv.clone()
-        self.noise_variance_ = noise_variance.item()
-        self.opt_kernels_ = opt_kernels
-        self.train_x_ = x
-
-    def predict(
-        self,
-        *,
-        x: DataPack,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Kriging predictions."""
-        if (
-            self.K_inv_ is None
-            or self.train_x_ is None
-            or self.y_normalized_ is None
-            or self.y_std_ is None
-            or self.opt_kernels_ is None
-        ):
-            raise ValueError(
-                "Inverse of Gram matrix is not instantiated. Please call the optimize "
-                "function to fit on the training data first!"
-            )
-
-        _init = torch.zeros if self.combined_kernel == "sum" else torch.ones
-        n_test = len(x)
-
-        K_train_test = _init(
-            len(self.train_x_), n_test, device=self.device, dtype=torch.float64
+    # Purely vectorial
+    if len(categorical_indices) == 0:
+        return SingleTaskGP(
+            train_X=x.tensor,
+            train_Y=y,
+            mean_module=default_mean(),
+            likelihood=default_likelihood_with_prior(),
+            # Only matern kernel
+            covar_module=default_matern_kernel(len(numerics)),
+            outcome_transform=Standardize(m=1),
         )
-        for _kernel_name, (hps, opt_kernel) in self.opt_kernels_.items():
-            train = self.train_x_.select(hps)
-            test = x.select(hps)
-            k = opt_kernel.forward(train, test)
-            if self.combined_kernel == "sum":
-                K_train_test.add_(k)
-            else:
-                K_train_test.mul_(k)
 
-        K_test_test = _init(n_test, n_test, device=self.device, dtype=torch.float64)
-        for _kernel_name, (hps, opt_kernel) in self.opt_kernels_.items():
-            test = x.select(hps)
-            k = opt_kernel.forward(test, test)
-            if self.combined_kernel == "sum":
-                K_test_test.add_(k)
-            else:
-                K_test_test.mul_(k)
+    # Purely categorical
+    if len(numeric_indices) == 0:
+        return SingleTaskGP(
+            train_X=x.tensor,
+            train_Y=y,
+            mean_module=default_mean(),
+            likelihood=default_likelihood_with_prior(),
+            # Only categorical kernel
+            covar_module=default_categorical_kernel(len(categoricals)),
+            outcome_transform=Standardize(m=1),
+        )
 
-        # Compute the predictive mean
+    # Mixed
+    def cont_kernel_factory(
+        batch_shape: torch.Size,
+        ard_num_dims: int,
+        active_dims: list[int],
+    ) -> ScaleKernel:
+        lengthscale_prior, lengthscale_constraint = default_lengthscale_prior(
+            ard_num_dims
+        )
+        return ScaleKernel(
+            MaternKernel(
+                nu=2.5,
+                batch_shape=batch_shape,
+                ard_num_dims=ard_num_dims,
+                active_dims=active_dims,
+                lengthscale_prior=lengthscale_prior,
+                lengthscale_constraint=lengthscale_constraint,
+            ),
+        )
 
-        # Scale by the standard deviation and mean
-        mu_s = K_train_test.t() @ self.K_inv_ @ self.y_normalized_
-        mu_s = mu_s * self.y_std_ + self.y_mean_
-
-        cov_s = K_test_test - K_train_test.t() @ self.K_inv_ @ K_train_test
-        cov_s *= self.y_std_**2
-
-        return mu_s, cov_s
-
-    @classmethod
-    def get_default(
-        cls, space: SearchSpace, *, include_fidelities: bool = False
-    ) -> ComprehensiveGP:
-        kernels = get_default_kernels(space=space, include_fidelities=include_fidelities)
-        return cls(space=space, kernels=kernels)
+    return MixedSingleTaskGP(
+        train_X=x.tensor,
+        train_Y=y,
+        cat_dims=list(categorical_indices),
+        likelihood=default_likelihood_with_prior(),
+        cont_kernel_factory=cont_kernel_factory,
+        outcome_transform=Standardize(m=1),
+    )
 
 
-def get_default_kernels(
+def optimize_acq(
+    acq_fn: AcquisitionFunction,
+    encoder: DataEncoder,
     *,
-    space: SearchSpace,
-    include_fidelities: bool = False,
-) -> dict[str, tuple[Kernel, Transformer]]:
-    kernels: dict[str, tuple[Kernel, Transformer]] = {}
+    q: int,
+    num_restarts: int,
+    raw_samples: int,
+    acq_options: Mapping[str, Any] | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    acq_options = acq_options or {}
+    if encoder.has_graphs():
+        raise NotImplementedError("Graphs are not yet supported.")
 
-    # We will always need to use a graph kernel for graphs and there's no
-    # possibility to embed them into a tensor.
-    if any(space.graphs):
-        for hp_name in space.graphs:
-            kernels[f"graph_{hp_name}"] = (
-                WeisfilerLehman(h=2, oa=True),
-                WLInputTransformer((hp_name,)),
-            )
+    assert encoder.tensors is not None
+    lower = [t.domain.lower for t in encoder.tensors.transformers.values()]
+    upper = [t.domain.upper for t in encoder.tensors.transformers.values()]
+    bounds = torch.tensor([lower, upper], dtype=torch.float)
 
-    assert all(
-        isinstance(f, (IntegerParameter, FloatParameter)) for f in space.fidelities
-    ), "Assumption for numeric represetnation of fidelity broken"
+    fixed_categoricals = encoder.categorical_product_indices()
 
-    any_numerical = any(space.numerical) or (include_fidelities and any(space.fidelities))
-    if any_numerical:
-        # At least one numerical, fuse numeric + categoricals into one tensor encoding
-        transformers: list[TensorTransformer] = []
-        if any(space.categoricals):
-            transformers.append(OneHotEncoder(tuple(space.categoricals)))
+    if not any(fixed_categoricals):
+        return optimize_acqf(
+            acq_function=acq_fn,
+            bounds=bounds,
+            q=q,
+            num_restarts=num_restarts,
+            raw_samples=raw_samples,
+            **acq_options,
+        )
 
-        if include_fidelities:
-            min_max_normalizer = MinMaxNormalizer(
-                tuple(space.numerical) + tuple(space.fidelities)
-            )
-        else:
-            min_max_normalizer = MinMaxNormalizer(tuple(space.numerical))
+    if len(fixed_categoricals) > 30:
+        raise ValueError(
+            "The number of fixed categorical dimensions is too high. "
+            "This will lead to an explosion in the number of possible "
+            "combinations. Please reduce the number of fixed categorical "
+            "dimensions or consider encoding your categoricals in some other format."
+        )
 
-        transformers.append(min_max_normalizer)
-        kernels["vectorial"] = (Matern52Kernel(), JointTransformer.join(*transformers))
-    else:
-        # At this point, we assume only categoricals and maybe fidelities
-        assert any(space.categoricals)
-
-        if include_fidelities and any(space.fidelities):
-            fid_normalizer = MinMaxNormalizer(tuple(space.fidelities))
-            one_hot_encoder = OneHotEncoder(tuple(space.categoricals))
-
-            transformer = JointTransformer.join(one_hot_encoder, fid_normalizer)
-            kernels["vectorial"] = (Matern52Kernel(), transformer)
-        else:
-            transformer = CategoricalToIntegerTransformer(tuple(space.categoricals))
-            kernels["categorical"] = (HammingKernel(), transformer)
-
-    return kernels
+    # TODO: we should deterministicall shuffle the fixed_categoricals as the
+    # underlying function does not.
+    return optimize_acqf_mixed(
+        acq_function=acq_fn,
+        bounds=bounds,
+        num_restarts=num_restarts,
+        raw_samples=raw_samples,
+        q=q,
+        fixed_features_list=fixed_categoricals,  # type: ignore
+        **acq_options,
+    )

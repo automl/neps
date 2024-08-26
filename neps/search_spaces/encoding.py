@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
+    Mapping,
     Sequence,
     Sized,
     TypeAlias,
@@ -17,13 +19,16 @@ import numpy as np
 import numpy.typing as npt
 import torch
 from grakel.utils import graph_from_networkx
+from torch._dynamo.utils import product
 
+from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.domain import (
     UNIT_FLOAT_DOMAIN,
     Domain,
     NumberDomain,
-    OneHotDomain,
 )
+from neps.search_spaces.hyperparameters.float import FloatParameter
+from neps.search_spaces.hyperparameters.integer import IntegerParameter
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -47,7 +52,7 @@ class TensorTransformer(Transformer[torch.Tensor], Protocol):
 
     def encode(
         self,
-        x: list[Any],
+        x: Sequence[Any],
         *,
         out: torch.Tensor | None = None,
         dtype: torch.dtype | None = None,
@@ -57,7 +62,7 @@ class TensorTransformer(Transformer[torch.Tensor], Protocol):
 
 @dataclass
 class CategoricalToIntegerTransformer(TensorTransformer):
-    choices: list[Any]
+    choices: Sequence[Any]
 
     domain: NumberDomain = field(init=False)
     output_cols: int = field(init=False)
@@ -68,6 +73,7 @@ class CategoricalToIntegerTransformer(TensorTransformer):
 
         self.domain = NumberDomain.indices(len(self.choices))
         self.output_cols = 1
+        self._lookup = None
         if len(self.choices) > 3:
             try:
                 self._lookup = {c: i for i, c in enumerate(self.choices)}
@@ -77,7 +83,7 @@ class CategoricalToIntegerTransformer(TensorTransformer):
     @override
     def encode(
         self,
-        x: list[Any],
+        x: Sequence[Any],
         *,
         out: torch.Tensor | None = None,
         dtype: torch.dtype | None = None,
@@ -92,16 +98,16 @@ class CategoricalToIntegerTransformer(TensorTransformer):
             else [self.choices.index(c) for c in x]
         )
 
+        tensor = torch.tensor(values, dtype=torch.int64, device=device)
         if out is None:
-            return torch.tensor(values, dtype=dtype, device=device)
+            return tensor.to(dtype)
 
-        assert out.shape == (len(x),), f"{out.shape} != {(len(x),)}"
-        out[:] = torch.tensor(values, dtype=out.dtype, device=out.device)
+        out.copy_(tensor.to(out.dtype)).round_()
         return out
 
     @override
     def decode(self, x: torch.Tensor) -> list[Any]:
-        return [self.choices[i] for i in x]
+        return [self.choices[int(i)] for i in torch.round(x).tolist()]
 
 
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
@@ -137,8 +143,7 @@ class MinMaxNormalizer(TensorTransformer, Generic[V]):
         if out is None:
             return values
 
-        assert out.shape == (len(x),), f"{out.shape} != {(len(x),)}"
-        out[:] = values
+        out.copy_(values)
         return out
 
     @override
@@ -148,58 +153,13 @@ class MinMaxNormalizer(TensorTransformer, Generic[V]):
 
 
 @dataclass
-class OneHotEncoder(TensorTransformer):
-    choices: list[Any]
-
-    domain: OneHotDomain = field(init=False)
-    output_cols: int = field(init=False)
-    categorical_to_integer: CategoricalToIntegerTransformer = field(init=False)
-
-    def __post_init__(self):
-        self.categorical_to_integer = CategoricalToIntegerTransformer(self.choices)
-        self.output_cols = len(self.choices)
-
-    @override
-    def encode(
-        self,
-        x: list[Any],
-        *,
-        out: torch.Tensor | None = None,
-        dtype: torch.dtype | None = None,
-        device: torch.device | None = None,
-    ) -> torch.Tensor:
-        if out is not None:
-            dtype = out.dtype
-            device = out.device
-        else:
-            dtype = torch.float64 if dtype is None else dtype
-
-        ints = self.categorical_to_integer.encode(x, dtype=torch.int64, device=device)
-        shape = (len(x), self.output_cols)
-        if out is None:
-            buffer = torch.zeros(size=shape, dtype=dtype, device=device)
-        else:
-            assert out.shape == shape, f"{out.shape} != {shape}"
-            buffer = out
-
-        cat_tensor = torch.tensor(ints, dtype=torch.int64, device=device).unsqueeze(1)
-        buffer.scatter_(1, cat_tensor, 1)
-        return buffer
-
-    @override
-    def decode(self, x: torch.Tensor) -> list[Any]:
-        ints = torch.argmax(x, dim=1)
-        return self.categorical_to_integer.decode(ints)
-
-
-@dataclass
 class WLInputTransformer(Transformer[WLInput]):
     hp: str
 
     def encode(self, x: Sequence[nx.Graph]) -> list[WLInput]:
         return [graph_from_networkx(g) for g in x]  # type: ignore
 
-    def decode(self, x: dict[str, list[WLInput]]) -> dict[str, list[Any]]:
+    def decode(self, x: Mapping[str, Sequence[WLInput]]) -> dict[str, list[Any]]:
         raise NotImplementedError("Cannot decode WLInput to values.")
 
 
@@ -224,10 +184,10 @@ class GraphEncoder:
 
         return x[:, [self.column_lookup[h] for h in hp]]
 
-    def encode(self, x: list[SearchSpace]) -> npt.NDArray[np.object_]:
+    def encode(self, x: Sequence[Any]) -> npt.NDArray[np.object_]:
         buffer = np.empty((len(x), len(self.transformers)), dtype=np.object_)
         for hp, transformer in self.transformers.items():
-            values = [conf[hp].value for conf in x]
+            values = [conf[hp] for conf in x]
             buffer[:, self.column_lookup[hp]] = transformer.encode(values)  # type: ignore
         return buffer
 
@@ -259,7 +219,7 @@ class TensorEncoder:
 
     def encode(
         self,
-        x: list[SearchSpace],
+        x: Sequence[Mapping[str, Any]],
         *,
         device: torch.device | None = None,
     ) -> torch.Tensor:
@@ -269,11 +229,12 @@ class TensorEncoder:
         for hp_name, transformer in self.transformers.items():
             values = [conf[hp_name] for conf in x]
             lookup = self.column_lookup[hp_name]
+            lookup = lookup[0] if lookup[1] - lookup[0] == 1 else slice(*lookup)
 
             # Encode directly into buffer
             transformer.encode(
                 values,
-                out=buffer[:, slice(*lookup)],
+                out=buffer[:, lookup],
                 dtype=torch.float64,
                 device=device,
             )
@@ -284,7 +245,12 @@ class TensorEncoder:
         values: dict[str, list[Any]] = {}
         for hp_name, transformer in self.transformers.items():
             lookup = self.column_lookup[hp_name]
-            values[hp_name] = transformer.decode(x[:, slice(*lookup)])
+            if lookup[1] == lookup[0] + 1:
+                tensor = x[:, lookup[0]]
+            else:
+                tensor = x[:, slice(*lookup)]
+
+            values[hp_name] = transformer.decode(tensor)
 
         keys = list(values.keys())
         return [dict(zip(keys, vals)) for vals in zip(*values.values())]
@@ -297,13 +263,13 @@ class DataEncoder:
 
     def encode(
         self,
-        x: list[SearchSpace],
+        x: Sequence[Mapping[str, Any]],
         *,
         device: torch.device | None = None,
-    ) -> tuple[torch.Tensor | None, npt.NDArray[np.object_] | None]:
+    ) -> DataPack:
         tensor = self.tensors.encode(x, device=device) if self.tensors else None
         graphs = self.graphs.encode(x) if self.graphs else None
-        return tensor, graphs
+        return DataPack(encoder=self, tensor=tensor, graphs=graphs)
 
     @overload
     def select(self, x: torch.Tensor, hp: str | Sequence[str]) -> torch.Tensor: ...
@@ -358,21 +324,110 @@ class DataEncoder:
         assert graph_values is not None
         return graph_values
 
+    def indices(self, hp: str | Sequence[str]) -> tuple[int, ...]:
+        if isinstance(hp, str):
+            if self.tensors and hp in self.tensors.transformers:
+                lower, upper = self.tensors.column_lookup[hp]
+                return tuple(torch.arange(lower, upper).tolist())
+
+            if self.graphs and hp in self.graphs.transformers:
+                raise ValueError("Cannot select indices from graphs.")
+
+            tkeys = None if self.tensors is None else self.tensors.transformers.keys()
+            gkeys = None if self.graphs is None else self.graphs.transformers.keys()
+            raise KeyError(
+                f"Unknown hyperparameter {hp}. Not in either tensors or graphs"
+                f"\nTensors: {tkeys}"
+                f"\nGraphs: {gkeys}"
+            )
+
+        return tuple(sorted(chain.from_iterable(self.indices(h) for h in hp)))
+
+    @classmethod
+    def default_encoder(
+        cls,
+        space: SearchSpace,
+        *,
+        include_fidelities: bool | list[str] = False,
+    ) -> DataEncoder:
+        tensor_transformers: dict[str, TensorTransformer] = {}
+        graph_transformers: dict[str, WLInputTransformer] = {}
+
+        for hp_name, hp in space.categoricals.items():
+            tensor_transformers[hp_name] = CategoricalToIntegerTransformer(hp.choices)
+
+        for hp_name, hp in space.numerical.items():
+            assert isinstance(hp, (FloatParameter, IntegerParameter))
+            tensor_transformers[hp_name] = MinMaxNormalizer(hp.domain)
+
+        for hp_name, hp in space.graphs.items():
+            assert isinstance(hp, GraphParameter)
+            graph_transformers[hp_name] = WLInputTransformer(hp_name)
+
+        if include_fidelities is True:
+            include_fidelities = list(space.fidelities.keys())
+
+        if include_fidelities:
+            for fid_name in include_fidelities:
+                hp = space.fidelities[fid_name]
+                assert isinstance(hp, (FloatParameter, IntegerParameter))
+                tensor_transformers[fid_name] = MinMaxNormalizer(hp.domain)
+
+        tensor_encoder = (
+            TensorEncoder(tensor_transformers) if any(tensor_transformers) else None
+        )
+        graph_encoder = (
+            GraphEncoder(graph_transformers) if any(graph_transformers) else None
+        )
+        return DataEncoder(tensors=tensor_encoder, graphs=graph_encoder)
+
+    def has_categoricals(self) -> bool:
+        return self.tensors is not None and any(
+            isinstance(t, CategoricalToIntegerTransformer)
+            for t in self.tensors.transformers.values()
+        )
+
+    def has_graphs(self) -> bool:
+        return self.graphs is not None
+
+    def has_numericals(self) -> bool:
+        return self.tensors is not None and any(
+            not isinstance(t, CategoricalToIntegerTransformer)
+            for t in self.tensors.transformers.values()
+        )
+
+    def categorical_product_indices(self) -> list[dict[int, int]]:
+        cats: dict[int, list[int]] = {}
+        if self.tensors is None:
+            return []
+
+        for i, (_hp_name, transformer) in enumerate(self.tensors.transformers.items()):
+            if isinstance(transformer, CategoricalToIntegerTransformer):
+                cats[i] = list(range(len(transformer.choices)))
+
+        if len(cats) == 0:
+            return []
+
+        if len(cats) == 1:
+            key, values = cats.popitem()
+            return [{key: v} for v in values]
+
+        return [dict(zip(cats.keys(), vs)) for vs in product(*cats.values())]
+
 
 @dataclass
 class DataPack(Sized):
-    space: SearchSpace
     encoder: DataEncoder
-    numerical: torch.Tensor | None = None
+    tensor: torch.Tensor | None = None
     graphs: npt.NDArray[np.object_] | None = None
     _len: int = field(init=False)
 
     def __post_init__(self):
-        if self.numerical is not None and self.graphs is not None:
-            assert len(self.numerical) == len(self.graphs)
-            self._len = len(self.numerical)
-        elif self.numerical is not None:
-            self._len = len(self.numerical)
+        if self.tensor is not None and self.graphs is not None:
+            assert len(self.tensor) == len(self.graphs)
+            self._len = len(self.tensor)
+        elif self.tensor is not None:
+            self._len = len(self.tensor)
         elif self.graphs is not None:
             self._len = len(self.graphs)
         else:
@@ -384,8 +439,8 @@ class DataPack(Sized):
     def select(self, hp: str | Sequence[str]) -> torch.Tensor | npt.NDArray[np.object_]:
         if isinstance(hp, str):
             if self.encoder.tensors and hp in self.encoder.tensors.transformers:
-                assert self.numerical is not None
-                return self.encoder.tensors.select(self.numerical, hp)
+                assert self.tensor is not None
+                return self.encoder.tensors.select(self.tensor, hp)
 
             if self.encoder.graphs and hp in self.encoder.graphs.transformers:
                 assert self.graphs is not None
@@ -427,16 +482,67 @@ class DataPack(Sized):
             )
 
         if all_in_tensors:
-            assert self.numerical is not None
+            assert self.tensor is not None
             assert self.encoder.tensors is not None
-            return self.encoder.tensors.select(self.numerical, hp)
+            return self.encoder.tensors.select(self.tensor, hp)
 
         assert self.graphs is not None
         assert self.encoder.graphs is not None
         return self.encoder.graphs.select(self.graphs, hp)
 
-    def decode(self) -> list[SearchSpace]:
+    def decode(self, space: SearchSpace) -> list[SearchSpace]:
         return [
-            self.space.from_dict(d)
-            for d in self.encoder.decode_dicts((self.numerical, self.graphs))
+            space.from_dict(d)
+            for d in self.encoder.decode_dicts((self.tensor, self.graphs))
         ]
+
+    def split(self, index: int) -> tuple[DataPack, DataPack]:
+        if self.tensor is not None:
+            numerical_left = self.tensor[:index]
+            numerical_right = self.tensor[index:]
+        else:
+            numerical_left = None
+            numerical_right = None
+
+        if self.graphs is not None:
+            graphs_left = self.graphs[:index]
+            graphs_right = self.graphs[:index]
+        else:
+            graphs_left = None
+            graphs_right = None
+
+        return (
+            DataPack(
+                self.encoder,
+                tensor=numerical_left,
+                graphs=graphs_left,
+            ),
+            DataPack(
+                self.encoder,
+                tensor=numerical_right,
+                graphs=graphs_right,
+            ),
+        )
+
+    def join(self, *other: DataPack) -> DataPack:
+        assert all(o.encoder == self.encoder for o in other)
+
+        if self.tensor is not None:
+            other_numericals = []
+            for o in other:
+                assert o.tensor is not None
+                other_numericals.append(o.tensor)
+            numerical = torch.cat([self.tensor, *other_numericals], dim=0)
+        else:
+            numerical = None
+
+        if self.graphs is not None:
+            other_graphs = []
+            for o in other:
+                assert o.graphs is not None
+                other_graphs.append(o.graphs)
+            graphs = np.concatenate([self.graphs, *other_graphs], axis=0)
+        else:
+            graphs = None
+
+        return DataPack(self.encoder, tensor=numerical, graphs=graphs)

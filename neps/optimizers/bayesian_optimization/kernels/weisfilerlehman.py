@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from itertools import product
-from typing import Any, ClassVar, Mapping, Sequence
+from typing import TYPE_CHECKING
 from typing_extensions import Self
 
 import numpy as np
@@ -14,19 +13,28 @@ from neps.optimizers.bayesian_optimization.kernels.grakel_replace import (
     WeisfeilerLehman as _WL,
 )
 from neps.optimizers.bayesian_optimization.kernels.kernel import Kernel
-from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import NumericKernel
+
+if TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.kernels.vectorial_kernels import (
+        NumericKernel,
+    )
 
 GRID_WL_LENGTHSCALES = torch.tensor([np.e**i for i in range(-2, 3)])
 GRID_WL_SUBTREE_CANDIDATES = (1, 2, 3, 4, 5)
 
 
+def normal_prior(param: torch.Tensor, mean: float, std: float) -> torch.Tensor:
+    return -0.5 * torch.sum(((param - mean) / std) ** 2) - torch.sum(
+        torch.log(std * torch.sqrt(2 * torch.tensor(np.pi)))
+    )
+
+
+def kernel_hp_prior(params: dict[str, nn.Parameter]) -> torch.Tensor:
+    return normal_prior(params["layer_weights"], mean=0, std=1)
+
+
 class WeisfilerLehman(Kernel[npt.NDArray[np.object_]]):
     """Weisfiler Lehman kernel using grakel functions."""
-
-    suggested_grid: ClassVar[Sequence[Mapping[str, Any]]] = [
-        {"h": h, "se_kernel": NumericKernel(lengthscale=l)}
-        for h, l in product(GRID_WL_SUBTREE_CANDIDATES, GRID_WL_LENGTHSCALES)
-    ]
 
     def __init__(
         self,
@@ -46,11 +54,12 @@ class WeisfilerLehman(Kernel[npt.NDArray[np.object_]]):
                 vector embedding inner products are computed).
                 If None, uses the default linear kernel
             layer_weights: The weights for each layer of the Weisfeiler-Lehman kernel.
-                If None, uses uniform
+                If None, uses uniform 1s
             oa: whether the optimal assignment variant of the Weisfiler-Lehman
                 kernel should be used
             node_label: the node_label defining the key node attribute.
         """
+        super().__init__(hyperparameter_prior=kernel_hp_prior)
         if se_kernel is not None and oa:
             raise ValueError(
                 "Only one or none of se (successive embedding) and oa (optimal assignment) may be true!"
@@ -72,7 +81,6 @@ class WeisfilerLehman(Kernel[npt.NDArray[np.object_]]):
         return self.clone_with(layer_weights=nn.Parameter(self.layer_weights))
 
     def fit_transform(self, gr: npt.NDArray[np.object_]) -> torch.Tensor:
-        self.layer_weights.clamp_(0, 1)
         self.wl_kernel_ = _WL(
             h=self.h,
             base_graph_kernel=(  # type: ignore
@@ -84,7 +92,7 @@ class WeisfilerLehman(Kernel[npt.NDArray[np.object_]]):
                     "requires_ordered_features": True,
                 },
             ),
-            layer_weights=self.layer_weights,
+            layer_weights=self.layer_weights / self.layer_weights.sum(),
             normalize=True,
         )
 
@@ -93,7 +101,6 @@ class WeisfilerLehman(Kernel[npt.NDArray[np.object_]]):
 
     def transform(self, gr: npt.NDArray[np.object_]) -> torch.Tensor:
         assert self.wl_kernel_ is not None
-        self.layer_weights.clamp_(0, 1)
 
         K = self.wl_kernel_.transform(iter(gr))
         return torch.as_tensor(K, dtype=torch.float64)

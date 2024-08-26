@@ -68,14 +68,11 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         else:
             _x = x
 
-        try:
-            mu, cov = self.surrogate_model.predict(_x)
-        except ValueError as e:
-            raise e
-            # return -1.0  # in case of error. return ei of -1
+        mu, cov = self.surrogate_model.predict(_x)
 
         std = torch.sqrt(torch.diag(cov))
         mu_star = self.incumbent
+
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
         # u = (mu - mu_star - self.xi) / std
         # ei = std * updf + (mu - mu_star - self.xi) * ucdf
@@ -88,7 +85,15 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             ) * gauss.cdf(v - std)
         else:
             u = (mu_star - mu - self.xi) / std
-            ucdf = gauss.cdf(u)
+            try:
+                ucdf = gauss.cdf(u)
+            except ValueError as e:
+                print(f"u: {u}")  # noqa: T201
+                print(f"mu_star: {mu_star}")  # noqa: T201
+                print(f"mu: {mu}")  # noqa: T201
+                print(f"std: {std}")  # noqa: T201
+                print(f"diag: {cov.diag()}")  # noqa: T201
+                raise e
             updf = torch.exp(gauss.log_prob(u))
             ei = std * updf + (mu_star - mu - self.xi) * ucdf
         if self.augmented_ei:

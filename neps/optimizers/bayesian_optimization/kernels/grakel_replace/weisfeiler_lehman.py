@@ -1,5 +1,7 @@
 """The weisfeiler lehman kernel :cite:`shervashidze2011weisfeiler`."""
 
+from __future__ import annotations
+
 import collections
 import collections.abc
 import logging
@@ -42,7 +44,7 @@ class WeisfeilerLehman(Kernel):
         {'node_name1': weight1, 'node_name2': weight2 ... }
         Must be of the same length as the number of different node attributes
 
-    Attributes
+    Attributes:
     ----------
     X : dict
      Holds a dictionary of fitted subkernel modules for all levels.
@@ -101,9 +103,9 @@ class WeisfeilerLehman(Kernel):
         self.X = None
         self._X_diag = None
 
-        self.X_fit = dict()
-        self.K_precomputed = dict()
-        self.base_graph_kernel_precomputed = dict()
+        self.X_fit = {}
+        self.K_precomputed = {}
+        self.base_graph_kernel_precomputed = {}
 
     def initialize(self):
         """Initialize all transformer arguments, needing initialization."""
@@ -111,26 +113,37 @@ class WeisfeilerLehman(Kernel):
         if not self._initialized["base_graph_kernel"]:
             base_graph_kernel = self.base_graph_kernel
             if base_graph_kernel is None:
-                base_graph_kernel, params = VertexHistogram, dict()
+                base_graph_kernel, params = VertexHistogram, {}
             # TODO: make sure we're always passing like this
             elif type(base_graph_kernel) is type and issubclass(  # pylint: disable=C0123
                 base_graph_kernel, Kernel
             ):
-                params = dict()
+                params = {}
             else:
                 try:
                     base_graph_kernel, params = base_graph_kernel
                 except Exception as _error:
-                    NOT_YET_IMPLEMENTED_StmtRaise
+                    raise TypeError(
+                        "Base kernel was not formulated in "
+                        "the correct way. "
+                        "Check documentation."
+                    ) from _error
 
                 if not (
-                    type(base_graph_kernel)
-                    is type  # pylint: disable=C0123
+                    type(base_graph_kernel) is type  # pylint: disable=C0123
                     and issubclass(base_graph_kernel, Kernel)
                 ):
-                    NOT_YET_IMPLEMENTED_StmtRaise
+                    raise TypeError(
+                        "The first argument must be a valid "
+                        "grakel.kernel.kernel Object"
+                    )
                 if not isinstance(params, dict):
-                    NOT_YET_IMPLEMENTED_StmtRaise
+                    raise ValueError(
+                        "If the second argument of base "
+                        "kernel exists, it must be a diction"
+                        "ary between parameters names and "
+                        "values"
+                    )
                 params.pop("normalize", None)
 
             params["normalize"] = False
@@ -141,7 +154,9 @@ class WeisfeilerLehman(Kernel):
 
         if not self._initialized["h"]:
             if not isinstance(self.h, int) or self.h < 0:
-                NOT_YET_IMPLEMENTED_StmtRaise
+                raise TypeError(
+                    "'h' must be a non-negative integer. Got h:" + str(self.h)
+                )
             self._h = self.h + 1
             self._initialized["h"] = True
 
@@ -181,7 +196,7 @@ class WeisfeilerLehman(Kernel):
         gp_fit: bool
             If False use precomputed vals for first N values, else compute them and save them
 
-        Returns
+        Returns:
         -------
         base_graph_kernel : object
         Returns base_graph_kernel.
@@ -191,34 +206,34 @@ class WeisfeilerLehman(Kernel):
 
         """
         if self._method_calling not in [1, 2]:
-            NOT_YET_IMPLEMENTED_StmtRaise
+            raise ValueError(
+                "method call must be called either from fit " + "or fit-transform"
+            )
         elif hasattr(self, "_X_diag"):
             # Clean _X_diag value
             delattr(self, "_X_diag")
 
         # skip kernel computation if we have already computed the corresponding kernel
-        if self._h in self.K_precomputed.keys() and self.X_fit[self._h] == X:
+        if self._h in self.K_precomputed and self.X_fit[self._h] == X:
             K = self.K_precomputed[self._h]
             base_graph_kernel = self.base_graph_kernel_precomputed[self._h]
         else:
             # Input validation and parsing
             if not isinstance(X, collections.abc.Iterable):
-                NOT_YET_IMPLEMENTED_StmtRaise
+                raise TypeError("input must be an iterable\n")
             else:
                 nx = 0
-                Gs_ed, L, distinct_values, extras = dict(), dict(), set(), dict()
+                Gs_ed, L, distinct_values, extras = {}, {}, set(), {}
                 for idx, x in enumerate(iter(X)):
                     is_iter = isinstance(x, collections.abc.Iterable)
                     if is_iter:
                         x = list(x)
                     if is_iter and (len(x) == 0 or len(x) >= 2):
                         if len(x) == 0:
-                            warnings.warn(
-                                "Ignoring empty element on index: " + str(idx)
-                            )
+                            warnings.warn("Ignoring empty element on index: " + str(idx))
                             continue
                         elif len(x) > 2:
-                            extra = tuple()
+                            extra = ()
                             if len(x) > 3:
                                 extra = tuple(x[3:])
                             x = Graph(x[0], x[1], x[2], graph_format=self._graph_format)
@@ -228,10 +243,11 @@ class WeisfeilerLehman(Kernel):
                                     label_type="edge",
                                     return_none=True,
                                 ),
-                            ) + extra
+                                *extra,
+                            )
                         else:
                             x = Graph(x[0], x[1], {}, graph_format=self._graph_format)
-                            extra = tuple()
+                            extra = ()
 
                     elif isinstance(x, Graph):
                         x.desired_format(self._graph_format)
@@ -240,20 +256,22 @@ class WeisfeilerLehman(Kernel):
                             label_type="edge",
                             return_none=True,
                         )
-                        if el is None:
-                            extra = tuple()
-                        else:
-                            extra = (el,)
+                        extra = () if el is None else (el,)
 
                     else:
-                        NOT_YET_IMPLEMENTED_StmtRaise
+                        raise TypeError(
+                            "each element of X must be either a "
+                            + "graph object or a list with at least "
+                            + "a graph like object and node labels "
+                            + "dict \n"
+                        )
                     Gs_ed[nx] = x.get_edge_dictionary()
                     L[nx] = x.get_labels(purpose="dictionary")
                     extras[nx] = extra
-                    NOT_YET_IMPLEMENTED_StmtAugAssign
-                    NOT_YET_IMPLEMENTED_StmtAugAssign
+                    distinct_values |= set(L[nx].values())
+                    nx += 1
                 if nx == 0:
-                    NOT_YET_IMPLEMENTED_StmtRaise
+                    raise ValueError("parsed input is empty")
 
             # Save the number of "fitted" graphs.
             self._nx = nx
@@ -261,70 +279,75 @@ class WeisfeilerLehman(Kernel):
 
             # assign a number to each label
             label_count = 0
-            for dv in sorted(list(distinct_values)):
+            for dv in sorted(distinct_values):
                 WL_labels_inverse[dv] = label_count
-                NOT_YET_IMPLEMENTED_StmtAugAssign
+                label_count += 1
 
             # Initalize an inverse dictionary of labels for all iterations
-            self._inv_labels = OrderedDict()  # Inverse dictionary of labels, in term of the *previous layer*
+            self._inv_labels = (
+                OrderedDict()
+            )  # Inverse dictionary of labels, in term of the *previous layer*
             self._inv_labels[0] = deepcopy(WL_labels_inverse)
-            self.feature_dims.append(len(WL_labels_inverse))  # Update the zeroth iteration feature dim
+            self.feature_dims.append(
+                len(WL_labels_inverse)
+            )  # Update the zeroth iteration feature dim
 
-            self._inv_label_node_attr = OrderedDict()  # Inverse dictionary of labels, in term of the *node attribute*
-            self._label_node_attr = OrderedDict()  # Same as above, but with key and value inverted
-            (
-                self._label_node_attr[0],
-                self._inv_label_node_attr[0],
-            ) = self.translate_label(WL_labels_inverse, 0)
+            self._inv_label_node_attr = (
+                OrderedDict()
+            )  # Inverse dictionary of labels, in term of the *node attribute*
+            self._label_node_attr = (
+                OrderedDict()
+            )  # Same as above, but with key and value inverted
+            self._label_node_attr[0], self._inv_label_node_attr[0] = self.translate_label(
+                WL_labels_inverse, 0
+            )
 
             if self.node_weights is not None:
                 self._feature_weight = OrderedDict()
                 # Ensure the order is the same
                 self._feature_weight[0] = self._compute_feature_weight(
                     self.node_weights, 0, WL_labels_inverse
-                )[
-                    1
-                ]
+                )[1]
             else:
                 self._feature_weight = None
 
             def generate_graphs(label_count: int, WL_labels_inverse):
-                new_graphs = list()
+                new_graphs = []
                 for j in range(self._nx):
-                    new_labels = dict()
-                    for k in L[j].keys():
+                    new_labels = {}
+                    for k in L[j]:
                         new_labels[k] = WL_labels_inverse[L[j][k]]
                     L[j] = new_labels
                     # add new labels
                     new_graphs.append((Gs_ed[j], new_labels) + extras[j])
-                NOT_YET_IMPLEMENTED_ExprYield
+                yield new_graphs
 
                 for i in range(1, self._h):
-                    label_set, WL_labels_inverse, L_temp = set(), dict(), dict()
+                    label_set, WL_labels_inverse, L_temp = set(), {}, {}
                     for j in range(nx):
                         # Find unique labels and sort
                         # them for both graphs
                         # Keep for each node the temporary
-                        L_temp[j] = dict()
-                        for v in Gs_ed[j].keys():
-                            credential = str(L[j][v]) + "," + str(
-                                sorted(
-                                    (NOT_YET_IMPLEMENTED_generator_key for NOT_YET_IMPLEMENTED_generator_key in [])
-                                )
+                        L_temp[j] = {}
+                        for v in Gs_ed[j]:
+                            credential = (
+                                str(L[j][v])
+                                + ","
+                                + str(sorted(L[j][n] for n in Gs_ed[j][v]))
                             )
                             L_temp[j][v] = credential
                             label_set.add(credential)
 
-                    label_list = sorted(list(label_set))
+                    label_list = sorted(label_set)
                     for dv in label_list:
                         WL_labels_inverse[dv] = label_count
-                        NOT_YET_IMPLEMENTED_StmtAugAssign
+                        label_count += 1
 
                     # Recalculate labels
-                    new_graphs = list()
+                    new_graphs = []
                     for j in range(nx):
-                        new_labels = dict()
-                        for k in L_temp[j].keys():
+                        new_labels = {}
+                        for k in L_temp[j]:
                             new_labels[k] = WL_labels_inverse[L_temp[j][k]]
                         L[j] = new_labels
                         # relabel
@@ -344,11 +367,9 @@ class WeisfeilerLehman(Kernel):
                     if self.node_weights is not None:
                         self._feature_weight[i] = self._compute_feature_weight(
                             self.node_weights, i, self._inv_label_node_attr[i]
-                        )[
-                            1
-                        ]
+                        )[1]
                     # assert len(self._feature_weight[i] == len(WL_labels_inverse))
-                    NOT_YET_IMPLEMENTED_ExprYield
+                    yield new_graphs
 
             # Initialise the base graph kernel.
             base_graph_kernel = {}
@@ -397,6 +418,7 @@ class WeisfeilerLehman(Kernel):
                 K = torch.stack(K, dim=0).sum(dim=0)
                 return K, base_graph_kernel
             return np.sum(K, axis=0), base_graph_kernel
+        return None
 
     def fit_transform(self, X: Iterable, y=None, gp_fit: bool = True):  # pylint: disable=unused-argument
         """Fit and transform, on the same dataset.
@@ -414,7 +436,7 @@ class WeisfeilerLehman(Kernel):
         y : Object, default=None
             Ignored argument, added for the pipeline.
 
-        Returns
+        Returns:
         -------
         K : numpy array, shape = [n_targets, n_input_graphs]
             corresponding to the kernel matrix, a calculation between
@@ -428,7 +450,7 @@ class WeisfeilerLehman(Kernel):
             0,
         ]  # Flush the feature dimensions
         if X is None:
-            NOT_YET_IMPLEMENTED_StmtRaise
+            raise ValueError("transform input cannot be None")
         else:
             km, self.X = self.parse_input(X, gp_fit=gp_fit)
 
@@ -450,7 +472,8 @@ class WeisfeilerLehman(Kernel):
         return_embedding_only: bool
             Whether to return the embedding of the graphs only, instead of computing the kernel all
             the way to the end.
-        Returns
+
+        Returns:
         -------
         K : numpy array, shape = [n_targets, n_input_graphs]
             corresponding to the kernel matrix, a calculation between
@@ -463,13 +486,13 @@ class WeisfeilerLehman(Kernel):
 
         # Input validation and parsing
         if X is None:
-            NOT_YET_IMPLEMENTED_StmtRaise
+            raise ValueError("transform input cannot be None")
         elif not isinstance(X, collections.abc.Iterable):
-            NOT_YET_IMPLEMENTED_StmtRaise
+            raise ValueError("input must be an iterable\n")
         else:
             nx = 0
             distinct_values = set()
-            Gs_ed, L = dict(), dict()
+            Gs_ed, L = {}, {}
             for i, x in enumerate(iter(X)):
                 is_iter = isinstance(x, collections.abc.Iterable)
                 if is_iter:
@@ -484,25 +507,32 @@ class WeisfeilerLehman(Kernel):
                 elif isinstance(x, Graph):
                     x.desired_format("dictionary")
                 else:
-                    NOT_YET_IMPLEMENTED_StmtRaise
+                    raise ValueError(
+                        "each element of X must have at "
+                        + "least one and at most 3 elements\n"
+                    )
                 Gs_ed[nx] = x.get_edge_dictionary()
                 L[nx] = x.get_labels(purpose="dictionary")
 
                 # Hold all the distinct values
-                NOT_YET_IMPLEMENTED_StmtAugAssign
-                NOT_YET_IMPLEMENTED_StmtAugAssign
+                distinct_values |= {
+                    v for v in L[nx].values() if v not in self._inv_labels[0]
+                }
+                nx += 1
             if nx == 0:
-                NOT_YET_IMPLEMENTED_StmtRaise
+                raise ValueError("parsed input is empty")
 
         nl = len(self._inv_labels[0])
-        WL_labels_inverse = {NOT_IMPLEMENTED_dict_key: NOT_IMPLEMENTED_dict_value for key, value in NOT_IMPLEMENTED_dict}
+        WL_labels_inverse = {
+            dv: idx for (idx, dv) in enumerate(sorted(distinct_values), nl)
+        }
         WL_labels_inverse = OrderedDict(WL_labels_inverse)
 
         def generate_graphs_transform(WL_labels_inverse, nl):
             # calculate the kernel matrix for the 0 iteration
-            new_graphs = list()
+            new_graphs = []
             for j in range(nx):
-                new_labels = dict()
+                new_labels = {}
                 for k, v in L[j].items():
                     if v in self._inv_labels[0]:
                         new_labels[k] = self._inv_labels[0][v]
@@ -511,37 +541,35 @@ class WeisfeilerLehman(Kernel):
                 L[j] = new_labels
                 # produce the new graphs
                 new_graphs.append([Gs_ed[j], new_labels])
-            NOT_YET_IMPLEMENTED_ExprYield
+            yield new_graphs
 
             for i in range(1, self._h):
-                new_graphs = list()
-                L_temp, label_set = dict(), set()
-                NOT_YET_IMPLEMENTED_StmtAugAssign
+                new_graphs = []
+                L_temp, label_set = {}, set()
+                nl += len(self._inv_labels[i])
                 for j in range(nx):
                     # Find unique labels and sort them for both graphs
                     # Keep for each node the temporary
-                    L_temp[j] = dict()
-                    for v in Gs_ed[j].keys():
-                        credential = str(L[j][v]) + "," + str(
-                            sorted(
-                                (NOT_YET_IMPLEMENTED_generator_key for NOT_YET_IMPLEMENTED_generator_key in [])
-                            )
+                    L_temp[j] = {}
+                    for v in Gs_ed[j]:
+                        credential = (
+                            str(L[j][v]) + "," + str(sorted(L[j][n] for n in Gs_ed[j][v]))
                         )
                         L_temp[j][v] = credential
                         if credential not in self._inv_labels[i]:
                             label_set.add(credential)
 
                 # Calculate the new label_set
-                WL_labels_inverse = dict()
+                WL_labels_inverse = {}
                 if len(label_set) > 0:
-                    for dv in sorted(list(label_set)):
+                    for dv in sorted(label_set):
                         idx = len(WL_labels_inverse) + nl
                         WL_labels_inverse[dv] = idx
 
                 # Recalculate labels
-                new_graphs = list()
+                new_graphs = []
                 for j in range(nx):
-                    new_labels = dict()
+                    new_labels = {}
                     for k, v in L_temp[j].items():
                         if v in self._inv_labels[i]:
                             new_labels[k] = self._inv_labels[i][v]
@@ -550,7 +578,7 @@ class WeisfeilerLehman(Kernel):
                     L[j] = new_labels
                     # Create the new graphs with the new labels.
                     new_graphs.append([Gs_ed[j], new_labels])
-                NOT_YET_IMPLEMENTED_ExprYield
+                yield new_graphs
 
         if return_embedding_only:
             K = []
@@ -567,11 +595,29 @@ class WeisfeilerLehman(Kernel):
 
         # Calculate the kernel matrix without parallelization
         if self.as_tensor:
-            summand = [NOT_YET_IMPLEMENTED_generator_key for NOT_YET_IMPLEMENTED_generator_key in []]
+            summand = [
+                self.layer_weights[i]
+                * self.X[i].transform(
+                    g,
+                    label_start_idx=self.feature_dims[i],
+                    label_end_idx=self.feature_dims[i + 1],
+                )
+                for i, g in enumerate(generate_graphs_transform(WL_labels_inverse, nl))
+            ]
             K = torch.stack(summand, dim=0).sum(dim=0)
         else:
             K = np.sum(
-                (NOT_YET_IMPLEMENTED_generator_key for NOT_YET_IMPLEMENTED_generator_key in []),
+                (
+                    self.layer_weights[i]
+                    * self.X[i].transform(
+                        g,
+                        label_start_idx=self.feature_dims[i],
+                        label_end_idx=self.feature_dims[i + 1],
+                    )
+                    for (i, g) in enumerate(
+                        generate_graphs_transform(WL_labels_inverse, nl)
+                    )
+                ),
                 axis=0,
             )
 
@@ -580,7 +626,7 @@ class WeisfeilerLehman(Kernel):
             X_diag, Y_diag = self.diagonal()
             if self.as_tensor:
                 div_ = torch.sqrt(torch.ger(Y_diag, X_diag))
-                NOT_YET_IMPLEMENTED_StmtAugAssign
+                K /= div_
             else:
                 old_settings = np.seterr(divide="ignore")
                 K = np.nan_to_num(np.divide(K, np.sqrt(np.outer(Y_diag, X_diag))))
@@ -598,7 +644,7 @@ class WeisfeilerLehman(Kernel):
         ----------
         None.
 
-        Returns
+        Returns:
         -------
         X_diag : np.array
             The diagonal of the kernel matrix, of the fitted data.
@@ -616,7 +662,7 @@ class WeisfeilerLehman(Kernel):
             if self._is_transformed:
                 Y_diag = self.X[0].diagonal()[1]
                 for i in range(1, self._h):
-                    NOT_YET_IMPLEMENTED_StmtAugAssign
+                    Y_diag += self.X[i].diagonal()[1]
         except NotFittedError:
             # Calculate diagonal of X
             if self._is_transformed:
@@ -625,8 +671,8 @@ class WeisfeilerLehman(Kernel):
                 X_diag.flags.writeable = True
                 for i in range(1, self._h):
                     x, y = self.X[i].diagonal()
-                    NOT_YET_IMPLEMENTED_StmtAugAssign
-                    NOT_YET_IMPLEMENTED_StmtAugAssign
+                    X_diag += x
+                    Y_diag += y
                     self._X_diag = X_diag
 
                 # case sub kernel is only fitted
@@ -635,7 +681,7 @@ class WeisfeilerLehman(Kernel):
                 X_diag.flags.writeable = True
                 for i in range(1, self._n_iter):
                     x = self.X[i].diagonal()
-                    NOT_YET_IMPLEMENTED_StmtAugAssign
+                    X_diag += x
                 self._X_diag = X_diag
 
         if self.as_tensor:
@@ -648,42 +694,39 @@ class WeisfeilerLehman(Kernel):
             return self._X_diag
 
     @staticmethod
-    def translate_label(curr_layer: dict, h: int, prev_layer: dict = None):
+    def translate_label(curr_layer: dict, h: int, prev_layer: dict | None = None):
         """Translate the label to be in terms of the node attributes
         curr_layer: the WL_label_inverse object. A dictionary with element of the format of
-        {pattern: encoding}
+        {pattern: encoding}.
 
-        return:
+        Return:
            label_in_node_attr: in terms of {encoding: pattern}, but pattern is always in term of the node attribute
            inv_label_in_node_attr: in terms of {pattern: encoding}
 
         """
         if h == 0:
-            return (
-                {NOT_IMPLEMENTED_dict_key: NOT_IMPLEMENTED_dict_value for key, value in NOT_IMPLEMENTED_dict},
-                curr_layer,
-            )
+            return {v: str(k) for k, v in curr_layer.items()}, curr_layer
         else:
-            NOT_YET_IMPLEMENTED_StmtAssert
+            assert prev_layer is not None
             label_in_node_attr, inv_label_in_node_attr = OrderedDict(), OrderedDict()
             for pattern, encoding in curr_layer.items():
                 # current pattern is in terms of the encoding previous layer. Find the pattern from the prev_layer
                 root, leaf = literal_eval(pattern)
                 root_ = prev_layer[root]
-                leaf_ = [NOT_YET_IMPLEMENTED_generator_key for NOT_YET_IMPLEMENTED_generator_key in []]
-                label_in_node_attr.update({encoding: "~".join([root_] + leaf_)})
-                inv_label_in_node_attr.update({"~".join([root_] + leaf_): encoding})
+                leaf_ = [prev_layer[i] for i in leaf]
+                label_in_node_attr.update({encoding: "~".join([root_, *leaf_])})
+                inv_label_in_node_attr.update({"~".join([root_, *leaf_]): encoding})
             return label_in_node_attr, inv_label_in_node_attr
 
     @staticmethod
     def _compute_feature_weight(
         node_weight: OrderedDict, h: int, inv_label_node_attr: OrderedDict
     ):
-        """
-        Compute the feature weight, based on the average weight of the constituent node attributes.
+        """Compute the feature weight, based on the average weight of the constituent node attributes.
+
         Return:
             feature_weights: a dictionary with h layers, each of which is a dictionary of the format of
-            {tuple1: weight1; tuplr2, weight2 ...} where tuplex is the tuple representation of the learned graph feature
+            {tuple1: weight1; tuplr2, weight2 ...} where tuplex is the tuple representation of the learned graph feature.
 
             feature_weight_flattened: same as above, but in a flattened np format.
         """
@@ -691,29 +734,25 @@ class WeisfeilerLehman(Kernel):
         feature_weights_flattened = []
         if h == 0:
             feature_weight = OrderedDict(
-                {NOT_IMPLEMENTED_dict_key: NOT_IMPLEMENTED_dict_value for key, value in NOT_IMPLEMENTED_dict}
+                {k: (node_weight[k]) ** 2 for k in inv_label_node_attr}
             )
-            feature_weights_flattened = np.array(
-                list(feature_weight.values())
-            ).flatten()
+            feature_weights_flattened = np.array(list(feature_weight.values())).flatten()
         else:
             for k, _ in inv_label_node_attr.items():
                 # k is the pattern, v is the encoding
                 k_sep = k.split("~")
-                average_weight = np.mean(
-                    [NOT_YET_IMPLEMENTED_generator_key for NOT_YET_IMPLEMENTED_generator_key in []]
-                )
+                average_weight = np.mean([(node_weight[i]) ** 2 for i in k_sep])
                 feature_weights.update({k: average_weight})
                 feature_weights_flattened.append(average_weight)
         feature_weights_flattened = np.array(feature_weights_flattened).flatten()
-        NOT_YET_IMPLEMENTED_StmtAssert
+        assert len(feature_weights_flattened) == len(inv_label_node_attr)
         return feature_weights, feature_weights_flattened
 
     def dK_dX(self, X_test: None):
-        """
-        Do additional forward and backward pass, compute the kernel derivative wrt the testing location.
-        If no test locations are provided, the derivatives are evaluated at the training points
-        Returns
+        """Do additional forward and backward pass, compute the kernel derivative wrt the testing location.
+        If no test locations are provided, the derivatives are evaluated at the training points.
+
+        Returns.
         -------
 
         """

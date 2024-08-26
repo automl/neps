@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 import random
-from itertools import chain
-from typing import TYPE_CHECKING, Any, Literal, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping
 
 import torch
+from botorch.acquisition import (
+    LinearMCObjective,
+    qLogExpectedImprovement,
+)
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.bayesian_optimization.acquisition_functions import (
-    AcquisitionMapping,
     DecayingPriorWeightedAcquisition,
 )
-from neps.optimizers.bayesian_optimization.acquisition_samplers import (
-    AcquisitionSamplerMapping,
+from neps.optimizers.bayesian_optimization.models.gp import (
+    default_single_obj_gp,
+    optimize_acq,
 )
-from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
-from neps.optimizers.bayesian_optimization.models.gp import ComprehensiveGP
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
@@ -23,16 +24,13 @@ from neps.search_spaces import (
     IntegerParameter,
     SearchSpace,
 )
-from neps.search_spaces.encoding import Encoder
-from neps.utils.common import instance_from_map
+from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
+from neps.search_spaces.encoding import DataEncoder
 
 if TYPE_CHECKING:
-    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-        BaseAcquisition,
-    )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-        AcquisitionSampler,
-    )
+    from botorch.models.model import Model
+
+    from neps.search_spaces.encoding import DataPack
     from neps.state import BudgetInfo, Trial
 
 # TODO(eddiebergman): Why not just include in the definition of the parameters.
@@ -53,10 +51,8 @@ class BayesianOptimization(BaseOptimizer):
         pipeline_space: SearchSpace,
         *,
         initial_design_size: int = 10,
-        surrogate_model: str | Any = "gp",
-        acquisition: str | BaseAcquisition = "EI",
+        surrogate_model: Literal["gp"] | Callable[[DataPack, torch.Tensor], Model] = "gp",
         log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "mutation",
         random_interleave_prob: float = 0.0,
         patience: int = 100,
         budget: None | int | float = None,
@@ -67,6 +63,8 @@ class BayesianOptimization(BaseOptimizer):
         disable_priors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         sample_default_first: bool = False,
+        device: torch.device | None = None,
+        **kwargs: Any,  # TODO: Remove
     ):
         """Initialise the BO loop.
 
@@ -128,44 +126,20 @@ class BayesianOptimization(BaseOptimizer):
         self._initial_design_size = initial_design_size
         self._random_interleave_prob = random_interleave_prob
         self._num_error_evaluations: int = 0
+        self.device = device
         self.sample_default_first = sample_default_first
+        self.encoder: DataEncoder | None = None
 
-        if isinstance(surrogate_model, str):
-            if surrogate_model == "gp":
-                self.surrogate_model = ComprehensiveGP.get_default(
-                    space=pipeline_space,
-                    include_fidelities=False,
-                )
-                self._encoder = Encoder.default(self.pipeline_space)
-            else:
-                raise NotImplementedError(
-                    "Only 'gp' is supported as a surrogate model for now."
-                )
-                self.surrogate_model = instance_from_map(
-                    SurrogateModelMapping,
-                    surrogate_model,
-                    name="surrogate model",
-                    kwargs=surrogate_model_args,
-                )
+        if surrogate_model == "gp":
+            self._get_fitted_model = default_single_obj_gp
         else:
-            self.surrogate_model = surrogate_model
+            self._get_fitted_model = surrogate_model
 
-        self.acquisition = instance_from_map(
-            AcquisitionMapping,
-            acquisition,
-            name="acquisition function",
-        )
         if self.pipeline_space.has_prior:
             self.acquisition = DecayingPriorWeightedAcquisition(
                 self.acquisition, log=log_prior_weighted
             )
 
-        self.acquisition_sampler = instance_from_map(
-            AcquisitionSamplerMapping,
-            acquisition_sampler,
-            name="acquisition sampler function",
-            kwargs={"patience": self.patience, "pipeline_space": self.pipeline_space},
-        )
         if self.pipeline_space.has_prior:
             for k, v in self.pipeline_space.items():
                 if v.is_fidelity or isinstance(v, ConstantParameter):
@@ -178,6 +152,8 @@ class BayesianOptimization(BaseOptimizer):
                         self.prior_confidence
                     ]
                     self.pipeline_space[k].default_confidence_score = confidence
+
+        self._cached_sobol_configs: list[dict[str, Any]] | None = None
 
     def ask(
         self,
@@ -192,74 +168,102 @@ class BayesianOptimization(BaseOptimizer):
             for t in trials.values()
             if t.report is not None and t.report.loss is not None
         ]
-        train_x = [t.config for t in completed]
-        train_y: torch.Tensor = torch.as_tensor([t.report.loss for t in completed])  # type: ignore
+        x_configs = [t.config for t in completed]
+        y: torch.Tensor = torch.as_tensor(
+            [t.report.loss for t in completed],
+            dtype=torch.float64,
+        )  # type: ignore
+
+        # We only do single objective for now but may as well include this for when we have MO
+        if y.ndim == 1:
+            y = y.unsqueeze(1)
 
         pending = [t.config for t in trials.values() if t.state.pending()]
+        if self.encoder is None:
+            self.encoder = DataEncoder.default_encoder(
+                self.pipeline_space,
+                include_fidelities=False,
+            )
 
         space = self.pipeline_space
-
-        # TODO: This would be better if we could serialize these
-        # in their encoded form. later...
-        for name, hp in space.categoricals.items():
-            for config in chain(train_x, pending):
-                config[name] = hp.choices.index(config[name])
-        for name, hp in space.graphs.items():
-            for config in chain(train_x, pending):
-                config[name] = hp.clone().load_from(config[name])
 
         if len(trials) == 0 and self.sample_default_first and space.has_prior:
             config = space.sample_default_configuration(
                 patience=self.patience, ignore_fidelity=False
-            )
+            ).hp_values()
+
         elif len(trials) <= self._initial_design_size:
-            config = space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
+            if self._cached_sobol_configs is None:
+                assert self.encoder.tensors is not None
+                ndim = len(self.encoder.tensors.transformers)
+                sobol = torch.quasirandom.SobolEngine(
+                    dimension=ndim,
+                    scramble=True,
+                    seed=5,
+                )
+
+                # TODO: Need a better encapsulation of this
+                x = sobol.draw(self._initial_design_size * ndim, dtype=torch.float64)
+                hp_normalized_values = []
+                for i, (_k, v) in enumerate(self.encoder.tensors.transformers.items()):
+                    tensor = v.domain.cast(x[:, i], frm=UNIT_FLOAT_DOMAIN)
+                    tensor = tensor.unsqueeze(1) if tensor.ndim == 1 else tensor
+                    hp_normalized_values.append(tensor)
+
+                tensor = torch.cat(hp_normalized_values, dim=1)
+                uniq = torch.unique(tensor, dim=0)
+                self._cached_sobol_configs = self.encoder.tensors.decode_dicts(uniq)
+
+            if len(trials) <= len(self._cached_sobol_configs):
+                config = self._cached_sobol_configs[len(trials) - 1]
+            else:
+                # The case where sobol sampling couldn't generate enough unique configs
+                config = space.sample(
+                    patience=self.patience, ignore_fidelity=False, user_priors=False
+                ).hp_values()
+
         elif random.random() < self._random_interleave_prob:
             config = space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=False
-            )
+            ).hp_values()
         else:
-            try:
-                if len(pending) > 0:
-                    # We want to use hallucinated results for the evaluations that have
-                    # not finished yet. For this we fit a model on the finished
-                    # evaluations and add these to the other results to fit another model.
-                    self.surrogate_model.fit(train_x, train_y)
-                    ys, _ = self.surrogate_model.predict(pending)
-                    train_x += pending
-                    train_y += list(ys.detach().numpy())
+            assert self.encoder is not None
+            x = self.encoder.encode(x_configs, device=self.device)
+            if any(pending):
+                x_pending = self.encoder.encode(pending, device=self.device)
+                x_pending = x_pending.tensor
+                assert x_pending is not None
+            else:
+                x_pending = None
 
-                # TODO: When using a GP, if we've already fit the
-                # model due to the if stamet above, we only
-                # need to update the model with the new points.
-                # fit on all the data again, only the new points...
-                self.surrogate_model.fit(train_x, train_y)
-                self.acquisition.set_state(self.surrogate_model)
-                self.acquisition_sampler.set_state(x=train_x, y=train_y)
-                for _ in range(self.patience):
-                    config = self.acquisition_sampler.sample(self.acquisition)
-                    if config not in pending:
-                        break
-                else:
-                    config = space.sample(
-                        patience=self.patience, user_priors=True, ignore_fidelity=False
-                    )
+            model = self._get_fitted_model(x, y)
 
-            except RuntimeError as e:
-                self.logger.exception(
-                    "Model could not be updated due to below error. Sampling will not use"
-                    " the model.",
-                    exc_info=e,
-                )
-                config = space.sample(
-                    patience=self.patience, user_priors=True, ignore_fidelity=False
-                )
+            N_CANDIDATES_REQUIRED = 1
+            N_INITIAL_RANDOM_SAMPLES = 512
+            N_RESTARTS = 20
+
+            candidates, _eis = optimize_acq(
+                # TODO: We should evaluate whether LogNoisyEI is better than LogEI
+                acq_fn=qLogExpectedImprovement(
+                    model,
+                    best_f=y.min(),
+                    X_pending=x_pending,
+                    # Unfortunatly, there's no option to indicate that we minimize
+                    # the AcqFunction so we need to do some kind of transformation.
+                    # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                    objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                ),
+                encoder=self.encoder,
+                q=N_CANDIDATES_REQUIRED,
+                raw_samples=N_INITIAL_RANDOM_SAMPLES,
+                num_restarts=N_RESTARTS,
+                acq_options={},  # options to underlying optim function of botorch
+            )
+            config = self.encoder.decode_dicts(candidates)[0]
 
         config_id = str(len(trials) + 1)
         return SampledConfig(
             id=config_id,
-            config=config.hp_values(),
+            config=config,
             previous_config_id=None,
         ), optimizer_state
