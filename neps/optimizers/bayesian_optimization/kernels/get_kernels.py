@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from neps.utils.common import instance_from_map
 from ....search_spaces.architecture.core_graph_grammar import CoreGraphGrammar
 from ....search_spaces.hyperparameters.categorical import CategoricalParameter

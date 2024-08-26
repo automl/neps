@@ -9,9 +9,10 @@ from typing import (
     Iterable,
     Literal,
     Mapping,
+    TypeAlias,
     Union,
 )
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Self, override
 
 import numpy as np
 import numpy.typing as npt

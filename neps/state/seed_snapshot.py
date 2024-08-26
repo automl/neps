@@ -5,8 +5,7 @@ from __future__ import annotations
 import contextlib
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, List, Tuple, Union
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, List, Tuple, TypeAlias, Union
 
 import numpy as np
 

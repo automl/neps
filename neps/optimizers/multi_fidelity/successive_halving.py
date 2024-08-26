@@ -1,14 +1,12 @@
 # type: ignore
 
-from __future__ import annotations
-
 import random
 import typing
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from typing_extensions import Literal, override
+from typing import Literal, override
 
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces import (
@@ -178,7 +176,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def _get_rung_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
         assert s <= self.stopping_rate_limit
-        new_min_budget = self.min_budget * (self.eta**s)
+        new_min_budget = self.min_budget * (self.eta ** s)
         nrungs = (
             np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
                 int
@@ -199,7 +197,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def _get_config_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to the number of configs for each fidelity"""
         assert s <= self.stopping_rate_limit
-        new_min_budget = self.min_budget * (self.eta**s)
+        new_min_budget = self.min_budget * (self.eta ** s)
         nrungs = (
             np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
                 int
@@ -209,7 +207,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         s_max = self.stopping_rate_limit + 1
         _s = self.stopping_rate_limit - s
         # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
-        _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
+        _n_config = np.floor(s_max / (_s + 1)) * self.eta ** _s
         config_map = dict()
         for i in range(nrungs):
             config_map[i + s] = int(_n_config)

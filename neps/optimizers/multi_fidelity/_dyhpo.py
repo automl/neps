@@ -1,7 +1,4 @@
-from __future__ import annotations
-
-from typing import Any, List, Union
-from typing_extensions import override
+from typing import Any, List, Union, override
 
 import numpy as np
 

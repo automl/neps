@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, Union
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, TypeAlias, Union
 
 import numpy as np
 
@@ -32,7 +31,6 @@ class _NotSet:
 
 
 NotSet = _NotSet()
-
 
 f64 = np.float64
 i64 = np.int64

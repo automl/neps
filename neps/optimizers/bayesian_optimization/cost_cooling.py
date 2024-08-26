@@ -1,7 +1,4 @@
-from __future__ import annotations
-
-from typing import Any
-from typing_extensions import override
+from typing import Any, override
 
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult
@@ -236,7 +233,7 @@ class CostCooling(BayesianOptimization):
                 self.acquisition.set_state(
                     self.surrogate_model,
                     alpha=1
-                    - (budget_info.used_cost_budget / budget_info.max_cost_budget),
+                          - (budget_info.used_cost_budget / budget_info.max_cost_budget),
                     cost_model=self.cost_model,
                 )
                 self.acquisition_sampler.set_state(x=train_x, y=train_y)

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -104,6 +102,6 @@ class AsyncPromotionPolicy(PromotionPolicy):
             top_k = len(self.rung_members_performance[rung]) // self.eta
             _ordered_idx = np.argsort(self.rung_members_performance[rung])
             self.rung_promotions[rung] = np.array(self.rung_members[rung])[_ordered_idx][
-                :top_k
-            ].tolist()
+                                         :top_k
+                                         ].tolist()
         return self.rung_promotions
