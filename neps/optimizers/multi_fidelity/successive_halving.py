@@ -1,4 +1,5 @@
 # type: ignore
+from __future__ import annotations
 
 import random
 import typing
@@ -6,7 +7,8 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from typing import Literal, override
+from typing import Literal
+from typing_extensions import override
 
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces import (

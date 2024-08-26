@@ -1,4 +1,7 @@
-from typing import TYPE_CHECKING, Callable, Sequence, override
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable, Sequence
+from typing_extensions import override
 
 import numpy as np
 import torch

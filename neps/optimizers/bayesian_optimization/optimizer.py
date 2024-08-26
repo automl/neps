@@ -1,7 +1,10 @@
-import random
-from typing import Any, TYPE_CHECKING, Literal, override
+from __future__ import annotations
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
+import random
+from typing import Any, TYPE_CHECKING, Literal
+from typing_extensions import override
+
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
 from neps.search_spaces import (

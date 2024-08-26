@@ -1,6 +1,7 @@
 import typing
 from copy import deepcopy
-from typing import Any, Literal, override
+from typing import Any, Literal
+from typing_extensions import override
 
 import numpy as np
 

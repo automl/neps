@@ -2,12 +2,13 @@ import math
 import os
 import random
 from pathlib import Path
-from typing import Any, Callable, override
+from typing import Any, Callable
+from typing_extensions import override
 
 import numpy as np
 import yaml
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 
 from neps.search_spaces.search_space import SearchSpace
