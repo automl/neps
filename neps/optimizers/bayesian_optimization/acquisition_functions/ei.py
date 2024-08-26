@@ -10,6 +10,7 @@ from .base_acquisition import BaseAcquisition
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
 
+
 class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(
         self,

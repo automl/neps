@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from pytest_cases import parametrize, parametrize_with_cases, case
 import copy
-import numpy as np
+from typing import Any, Callable
 import random
+from pathlib import Path
+
+from pytest_cases import parametrize, parametrize_with_cases, case
+import numpy as np
 from neps.state.err_dump import ErrDump, SerializableTrialError
 from neps.state.filebased import (
     ReaderWriterErrDump,
@@ -15,11 +18,7 @@ from neps.state.filebased import (
     FileLocker,
 )
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.protocols import Synced
-from neps.state.trial import Trial
 import pytest
-from typing import Any, Callable
-from pathlib import Path
 from neps.state import SeedSnapshot, Synced, Trial
 
 
@@ -326,7 +325,8 @@ def case_optimizer_info(
     optimizer_info = OptimizerInfo(info={"a": "b"})
 
     def _mutate(optimizer_info: OptimizerInfo) -> None:
-        optimizer_info.info["b"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
+        optimizer_info.info[
+            "b"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
 
     x = Synced.new(
         data=optimizer_info,
@@ -353,7 +353,8 @@ def case_optimization_state(
     optimization_state = OptimizationState(budget=budget, shared_state=shared_state)
 
     def _mutate(optimization_state: OptimizationState) -> None:
-        optimization_state.shared_state["a"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
+        optimization_state.shared_state[
+            "a"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
         optimization_state.budget = BudgetInfo(max_cost_budget=10, used_cost_budget=5)
 
     x = Synced.new(

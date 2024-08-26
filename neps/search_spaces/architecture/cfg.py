@@ -3,15 +3,11 @@ import itertools
 import math
 import sys
 from collections import defaultdict, deque
-from functools import partial
-from queue import LifoQueue
 from typing import Deque, Tuple, Hashable
 
 import numpy as np
 from nltk import CFG, Production
 from nltk.grammar import Nonterminal
-from scipy.integrate._ivp.radau import P
-from torch import Value
 
 
 class Grammar(CFG):

@@ -247,8 +247,8 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["neps"]
 known-third-party = []
-no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
+no-lines-before = ["future"]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 force-wrap-aliases = true

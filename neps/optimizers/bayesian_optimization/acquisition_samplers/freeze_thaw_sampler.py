@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import warnings
-from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -13,7 +12,6 @@ from .base_acq_sampler import AcquisitionSampler
 
 
 class FreezeThawSampler(AcquisitionSampler):
-
     SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
 
     def __init__(self, **kwargs):
@@ -27,7 +25,7 @@ class FreezeThawSampler(AcquisitionSampler):
         self.sample_full_table = None
         self.set_sample_full_tabular(True)  # sets flag that samples full table
 
-    def set_sample_full_tabular(self, flag: bool=False):
+    def set_sample_full_tabular(self, flag: bool = False):
         if self.is_tabular:
             self.sample_full_table = flag
 

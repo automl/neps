@@ -12,8 +12,6 @@ import torch.nn as nn
 
 from ....search_spaces.search_space import (
     CategoricalParameter,
-    FloatParameter,
-    IntegerParameter,
     SearchSpace,
 )
 

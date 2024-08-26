@@ -16,7 +16,6 @@ ROOT = SRCDIR.parent
 EXAMPLE_FOLDER = ROOT / "neps_examples"
 TAB = "    "
 
-
 if not SRCDIR.exists():
     raise FileNotFoundError(
         f"{SRCDIR} does not exist, make sure you are running this from the root of the repository."

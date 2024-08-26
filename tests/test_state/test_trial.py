@@ -1,7 +1,9 @@
 from __future__ import annotations
-from neps.state import Trial
 import os
+
 import numpy as np
+
+from neps.state import Trial
 
 
 def test_trial_creation() -> None:

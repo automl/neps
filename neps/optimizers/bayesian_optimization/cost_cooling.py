@@ -236,7 +236,7 @@ class CostCooling(BayesianOptimization):
                 self.acquisition.set_state(
                     self.surrogate_model,
                     alpha=1
-                    - (budget_info.used_cost_budget / budget_info.max_cost_budget),
+                          - (budget_info.used_cost_budget / budget_info.max_cost_budget),
                     cost_model=self.cost_model,
                 )
                 self.acquisition_sampler.set_state(x=train_x, y=train_y)

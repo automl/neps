@@ -33,7 +33,6 @@ class _NotSet:
 
 NotSet = _NotSet()
 
-
 f64 = np.float64
 i64 = np.int64
 

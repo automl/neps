@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import typing
 from copy import deepcopy
-from typing import Any
+from typing import Any, Literal
+from typing_extensions import override
 
 import numpy as np
-from typing_extensions import Literal, override
 
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
@@ -536,6 +536,5 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         for _, sh in self.sh_brackets.items():
             sh.model_policy = self.model_policy
             sh.sample_new_config = self.sample_new_config
-
 
 # TODO: TrulyAsyncHyperband

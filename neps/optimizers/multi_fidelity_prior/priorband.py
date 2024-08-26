@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import typing
+from typing import Literal
 
 import numpy as np
-from typing_extensions import Literal
 
 from neps.utils.types import RawConfig
 from neps.search_spaces.search_space import SearchSpace
@@ -146,7 +146,7 @@ class PriorBandBase:
             # scales weight of prior by eta raised to the current rung level
             # at the base rung thus w_prior = w_random
             # at the max rung r, w_prior = eta^r * w_random
-            _w_prior = (self.eta**rung) * _w_random
+            _w_prior = (self.eta ** rung) * _w_random
         elif self.prior_weight_type == "linear":
             _w_random = 1
             w_prior_min_rung = 1 * _w_random
