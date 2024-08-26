@@ -1,8 +1,5 @@
-from __future__ import annotations
-
 import random
-from typing import Any, TYPE_CHECKING, Literal
-from typing_extensions import override
+from typing import Any, TYPE_CHECKING, Literal, override
 
 from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig

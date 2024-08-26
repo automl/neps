@@ -199,6 +199,7 @@ class NePSState(Generic[Loc]):
 
     @overload
     def get_next_pending_trial(self) -> Trial | None: ...
+
     @overload
     def get_next_pending_trial(self, n: int | None = None) -> list[Trial]: ...
 

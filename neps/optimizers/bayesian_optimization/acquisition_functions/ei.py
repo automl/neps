@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Sequence, Union
 import numpy as np
 import torch
@@ -9,6 +7,7 @@ from .base_acquisition import BaseAcquisition
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
+
 
 class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(

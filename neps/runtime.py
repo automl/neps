@@ -48,7 +48,6 @@ N_FAILED_TO_SET_TRIAL_STATE = 10
 
 Loc = TypeVar("Loc")
 
-
 # NOTE: As each NEPS process is only ever evaluating a single trial, this global can
 # be retrieved in NePS and refers to what this process is currently evaluating.
 # Note that before `_set_in_progress_trial` is called, this should be cleared

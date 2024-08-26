@@ -1,9 +1,8 @@
-from __future__ import annotations
+import copy
+import random
 
 from pytest_cases import parametrize, parametrize_with_cases, case
-import copy
 import numpy as np
-import random
 from neps.state.err_dump import ErrDump, SerializableTrialError
 from neps.state.filebased import (
     ReaderWriterErrDump,
@@ -15,8 +14,6 @@ from neps.state.filebased import (
     FileLocker,
 )
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.protocols import Synced
-from neps.state.trial import Trial
 import pytest
 from typing import Any, Callable
 from pathlib import Path

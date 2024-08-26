@@ -1,6 +1,4 @@
-from __future__ import annotations
-from typing import Any
-from typing_extensions import override
+from typing import Any, override
 
 from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig

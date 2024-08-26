@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import typing
 
 import numpy as np
-from typing_extensions import Literal, override
+from typing import Literal, override
 
 from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig

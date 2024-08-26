@@ -1,4 +1,4 @@
-from __future__ import annotations
+
 from torch import nn
 import neps
 from neps.search_spaces.architecture import primitives as ops

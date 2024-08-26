@@ -3,13 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Literal,
-    TypeAlias,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
 from typing_extensions import Self, override
 
 import numpy as np

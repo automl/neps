@@ -10,8 +10,8 @@ from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
-from typing_extensions import Protocol, Self
+from typing import TYPE_CHECKING, ClassVar, Generic, Protocol, TypeVar
+from typing_extensions import Self
 
 from neps.exceptions import (
     LockFailedError,

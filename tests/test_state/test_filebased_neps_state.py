@@ -2,8 +2,6 @@
 This could be generalized if we end up with a server based implementation but
 for now we're just testing the filebased implementation."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 from neps.exceptions import NePSError, TrialNotFoundError

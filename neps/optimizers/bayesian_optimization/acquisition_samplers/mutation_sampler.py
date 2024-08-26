@@ -1,11 +1,8 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence, override
 
 import numpy as np
 import torch
 from more_itertools import first
-from typing_extensions import override
 
 from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
@@ -109,8 +106,9 @@ class MutationSampler(AcquisitionSampler):
 
         n_best = len(self.x) if len(self.x) < self.n_best else self.n_best
         best_configs = [
-            x for (_, x) in sorted(zip(self.y, self.x), key=lambda pair: pair[0])
-        ][:n_best]
+                           x for (_, x) in
+                           sorted(zip(self.y, self.x), key=lambda pair: pair[0])
+                       ][:n_best]
 
         seen: set[int] = set()
 

@@ -24,8 +24,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, ClassVar, Generic, TypeVar, runtime_checkable
-from typing_extensions import Protocol, Self
+from typing import Any, ClassVar, Generic, Protocol, TypeVar, runtime_checkable
+from typing_extensions import Self
 
 ValueT = TypeVar("ValueT")
 SerializedT = TypeVar("SerializedT")
