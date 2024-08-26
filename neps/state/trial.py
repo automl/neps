@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal, Mapping
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from typing_extensions import Self
 
 import numpy as np

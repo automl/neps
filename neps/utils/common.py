@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Iterable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import torch
 import yaml
@@ -236,7 +237,7 @@ def get_value(obj: Any) -> Any:
     """Honestly, don't know why you would use this. Please try not to."""
     if obj is None:
         return None
-    if isinstance(obj, (str, int, float, bool)):
+    if isinstance(obj, str | int | float | bool):
         return obj
     if isinstance(obj, dict):
         return {key: get_value(value) for key, value in obj.items()}

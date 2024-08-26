@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
     ClassVar,
-    Iterable,
     Literal,
-    Mapping,
-    Union,
+    TypeAlias,
 )
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Self, override
 
 import numpy as np
 import numpy.typing as npt
@@ -22,7 +21,7 @@ from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 if TYPE_CHECKING:
     from neps.utils.types import f64
 
-CategoricalTypes: TypeAlias = Union[float, int, str]
+CategoricalTypes: TypeAlias = float | int | str
 
 
 class CategoricalParameter(
@@ -81,7 +80,7 @@ class CategoricalParameter(
         super().__init__(value=None, is_fidelity=False, default=default)
 
         for choice in choices:
-            if not isinstance(choice, (float, int, str)):
+            if not isinstance(choice, float | int | str):
                 raise TypeError(
                     f'Choice "{choice}" is not of a valid type (float, int, str)'
                 )

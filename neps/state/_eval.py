@@ -4,8 +4,9 @@ import inspect
 import logging
 import time
 import traceback
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 from neps.exceptions import NePSError
 

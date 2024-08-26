@@ -20,10 +20,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import ClassVar, Iterable, Iterator, TypeVar
+from typing import ClassVar, TypeVar
 from typing_extensions import override
 from uuid import uuid4
 

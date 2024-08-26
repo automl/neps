@@ -7,8 +7,9 @@ from __future__ import annotations
 import importlib.util
 import logging
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 
@@ -273,7 +274,7 @@ def process_searcher(key: str, special_configs: dict, settings: dict) -> None:
                 settings[SEARCHER_KWARGS] = searcher
                 searcher = load_and_return_object(path, name, key)
 
-        elif isinstance(searcher, (str, Path)):
+        elif isinstance(searcher, str | Path):
             pass
         else:
             raise TypeError(
@@ -428,7 +429,7 @@ def check_run_args(settings: dict) -> None:
             if not all(callable(item) for item in value):
                 raise TypeError("All items in 'pre_load_hooks' must be callable.")
         elif param == SEARCHER:
-            if not (isinstance(value, (str, dict)) or issubclass(value, BaseOptimizer)):
+            if not (isinstance(value, str | dict) or issubclass(value, BaseOptimizer)):
                 raise TypeError(
                     "Parameter 'searcher' must be a string or a class that is a subclass "
                     "of BaseOptimizer."
