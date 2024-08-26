@@ -1,6 +1,7 @@
 import random
 from copy import deepcopy
-from typing import Any, Iterable, Literal, override
+from typing import Any, Iterable, Literal
+from typing_extensions import override
 
 import numpy as np
 import torch

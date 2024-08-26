@@ -1,5 +1,6 @@
 import random
-from typing import Any, override
+from typing import Any
+from typing_extensions import override
 
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
