@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, ClassVar, Mapping
+from typing import Any, ClassVar
 from typing_extensions import override
 
 import numpy as np

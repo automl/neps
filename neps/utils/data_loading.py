@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import asdict
 from itertools import chain
 from pathlib import Path
-from typing import Any, Mapping, TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
 import yaml
