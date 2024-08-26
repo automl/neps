@@ -4,8 +4,8 @@ from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 from functools import partial
-from typing import Any, ClassVar, Mapping, Self
-from typing_extensions import override
+from typing import Any, ClassVar, Mapping
+from typing_extensions import override, Self
 from neps.utils.types import NotSet
 
 import networkx as nx
