@@ -212,6 +212,14 @@ class TensorEncoder:
         self.n_numerical = n_numerical
         self.n_categorical = n_categorical
 
+    def domains(self) -> dict[str, Domain]:
+        return {
+            name: transformer.domain for name, transformer in self.transformers.items()
+        }
+
+    def names(self) -> list[str]:
+        return list(self.transformers.keys())
+
     def select(self, x: torch.Tensor, hp: str | Sequence[str]) -> torch.Tensor:
         if isinstance(hp, str):
             return x[:, self.column_lookup[hp]]
@@ -251,18 +259,6 @@ class TensorEncoder:
 
         keys = list(values.keys())
         return [dict(zip(keys, vals)) for vals in zip(*values.values())]
-
-    def from_unit_tensor(
-        self,
-        x: torch.Tensor,
-        device: torch.device | None = None,
-    ) -> torch.Tensor:
-        buffer = torch.empty_like(x, dtype=torch.float64, device=device)
-
-        for i, transformer in enumerate(self.transformers.values()):
-            buffer[:, i] = transformer.domain.cast(x[:, i], frm=UNIT_FLOAT_DOMAIN)
-
-        return buffer
 
 
 @dataclass

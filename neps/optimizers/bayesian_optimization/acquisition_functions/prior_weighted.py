@@ -26,7 +26,7 @@ class PiboAcquisition(MCAcquisitionFunction):
         acq_fn: MCAcquisitionFunction,
         prior: Prior,
         beta: float,
-        n: int,
+        n: float,
     ):
         """Initialize the acquisition function.
 

@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 import torch
 
+from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
+
 if TYPE_CHECKING:
     from neps.search_spaces.encoding import DataEncoder
 
@@ -61,7 +63,11 @@ class Sobol(InitialDesign):
         SAMPLE_SIZE = self.buffer_sample_multiplier * n
         unit_x = sobol.draw(SAMPLE_SIZE, dtype=torch.float64)
 
-        x = self.encoder.tensors.from_unit_tensor(unit_x)
+        x = Domain.cast_many(
+            unit_x,
+            to=list(self.encoder.tensors.domains().values()),
+            frm=UNIT_FLOAT_DOMAIN,
+        )
 
         # NOTE: We have to check uniqueness after conversion from unit cube space
         # as we could have multiple unit floats mapping to the same categories or integers
