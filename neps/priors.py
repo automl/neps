@@ -118,7 +118,7 @@ class Prior(Protocol):
         return UniformPrior(domains=domains, device=device)
 
     @classmethod
-    def make_centered(  # noqa: C901
+    def make_centered(
         cls,
         domains: Mapping[str, Domain],
         centers: Mapping[str, tuple[Any, float]],
@@ -189,8 +189,8 @@ class Prior(Protocol):
             center_confidence = centers.get(name)
             if center_confidence is None:
                 dist = DistributionOverDomain(
-                    distribution=torch.distributions.Uniform(domain.lower, domain.upper),
-                    domain=domain,
+                    distribution=torch.distributions.Uniform(0.0, 1.0),
+                    domain=UNIT_FLOAT_DOMAIN,
                 )
                 continue
 
@@ -227,16 +227,15 @@ class Prior(Protocol):
                 continue
 
             # We place a truncnorm over a unitnorm
-            if domain.log_bounds is not None:
-                domain.to_unit(torch.tensor(center, device=device, dtype=torch.float64))
-                torch.tensor(1 - confidence, device=device, dtype=torch.float64)
-
+            unit_center = domain.to_unit(
+                torch.tensor(center, device=device, dtype=torch.float64)
+            )
             dist = DistributionOverDomain(
                 distribution=TruncatedNormal(
-                    loc=center,
+                    loc=unit_center,
                     scale=(1 - confidence),
-                    a=domain.lower,
-                    b=domain.upper,
+                    a=0.0,
+                    b=1.0,
                     device=device,
                 ),
                 domain=UNIT_FLOAT_DOMAIN,
