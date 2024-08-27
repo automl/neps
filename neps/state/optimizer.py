@@ -10,18 +10,24 @@ from typing import Any, Mapping
 class BudgetInfo:
     """Information about the budget of an optimizer."""
 
-    max_cost_budget: float
-    used_cost_budget: float
+    max_cost_budget: float | None = None
+    used_cost_budget: float = 0.0
+    max_evaluations: int | None = None
+    used_evaluations: int = 0
 
     @property
-    def remaining_cost_budget(self) -> float:
+    def remaining_cost_budget(self) -> float | None:
         """The remaining budget."""
+        if self.max_cost_budget is None:
+            return None
         return self.max_cost_budget - self.used_cost_budget
 
     def clone(self) -> BudgetInfo:
         return BudgetInfo(
             max_cost_budget=self.max_cost_budget,
             used_cost_budget=self.used_cost_budget,
+            max_evaluations=self.max_evaluations,
+            used_evaluations=self.used_evaluations,
         )
 
 

@@ -1,23 +1,50 @@
+"""A class representing a domain, a range for a value + properties.
+
+Some properties include:
+
+* The lower and upper bounds of the domain.
+* Whether the domain is a log domain.
+* Whether the domain is float/int.
+* The midpoint of the domain.
+* Whether the domain is split into bins.
+
+With that, the primary method of a domain is to be able to cast
+values from one to domain to another,
+e.g. `values_a = domain_a.cast(values_b, frm=domain_b)`.
+
+This can be used to convert float samples to integers, integers
+to log space, etc.
+
+The core method to do so is to be able to cast `to_unit` which takes
+values to a unit interval [0, 1], and then to be able to cast values in [0, 1]
+to the new domain with `from_unit`.
+
+There are some shortcuts implemented in `cast`, such as skipping going through
+the unit interval if the domains are the same, as no transformation is needed.
+
+The primary methods for creating a domain are
+
+* `Domain.float(l, u, ...)` - Used for modelling float ranges
+* `Domain.int(l, u, ...)` - Used for modelling integer ranges
+* `Domain.indices(n)` - Primarly used to model categorical choices
+
+If you have a tensor of values, where each column corresponds to a different domain,
+you can take a look at `Domain.cast_many` to cast all the values in one go.
+
+If you need a unit-interval domain, please use the `Domain.unit_float()` or
+`UNIT_FLOAT_DOMAIN` constant.
+"""
+
 # TODO: Could theoretically implement dtype,device,out for all methods here but
 # would need to be careful not to accidentally send to and from GPU.
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Generic, TypeVar
-from typing_extensions import TypeAlias
+from typing import Generic, Sequence, TypeVar
 
 import torch
 from torch import Tensor
-
-if TYPE_CHECKING:
-    from neps.search_spaces.distributions.truncnorm import TruncNormDistribution
-    from neps.search_spaces.distributions.uniform_float import (
-        UniformFloatDistribution,
-    )
-    from neps.search_spaces.distributions.uniform_int import UniformIntDistribution
-    from neps.search_spaces.distributions.weighted_ints import WeightedIntsDistribution
-
 
 Number = int | float
 V = TypeVar("V", int, float)
@@ -25,7 +52,7 @@ V2 = TypeVar("V2", int, float)
 
 
 @dataclass(frozen=True)
-class NumberDomain(Generic[V]):
+class Domain(Generic[V]):
     lower: V
     upper: V
     round: bool
@@ -74,8 +101,8 @@ class NumberDomain(Generic[V]):
         *,
         log: bool = False,
         bins: int | None = None,
-    ) -> NumberDomain[float]:
-        return NumberDomain(
+    ) -> Domain[float]:
+        return Domain(
             lower=float(lower),
             upper=float(upper),
             log_bounds=(math.log(lower), math.log(upper)) if log else None,
@@ -91,8 +118,8 @@ class NumberDomain(Generic[V]):
         *,
         log: bool = False,
         bins: int | None = None,
-    ) -> NumberDomain[int]:
-        return NumberDomain(
+    ) -> Domain[int]:
+        return Domain(
             lower=int(round(lower)),
             upper=int(round(upper)),
             log_bounds=(math.log(lower), math.log(upper)) if log else None,
@@ -101,7 +128,7 @@ class NumberDomain(Generic[V]):
         )
 
     @classmethod
-    def indices(cls, n: int) -> NumberDomain[int]:
+    def indices(cls, n: int) -> Domain[int]:
         """Create a domain for a range of indices.
 
         Like range based functions this domain is inclusive of the lower bound
@@ -109,7 +136,7 @@ class NumberDomain(Generic[V]):
 
         Use this method to create a domain for indices
         """
-        return NumberDomain.int(0, n - 1)
+        return Domain.int(0, n - 1)
 
     def to_unit(self, x: Tensor) -> Tensor:
         if self.is_unit_float:
@@ -187,109 +214,64 @@ class NumberDomain(Generic[V]):
         lift = self.from_unit(norm)
         return lift  # noqa: RET504
 
-    def uniform_distribution(self) -> UniformFloatDistribution | UniformIntDistribution:
-        from neps.search_spaces.distributions import (
-            UNIT_UNIFORM,
-            UniformFloatDistribution,
-            UniformIntDistribution,
-        )
-
-        # (Log Lift) - sample on it's log domain
-        if self.log_bounds is not None:
-            return UniformFloatDistribution.new(*self.log_bounds)
-
-        # (Same Domain) - Just sample integers
-        if self.dtype == torch.int64 and self.bins is None:
-            return UniformIntDistribution.new(self.lower, self.upper)
-
-        # NOTE: There's a possibility where you could use an integer distribution for
-        # binned domains, however the cost of sampling integers and casting is likely
-        # higher than just casting from normalized domain. Would need to verify this
-        # In any case, Normalized Uniform Float is a safe choice
-
-        # (From Normalized)
-        return UNIT_UNIFORM
-
-    def unit_uniform_distribution(self) -> UniformFloatDistribution:
-        from neps.search_spaces.distributions import UNIT_UNIFORM
-
-        return UNIT_UNIFORM
-
-    def truncnorm_distribution(
-        self,
-        center: Number,
-        *,
-        confidence: float | None = None,
-        std: float | None = None,
-    ) -> TruncNormDistribution:
-        from neps.search_spaces.distributions import TruncNormDistribution
-
-        # If you need a unit one, create this and then call `normalize()` on it.
-        if std is None and confidence is None:
-            raise ValueError(
-                "Must specify either `std` in (lower, upper) or `confidence` in (0, 1)"
-            )
-
-        if std is None:
-            assert 0 <= confidence <= 1  # type: ignore
-            _std = float(1 - confidence)  # type: ignore
-            _is_normalized = True
-        else:
-            _std = float(std)
-            _is_normalized = False
-
-        # (Log Lift) - sample on it's log domain
-        if self.log_bounds is not None:
-            return TruncNormDistribution.new(
-                lower=self.log_bounds[0],
-                center=math.log(center),
-                upper=self.log_bounds[1],
-                std=_std,
-                std_is_normalized=_is_normalized,
-            )
-
-        # NOTE: There's a possibility where you could use an integer distribution for
-        # binned domains, however the cost of sampling integers and casting is likely
-        # higher than just casting from normalized domain. Would need to verify this
-        # In any case, Normalized Uniform Float is a safe choice
-
-        # (From Normalized)
-        truncnorm = TruncNormDistribution.new(
-            lower=self.lower,
-            center=math.log(center),
-            upper=self.upper,
-            std=_std,
-            std_is_normalized=_is_normalized,
-        )
-        return truncnorm.normalize()
-
-    def weighted_indices_distribution(
-        self, center_index: int, *, confidence: float
-    ) -> WeightedIntsDistribution:
-        from neps.search_spaces.distributions import WeightedIntsDistribution
-
-        if self.cardinality is None:
-            raise ValueError(
-                "Cannot create a weighted distribution for a continuous domain!"
-            )
-        if not isinstance(center_index, int):
-            raise ValueError(
-                f"Center index must be an integer of type {self.dtype} to"
-                " create a weighted distribution!"
-            )
-        assert 0 <= confidence <= 1
-
-        return WeightedIntsDistribution.with_favoured(
-            n=self.cardinality,
-            favoured=int(round(center_index)),
-            confidence=confidence,
-        )
-
     @classmethod
-    def unit_float(cls) -> NumberDomain[float]:
+    def unit_float(cls) -> Domain[float]:
         return UNIT_FLOAT_DOMAIN
 
+    @classmethod
+    def cast_many(
+        cls, x: Tensor, frm: Domain | Sequence[Domain], to: Domain | Sequence[Domain]
+    ) -> Tensor:
+        """Cast a tensor of mixed domains to a new set of mixed domains.
 
-UNIT_FLOAT_DOMAIN = NumberDomain.float(0.0, 1.0)
+        Args:
+            x: Tensor of shape (n_samples, n_dims) with each dim `i` corresponding
+                to the domain `frm[i]`.
+            frm: List of domains to cast from. If list, must be length of `n_dims`,
+                otherwise we assume the single domain provided is the one to be used
+                across all dimensions.
+            to: List of domains to cast to. If list, must be length as `n_dims`,
+                otherwise we assume the single domain provided is the one to be used
+                across all dimensions.
 
-Domain: TypeAlias = NumberDomain
+        Returns:
+            Tensor of shape (n_samples, n_dims) with each dim `i` transformed
+            from the domain `frm[i]` to the domain `to[i]`.
+        """
+        if x.ndim == 1:
+            raise ValueError(
+                "Expected a 2D tensor of shape (n_samples, n_dims), got a 1D tensor."
+            )
+
+        if isinstance(frm, Sequence) and len(frm) != x.shape[1]:
+            raise ValueError(
+                "The number of domains in `frm` must match the number of tensors"
+                " if provided as a list."
+                f" Expected {x.shape[1]}, got {len(frm)}."
+            )
+
+        if isinstance(to, Sequence) and len(to) != x.shape[1]:
+            raise ValueError(
+                "The number of domains in `to` must match the number of tensors"
+                " if provided as a list."
+                f" Expected {x.shape[1]}, got {len(to)}."
+            )
+
+        # If both are not a list, we can just cast the whole tensor
+        if not isinstance(frm, Sequence) and not isinstance(to, Sequence):
+            return to.cast(x, frm=frm)
+
+        # Otherwise, we need to go column by column
+        if isinstance(frm, Domain):
+            frm = [frm] * x.shape[1]
+        if isinstance(to, Domain):
+            to = [to] * x.shape[1]
+
+        buffer = torch.empty_like(x)
+        for i, (f, t) in enumerate(zip(frm, to)):
+            buffer[:, i] = t.cast(x[:, i], frm=f)
+
+        return buffer
+
+
+UNIT_FLOAT_DOMAIN = Domain.float(0.0, 1.0)

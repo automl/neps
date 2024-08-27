@@ -32,7 +32,7 @@ import scipy
 from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
 if TYPE_CHECKING:
-    from neps.search_spaces.domain import NumberDomain
+    from neps.search_spaces.domain import Domain
     from neps.search_spaces.hyperparameters.float import FloatParameter
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.utils.types import TruncNorm
@@ -82,7 +82,7 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         log: bool = False,
         default: T | None,
         is_fidelity: bool,
-        domain: NumberDomain[T],
+        domain: Domain[T],
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize the numerical hyperparameter.

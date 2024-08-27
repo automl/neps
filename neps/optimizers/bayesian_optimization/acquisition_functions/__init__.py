@@ -7,14 +7,13 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
     ComprehensiveExpectedImprovement,
 )
 from neps.optimizers.bayesian_optimization.acquisition_functions.mf_ei import MFEI
-from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
-    UpperConfidenceBound,
-    MF_UCB,
-)
 from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
     DecayingPriorWeightedAcquisition,
 )
-
+from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
+    MF_UCB,
+    UpperConfidenceBound,
+)
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(

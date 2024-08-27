@@ -25,7 +25,6 @@ from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.domain import (
     UNIT_FLOAT_DOMAIN,
     Domain,
-    NumberDomain,
 )
 from neps.search_spaces.hyperparameters.float import FloatParameter
 from neps.search_spaces.hyperparameters.integer import IntegerParameter
@@ -48,7 +47,6 @@ class Transformer(Protocol[T]):
 
 class TensorTransformer(Transformer[torch.Tensor], Protocol):
     domain: Domain
-    output_cols: int
 
     def encode(
         self,
@@ -64,15 +62,13 @@ class TensorTransformer(Transformer[torch.Tensor], Protocol):
 class CategoricalToIntegerTransformer(TensorTransformer):
     choices: Sequence[Any]
 
-    domain: NumberDomain = field(init=False)
-    output_cols: int = field(init=False)
+    domain: Domain = field(init=False)
     _lookup: dict[Any, int] | None = field(init=False)
 
     def __post_init__(self):
         assert len(self.choices) > 0
 
-        self.domain = NumberDomain.indices(len(self.choices))
-        self.output_cols = 1
+        self.domain = Domain.indices(len(self.choices))
         self._lookup = None
         if len(self.choices) > 3:
             try:
@@ -114,14 +110,12 @@ class CategoricalToIntegerTransformer(TensorTransformer):
 # and `-0.5` as lower bound with `0.5` as upper bound.
 @dataclass
 class MinMaxNormalizer(TensorTransformer, Generic[V]):
-    original_domain: NumberDomain[V]
+    original_domain: Domain[V]
 
-    domain: NumberDomain[float] = field(init=False)
-    output_cols: int = field(init=False)
+    domain: Domain[float] = field(init=False)
 
     def __post_init__(self):
         self.domain = UNIT_FLOAT_DOMAIN
-        self.output_cols = 1
 
     @override
     def encode(
@@ -198,22 +192,30 @@ class GraphEncoder:
 @dataclass
 class TensorEncoder:
     transformers: dict[str, TensorTransformer]
-    column_lookup: dict[str, tuple[int, int]] = field(init=False)
+    column_lookup: dict[str, int] = field(init=False)
+    n_numerical: int = field(init=False)
+    n_categorical: int = field(init=False)
 
     def __post_init__(self):
-        transformers = sorted(
-            self.transformers.items(), key=lambda t: (t[1].output_cols, t[0])
-        )
+        transformers = sorted(self.transformers.items(), key=lambda t: t[0])
         self.transformers = dict(transformers)
-        self.column_lookup: dict[str, tuple[int, int]] = {}
-        offset = 0
-        for name, transformer in self.transformers.items():
-            self.column_lookup[name] = (offset, offset + transformer.output_cols)
-            offset += transformer.output_cols
+        self.column_lookup: dict[str, int] = {}
+        n_numerical = 0
+        n_categorical = 0
+        for i, (name, transformer) in enumerate(self.transformers.items()):
+            self.column_lookup[name] = i
+            if isinstance(transformer, CategoricalToIntegerTransformer):
+                n_categorical += 1
+            else:
+                n_numerical += 1
+
+        self.n_numerical = n_numerical
+        self.n_categorical = n_categorical
 
     def select(self, x: torch.Tensor, hp: str | Sequence[str]) -> torch.Tensor:
         if isinstance(hp, str):
-            return x[:, slice(*self.column_lookup[hp])]
+            return x[:, self.column_lookup[hp]]
+
         cols = torch.concatenate([torch.arange(*self.column_lookup[h]) for h in hp])
         return x[:, cols]
 
@@ -223,13 +225,12 @@ class TensorEncoder:
         *,
         device: torch.device | None = None,
     ) -> torch.Tensor:
-        width = sum(t.output_cols for t in self.transformers.values())
+        width = len(self.transformers)
         buffer = torch.empty((len(x), width), dtype=torch.float64, device=device)
 
         for hp_name, transformer in self.transformers.items():
             values = [conf[hp_name] for conf in x]
             lookup = self.column_lookup[hp_name]
-            lookup = lookup[0] if lookup[1] - lookup[0] == 1 else slice(*lookup)
 
             # Encode directly into buffer
             transformer.encode(
@@ -245,21 +246,39 @@ class TensorEncoder:
         values: dict[str, list[Any]] = {}
         for hp_name, transformer in self.transformers.items():
             lookup = self.column_lookup[hp_name]
-            if lookup[1] == lookup[0] + 1:
-                tensor = x[:, lookup[0]]
-            else:
-                tensor = x[:, slice(*lookup)]
-
+            tensor = x[:, lookup]
             values[hp_name] = transformer.decode(tensor)
 
         keys = list(values.keys())
         return [dict(zip(keys, vals)) for vals in zip(*values.values())]
+
+    def from_unit_tensor(
+        self,
+        x: torch.Tensor,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        buffer = torch.empty_like(x, dtype=torch.float64, device=device)
+
+        for i, transformer in enumerate(self.transformers.values()):
+            buffer[:, i] = transformer.domain.cast(x[:, i], frm=UNIT_FLOAT_DOMAIN)
+
+        return buffer
 
 
 @dataclass
 class DataEncoder:
     tensors: TensorEncoder | None = None
     graphs: GraphEncoder | None = None
+    device: torch.device = field(default_factory=lambda: torch.device("cpu"))
+
+    n_numerical: int = field(init=False)
+    n_categorical: int = field(init=False)
+    n_graphs: int = field(init=False)
+
+    def __post_init__(self):
+        self.n_numerical = 0 if self.tensors is None else self.tensors.n_numerical
+        self.n_categorical = 0 if self.tensors is None else self.tensors.n_categorical
+        self.n_graphs = 0 if self.graphs is None else len(self.graphs.transformers)
 
     def encode(
         self,

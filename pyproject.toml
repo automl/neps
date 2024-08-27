@@ -210,6 +210,7 @@ ignore = [
   "PLR2004", # No magic numbers inline
   "N817",    # CamelCase import as (ignore for ConfigSpace)
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
+  "N803",    # Arguments should start with a lower case letter.
 ]
 
 

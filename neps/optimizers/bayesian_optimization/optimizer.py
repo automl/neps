@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import random
+import math
 from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping
 
 import torch
@@ -10,37 +10,24 @@ from botorch.acquisition import (
 )
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.bayesian_optimization.acquisition_functions import (
-    DecayingPriorWeightedAcquisition,
+from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
+    PiboAcquisition,
 )
 from neps.optimizers.bayesian_optimization.models.gp import (
     default_single_obj_gp,
     optimize_acq,
 )
-from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    SearchSpace,
-)
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
+from neps.optimizers.initial_design import Sobol
 from neps.search_spaces.encoding import DataEncoder
 
 if TYPE_CHECKING:
     from botorch.models.model import Model
 
+    from neps.search_spaces import (
+        SearchSpace,
+    )
     from neps.search_spaces.encoding import DataPack
     from neps.state import BudgetInfo, Trial
-
-# TODO(eddiebergman): Why not just include in the definition of the parameters.
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
-CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
-
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
-)
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
 class BayesianOptimization(BaseOptimizer):
@@ -50,18 +37,9 @@ class BayesianOptimization(BaseOptimizer):
         self,
         pipeline_space: SearchSpace,
         *,
-        initial_design_size: int = 10,
+        initial_design_size: int | None = None,
         surrogate_model: Literal["gp"] | Callable[[DataPack, torch.Tensor], Model] = "gp",
-        log_prior_weighted: bool = False,
-        random_interleave_prob: float = 0.0,
-        patience: int = 100,
-        budget: None | int | float = None,
-        ignore_errors: bool = False,
-        loss_value_on_error: None | float = None,
-        cost_value_on_error: None | float = None,
-        logger=None,
-        disable_priors: bool = False,
-        prior_confidence: Literal["low", "medium", "high"] | None = None,
+        use_priors: bool = False,
         sample_default_first: bool = False,
         device: torch.device | None = None,
         **kwargs: Any,  # TODO: Remove
@@ -70,95 +48,49 @@ class BayesianOptimization(BaseOptimizer):
 
         Args:
             pipeline_space: Space in which to search
-            initial_design_size: Number of 'x' samples that need to be evaluated before
-                selecting a sample using a strategy instead of randomly.
+            initial_design_size: Number of samples used before using the surrogate model.
+                If None, it will take `int(log(N) ** 2)` samples where `N` is the number
+                of parameters in the search space.
             surrogate_model: Surrogate model
-            acquisition: Acquisition strategy
-            log_prior_weighted: if to use log for prior
-            acquisition_sampler: Acquisition function fetching strategy
-            random_interleave_prob: Frequency at which random configurations are sampled
-                instead of configurations from the acquisition strategy.
-            patience: How many times we try something that fails before giving up.
-            budget: Maximum budget
-            ignore_errors: Ignore hyperparameter settings that threw an error and do not
-                raise an error. Error configs still count towards max_evaluations_total.
-            loss_value_on_error: Setting this and cost_value_on_error to any float will
-                supress any error during bayesian optimization and will use given loss
-                value instead. default: None
-            cost_value_on_error: Setting this and loss_value_on_error to any float will
-                supress any error during bayesian optimization and will use given cost
-                value instead. default: None
-            logger: logger object, or None to use the neps logger
-            disable_priors: allows to choose between BO and piBO regardless the search
-                space definition
-            sample_default_first: if True and a default prior exists, the first sampel is
-                the default configuration
+            use_priors: Whether to use priors set on the hyperparameters during search.
 
         Raises:
-            ValueError: if patience < 1
             ValueError: if initial_design_size < 1
-            ValueError: if random_interleave_prob is not between 0.0 and 1.0
             ValueError: if no kernel is provided
         """
-        if disable_priors:
-            pipeline_space.has_prior = False
-            self.prior_confidence = None
-        else:
-            self.prior_confidence = prior_confidence
-
-        super().__init__(
-            pipeline_space=pipeline_space,
-            patience=patience,
-            logger=logger,
-            budget=budget,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-        )
-
-        if initial_design_size < 1:
+        if initial_design_size is None:
+            N = len(pipeline_space.hyperparameters)
+            initial_design_size = int(max(1, math.log(N) ** 2))
+        elif initial_design_size < 1:
             raise ValueError(
                 "BayesianOptimization needs initial_design_size to be at least 1"
             )
-        if not 0 <= random_interleave_prob <= 1:
-            raise ValueError("random_interleave_prob should be between 0.0 and 1.0")
 
-        self._initial_design_size = initial_design_size
-        self._random_interleave_prob = random_interleave_prob
-        self._num_error_evaluations: int = 0
+        super().__init__(pipeline_space=pipeline_space)
+
+        self.use_priors = use_priors
+
+        # TODO: This needs to be moved to the search space class, however to not break
+        # the current prior based APIs, we will create this manually here
+        if use_priors:
+            self._prior_confidences = {}
+
         self.device = device
         self.sample_default_first = sample_default_first
-        self.encoder: DataEncoder | None = None
+        self.n_initial_design = initial_design_size
 
         if surrogate_model == "gp":
             self._get_fitted_model = default_single_obj_gp
         else:
             self._get_fitted_model = surrogate_model
 
-        if self.pipeline_space.has_prior:
-            self.acquisition = DecayingPriorWeightedAcquisition(
-                self.acquisition, log=log_prior_weighted
-            )
-
-        if self.pipeline_space.has_prior:
-            for k, v in self.pipeline_space.items():
-                if v.is_fidelity or isinstance(v, ConstantParameter):
-                    continue
-                elif isinstance(v, (FloatParameter, IntegerParameter)):
-                    confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
-                    self.pipeline_space[k].default_confidence_score = confidence
-                elif isinstance(v, CategoricalParameter):
-                    confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
-                        self.prior_confidence
-                    ]
-                    self.pipeline_space[k].default_confidence_score = confidence
-
-        self._cached_sobol_configs: list[dict[str, Any]] | None = None
+        self.encoder_: DataEncoder | None = None
+        self.initial_design_: list[dict[str, Any]] | None = None
 
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        budget_info: BudgetInfo,
         optimizer_state: dict[str, Any],
     ) -> tuple[SampledConfig, dict[str, Any]]:
         # TODO: Lift this into runtime, let the
@@ -174,96 +106,91 @@ class BayesianOptimization(BaseOptimizer):
             dtype=torch.float64,
         )  # type: ignore
 
-        # We only do single objective for now but may as well include this for when we have MO
+        # We only do single objective for now but may as well include this
+        # for when we have MO
         if y.ndim == 1:
             y = y.unsqueeze(1)
 
         pending = [t.config for t in trials.values() if t.state.pending()]
-        if self.encoder is None:
-            self.encoder = DataEncoder.default_encoder(
+        if self.encoder_ is None:
+            self.encoder_ = DataEncoder.default_encoder(
                 self.pipeline_space,
                 include_fidelities=False,
             )
 
         space = self.pipeline_space
 
-        if len(trials) == 0 and self.sample_default_first and space.has_prior:
-            config = space.sample_default_configuration(
-                patience=self.patience, ignore_fidelity=False
-            ).hp_values()
+        if self.initial_design_ is None:
+            size = self.n_initial_design
+            self.initial_design_ = []
 
-        elif len(trials) <= self._initial_design_size:
-            if self._cached_sobol_configs is None:
-                assert self.encoder.tensors is not None
-                ndim = len(self.encoder.tensors.transformers)
-                sobol = torch.quasirandom.SobolEngine(
-                    dimension=ndim,
-                    scramble=True,
-                    seed=5,
-                )
+            if self.sample_default_first:
+                config = space.sample_default_configuration()
+                self.initial_design_.append(config.hp_values())
 
-                # TODO: Need a better encapsulation of this
-                x = sobol.draw(self._initial_design_size * ndim, dtype=torch.float64)
-                hp_normalized_values = []
-                for i, (_k, v) in enumerate(self.encoder.tensors.transformers.items()):
-                    tensor = v.domain.cast(x[:, i], frm=UNIT_FLOAT_DOMAIN)
-                    tensor = tensor.unsqueeze(1) if tensor.ndim == 1 else tensor
-                    hp_normalized_values.append(tensor)
-
-                tensor = torch.cat(hp_normalized_values, dim=1)
-                uniq = torch.unique(tensor, dim=0)
-                self._cached_sobol_configs = self.encoder.tensors.decode_dicts(uniq)
-
-            if len(trials) <= len(self._cached_sobol_configs):
-                config = self._cached_sobol_configs[len(trials) - 1]
-            else:
-                # The case where sobol sampling couldn't generate enough unique configs
-                config = space.sample(
-                    patience=self.patience, ignore_fidelity=False, user_priors=False
-                ).hp_values()
-
-        elif random.random() < self._random_interleave_prob:
-            config = space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=False
-            ).hp_values()
+            assert self.encoder_.tensors is not None
+            sobol = Sobol(seed=0, encoder=self.encoder_, allow_undersampling=True)
+            sobol_configs = sobol.sample(size - len(self.initial_design_))
+            self.initial_design_.extend(sobol_configs)
         else:
-            assert self.encoder is not None
-            x = self.encoder.encode(x_configs, device=self.device)
-            if any(pending):
-                x_pending = self.encoder.encode(pending, device=self.device)
-                x_pending = x_pending.tensor
-                assert x_pending is not None
-            else:
-                x_pending = None
-
-            model = self._get_fitted_model(x, y)
-
-            N_CANDIDATES_REQUIRED = 1
-            N_INITIAL_RANDOM_SAMPLES = 512
-            N_RESTARTS = 20
-
-            candidates, _eis = optimize_acq(
-                # TODO: We should evaluate whether LogNoisyEI is better than LogEI
-                acq_fn=qLogExpectedImprovement(
-                    model,
-                    best_f=y.min(),
-                    X_pending=x_pending,
-                    # Unfortunatly, there's no option to indicate that we minimize
-                    # the AcqFunction so we need to do some kind of transformation.
-                    # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-                    objective=LinearMCObjective(weights=torch.tensor([-1.0])),
-                ),
-                encoder=self.encoder,
-                q=N_CANDIDATES_REQUIRED,
-                raw_samples=N_INITIAL_RANDOM_SAMPLES,
-                num_restarts=N_RESTARTS,
-                acq_options={},  # options to underlying optim function of botorch
-            )
-            config = self.encoder.decode_dicts(candidates)[0]
+            self.initial_design_ = []
 
         config_id = str(len(trials) + 1)
-        return SampledConfig(
-            id=config_id,
-            config=config,
-            previous_config_id=None,
-        ), optimizer_state
+        if len(trials) < len(self.initial_design_):
+            config = self.initial_design_[len(trials)]
+            return (
+                SampledConfig(id=config_id, config=config, previous_config_id=None),
+                optimizer_state,
+            )
+
+        assert self.encoder_ is not None
+        x = self.encoder_.encode(x_configs, device=self.device)
+        if any(pending):
+            x_pending = self.encoder_.encode(pending, device=self.device)
+            x_pending = x_pending.tensor
+            assert x_pending is not None
+        else:
+            x_pending = None
+
+        model = self._get_fitted_model(x, y)
+
+        acq = qLogExpectedImprovement(
+            model,
+            best_f=y.min(),
+            X_pending=x_pending,
+            objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+        )
+
+        if self.use_priors:
+            # From the PIBO paper (Section 4.1)
+            # https://arxiv.org/pdf/2204.11051
+            if budget_info.max_evaluations is not None:
+                beta = budget_info.max_evaluations / 10
+                n = budget_info.used_evaluations
+            elif budget_info.max_cost_budget is not None:
+                # This might not work well if cost number is high
+                # early on, but it will start to normalize.
+                beta = budget_info.max_cost_budget / 10
+                n = budget_info.used_cost_budget
+
+            acq = PiboAcquisition(acq, n=n, beta=beta)
+
+        candidates, _eis = optimize_acq(
+            # TODO: We should evaluate whether LogNoisyEI is better than LogEI
+            acq_fn=qLogExpectedImprovement(
+                model,
+                best_f=y.min(),
+                X_pending=x_pending,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+            ),
+            encoder=self.encoder_,
+            acq_options={},  # options to underlying optim function of botorch
+        )
+        config = self.encoder_.decode_dicts(candidates)[0]
+        return (
+            SampledConfig(id=config_id, config=config, previous_config_id=None),
+            optimizer_state,
+        )

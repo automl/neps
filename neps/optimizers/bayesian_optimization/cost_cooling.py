@@ -1,35 +1,35 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult
-from neps.utils.common import instance_from_map
+from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
 from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     CostCooler,
-)
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
-)
-from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
-    DecayingPriorWeightedAcquisition,
 )
 from neps.optimizers.bayesian_optimization.acquisition_samplers import (
     AcquisitionSamplerMapping,
 )
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
+from neps.utils.common import instance_from_map
+
+if TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult
 
 
 class CostCooling(BayesianOptimization):
     """Implements a basic cost-cooling as described in
-    "Cost-aware Bayesian Optimization" (https://arxiv.org/abs/2003.10870) by Lee et al."""
+    "Cost-aware Bayesian Optimization" (https://arxiv.org/abs/2003.10870) by Lee et al.
+    """
 
     def __init__(
         self,
@@ -37,12 +37,12 @@ class CostCooling(BayesianOptimization):
         initial_design_size: int = 10,
         surrogate_model: str | Any = "gp",
         cost_model: str | Any = "gp",
-        surrogate_model_args: dict = None,
-        cost_model_args: dict = None,
+        surrogate_model_args: dict | None = None,
+        cost_model_args: dict | None = None,
         optimal_assignment: bool = False,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
+        domain_se_kernel: str | None = None,
+        graph_kernels: list | None = None,
+        hp_kernels: list | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "mutation",
@@ -181,11 +181,6 @@ class CostCooling(BayesianOptimization):
 
         self.acquisition = CostCooler(orig_acquisition)
 
-        if self.pipeline_space.has_prior:
-            self.acquisition = DecayingPriorWeightedAcquisition(
-                self.acquisition, log=log_prior_weighted
-            )
-
         self.acquisition_sampler = instance_from_map(
             AcquisitionSamplerMapping,
             acquisition_sampler,
@@ -214,7 +209,7 @@ class CostCooling(BayesianOptimization):
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
         train_cost = [self.get_cost(el.result) for el in previous_results.values()]
         self._num_train_x = len(train_x)
-        self._pending_evaluations = [el for el in pending_evaluations.values()]
+        self._pending_evaluations = list(pending_evaluations.values())
         if self._num_train_x >= self._initial_design_size:
             try:
                 if len(self._pending_evaluations) > 0:

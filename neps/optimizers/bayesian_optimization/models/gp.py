@@ -144,7 +144,10 @@ def default_categorical_kernel(
     )
 
 
-def default_single_obj_gp(x: DataPack, y: torch.Tensor) -> SingleTaskGP:
+def default_single_obj_gp(
+    x: DataPack,
+    y: torch.Tensor,
+) -> SingleTaskGP:
     encoder = x.encoder
     assert x.tensor is not None
     assert encoder.tensors is not None
@@ -222,9 +225,9 @@ def optimize_acq(
     acq_fn: AcquisitionFunction,
     encoder: DataEncoder,
     *,
-    q: int,
-    num_restarts: int,
-    raw_samples: int,
+    n_candidates_required: int = 1,
+    num_restarts: int = 20,
+    n_intial_start_points: int = 512,
     acq_options: Mapping[str, Any] | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     acq_options = acq_options or {}
@@ -242,9 +245,9 @@ def optimize_acq(
         return optimize_acqf(
             acq_function=acq_fn,
             bounds=bounds,
-            q=q,
+            q=n_candidates_required,
             num_restarts=num_restarts,
-            raw_samples=raw_samples,
+            raw_samples=n_intial_start_points,
             **acq_options,
         )
 
@@ -262,8 +265,8 @@ def optimize_acq(
         acq_function=acq_fn,
         bounds=bounds,
         num_restarts=num_restarts,
-        raw_samples=raw_samples,
-        q=q,
+        raw_samples=n_intial_start_points,
+        q=n_candidates_required,
         fixed_features_list=fixed_categoricals,  # type: ignore
         **acq_options,
     )
