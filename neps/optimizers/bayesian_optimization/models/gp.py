@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import math
+from functools import reduce
 from typing import TYPE_CHECKING, Any, Mapping, TypeVar
 
 import gpytorch
@@ -13,11 +14,12 @@ from botorch.models.gp_regression_mixed import CategoricalKernel
 from botorch.models.transforms.outcome import Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch.kernels import MaternKernel, ScaleKernel
+from torch._dynamo.utils import product
 
 from neps.search_spaces.encoding import (
     CategoricalToIntegerTransformer,
-    DataEncoder,
-    DataPack,
+    TensorEncoder,
+    TensorPack,
 )
 
 if TYPE_CHECKING:
@@ -114,7 +116,7 @@ def default_mean() -> gpytorch.means.ConstantMean:
 
 
 def default_matern_kernel(
-    N: int,  # noqa: N803
+    N: int,
     active_dims: tuple[int, ...] | None = None,
 ) -> ScaleKernel:
     lengthscale_prior, lengthscale_constraint = default_lengthscale_prior(N)
@@ -131,7 +133,7 @@ def default_matern_kernel(
 
 
 def default_categorical_kernel(
-    N: int,  # noqa: N803
+    N: int,
     active_dims: tuple[int, ...] | None = None,
 ) -> ScaleKernel:
     # Following BoTorches implementation of the MixedSingleTaskGP
@@ -145,30 +147,20 @@ def default_categorical_kernel(
 
 
 def default_single_obj_gp(
-    x: DataPack,
+    x: TensorPack,
     y: torch.Tensor,
 ) -> SingleTaskGP:
     encoder = x.encoder
-    assert x.tensor is not None
-    assert encoder.tensors is not None
-    # Here, we will collect all graph encoded hyperparameters and assign each
-    # to its own individual WL kernel.
-    if encoder.graphs is not None:
-        raise NotImplementedError("Graphs are not yet supported.")
-
-    numerics: list[str] = []
-    categoricals: list[str] = []
-    for hp_name, transformer in encoder.tensors.transformers.items():
+    numerics: list[int] = []
+    categoricals: list[int] = []
+    for hp_name, transformer in encoder.transformers.items():
         if isinstance(transformer, CategoricalToIntegerTransformer):
-            categoricals.append(hp_name)
+            categoricals.append(encoder.index_of[hp_name])
         else:
-            numerics.append(hp_name)
-
-    categorical_indices = encoder.indices(categoricals)
-    numeric_indices = encoder.indices(numerics)
+            numerics.append(encoder.index_of[hp_name])
 
     # Purely vectorial
-    if len(categorical_indices) == 0:
+    if len(categoricals) == 0:
         return SingleTaskGP(
             train_X=x.tensor,
             train_Y=y,
@@ -180,7 +172,7 @@ def default_single_obj_gp(
         )
 
     # Purely categorical
-    if len(numeric_indices) == 0:
+    if len(numerics) == 0:
         return SingleTaskGP(
             train_X=x.tensor,
             train_Y=y,
@@ -214,7 +206,7 @@ def default_single_obj_gp(
     return MixedSingleTaskGP(
         train_X=x.tensor,
         train_Y=y,
-        cat_dims=list(categorical_indices),
+        cat_dims=categoricals,
         likelihood=default_likelihood_with_prior(),
         cont_kernel_factory=cont_kernel_factory,
         outcome_transform=Standardize(m=1),
@@ -223,25 +215,26 @@ def default_single_obj_gp(
 
 def optimize_acq(
     acq_fn: AcquisitionFunction,
-    encoder: DataEncoder,
+    encoder: TensorEncoder,
     *,
     n_candidates_required: int = 1,
     num_restarts: int = 20,
     n_intial_start_points: int = 512,
     acq_options: Mapping[str, Any] | None = None,
+    maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     acq_options = acq_options or {}
-    if encoder.has_graphs():
-        raise NotImplementedError("Graphs are not yet supported.")
 
-    assert encoder.tensors is not None
-    lower = [t.domain.lower for t in encoder.tensors.transformers.values()]
-    upper = [t.domain.upper for t in encoder.tensors.transformers.values()]
+    lower = [domain.lower for domain in encoder.domains.values()]
+    upper = [domain.upper for domain in encoder.domains.values()]
     bounds = torch.tensor([lower, upper], dtype=torch.float)
 
-    fixed_categoricals = encoder.categorical_product_indices()
-
-    if not any(fixed_categoricals):
+    cat_transformers = {
+        name: t
+        for name, t in encoder.transformers.items()
+        if isinstance(t, CategoricalToIntegerTransformer)
+    }
+    if not any(cat_transformers):
         return optimize_acqf(
             acq_function=acq_fn,
             bounds=bounds,
@@ -251,13 +244,35 @@ def optimize_acq(
             **acq_options,
         )
 
-    if len(fixed_categoricals) > 30:
+    # We need to generate the product of all possible combinations of categoricals,
+    # first we do a sanity check
+    n_combos = reduce(
+        lambda x, y: x * y, [len(t.choices) for t in cat_transformers.values()]
+    )
+    if n_combos > maximum_allowed_categorical_combinations:
         raise ValueError(
             "The number of fixed categorical dimensions is too high. "
             "This will lead to an explosion in the number of possible "
-            "combinations. Please reduce the number of fixed categorical "
+            f"combinations. Got: {n_combos} while the setting for the function"
+            f" is: {maximum_allowed_categorical_combinations=}. Consider reducing the "
             "dimensions or consider encoding your categoricals in some other format."
         )
+
+    # Right, now we generate all possible combinations
+    # First, just collect the possible values per cat column
+    # NOTE: Botorchs optim requires them to be as floats
+    cats: dict[int, list[float]] = {
+        encoder.index_of[name]: [float(i) for i in range(len(transformer.choices))]
+        for name, transformer in cat_transformers.items()
+    }
+
+    # Second, generate all possible combinations
+    fixed_cats: list[dict[int, float]]
+    if len(cats) == 1:
+        col, choice_indices = next(iter(cats.items()))
+        fixed_cats = [{col: i} for i in choice_indices]
+    else:
+        fixed_cats = [dict(zip(cats.keys(), combo)) for combo in product(*cats.values())]
 
     # TODO: we should deterministicall shuffle the fixed_categoricals as the
     # underlying function does not.
@@ -267,6 +282,6 @@ def optimize_acq(
         num_restarts=num_restarts,
         raw_samples=n_intial_start_points,
         q=n_candidates_required,
-        fixed_features_list=fixed_categoricals,  # type: ignore
+        fixed_features_list=fixed_cats,
         **acq_options,
     )

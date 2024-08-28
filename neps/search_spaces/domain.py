@@ -8,40 +8,44 @@ Some properties include:
 * The midpoint of the domain.
 * Whether the domain is split into bins.
 
-With that, the primary method of a domain is to be able to cast
+With that, the primary method of a domain is to be able to
+[`cast()`][neps.search_spaces.domain.Domain.cast] a tensor of
 values from one to domain to another,
 e.g. `values_a = domain_a.cast(values_b, frm=domain_b)`.
 
 This can be used to convert float samples to integers, integers
 to log space, etc.
 
-The core method to do so is to be able to cast `to_unit` which takes
+The core method to do so is to be able to cast
+[`to_unit()`][neps.search_spaces.domain.Domain.to_unit] which takes
 values to a unit interval [0, 1], and then to be able to cast values in [0, 1]
-to the new domain with `from_unit`.
+to the new domain with [`from_unit()`][neps.search_spaces.domain.Domain.from_unit].
 
 There are some shortcuts implemented in `cast`, such as skipping going through
 the unit interval if the domains are the same, as no transformation is needed.
 
 The primary methods for creating a domain are
 
-* `Domain.float(l, u, ...)` - Used for modelling float ranges
-* `Domain.int(l, u, ...)` - Used for modelling integer ranges
-* `Domain.indices(n)` - Primarly used to model categorical choices
+* [`Domain.float(l, u, ...)`][neps.search_spaces.domain.Domain.float] -
+    Used for modelling float ranges
+* [`Domain.int(l, u, ...)`][neps.search_spaces.domain.Domain.int] -
+    Used for modelling integer ranges
+* [`Domain.indices(n)`][neps.search_spaces.domain.Domain.indices] -
+    Primarly used to model categorical choices
 
 If you have a tensor of values, where each column corresponds to a different domain,
-you can take a look at `Domain.cast_many` to cast all the values in one go.
+you can take a look at [`Domain.translate()`][neps.search_spaces.domain.Domain.translate]
 
-If you need a unit-interval domain, please use the `Domain.unit_float()` or
-`UNIT_FLOAT_DOMAIN` constant.
+If you need a unit-interval domain, please use the
+[`Domain.unit_float()`][neps.search_spaces.domain.Domain.unit_float]
+or `UNIT_FLOAT_DOMAIN` constant.
 """
 
-# TODO: Could theoretically implement dtype,device,out for all methods here but
-# would need to be careful not to accidentally send to and from GPU.
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Generic, Sequence, TypeVar
+from typing import Generic, Iterable, TypeVar
 
 import torch
 from torch import Tensor
@@ -53,11 +57,36 @@ V2 = TypeVar("V2", int, float)
 
 @dataclass(frozen=True)
 class Domain(Generic[V]):
+    """A domain for a value.
+
+    The primary methods for creating a domain are
+
+    * [`Domain.float(l, u, ...)`][neps.search_spaces.domain.Domain.float] -
+        Used for modelling float ranges
+    * [`Domain.int(l, u, ...)`][neps.search_spaces.domain.Domain.int] -
+        Used for modelling integer ranges
+    * [`Domain.indices(n)`][neps.search_spaces.domain.Domain.indices] -
+        Primarly used to model categorical choices
+    """
+
     lower: V
+    """The lower bound of the domain."""
+
     upper: V
+    """The upper bound of the domain."""
+
     round: bool
+    """Whether to round the values to the nearest integer."""
+
     log_bounds: tuple[float, float] | None = None
+    """The log bounds of the domain, if the domain is in log space."""
+
     bins: int | None = None
+    """The number of discrete bins to split the domain into.
+
+    Includes both endpoints of the domain and values are rounded to the nearest bin
+    value.
+    """
 
     dtype: torch.dtype = field(init=False, repr=False)
     is_unit_float: bool = field(init=False, repr=False)
@@ -102,6 +131,17 @@ class Domain(Generic[V]):
         log: bool = False,
         bins: int | None = None,
     ) -> Domain[float]:
+        """Create a domain for a range of float values.
+
+        Args:
+            lower: The lower bound of the domain.
+            upper: The upper bound of the domain.
+            log: Whether the domain is in log space.
+            bins: The number of discrete bins to split the domain into.
+
+        Returns:
+            A domain for a range of float values.
+        """
         return Domain(
             lower=float(lower),
             upper=float(upper),
@@ -119,6 +159,17 @@ class Domain(Generic[V]):
         log: bool = False,
         bins: int | None = None,
     ) -> Domain[int]:
+        """Create a domain for a range of integer values.
+
+        Args:
+            lower: The lower bound of the domain.
+            upper: The upper bound of the domain.
+            log: Whether the domain is in log space.
+            bins: The number of discrete bins to split the domain into.
+
+        Returns:
+            A domain for a range of integer values.
+        """
         return Domain(
             lower=int(round(lower)),
             upper=int(round(upper)),
@@ -134,13 +185,25 @@ class Domain(Generic[V]):
         Like range based functions this domain is inclusive of the lower bound
         and exclusive of the upper bound.
 
-        Use this method to create a domain for indices
+        Args:
+            n: The number of indices.
+
+        Returns:
+            A domain for a range of indices.
         """
         return Domain.int(0, n - 1)
 
     def to_unit(self, x: Tensor) -> Tensor:
+        """Transform a tensor of values from this domain to the unit interval [0, 1].
+
+        Args:
+            x: Tensor of values in this domain to convert.
+
+        Returns:
+            Same shape tensor with the values normalized to the unit interval [0, 1].
+        """
         if self.is_unit_float:
-            return x  # type: ignore
+            return x
 
         if self.log_bounds is not None:
             x = torch.log(x)
@@ -151,6 +214,14 @@ class Domain(Generic[V]):
         return (x - lower) / (upper - lower)
 
     def from_unit(self, x: Tensor) -> Tensor:
+        """Transform a tensor of values from the unit interval [0, 1] to this domain.
+
+        Args:
+            x: A tensor of values in the unit interval [0, 1] to convert.
+
+        Returns:
+            Same shape tensor with the lifted into this domain.
+        """
         if self.is_unit_float:
             return x
 
@@ -173,11 +244,19 @@ class Domain(Generic[V]):
 
         return x.type(self.dtype)
 
-    def cast(
-        self,
-        x: Tensor,
-        frm: Domain,
-    ) -> Tensor:
+    def cast(self, x: Tensor, frm: Domain) -> Tensor:
+        """Cast a tensor of values frm the domain `frm` to this domain.
+
+        If you need to cast a tensor of mixed domains, use
+        [`Domain.translate()`][neps.search_spaces.domain.Domain.translate].
+
+        Args:
+            x: Tensor of values in the `frm` domain to cast to this domain.
+            frm: The domain to cast from.
+
+        Returns:
+            Same shape tensor with the values cast to this domain.
+        """
         # NOTE: In general, we should always be able to go through the unit interval
         # [0, 1] to be able to transform between domains. However sometimes we can
         # bypass some steps, dependant on the domains, hence the ugliness...
@@ -216,16 +295,20 @@ class Domain(Generic[V]):
 
     @classmethod
     def unit_float(cls) -> Domain[float]:
+        """Get a domain for the unit interval [0, 1]."""
         return UNIT_FLOAT_DOMAIN
 
     @classmethod
-    def cast_many(
-        cls, x: Tensor, frm: Domain | Sequence[Domain], to: Domain | Sequence[Domain]
+    def translate(
+        cls,
+        x: Tensor,
+        frm: Domain | Iterable[Domain],
+        to: Domain | Iterable[Domain],
     ) -> Tensor:
         """Cast a tensor of mixed domains to a new set of mixed domains.
 
         Args:
-            x: Tensor of shape (n_samples, n_dims) with each dim `i` corresponding
+            x: Tensor of shape (..., n_dims) with each dim `i` corresponding
                 to the domain `frm[i]`.
             frm: List of domains to cast from. If list, must be length of `n_dims`,
                 otherwise we assume the single domain provided is the one to be used
@@ -235,43 +318,43 @@ class Domain(Generic[V]):
                 across all dimensions.
 
         Returns:
-            Tensor of shape (n_samples, n_dims) with each dim `i` transformed
-            from the domain `frm[i]` to the domain `to[i]`.
+            Tensor of the same shape as `x` with the last dimension casted
+                from the domain `frm[i]` to the domain `to[i]`.
         """
-        if x.ndim == 1:
-            raise ValueError(
-                "Expected a 2D tensor of shape (n_samples, n_dims), got a 1D tensor."
-            )
+        if x.ndim == 0:
+            raise ValueError("Expected a tensor with at least one dimension.")
 
-        if isinstance(frm, Sequence) and len(frm) != x.shape[1]:
+        if x.ndim == 1:
+            x = x.unsqueeze(0)
+
+        ndims = x.shape[-1]
+
+        # If both are not a list, we can just cast the whole tensor
+        if isinstance(frm, Domain) and isinstance(to, Domain):
+            return to.cast(x, frm=frm)
+
+        frm = [frm] * ndims if isinstance(frm, Domain) else list(frm)
+        to = [to] * ndims if isinstance(to, Domain) else list(to)
+
+        if len(frm) != ndims:
             raise ValueError(
                 "The number of domains in `frm` must match the number of tensors"
                 " if provided as a list."
-                f" Expected {x.shape[1]}, got {len(frm)}."
+                f" Expected {ndims} from last dimension of {x.shape}, got {len(frm)}."
             )
 
-        if isinstance(to, Sequence) and len(to) != x.shape[1]:
+        if len(to) != ndims:
             raise ValueError(
                 "The number of domains in `to` must match the number of tensors"
                 " if provided as a list."
-                f" Expected {x.shape[1]}, got {len(to)}."
+                f" Expected {ndims} from last dimension of {x.shape}, got {len(to)}."
             )
 
-        # If both are not a list, we can just cast the whole tensor
-        if not isinstance(frm, Sequence) and not isinstance(to, Sequence):
-            return to.cast(x, frm=frm)
-
-        # Otherwise, we need to go column by column
-        if isinstance(frm, Domain):
-            frm = [frm] * x.shape[1]
-        if isinstance(to, Domain):
-            to = [to] * x.shape[1]
-
-        buffer = torch.empty_like(x)
+        out = torch.empty_like(x)
         for i, (f, t) in enumerate(zip(frm, to)):
-            buffer[:, i] = t.cast(x[:, i], frm=f)
+            out[..., i] = t.cast(x[..., i], frm=f)
 
-        return buffer
+        return out
 
 
 UNIT_FLOAT_DOMAIN = Domain.float(0.0, 1.0)

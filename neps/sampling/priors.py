@@ -4,30 +4,30 @@ Loosely speaking, they are joint distributions over multiple independent
 variables, i.e. each column of a tensor is assumed to be independent and
 can be acted on independently.
 
-They are not a `torch.distributions.Distribution` subclass as methods like
-`entropy` and `kl_divergence` are just more difficult to implement
-(not impossible, just more difficult and not needed right now).
-
 See the class doc description of [`Prior`][neps.priors.Prior] for more details.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import reduce
 from typing import TYPE_CHECKING, Any, Container, Mapping, Protocol
 from typing_extensions import override
 
 import torch
 
 from neps.distributions import DistributionOverDomain, TruncatedNormal
+from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
 
 
-class Prior(Protocol):
+class Prior(Sampler, Protocol):
     """A protocol for priors over search spaces.
+
+    Extends from the [`Sampler`][neps.samplers.Sampler] protocol.
 
     At it's core, the two methods that need to be implemented are
     `log_prob` and `sample`. The `log_prob` method should return the
@@ -55,67 +55,51 @@ class Prior(Protocol):
         actually be `1` (1 / 1) for any value inside the domain.
     """
 
-    domains: list[Domain]
-    """Domain of values which this prior acts upon.
-
-    Each domain corresponds to the corresponding `ndim` in a tensor
-    (n_samples, ndim).
-    """
-
-    device: torch.device | None
-    """Device to place the tensors on."""
-
-    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
+    def log_prob(
+        self,
+        x: torch.Tensor,
+        *,
+        frm: list[Domain] | Domain,
+    ) -> torch.Tensor:
         """Compute the log probability of values in `x` under a prior.
 
-        All columns of `x` are assumed to be independent, such that the
+        The last dimenion of `x` is assumed to be independent, such that the
         log probability of the entire tensor is the sum of the log
-        probabilities of each column.
+        probabilities of each element in that dimension.
+
+        For example, if `x` is of shape `(n_samples, n_dims)`, then the
+        you will be given back a tensor of shape `(n_samples,)` with the
+        each entry being the log probability of the corresponding sample.
 
         Args:
-            x: Tensor of shape (n_samples, n_dims)
+            x: Tensor of shape (..., n_dims)
                 In the case of a 1D tensor, the shape is assumed to be (n_dims,)
+            frm: The domain of the values in `x`. If a single domain, then all the
+                values are assumed to be from that domain, otherwise each column
+                `n_dims` in (n_samples, n_dims) is from the corresponding domain.
 
         Returns:
-            Tensor of shape (n_samples,) with the log probabilities of each. In the
+            Tensor of shape (...,), with the last dimension reduced out. In the
             case that only single dimensional tensor is passed, the returns value
             is a scalar.
         """
         ...
 
-    def sample(self, n: int) -> torch.Tensor:
-        """Sample from the prior.
-
-        Args:
-            n: Number of samples to draw.
-
-        Returns:
-            Tensor of shape (n, n_dims) with the samples.
-        """
-        ...
-
-    def prob(self, x: torch.Tensor) -> torch.Tensor:
+    def prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
         """Compute the probability of values in `x` under a prior.
 
         See [`log_prob()`][neps.priors.Prior.log_prob] for details on shapes.
         """
-        return torch.exp(self.log_prob(x))
+        return torch.exp(self.log_prob(x, frm=frm))
 
     @classmethod
-    def uniform(
-        cls,
-        domains: Mapping[str, Domain] | list[Domain],
-        *,
-        device: torch.device | None = None,
-    ) -> UniformPrior:
+    def uniform(cls, ncols: int) -> UniformPrior:
         """Create a uniform prior for a given list of domains.
 
         Args:
-            domains: domains over which to have a uniform prior.
-            device: Device to place the tensors on.
+            ncols: The number of columns in the tensor to sample.
         """
-        domains = domains if isinstance(domains, list) else list(domains.values())
-        return UniformPrior(domains=domains, device=device)
+        return UniformPrior(ncols=ncols)
 
     @classmethod
     def make_centered(
@@ -242,9 +226,7 @@ class Prior(Protocol):
             )
             distributions.append(dist)
 
-        return CenteredPrior(
-            domains=list(domains.values()), distributions=distributions, device=device
-        )
+        return CenteredPrior(distributions=distributions)
 
 
 @dataclass
@@ -261,12 +243,6 @@ class CenteredPrior(Prior):
     [`Prior.make_centered()`][neps.priors.Prior.make_centered].
     """
 
-    domains: list[Domain]
-    """Domain of values."""
-
-    device: torch.device | None
-    """Device to place the tensors on."""
-
     distributions: list[DistributionOverDomain]
     """Distributions along with the corresponding domains they sample from."""
 
@@ -275,11 +251,24 @@ class CenteredPrior(Prior):
     def __post_init__(self):
         self._distribution_domains = [dist.domain for dist in self.distributions]
 
+    @property
     @override
-    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
+    def ncols(self) -> int:
+        return len(self.distributions)
+
+    @override
+    def log_prob(self, x: torch.Tensor, *, frm: list[Domain] | Domain) -> torch.Tensor:
+        if x.ndim == 0:
+            raise ValueError("Expected a tensor of shape (..., ncols).")
+
+        if x.ndim == 1:
+            x = x.unsqueeze(0)
+
         # Cast all values from the value domains to the domain of the sampler.
-        sample_domain_tensor = Domain.cast_many(
-            x, frm=self.domains, to=self._distribution_domains
+        sample_domain_tensor = Domain.translate(
+            x,
+            frm=frm,
+            to=self._distribution_domains,
         )
 
         # Calculate the log probabilities of the sample domain tensors under their
@@ -289,25 +278,34 @@ class CenteredPrior(Prior):
                 dist.distribution.log_prob(sample_domain_tensor[:, i])
                 for i, dist in enumerate(self.distributions)
             ],
-            dim=1,
+            dim=-1,
         )
-        return torch.sum(log_probs, dim=1)
+        return torch.sum(log_probs, dim=-1)
 
     @override
-    def sample(self, n: int) -> torch.Tensor:
-        buffer = torch.empty(
-            n,
-            len(self.distributions),
-            device=self.device,
-            dtype=torch.float64,
+    def sample(
+        self,
+        n: int | torch.Size,
+        *,
+        to: Domain | list[Domain],
+        seed: int | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if seed is not None:
+            raise NotImplementedError("Seeding is not yet implemented.")
+
+        _out_shape = (
+            torch.Size((n, self.ncols))
+            if isinstance(n, int)
+            else torch.Size((*n, self.ncols))
         )
+        _n = torch.Size((n,)) if isinstance(n, int) else n
 
-        size = torch.Size((n,))
-        for i, (value_domain, frm) in enumerate(zip(self.domains, self.distributions)):
-            samples = frm.distribution.sample(size)
-            buffer[:, i] = value_domain.cast(samples, frm=frm.domain)
+        out = torch.empty(_out_shape, device=device, dtype=torch.float64)
+        for i, dist in enumerate(self.distributions):
+            out[..., i] = dist.distribution.sample(_n)
 
-        return buffer
+        return Domain.translate(out, frm=self._distribution_domains, to=to)
 
 
 @dataclass
@@ -317,49 +315,119 @@ class UniformPrior(Prior):
     Uses a UnitUniform under the hood before converting to the value domain.
     """
 
-    domains: list[Domain]
-    """Domain of values."""
-
-    device: torch.device | None
-    """Device to place the tensors on."""
+    ncols: int
+    """The number of columns in the tensor to sample from."""
 
     _unit_uniform: Distribution = field(init=False, repr=False)
 
     def __post_init__(self):
         self._unit_uniform = torch.distributions.Uniform(0.0, 1.0)
 
-    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute the log probability of values in `x` under a prior.
+    @override
+    def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
+        sample_domain_tensor = Domain.translate(x, frm=frm, to=UNIT_FLOAT_DOMAIN)
+        return torch.sum(self._unit_uniform.log_prob(sample_domain_tensor), dim=-1)
 
-        All columns of `x` are assumed to be independent, such that the
-        log probability of the entire tensor is the sum of the log
-        probabilities of each column.
+    @override
+    def sample(
+        self,
+        n: int | torch.Size,
+        *,
+        to: Domain | list[Domain],
+        seed: int | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if seed is not None:
+            raise NotImplementedError("Seeding is not yet implemented.")
 
-        Args:
-            x: Tensor of shape (n_samples, n_dims)
-                In the case of a 1D tensor, the shape is assumed to be (n_dims,)
-
-        Returns:
-            Tensor of shape (n_samples,) with the log probabilities of each. In the
-            case that only single dimensional tensor is passed, the returns value
-            is a scalar.
-        """
-        sample_domain_tensor = Domain.cast_many(x, frm=self.domains, to=UNIT_FLOAT_DOMAIN)
-        return torch.sum(self._unit_uniform.log_prob(sample_domain_tensor), dim=1)
-
-    def sample(self, n: int) -> torch.Tensor:
-        """Sample from the prior.
-
-        Args:
-            n: Number of samples to draw.
-
-        Returns:
-            Tensor of shape (n, n_dims) with the samples.
-        """
-        samples = torch.rand(
-            n,
-            len(self.domains),
-            device=self.device,
-            dtype=torch.float64,
+        _n = (
+            torch.Size((n, self.ncols))
+            if isinstance(n, int)
+            else torch.Size((*n, self.ncols))
         )
-        return Domain.cast_many(samples, frm=UNIT_FLOAT_DOMAIN, to=self.domains)
+        samples = torch.rand(_n, device=device, dtype=torch.float64)
+        return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to)
+
+
+@dataclass
+class WeightedPrior(Prior):
+    """A prior consisting of multiple priors with weights."""
+
+    priors: list[Prior]
+    weights: torch.Tensor
+    probabilities: torch.Tensor = field(init=False, repr=False)
+
+    def __post_init__(self):
+        if len(self.priors) < 2:
+            raise ValueError(f"At least two priors must be given. Got {len(self.priors)}")
+
+        if self.weights.ndim != 1:
+            raise ValueError("Weights must be a 1D tensor.")
+
+        if len(self.priors) != len(self.weights):
+            raise ValueError("The number of priors and weights must be the same.")
+
+        self.probabilities = self.weights / self.weights.sum()
+
+    @override
+    def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
+        # OPTIM: Avoid an initial allocation by using the output of the first
+        # distribution to store the weighted probabilities
+        itr = zip(self.probabilities, self.priors)
+        first_prob, first_prior = next(itr)
+
+        weighted_probs = first_prob * first_prior.log_prob(x, frm=frm)
+        for prob, prior in itr:
+            weighted_probs += prob * prior.log_prob(x, frm=frm)
+
+        return weighted_probs
+
+    @override
+    def sample(
+        self,
+        n: int | torch.Size,
+        *,
+        to: Domain | list[Domain],
+        seed: int | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        if seed is not None:
+            raise NotImplementedError("Seeding is not yet implemented.")
+
+        # Calculate the total number of samples required
+        if isinstance(n, int):
+            total_samples = n
+            output_shape = (n, self.ncols)
+        else:
+            total_samples = reduce(lambda x, y: x * y, n)
+            output_shape = (*n, self.ncols)
+
+        # Randomly select which prior to sample from for each of the total_samples
+        chosen_priors = torch.empty((total_samples,), device=device, dtype=torch.int64)
+        chosen_priors = torch.multinomial(
+            self.probabilities,
+            total_samples,
+            replacement=True,
+            out=chosen_priors,
+        )
+
+        # Create an empty tensor to hold all samples
+        output_samples = torch.empty(
+            (total_samples, self.ncols), device=device, dtype=torch.float64
+        )
+
+        # Loop through each prior and its associated indices
+        for i, prior in enumerate(self.priors):
+            # Find indices where the chosen prior is i
+            _i = torch.tensor(i, dtype=torch.int64, device=device)
+            indices = torch.where(chosen_priors == _i)[0]
+
+            if len(indices) > 0:
+                # Sample from the prior for the required number of indices
+                samples_from_prior = prior.sample(len(indices), to=to, device=device)
+                output_samples[indices] = samples_from_prior
+
+        # Reshape to the output shape including ncols dimension
+        output_samples = output_samples.view(output_shape)
+
+        return Domain.translate(output_samples, frm=UNIT_FLOAT_DOMAIN, to=to)

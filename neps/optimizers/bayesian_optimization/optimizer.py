@@ -17,9 +17,10 @@ from neps.optimizers.bayesian_optimization.models.gp import (
     default_single_obj_gp,
     optimize_acq,
 )
-from neps.optimizers.initial_design import Sobol
+from neps.optimizers.initial_design import PriorInitialDesign, Sobol
 from neps.priors import Prior
-from neps.search_spaces.encoding import DataEncoder
+from neps.search_spaces.domain import Domain
+from neps.search_spaces.encoding import TensorEncoder, TensorPack
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 
 if TYPE_CHECKING:
@@ -28,9 +29,32 @@ if TYPE_CHECKING:
     from neps.search_spaces import (
         SearchSpace,
     )
-    from neps.search_spaces.domain import Domain
-    from neps.search_spaces.encoding import DataPack
+    from neps.search_spaces.hyperparameters.float import FloatParameter
+    from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.state import BudgetInfo, Trial
+
+
+def pibo_acq_beta_and_n(
+    n_sampled_already: int, ndims: int, budget_info: BudgetInfo
+) -> tuple[float, float]:
+    if budget_info.max_evaluations is not None:
+        # From the PIBO paper (Section 4.1)
+        # https://arxiv.org/pdf/2204.11051
+        beta = budget_info.max_evaluations / 10
+        return n_sampled_already, beta
+
+    if budget_info.max_cost_budget is not None:
+        # This might not work well if cost number is high
+        # early on, but it will start to normalize.
+        n = budget_info.used_cost_budget
+        beta = budget_info.max_cost_budget / 10
+        return n, beta
+
+    # Otherwise, just some random heuristic based on the number
+    # of trials and dimensionality of the search space
+    # TODO: Think about and evaluate this more.
+    beta = ndims**2 / 10
+    return n_sampled_already, beta
 
 
 class BayesianOptimization(BaseOptimizer):
@@ -41,10 +65,14 @@ class BayesianOptimization(BaseOptimizer):
         pipeline_space: SearchSpace,
         *,
         initial_design_size: int | None = None,
-        surrogate_model: Literal["gp"] | Callable[[DataPack, torch.Tensor], Model] = "gp",
+        surrogate_model: (
+            Literal["gp"] | Callable[[TensorPack, torch.Tensor], Model]
+        ) = "gp",
         use_priors: bool = False,
         sample_default_first: bool = False,
         device: torch.device | None = None,
+        encoder: TensorEncoder | None = None,
+        treat_fidelity_as_hyperparameters: bool = False,
         **kwargs: Any,  # TODO: Remove
     ):
         """Initialise the BO loop.
@@ -54,8 +82,16 @@ class BayesianOptimization(BaseOptimizer):
             initial_design_size: Number of samples used before using the surrogate model.
                 If None, it will take `int(log(N) ** 2)` samples where `N` is the number
                 of parameters in the search space.
-            surrogate_model: Surrogate model
+            surrogate_model: Surrogate model, either a known model str or a callable
+                that takes in the training data and returns a model fitted to (X, y).
             use_priors: Whether to use priors set on the hyperparameters during search.
+            sample_default_first: Whether to sample the default configuration first.
+            device: Device to use for the optimization.
+            encoder: Encoder to use for encoding the configurations. If None, it will
+                will use the default encoder.
+            treat_fidelity_as_hyperparameters: Whether to treat fidelities as
+                hyperparameters. If left as False, fidelities will be ignored
+                and configurations will always be sampled at the maximum fidelity.
 
         Raises:
             ValueError: if initial_design_size < 1
@@ -76,12 +112,20 @@ class BayesianOptimization(BaseOptimizer):
 
         super().__init__(pipeline_space=pipeline_space)
 
-        self.encoder = DataEncoder.default_encoder(
-            pipeline_space,
-            include_fidelities=False,
-        )
-        # We should only be acting on tensor'able hyperparameters for now
-        assert self.encoder.tensors is not None
+        if encoder is None:
+            parameters: dict[
+                str,
+                CategoricalParameter | FloatParameter | IntegerParameter,
+            ] = {
+                **pipeline_space.numerical,
+                **pipeline_space.categoricals,
+            }
+            if treat_fidelity_as_hyperparameters:
+                parameters.update(pipeline_space.fidelities)
+
+            self.encoder = TensorEncoder.default(parameters)
+        else:
+            self.encoder = encoder
 
         # TODO: This needs to be moved to the search space class, however
         # to not break the current prior based APIs used elsewhere, we can
@@ -96,8 +140,7 @@ class BayesianOptimization(BaseOptimizer):
             domains: dict[str, Domain] = {}
             centers: dict[str, tuple[Any, float]] = {}
             categoricals: set[str] = set()
-            for name in self.encoder.tensors.names():
-                hp = self.pipeline_space.hyperparameters[name]
+            for name, hp in parameters.items():
                 domains[name] = hp.domain  # type: ignore
 
                 if isinstance(hp, CategoricalParameter):
@@ -106,11 +149,13 @@ class BayesianOptimization(BaseOptimizer):
                 if hp.default is None:
                     continue
 
-                confidence_score: float = hp.default_confidence_choice  # type: ignore
-                if isinstance(hp, CategoricalParameter):
-                    center = hp._default_index
-                else:
-                    center = hp.default
+                confidence_str = hp.default_confidence_choice
+                confidence_score = _mapping[confidence_str]
+                center = (
+                    hp._default_index
+                    if isinstance(hp, CategoricalParameter)
+                    else hp.default
+                )
 
                 centers[name] = (center, confidence_score)
 
@@ -160,11 +205,9 @@ class BayesianOptimization(BaseOptimizer):
 
         space = self.pipeline_space
         config_id = str(len(trials) + 1)
-        assert self.encoder.tensors is not None
 
         # Fill intitial design data if we don't have any...
         if self.initial_design_ is None:
-            size = self.n_initial_design
             self.initial_design_ = []
 
             # Add the default configuration first (maybe)
@@ -172,10 +215,24 @@ class BayesianOptimization(BaseOptimizer):
                 config = space.sample_default_configuration()
                 self.initial_design_.append(config.hp_values())
 
-            # Fill remaining with Sobol sequence samples
-            sobol = Sobol(seed=0, encoder=self.encoder, allow_undersampling=True)
-            sobol_configs = sobol.sample(size - len(self.initial_design_))
-            self.initial_design_.extend(sobol_configs)
+            if self.prior:
+                sampler = PriorInitialDesign(prior=self.prior, seed=0)
+            else:
+                sampler = Sobol(ndim=self.encoder.ncols, seed=0, scramble=True)
+
+            n_samples = self.n_initial_design - len(self.initial_design_)
+
+            # We add a buffer of 2x the samples to help ensure
+            # we get get enough after removing duplicates.
+            x = sampler.sample(n_samples * 2)
+            x = Domain.translate(
+                x,
+                to=self.encoder.domains.values(),
+                frm=sampler.sample_domain,
+            )
+            uniq_x = torch.unique(x, dim=0)
+            configs = self.encoder.decode_dicts(uniq_x[:n_samples])
+            self.initial_design_.extend(configs)
 
         # If we havn't passed the intial design phase, just return
         # the next one.
@@ -187,13 +244,10 @@ class BayesianOptimization(BaseOptimizer):
             )
 
         # Now we actually do the BO loop, start by encoding the data
-        x = self.encoder.encode(x_configs, device=self.device)
+        x = self.encoder.pack(x_configs, device=self.device)
+        x_pending = None
         if any(pending):
-            x_pending = self.encoder.encode(pending, device=self.device)
-            x_pending = x_pending.tensor
-            assert x_pending is not None
-        else:
-            x_pending = None
+            x_pending = self.encoder.pack(pending, device=self.device)
 
         # Get our fitted model
         model = self._get_fitted_model(x, y)
@@ -204,7 +258,7 @@ class BayesianOptimization(BaseOptimizer):
         acq = qLogExpectedImprovement(
             model,
             best_f=y.min(),
-            X_pending=x_pending,
+            X_pending=None if x_pending is None else x_pending.tensor,
             # Unfortunatly, there's no option to indicate that we minimize
             # the AcqFunction so we need to do some kind of transformation.
             # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
@@ -213,34 +267,15 @@ class BayesianOptimization(BaseOptimizer):
 
         # If we have a prior, then we use it with PiBO
         if self.prior:
-            if budget_info.max_evaluations is not None:
-                # From the PIBO paper (Section 4.1)
-                # https://arxiv.org/pdf/2204.11051
-                n = budget_info.used_evaluations
-                beta = budget_info.max_evaluations / 10
-
-            elif budget_info.max_cost_budget is not None:
-                # This might not work well if cost number is high
-                # early on, but it will start to normalize.
-                n = budget_info.used_cost_budget
-                beta = budget_info.max_cost_budget / 10
-
-            else:
-                # Otherwise, just some random heuristic based on the number
-                # of trials and dimensionality of the search space
-                # TODO: Think about and evaluate this more.
-                ndim = x.tensor.shape[1]  # type: ignore
-                n = len(x_configs)
-                beta = ndim**2 / 10
-
+            n, beta = pibo_acq_beta_and_n(
+                n_sampled_already=len(trials),
+                ndims=self.encoder.ncols,
+                budget_info=budget_info,
+            )
             acq = PiboAcquisition(acq, prior=self.prior, n=n, beta=beta)
 
         # Optimize it
-        candidates, _eis = optimize_acq(
-            acq_fn=acq,
-            encoder=self.encoder,
-            acq_options={},  # options to underlying optim function of botorch
-        )
+        candidates, _eis = optimize_acq(acq_fn=acq, encoder=self.encoder, acq_options={})
 
         # Take the first (and only?) candidate
         assert len(candidates) == 1
