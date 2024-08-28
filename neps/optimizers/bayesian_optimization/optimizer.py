@@ -202,7 +202,7 @@ class BayesianOptimization(BaseOptimizer):
             self.initial_design_.extend(configs)
 
         # If we havn't passed the intial design phase
-        if len(trials) < len(self.initial_design_):
+        if len(trials) <= len(self.initial_design_):
             config = self.initial_design_[len(trials) - 1]
             sample = SampledConfig(id=config_id, config=config, previous_config_id=None)
             return sample, optimizer_state
