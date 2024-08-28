@@ -17,8 +17,7 @@ from neps.optimizers.bayesian_optimization.models.gp import (
     default_single_obj_gp,
     optimize_acq,
 )
-from neps.optimizers.initial_design import PriorInitialDesign, Sobol
-from neps.priors import Prior
+from neps.sampling import Prior, Sampler
 from neps.search_spaces.domain import Domain
 from neps.search_spaces.encoding import TensorEncoder, TensorPack
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
@@ -216,9 +215,9 @@ class BayesianOptimization(BaseOptimizer):
                 self.initial_design_.append(config.hp_values())
 
             if self.prior:
-                sampler = PriorInitialDesign(prior=self.prior, seed=0)
+                sampler = self.prior
             else:
-                sampler = Sobol(ndim=self.encoder.ncols, seed=0, scramble=True)
+                sampler = Sampler.sobol(ndim=self.encoder.ncols, seed=0, scramble=True)
 
             n_samples = self.n_initial_design - len(self.initial_design_)
 
