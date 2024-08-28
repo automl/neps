@@ -190,22 +190,24 @@ class GraphEncoder:
 class TensorEncoder:
     transformers: dict[str, TensorTransformer]
     index_of: dict[str, int] = field(init=False)
+    domain_of: dict[str, Domain] = field(init=False)
     n_numerical: int = field(init=False)
     n_categorical: int = field(init=False)
 
     def __post_init__(self):
         transformers = sorted(self.transformers.items(), key=lambda t: t[0])
         self.transformers = dict(transformers)
-        self.index_of: dict[str, int] = {}
+
         n_numerical = 0
         n_categorical = 0
-        for i, (name, transformer) in enumerate(self.transformers.items()):
-            self.index_of[name] = i
+        for _, transformer in transformers:
             if isinstance(transformer, CategoricalToIntegerTransformer):
                 n_categorical += 1
             else:
                 n_numerical += 1
 
+        self.index_of = {name: i for i, name in enumerate(self.transformers.keys())}
+        self.domain_of = {name: t.domain for name, t in self.transformers.items()}
         self.n_numerical = n_numerical
         self.n_categorical = n_categorical
 
@@ -214,10 +216,8 @@ class TensorEncoder:
         return len(self.transformers)
 
     @property
-    def domains(self) -> dict[str, Domain]:
-        return {
-            name: transformer.domain for name, transformer in self.transformers.items()
-        }
+    def domains(self) -> list[Domain]:
+        return list(self.domain_of.values())
 
     def names(self) -> list[str]:
         return list(self.transformers.keys())
@@ -256,7 +256,7 @@ class TensorEncoder:
     ) -> TensorPack:
         return TensorPack(self.encode(x, device=device), self)
 
-    def decode_dicts(self, x: torch.Tensor) -> list[dict[str, Any]]:
+    def unpack(self, x: torch.Tensor) -> list[dict[str, Any]]:
         values: dict[str, list[Any]] = {}
         for hp_name, transformer in self.transformers.items():
             lookup = self.index_of[hp_name]
@@ -311,7 +311,7 @@ class TensorPack:
         return self.encoder.names()
 
     def to_dicts(self) -> list[dict[str, Any]]:
-        return self.encoder.decode_dicts(self.tensor)
+        return self.encoder.unpack(self.tensor)
 
     def split(self, index: int) -> tuple[TensorPack, TensorPack]:
         left = TensorPack(self.encoder, tensor=self.tensor[:index])
