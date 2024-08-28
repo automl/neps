@@ -141,7 +141,7 @@ class BayesianOptimization(BaseOptimizer):
 
         if initial_design_size is None:
             N = len(pipeline_space.hyperparameters)
-            initial_design_size = int(max(1, math.log(N) ** 2))
+            initial_design_size = int(max(2, math.log(N) ** 2))
         elif initial_design_size < 1:
             raise ValueError("Initial_design_size to be at least 1")
 
