@@ -217,6 +217,7 @@ class BayesianOptimization(BaseOptimizer):
                 pending.append(trial.config)
             else:
                 assert trial.report is not None
+                # TODO: Figure out what to do if there's no reported loss value.
                 assert trial.report.loss is not None
                 x_configs.append(trial.config)
                 ys.append(trial.report.loss)
