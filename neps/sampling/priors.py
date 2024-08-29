@@ -284,14 +284,15 @@ class CenteredPrior(Prior):
 
         # Calculate the log probabilities of the sample domain tensors under their
         # respective distributions.
-        log_probs = torch.cat(
-            [
-                dist.distribution.log_prob(sample_domain_tensor[:, i])
-                for i, dist in enumerate(self.distributions)
-            ],
-            dim=-1,
-        )
-        return torch.sum(log_probs, dim=-1)
+        itr = enumerate(self.distributions)
+        first_i, first_dist = next(itr)
+
+        log_probs = first_dist.distribution.log_prob(sample_domain_tensor[..., first_i])
+        for i, dist in itr:
+            log_probs = log_probs + dist.distribution.log_prob(
+                sample_domain_tensor[..., i]
+            )
+        return log_probs
 
     @override
     def sample(
@@ -398,7 +399,7 @@ class WeightedPrior(Prior):
 
         weighted_probs = first_prob * first_prior.log_prob(x, frm=frm)
         for prob, prior in itr:
-            weighted_probs += prob * prior.log_prob(x, frm=frm)
+            weighted_probs = weighted_probs + prob * prior.log_prob(x, frm=frm)
 
         return weighted_probs
 
