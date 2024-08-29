@@ -11,7 +11,7 @@ from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.multi_fidelity.utils import normalize_vectorize_config
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
-
+from neps.search_spaces.search_space import SearchSpace
 
 
 class MFBOBase:
@@ -207,15 +207,21 @@ class FreezeThawModel:
         # Select configs that are neither pending nor resulted in error
         completed_configs = self.observed_configs.completed_runs.copy(deep=True)
         # IMPORTANT: preprocess observations to get appropriate training data
-        train_x, train_lcs, train_y = self.observed_configs.get_training_data_4ifbo(
+        train_x, train_lcs, train_y = self.get_training_data_for_freeze_thaw(
             completed_configs, self.pipeline_space
         )
+        # self.observed_configs.get_training_data_4ifbo(
+        #     completed_configs, self.pipeline_space
+        # )
         pending_condition = self.observed_configs.pending_condition
         if pending_condition.any():
             pending_configs = self.observed_configs.df.loc[pending_condition]
-            pending_x, pending_lcs, _ = self.observed_configs.get_training_data_4ifbo(
+            pending_x, pending_lcs, _ = self.get_training_data_for_freeze_thaw(
                 pending_configs
             )
+            # get_training_data_4ifbo(
+            #     pending_configs
+            # )
             self._fit(train_x, train_y, train_lcs)
             _y, _ = self._predict(pending_x, pending_lcs)
             _y = _y.tolist()
@@ -237,13 +243,33 @@ class FreezeThawModel:
             )
 
     def _predict(self, test_x, test_lcs):
-        if self.surrogate_model_name == "ftpfn":
-            return self.surrogate_model.predict(test_x, test_lcs)
-        else:
-            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
-            raise ValueError(
-                f"Surrogate model {self.surrogate_model_name} not supported!"
-            )
+        raise NotImplementedError
+        # if self.surrogate_model_name == "ftpfn":
+        #     return self.surrogate_model.predict(test_x, test_lcs)
+        # else:
+        #     # check neps/optimizers/bayesian_optimization/models/__init__.py for options
+        #     raise ValueError(
+        #         f"Surrogate model {self.surrogate_model_name} not supported!"
+        #     )
+
+    def get_training_data_for_freeze_thaw(
+        self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
+    ):
+        configs = []
+        learning_curves = []
+        performance = []
+        for idx, row in df.iterrows():
+            config_id = idx[0]
+            budget_id = idx[1]
+            if pipeline_space.has_tabular:
+                _row = pd.Series([row[self.observed_configs.config_col]], index=[config_id])
+                _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
+                configs.append(_row.values[0])
+            else:
+                configs.append(row[self.observed_configs.config_col])
+            performance.append(row[self.observed_configs.perf_col])
+            learning_curves.append(self.observed_configs.extract_learning_curve(config_id, budget_id))
+        return configs, learning_curves, performance
 
     def set_state(
         self,
@@ -305,14 +331,6 @@ class PFNSurrogate(FreezeThawModel):
         # no training required,, only preprocessing the training data as context during inference
         self.preprocess_training_set()
 
-    def _predict(self, test_x, test_lcs):
-        assert "pfn" in self.surrogate_model_name
-        test_x = self.preprocess_test_set(test_x)
-        return self.surrogate_model(self.train_x, self.train_y, test_x)
-
-    def _cast_tensor_shapes(self, x: torch.Tensor) -> torch.Tensor:
-        return x
-
     def preprocess_training_set(self):
         _configs = self.observed_configs.df.config.values.copy()
 
@@ -333,34 +351,5 @@ class PFNSurrogate(FreezeThawModel):
         idxs = idxs.astype(float)
         idxs[:, 1] = idxs[:, 1] / _configs[0].fidelity.upper
         # TODO: account for fantasization
-        self.surrogate_model.train_x = self._cast_tensor_shapes(
-            torch.Tensor(np.hstack([idxs, configs])).to(device)
-        )
-        self.surrogate_model.train_y = self._cast_tensor_shapes(
-            torch.Tensor(performances).to(device)
-        )
-
-    def preprocess_test_set(self, test_x):
-        _len = len(self.observed_configs.all_configs_list())
-        device = self.surrogate_model.device
-
-        new_idxs = np.arange(_len, len(test_x))
-        base_fidelity = np.array([1] * len(new_idxs))
-        new_token_ids = np.hstack(
-            (new_idxs.T.reshape(-1, 1), base_fidelity.T.reshape(-1, 1))
-        )
-        # the following operation takes each element in the array and stacks it vertically
-        # in this case, should convert a (n,) array to (n, 2) by flattening the elements
-        existing_token_ids = np.vstack(self.observed_configs.token_ids).astype(int)
-        token_ids = np.vstack((existing_token_ids, new_token_ids))
-
-        configs = np.array([normalize_vectorize_config(c) for c in test_x])
-        self.surrogate_model.test_x = self._cast_tensor_shapes(
-            torch.Tensor(np.hstack([token_ids, configs])).to(device)
-        )
-        return self.surrogate_model.test_x
-
-    def _predict(self, test_x, test_lcs):
-        assert self.surrogate_model_name == "pfn"
-        test_x = self.preprocess_test_set(test_x)
-        return self.surrogate_model(self.train_x, self.train_y, test_x)
+        self.surrogate_model.train_x = torch.Tensor(np.hstack([idxs, configs])).to(device)
+        self.surrogate_model.train_y = torch.Tensor(performances).to(device)

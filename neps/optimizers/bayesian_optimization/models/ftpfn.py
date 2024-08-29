@@ -7,7 +7,7 @@ import torch
 from ifbo import FTPFN
 
 
-class IFBOSurrogate:
+class FTPFNSurrogate:
     """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
 
     def __init__(self, target_path: Path = None, version: str = "0.0.1", *args, **kwargs):

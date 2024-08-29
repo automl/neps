@@ -273,25 +273,6 @@ class MFObservedData:
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
         return deepcopy(lc)
 
-    def get_training_data_4ifbo(
-        self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
-    ):
-        configs = []
-        learning_curves = []
-        performance = []
-        for idx, row in df.iterrows():
-            config_id = idx[0]
-            budget_id = idx[1]
-            if pipeline_space.has_tabular:
-                _row = pd.Series([row[self.config_col]], index=[config_id])
-                _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
-                configs.append(_row.values[0])
-            else:
-                configs.append(row[self.config_col])
-            performance.append(row[self.perf_col])
-            learning_curves.append(self.extract_learning_curve(config_id, budget_id))
-        return configs, learning_curves, performance
-
     def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
         """Returns the best score recorded per config across fidelities seen.
         """
@@ -324,19 +305,6 @@ class MFObservedData:
         configs = np.array([normalize_vectorize_config(c) for c in configs])
 
         return configs, idxs, performances
-
-    def tokenize(self, df: pd.DataFrame, as_tensor: bool = False):
-        """Function to format data for PFN."""
-        configs = np.array([normalize_vectorize_config(c) for c in df])
-        fidelity = np.array([c.fidelity.value for c in df]).reshape(-1, 1)
-        idx = df.index.values.reshape(-1, 1)
-
-        data = np.hstack([idx, fidelity, configs])
-
-        if as_tensor:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            data = torch.Tensor(data).to(device)
-        return data
 
     @property
     def token_ids(self) -> np.ndarray:

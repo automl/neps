@@ -8,13 +8,13 @@ from torch.distributions import Normal
 
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.multi_fidelity.utils import MFObservedData
+from neps.optimizers.multi_fidelity.utils import MFObservedData, normalize_vectorize_config
 from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
 from neps.optimizers.bayesian_optimization.acquisition_functions.ei import ComprehensiveExpectedImprovement
 
 
 class MFStepBase(BaseAcquisition):
-    """A class holding common operations that can be inherited.
+    """A class holding common operations that can be inherited for freeze-thaw based acquisitions.
 
     WARNING: Unsafe use of self attributes, can break if not used correctly.
     """
@@ -36,6 +36,39 @@ class MFStepBase(BaseAcquisition):
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
+    def tokenize_for_freeze_thaw(self, df: pd.DataFrame, as_tensor: bool = False):
+        """Function to format data for PFN.
+        
+        The PFN training data expects the following format:
+        x: [
+            # config ID, normalized fidelity, hyperparameters in unit-hypercube
+            [0, 0.1, hp1, hp2, ..., hpN],
+            [1, 0.1, hp1, hp2, ..., hpN],
+            [2, 0.1, hp1, hp2, ..., hpN],
+            [1, 0.2, hp1, hp2, ..., hpN],
+            [3, 0.1, hp1, hp2, ..., hpN],
+            ...
+        ]
+        y: [
+            # normalized scalar loss
+            loss_of_0_at_0.1,
+            loss_of_1_at_0.1,
+            loss_of_2_at_0.1,
+            loss_of_1_at_0.2,
+            loss_of_3_at_0.1,
+            ...
+        ]
+        """
+        configs = np.array([normalize_vectorize_config(c) for c in df])
+        fidelity = np.array([c.fidelity.value for c in df]).reshape(-1, 1)
+        idx = df.index.values.reshape(-1, 1)
+        data = np.hstack([idx, fidelity, configs])
+
+        if as_tensor:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            data = torch.Tensor(data).to(device)
+        return data
+
     def preprocess_pfn(self, x: pd.Series) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
@@ -43,15 +76,13 @@ class MFStepBase(BaseAcquisition):
         required by the multi-fidelity Expected Improvement acquisition function.
         """
         _x, inc_list = self.preprocess(x.copy())
-        _x_tok = self.observations.tokenize(_x, as_tensor=True)
+        _x_tok = self.tokenize_for_freeze_thaw(_x, as_tensor=True)
         len_partial = len(self.observations.seen_config_ids)
         z_min = x[0].fidelity.lower
         z_max = x[0].fidelity.upper
         # converting fidelity to the discrete budget level
         # STRICT ASSUMPTION: fidelity is the second dimension
-        _x_tok[:len_partial, 1] = (
-            _x_tok[:len_partial, 1] + self.b_step - z_min
-        ) / self.b_step
+        _x_tok[:len_partial, 1] = (_x_tok[:len_partial, 1] + self.b_step - z_min) / self.b_step
         _x_tok[:, 1] = _x_tok[:, 1] / z_max
         return _x, _x_tok, inc_list
 
@@ -324,7 +355,6 @@ class MFEI_Random(MFEI):
             # expected input: IDs pertaining to the tabular data
             x = map_real_hyperparameters_from_tabular_ids(x, self.pipeline_space)
 
-
         indices_to_drop = []
         inc_list = []
 
@@ -357,7 +387,6 @@ class MFEI_Random(MFEI):
                 current_fidelity = 0
                 config.update_hp_values({config.fidelity_name: horizon})
                 inc_list.append(inc_value)
-            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)

@@ -12,7 +12,9 @@ from copy import deepcopy
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.multi_fidelity.utils import MFObservedData
-from neps.optimizers.bayesian_optimization.acquisition_functions.ei import ComprehensiveExpectedImprovement
+from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
+    ComprehensiveExpectedImprovement
+)
 from neps.optimizers.bayesian_optimization.acquisition_functions.mf_ei import MFStepBase
 
 
@@ -273,7 +275,7 @@ class MFPI_Random(MFPI):
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
-        required by the multi-fidelity Expected Improvement acquisition function.
+        required by the multi-fidelity acquisition function.
         """
         if self.pipeline_space.has_tabular:
             # preprocess tabular space differently
