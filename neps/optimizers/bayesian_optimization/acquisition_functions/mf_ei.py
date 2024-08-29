@@ -1,28 +1,22 @@
-# Left in as reference for now.
 # type: ignore
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import Any, Iterable, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import torch
 from torch.distributions import Normal
 
-from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
-
+from ....optimizers.utils import map_real_hyperparameters_from_tabular_ids
+from ....search_spaces.search_space import SearchSpace
+from ...multi_fidelity.utils import MFObservedData
 from .ei import ComprehensiveExpectedImprovement
-
-if TYPE_CHECKING:
-    from neps.optimizers.multi_fidelity.utils import MFObservedData
-    from neps.search_spaces.search_space import SearchSpace
 
 
 class MFEI(ComprehensiveExpectedImprovement):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        surrogate_model_name: str | None = None,
+        surrogate_model_name: str = None,
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
@@ -38,7 +32,7 @@ class MFEI(ComprehensiveExpectedImprovement):
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
-    def preprocess(self, x: pd.Series) -> tuple[Iterable, Iterable]:
+    def preprocess(self, x: pd.Series) -> Tuple[Iterable, Iterable]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -71,7 +65,7 @@ class MFEI(ComprehensiveExpectedImprovement):
                 budget_list.append(self.get_budget_level(config))
 
         # Drop unused configs
-        x = x.drop(labels=indices_to_drop)
+        x.drop(labels=indices_to_drop, inplace=True)
 
         performances = self.observations.get_best_performance_for_each_budget()
         inc_list = []
@@ -84,11 +78,11 @@ class MFEI(ComprehensiveExpectedImprovement):
 
         return x, torch.Tensor(inc_list)
 
-    def preprocess_gp(self, x: Iterable) -> tuple[Iterable, Iterable]:
+    def preprocess_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
         return x.values.tolist(), inc_list
 
-    def preprocess_deep_gp(self, x: Iterable) -> tuple[Iterable, Iterable]:
+    def preprocess_deep_gp(self, x: Iterable) -> Tuple[Iterable, Iterable]:
         x, inc_list = self.preprocess(x)
         x_lcs = []
         for idx in x.index:
@@ -103,7 +97,7 @@ class MFEI(ComprehensiveExpectedImprovement):
         self.surrogate_model.set_prediction_learning_curves(x_lcs)
         return x.values.tolist(), inc_list
 
-    def preprocess_pfn(self, x: Iterable) -> tuple[Iterable, Iterable, Iterable]:
+    def preprocess_pfn(self, x: Iterable) -> Tuple[Iterable, Iterable, Iterable]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -120,7 +114,7 @@ class MFEI(ComprehensiveExpectedImprovement):
         ) / self.b_step
         return _x_tok, _x, inc_list
 
-    def eval(self, x: pd.Series, asscalar: bool = False) -> tuple[np.ndarray, pd.Series]:
+    def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         # _x = x.copy()  # preprocessing needs to change the reference x Series so we don't copy here
         if self.surrogate_model_name == "pfn":
             _x_tok, _x, inc_list = self.preprocess_pfn(
@@ -149,7 +143,7 @@ class MFEI(ComprehensiveExpectedImprovement):
 
     def eval_pfn_ei(
         self, x: Iterable, inc_list: Iterable
-    ) -> np.ndarray | torch.Tensor | float:
+    ) -> Union[np.ndarray, torch.Tensor, float]:
         """PFN-EI modified to preprocess samples and accept list of incumbents."""
         # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
         # _x = x.copy()
@@ -160,7 +154,7 @@ class MFEI(ComprehensiveExpectedImprovement):
 
     def eval_gp_ei(
         self, x: Iterable, inc_list: Iterable
-    ) -> np.ndarray | torch.Tensor | float:
+    ) -> Union[np.ndarray, torch.Tensor, float]:
         """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
         # x, inc_list = self.preprocess(x)  # IMPORTANT change from vanilla-EI
         _x = x.copy()
@@ -200,7 +194,7 @@ class MFEI(ComprehensiveExpectedImprovement):
         pipeline_space: SearchSpace,
         surrogate_model: Any,
         observations: MFObservedData,
-        b_step: int | float,
+        b_step: Union[int, float],
         **kwargs,
     ):
         # overload to select incumbent differently through observations
@@ -208,3 +202,4 @@ class MFEI(ComprehensiveExpectedImprovement):
         self.surrogate_model = surrogate_model
         self.observations = observations
         self.b_step = b_step
+        return
