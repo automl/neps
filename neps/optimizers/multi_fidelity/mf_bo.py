@@ -227,9 +227,7 @@ class FreezeThawModel:
         return train_x, train_y, train_lcs
 
     def _fit(self, train_x, train_y, train_lcs):
-        if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
-            self.surrogate_model.fit(train_x, train_y)
-        elif self.surrogate_model_name == "ftpfn":
+        if self.surrogate_model_name == "ftpfn":
             # do nothing - no training required
             pass
         else:
@@ -239,9 +237,7 @@ class FreezeThawModel:
             )
 
     def _predict(self, test_x, test_lcs):
-        if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
-            return self.surrogate_model.predict(test_x)
-        elif self.surrogate_model_name == "ftpfn":
+        if self.surrogate_model_name == "ftpfn":
             return self.surrogate_model.predict(test_x, test_lcs)
         else:
             # check neps/optimizers/bayesian_optimization/models/__init__.py for options

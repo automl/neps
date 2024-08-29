@@ -93,11 +93,6 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
                 _x
             )  # IMPORTANT change from vanilla-EI
             pi = self.eval_pfn_pi(_x_tok, inc_list)
-        elif self.surrogate_model_name in ["gp", "gp_hierarchy"]:
-            _x, inc_list = self.preprocess_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
-            pi = self.eval_gp_pi(_x.values.tolist(), inc_list)
         else:
             raise ValueError(
                 f"Unrecognized surrogate model name: {self.surrogate_model_name}"
@@ -117,21 +112,6 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
         pi = self.surrogate_model.get_pi(x.to(self.surrogate_model.device), inc_list)
         if len(pi.shape) == 2:
             pi = pi.flatten()
-        return pi
-
-    def eval_gp_pi(
-        self, x: Iterable, inc_list: Iterable
-    ) -> Union[np.ndarray, torch.Tensor, float]:
-        _x = x.copy()
-        try:
-            mu, cov = self.surrogate_model.predict(_x)
-        except ValueError as e:
-            raise e
-        std = torch.sqrt(torch.diag(cov))
-        mu_star = inc_list.to(mu.device)
-
-        gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
-        pi = gauss.cdf((mu_star - mu) / (std + 1E-9))
         return pi
 
 

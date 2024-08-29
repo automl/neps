@@ -51,5 +51,4 @@ __all__ = [
     "UpperConfidenceBound",
     "DecayingPriorWeightedAcquisition",
     "MFPI_Random",
-    "UCB",
 ]

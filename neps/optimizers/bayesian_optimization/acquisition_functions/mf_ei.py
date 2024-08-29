@@ -36,11 +36,6 @@ class MFStepBase(BaseAcquisition):
     def get_budget_level(self, config) -> int:
         return int((config.fidelity.value - config.fidelity.lower) / self.b_step)
 
-
-    def preprocess_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
-        x, inc_list = self.preprocess(x)
-        return x, inc_list
-
     def preprocess_pfn(self, x: pd.Series) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
@@ -140,11 +135,6 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_pfn_ei(_x_tok, inc_list)
-        elif self.surrogate_model_name in ["gp", "gp_hierarchy"]:
-            _x, inc_list = self.preprocess_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
-            ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
         else:
             raise ValueError(
                 f"Unrecognized surrogate model name: {self.surrogate_model_name}"
@@ -167,49 +157,6 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
         ei = self.surrogate_model.get_ei(x.to(self.surrogate_model.device), inc_list)
         if len(ei.shape) == 2:
             ei = ei.flatten()
-        return ei
-
-    def eval_gp_ei(
-        self, x: Iterable, inc_list: Iterable
-    ) -> Union[np.ndarray, torch.Tensor, float]:
-        """Vanilla-EI modified to preprocess samples and accept list of incumbents."""
-        _x = x.copy()
-        try:
-            mu, cov = self.surrogate_model.predict(_x)
-        except ValueError as e:
-            raise e
-            # return -1.0  # in case of error. return ei of -1
-        std = torch.sqrt(torch.diag(cov))
-
-        mu_star = inc_list.to(mu.device)  # IMPORTANT change from vanilla-EI
-
-        gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
-        # u = (mu - mu_star - self.xi) / std
-        # ei = std * updf + (mu - mu_star - self.xi) * ucdf
-        if self.log_ei:
-            # we expect that f_min is in log-space
-            f_min = mu_star - self.xi
-            v = (f_min - mu) / std
-            ei = torch.exp(f_min) * gauss.cdf(v) - torch.exp(
-                0.5 * torch.diag(cov) + mu
-            ) * gauss.cdf(v - std)
-        else:
-            u = (mu_star - mu - self.xi) / std
-            ucdf = gauss.cdf(u)
-            updf = torch.exp(gauss.log_prob(u))
-            ei = std * updf + (mu_star - mu - self.xi) * ucdf
-            # Clip ei if std == 0.0
-            # ei = torch.where(torch.isclose(std, torch.tensor(0.0)), 0, ei)
-        if self.augmented_ei:
-            sigma_n = self.surrogate_model.likelihood
-            ei *= 1.0 - torch.sqrt(torch.tensor(sigma_n, device=mu.device)) / torch.sqrt(
-                sigma_n + torch.diag(cov)
-            )
-
-        # Save data for writing
-        self.mu_star = mu_star.detach().numpy().tolist()
-        self.mu = mu.detach().numpy().tolist()
-        self.std = std.detach().numpy().tolist()
         return ei
 
 
