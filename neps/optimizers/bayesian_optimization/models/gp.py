@@ -5,12 +5,12 @@ import math
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Mapping, TypeVar
 
+from botorch.models import MultiTaskGP
 import gpytorch
 import gpytorch.constraints
 import torch
 from botorch.acquisition.analytic import SingleTaskGP
-from botorch.models import MixedSingleTaskGP
-from botorch.models.gp_regression_mixed import CategoricalKernel, Likelihood
+from botorch.models.gp_regression_mixed import CategoricalKernel, Likelihood, MixedSingleTaskGP
 from botorch.models.transforms.outcome import Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch.kernels import MaternKernel, ScaleKernel
@@ -190,31 +190,29 @@ def default_single_obj_gp(
         return gp, likelihood
 
     # Mixed
-    def cont_kernel_factory(
-        batch_shape: torch.Size,
-        ard_num_dims: int,
-        active_dims: list[int],
-    ) -> ScaleKernel:
-        lengthscale_prior, lengthscale_constraint = default_lengthscale_prior(
-            ard_num_dims
-        )
-        return ScaleKernel(
-            MaternKernel(
-                nu=2.5,
-                batch_shape=batch_shape,
-                ard_num_dims=ard_num_dims,
-                active_dims=active_dims,
-                lengthscale_prior=lengthscale_prior,
-                lengthscale_constraint=lengthscale_constraint,
-            ),
-        )
+    numeric_kernel = default_matern_kernel(len(numerics), active_dims=tuple(numerics))
+    cat_kernel = default_categorical_kernel(
+        len(categoricals), active_dims=tuple(categoricals)
+    )
 
-    gp = MixedSingleTaskGP(
+    # WARNING: I previously tried SingleTaskMixedGp which does the following:
+    #
+    # x K((x1, c1), (x2, c2)) =
+    # x     K_cont_1(x1, x2) + K_cat_1(c1, c2) +
+    # x      K_cont_2(x1, x2) * K_cat_2(c1, c2)
+    #
+    # In a toy example with a single binary categorical which acted like F * {0, 1},
+    # the model collapsed to always predicting `0`. Causing all parameters defining F
+    # to essentially be guess at random. This is a lot more stable while testing...
+    # TODO: Figure out why...
+    kernel = numeric_kernel + cat_kernel
+
+    gp = SingleTaskGP(
         train_X=x.tensor,
         train_Y=y,
-        cat_dims=categoricals,
+        mean_module=default_mean(),
         likelihood=likelihood,
-        cont_kernel_factory=cont_kernel_factory,
+        covar_module=kernel,
         outcome_transform=Standardize(m=1),
     )
     return gp, likelihood
@@ -232,8 +230,8 @@ def optimize_acq(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     acq_options = acq_options or {}
 
-    lower = [domain.lower for domain in encoder.domains.values()]
-    upper = [domain.upper for domain in encoder.domains.values()]
+    lower = [domain.lower for domain in encoder.domains]
+    upper = [domain.upper for domain in encoder.domains]
     bounds = torch.tensor([lower, upper], dtype=torch.float)
 
     cat_transformers = {
