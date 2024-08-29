@@ -10,7 +10,7 @@ import gpytorch.constraints
 import torch
 from botorch.acquisition.analytic import SingleTaskGP
 from botorch.models import MixedSingleTaskGP
-from botorch.models.gp_regression_mixed import CategoricalKernel
+from botorch.models.gp_regression_mixed import CategoricalKernel, Likelihood
 from botorch.models.transforms.outcome import Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch.kernels import MaternKernel, ScaleKernel
@@ -149,7 +149,9 @@ def default_categorical_kernel(
 def default_single_obj_gp(
     x: TensorPack,
     y: torch.Tensor,
-) -> SingleTaskGP:
+) -> tuple[SingleTaskGP, Likelihood]:
+    if y.ndim == 1:
+        y = y.unsqueeze(-1)
     encoder = x.encoder
     numerics: list[int] = []
     categoricals: list[int] = []
@@ -159,29 +161,33 @@ def default_single_obj_gp(
         else:
             numerics.append(encoder.index_of[hp_name])
 
+    likelihood = default_likelihood_with_prior()
+
     # Purely vectorial
     if len(categoricals) == 0:
-        return SingleTaskGP(
+        gp = SingleTaskGP(
             train_X=x.tensor,
             train_Y=y,
             mean_module=default_mean(),
-            likelihood=default_likelihood_with_prior(),
+            likelihood=likelihood,
             # Only matern kernel
             covar_module=default_matern_kernel(len(numerics)),
             outcome_transform=Standardize(m=1),
         )
+        return gp, likelihood
 
     # Purely categorical
     if len(numerics) == 0:
-        return SingleTaskGP(
+        gp = SingleTaskGP(
             train_X=x.tensor,
             train_Y=y,
             mean_module=default_mean(),
-            likelihood=default_likelihood_with_prior(),
+            likelihood=likelihood,
             # Only categorical kernel
             covar_module=default_categorical_kernel(len(categoricals)),
             outcome_transform=Standardize(m=1),
         )
+        return gp, likelihood
 
     # Mixed
     def cont_kernel_factory(
@@ -203,14 +209,15 @@ def default_single_obj_gp(
             ),
         )
 
-    return MixedSingleTaskGP(
+    gp = MixedSingleTaskGP(
         train_X=x.tensor,
         train_Y=y,
         cat_dims=categoricals,
-        likelihood=default_likelihood_with_prior(),
+        likelihood=likelihood,
         cont_kernel_factory=cont_kernel_factory,
         outcome_transform=Standardize(m=1),
     )
+    return gp, likelihood
 
 
 def optimize_acq(

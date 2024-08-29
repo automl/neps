@@ -1,46 +1,53 @@
-from typing import Iterable, Union
+from __future__ import annotations
 
-import numpy as np
-import torch
+from typing import TYPE_CHECKING
 
-from .base_acquisition import BaseAcquisition
-from .ei import ComprehensiveExpectedImprovement
+from botorch.acquisition.logei import partial
+
+from neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition import (
+    WeightedAcquisition,
+)
+
+if TYPE_CHECKING:
+    import torch
+    from botorch.acquisition import AcquisitionFunction
+    from botorch.models.gp_regression import Likelihood
+    from botorch.models.model import Model
+    from torch import Tensor
 
 
-class CostCooler(BaseAcquisition):
-    def __init__(
-        self,
-        base_acquisition: BaseAcquisition = ComprehensiveExpectedImprovement,
-    ):
-        self.base_acquisition = base_acquisition
-        self.cost_model = None
-        self.alpha = None
+def apply_cost_cooling(
+    acq_values: Tensor,
+    X: Tensor,
+    acq: AcquisitionFunction,
+    cost_model: Model,
+    likelihood: Likelihood,
+    alpha: float,
+) -> Tensor:
+    posterior = likelihood(cost_model(X))
+    cost = posterior.mean
 
-    def eval(
-        self,
-        x: Iterable,
-        **base_acquisition_kwargs,
-    ) -> Union[np.ndarray, torch.Tensor, float]:
-        base_acquisition_value = self.base_acquisition.eval(
-            x=x, **base_acquisition_kwargs
-        )
-        costs, _ = self.cost_model.predict(x)
-        # if costs < 0.001:
-        #     costs = 1
-        if torch.is_tensor(costs):
-            cost_cooled = torch.zeros_like(costs)
-            index = 0
-            for _, y in enumerate(costs.detach().numpy()):
-                if y < 0.0001:
-                    cost_cooled[index] = base_acquisition_value[index]
-                else:
-                    cost_cooled[index] = base_acquisition_value[index] / (y**self.alpha)
-                index += 1
-        # return base_acquisition_value # / (costs**self.alpha).detach().numpy()
-        return cost_cooled
+    if acq._log:
+        # can derive from eq log(x) = log(acq / cost^alpha)
+        return acq_values - alpha * cost.log()
+    return acq_values / cost.pow(alpha)
 
-    def set_state(self, surrogate_model, alpha, cost_model, **kwargs):
-        super().set_state(surrogate_model=surrogate_model)
-        self.base_acquisition.set_state(surrogate_model=surrogate_model, **kwargs)
-        self.alpha = alpha
-        self.cost_model = cost_model
+
+def cost_cooled_acq(
+    acq_fn: AcquisitionFunction,
+    model: Model,
+    likelihood: Likelihood,
+    used_budget_percentage: float,
+    X_pending: torch.Tensor | None = None,
+) -> WeightedAcquisition:
+    assert 0 <= used_budget_percentage <= 1
+    return WeightedAcquisition(
+        acq=acq_fn,
+        apply_weight=partial(
+            apply_cost_cooling,
+            cost_model=model,
+            likelihood=likelihood,
+            alpha=1 - used_budget_percentage,
+        ),
+        X_pending=X_pending,
+    )

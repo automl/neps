@@ -15,7 +15,7 @@ from typing_extensions import override
 
 import torch
 
-from neps.distributions import DistributionOverDomain, TruncatedNormal
+from neps.sampling.distributions import TorchDistributionWithDomain, TruncatedNormal
 from neps.sampling.samplers import Sampler, WeightedSampler
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 
@@ -167,11 +167,11 @@ class Prior(Sampler, Protocol):
                     f"Please provide a center for all domains."
                 )
 
-        distributions: list[DistributionOverDomain] = []
+        distributions: list[TorchDistributionWithDomain] = []
         for name, domain in domains.items():
             center_confidence = centers.get(name)
             if center_confidence is None:
-                dist = DistributionOverDomain(
+                dist = TorchDistributionWithDomain(
                     distribution=torch.distributions.Uniform(0.0, 1.0),
                     domain=UNIT_FLOAT_DOMAIN,
                 )
@@ -202,7 +202,7 @@ class Prior(Sampler, Protocol):
 
                 weights[center] = confidence
 
-                dist = DistributionOverDomain(
+                dist = TorchDistributionWithDomain(
                     distribution=torch.distributions.Categorical(probs=weights),
                     domain=domain,
                 )
@@ -213,7 +213,7 @@ class Prior(Sampler, Protocol):
             unit_center = domain.to_unit(
                 torch.tensor(center, device=device, dtype=torch.float64)
             )
-            dist = DistributionOverDomain(
+            dist = TorchDistributionWithDomain(
                 distribution=TruncatedNormal(
                     loc=unit_center,
                     scale=(1 - confidence),
@@ -254,7 +254,7 @@ class CenteredPrior(Prior):
     [`Prior.make_centered()`][neps.priors.Prior.make_centered].
     """
 
-    distributions: list[DistributionOverDomain]
+    distributions: list[TorchDistributionWithDomain]
     """Distributions along with the corresponding domains they sample from."""
 
     _distribution_domains: list[Domain] = field(init=False, repr=False)

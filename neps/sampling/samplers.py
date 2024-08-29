@@ -40,11 +40,9 @@ class Sampler(Protocol):
                 will be added with [`.ncols`][neps.samplers.Sampler.ncols].
                 For example, if `n = 5`, the output will be `(5, ncols)`. If
                 `n = (5, 3)`, the output will be `(5, 3, ncols)`.
-            to: The domain or list of domains to cast the points to.
-                If a single domain, all points are cast to that domain, otherwise
-                each column `ndim_i` in (n, ndim) is cast to the corresponding domain
-                in `to`. As a result, the length of `to` must match the number of columns
-                from [`.ncols`][neps.samplers.Sampler.ncols].
+            to: If a single domain, `.ncols` columns will be produced form that one
+                domain. If a list of domains, then it must have the same length as the
+                number of columns, with each column being in the corresponding domain.
             seed: The seed for the random number generator.
             device: The device to cast the samples to.
 
@@ -58,7 +56,7 @@ class Sampler(Protocol):
         """Create a Sobol sampler.
 
         Args:
-            ndim: The number of dimensions to sample for.
+            ndim: The number of columns to sample.
             scramble: Whether to scramble the Sobol sequence.
             seed: The seed for the Sobol sequence.
 
@@ -81,6 +79,13 @@ class Sobol(Sampler):
 
     scramble: bool = True
     """Whether to scramble the Sobol sequence."""
+
+    def __post_init__(self):
+        if self.ndim < 1:
+            raise ValueError(
+                "The number of dimensions must be at least 1."
+                f" Got {self.ndim} dimensions."
+            )
 
     @property
     @override
@@ -180,13 +185,13 @@ class WeightedSampler(Sampler):
             total_samples = reduce(lambda x, y: x * y, n)
             output_shape = (*n, self.ncols)
 
-        # Randomly select which prior to sample from for each of the total_samples
-        chosen_priors = torch.empty((total_samples,), device=device, dtype=torch.int64)
-        chosen_priors = torch.multinomial(
+        # Randomly select which sampler to sample from for each of the total_samples
+        chosen_samplers = torch.empty((total_samples,), device=device, dtype=torch.int64)
+        chosen_samplers = torch.multinomial(
             self.probabilities,
             total_samples,
             replacement=True,
-            out=chosen_priors,
+            out=chosen_samplers,
         )
 
         # Create an empty tensor to hold all samples
@@ -194,16 +199,16 @@ class WeightedSampler(Sampler):
             (total_samples, self.ncols), device=device, dtype=torch.float64
         )
 
-        # Loop through each prior and its associated indices
-        for i, prior in enumerate(self.samplers):
-            # Find indices where the chosen prior is i
+        # Loop through each sampler and its associated indices
+        for i, sampler in enumerate(self.samplers):
+            # Find indices where the chosen sampler is i
             _i = torch.tensor(i, dtype=torch.int64, device=device)
-            indices = torch.where(chosen_priors == _i)[0]
+            indices = torch.where(chosen_samplers == _i)[0]
 
             if len(indices) > 0:
-                # Sample from the prior for the required number of indices
-                samples_from_prior = prior.sample(len(indices), to=to, device=device)
-                output_samples[indices] = samples_from_prior
+                # Sample from the sampler for the required number of indices
+                samples_from_sampler = sampler.sample(len(indices), to=to, device=device)
+                output_samples[indices] = samples_from_sampler
 
         # Reshape to the output shape including ncols dimension
         output_samples = output_samples.view(output_shape)
