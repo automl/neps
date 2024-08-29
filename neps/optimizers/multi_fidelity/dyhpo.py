@@ -129,7 +129,7 @@ class MFEIBO(BaseOptimizer):
             raise NotImplementedError
         elif surrogate_model == "gp":
             model_policy = FreezeThawModel
-        elif surrogate_model == "pfn":
+        elif surrogate_model == "ftpfn":
             model_policy = PFNSurrogate
         else:
             raise ValueError("Invalid model option selected!")

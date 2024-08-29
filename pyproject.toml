@@ -63,7 +63,7 @@ pyyaml = "^6"
 tensorboard = "^2"
 typing-extensions = "*"
 torchvision = ">=0.8.0"
-ifbo = ">=0.3.5"
+ifbo = ">=0.3.8"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"

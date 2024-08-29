@@ -404,18 +404,15 @@ class MFEI_Random(MFEI):
         inc_list = []
 
         steps_passed = len(self.observations.completed_runs)
-        print(f"Steps acquired: {steps_passed}")
 
         # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
         inc_value = self.sample_threshold(inc_value)
-        print(f"Threshold for EI: {inc_value}")
 
         # Like MFEI: set fidelities to query using horizon as self.b_step
         # Extension: Unlike DyHPO, we sample the horizon randomly over the full range
         horizon = self.sample_horizon(steps_passed)
-        print(f"Horizon for EI: {horizon}")
         for i, config in x.items():
             if i <= max(self.observations.seen_config_ids):
                 current_fidelity = config.fidelity.value

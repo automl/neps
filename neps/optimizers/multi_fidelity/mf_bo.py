@@ -2,19 +2,16 @@
 
 
 from copy import deepcopy
-
 import numpy as np
 import pandas as pd
 import torch
 
 from neps.utils.common import instance_from_map
-# from ..bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
-# from ..multi_fidelity.utils import normalize_vectorize_config
 from neps.optimizers.multi_fidelity.utils import normalize_vectorize_config
-# from ..multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
-from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
+from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
+
 
 
 class MFBOBase:
@@ -199,15 +196,13 @@ class FreezeThawModel:
         self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
-        if self.surrogate_model_name in ["deep_gp", "pfn"]:
+        if self.surrogate_model_name in ["deep_gp"]:
             self.surrogate_model_args.update({"pipeline_space": pipeline_space})
         elif self.surrogate_model_name == "dpl":
-            self.surrogate_model_args.update(
-                {"pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs}
-            )
-
-        # instantiate the surrogate model
+            self.surrogate_model_args.update({
+                "pipeline_space": self.pipeline_space,
+                 "observed_data": self.observed_configs
+            })
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
             self.surrogate_model_name,
@@ -241,8 +236,11 @@ class FreezeThawModel:
     def _fit(self, train_x, train_y, train_lcs):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             self.surrogate_model.fit(train_x, train_y)
-        elif self.surrogate_model_name in ["deep_gp", "pfn", "dpl"]:
+        elif self.surrogate_model_name in ["deep_gp", "pfn", "dpl",]:
             self.surrogate_model.fit(train_x, train_y, train_lcs)
+        elif self.surrogate_model_name == "ftpfn":
+            # do nothing - no training required
+            pass
         else:
             # check neps/optimizers/bayesian_optimization/models/__init__.py for options
             raise ValueError(
@@ -284,7 +282,7 @@ class FreezeThawModel:
 
         # only to handle tabular spaces
         if self.pipeline_space.has_tabular:
-            if self.surrogate_model_name in ["deep_gp", "pfn"]:
+            if self.surrogate_model_name in ["deep_gp"]:
                 self.surrogate_model_args.update(
                     {"pipeline_space": self.pipeline_space.raw_tabular_space}
                 )
@@ -323,10 +321,10 @@ class FreezeThawModel:
         if decay_t is None:
             decay_t = len(train_x)
         train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
-        self._fit(train_x, train_y, train_lcs)
+        self.surrogate_model._fit(train_x, train_y, train_lcs)
 
         return self.surrogate_model, decay_t
-
+    
 
 class PFNSurrogate(FreezeThawModel):
     """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
@@ -336,10 +334,32 @@ class PFNSurrogate(FreezeThawModel):
         self.train_x = None
         self.train_y = None
 
+    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
+        if train_x is None:
+            train_x = []
+        if train_y is None:
+            train_y = []
+        if pending_x is None:
+            pending_x = []
+
+        if decay_t is None:
+            decay_t = len(train_x)
+        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
+        self._fit(train_x, train_y, train_lcs)
+
+        return self.surrogate_model, decay_t
+
     def _fit(self, *args):  # pylint: disable=unused-argument
-        assert self.surrogate_model_name == "pfn"
+        # no training required,, only preprocessing the training data as context during inference
         self.preprocess_training_set()
-        self.surrogate_model.fit(self.train_x, self.train_y)
+
+    def _predict(self, test_x, test_lcs):
+        assert "pfn" in self.surrogate_model_name
+        test_x = self.preprocess_test_set(test_x)
+        return self.surrogate_model(self.train_x, self.train_y, test_x)
+
+    def _cast_tensor_shapes(self, x: torch.Tensor) -> torch.Tensor:
+        return x
 
     def preprocess_training_set(self):
         _configs = self.observed_configs.df.config.values.copy()
@@ -361,8 +381,12 @@ class PFNSurrogate(FreezeThawModel):
         idxs = idxs.astype(float)
         idxs[:, 1] = idxs[:, 1] / _configs[0].fidelity.upper
         # TODO: account for fantasization
-        self.train_x = torch.Tensor(np.hstack([idxs, configs])).to(device)
-        self.train_y = torch.Tensor(performances).to(device)
+        self.surrogate_model.train_x = self._cast_tensor_shapes(
+            torch.Tensor(np.hstack([idxs, configs])).to(device)
+        )
+        self.surrogate_model.train_y = self._cast_tensor_shapes(
+            torch.Tensor(performances).to(device)
+        )
 
     def preprocess_test_set(self, test_x):
         _len = len(self.observed_configs.all_configs_list())
@@ -379,10 +403,12 @@ class PFNSurrogate(FreezeThawModel):
         token_ids = np.vstack((existing_token_ids, new_token_ids))
 
         configs = np.array([normalize_vectorize_config(c) for c in test_x])
-        test_x = torch.Tensor(np.hstack([token_ids, configs])).to(device)
-        return test_x
+        self.surrogate_model.test_x = self._cast_tensor_shapes(
+            torch.Tensor(np.hstack([token_ids, configs])).to(device)
+        )
+        return self.surrogate_model.test_x
 
     def _predict(self, test_x, test_lcs):
         assert self.surrogate_model_name == "pfn"
         test_x = self.preprocess_test_set(test_x)
-        return self.surrogate_model.predict(self.train_x, self.train_y, test_x)
+        return self.surrogate_model(self.train_x, self.train_y, test_x)

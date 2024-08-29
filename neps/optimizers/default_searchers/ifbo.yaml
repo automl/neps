@@ -1,2 +1,6 @@
 strategy: ifbo
+surrogate_model: ftpfn
+surrogate_model_args:
+  version: "0.0.1"
 acquisition: MFPI-random
+model_policy: PFNSurrogate

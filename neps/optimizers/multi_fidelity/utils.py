@@ -1,6 +1,7 @@
 # type: ignore
 from typing import Any, Sequence
 
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 import torch
@@ -32,7 +33,7 @@ def normalize_vectorize_config(
     config: SearchSpace, ignore_fidelity: bool = True
 ) -> np.ndarray:
     _new_vector = []
-    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity).items():
+    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity=ignore_fidelity).items():
         _new_vector.extend(hp_list)
     return np.array(_new_vector)
 
@@ -359,33 +360,12 @@ if __name__ == "__main__":
         index=[(0, 2), (1, 2), (0, 1)],
     )
 
-    print(data.df)
-    print(data.get_learning_curves())
-    print(
-        "Mapping of budget IDs into best performing configurations at each fidelity:\n",
-        data.get_incumbents_for_budgets(),
-    )
-    print(
-        "Best Performance at each budget level:\n",
-        data.get_best_performance_for_each_budget(),
-    )
-    print(
-        "Configuration ID of the best observed performance so far: ",
-        data.get_best_learning_curve_id(),
-    )
-    print(data.extract_learning_curve(0, 2))
-    # data.df.sort_index(inplace=True)
-    print(data.get_partial_configs_at_max_seen())
-
     # When updating multiple indices at a time both the values in the data dictionary and the indices should be lists
     data.update_data({"perf": [1.8, 1.5]}, index=[(1, 1), (0, 0)])
-    print(data.df)
 
     data = MFObservedData(["config", "perf"], index_names=["config_id", "budget_id"])
 
     # when adding a single row second level list is not necessary
     data.add_data(["conf1", 0.5], index=(0, 0))
-    print(data.df)
 
     data.update_data({"perf": [1.8], "budget_col": [5]}, index=(0, 0))
-    print(data.df)

@@ -87,10 +87,10 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
 
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         # deepcopy
-        _x = pd.Series([x.loc[idx].copy() for idx in x.index.values], index=x.index)
-        if self.surrogate_model_name == "pfn":
+        _x = pd.Series([deepcopy(x.loc[idx]) for idx in x.index.values], index=x.index)
+        if self.surrogate_model_name == "ftpfn":
             _x, _x_tok, inc_list = self.preprocess_pfn(
-                x.copy()
+                deepcopy(x.copy())
             )  # IMPORTANT change from vanilla-EI
             pi = self.eval_pfn_pi(_x_tok, inc_list)
         elif self.surrogate_model_name in ["deep_gp", "dpl"]:
@@ -122,7 +122,6 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
         pi = self.surrogate_model.get_pi(x.to(self.surrogate_model.device), inc_list)
         if len(pi.shape) == 2:
             pi = pi.flatten()
-        print(f"Maximum PI: {pi.max()}")
         return pi
 
     def eval_gp_pi(
@@ -311,19 +310,16 @@ class MFPI_Random(MFPI):
         inc_list = []
 
         steps_passed = len(self.observations.completed_runs)
-        print(f"Steps acquired: {steps_passed}")
 
         # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
         t_value = self.sample_threshold(inc_value)
-        print(f"Threshold for PI: {inc_value - t_value}")
         inc_value = t_value
 
         # Like MFEI: set fidelities to query using horizon as self.b_step
         # Extension: Unlike DyHPO, we sample the horizon randomly over the full range
         horizon = self.sample_horizon(steps_passed)
-        print(f"Horizon for PI: {horizon}")
         for i, config in x.items():
             if i <= max(self.observations.seen_config_ids):
                 current_fidelity = config.fidelity.value
@@ -344,7 +340,6 @@ class MFPI_Random(MFPI):
                 current_fidelity = 0
                 config.update_hp_values({config.fidelity_name: horizon})
                 inc_list.append(inc_value)
-            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
@@ -399,19 +394,16 @@ class MFPI_Random_HiT(MFPI):
         inc_list = []
 
         steps_passed = len(self.observations.completed_runs)
-        print(f"Steps acquired: {steps_passed}")
 
         # Like EI-AtMax, use the global incumbent as a basis for the EI threshold
         inc_value = min(self.observations.get_best_performance_for_each_budget())
         # Extension: Add a random min improvement threshold to encourage high risk high gain
         t_value = self.sample_threshold(inc_value)
-        print(f"Threshold for EI: {inc_value - t_value}")
         inc_value = t_value
 
         # Like MFEI: set fidelities to query using horizon as self.b_step
         # Extension: Unlike DyHPO, we sample the horizon randomly over the full range
         horizon = self.sample_horizon(steps_passed)
-        print(f"Horizon for EI: {horizon}")
         for i, config in x.items():
             if i <= max(self.observations.seen_config_ids):
                 current_fidelity = config.fidelity.value
@@ -431,7 +423,6 @@ class MFPI_Random_HiT(MFPI):
                 current_fidelity = 0
                 config.update_hp_values({config.fidelity_name: horizon})
                 inc_list.append(inc_value)
-            #print(f"- {x.index.values[i]}: {current_fidelity} --> {config.fidelity.value}")
 
         # Drop unused configs
         x.drop(labels=indices_to_drop, inplace=True)
