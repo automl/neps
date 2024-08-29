@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
+from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map, EvaluationData
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -24,10 +24,10 @@ from neps.optimizers.multi_fidelity.mf_bo import FreezeThawModel, PFNSurrogate
 from neps.optimizers.multi_fidelity.utils import MFObservedData
 
 
-class MFEIBO(BaseOptimizer):
+class IFBO(BaseOptimizer):
     """Base class for MF-BO algorithms that use DyHPO-like acquisition and budgeting."""
 
-    acquisition: str = "MFEI"
+    acquisition: str = "MFPI-random"
 
     def __init__(
         self,
@@ -44,7 +44,7 @@ class MFEIBO(BaseOptimizer):
         ignore_errors: bool = False,
         logger=None,
         # arguments for model
-        surrogate_model: str | Any = "gp",
+        surrogate_model: str | Any = "ftpfn",
         surrogate_model_args: dict = None,
         domain_se_kernel: str = None,
         graph_kernels: list = None,
@@ -53,7 +53,7 @@ class MFEIBO(BaseOptimizer):
         acquisition_args: dict = None,
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
         acquisition_sampler_args: dict = None,
-        model_policy: Any = FreezeThawModel,
+        model_policy: Any = PFNSurrogate,
         initial_design_fraction: float = 0.75,
         initial_design_size: int = 10,
         initial_design_budget: int = None,
@@ -125,9 +125,7 @@ class MFEIBO(BaseOptimizer):
         self._prep_model_args(self.hp_kernels, self.graph_kernels, pipeline_space)
 
         # TODO: Better solution than branching based on the surrogate name is needed
-        if surrogate_model in ["deep_gp", "dpl"]:
-            raise NotImplementedError
-        elif surrogate_model == "gp":
+        if surrogate_model in ["gp", "gp_hierarchy"]:
             model_policy = FreezeThawModel
         elif surrogate_model == "ftpfn":
             model_policy = PFNSurrogate
@@ -228,6 +226,7 @@ class MFEIBO(BaseOptimizer):
         return _initial_design_size, _initial_design_budget
 
     def get_budget_level(self, config: SearchSpace) -> int:
+        """Calculates the discretized (int) budget level for a given configuration."""
         return int(
             np.ceil((config.fidelity.value - config.fidelity.lower) / self.step_size)
         )
@@ -252,7 +251,7 @@ class MFEIBO(BaseOptimizer):
         return budget_val
 
     def total_budget_spent(self) -> int | float:
-        """Calculates the toal budget spent so far.
+        """Calculates the toal budget spent so far, in the unit of fidelity specified.
 
         This is calculated as a function of the fidelity range provided, that takes into
         account the minimum budget and the step size.
@@ -331,7 +330,7 @@ class MFEIBO(BaseOptimizer):
 
     def _load_previous_observations(self, previous_results):
         def index_data_split(config_id: str, config_val):
-            _config_id, _budget_id = MFEIBO._get_config_id_split(config_id)
+            _config_id, _budget_id = IFBO._get_config_id_split(config_id)
             index = int(_config_id), int(_budget_id)
             _data = [
                 config_val.config,
@@ -418,7 +417,7 @@ class MFEIBO(BaseOptimizer):
         """
         config_id = None
         previous_config_id = None
-        if self.is_init_phase(budget_based=False):
+        if self.is_init_phase():
             # sample a new config till initial design size is satisfied
             self.logger.info("sampling...")
             config = self.pipeline_space.sample(
@@ -462,39 +461,9 @@ class MFEIBO(BaseOptimizer):
             # NOTE: `samples` and `_samples` should share the same index values, hence,
             # avoid using `.iloc` and work with `.loc` on these pandas DataFrame/Series
 
-            if hasattr(self.acquisition, "mu"):
-                # collect prediction learning_curves
-                lcs = []
-                # and tabular ids
-                tabular_ids = []
-                for idx in _samples.index:
-                    if self.acquisition_sampler.is_tabular:
-                        tabular_ids.append(samples[idx]["id"].value)
-                    if idx in self.observed_configs.df.index.levels[0]:
-                        # extracting the available/observed learning curve
-                        lc = self.observed_configs.extract_learning_curve(
-                            idx, budget_id=None
-                        )
-                    else:
-                        # initialize a learning curve with a placeholder
-                        # This is later padded accordingly for the Conv1D layer
-                        lc = []
-                    lcs.append(lc)
-
-                data = {
-                    "Acq Value": acq.values,
-                    "preds": self.acquisition.mu,
-                    "incumbents": self.acquisition.mu_star,
-                    "std": self.acquisition.std,
-                    "pred_learning_curves": lcs,
-                }
-                if self.acquisition_sampler.is_tabular:
-                    data["tabular_ids"] = tabular_ids
-
             # assigning config hyperparameters
             config = samples.loc[_config_id]
             # IMPORTANT: setting the fidelity value appropriately
-
             _fid_value = (
                 config.fidelity.lower
                 if best_idx > max(self.observed_configs.seen_config_ids)
@@ -504,7 +473,7 @@ class MFEIBO(BaseOptimizer):
                             best_idx
                         ]
                     )
-                    + self.step_size  # ONE-STEP FIDELITY QUERY
+                    + self.step_size  # ONE-STEP FIDELITY QUERY for freeze-thaw
                 )
             )
             config.update_hp_values({config.fidelity_name: _fid_value})
@@ -514,4 +483,5 @@ class MFEIBO(BaseOptimizer):
             previous_config_id = f"{_config_id}_{self.get_budget_level(config) - 1}"
         else:
             config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
-        return config.hp_values(), config_id, previous_config_id
+
+        return config.hp_values(), config_id, previous_config_id  # type: ignore

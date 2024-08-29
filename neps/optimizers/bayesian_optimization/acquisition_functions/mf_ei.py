@@ -41,23 +41,6 @@ class MFStepBase(BaseAcquisition):
         x, inc_list = self.preprocess(x)
         return x, inc_list
 
-    def preprocess_deep_gp(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
-        x, inc_list = self.preprocess(x)
-        x_lcs = []
-        for idx in x.index:
-            if idx in self.observations.df.index.levels[0]:
-                # TODO: Samir, check if `budget_id=None` is okay?
-                # budget_level = self.get_budget_level(x[idx])
-                # extracting the available/observed learning curve
-                lc = self.observations.extract_learning_curve(idx, budget_id=None)
-            else:
-                # initialize a learning curve with a placeholder
-                # This is later padded accordingly for the Conv1D layer
-                lc = []
-            x_lcs.append(lc)
-        self.surrogate_model.set_prediction_learning_curves(x_lcs)
-        return x, inc_list
-
     def preprocess_pfn(self, x: pd.Series) -> Tuple[torch.Tensor, pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
@@ -78,7 +61,7 @@ class MFStepBase(BaseAcquisition):
         return _x, _x_tok, inc_list
 
 
-# NOTE: the order of inheritance is important
+# NOTE: the order of inheritance is important by MRO
 class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
     def __init__(
         self,
@@ -152,17 +135,12 @@ class MFEI(MFStepBase, ComprehensiveExpectedImprovement):
     def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
         # deepcopy
         _x = pd.Series([x.loc[idx].copy() for idx in x.index.values], index=x.index)
-        if self.surrogate_model_name == "pfn":
+        if self.surrogate_model_name == "ftpfn":
             _x, _x_tok, inc_list = self.preprocess_pfn(
                 x.copy()
             )  # IMPORTANT change from vanilla-EI
             ei = self.eval_pfn_ei(_x_tok, inc_list)
-        elif self.surrogate_model_name in ["deep_gp", "dpl"]:
-            _x, inc_list = self.preprocess_deep_gp(
-                _x
-            )  # IMPORTANT change from vanilla-EI
-            ei = self.eval_gp_ei(_x.values.tolist(), inc_list)
-        elif self.surrogate_model_name == "gp":
+        elif self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             _x, inc_list = self.preprocess_gp(
                 _x
             )  # IMPORTANT change from vanilla-EI

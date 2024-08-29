@@ -55,7 +55,6 @@ class IFBOSurrogate:
     @torch.no_grad()
     def get_lcb(self, test_x, beta: float=(1-.682)/2):
         logits = self._get_logits(test_x)
-        # y values are always transformed for maximizing
         lcb = self.ftpfn.model.criterion.ucb(
             logits=logits,
             best_f=None,
@@ -67,7 +66,6 @@ class IFBOSurrogate:
     @torch.no_grad()
     def get_ucb(self, test_x, beta: float=(1-.682)/2):
         logits = self._get_logits(test_x)
-        # y values are always transformed for maximizing
         lcb = self.ftpfn.model.criterion.ucb(
             logits=logits,
             best_f=None,

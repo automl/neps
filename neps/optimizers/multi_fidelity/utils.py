@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 
 
 def continuous_to_tabular(
@@ -273,7 +273,7 @@ class MFObservedData:
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
         return deepcopy(lc)
 
-    def get_training_data_4DyHPO(
+    def get_training_data_4ifbo(
         self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
     ):
         configs = []

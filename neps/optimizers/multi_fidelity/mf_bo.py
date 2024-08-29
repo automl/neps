@@ -187,7 +187,7 @@ class FreezeThawModel:
     def __init__(
         self,
         pipeline_space,
-        surrogate_model: str = "pfn",
+        surrogate_model: str = "ftpfn",
         surrogate_model_args: dict = None,
     ):
         self.observed_configs = None
@@ -196,13 +196,6 @@ class FreezeThawModel:
         self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
-        if self.surrogate_model_name in ["deep_gp"]:
-            self.surrogate_model_args.update({"pipeline_space": pipeline_space})
-        elif self.surrogate_model_name == "dpl":
-            self.surrogate_model_args.update({
-                "pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs
-            })
         self.surrogate_model = instance_from_map(
             SurrogateModelMapping,
             self.surrogate_model_name,
@@ -214,13 +207,13 @@ class FreezeThawModel:
         # Select configs that are neither pending nor resulted in error
         completed_configs = self.observed_configs.completed_runs.copy(deep=True)
         # IMPORTANT: preprocess observations to get appropriate training data
-        train_x, train_lcs, train_y = self.observed_configs.get_training_data_4DyHPO(
+        train_x, train_lcs, train_y = self.observed_configs.get_training_data_4ifbo(
             completed_configs, self.pipeline_space
         )
         pending_condition = self.observed_configs.pending_condition
         if pending_condition.any():
             pending_configs = self.observed_configs.df.loc[pending_condition]
-            pending_x, pending_lcs, _ = self.observed_configs.get_training_data_4DyHPO(
+            pending_x, pending_lcs, _ = self.observed_configs.get_training_data_4ifbo(
                 pending_configs
             )
             self._fit(train_x, train_y, train_lcs)
@@ -236,8 +229,6 @@ class FreezeThawModel:
     def _fit(self, train_x, train_y, train_lcs):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             self.surrogate_model.fit(train_x, train_y)
-        elif self.surrogate_model_name in ["deep_gp", "pfn", "dpl",]:
-            self.surrogate_model.fit(train_x, train_y, train_lcs)
         elif self.surrogate_model_name == "ftpfn":
             # do nothing - no training required
             pass
@@ -250,7 +241,7 @@ class FreezeThawModel:
     def _predict(self, test_x, test_lcs):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             return self.surrogate_model.predict(test_x)
-        elif self.surrogate_model_name in ["deep_gp", "pfn", "dpl"]:
+        elif self.surrogate_model_name == "ftpfn":
             return self.surrogate_model.predict(test_x, test_lcs)
         else:
             # check neps/optimizers/bayesian_optimization/models/__init__.py for options
@@ -268,47 +259,12 @@ class FreezeThawModel:
         self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
-        if self.surrogate_model_name == "dpl":
-            self.surrogate_model_args.update(
-                {"pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs}
-            )
-            self.surrogate_model = instance_from_map(
-                SurrogateModelMapping,
-                self.surrogate_model_name,
-                name="surrogate model",
-                kwargs=self.surrogate_model_args,
-            )
-
-        # only to handle tabular spaces
-        if self.pipeline_space.has_tabular:
-            if self.surrogate_model_name in ["deep_gp"]:
-                self.surrogate_model_args.update(
-                    {"pipeline_space": self.pipeline_space.raw_tabular_space}
-                )
-            elif self.surrogate_model_name == "dpl":
-                self.surrogate_model_args.update(
-                    {"pipeline_space": self.pipeline_space,
-                    "observed_data": self.observed_configs}
-                )
-            # instantiate the surrogate model, again, with the new pipeline space
-            self.surrogate_model = instance_from_map(
-                SurrogateModelMapping,
-                self.surrogate_model_name,
-                name="surrogate model",
-                kwargs=self.surrogate_model_args,
-            )
-        elif self.surrogate_model_name == "dpl":
-            self.surrogate_model_args.update(
-                {"pipeline_space": self.pipeline_space,
-                 "observed_data": self.observed_configs}
-            )
-            self.surrogate_model = instance_from_map(
-                SurrogateModelMapping,
-                self.surrogate_model_name,
-                name="surrogate model",
-                kwargs=self.surrogate_model_args,
-            )
+        self.surrogate_model = instance_from_map(
+            SurrogateModelMapping,
+            self.surrogate_model_name,
+            name="surrogate model",
+            kwargs=self.surrogate_model_args,
+        )
 
     def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
         if train_x is None:

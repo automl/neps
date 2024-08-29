@@ -90,15 +90,10 @@ class MFPI(MFStepBase, ComprehensiveExpectedImprovement):
         _x = pd.Series([deepcopy(x.loc[idx]) for idx in x.index.values], index=x.index)
         if self.surrogate_model_name == "ftpfn":
             _x, _x_tok, inc_list = self.preprocess_pfn(
-                deepcopy(x.copy())
-            )  # IMPORTANT change from vanilla-EI
-            pi = self.eval_pfn_pi(_x_tok, inc_list)
-        elif self.surrogate_model_name in ["deep_gp", "dpl"]:
-            _x, inc_list = self.preprocess_deep_gp(
                 _x
             )  # IMPORTANT change from vanilla-EI
-            pi = self.eval_gp_pi(_x.values.tolist(), inc_list)
-        elif self.surrogate_model_name == "gp":
+            pi = self.eval_pfn_pi(_x_tok, inc_list)
+        elif self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             _x, inc_list = self.preprocess_gp(
                 _x
             )  # IMPORTANT change from vanilla-EI
