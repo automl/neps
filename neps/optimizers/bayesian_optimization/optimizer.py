@@ -8,6 +8,7 @@ from botorch.acquisition import (
     LinearMCObjective,
     qLogExpectedImprovement,
 )
+from gpytorch import ExactMarginalLogLikelihood
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
@@ -157,7 +158,7 @@ class BayesianOptimization(BaseOptimizer):
         self.device = device
         self.sample_default_first = sample_default_first
         self.n_initial_design = initial_design_size
-        self._get_fitted_model = (
+        self._get_model = (
             default_single_obj_gp if surrogate_model == "gp" else surrogate_model
         )
 
@@ -230,7 +231,12 @@ class BayesianOptimization(BaseOptimizer):
         if y.ndim == 1:
             y = y.unsqueeze(1)
 
-        model = self._get_fitted_model(x, y)
+        model = self._get_model(x, y)
+
+        from botorch.fit import fit_gpytorch_mll
+
+        mll = ExactMarginalLogLikelihood(likelihood=model.likelihood, model=model)
+        _fit_mll = fit_gpytorch_mll(mll)
 
         acq = qLogExpectedImprovement(
             model,
