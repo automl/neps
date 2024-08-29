@@ -32,75 +32,6 @@ logger = logging.getLogger(__name__)
 Loc = TypeVar("Loc")
 T = TypeVar("T")
 
-def sample_trial(
-    neps_state,
-    optimizer: BaseOptimizer,
-    *,
-    worker_id: str,
-    _sample_hooks: list[Callable] | None = None,
-) -> Trial:
-    """Sample a new trial from the optimizer.
-
-    Args:
-        optimizer: The optimizer to sample the trial from.
-        worker_id: The worker that is sampling the trial.
-        _sample_hooks: A list of hooks to apply to the optimizer before sampling.
-
-    Returns:
-        The new trial.
-    """
-    with neps_state._optimizer_state.acquire() as (
-        opt_state,
-        put_opt,
-    ), neps_state._seed_state.acquire() as (seed_state, put_seed_state):
-        trials: dict[Trial.ID, Trial] = {}
-        for trial_id, shared_trial in neps_state._trials.all().items():
-            trial = shared_trial.synced()
-            trials[trial_id] = trial
-
-        seed_state.set_as_global_seed_state()
-
-        # TODO: Not sure if any existing pre_load hooks required
-        # it to be done after `load_results`... I hope not.
-        if _sample_hooks is not None:
-            for hook in _sample_hooks:
-                optimizer = hook(optimizer)
-
-        # NOTE: We don't want optimizers mutating this before serialization
-        budget = opt_state.budget.clone() if opt_state.budget is not None else None
-        sampled_config, new_opt_state = optimizer.ask(
-            trials=trials,
-            budget_info=budget,
-            optimizer_state=opt_state.shared_state,
-        )
-
-        if sampled_config.previous_config_id is not None:
-            previous_trial = trials.get(sampled_config.previous_config_id)
-            if previous_trial is None:
-                raise ValueError(
-                    f"Previous trial '{sampled_config.previous_config_id}' not found."
-                )
-            previous_trial_location = previous_trial.metadata.location
-        else:
-            previous_trial_location = None
-
-        trial = Trial.new(
-            trial_id=sampled_config.id,
-            location="",  # HACK: This will be set by the `TrialRepo`
-            config=sampled_config.config,
-            previous_trial=sampled_config.previous_config_id,
-            previous_trial_location=previous_trial_location,
-            time_sampled=time.time(),
-            worker_id=worker_id,
-        )
-        shared_trial = neps_state._trials.put_new(trial)
-        seed_state.recapture()
-        put_seed_state(seed_state)
-        put_opt(
-            OptimizationState(budget=opt_state.budget, shared_state=new_opt_state)
-        )
-
-    return trial
 
 @dataclass
 class NePSState(Generic[Loc]):
@@ -140,10 +71,75 @@ class NePSState(Generic[Loc]):
             for _id, shared_trial in self._trials.get_by_ids(trial_ids).items()
         }
 
-    def get_optimizer_instance(self) -> BaseOptimizer:
-        """Get the optimizer instance."""
-        raise NotImplementedError
+    def sample_trial(
+        self,
+        optimizer: BaseOptimizer,
+        *,
+        worker_id: str,
+        _sample_hooks: list[Callable] | None = None,
+    ) -> Trial:
+        """Sample a new trial from the optimizer.
 
+        Args:
+            optimizer: The optimizer to sample the trial from.
+            worker_id: The worker that is sampling the trial.
+            _sample_hooks: A list of hooks to apply to the optimizer before sampling.
+
+        Returns:
+            The new trial.
+        """
+        with self._optimizer_state.acquire() as (
+            opt_state,
+            put_opt,
+        ), self._seed_state.acquire() as (seed_state, put_seed_state):
+            trials: dict[Trial.ID, Trial] = {}
+            for trial_id, shared_trial in self._trials.all().items():
+                trial = shared_trial.synced()
+                trials[trial_id] = trial
+
+            seed_state.set_as_global_seed_state()
+
+            # TODO: Not sure if any existing pre_load hooks required
+            # it to be done after `load_results`... I hope not.
+            if _sample_hooks is not None:
+                for hook in _sample_hooks:
+                    optimizer = hook(optimizer)
+
+            # NOTE: We don't want optimizers mutating this before serialization
+            budget = opt_state.budget.clone() if opt_state.budget is not None else None
+            sampled_config, new_opt_state = optimizer.ask(
+                trials=trials,
+                budget_info=budget,
+                optimizer_state=opt_state.shared_state,
+            )
+
+            if sampled_config.previous_config_id is not None:
+                previous_trial = trials.get(sampled_config.previous_config_id)
+                if previous_trial is None:
+                    raise ValueError(
+                        f"Previous trial '{sampled_config.previous_config_id}' not found."
+                    )
+                previous_trial_location = previous_trial.metadata.location
+            else:
+                previous_trial_location = None
+
+            trial = Trial.new(
+                trial_id=sampled_config.id,
+                location="",  # HACK: This will be set by the `TrialRepo`
+                config=sampled_config.config,
+                previous_trial=sampled_config.previous_config_id,
+                previous_trial_location=previous_trial_location,
+                time_sampled=time.time(),
+                worker_id=worker_id,
+            )
+            shared_trial = self._trials.put_new(trial)
+            seed_state.recapture()
+            put_seed_state(seed_state)
+            put_opt(
+                OptimizationState(budget=opt_state.budget, shared_state=new_opt_state)
+            )
+
+        return trial
 
     def report_trial_evaluation(
         self,

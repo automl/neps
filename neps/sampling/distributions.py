@@ -225,6 +225,6 @@ class TruncatedNormal(TruncatedStandardNormal):
 
 
 @dataclass
-class DistributionOverDomain:
+class TorchDistributionWithDomain:
     distribution: Distribution
     domain: Domain

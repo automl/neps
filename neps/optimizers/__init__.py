@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Callable, Mapping
+from typing import TYPE_CHECKING, Callable, Mapping
 
 from .base_optimizer import BaseOptimizer
-from .bayesian_optimization.cost_cooling import CostCooling
-from .bayesian_optimization.mf_tpe import MultiFidelityPriorWeightedTreeParzenEstimator
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
 from .multi_fidelity.dyhpo import MFEIBO
@@ -26,13 +24,14 @@ from .multi_fidelity_prior.priorband import PriorBand
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
 
+if TYPE_CHECKING:
+    from .base_optimizer import BaseOptimizer
+
 # TODO: Rename Searcher to Optimizer...
 SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "bayesian_optimization": BayesianOptimization,
     "pibo": partial(BayesianOptimization, disable_priors=False),
-    "cost_cooling_bayesian_optimization": CostCooling,
     "random_search": RandomSearch,
-    "cost_cooling": CostCooling,
     "regularized_evolution": RegularizedEvolution,
     "assisted_regularized_evolution": partial(RegularizedEvolution, assisted=True),
     "grid_search": GridSearch,
@@ -41,7 +40,6 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "asha": AsynchronousSuccessiveHalving,
     "hyperband": Hyperband,
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
-    "multifidelity_tpe": MultiFidelityPriorWeightedTreeParzenEstimator,
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
     "mobster": MOBSTER,
