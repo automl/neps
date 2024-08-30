@@ -8,7 +8,6 @@ import torch
 
 from neps.utils.common import instance_from_map
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
-from neps.optimizers.multi_fidelity.utils import normalize_vectorize_config
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
 from neps.search_spaces.search_space import SearchSpace
@@ -210,18 +209,13 @@ class FreezeThawModel:
         train_x, train_lcs, train_y = self.get_training_data_for_freeze_thaw(
             completed_configs, self.pipeline_space
         )
-        # self.observed_configs.get_training_data_4ifbo(
-        #     completed_configs, self.pipeline_space
-        # )
         pending_condition = self.observed_configs.pending_condition
         if pending_condition.any():
+            print(f"\n\nFound pending: {pending_condition.sum()}\n\n")
             pending_configs = self.observed_configs.df.loc[pending_condition]
             pending_x, pending_lcs, _ = self.get_training_data_for_freeze_thaw(
-                pending_configs
+                pending_configs, self.pipeline_space
             )
-            # get_training_data_4ifbo(
-            #     pending_configs
-            # )
             self._fit(train_x, train_y, train_lcs)
             _y, _ = self._predict(pending_x, pending_lcs)
             _y = _y.tolist()
@@ -242,18 +236,19 @@ class FreezeThawModel:
                 f"Surrogate model {self.surrogate_model_name} not supported!"
             )
 
-    def _predict(self, test_x, test_lcs):
-        raise NotImplementedError
-        # if self.surrogate_model_name == "ftpfn":
-        #     return self.surrogate_model.predict(test_x, test_lcs)
-        # else:
-        #     # check neps/optimizers/bayesian_optimization/models/__init__.py for options
-        #     raise ValueError(
-        #         f"Surrogate model {self.surrogate_model_name} not supported!"
-        #     )
+    def _predict(self, test_x):
+        if self.surrogate_model_name == "ftpfn":
+            mean = self.surrogate_model.get_mean_performance(test_x)
+            if mean.is_cuda:
+                mean = mean.cpu()
+        else:
+            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
+            raise ValueError(
+                f"Surrogate model {self.surrogate_model_name} not supported!"
+            )
 
     def get_training_data_for_freeze_thaw(
-        self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
+        self, df: pd.DataFrame, pipeline_space: SearchSpace
     ):
         configs = []
         learning_curves = []
@@ -287,21 +282,6 @@ class FreezeThawModel:
             name="surrogate model",
             kwargs=self.surrogate_model_args,
         )
-
-    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
-        if train_x is None:
-            train_x = []
-        if train_y is None:
-            train_y = []
-        if pending_x is None:
-            pending_x = []
-
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
-        self.surrogate_model._fit(train_x, train_y, train_lcs)
-
-        return self.surrogate_model, decay_t
     
 
 class PFNSurrogate(FreezeThawModel):

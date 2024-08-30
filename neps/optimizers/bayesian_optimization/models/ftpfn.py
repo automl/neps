@@ -39,6 +39,11 @@ class FTPFNSurrogate:
         raise ValueError(f"Shape not recognized: {x.shape}")
 
     @torch.no_grad()
+    def get_mean_performance(self, test_x: torch.Tensor) -> torch.Tensor:
+        logits = self._get_logits(test_x).squeeze()
+        return self.ftpfn.model.criterion.mean(logits)
+
+    @torch.no_grad()
     def get_pi(self, test_x, y_best):
         logits = self._get_logits(test_x)
         return self.ftpfn.model.criterion.pi(
