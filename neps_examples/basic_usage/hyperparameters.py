@@ -30,7 +30,7 @@ def run_pipeline(float1, float2, float3, integer1, integer2):
         )
     )  # Random noise
     # time.sleep(0.7)  # For demonstration purposes
-    return loss
+    return {"loss": loss, "cost": math.log(integer2)}
 
 
 pipeline_space = dict(
