@@ -495,7 +495,7 @@ class FileLocker(Locker):
                 " holding the lock."
                 f"\n\nLock path: {self.lock_path}"
                 "\n\nIf you belive this is not the case, you can set some of these"
-                "environment variables to increase the timeout:"
+                " environment variables to increase the timeout:"
                 f"\n\n{pprint.pformat(ENV_VARS_USED)}"
             ) from e
         logger.debug("Released lock on %s", self.lock_path)
