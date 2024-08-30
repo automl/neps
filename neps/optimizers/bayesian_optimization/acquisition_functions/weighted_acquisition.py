@@ -115,7 +115,7 @@ class WeightedAcquisition(AcquisitionFunction):
         # NOTE: We remove the X_pending from the base acquisition function as we will get
         # it in our own forward with `@concatenate_pending_points` and pass that forward.
         # This avoids possible duplicates
-        self.acq.set_X_pending(None)
+        acq.set_X_pending(None)
         self.set_X_pending(X_pending)
         self.apply_weight = apply_weight
         self.acq = acq
@@ -136,10 +136,11 @@ class WeightedAcquisition(AcquisitionFunction):
         """
         if isinstance(self.acq, SampleReducingMCAcquisitionFunction):
             # shape: mc_samples x batch x q-candidates
-            acq_values = self.acq._non_reduce_forward(X)
+            acq_values = self.acq._non_reduced_forward(X)
             weighted_acq_values = self.apply_weight(acq_values, X, self.acq)
-            vals = self.acq._sample_reduction(self.acq._q_reduction(weighted_acq_values))
-            return vals.squeeze(-1)
+            q_reduced_acq = self.acq._q_reduction(weighted_acq_values)
+            sample_reduced_acq = self.acq._sample_reduction(q_reduced_acq)
+            return sample_reduced_acq.squeeze(-1)
 
         # shape: batch x q-candidates
         acq_values = self.acq(X).unsqueeze(-1)

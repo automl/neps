@@ -5,12 +5,14 @@ import math
 from functools import reduce
 from typing import TYPE_CHECKING, Any, Mapping, TypeVar
 
-from botorch.models import MultiTaskGP
 import gpytorch
 import gpytorch.constraints
 import torch
 from botorch.acquisition.analytic import SingleTaskGP
-from botorch.models.gp_regression_mixed import CategoricalKernel, Likelihood, MixedSingleTaskGP
+from botorch.models.gp_regression_mixed import (
+    CategoricalKernel,
+    Likelihood,
+)
 from botorch.models.transforms.outcome import Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch.kernels import MaternKernel, ScaleKernel

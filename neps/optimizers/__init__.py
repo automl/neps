@@ -19,7 +19,6 @@ from .multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
-from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
 from .multi_fidelity_prior.priorband import PriorBand
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
@@ -29,8 +28,8 @@ if TYPE_CHECKING:
 
 # TODO: Rename Searcher to Optimizer...
 SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
-    "bayesian_optimization": BayesianOptimization,
-    "pibo": partial(BayesianOptimization, disable_priors=False),
+    "bayesian_optimization": partial(BayesianOptimization, use_priors=False),
+    "pibo": partial(BayesianOptimization, use_priors=True),
     "random_search": RandomSearch,
     "regularized_evolution": RegularizedEvolution,
     "assisted_regularized_evolution": partial(RegularizedEvolution, assisted=True),

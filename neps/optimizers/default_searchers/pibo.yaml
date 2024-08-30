@@ -1,6 +1,5 @@
 strategy: pibo
 # Arguments that can be modified by the user
-initial_design_size: 10
 surrogate_model: gp  # or {"gp_hierarchy"}
 acquisition: EI  # or {"LogEI", "AEI"}
 log_prior_weighted: false

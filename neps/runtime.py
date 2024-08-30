@@ -519,8 +519,6 @@ def _launch_runtime(  # noqa: PLR0913
                     max_evaluations=max_evaluations_total,
                     used_evaluations=0,
                 )
-                if max_cost_total is not None
-                else None
             ),
             shared_state={},  # TODO: Unused for the time being...
         ),

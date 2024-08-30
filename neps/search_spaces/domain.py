@@ -271,7 +271,7 @@ class Domain(Generic[V]):
         if same_bounds and same_log_bounds and (self.bins is None or same_bins):
             if self.round:
                 x = torch.round(x)
-            return x.type(self.dtype)
+            return x.type(self.dtype) if x.dtype != self.dtype else x
 
         # Shortcut 2. (From normalized)
         # The domain we are coming from is already normalized, we only need to lift

@@ -9,18 +9,22 @@ from typing import TYPE_CHECKING, ClassVar, Mapping
 from typing_extensions import override
 
 import torch
-from torch.distributions import Distribution, constraints
+from torch.distributions import Distribution, Uniform, constraints
 from torch.distributions.utils import broadcast_all
+
+from neps.search_spaces.domain import Domain
 
 if TYPE_CHECKING:
     from neps.search_spaces.architecture.cfg_variants.constrained_cfg import Constraint
-    from neps.search_spaces.domain import Domain
 
-CONST_SQRT_2 = math.sqrt(2)
-CONST_INV_SQRT_2PI = 1 / math.sqrt(2 * math.pi)
-CONST_INV_SQRT_2 = 1 / math.sqrt(2)
-CONST_LOG_INV_SQRT_2PI = math.log(CONST_INV_SQRT_2PI)
-CONST_LOG_SQRT_2PI_E = 0.5 * math.log(2 * math.pi * math.e)
+CONST_SQRT_2 = torch.tensor(math.sqrt(2), dtype=torch.float64)
+CONST_INV_SQRT_2PI = torch.tensor(1 / math.sqrt(2 * math.pi), dtype=torch.float64)
+CONST_INV_SQRT_2 = torch.tensor(1 / math.sqrt(2), dtype=torch.float64)
+CONST_LOG_INV_SQRT_2PI = torch.tensor(math.log(CONST_INV_SQRT_2PI), dtype=torch.float64)
+CONST_LOG_SQRT_2PI_E = torch.tensor(
+    0.5 * math.log(2 * math.pi * math.e),
+    dtype=torch.float64,
+)
 
 # from https://github.com/toshas/torch_truncnorm
 
@@ -224,7 +228,53 @@ class TruncatedNormal(TruncatedStandardNormal):
         return super().log_prob(value) - self._log_scale
 
 
+class UniformWithUpperBound(Uniform):
+    """Uniform distribution with upper bound inclusive.
+
+    This is mostly a hack because torch's version of Uniform does not include
+    the upper bound which only causes a problem when considering the log_prob.
+    Otherwise the upper bound works with every other method.
+    """
+
+    # OPTIM: This could probably be optimized a lot but I'm not sure how it effects
+    # gradients. Could probably do a different path depending on if `value` requires
+    # gradients or not.
+    @override
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
+        if self._validate_args:
+            self._validate_sample(value)
+
+        lb = self.low.le(value).type_as(self.low)
+        ub = self.high.ge(value).type_as(self.low)  # The main change, is `gt` in original
+        return torch.log(lb.mul(ub)) - torch.log(self.high - self.low)
+
+
 @dataclass
 class TorchDistributionWithDomain:
     distribution: Distribution
     domain: Domain
+
+
+UNIT_UNIFORM_DIST = TorchDistributionWithDomain(
+    distribution=UniformWithUpperBound(0, 1),
+    domain=Domain.unit_float(),
+)
+
+if __name__ == "__main__":
+    loc = 0.95
+    for confidence in torch.linspace(0.0, 0.8, 8):
+        scale = 1 - confidence
+        dist = TruncatedNormal(
+            loc=loc,
+            scale=scale,
+            a=0.0,
+            b=1.0,
+        )
+        xs = torch.linspace(0, 1, 100)
+        ys = dist.log_prob(xs)
+        import matplotlib.pyplot as plt
+
+        plt.plot(xs, ys, label=f"confidence={confidence}")
+        plt.plot(loc, dist.log_prob(torch.tensor(loc)), "ro")
+    plt.legend()
+    plt.show()

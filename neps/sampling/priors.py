@@ -15,7 +15,11 @@ from typing_extensions import override
 
 import torch
 
-from neps.sampling.distributions import TorchDistributionWithDomain, TruncatedNormal
+from neps.sampling.distributions import (
+    UNIT_UNIFORM_DIST,
+    TorchDistributionWithDomain,
+    TruncatedNormal,
+)
 from neps.sampling.samplers import Sampler, WeightedSampler
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 
@@ -160,21 +164,11 @@ class Prior(Sampler, Protocol):
                     f" Got {confidence}."
                 )
 
-        for name in domains:
-            if name not in centers:
-                raise ValueError(
-                    f"Center for {name} is missing. "
-                    f"Please provide a center for all domains."
-                )
-
         distributions: list[TorchDistributionWithDomain] = []
         for name, domain in domains.items():
             center_confidence = centers.get(name)
             if center_confidence is None:
-                dist = TorchDistributionWithDomain(
-                    distribution=torch.distributions.Uniform(0.0, 1.0),
-                    domain=UNIT_FLOAT_DOMAIN,
-                )
+                distributions.append(UNIT_UNIFORM_DIST)
                 continue
 
             center, confidence = center_confidence
@@ -203,7 +197,9 @@ class Prior(Sampler, Protocol):
                 weights[center] = confidence
 
                 dist = TorchDistributionWithDomain(
-                    distribution=torch.distributions.Categorical(probs=weights),
+                    distribution=torch.distributions.Categorical(
+                        probs=weights, validate_args=False
+                    ),
                     domain=domain,
                 )
                 distributions.append(dist)
@@ -213,13 +209,17 @@ class Prior(Sampler, Protocol):
             unit_center = domain.to_unit(
                 torch.tensor(center, device=device, dtype=torch.float64)
             )
+            scale = torch.tensor(1 - confidence, device=device, dtype=torch.float64)
+            a = torch.tensor(0.0, device=device, dtype=torch.float64)
+            b = torch.tensor(1.0, device=device, dtype=torch.float64)
             dist = TorchDistributionWithDomain(
                 distribution=TruncatedNormal(
                     loc=unit_center,
-                    scale=(1 - confidence),
-                    a=0.0,
-                    b=1.0,
+                    scale=scale,
+                    a=a,
+                    b=b,
                     device=device,
+                    validate_args=False,
                 ),
                 domain=UNIT_FLOAT_DOMAIN,
             )
@@ -257,10 +257,28 @@ class CenteredPrior(Prior):
     distributions: list[TorchDistributionWithDomain]
     """Distributions along with the corresponding domains they sample from."""
 
-    _distribution_domains: list[Domain] = field(init=False, repr=False)
+    _distribution_domains: list[Domain] = field(init=False)
+
+    # OPTIM: These are used for an optimization in `log_prob`
+    _meaningful_ixs: list[int] = field(init=False)
+    _meaningful_doms: list[Domain] = field(init=False)
+    _meaningful_dists: list[Distribution] = field(init=False)
 
     def __post_init__(self):
         self._distribution_domains = [dist.domain for dist in self.distributions]
+
+        rest: list[tuple[int, Domain, Distribution]] = []
+        for i, dist in enumerate(self.distributions):
+            if dist != UNIT_UNIFORM_DIST:
+                rest.append((i, dist.domain, dist.distribution))
+
+        if len(rest) == 0:
+            self._meaningful_ixs = []
+            self._meaningful_doms = []
+            self._meaningful_dists = []
+            return
+
+        self._meaningful_ixs, self._meaningful_doms, self._meaningful_dists = zip(*rest)
 
     @property
     @override
@@ -275,23 +293,31 @@ class CenteredPrior(Prior):
         if x.ndim == 1:
             x = x.unsqueeze(0)
 
+        # OPTIM: We can actually just skip elements that are distributed uniformly as
+        # **assuming** they are all correctly in bounds, their log_pdf will be 0 and
+        # contribute nothing.
+        # It also helps numeric stability to avoid useless computations.
+        if len(self._meaningful_ixs) == 0:
+            return torch.zeros(x.shape[:-1], dtype=torch.float64, device=x.device)
+
+        frm = frm if isinstance(frm, Domain) else [frm[i] for i in self._meaningful_ixs]
+
         # Cast all values from the value domains to the domain of the sampler.
-        sample_domain_tensor = Domain.translate(
-            x,
+        translated_x = Domain.translate(
+            x[..., self._meaningful_ixs],
             frm=frm,
-            to=self._distribution_domains,
+            to=self._meaningful_doms,
         )
 
         # Calculate the log probabilities of the sample domain tensors under their
         # respective distributions.
-        itr = enumerate(self.distributions)
+        itr = iter(zip(self._meaningful_ixs, self._meaningful_dists))
         first_i, first_dist = next(itr)
+        log_probs = first_dist.log_prob(translated_x[..., first_i])
 
-        log_probs = first_dist.distribution.log_prob(sample_domain_tensor[..., first_i])
         for i, dist in itr:
-            log_probs = log_probs + dist.distribution.log_prob(
-                sample_domain_tensor[..., i]
-            )
+            log_probs = log_probs + dist.log_prob(translated_x[..., i])
+
         return log_probs
 
     @override
@@ -330,15 +356,11 @@ class UniformPrior(Prior):
     ncols: int
     """The number of columns in the tensor to sample from."""
 
-    _unit_uniform: Distribution = field(init=False, repr=False)
-
-    def __post_init__(self):
-        self._unit_uniform = torch.distributions.Uniform(0.0, 1.0)
-
     @override
     def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
-        sample_domain_tensor = Domain.translate(x, frm=frm, to=UNIT_FLOAT_DOMAIN)
-        return torch.sum(self._unit_uniform.log_prob(sample_domain_tensor), dim=-1)
+        # NOTE: We just assume everything is in bounds...
+        shape = x.shape[:-1]
+        return torch.zeros(shape, dtype=torch.float64, device=x.device)
 
     @override
     def sample(

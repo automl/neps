@@ -39,9 +39,15 @@ def apply_pibo_acquisition_weight(
     x_domain: Domain | list[Domain],
     prior_exponent: float,
 ):
+    import rich
+
+    rich.print(prior_exponent)
     if acq._log:
-        return acq_values + prior.log_prob(X, frm=x_domain) * prior_exponent
-    return acq_values * prior.prob(X, frm=x_domain).pow(prior_exponent)
+        weighted_log_probs = prior.log_prob(X, frm=x_domain) * prior_exponent
+        return acq_values + weighted_log_probs
+
+    weighted_probs = prior.prob(X, frm=x_domain).pow(prior_exponent)
+    return acq_values * weighted_probs
 
 
 def pibo_acquisition(

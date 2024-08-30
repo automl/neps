@@ -17,6 +17,7 @@ import numpy as np
 import numpy.typing as npt
 from more_itertools import all_unique
 
+from neps.search_spaces.domain import Domain
 from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
 if TYPE_CHECKING:
@@ -110,6 +111,7 @@ class CategoricalParameter(
         self._default_index: int | None = (
             self.choices.index(default) if default is not None else None
         )
+        self.domain = Domain.indices(len(self.choices))
 
     @override
     def clone(self) -> Self:

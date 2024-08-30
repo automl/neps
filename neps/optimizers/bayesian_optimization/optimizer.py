@@ -4,10 +4,7 @@ import math
 from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping
 
 import torch
-from botorch.acquisition import (
-    LinearMCObjective,
-    qLogExpectedImprovement,
-)
+from botorch.acquisition import LinearMCObjective, qLogExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
 from gpytorch import ExactMarginalLogLikelihood
 
@@ -95,25 +92,34 @@ def _missing_cost_strategy(cost: torch.Tensor) -> torch.Tensor:
     return _missing_fill_strategy(cost, strategy="3std", lower_is_better=True)
 
 
-def _pibo_exp_term(n_sampled_already: int, ndims: int, budget_info: BudgetInfo) -> float:
-    if budget_info.max_evaluations is not None:
-        # From the PIBO paper (Section 4.1)
-        # https://arxiv.org/pdf/2204.11051
-        n = n_sampled_already
-        beta = budget_info.max_evaluations / 10
-    elif budget_info.max_cost_budget is not None:
-        # This might not work well if cost number is high
-        # early on, but it will start to normalize.
-        n = budget_info.used_cost_budget
-        beta = budget_info.max_cost_budget / 10
-    else:
-        # Otherwise, just some random heuristic based on the number
-        # of trials and dimensionality of the search space
-        # TODO: Think about and evaluate this more.
-        n = n_sampled_already
-        beta = ndims**2 / 10
-
-    return beta / n
+def _pibo_exp_term(
+    n_sampled_already: int,
+    ndims: int,
+    initial_design_size: int,
+) -> float:
+    # pibo paper
+    # https://arxiv.org/pdf/2204.11051
+    #
+    # they use some constant determined from max problem budget. seems impractical,
+    # given we might not know the final budget (i.e. imagine you iteratively increase
+    # the budget as you go along).
+    #
+    # instead, we base it on the fact that in lower dimensions, we don't to rely
+    # on the prior for too long as the amount of space you need to cover around the
+    # prior is fairly low. effectively, since the gp needs little samples to
+    # model pretty effectively in low dimension, we can derive the utility from
+    # the prior pretty quickly.
+    #
+    # however, for high dimensional settings, we want to rely longer on the prior
+    # for longer as the number of samples needed to model the area around the prior
+    # is much larger, and deriving the utility will take longer.
+    #
+    # in the end, we would like some curve going from 1->0 as n->inf, where `n` is
+    # the number of samples we have done so far.
+    # the easiest function that does this is `exp(-n)`, with some discounting of `n`
+    # dependant on the number of dimensions.
+    n_bo_samples = n_sampled_already - initial_design_size
+    return math.exp(-n_bo_samples / ndims)
 
 
 def _cost_used_budget_percentage(budget_info: BudgetInfo) -> float:
@@ -214,18 +220,20 @@ class BayesianOptimization(BaseOptimizer):
             raise NotImplementedError("Only supports flat search spaces for now!")
         super().__init__(pipeline_space=pipeline_space)
 
-        if initial_design_size is None:
-            N = len(pipeline_space.hyperparameters)
-            initial_design_size = int(max(2, math.log(N) ** 2))
-        elif initial_design_size < 1:
-            raise ValueError("Initial_design_size to be at least 1")
-
         params: dict[str, CategoricalParameter | FloatParameter | IntegerParameter] = {
             **pipeline_space.numerical,
             **pipeline_space.categoricals,
         }
         if treat_fidelity_as_hyperparameters:
             params.update(pipeline_space.fidelities)
+
+        if initial_design_size is None:
+            # As we have fairly regularized GPs, who start with a more smooth landscape
+            # model, we don't need a high level of initial samples.
+            ndims = len(params)
+            initial_design_size = max(2, int(math.log(ndims) ** 2))
+        elif initial_design_size < 1:
+            raise ValueError("Initial_design_size to be at least 1")
 
         self.encoder = TensorEncoder.default(params) if encoder is None else encoder
         self.use_cost = use_cost
@@ -251,9 +259,9 @@ class BayesianOptimization(BaseOptimizer):
                 "Seed is not yet implemented for BayesianOptimization"
             )
 
-        n_trials = len(trials)
+        n_trials_completed = len(trials)
         space = self.pipeline_space
-        config_id = str(n_trials + 1)
+        config_id = str(n_trials_completed + 1)
 
         # Fill intitial design data if we don't have any...
         if self.initial_design_ is None:
@@ -279,8 +287,8 @@ class BayesianOptimization(BaseOptimizer):
             self.initial_design_.extend(configs)
 
         # If we havn't passed the intial design phase
-        if n_trials <= len(self.initial_design_):
-            config = self.initial_design_[n_trials - 1]
+        if n_trials_completed < len(self.initial_design_):
+            config = self.initial_design_[n_trials_completed]
             sample = SampledConfig(id=config_id, config=config, previous_config_id=None)
             return sample, optimizer_state
 
@@ -331,13 +339,24 @@ class BayesianOptimization(BaseOptimizer):
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.
         if self.prior:
-            acq = pibo_acquisition(
-                acq,
-                prior=self.prior,
-                prior_exponent=_pibo_exp_term(n_trials, self.encoder.ncols, budget_info),
-                x_domain=self.encoder.domains,
-                X_pending=maybe_x_pending_tensor,
+            pibo_exp_term = _pibo_exp_term(
+                n_trials_completed,
+                self.encoder.ncols,
+                self.n_initial_design,
             )
+
+            # If the amount of weight derived from the pibo exponent becomes
+            # insignificant, we don't use it as it as it adds extra computational
+            # burden and introduces more chance of numerical instability.
+            significant_lower_bound = 1e-4
+            if pibo_exp_term > significant_lower_bound:
+                acq = pibo_acquisition(
+                    acq,
+                    prior=self.prior,
+                    prior_exponent=pibo_exp_term,
+                    x_domain=self.encoder.domains,
+                    X_pending=maybe_x_pending_tensor,
+                )
 
         # If we should use cost, weight the acquisition function by the cost
         # of the configurations.
