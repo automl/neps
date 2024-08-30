@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 import neps
+from neps import tblogger
 from neps.plot.plot3D import Plotter3D
 
 
@@ -123,6 +124,20 @@ def training_pipeline(
     }
     torch.save(states, Path(pipeline_directory) / "checkpoint.pt")
 
+    # Logging
+    tblogger.log(
+        loss=val_loss,
+        current_epoch=epochs,
+        write_summary_incumbent=True,  # Set to `True` for a live incumbent trajectory.
+        writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
+        writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+        # Appending extra data
+        extra_data={
+            "train_loss": tblogger.scalar_logging(loss.item()),
+            "val_err": tblogger.scalar_logging(val_err),
+        },
+    )
+
     return val_err
 
 
@@ -145,7 +160,6 @@ if __name__ == "__main__":
         overwrite_working_directory=True
 
     )
-
 
     # NOTE: this is experimental and may not work as expected
     ## plotting a 3D plot for learning curves explored by ifbo

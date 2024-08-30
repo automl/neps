@@ -12,6 +12,7 @@ from neps.search_spaces import (
     IntegerParameter,
 )
 from neps.status.status import get_summary_dict, status
+from neps.plot.tensorboard_eval import tblogger
 
 Integer = IntegerParameter
 Float = FloatParameter
@@ -38,4 +39,5 @@ __all__ = [
     "GraphGrammar",
     "GraphGrammarCell",
     "GraphGrammarRepetitive",
+    "tblogger"
 ]
