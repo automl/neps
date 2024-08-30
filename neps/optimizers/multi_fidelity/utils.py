@@ -7,7 +7,6 @@ import pandas as pd
 import torch
 
 from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 
 
 def continuous_to_tabular(

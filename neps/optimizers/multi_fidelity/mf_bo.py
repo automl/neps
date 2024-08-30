@@ -9,9 +9,11 @@ import torch
 from neps.utils.common import instance_from_map
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
-from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
+from neps.optimizers.multi_fidelity_prior.utils import (
+    calc_total_resources_spent, normalize_vectorize_config, update_fidelity
+)
 from neps.search_spaces.search_space import SearchSpace
-
+from neps.optimizers.multi_fidelity.utils import 
 
 class MFBOBase:
     """Designed to work with model-based search on SH-based multi-fidelity algorithms.
@@ -213,13 +215,17 @@ class FreezeThawModel:
         if pending_condition.any():
             print(f"\n\nFound pending: {pending_condition.sum()}\n\n")
             pending_configs = self.observed_configs.df.loc[pending_condition]
-            pending_x, pending_lcs, _ = self.get_training_data_for_freeze_thaw(
-                pending_configs, self.pipeline_space
-            )
             self._fit(train_x, train_y, train_lcs)
-            _y, _ = self._predict(pending_x, pending_lcs)
+            pending_x = []  # torch.Tensor([])
+            for _id in pending_configs.index.get_level_values(0):
+                _config = pending_configs.loc[_id].config.values[0]
+                # TODO: fix this
+                _fid = (_config.fidelity.value - _config.fidelity.lower) / \
+                    (_config.fidelity.upper - _config.fidelity.lower)
+                pending_x.append([_id, _fid, *normalize_vectorize_config(_config)])
+            pending_x = torch.Tensor(pending_x)
+            _y = self._predict(pending_x)
             _y = _y.tolist()
-
             train_x.extend(pending_x)
             train_y.extend(_y)
             train_lcs.extend(pending_lcs)
@@ -236,11 +242,12 @@ class FreezeThawModel:
                 f"Surrogate model {self.surrogate_model_name} not supported!"
             )
 
-    def _predict(self, test_x):
+    def _predict(self, test_x) -> torch.Tensor:
         if self.surrogate_model_name == "ftpfn":
             mean = self.surrogate_model.get_mean_performance(test_x)
             if mean.is_cuda:
                 mean = mean.cpu()
+            return mean
         else:
             # check neps/optimizers/bayesian_optimization/models/__init__.py for options
             raise ValueError(
