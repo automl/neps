@@ -328,6 +328,8 @@ class PFNSurrogate(FreezeThawModel):
         configs, idxs, performances = self.observed_configs.get_tokenized_data(
             self.observed_configs.df.copy().assign(config=_configs)
         )
+        # NOTE: FT-PFN is pretrained on accuracy and hence, converting to a `maximizing` metric
+        performances = 1 - performances
         idxs = idxs.astype(float)
         idxs[:, 1] = idxs[:, 1] / _configs[0].fidelity.upper
         # TODO: account for fantasization
