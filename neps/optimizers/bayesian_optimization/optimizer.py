@@ -308,8 +308,8 @@ class BayesianOptimization(BaseOptimizer):
                     trial.report.loss if trial.report.loss is not None else torch.nan
                 )
                 if self.use_cost:
-                    cost = trial.report.cost
-                    costs.append(cost if cost is not None else torch.nan)
+                    cost_z_score = trial.report.cost
+                    costs.append(cost_z_score if cost_z_score is not None else torch.nan)
 
         x = self.encoder.pack(x_configs, device=self.device)
         maybe_x_pending_tensor = None
@@ -362,12 +362,12 @@ class BayesianOptimization(BaseOptimizer):
         # of the configurations.
         if self.use_cost:
             cost = torch.tensor(costs, dtype=torch.float64, device=self.device)
-            cost = _missing_cost_strategy(cost)
+            cost_z_score = _missing_cost_strategy(cost)
 
             # TODO: We might want a different model for cost estimation... one reason
             # is that cost estimates are likely to be a lot noisier than the likelihood
             # we have by default.
-            cost_model, cost_likelihood = self._get_model(x, cost)
+            cost_model, cost_likelihood = self._get_model(x, cost_z_score)
 
             # Optimize the cost model
             fit_gpytorch_mll(

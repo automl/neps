@@ -45,6 +45,7 @@ pipeline_space = dict(
 logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
+    searcher="pibo",
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     post_run_summary=True,

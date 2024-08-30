@@ -42,7 +42,7 @@ def default_likelihood_with_prior() -> gpytorch.likelihoods.GaussianLikelihood:
     # even a 0.01% noise, we need that all the way up to 1e-2. Hence
     #
     # If we had 10% noise and we allow the noise to easily optimize towards
-    # 1e-8, then the lengthscales are forced to beome very small, essentially
+    # 1e-8, then the lengthscales are forced to become very small, essentially
     # overfitting. If we have 0% noise and we don't allow it to easily get low
     # then we will drastically underfit.
     # A guiding principle here is that we should allow the noise to be just
@@ -90,7 +90,7 @@ def default_lengthscale_prior(
     # of the dimension and number of samples
     lengthscale_prior = gpytorch.priors.LogNormalPrior(
         loc=math.sqrt(2.0) + math.log(N) / 2,
-        scale=math.sqrt(3.0),
+        scale=math.sqrt(3.0) * math.log(N),
     )
     # NOTE: It's possible to just specify `GreaterThan`, however
     # digging through the code, if this ends up at botorch's optimize,
