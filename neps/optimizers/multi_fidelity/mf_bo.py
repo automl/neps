@@ -246,7 +246,7 @@ class PFNSurrogate(FreezeThawModel):
             self.observed_configs.perf_col,
             self.pipeline_space,
             step_size=self.step_size,
-            maximize=True
+            maximize=True  # inverts performance since NePS minimizes
         )
         df_idxs = torch.Tensor(idxs)
         df_x = torch.Tensor(get_tokenized_data(configs))
@@ -270,7 +270,7 @@ class PFNSurrogate(FreezeThawModel):
                 self.observed_configs.perf_col,
                 self.pipeline_space,
                 step_size=self.step_size,
-                maximize=True
+                maximize=True  # inverts performance since NePS minimizes
             )
             _df_x = torch.Tensor(get_tokenized_data(_configs))
             _df_idxs = torch.Tensor(_idxs)
@@ -283,7 +283,7 @@ class PFNSurrogate(FreezeThawModel):
             _performances = self._predict(_test_x)  # returns maximizing metric
             # update the training data
             train_x = torch.vstack([train_x, _test_x])
-            train_y = torch.vstack([train_y, _performances])
+            train_y = torch.hstack([train_y, _performances])
             # refit the model, on completed runs + fantasized pending runs
             self._fit(train_x, train_y)
 
@@ -294,7 +294,7 @@ class PFNSurrogate(FreezeThawModel):
         self.surrogate_model.train_y = train_y
 
     def _predict(self, test_x: torch.Tensor) -> torch.Tensor:
-        assert self.train_x is not None and self.train_y is not None, "Model not trained yet!"
+        assert self.surrogate_model.train_x is not None and self.surrogate_model.train_y is not None, "Model not trained yet!"
         if self.surrogate_model_name == "ftpfn":
             mean = self.surrogate_model.get_mean_performance(test_x)
             if mean.is_cuda:
