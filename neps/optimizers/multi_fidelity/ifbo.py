@@ -137,6 +137,7 @@ class IFBO(BaseOptimizer):
             pipeline_space=pipeline_space,
             surrogate_model=surrogate_model,
             surrogate_model_args=self.surrogate_model_args,
+            step_size=self.step_size,
         )
         self.acquisition_args = {} if acquisition_args is None else acquisition_args
         self.acquisition_args.update(

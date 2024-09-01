@@ -27,8 +27,8 @@ AcquisitionMapping: dict[str, Callable] = {
         augmented_ei=False,
         log_ei=True,
     ),
-    #     # Uses the augmented EI heuristic and changed the in-fill criterion to the best test location with
-    #     # the highest *posterior mean*, which are preferred when the optimisation is noisy.
+    ## Uses the augmented EI heuristic and changed the in-fill criterion to the best test location with
+    ## the highest *posterior mean*, which are preferred when the optimisation is noisy.
     "AEI": partial(
         ComprehensiveExpectedImprovement,
         in_fill="posterior",
@@ -36,8 +36,8 @@ AcquisitionMapping: dict[str, Callable] = {
     ),
     "MFPI-random": partial(
         MFPI_Random,
-        in_fill="best",
-        augmented_ei=False,
+        threshold="random",
+        horizon="random",
     ),
     "UCB": partial(
         UpperConfidenceBound,

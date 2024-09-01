@@ -170,9 +170,13 @@ class FreezeThawSampler(AcquisitionSampler):
             )
 
         # Updating fidelity values
-        if set_new_sample_fidelity is not None:
-            for config in new_configs:
-                config.update_hp_values({config.fidelity_name: set_new_sample_fidelity})
+        new_fid = (
+            set_new_sample_fidelity
+            if set_new_sample_fidelity is not None
+            else self.pipeline_space.fidelity.lower
+        )
+        for config in new_configs:
+            config.update_hp_values({config.fidelity_name: new_fid})
 
         configs = pd.concat([deepcopy(partial_configs), new_configs])
 

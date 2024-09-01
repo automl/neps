@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 
 from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 
 
 def continuous_to_tabular(
@@ -36,6 +37,60 @@ def normalize_vectorize_config(
         _new_vector.extend(hp_list)
     return np.array(_new_vector)
 
+
+def get_tokenized_data(
+    configs: list[SearchSpace],
+    ignore_fidelity: bool = True,
+) -> np.ndarray:  # pd.Series:  # tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """ Extracts configurations, indices and performances given a DataFrame
+
+    Tokenizes the given set of observations as required by a PFN surrogate model.
+    """
+    configs = np.array([
+        normalize_vectorize_config(c, ignore_fidelity=ignore_fidelity) for c in configs
+    ])
+    return configs
+
+
+def get_freeze_thaw_normalized_step(fid_step: int, lower: int, upper: int, step: int) -> float:
+    max_fid_step = int(np.ceil((upper - lower) / step)) + 1
+    return fid_step / max_fid_step
+
+
+def get_training_data_for_freeze_thaw(
+    df: pd.DataFrame | MFObservedData.df,
+    config_key: str,
+    perf_key: str,
+    pipeline_space: SearchSpace,
+    step_size: int,
+    maximize: bool = False,
+) -> tuple[list[int], list[int], list[SearchSpace], list[float]]:
+    configs = []
+    performance = []
+    idxs = []
+    steps = []
+    for idx, row in df.iterrows():
+        config_id = idx[0]
+        budget_id = idx[1]
+        if pipeline_space.has_tabular:
+            _row = pd.Series([row[config_key]], index=[config_id])
+            _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
+            configs.append(_row.values[0])
+        else:
+            configs.append(row[config_key])
+        performance.append(row[perf_key])
+        steps.append(
+            get_freeze_thaw_normalized_step(
+                budget_id + 1,  # NePS fidelity IDs begin with 0
+                pipeline_space.fidelity.lower,
+                pipeline_space.fidelity.upper,
+                step_size,
+            )
+        )
+        idxs.append(idx[0] + 1)  # NePS config IDs begin with 0
+    if maximize:
+        performance = (1 - np.array(performance)).tolist()
+    return idxs, steps, configs, performance
 
 class MFObservedData:
     """
@@ -102,8 +157,16 @@ class MFObservedData:
         return self.df.index.levels[1].to_list()
 
     @property
+    def pending_runs_index(self) -> pd.Index | pd.MultiIndex:
+        return self.df.loc[self.pending_condition].index
+
+    @property
     def completed_runs(self):
         return self.df[~(self.pending_condition | self.error_condition)]
+    
+    @property
+    def completed_runs_index(self) -> pd.Index | pd.MultiIndex:
+        return self.completed_runs.index
 
     def next_config_id(self) -> int:
         if len(self.seen_config_ids):
@@ -172,7 +235,7 @@ class MFObservedData:
         )
 
     def all_configs_list(self) -> list[Any]:
-        return self.df.loc[:, self.config_col].values.tolist()
+        return self.df.loc[:, self.config_col].sort_index().values.tolist()
 
     def get_incumbents_for_budgets(self, maximize: bool = False):
         """
@@ -294,16 +357,6 @@ class MFObservedData:
             for _id in self.df.index.get_level_values("config_id").sort_values()
         }
         return pd.Series(max_z_observed)
-
-    def get_tokenized_data(self, df: pd.DataFrame):
-        idxs = df.index.values
-        idxs = np.array([list(idx) for idx in idxs])
-        idxs[:, 1] += 1  # all fidelity IDs begin with 0 in NePS
-        performances = df.perf.values
-        configs = df.config.values
-        configs = np.array([normalize_vectorize_config(c) for c in configs])
-
-        return configs, idxs, performances
 
     @property
     def token_ids(self) -> np.ndarray:

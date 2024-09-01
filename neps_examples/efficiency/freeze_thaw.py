@@ -128,7 +128,7 @@ def training_pipeline(
     tblogger.log(
         loss=val_loss,
         current_epoch=epochs,
-        write_summary_incumbent=True,  # Set to `True` for a live incumbent trajectory.
+        write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
         writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
         writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
         # Appending extra data

@@ -60,7 +60,6 @@ class Plotter3D:
             self.loss_range = (self.df["result.loss"].min(), self.df["result.loss"].max())
             _fid_key = f"config.{self.fidelity_key}"
             self.epochs_range = (self.df[_fid_key].min(), self.df[_fid_key].max())
-        # breakpoint()
 
     @staticmethod
     def get_x(df: pd.DataFrame) -> np.array:

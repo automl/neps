@@ -2,16 +2,15 @@
 
 
 from copy import deepcopy
-import numpy as np
-import pandas as pd
 import torch
 
 from neps.utils.common import instance_from_map
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
-from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
+from neps.optimizers.multi_fidelity.utils import (
+    get_tokenized_data, get_training_data_for_freeze_thaw
+)
 from neps.optimizers.multi_fidelity_prior.utils import calc_total_resources_spent, update_fidelity
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.multi_fidelity.utils import normalize_vectorize_config
+
 
 class MFBOBase:
     """Designed to work with model-based search on SH-based multi-fidelity algorithms.
@@ -188,6 +187,7 @@ class FreezeThawModel:
         pipeline_space,
         surrogate_model: str = "ftpfn",
         surrogate_model_args: dict = None,
+        step_size: int = 1,
     ):
         self.observed_configs = None
         self.pipeline_space = pipeline_space
@@ -201,79 +201,16 @@ class FreezeThawModel:
             name="surrogate model",
             kwargs=self.surrogate_model_args,
         )
+        self.step_size = step_size
 
     def _fantasize_pending(self, train_x, train_y, pending_x):
-        # Select configs that are neither pending nor resulted in error
-        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
-        # IMPORTANT: preprocess observations to get appropriate training data
-        train_x, train_lcs, train_y = self.get_training_data_for_freeze_thaw(
-            completed_configs, self.pipeline_space
-        )
-        pending_condition = self.observed_configs.pending_condition
-        if pending_condition.any():
-            raise NotImplementedError(
-                "Fantasization not implemented yet!"
-                "This optimizer cannot be run with multiple workers yet."
-            )
-            print(f"\n\nFound pending: {pending_condition.sum()}\n\n")
-            pending_configs = self.observed_configs.df.loc[pending_condition]
-            self._fit(train_x, train_y, train_lcs)
-            pending_x = []  # torch.Tensor([])
-            for _id in pending_configs.index.get_level_values(0):
-                _config = pending_configs.loc[_id].config.values[0]
-                # TODO: fix this
-                _fid = (_config.fidelity.value - _config.fidelity.lower) / \
-                    (_config.fidelity.upper - _config.fidelity.lower)
-                pending_x.append([_id, _fid, *normalize_vectorize_config(_config)])
-            pending_x = torch.Tensor(pending_x)
-            _y = self._predict(pending_x)
-            _y = _y.tolist()
-            train_x.extend(pending_x)
-            train_y.extend(_y)
-            train_lcs.extend(pending_lcs)
-
-        return train_x, train_y, train_lcs
+        raise NotImplementedError("Fantasization not implemented yet!")
 
     def _fit(self, train_x, train_y, train_lcs):
-        if self.surrogate_model_name == "ftpfn":
-            # do nothing - no training required
-            pass
-        else:
-            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
-            raise ValueError(
-                f"Surrogate model {self.surrogate_model_name} not supported!"
-            )
+        raise NotImplementedError("Predict not implemented yet!")
 
     def _predict(self, test_x) -> torch.Tensor:
-        if self.surrogate_model_name == "ftpfn":
-            mean = self.surrogate_model.get_mean_performance(test_x)
-            if mean.is_cuda:
-                mean = mean.cpu()
-            return mean
-        else:
-            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
-            raise ValueError(
-                f"Surrogate model {self.surrogate_model_name} not supported!"
-            )
-
-    def get_training_data_for_freeze_thaw(
-        self, df: pd.DataFrame, pipeline_space: SearchSpace
-    ):
-        configs = []
-        learning_curves = []
-        performance = []
-        for idx, row in df.iterrows():
-            config_id = idx[0]
-            budget_id = idx[1]
-            if pipeline_space.has_tabular:
-                _row = pd.Series([row[self.observed_configs.config_col]], index=[config_id])
-                _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
-                configs.append(_row.values[0])
-            else:
-                configs.append(row[self.observed_configs.config_col])
-            performance.append(row[self.observed_configs.perf_col])
-            learning_curves.append(self.observed_configs.extract_learning_curve(config_id, budget_id))
-        return configs, learning_curves, performance
+        raise NotImplementedError("Predict not implemented yet!")
 
     def set_state(
         self,
@@ -301,46 +238,70 @@ class PFNSurrogate(FreezeThawModel):
         self.train_x = None
         self.train_y = None
 
-    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
-        if train_x is None:
-            train_x = []
-        if train_y is None:
-            train_y = []
-        if pending_x is None:
-            pending_x = []
-
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y, train_lcs = self._fantasize_pending(train_x, train_y, pending_x)
-        self._fit(train_x, train_y, train_lcs)
-
-        return self.surrogate_model, decay_t
-
-    def _fit(self, *args):  # pylint: disable=unused-argument
-        # no training required,, only preprocessing the training data as context during inference
-        self.preprocess_training_set()
-
-    def preprocess_training_set(self):
-        _configs = self.observed_configs.df.config.values.copy()
-
-        # onlf if tabular space is present
-        if self.pipeline_space.has_tabular:
-            # placeholder index, will be driooed
-            _idxs = np.arange(len(_configs))
-            # mapping the (id, epoch) space of tabular configs to the actual HPs
-            _configs = map_real_hyperparameters_from_tabular_ids(
-                pd.Series(_configs, index=_idxs), self.pipeline_space
-            ).values
-
-        device = self.surrogate_model.device
-        # TODO: fix or make consistent with `tokenize``
-        configs, idxs, performances = self.observed_configs.get_tokenized_data(
-            self.observed_configs.df.copy().assign(config=_configs)
+    def update_model(self):
+        # tokenize the observations
+        idxs, steps, configs, performance = get_training_data_for_freeze_thaw(
+            self.observed_configs.df.loc[self.observed_configs.completed_runs_index],
+            self.observed_configs.config_col,
+            self.observed_configs.perf_col,
+            self.pipeline_space,
+            step_size=self.step_size,
+            maximize=True
         )
-        # NOTE: FT-PFN is pretrained on accuracy and hence, converting to a `maximizing` metric
-        performances = 1 - performances
-        idxs = idxs.astype(float)
-        idxs[:, 1] = idxs[:, 1] / _configs[0].fidelity.upper
-        # TODO: account for fantasization
-        self.surrogate_model.train_x = torch.Tensor(np.hstack([idxs, configs])).to(device)
-        self.surrogate_model.train_y = torch.Tensor(performances).to(device)
+        df_idxs = torch.Tensor(idxs)
+        df_x = torch.Tensor(get_tokenized_data(configs))
+        df_steps = torch.Tensor(steps)
+        train_x = torch.hstack([
+            df_idxs.reshape(df_steps.shape[0], 1),
+            df_steps.reshape(df_steps.shape[0], 1),
+            df_x
+        ])
+        train_y = torch.Tensor(performance)
+        
+        # fit the model, on only completed runs
+        self._fit(train_x, train_y)
+
+        # fantasize pending evaluations
+        if self.observed_configs.pending_condition.any():
+            # tokenize the pending observations
+            _idxs, _steps, _configs, _ = get_training_data_for_freeze_thaw(
+                self.observed_configs.df.loc[self.observed_configs.pending_runs_index],
+                self.observed_configs.config_col,
+                self.observed_configs.perf_col,
+                self.pipeline_space,
+                step_size=self.step_size,
+                maximize=True
+            )
+            _df_x = torch.Tensor(get_tokenized_data(_configs))
+            _df_idxs = torch.Tensor(_idxs)
+            _df_steps = torch.Tensor(_steps)
+            _test_x = torch.hstack([
+                _df_idxs.reshape(_df_idxs.shape[0], 1),
+                _df_steps.reshape(_df_steps.shape[0], 1),
+                _df_x
+            ])
+            _performances = self._predict(_test_x)  # returns maximizing metric
+            # update the training data
+            train_x = torch.vstack([train_x, _test_x])
+            train_y = torch.vstack([train_y, _performances])
+            # refit the model, on completed runs + fantasized pending runs
+            self._fit(train_x, train_y)
+
+    def _fit(self, train_x: torch.Tensor, train_y: torch.Tensor):  # pylint: disable=unused-argument
+        # no training required,, only preprocessing the training data as context during inference
+        assert self.surrogate_model is not None, "Surrogate model not set!"
+        self.surrogate_model.train_x = train_x
+        self.surrogate_model.train_y = train_y
+
+    def _predict(self, test_x: torch.Tensor) -> torch.Tensor:
+        assert self.train_x is not None and self.train_y is not None, "Model not trained yet!"
+        if self.surrogate_model_name == "ftpfn":
+            mean = self.surrogate_model.get_mean_performance(test_x)
+            if mean.is_cuda:
+                mean = mean.cpu()
+            return mean
+        else:
+            # check neps/optimizers/bayesian_optimization/models/__init__.py for options
+            raise ValueError(
+                f"Surrogate model {self.surrogate_model_name} not supported!"
+            )
