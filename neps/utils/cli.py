@@ -22,7 +22,7 @@ def get_root_directory(args: argparse.Namespace) -> Path:
     if args.root_directory:
         return Path(args.root_directory)
 
-    config_path = Path("config.yaml")
+    config_path = Path("run_config.yaml")
     if config_path.exists():
         import yaml
 
@@ -46,11 +46,13 @@ def init_config(args: argparse.Namespace) -> None:
     """Creates a 'run_args' configuration YAML file template if it does not already
     exist.
     """
-    config_path = Path(args.config_path) if args.config_path else Path("config.yaml")
+    config_path = Path(args.config_path) if args.config_path else Path("run_config.yaml")
     if not config_path.exists():
         with config_path.open("w") as file:
-            file.write(
-                """# Add your NEPS configuration settings here
+            template = args.template if args.template else "basic"
+            if template == "basic":
+                file.write(
+                    """# Add your NEPS configuration settings here
 
 run_pipeline:
   path: "path/to/your/run_pipeline.py"
@@ -74,9 +76,59 @@ root_directory: "set/path/for/root_directory"
 max_evaluations_total:
 overwrite_working_directory:
 """
-            )
-    else:
+                )
+            elif template == "complete":
+                file.write(
+                    """# Full Configuration Template for NePS
+
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: example_pipeline              # Function name within the file
+
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: true
+  epochs:
+    lower: 5
+    upper: 20
+    is_fidelity: true
+  optimizer:
+    choices: [adam, sgd, adamw]
+  batch_size: 64
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20             # Budget
+max_cost_total:
+
+# Debug and Monitoring
+overwrite_working_directory: false
+post_run_summary: true
+development_stage_id:
+task_id:
+
+# Parallelization Setup
+max_evaluations_per_run:
+continue_until_max_evaluation_completed: true
+
+# Error Handling
+loss_value_on_error:
+cost_value_on_error:
+ignore_errors:
+
+# Customization Options
+searcher: hyperband       # Internal key to select a NePS optimizer.
+
+# Hooks
+pre_load_hooks:
+"""
+                )
+    elif args.state_machine:
         pass
+        # create_or_load_filebased_neps_state()
+    else:
+        print(f"Path {config_path} does already exist.")
 
 
 def parse_kv_pairs(kv_list: list[str]) -> dict:
@@ -236,6 +288,16 @@ def load_neps_errors(args: argparse.Namespace) -> None:
         print("\n" + "-" * 50 + "\n")
 
 
+def sample_config(args: argparse.Namespace) -> None:
+    """Handles the sample-config command"""
+    # Get the root_directory from args or load it from run_config.yaml
+    directory_path = get_root_directory(args)
+    neps_state = load_filebased_neps_state(directory_path)
+
+    # Placeholder for the logic that will be implemented
+    pass
+
+
 def print_help(args: Optional[argparse.Namespace] = None) -> None:
     """Prints help information for the NEPS CLI."""
     help_text = """
@@ -328,6 +390,19 @@ def main() -> None:
         default=None,
         help="Optional custom path for generating the configuration file. "
         "Default is 'config.yaml'.",
+    )
+    parser_init.add_argument(
+        "--template",
+        type=str,
+        choices=["basic", "complete"],
+        default="basic",
+        help="Optional, options between different templates. Required configs(basic) vs "
+        "all neps configs (complete)",
+    )
+    parser_init.add_argument(
+        "--state-machine",
+        action="store_true",
+        help="If set, creates a NEPS state. Requires an existing config.yaml.",
     )
     parser_init.set_defaults(func=init_config)
 
@@ -491,6 +566,18 @@ def main() -> None:
         "loaded from config.yaml.",
     )
     parser_errors.set_defaults(func=load_neps_errors)
+
+    # Subparser for "sample-config" command
+    parser_sample_config = subparsers.add_parser(
+        "sample-config", help="Sample a configuration from existing neps state."
+    )
+    parser_sample_config.add_argument(
+        "--directory",
+        type=str,
+        help="Optional: The path to your root_directory. If not provided, "
+        "it will be loaded from config.yaml.",
+    )
+    parser_sample_config.set_defaults(func=sample_config)
 
     # Subparser for "help" command
     parser_help = subparsers.add_parser("help", help="Displays help information.")
