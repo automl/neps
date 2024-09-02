@@ -17,6 +17,31 @@ from neps.state.filebased import (
 from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
 
 
+def get_root_directory(args: argparse.Namespace) -> Path:
+    """Load the root directory from the provided argument or from the config.yaml file."""
+    if args.root_directory:
+        return Path(args.root_directory)
+
+    config_path = Path("config.yaml")
+    if config_path.exists():
+        import yaml
+
+        with config_path.open("r") as file:
+            config = yaml.safe_load(file)
+        root_directory = config.get("root_directory")
+        if root_directory:
+            return Path(root_directory)
+        else:
+            raise ValueError(
+                "The config.yaml file exists but does not contain 'root_directory'."
+            )
+    else:
+        raise ValueError(
+            "Either the root_directory must be provided as an argument or config.yaml "
+            "must exist with a 'root_directory' key."
+        )
+
+
 def init_config(args: argparse.Namespace) -> None:
     """Creates a 'run_args' configuration YAML file template if it does not already
     exist.
@@ -130,7 +155,7 @@ def run_optimization(args: argparse.Namespace) -> None:
 def info_config(args: argparse.Namespace) -> None:
     """Handles the info-config command by providing information based on directory
     and id."""
-    directory_path = Path(args.directory)
+    directory_path = get_root_directory(args)
     config_id = args.id
 
     if not directory_path.exists() or not directory_path.is_dir():
@@ -178,7 +203,7 @@ def info_config(args: argparse.Namespace) -> None:
 
 def load_neps_errors(args: argparse.Namespace) -> None:
     """Handles the 'errors' command by loading errors from the neps_state."""
-    directory_path = Path(args.directory)
+    directory_path = get_root_directory(args)
 
     if not directory_path.exists() or not directory_path.is_dir():
         print(
@@ -449,14 +474,21 @@ def main() -> None:
         "id", type=str, help="The configuration ID to be used."
     )
     parser_info_config.add_argument(
-        "directory", type=str, help="The path to your root_directory."
+        "--directory",
+        type=str,
+        help="Optional: The path to your root_directory. If not provided, "
+        "it will be loaded from config.yaml.",
     )
     parser_info_config.set_defaults(func=info_config)
 
     # Subparser for "errors" command
     parser_errors = subparsers.add_parser("errors", help="List all errors.")
     parser_errors.add_argument(
-        "directory", type=str, help="The path to your root_directory."
+        "--directory",
+        type=str,
+        help="Optional: The path to your "
+        "root_directory. If not provided, it will be "
+        "loaded from config.yaml.",
     )
     parser_errors.set_defaults(func=load_neps_errors)
 
