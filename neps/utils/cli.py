@@ -2,6 +2,11 @@
 """This module provides a command-line interface (CLI) for NePS."""
 
 from __future__ import annotations
+import warnings
+from datetime import timedelta, datetime
+
+# Suppress specific warnings
+# warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
 
 import argparse
 import logging
@@ -15,6 +20,7 @@ from neps.state.filebased import (
     load_filebased_neps_state,
 )
 from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
+from neps.status.status import get_summary_dict
 
 
 def get_root_directory(args: argparse.Namespace) -> Path:
@@ -298,6 +304,151 @@ def sample_config(args: argparse.Namespace) -> None:
     pass
 
 
+def convert_timestamp(timestamp: float) -> str:
+    """Convert a UNIX timestamp to a human-readable datetime string."""
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def format_duration(seconds: float) -> str:
+    """Convert duration in seconds to a h:min:sec format."""
+    duration = str(timedelta(seconds=seconds))
+    # Remove milliseconds for alignment
+    if "." in duration:
+        duration = duration.split(".")[0]
+    return duration
+
+
+def compute_duration(start_time: float) -> str:
+    """Compute duration from start_time to current time."""
+    return format_duration(datetime.now().timestamp() - start_time)
+
+
+def status(args: argparse.Namespace) -> None:
+    """Handles the status command, providing a summary of the NEPS run."""
+    # Get the root_directory from args or load it from run_config.yaml
+    directory_path = get_root_directory(args)
+
+    # Retrieve the summary dictionary and the NePS state
+    summary = get_summary_dict(directory_path, add_details=True)
+    neps_state = load_filebased_neps_state(directory_path)
+
+    # Calculate the number of trials in different states
+    evaluating_trials_count = sum(
+        1
+        for trial in neps_state.get_all_trials().values()
+        if trial.state.name == "EVALUATING"
+    )
+    pending_trials_count = summary["num_pending_configs"]
+    succeeded_trials_count = summary["num_evaluated_configs"] - summary["num_error"]
+    failed_trials_count = summary["num_error"]
+    pending_with_worker_count = summary["num_pending_configs_with_worker"]
+
+    # Print summary
+    print("NePS Status:")
+    print("-----------------------------")
+    print(f"Optimizer: {neps_state.optimizer_info().info['searcher_alg']}")
+    print(f"Succeeded Trials: {succeeded_trials_count}")
+    print(f"Failed Trials (Errors): {failed_trials_count}")
+    print(f"Active Trials: {evaluating_trials_count}")
+    print(f"Pending Trials: {pending_trials_count}")
+    print(f"Pending Trials with Worker: {pending_with_worker_count}")
+    print(f"Best Loss Achieved: {summary['best_loss']}")
+
+    print("\nLatest Trials:")
+    print("-----------------------------")
+
+    # Retrieve and sort the trials by time_sampled
+    all_trials = neps_state.get_all_trials()
+    sorted_trials = sorted(
+        all_trials.values(), key=lambda t: t.metadata.time_sampled, reverse=True
+    )
+
+    # Filter trials based on user options
+    if args.pending:
+        filtered_trials = [
+            trial for trial in sorted_trials if trial.state.name == "PENDING"
+        ]
+    elif args.evaluating:
+        filtered_trials = [
+            trial for trial in sorted_trials if trial.state.name == "EVALUATING"
+        ]
+    elif args.succeeded:
+        filtered_trials = [
+            trial for trial in sorted_trials if trial.state.name == "SUCCESS"
+        ]
+    else:
+        filtered_trials = sorted_trials[:7]
+
+    # Define column headers with fixed width
+    header_format = "{:<20} {:<10} {:<10} {:<40} {:<12} {:<10}"
+    row_format = "{:<20} {:<10} {:<10} {:<40} {:<12} {:<10}"
+
+    # Print the header
+    print(
+        header_format.format(
+            "Sampled Time", "Duration", "Trial ID", "Worker ID", "State", "Loss"
+        )
+    )
+
+    # Print the details of the filtered trials
+    for trial in filtered_trials:
+        time_sampled = convert_timestamp(trial.metadata.time_sampled)
+        if trial.state.name in ["PENDING", "EVALUATING"]:
+            duration = compute_duration(trial.metadata.time_sampled)
+        else:
+            duration = (
+                format_duration(trial.metadata.evaluation_duration)
+                if trial.metadata.evaluation_duration
+                else "N/A"
+            )
+        trial_id = trial.id
+        worker_id = trial.metadata.sampling_worker_id
+        state = trial.state.name
+        loss = (
+            f"{trial.report.loss:.6f}"
+            if (trial.report and trial.report.loss is not None)
+            else "N/A"
+        )
+
+        print(row_format.format(time_sampled, duration, trial_id, worker_id, state, loss))
+
+    # If no specific filter is applied, print the best trial and optimizer info
+    if not args.pending and not args.evaluating and not args.succeeded:
+        if summary["best_config_id"] is not None:
+            print("\nBest Trial:")
+            print("-----------------------------")
+            print(f"ID: {summary['best_config_id']}")
+            print(f"Loss: {summary['best_loss']}")
+            print("Config:")
+            for key, value in summary["best_config"].items():
+                print(f"  {key}: {value}")
+
+            print(
+                f"\nMore details: neps info-config {summary['best_config_id']} "
+                f"(use --root-directory if not using run_config.yaml)"
+            )
+        else:
+            print("\nBest Trial:")
+            print("-----------------------------")
+            print("\nNo successful trial found.")
+
+        # Display optimizer information
+        optimizer_info = neps_state.optimizer_info().info
+        searcher_name = optimizer_info.get("searcher_name", "N/A")
+        searcher_alg = optimizer_info.get("searcher_alg", "N/A")
+        searcher_args = optimizer_info.get("searcher_args", {})
+
+        print("\nOptimizer Information:")
+        print("-----------------------------")
+        print(f"Name: {searcher_name}")
+        print(f"Algorithm: {searcher_alg}")
+        print("Parameter:")
+        for arg, value in searcher_args.items():
+            print(f"  {arg}: {value}")
+
+        print("-----------------------------")
+
+
 def print_help(args: Optional[argparse.Namespace] = None) -> None:
     """Prints help information for the NEPS CLI."""
     help_text = """
@@ -549,21 +700,21 @@ def main() -> None:
         "id", type=str, help="The configuration ID to be used."
     )
     parser_info_config.add_argument(
-        "--directory",
+        "--root-directory",
         type=str,
         help="Optional: The path to your root_directory. If not provided, "
-        "it will be loaded from config.yaml.",
+        "it will be loaded from run_config.yaml.",
     )
     parser_info_config.set_defaults(func=info_config)
 
     # Subparser for "errors" command
     parser_errors = subparsers.add_parser("errors", help="List all errors.")
     parser_errors.add_argument(
-        "--directory",
+        "--root-directory",
         type=str,
         help="Optional: The path to your "
         "root_directory. If not provided, it will be "
-        "loaded from config.yaml.",
+        "loaded from run_config.yaml.",
     )
     parser_errors.set_defaults(func=load_neps_errors)
 
@@ -572,12 +723,33 @@ def main() -> None:
         "sample-config", help="Sample a configuration from existing neps state."
     )
     parser_sample_config.add_argument(
-        "--directory",
+        "--root-directory",
         type=str,
         help="Optional: The path to your root_directory. If not provided, "
-        "it will be loaded from config.yaml.",
+        "it will be loaded from run_config.yaml.",
     )
     parser_sample_config.set_defaults(func=sample_config)
+
+    # Subparser for "status" command
+    parser_status = subparsers.add_parser(
+        "status", help="Check the status of the NePS run."
+    )
+    parser_status.add_argument(
+        "--root-directory",
+        type=str,
+        help="Optional: The path to your root_directory. If not provided, "
+        "it will be loaded from run_config.yaml.",
+    )
+    parser_status.add_argument(
+        "--pending", action="store_true", help="Show only pending trials."
+    )
+    parser_status.add_argument(
+        "--evaluating", action="store_true", help="Show only evaluating trials."
+    )
+    parser_status.add_argument(
+        "--succeeded", action="store_true", help="Show only succeeded trials."
+    )
+    parser_status.set_defaults(func=status)
 
     # Subparser for "help" command
     parser_help = subparsers.add_parser("help", help="Displays help information.")
