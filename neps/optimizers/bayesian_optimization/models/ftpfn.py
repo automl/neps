@@ -10,8 +10,7 @@ from ifbo import FTPFN
 class FTPFNSurrogate:
     """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
 
-    def __init__(self, target_path: Path = None, version: str = "0.0.1", *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, target_path: Path = None, version: str = "0.0.1", **kwargs):
         self.ftpfn = FTPFN(target_path=target_path, version=version)
         self.target_path = self.ftpfn.target_path
         self.version = self.ftpfn.version
