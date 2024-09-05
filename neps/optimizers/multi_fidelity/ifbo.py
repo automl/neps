@@ -3,6 +3,7 @@ from typing_extensions import override
 
 import numpy as np
 import pandas as pd
+import warnings
 
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult
@@ -76,7 +77,10 @@ class IFBO(BaseOptimizer):
             logger: logger object, or None to use the neps logger
             sample_default_first: Whether to sample the default configuration first
         """
-        super().__init__(
+        # Adjust pipeline space fidelity steps to be equally spaced
+        pipeline_space = self._adjust_fidelity_for_freeze_thaw_steps(pipeline_space, step_size)
+        # Super constructor call
+        super().__init__(  
             pipeline_space=pipeline_space,
             budget=budget,
             patience=patience,
@@ -167,6 +171,30 @@ class IFBO(BaseOptimizer):
         self.count = 0
 
         self.evaluation_data = EvaluationData()
+
+    def _adjust_fidelity_for_freeze_thaw_steps(
+        self,
+        pipeline_space: SearchSpace,
+        step_size: int
+    ) -> SearchSpace:
+        """Adjusts the fidelity range to be divisible by `step_size` for Freeze-Thaw.
+        """
+        if not pipeline_space.has_fidelity:
+            return pipeline_space
+        # Check if the fidelity range is divided into equal sized steps by `step_size`
+        remainder = (pipeline_space.fidelity.upper - pipeline_space.fidelity.lower) % step_size
+        if remainder == 0:
+            return pipeline_space
+        # Adjust the fidelity lower bound to be divisible by `step_size` into equal steps
+        offset = step_size - remainder
+        # Pushing the lower bound of the fidelity space by an offset to ensure equal-sized steps
+        pipeline_space.fidelity.lower += offset
+        warnings.warn(
+            f"Adjusted fidelity lower bound to {pipeline_space.fidelity.lower} "
+            f"for equal-sized steps of {step_size}."
+        )
+        print("New fidelity: ", pipeline_space.fidelity)
+        return pipeline_space
 
     def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:

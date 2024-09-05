@@ -330,25 +330,28 @@ class SearchSpace(Mapping[str, Any]):
                 sampled_hps[name] = hp.clone()
                 continue
 
-            for _ in range(patience):
+            for attempt in range(patience):
                 try:
                     if user_priors and isinstance(hp, ParameterWithPrior):
                         sampled_hps[name] = hp.sample(user_priors=user_priors)
                     else:
                         sampled_hps[name] = hp.sample()
                     break
-                except ValueError:
+                except Exception as e:
                     logger.warning(
-                        f"Could not sample valid value for hyperparameter {name}!"
+                        f"Attempt {attempt + 1}/{patience} failed for sampling {name}: {str(e)}"
                     )
             else:
+                logger.error(
+                    f"Failed to sample valid value for {name} after {patience} attempts"
+                )
                 raise ValueError(
                     f"Could not sample valid value for hyperparameter {name}"
                     f" in {patience} tries!"
                 )
 
         return SearchSpace(**sampled_hps)
-
+    
     def mutate(
         self,
         *,

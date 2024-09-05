@@ -142,6 +142,7 @@ def training_pipeline(
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
 
     pipeline_space = {
         "learning_rate": neps.Float(1e-5, 1e-1, log=True),
@@ -155,13 +156,16 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         run_pipeline=training_pipeline,
         searcher="ifbo",
-        # ifbo hyperparameters
-        version="0.0.1",
-        step_size=2,
         max_evaluations_total=25,
         root_directory="debug/ifbo-mnist/",
-        overwrite_working_directory=True
-
+        # overwrite_working_directory=True,
+        # (optional) ifbo hyperparameters
+        step_size=3,
+        # (optional) ifbo surrogate model hyperparameters (for FT-PFN)
+        surrogate_model_args=dict(
+            version="0.0.1",
+            target_path=None,
+        ),
     )
 
     # NOTE: this is experimental and may not work as expected
