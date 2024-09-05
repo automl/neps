@@ -155,6 +155,9 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         run_pipeline=training_pipeline,
         searcher="ifbo",
+        # ifbo hyperparameters
+        version="0.0.1",
+        step_size=2,
         max_evaluations_total=25,
         root_directory="debug/ifbo-mnist/",
         overwrite_working_directory=True
