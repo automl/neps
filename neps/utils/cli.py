@@ -649,6 +649,82 @@ neps help
     print(help_text)
 
 
+def generate_markdown_from_parser(parser: argparse.ArgumentParser, filename: str) -> None:
+    lines = []
+
+    # Add the general parser description
+    if parser.description:
+        lines.append(f"# {parser.description}")
+        lines.append("\n")
+
+    # Extract subparsers (if they exist)
+    subcommands = {}
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for cmd, subparser in action.choices.items():
+                subcommands[cmd] = subparser
+
+    # Order subcommands: init, run, status, help (always last), followed by any others
+    order = ["init", "run", "status"]
+    sorted_subcommands = [cmd for cmd in order if cmd in subcommands]
+    sorted_subcommands += [
+        cmd for cmd in subcommands if cmd not in order and cmd != "help"
+    ]
+    if "help" in subcommands:
+        sorted_subcommands.append("help")
+
+    # Iterate through sorted subcommands and generate the documentation
+    for cmd in sorted_subcommands:
+        subparser = subcommands[cmd]
+
+        # Command header
+        lines.append(f"## **`{cmd}` Command**")
+        lines.append("\n")
+
+        # Command description
+        if subparser.description:
+            lines.append(f"{subparser.description}")
+            lines.append("\n")
+
+        # Extract and list options (Required and Optional)
+        lines.append("**Arguments:**")
+        lines.append("\n")
+
+        required_args = []
+        optional_args = []
+
+        for sub_action in subparser._actions:
+            option_strings = ", ".join(sub_action.option_strings)
+            option_help = sub_action.help or "No description available."
+            # Categorize based on whether the argument is required
+            if sub_action.required:
+                required_args.append(f"- `{option_strings}` (Required): {option_help}")
+            else:
+                optional_args.append(f"- `{option_strings}` (Optional): {option_help}")
+
+        # Add Required arguments section
+        if required_args:
+            lines.extend(required_args)
+            lines.append("\n")
+
+        # Add Optional arguments section
+        if optional_args:
+            lines.extend(optional_args)
+            lines.append("\n")
+
+        # Add Example Usage
+        lines.append(f"**Example Usage:**")
+        lines.append("\n")
+        lines.append("```bash")
+        lines.append(f"neps {cmd} --help")
+        lines.append("```")
+        lines.append("\n")
+
+    # Write the lines to the specified markdown file
+    with open(filename, "w") as f:
+        f.write("\n".join(lines))
+
+
 def main() -> None:
     """CLI entry point.
 
@@ -901,6 +977,8 @@ def main() -> None:
     parser_help = subparsers.add_parser("help", help="Displays help information.")
     parser_help.set_defaults(func=print_help)
 
+    # updating documentation
+    generate_markdown_from_parser(parser, "cli.md")
     args = parser.parse_args()
 
     if hasattr(args, "func"):
