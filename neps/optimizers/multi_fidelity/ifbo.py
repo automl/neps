@@ -55,9 +55,7 @@ class IFBO(BaseOptimizer):
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
         acquisition_sampler_args: dict = None,
         model_policy: Any = PFNSurrogate,
-        initial_design_fraction: float = 0.75,
-        initial_design_size: int = 10,
-        initial_design_budget: int = None,
+        initial_design_size: int = 1,
     ):
         """Initialise
 
@@ -76,6 +74,7 @@ class IFBO(BaseOptimizer):
                 value instead. default: None
             logger: logger object, or None to use the neps logger
             sample_default_first: Whether to sample the default configuration first
+            initial_design_size: Number of configurations to sample before starting optimization
         """
         # Adjust pipeline space fidelity steps to be equally spaced
         pipeline_space = self._adjust_fidelity_for_freeze_thaw_steps(pipeline_space, step_size)
@@ -95,11 +94,8 @@ class IFBO(BaseOptimizer):
         self.min_budget = self.pipeline_space.fidelity.lower
         # TODO: generalize this to work with real data (not benchmarks)
         self.max_budget = self.pipeline_space.fidelity.upper
-
-        self._initial_design_fraction = initial_design_fraction
-        self._initial_design_size, self._initial_design_budget = self._set_initial_design(
-            initial_design_size, initial_design_budget, self._initial_design_fraction
-        )
+        self._initial_design_size = initial_design_size
+        
         # TODO: Write use cases for these parameters
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
@@ -215,45 +211,6 @@ class IFBO(BaseOptimizer):
                 else pipeline_space.get_vectorial_dim()
             )
 
-    def _set_initial_design(
-        self,
-        initial_design_size: int = None,
-        initial_design_budget: int = None,
-        initial_design_fraction: float = 0.75,
-    ) -> tuple[int | float, int | float]:
-        """Sets the initial design size and budget."""
-
-        # user specified initial_design_size takes precedence
-        if initial_design_budget is not None:
-            _initial_design_budget = initial_design_budget
-        else:
-            _initial_design_budget = self.max_budget
-
-        # user specified initial_design_size takes precedence
-        _initial_design_size = np.inf
-        if initial_design_size is not None:
-            _initial_design_size = initial_design_size
-        if (
-            initial_design_size is None
-            or _initial_design_size * self.min_budget > _initial_design_budget
-        ):
-            # if the initial design budget is less than the budget spent on sampling
-            # the initial design at the minimum budget (fidelity)
-            # 2 choices here:
-            #    1. Reduce initial_design_size
-            #    2. Increase initial_design_budget
-            # we choose to reduce initial_design_size
-            _init_budget = initial_design_fraction * self.max_budget
-            # number of min budget evaluations fitting within initial design budget
-            _initial_design_size = _init_budget // self.min_budget
-
-        self.logger.info(
-            f"\n\ninitial_design_size: {_initial_design_size}\n"
-            f"initial_design_budget: {_initial_design_budget}\n"
-            f"min_budget: {self.min_budget}\n\n"
-        )
-        return _initial_design_size, _initial_design_budget
-
     def get_budget_level(self, config: SearchSpace) -> int:
         """Calculates the discretized (int) budget level for a given configuration."""
         return int(
@@ -297,15 +254,9 @@ class IFBO(BaseOptimizer):
 
         return total_budget_spent
 
-    def is_init_phase(self, budget_based: bool = False) -> bool:
-        if budget_based:
-            # Check if we are still in the initial design phase based on
-            # either the budget spent so far or the number of configurations evaluated
-            if self.total_budget_spent() < self._initial_design_budget:
-                return True
-        else:
-            if self.num_train_configs < self._initial_design_size:
-                return True
+    def is_init_phase(self) -> bool:
+        if self.num_train_configs < self._initial_design_size:
+            return True
         return False
 
     @property

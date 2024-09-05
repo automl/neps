@@ -128,9 +128,12 @@ def training_pipeline(
     tblogger.log(
         loss=val_loss,
         current_epoch=epochs,
-        write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
-        writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
-        writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+        # Set to `True` for a live incumbent trajectory.
+        write_summary_incumbent=False,
+        # Set to `True` for a live loss trajectory for each config.
+        writer_config_scalar=True,
+        # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+        writer_config_hparam=True,
         # Appending extra data
         extra_data={
             "train_loss": tblogger.scalar_logging(loss.item()),
@@ -158,7 +161,7 @@ if __name__ == "__main__":
         searcher="ifbo",
         max_evaluations_total=25,
         root_directory="debug/ifbo-mnist/",
-        # overwrite_working_directory=True,
+        overwrite_working_directory=True,  # set to False for a multi-worker run
         # (optional) ifbo hyperparameters
         step_size=3,
         # (optional) ifbo surrogate model hyperparameters (for FT-PFN)
@@ -168,7 +171,7 @@ if __name__ == "__main__":
         ),
     )
 
-    # NOTE: this is experimental and may not work as expected
+    # NOTE: this is `experimental` and may not work as expected
     ## plotting a 3D plot for learning curves explored by ifbo
     plotter = Plotter3D(
         run_path="debug/ifbo-mnist/",  # same as `root_directory` above
