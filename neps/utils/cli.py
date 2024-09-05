@@ -583,7 +583,8 @@ Available Commands:
 neps init [OPTIONS]
     Generates a 'run_args' YAML template file.
     Options:
-    --config-path <path/to/config.yaml> (Optional: Specify the path for the config file.)
+    --config-path <path/to/config.yaml> (Optional: Specify the path for the config
+    file. Default is run_config.yaml)
     --template [basic|complete] (Optional: Choose between a basic or complete template.)
     --state-machine (Optional: Creates a NEPS state. Requires an existing config.yaml.)
 
@@ -747,7 +748,7 @@ def main() -> None:
         type=str,
         default=None,
         help="Optional custom path for generating the configuration file. "
-        "Default is 'config.yaml'.",
+        "Default is 'run_config.yaml'.",
     )
     parser_init.add_argument(
         "--template",

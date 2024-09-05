@@ -1,5 +1,5 @@
 # NePS Command Line Interface
-This section provides a brief overview of the primary commands available in the NePS CLI.
+This section provides a brief overview of the commands available in the NePS CLI.
 
 ## **`init` Command**
 
@@ -9,7 +9,7 @@ Generates a default `run_args` YAML configuration file, providing a template tha
 
 
 - `-h, --help` (Optional): show this help message and exit
-- `--config-path` (Optional): Optional custom path for generating the configuration file. Default is 'config.yaml'.
+- `--config-path` (Optional): Optional custom path for generating the configuration file. Default is 'run_config.yaml'.
 - `--template` (Optional): Optional, options between different templates. Required configs(basic) vs all neps configs (complete)
 - `--state-machine` (Optional): If set, creates a NEPS state. Requires an existing config.yaml.
 
