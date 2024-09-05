@@ -4,14 +4,18 @@
 from __future__ import annotations
 import warnings
 from datetime import timedelta, datetime
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+import numpy as np
 
 # Suppress specific warnings
 # warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
-
+from neps.state.trial import Trial
 import argparse
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 import neps
 from neps.api import Default
 from neps.utils.run_args import load_and_return_object
@@ -244,11 +248,11 @@ def info_config(args: argparse.Namespace) -> None:
     print(f"  Location: {trial.metadata.location}")
     print(f"  Previous Trial ID: {trial.metadata.previous_trial_id}")
     print(f"  Sampling Worker ID: {trial.metadata.sampling_worker_id}")
-    print(f"  Time Sampled: {trial.metadata.time_sampled}")
+    print(f"  Time Sampled: {convert_timestamp(trial.metadata.time_sampled)}")
     print(f"  Evaluating Worker ID: {trial.metadata.evaluating_worker_id}")
-    print(f"  Evaluation Duration: {trial.metadata.evaluation_duration}")
-    print(f"  Time Started: {trial.metadata.time_started}")
-    print(f"  Time End: {trial.metadata.time_end}")
+    print(f"  Evaluation Duration: {format_duration(trial.metadata.evaluation_duration)}")
+    print(f"  Time Started: {convert_timestamp(trial.metadata.time_started)}")
+    print(f"  Time End: {convert_timestamp(trial.metadata.time_end)}")
 
     if trial.report is not None:
         print("\nReport:")
@@ -328,9 +332,20 @@ def status(args: argparse.Namespace) -> None:
     # Get the root_directory from args or load it from run_config.yaml
     directory_path = get_root_directory(args)
 
-    # Retrieve the summary dictionary and the NePS state
+    if not directory_path.exists() or not directory_path.is_dir():
+        print(
+            f"Error: The directory {directory_path} does not exist or is not a "
+            f"directory."
+        )
+        return
+
+    try:
+        neps_state = load_filebased_neps_state(directory_path)
+    except VersionedResourceDoesNotExistsError:
+        print(f"No NePS state found in the directory {directory_path}.")
+        return
+
     summary = get_summary_dict(directory_path, add_details=True)
-    neps_state = load_filebased_neps_state(directory_path)
 
     # Calculate the number of trials in different states
     evaluating_trials_count = sum(
@@ -363,7 +378,7 @@ def status(args: argparse.Namespace) -> None:
         all_trials.values(), key=lambda t: t.metadata.time_sampled, reverse=True
     )
 
-    # Filter trials based on user options
+    # Filter trials based on state
     if args.pending:
         filtered_trials = [
             trial for trial in sorted_trials if trial.state.name == "PENDING"
@@ -449,6 +464,114 @@ def status(args: argparse.Namespace) -> None:
         print("-----------------------------")
 
 
+def plot_incumbents(
+    all_trials: List[Trial], incumbents: List[Trial], directory_path: Path
+) -> str:
+    """Plot the evolution of incumbent trials over the total number of trials."""
+    id_to_index = {trial.id: idx + 1 for idx, trial in enumerate(all_trials)}
+
+    # Collect data for plotting
+    x_values = [id_to_index[incumbent.id] for incumbent in incumbents]
+    y_values = [
+        incumbent.report.loss
+        for incumbent in incumbents
+        if incumbent.report is not None and incumbent.report.loss is not None
+    ]
+
+    plt.figure(figsize=(12, 6))
+    sns.lineplot(
+        x=x_values,
+        y=y_values,
+        marker="o",
+        linestyle="-",
+        markersize=8,
+        color="dodgerblue",
+    )
+    plt.xlabel("Number of Trials")
+    plt.ylabel("Loss")
+    plt.title("Evolution of Incumbents Over Trials")
+
+    # Dynamically set x-axis ticks based on the number of trials
+    num_trials = len(all_trials)
+    if num_trials < 20:
+        tick_spacing = 1  # Every trial is labeled if fewer than 20 trials
+    else:
+        tick_spacing = max(
+            5, round(num_trials / 10 / 5) * 5
+        )  # Round to nearest multiple of 5
+
+    ticks = np.arange(0, num_trials + 1, tick_spacing)
+    ticks[0] = 1
+    plt.xticks(ticks)
+
+    sns.set_style("whitegrid")
+    plt.grid(True, linestyle="--", linewidth=0.5)
+    plt.tight_layout()
+
+    # Save the figure
+    plot_file_name = "incumbents_evolution.png"
+    plot_path = os.path.join(directory_path, plot_file_name)
+    plt.savefig(plot_path)
+    plt.close()
+
+    return plot_path
+
+
+def results(args: argparse.Namespace) -> None:
+    """Handles the 'results' command by displaying incumbents in
+    reverse order and
+    optionally plotting and saving the results."""
+    directory_path = get_root_directory(args)
+
+    if not directory_path.exists() or not directory_path.is_dir():
+        print(
+            f"Error: The directory {directory_path} does not exist or is not a "
+            f"directory."
+        )
+        return
+
+    try:
+        neps_state = load_filebased_neps_state(directory_path)
+    except VersionedResourceDoesNotExistsError:
+        print(f"No NePS state found in the directory {directory_path}.")
+        return
+
+    trials = neps_state.get_all_trials()
+    # Sort trials by trial ID
+    sorted_trials = sorted(trials.values(), key=lambda x: int(x.id))
+
+    # Compute incumbents
+    best_loss = float("inf")
+    incumbents = []
+    for trial in sorted_trials:
+        if trial.report and trial.report.loss < best_loss:
+            best_loss = trial.report.loss
+            incumbents.append(trial)
+
+    # Reverse the list for displaying, so the most recent incumbent is shown first
+    incumbents_display = incumbents[::-1]
+
+    if not args.plot:
+        print(f"Results for NePS run: {directory_path}")
+        print("--------------------")
+        print("All Incumbent Trials:")
+        header = f"{'ID':<6} {'Loss':<12} {'Config':<60}"
+        print(header)
+        print("-" * len(header))
+        if len(incumbents_display) > 0:
+            for trial in incumbents_display:
+                if trial.report is not None and trial.report.loss is not None:
+                    config = ", ".join(f"{k}: {v}" for k, v in trial.config.items())
+                    print(f"{trial.id:<6} {trial.report.loss:<12.6f} {config:<60}")
+                else:
+                    print(f"Trial {trial.id} has no valid loss.")
+        else:
+            print("No Incumbent Trials found.")
+    else:
+        plot_path = plot_incumbents(sorted_trials, incumbents, directory_path)
+        print(f"Plot saved to {plot_path}")
+
+
 def print_help(args: Optional[argparse.Namespace] = None) -> None:
     """Prints help information for the NEPS CLI."""
     help_text = """
@@ -457,63 +580,71 @@ Usage: neps [COMMAND] [OPTIONS]
 Available Commands:
 -------------------
 
-neps init --config-path </path/to/config.yaml>
+neps init [OPTIONS]
     Generates a 'run_args' YAML template file.
-    Optional custom path for generating the configuration file.
-    Example:
-    ```bash
-    neps init --config-path /path/to/config.yaml
-    ```
+    Options:
+    --config-path <path/to/config.yaml> (Optional: Specify the path for the config file.)
+    --template [basic|complete] (Optional: Choose between a basic or complete template.)
+    --state-machine (Optional: Creates a NEPS state. Requires an existing config.yaml.)
 
 neps run [OPTIONS]
     Runs a neural pipeline search.
     Options:
     --run-args <path_to_run_args> (Path to the YAML configuration file.)
-    --run-pipeline <path_to_module:function_name> (Optional: Python file and
-    function name.)
-    --pipeline-space <path_to_yaml> (Path to the YAML file defining the search space.)
-    --root-directory <path> (The directory to save progress.)
-    --overwrite-working-directory (If set, deletes the working directory at the start
-    of the run.)
-    --development-stage-id <id> (Identifier for the current development stage.)
-    --task-id <id> (Identifier for the current task.)
-    --post-run-summary/--no-post-run-summary (Whether to provide a summary after running.)
+    --run-pipeline <path_to_module:function_name> (Path and function for the pipeline.)
+    --pipeline-space <path_to_yaml> (Path to the YAML defining the search space.)
+    --root-directory <path> (Optional: Directory for saving progress and
+    synchronization. Default is 'root_directory' from run_config.yaml if not provided.)
+    --overwrite-working-directory (Deletes the working directory at the start of the run.)
+    --development-stage-id <id> (Identifier for the development stage.)
+    --task-id <id> (Identifier for the task.)
+    --post-run-summary/--no-post-run-summary (Toggle summary after running.)
     --max-evaluations-total <int> (Total number of evaluations to run.)
-    --max-evaluations-per-run <int> (Number of evaluations a specific call should
-    maximally do.)
-    --continue-until-max-evaluation-completed (If set, only stop after
-    max-evaluations-total have been completed.)
-    --max-cost-total <float> (No new evaluations will start when this cost is exceeded.)
-    --ignore-errors (If set, ignore errors during the optimization process.)
-    --loss-value-on-error <float> (Loss value to assume on error.)
-    --cost-value-on-error <float> (Cost value to assume on error.)
-    --searcher <key> (String key of searcher algorithm to use for optimization.)
-    --searcher-kwargs <key=value>... (Additional keyword arguments for the searcher.)
-    Example:
-    ```bash
-    neps run --run-args /path/to/config.yaml
-    ```
+    --max-evaluations-per-run <int> (Max evaluations per run call.)
+    --continue-until-max-evaluation-completed (Continue until max evaluations are completed.)
+    --max-cost-total <float> (Max cost before halting new evaluations.)
+    --ignore-errors (Ignore errors during optimization.)
+    --loss-value-on-error <float> (Assumed loss value on error.)
+    --cost-value-on-error <float> (Assumed cost value on error.)
+    --searcher <key> (Searcher algorithm key for optimization.)
+    --searcher-kwargs <key=value>... (Additional kwargs for the searcher.)
 
-neps info-config <id> <directory>
+neps info-config <id> [OPTIONS]
     Provides detailed information about a specific configuration by its ID.
-    Example:
-    ```bash
-    neps info-config 17 /path/to/directory
-    ```
+    Options:
+    --root-directory <path> (Optional: Path to your root_directory. Default is
+    'root_directory' from run_config.yaml if not provided.)
 
-neps errors <directory>
-    Lists all errors found in the specified directory's NEPS state.
-    Example:
-    ```bash
-    neps errors /path/to/directory
-    ```
+neps errors [OPTIONS]
+    Lists all errors from the specified NePS run.
+    Options:
+    --root-directory <path> (Optional: Path to your root_directory. Default is
+    'root_directory' from run_config.yaml if not provided.)
+
+neps sample-config [OPTIONS]
+    Sample a configuration from the existing NePS state.
+    Options:
+    --root-directory <path> (Optional: Path to your root_directory. Default is
+    'root_directory' from run_config.yaml if not provided.)
+
+neps status [OPTIONS]
+    Check the status of the NePS run.
+    Options:
+    --root-directory <path> (Optional: Path to your root_directory. Default is
+    'root_directory' from run_config.yaml if not provided.)
+    --pending (Show only pending trials.)
+    --evaluating (Show only evaluating trials.)
+    --succeeded (Show only succeeded trials.)
+
+neps results [OPTIONS]
+    Display results of the NePS run.
+    Options:
+    --root-directory <path> (Optional: Path to your root_directory. Defaults is
+    'root_directory' from run_config.yaml if not provided.)
+    --plot (Plot the results if set.)
 
 neps help
     Displays this help message.
-    Example:
-    ```bash
-    neps help
-    ```
     """
     print(help_text)
 
@@ -750,6 +881,21 @@ def main() -> None:
         "--succeeded", action="store_true", help="Show only succeeded trials."
     )
     parser_status.set_defaults(func=status)
+
+    # Subparser for "results" command
+    parser_results = subparsers.add_parser(
+        "results", help="Display results of the NePS run."
+    )
+    parser_results.add_argument(
+        "--root-directory",
+        type=str,
+        help="Optional: The path to your root_directory. If not provided, "
+        "it will be loaded from run_config.yaml.",
+    )
+    parser_results.add_argument(
+        "--plot", action="store_true", help="Plot the results if set."
+    )
+    parser_results.set_defaults(func=results)
 
     # Subparser for "help" command
     parser_help = subparsers.add_parser("help", help="Displays help information.")
