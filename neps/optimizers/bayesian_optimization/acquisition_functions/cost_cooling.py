@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import torch
 from botorch.acquisition.logei import partial
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition import (
@@ -9,10 +10,8 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquis
 )
 
 if TYPE_CHECKING:
-    import torch
     from botorch.acquisition import AcquisitionFunction
-    from botorch.models.gp_regression import Likelihood
-    from botorch.models.model import Model
+    from botorch.acquisition.analytic import GPyTorchModel
     from torch import Tensor
 
 
@@ -20,23 +19,28 @@ def apply_cost_cooling(
     acq_values: Tensor,
     X: Tensor,
     acq: AcquisitionFunction,
-    cost_model: Model,
-    likelihood: Likelihood,
+    cost_model: GPyTorchModel,
     alpha: float,
 ) -> Tensor:
-    posterior = likelihood(cost_model(X))
-    cost = posterior.mean
+    # NOTE: We expect **positive** costs from model
+    cost = cost_model.posterior(X).mean
+    cost = cost.squeeze(dim=-1) if cost_model.num_outputs == 1 else cost.sum(dim=-1)
 
     if acq._log:
-        # can derive from eq log(x) = log(acq / cost^alpha)
-        return acq_values - alpha * cost.log()
-    return acq_values / cost.pow(alpha)
+        # Take log of both sides, acq is already log scaled
+        # -- x = acq / cost^alpha
+        # -- log(x) = log(acq) - alpha * log(cost)
+        w = alpha * cost.log()
+        return acq_values - w
+
+    # https://github.com/pytorch/botorch/discussions/2194
+    w = cost.pow(alpha)
+    return torch.where(acq_values > 0, acq_values / w, acq_values * w)
 
 
 def cost_cooled_acq(
     acq_fn: AcquisitionFunction,
-    model: Model,
-    likelihood: Likelihood,
+    model: GPyTorchModel,
     used_budget_percentage: float,
     X_pending: torch.Tensor | None = None,
 ) -> WeightedAcquisition:
@@ -46,7 +50,6 @@ def cost_cooled_acq(
         apply_weight=partial(
             apply_cost_cooling,
             cost_model=model,
-            likelihood=likelihood,
             alpha=1 - used_budget_percentage,
         ),
         X_pending=X_pending,

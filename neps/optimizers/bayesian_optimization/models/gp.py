@@ -1,3 +1,5 @@
+"""Gaussian Process models for Bayesian Optimization."""
+
 from __future__ import annotations
 
 import logging
@@ -12,6 +14,7 @@ from botorch.acquisition.analytic import SingleTaskGP
 from botorch.models.gp_regression_mixed import (
     CategoricalKernel,
     Likelihood,
+    OutcomeTransform,
 )
 from botorch.models.transforms.outcome import Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
@@ -33,7 +36,12 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def default_likelihood_with_prior() -> gpytorch.likelihoods.GaussianLikelihood:
+def likelihood_with_prior_on_log_scale(
+    mean: float = 1e-2,
+    std: float = math.sqrt(3),
+    bounds: tuple[float, float] = (1e-6, 1),
+) -> gpytorch.likelihoods.GaussianLikelihood:
+    """Default Gaussian likelihood with priors for the noise."""
     # The effect of the likelihood of noise is pretty crucial w.r.t.
     # whether we are going to overfit every point by overfitting with
     # the lengthscale, or whether we smooth through and assume variation
@@ -54,25 +62,21 @@ def default_likelihood_with_prior() -> gpytorch.likelihoods.GaussianLikelihood:
     # TOOD: We may want to move the likelihood inside the GP and decay the
     # amount the GP can attribute to noise (reduce std and mean) relative
     # to samples seen, effectively reducing the smoothness of the GP overtime
-    noise_mean = 1e-2
-    noise_std = math.sqrt(3)
-    _noise_prior = gpytorch.priors.LogNormalPrior(
-        math.log(noise_mean) + noise_std**2,
-        noise_std,
-    )
+    _noise_prior = gpytorch.priors.LogNormalPrior(math.log(mean) + std**2, std)
     return gpytorch.likelihoods.GaussianLikelihood(
         noise_prior=_noise_prior,
         # Going below 1e-6 could introduuce a lot of numerical instability in the
         # kernels, even if it's a noiseless function
         noise_constraint=gpytorch.constraints.Interval(
-            lower_bound=1e-6,
-            upper_bound=1,
-            initial_value=noise_mean,
+            lower_bound=bounds[0],
+            upper_bound=bounds[1],
+            initial_value=mean,
         ),
     )
 
 
 def default_signal_variance_prior() -> gpytorch.priors.NormalPrior:
+    """Default prior for the signal variance."""
     # The outputscale prior is a bit more tricky. Essentially
     # it describes how much we expect the function to move
     # around the mean (0 as we normalize the `ys`)
@@ -85,6 +89,7 @@ def default_signal_variance_prior() -> gpytorch.priors.NormalPrior:
 def default_lengthscale_prior(
     N: int,
 ) -> tuple[gpytorch.priors.LogNormalPrior, gpytorch.constraints.Interval]:
+    """Default prior for the lengthscale."""
     # Based on `Vanilla GP work great in High Dimensions` by Carl Hvafner
     # TODO: I'm not convinced entirely that the `std` is independant
     # of the dimension and number of samples
@@ -107,6 +112,7 @@ def default_lengthscale_prior(
 
 
 def default_mean() -> gpytorch.means.ConstantMean:
+    """Default mean for the GP."""
     return gpytorch.means.ConstantMean(
         constant_prior=gpytorch.priors.NormalPrior(0, 0.2),
         constant_constraint=gpytorch.constraints.Interval(
@@ -121,6 +127,7 @@ def default_matern_kernel(
     N: int,
     active_dims: tuple[int, ...] | None = None,
 ) -> ScaleKernel:
+    """Default Matern kernel for the GP."""
     lengthscale_prior, lengthscale_constraint = default_lengthscale_prior(N)
 
     return ScaleKernel(
@@ -138,6 +145,7 @@ def default_categorical_kernel(
     N: int,
     active_dims: tuple[int, ...] | None = None,
 ) -> ScaleKernel:
+    """Default Categorical kernel for the GP."""
     # Following BoTorches implementation of the MixedSingleTaskGP
     return ScaleKernel(
         CategoricalKernel(
@@ -151,9 +159,16 @@ def default_categorical_kernel(
 def default_single_obj_gp(
     x: TensorPack,
     y: torch.Tensor,
+    *,
+    outcome_transform: OutcomeTransform | None = None,
 ) -> tuple[SingleTaskGP, Likelihood]:
+    """Default GP for single objective optimization."""
     if y.ndim == 1:
         y = y.unsqueeze(-1)
+
+    if outcome_transform is None:
+        outcome_transform = Standardize(m=1)
+
     encoder = x.encoder
     numerics: list[int] = []
     categoricals: list[int] = []
@@ -163,7 +178,9 @@ def default_single_obj_gp(
         else:
             numerics.append(encoder.index_of[hp_name])
 
-    likelihood = default_likelihood_with_prior()
+    # TODO: If we have a low cardinality integer, we should consider
+    # just treating it as a categorical...
+    likelihood = likelihood_with_prior_on_log_scale()
 
     # Purely vectorial
     if len(categoricals) == 0:
@@ -174,7 +191,7 @@ def default_single_obj_gp(
             likelihood=likelihood,
             # Only matern kernel
             covar_module=default_matern_kernel(len(numerics)),
-            outcome_transform=Standardize(m=1),
+            outcome_transform=outcome_transform,
         )
         return gp, likelihood
 
@@ -187,7 +204,7 @@ def default_single_obj_gp(
             likelihood=likelihood,
             # Only categorical kernel
             covar_module=default_categorical_kernel(len(categoricals)),
-            outcome_transform=Standardize(m=1),
+            outcome_transform=outcome_transform,
         )
         return gp, likelihood
 
@@ -215,7 +232,7 @@ def default_single_obj_gp(
         mean_module=default_mean(),
         likelihood=likelihood,
         covar_module=kernel,
-        outcome_transform=Standardize(m=1),
+        outcome_transform=outcome_transform,
     )
     return gp, likelihood
 
@@ -226,15 +243,16 @@ def optimize_acq(
     *,
     n_candidates_required: int = 1,
     num_restarts: int = 20,
-    n_intial_start_points: int = 512,
+    n_intial_start_points: int = 256,
     acq_options: Mapping[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Optimize the acquisition function."""
     acq_options = acq_options or {}
 
     lower = [domain.lower for domain in encoder.domains]
     upper = [domain.upper for domain in encoder.domains]
-    bounds = torch.tensor([lower, upper], dtype=torch.float)
+    bounds = torch.tensor([lower, upper], dtype=torch.float64)
 
     cat_transformers = {
         name: t
@@ -281,8 +299,8 @@ def optimize_acq(
     else:
         fixed_cats = [dict(zip(cats.keys(), combo)) for combo in product(*cats.values())]
 
-    # TODO: we should deterministicall shuffle the fixed_categoricals as the
-    # underlying function does not.
+    # TODO: we should deterministically shuffle the fixed_categoricals
+    # as the underlying function does not.
     return optimize_acqf_mixed(
         acq_function=acq_fn,
         bounds=bounds,

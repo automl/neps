@@ -119,6 +119,7 @@ class WeightedAcquisition(AcquisitionFunction):
         self.set_X_pending(X_pending)
         self.apply_weight = apply_weight
         self.acq = acq
+        self._log = acq._log
 
     # Taken from PiBO implementation in botorch (PriorGuidedAcquisitionFunction).
     @concatenate_pending_points

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping
+from typing import TYPE_CHECKING, Any, Literal, Mapping
 
 import torch
-from botorch.acquisition import LinearMCObjective, qLogExpectedImprovement
+from botorch.acquisition import (
+    LinearMCObjective,
+)
+from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
+from botorch.models.transforms.outcome import ChainedOutcomeTransform, Log, Standardize
 from gpytorch import ExactMarginalLogLikelihood
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
@@ -20,13 +24,10 @@ from neps.optimizers.bayesian_optimization.models.gp import (
     optimize_acq,
 )
 from neps.sampling import Prior, Sampler
-from neps.search_spaces.encoding import TensorEncoder, TensorPack
+from neps.search_spaces.encoding import TensorEncoder
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 
 if TYPE_CHECKING:
-    from botorch.models.gp_regression_mixed import Likelihood
-    from botorch.models.model import Model
-
     from neps.search_spaces import (
         SearchSpace,
     )
@@ -174,9 +175,6 @@ class BayesianOptimization(BaseOptimizer):
         pipeline_space: SearchSpace,
         *,
         initial_design_size: int | None = None,
-        surrogate_model: (
-            Literal["gp"] | Callable[[TensorPack, torch.Tensor], tuple[Model, Likelihood]]
-        ) = "gp",
         use_priors: bool = False,
         use_cost: bool = False,
         sample_default_first: bool = False,
@@ -192,8 +190,6 @@ class BayesianOptimization(BaseOptimizer):
             initial_design_size: Number of samples used before using the surrogate model.
                 If None, it will take `int(log(N) ** 2)` samples where `N` is the number
                 of parameters in the search space.
-            surrogate_model: Surrogate model, either a known model str or a callable
-                that takes in the training data and returns a model fitted to (X, y).
             use_priors: Whether to use priors set on the hyperparameters during search.
             use_cost: Whether to consider reported "cost" from configurations in decision
                 making. If True, the optimizer will weigh potential candidates by how much
@@ -241,10 +237,6 @@ class BayesianOptimization(BaseOptimizer):
         self.device = device
         self.sample_default_first = sample_default_first
         self.n_initial_design = initial_design_size
-        self._get_model = (
-            default_single_obj_gp if surrogate_model == "gp" else surrogate_model
-        )
-
         self.initial_design_: list[dict[str, Any]] | None = None
 
     def ask(
@@ -321,14 +313,21 @@ class BayesianOptimization(BaseOptimizer):
         y = _missing_y_strategy(y)
 
         # Now fit our model
-        y_model, y_likelihood = self._get_model(x, y)
+        y_model, y_likelihood = default_single_obj_gp(x, y)
         fit_gpytorch_mll(
             ExactMarginalLogLikelihood(likelihood=y_likelihood, model=y_model)
         )
 
-        acq = qLogExpectedImprovement(
+        # NOTE: We use:
+        # * q - allows accounting for pending points, normally used to get a batch
+        #       of points.
+        # * log - More numerically stable
+        # * Noisy - In Deep-Learning, we shouldn't take f.min() incase it was a noise
+        #           spike. This accounts for noise in objective.
+        # * ExpectedImprovement - Cause ya know, the default.
+        acq = qLogNoisyExpectedImprovement(
             y_model,
-            best_f=y.min(),
+            X_baseline=x.tensor,
             X_pending=maybe_x_pending_tensor,
             # Unfortunatly, there's no option to indicate that we minimize
             # the AcqFunction so we need to do some kind of transformation.
@@ -364,10 +363,16 @@ class BayesianOptimization(BaseOptimizer):
             cost = torch.tensor(costs, dtype=torch.float64, device=self.device)
             cost_z_score = _missing_cost_strategy(cost)
 
-            # TODO: We might want a different model for cost estimation... one reason
-            # is that cost estimates are likely to be a lot noisier than the likelihood
-            # we have by default.
-            cost_model, cost_likelihood = self._get_model(x, cost_z_score)
+            cost_model, cost_likelihood = default_single_obj_gp(
+                x,
+                cost_z_score,
+                outcome_transform=ChainedOutcomeTransform(
+                    # TODO: Maybe some way for a user to specify their cost
+                    # is on a log scale?
+                    log=Log(),
+                    standardize=Standardize(m=1),
+                ),
+            )
 
             # Optimize the cost model
             fit_gpytorch_mll(
@@ -376,8 +381,8 @@ class BayesianOptimization(BaseOptimizer):
             acq = cost_cooled_acq(
                 acq_fn=acq,
                 model=cost_model,
-                likelihood=cost_likelihood,
                 used_budget_percentage=_cost_used_budget_percentage(budget_info),
+                X_pending=maybe_x_pending_tensor,
             )
 
         # Finally, optimize the acquisition function to get a configuration

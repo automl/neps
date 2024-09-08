@@ -7,8 +7,6 @@ import random
 
 import neps
 
-from rich import print
-
 PRINT = False
 
 
@@ -21,16 +19,16 @@ def run_pipeline(float1, float2, float3, integer1, integer2):
         print("integer1:", integer1)
         print("integer2:", integer2)
     loss = -float(
-        np.sum(
+        integer2
+        * np.sum(
             [
-                (float1 * float2 / (float3 + 1)) * 1,  # ,(int(categorical) + 1),
+                (float1 * float2 / (float3 + 1)),  # * (int(categorical) + 1),
                 integer1,
-                math.log(integer2),
             ]
         )
     )  # Random noise
     # time.sleep(0.7)  # For demonstration purposes
-    return {"loss": loss, "cost": math.log(integer2)}
+    return {"loss": loss, "cost": float(integer2)}
 
 
 pipeline_space = dict(
@@ -45,7 +43,7 @@ pipeline_space = dict(
 logging.basicConfig(level=logging.INFO)
 neps.run(
     run_pipeline=run_pipeline,
-    searcher="pibo",
+    searcher="bayesian_optimization",
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     post_run_summary=True,
