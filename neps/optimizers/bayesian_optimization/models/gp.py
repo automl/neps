@@ -243,7 +243,7 @@ def optimize_acq(
     *,
     n_candidates_required: int = 1,
     num_restarts: int = 20,
-    n_intial_start_points: int = 256,
+    n_intial_start_points: int | None = None,
     acq_options: Mapping[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -260,6 +260,15 @@ def optimize_acq(
         if isinstance(t, CategoricalToIntegerTransformer)
     }
     if not any(cat_transformers):
+        # Small heuristic to increase the number of candidates as our dimensionality
+        # increases... we apply a cap.
+        if n_intial_start_points is None:
+            # TODO: Need to investigate how num_restarts is used in botorch to inform
+            # this proxy.
+
+            # Cap out at 4096 when len(bounds) >= 8
+            n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
+
         return optimize_acqf(
             acq_function=acq_fn,
             bounds=bounds,
@@ -304,7 +313,7 @@ def optimize_acq(
     return optimize_acqf_mixed(
         acq_function=acq_fn,
         bounds=bounds,
-        num_restarts=num_restarts,
+        num_restarts=min(num_restarts // n_combos, 2),
         raw_samples=n_intial_start_points,
         q=n_candidates_required,
         fixed_features_list=fixed_cats,

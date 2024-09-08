@@ -313,7 +313,13 @@ class BayesianOptimization(BaseOptimizer):
         y = _missing_y_strategy(y)
 
         # Now fit our model
-        y_model, y_likelihood = default_single_obj_gp(x, y)
+        y_model, y_likelihood = default_single_obj_gp(
+            x,
+            y,
+            # TODO: We should consider applying some heurisitc to see if this should
+            # also include a log transform, similar as we do to cost if using `use_cost`.
+            outcome_transform=Standardize(m=1),
+        )
         fit_gpytorch_mll(
             ExactMarginalLogLikelihood(likelihood=y_likelihood, model=y_model)
         )

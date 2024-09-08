@@ -48,4 +48,5 @@ neps.run(
     root_directory="results/hyperparameters_example",
     post_run_summary=True,
     max_evaluations_total=50,
+    use_prior=True,
 )
