@@ -3,19 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-import matplotlib
-from matplotlib import (
-    cm,
-    pyplot as plt,
-)
+import numpy as np
+import pandas as pd
+from matplotlib import cm, pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
-
-matplotlib.use("TkAgg")
-
-import numpy as np
-import pandas as pd
 
 # Copied from plot.py
 HERE = Path(__file__).parent.absolute()
@@ -31,8 +24,8 @@ class Plotter3D:
     footnote: bool = True
     alpha: float = 0.9
     scatter_size: float | int = 3
-    bck_color_2d: tuple[float] = (0.8, 0.82, 0.8)
-    view_angle: tuple[float | int] = (15, -70)
+    bck_color_2d: tuple[float, float, float] = (0.8, 0.82, 0.8)
+    view_angle: tuple[float, float] = (15, -70)
 
     def __post_init__(self):
         if self.run_path is not None:
@@ -44,36 +37,38 @@ class Plotter3D:
             )
             assert self.data_path.exists(), f"File {self.data_path} does not exist"
             self.df = pd.read_csv(
-                self.data_path, index_col=0, float_precision="round_trip"
+                self.data_path,
+                index_col=0,
+                float_precision="round_trip",  # type: ignore
             )
 
             # Assigned at prep_df stage
-            self.loss_range = ()
-            self.epochs_range = ()
+            self.loss_range: tuple[float, float] | None = None
+            self.epochs_range: tuple[float, float] | None = None
 
     @staticmethod
-    def get_x(df: pd.DataFrame) -> np.array:
+    def get_x(df: pd.DataFrame) -> np.ndarray:
         return df["epochID"].to_numpy()
 
     @staticmethod
-    def get_y(df: pd.DataFrame) -> np.array:
+    def get_y(df: pd.DataFrame) -> np.ndarray:
         y_ = df["configID"].to_numpy()
         return np.ones_like(y_) * y_[0]
 
     @staticmethod
-    def get_z(df: pd.DataFrame) -> np.array:
+    def get_z(df: pd.DataFrame) -> np.ndarray:
         return df["result.loss"].to_numpy()
 
     @staticmethod
-    def get_color(df: pd.DataFrame) -> np.array:
+    def get_color(df: pd.DataFrame) -> np.ndarray:
         return df.index.to_numpy()
 
-    def prep_df(self, df: pd.DataFrame = None) -> pd.DataFrame:
+    def prep_df(self, df: pd.DataFrame | None = None) -> pd.DataFrame:
         df = self.df if df is None else df
 
         _fid_key = f"config.{self.fidelity_key}"
-        self.loss_range = (df["result.loss"].min(), df["result.loss"].max())
-        self.epochs_range = (df[_fid_key].min(), df[_fid_key].max())
+        self.loss_range = (df["result.loss"].min(), df["result.loss"].max())  # type: ignore
+        self.epochs_range = (df[_fid_key].min(), df[_fid_key].max())  # type: ignore
 
         split_values = np.array([[*index.split("_")] for index in df.index])
         df[["configID", "epochID"]] = split_values
@@ -88,7 +83,7 @@ class Plotter3D:
 
     def plot3D(
         self,
-        data: pd.DataFrame = None,
+        data: pd.DataFrame | None = None,
         save_path: str | Path | None = None,
         filename: str = "freeze_thaw",
     ) -> None:
@@ -155,12 +150,15 @@ class Plotter3D:
 
                 # Construct lines from segments
                 lc3D = Line3DCollection(
-                    segments3D, cmap="RdYlBu_r", norm=norm, alpha=self.alpha
+                    segments3D,  # type: ignore
+                    cmap="RdYlBu_r",
+                    norm=norm,
+                    alpha=self.alpha,
                 )
                 lc3D.set_array(color)
 
                 # Draw lines
-                ax3D.add_collection3d(lc3D)
+                ax3D.add_collection3d(lc3D)  # type: ignore
 
                 # Plot 2D
                 # Get segments for all lines
@@ -169,23 +167,29 @@ class Plotter3D:
 
                 # Construct lines from segments
                 lc = LineCollection(
-                    segments, cmap="RdYlBu_r", norm=norm, alpha=self.alpha
+                    segments,  # type: ignore
+                    cmap="RdYlBu_r",
+                    norm=norm,
+                    alpha=self.alpha,  # type: ignore
                 )
                 lc.set_array(color)
 
                 # Draw lines
                 ax.add_collection(lc)
 
-        ax3D.axes.set_xlim3d(left=self.epochs_range[0], right=self.epochs_range[1])
-        ax3D.axes.set_ylim3d(bottom=0, top=data_groups.ngroups)
-        ax3D.axes.set_zlim3d(bottom=self.loss_range[0], top=self.loss_range[1])
+        assert self.loss_range is not None
+        assert self.epochs_range is not None
+
+        ax3D.axes.set_xlim3d(left=self.epochs_range[0], right=self.epochs_range[1])  # type: ignore
+        ax3D.axes.set_ylim3d(bottom=0, top=data_groups.ngroups)  # type: ignore
+        ax3D.axes.set_zlim3d(bottom=self.loss_range[0], top=self.loss_range[1])  # type: ignore
 
         ax3D.set_xlabel("Epochs")
         ax3D.set_ylabel("Iteration sampled")
-        ax3D.set_zlabel(f"{self.loss_key}")
+        ax3D.set_zlabel(f"{self.loss_key}")  # type: ignore
 
         # set view angle
-        ax3D.view_init(elev=self.view_angle[0], azim=self.view_angle[1])
+        ax3D.view_init(elev=self.view_angle[0], azim=self.view_angle[1])  # type: ignore
 
         ax.autoscale_view()
         ax.set_xlabel(self.fidelity_key)
@@ -217,9 +221,14 @@ class Plotter3D:
         plt.close(fig)
 
     def save(
-        self, save_path: str | Path | None = None, filename: str = "freeze_thaw"
+        self,
+        save_path: str | Path | None = None,
+        filename: str = "freeze_thaw",
     ) -> None:
-        run_path = Path(save_path if save_path is not None else self.run_path)
+        path = save_path if save_path is not None else self.run_path
+        assert path is not None
+
+        run_path = Path(path)
         run_path.mkdir(parents=True, exist_ok=True)
         assert run_path.is_dir()
         plot_path = run_path / f"Plot3D_{filename}.png"
