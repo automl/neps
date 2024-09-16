@@ -77,9 +77,11 @@ class IFBO(BaseOptimizer):
             initial_design_size: Number of configurations to sample before starting optimization
         """
         # Adjust pipeline space fidelity steps to be equally spaced
-        pipeline_space = self._adjust_fidelity_for_freeze_thaw_steps(pipeline_space, step_size)
+        pipeline_space = self._adjust_fidelity_for_freeze_thaw_steps(
+            pipeline_space, step_size
+        )
         # Super constructor call
-        super().__init__(  
+        super().__init__(
             pipeline_space=pipeline_space,
             budget=budget,
             patience=patience,
@@ -95,7 +97,7 @@ class IFBO(BaseOptimizer):
         # TODO: generalize this to work with real data (not benchmarks)
         self.max_budget = self.pipeline_space.fidelity.upper
         self._initial_design_size = initial_design_size
-        
+
         # TODO: Write use cases for these parameters
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
@@ -169,16 +171,15 @@ class IFBO(BaseOptimizer):
         self.evaluation_data = EvaluationData()
 
     def _adjust_fidelity_for_freeze_thaw_steps(
-        self,
-        pipeline_space: SearchSpace,
-        step_size: int
+        self, pipeline_space: SearchSpace, step_size: int
     ) -> SearchSpace:
-        """Adjusts the fidelity range to be divisible by `step_size` for Freeze-Thaw.
-        """
+        """Adjusts the fidelity range to be divisible by `step_size` for Freeze-Thaw."""
         if not pipeline_space.has_fidelity:
             return pipeline_space
         # Check if the fidelity range is divided into equal sized steps by `step_size`
-        remainder = (pipeline_space.fidelity.upper - pipeline_space.fidelity.lower) % step_size
+        remainder = (
+            pipeline_space.fidelity.upper - pipeline_space.fidelity.lower
+        ) % step_size
         if remainder == 0:
             return pipeline_space
         # Adjust the fidelity lower bound to be divisible by `step_size` into equal steps
