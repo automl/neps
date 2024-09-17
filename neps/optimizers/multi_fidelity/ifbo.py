@@ -7,7 +7,7 @@ import warnings
 
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult
-from neps.utils.common import instance_from_map, EvaluationData
+from neps.utils.common import instance_from_map
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
@@ -167,8 +167,6 @@ class IFBO(BaseOptimizer):
             kwargs=self.acquisition_sampler_args,
         )
         self.count = 0
-
-        self.evaluation_data = EvaluationData()
 
     def _adjust_fidelity_for_freeze_thaw_steps(
         self, pipeline_space: SearchSpace, step_size: int

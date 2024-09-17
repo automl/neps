@@ -93,6 +93,7 @@ _TRIAL_END_CALLBACKS: dict[str, Callable[[Trial], None]] = {}
 
 
 def register_notify_trial_end(key: str, callback: Callable[[Trial], None]) -> None:
+    """Register a callback to be called when a trial ends."""
     _TRIAL_END_CALLBACKS[key] = callback
 
 

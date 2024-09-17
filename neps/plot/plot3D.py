@@ -1,3 +1,5 @@
+"""Plot a 3D landscape of learning curves for a given run."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,6 +19,8 @@ DEFAULT_RESULTS_PATH = HERE.parent / "results"
 
 @dataclass
 class Plotter3D:
+    """Plot a 3d landscape of learning curves for a given run."""
+
     loss_key: str = "Loss"
     fidelity_key: str = "epochs"
     run_path: str | Path | None = None
@@ -27,7 +31,7 @@ class Plotter3D:
     bck_color_2d: tuple[float, float, float] = (0.8, 0.82, 0.8)
     view_angle: tuple[float, float] = (15, -70)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.run_path is not None:
             assert (
                 Path(self.run_path).absolute().is_dir()
@@ -48,22 +52,27 @@ class Plotter3D:
 
     @staticmethod
     def get_x(df: pd.DataFrame) -> np.ndarray:
+        """Get the x-axis values for the plot."""
         return df["epochID"].to_numpy()
 
     @staticmethod
     def get_y(df: pd.DataFrame) -> np.ndarray:
+        """Get the y-axis values for the plot."""
         y_ = df["configID"].to_numpy()
         return np.ones_like(y_) * y_[0]
 
     @staticmethod
     def get_z(df: pd.DataFrame) -> np.ndarray:
+        """Get the z-axis values for the plot."""
         return df["result.loss"].to_numpy()
 
     @staticmethod
     def get_color(df: pd.DataFrame) -> np.ndarray:
+        """Get the color values for the plot."""
         return df.index.to_numpy()
 
     def prep_df(self, df: pd.DataFrame | None = None) -> pd.DataFrame:
+        """Prepare the dataframe for plotting."""
         df = self.df if df is None else df
 
         _fid_key = f"config.{self.fidelity_key}"
@@ -81,12 +90,13 @@ class Plotter3D:
         time_cols = ["metadata.time_started", "metadata.time_end"]
         return df.sort_values(by=time_cols).reset_index(drop=True)
 
-    def plot3D(
+    def plot3D(  # noqa: N802, PLR0915
         self,
         data: pd.DataFrame | None = None,
         save_path: str | Path | None = None,
         filename: str = "freeze_thaw",
     ) -> None:
+        """Plot the 3D landscape of learning curves."""
         data = self.prep_df(data)
 
         # Create the figure and the axes for the plot
@@ -225,6 +235,7 @@ class Plotter3D:
         save_path: str | Path | None = None,
         filename: str = "freeze_thaw",
     ) -> None:
+        """Save the plot to a file."""
         path = save_path if save_path is not None else self.run_path
         assert path is not None
 

@@ -337,9 +337,10 @@ class SearchSpace(Mapping[str, Any]):
                     else:
                         sampled_hps[name] = hp.sample()
                     break
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     logger.warning(
-                        f"Attempt {attempt + 1}/{patience} failed for sampling {name}: {str(e)}"
+                        f"Attempt {attempt + 1}/{patience} failed for"
+                        f" sampling {name}: {e!s}"
                     )
             else:
                 logger.error(
@@ -351,7 +352,7 @@ class SearchSpace(Mapping[str, Any]):
                 )
 
         return SearchSpace(**sampled_hps)
-    
+
     def mutate(
         self,
         *,
@@ -622,8 +623,8 @@ class SearchSpace(Mapping[str, Any]):
 
             Include default hyperparameters in the grid.
             If all HPs have a `default` then add a single configuration.
-            If only partial HPs have defaults then add all combinations of defaults, but only to 
-                the end of the list of configs.
+            If only partial HPs have defaults then add all combinations of defaults, but
+                only to the end of the list of configs.
 
         Args:
             size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
@@ -902,8 +903,9 @@ class SearchSpace(Mapping[str, Any]):
         """
         _hp_dict = self.hp_values()
         _intersect = set(_hp_dict.keys()) & set(new_values.keys())
-        assert len(_intersect) == len(new_values), \
-            "All hyperparameters must be present! "\
+        assert len(_intersect) == len(new_values), (
+            "All hyperparameters must be present! "
             f"{set(_hp_dict.keys()) - set(new_values.keys())} are missing"
+        )
         _hp_dict.update(new_values)
         self.set_hyperparameters_from_dict(_hp_dict)
