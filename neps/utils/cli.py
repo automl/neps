@@ -177,7 +177,6 @@ def run_optimization(args: argparse.Namespace) -> None:
     Args: args (argparse.Namespace): Parsed command-line arguments.
     """
     if not isinstance(args.run_pipeline, Default):
-        print("fehler")
         module_path, function_name = args.run_pipeline.split(":")
         run_pipeline = load_and_return_object(module_path, function_name, "run_pipeline")
 
@@ -261,6 +260,14 @@ def info_config(args: argparse.Namespace) -> None:
         print(f"  Reported As: {trial.report.reported_as}")
     else:
         print("No report available.")
+
+    error = trial.report.err
+    if error is not None:
+        print(f"  Error Type: {type(error).__name__}")
+        print(f"  Error Message: {str(error)}")
+        print(f"  Traceback:")
+        print(f"    {trial.report.tb}")
+        print("\n" + "-" * 50 + "\n")
 
 
 def load_neps_errors(args: argparse.Namespace) -> None:
