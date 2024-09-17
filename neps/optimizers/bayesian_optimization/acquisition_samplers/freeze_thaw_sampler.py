@@ -122,12 +122,12 @@ class FreezeThawSampler(AcquisitionSampler):
         """Samples a new set and returns the total set of observed + new configs."""
         assert self.observations is not None
         assert self.pipeline_space is not None
-        assert self.pipeline_space.custom_grid_table is not None
 
         partial_configs = self.observations.get_partial_configs_at_max_seen()
 
         _n = n if n is not None else self.samples_to_draw
         if self.is_tabular:
+            assert self.pipeline_space.custom_grid_table is not None
             # handles tabular data such that the entire unseen set of configs from the
             # table is considered to be the new set of candidates
             _partial_ids = {conf["id"].value for conf in partial_configs}

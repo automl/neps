@@ -7,7 +7,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from matplotlib import cm, pyplot as plt
+from matplotlib import (
+    cm,
+    pyplot as plt,
+)
 from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
