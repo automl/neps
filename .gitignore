@@ -47,3 +47,6 @@ jahs_bench_data/
 
 # Yaml tests
 path
+
+# From example that uses MNIST
+.data
