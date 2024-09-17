@@ -40,7 +40,7 @@ SEARCHER_KWARGS = "searcher_kwargs"
 MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
 
 
-def get_run_args_from_yaml(path: str) -> dict:
+def get_run_args_from_yaml(path: str | Path) -> dict:
     """Load and validate NEPS run arguments from a specified YAML configuration file
     provided via run_args.
 
@@ -115,7 +115,7 @@ def get_run_args_from_yaml(path: str) -> dict:
     return settings
 
 
-def config_loader(path: str) -> dict:
+def config_loader(path: str | Path) -> dict:
     """Loads a YAML file and returns the contents under the 'run_args' key.
 
     Args:

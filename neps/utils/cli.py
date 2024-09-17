@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Optional, List
 import neps
 from neps.api import Default
+from neps.utils.run_args import *
+from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.utils.run_args import load_and_return_object
 from neps.state.filebased import (
     create_or_load_filebased_neps_state,
@@ -26,9 +28,10 @@ from neps.state.filebased import (
 )
 from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
 from neps.status.status import get_summary_dict
+from neps.api import _run_args
 
 
-def get_root_directory(args: argparse.Namespace) -> Path:
+def get_root_directory(args: argparse.Namespace) -> Path | None:
     """Load the root directory from the provided argument or from the config.yaml file."""
     if args.root_directory:
         return Path(args.root_directory)
@@ -37,9 +40,17 @@ def get_root_directory(args: argparse.Namespace) -> Path:
     if config_path.exists():
         with config_path.open("r") as file:
             config = yaml.safe_load(file)
-        root_directory = config.get("root_directory")
+        root_directory = config.get(ROOT_DIRECTORY)
         if root_directory:
-            return Path(root_directory)
+            root_directory_path = Path(root_directory)
+            if not root_directory_path.exists() or not root_directory_path.is_dir():
+                print(
+                    f"Error: The directory {root_directory_path} does not exist or is "
+                    f"not a "
+                    f"directory."
+                )
+                return None
+            return root_directory_path
         else:
             raise ValueError(
                 "The config.yaml file exists but does not contain 'root_directory'."
@@ -178,7 +189,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     """
     if not isinstance(args.run_pipeline, Default):
         module_path, function_name = args.run_pipeline.split(":")
-        run_pipeline = load_and_return_object(module_path, function_name, "run_pipeline")
+        run_pipeline = load_and_return_object(module_path, function_name, RUN_PIPELINE)
 
     else:
         run_pipeline = args.run_pipeline
@@ -189,24 +200,24 @@ def run_optimization(args: argparse.Namespace) -> None:
 
     # Collect arguments from args and prepare them for neps.run
     options = {
-        "run_args": args.run_args,
-        "run_pipeline": run_pipeline,
-        "pipeline_space": args.pipeline_space,
-        "root_directory": args.root_directory,
-        "overwrite_working_directory": args.overwrite_working_directory,
-        "post_run_summary": args.post_run_summary,
-        "development_stage_id": args.development_stage_id,
-        "task_id": args.task_id,
-        "max_evaluations_total": args.max_evaluations_total,
-        "max_evaluations_per_run": args.max_evaluations_per_run,
-        "continue_until_max_evaluation_completed": (
+        RUN_ARGS: args.run_args,
+        RUN_PIPELINE: run_pipeline,
+        PIPELINE_SPACE: args.pipeline_space,
+        ROOT_DIRECTORY: args.root_directory,
+        OVERWRITE_WORKING_DIRECTORY: args.overwrite_working_directory,
+        POST_RUN_SUMMARY: args.post_run_summary,
+        DEVELOPMENT_STAGE_ID: args.development_stage_id,
+        TASK_ID: args.task_id,
+        MAX_EVALUATIONS_TOTAL: args.max_evaluations_total,
+        MAX_EVALUATIONS_PER_RUN: args.max_evaluations_per_run,
+        CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED: (
             args.continue_until_max_evaluation_completed
         ),
-        "max_cost_total": args.max_cost_total,
-        "ignore_errors": args.ignore_errors,
-        "loss_value_on_error": args.loss_value_on_error,
-        "cost_value_on_error": args.cost_value_on_error,
-        "searcher": args.searcher,
+        MAX_COST_TOTAL: args.max_cost_total,
+        IGNORE_ERROR: args.ignore_errors,
+        LOSS_VALUE_ON_ERROR: args.loss_value_on_error,
+        COST_VALUE_ON_ERROR: args.cost_value_on_error,
+        SEARCHER: args.searcher,
         **kwargs,
     }
     logging.basicConfig(level=logging.INFO)
@@ -217,14 +228,10 @@ def info_config(args: argparse.Namespace) -> None:
     """Handles the info-config command by providing information based on directory
     and id."""
     directory_path = get_root_directory(args)
+    if directory_path is None:
+        return
     config_id = args.id
 
-    if not directory_path.exists() or not directory_path.is_dir():
-        print(
-            f"Error: The directory {directory_path} does not exist or is not a "
-            f"directory."
-        )
-        return
     try:
         neps_state = load_filebased_neps_state(directory_path)
     except VersionedResourceDoesNotExistsError:
@@ -258,27 +265,20 @@ def info_config(args: argparse.Namespace) -> None:
         print(f"  Loss: {trial.report.loss}")
         print(f"  Cost: {trial.report.cost}")
         print(f"  Reported As: {trial.report.reported_as}")
+        error = trial.report.err
+        if error is not None:
+            print(f"  Error Type: {type(error).__name__}")
+            print(f"  Error Message: {str(error)}")
+            print(f"  Traceback:")
+            print(f"    {trial.report.tb}")
     else:
         print("No report available.")
-
-    error = trial.report.err
-    if error is not None:
-        print(f"  Error Type: {type(error).__name__}")
-        print(f"  Error Message: {str(error)}")
-        print(f"  Traceback:")
-        print(f"    {trial.report.tb}")
-        print("\n" + "-" * 50 + "\n")
 
 
 def load_neps_errors(args: argparse.Namespace) -> None:
     """Handles the 'errors' command by loading errors from the neps_state."""
     directory_path = get_root_directory(args)
-
-    if not directory_path.exists() or not directory_path.is_dir():
-        print(
-            f"Error: The directory {directory_path} does not exist or is not a "
-            f"directory."
-        )
+    if directory_path is None:
         return
 
     try:
@@ -306,22 +306,96 @@ def load_neps_errors(args: argparse.Namespace) -> None:
 
 
 def sample_config(args: argparse.Namespace) -> None:
-    """Handles the sample-config command"""
-    # Get the root_directory from args or load it from run_config.yaml
-    directory_path = get_root_directory(args)
-    neps_state = load_filebased_neps_state(directory_path)
+    """Handles the sample-config command which samples configurations from the NePS
+    state."""
+    # Load run_args from the provided path or default to run_config.yaml
+    if args.run_args:
+        run_args_path = Path(args.run_args)
+    else:
+        run_args_path = Path("run_config.yaml")
 
-    # Placeholder for the logic that will be implemented
-    pass
+    if not run_args_path.exists():
+        print(f"Error: run_args file {run_args_path} does not exist.")
+        return
+
+    # Load the YAML configuration
+    with run_args_path.open("r") as f:
+        run_args = get_run_args_from_yaml(run_args_path)
+
+    # Get root_directory from the run_args
+    root_directory = run_args.get(ROOT_DIRECTORY)
+    if not root_directory:
+        print("Error: 'root_directory' is not specified in the run_args file.")
+        return
+
+    root_directory = Path(root_directory)
+    if not root_directory.exists():
+        print(f"Error: The directory {root_directory} does not exist.")
+        return
+
+    # Load the NePS state from the root_directory
+    try:
+        neps_state = load_filebased_neps_state(root_directory)
+    except VersionedResourceDoesNotExistsError:
+        print(f"No NePS state found in the directory {root_directory}.")
+        return
+
+    # Get the worker_id and number_of_configs from arguments
+    worker_id = args.worker_id
+    num_configs = args.number_of_configs if args.number_of_configs else 1
+
+    # Create the optimizer
+    try:
+        searcher_info = {
+            "searcher_name": "",
+            "searcher_alg": "",
+            "searcher_selection": "",
+            "neps_decision_tree": True,
+            "searcher_args": {},
+        }
+
+        # Call _run_args() to create the optimizer
+        optimizer, _ = _run_args(
+            searcher_info=searcher_info,
+            pipeline_space=run_args.get(PIPELINE_SPACE),
+            max_cost_total=run_args.get(MAX_COST_TOTAL, None),
+            ignore_errors=run_args.get(IGNORE_ERROR, False),
+            loss_value_on_error=run_args.get(LOSS_VALUE_ON_ERROR, None),
+            cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
+            searcher=run_args.get(SEARCHER, "default"),
+            **run_args.get(SEARCHER_KWARGS, {}),
+        )
+    except Exception as e:
+        print(f"Error creating optimizer: {e}")
+        return
+
+    # Sample trials
+    for _ in range(num_configs):
+        try:
+            trial = neps_state.sample_trial(optimizer, worker_id=worker_id)
+        except Exception as e:
+            print(f"Error during configuration sampling: {e}")
+            continue  # Skip to the next iteration
+
+        print(f"Sampled configuration with Trial ID: {trial.id}")
+        print(f"Location: {trial.metadata.location}")
+        print("Configuration:")
+        for key, value in trial.config.items():
+            print(f"  {key}: {value}")
+        print("\n")
 
 
-def convert_timestamp(timestamp: float) -> str:
+def convert_timestamp(timestamp: float | None) -> str:
     """Convert a UNIX timestamp to a human-readable datetime string."""
+    if timestamp is None:
+        return "None"
     return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def format_duration(seconds: float) -> str:
+def format_duration(seconds: float | None) -> str:
     """Convert duration in seconds to a h:min:sec format."""
+    if seconds is None:
+        return "None"
     duration = str(timedelta(seconds=seconds))
     # Remove milliseconds for alignment
     if "." in duration:
@@ -338,12 +412,7 @@ def status(args: argparse.Namespace) -> None:
     """Handles the status command, providing a summary of the NEPS run."""
     # Get the root_directory from args or load it from run_config.yaml
     directory_path = get_root_directory(args)
-
-    if not directory_path.exists() or not directory_path.is_dir():
-        print(
-            f"Error: The directory {directory_path} does not exist or is not a "
-            f"directory."
-        )
+    if directory_path is None:
         return
 
     try:
@@ -529,12 +598,7 @@ def results(args: argparse.Namespace) -> None:
     reverse order and
     optionally plotting and saving the results."""
     directory_path = get_root_directory(args)
-
-    if not directory_path.exists() or not directory_path.is_dir():
-        print(
-            f"Error: The directory {directory_path} does not exist or is not a "
-            f"directory."
-        )
+    if directory_path is None:
         return
 
     try:
@@ -935,13 +999,23 @@ def main() -> None:
 
     # Subparser for "sample-config" command
     parser_sample_config = subparsers.add_parser(
-        "sample-config", help="Sample a configuration from existing neps state."
+        "sample-config", help="Sample configurations from the existing NePS state."
     )
     parser_sample_config.add_argument(
-        "--root-directory",
+        "worker_id",
         type=str,
-        help="Optional: The path to your root_directory. If not provided, "
-        "it will be loaded from run_config.yaml.",
+        help="The worker ID for which the configuration is being sampled.",
+    )
+    parser_sample_config.add_argument(
+        "--run-args",
+        type=str,
+        help="Optional: Path to the YAML configuration file.",
+    )
+    parser_sample_config.add_argument(
+        "--number-of-configs",
+        type=int,
+        default=1,
+        help="Optional: Number of configurations to sample (default: 1).",
     )
     parser_sample_config.set_defaults(func=sample_config)
 
