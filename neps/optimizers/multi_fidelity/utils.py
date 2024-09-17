@@ -33,7 +33,9 @@ def normalize_vectorize_config(
     config: SearchSpace, ignore_fidelity: bool = True
 ) -> np.ndarray:
     _new_vector = []
-    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity=ignore_fidelity).items():
+    for _, hp_list in config.get_normalized_hp_categories(
+        ignore_fidelity=ignore_fidelity
+    ).items():
         _new_vector.extend(hp_list)
     return np.array(_new_vector)
 
@@ -42,23 +44,25 @@ def get_tokenized_data(
     configs: list[SearchSpace],
     ignore_fidelity: bool = True,
 ) -> np.ndarray:  # pd.Series:  # tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """ Extracts configurations, indices and performances given a DataFrame
+    """Extracts configurations, indices and performances given a DataFrame
 
     Tokenizes the given set of observations as required by a PFN surrogate model.
     """
-    configs = np.array([
-        normalize_vectorize_config(c, ignore_fidelity=ignore_fidelity) for c in configs
-    ])
+    configs = np.array(
+        [normalize_vectorize_config(c, ignore_fidelity=ignore_fidelity) for c in configs]
+    )
     return configs
 
 
-def get_freeze_thaw_normalized_step(fid_step: int, lower: int, upper: int, step: int) -> float:
+def get_freeze_thaw_normalized_step(
+    fid_step: int, lower: int, upper: int, step: int
+) -> float:
     max_fid_step = int(np.ceil((upper - lower) / step)) + 1
     return fid_step / max_fid_step
 
 
 def get_training_data_for_freeze_thaw(
-    df: pd.DataFrame | MFObservedData.df,
+    df: pd.DataFrame,
     config_key: str,
     perf_key: str,
     pipeline_space: SearchSpace,
@@ -91,6 +95,7 @@ def get_training_data_for_freeze_thaw(
     if maximize:
         performance = (1 - np.array(performance)).tolist()
     return idxs, steps, configs, performance
+
 
 class MFObservedData:
     """
@@ -163,7 +168,7 @@ class MFObservedData:
     @property
     def completed_runs(self):
         return self.df[~(self.pending_condition | self.error_condition)]
-    
+
     @property
     def completed_runs_index(self) -> pd.Index | pd.MultiIndex:
         return self.completed_runs.index
@@ -270,8 +275,7 @@ class MFObservedData:
         return performance
 
     def get_budget_level_for_best_performance(self, maximize: bool = False) -> int:
-        """Returns the lowest budget level at which the highest performance was recorded.
-        """
+        """Returns the lowest budget level at which the highest performance was recorded."""
         perf_per_z = self.get_best_performance_for_each_budget(maximize=maximize)
         y_star = self.get_best_seen_performance(maximize=maximize)
         # uses the minimum of the budget that see the maximum obseved score
@@ -320,7 +324,9 @@ class MFObservedData:
         if budget_id is None:
             # budget_id only None when predicting
             # extract full observed learning curve for prediction pipeline
-            budget_id = max(self.df.loc[config_id].index.get_level_values("budget_id").values) + 1
+            budget_id = (
+                max(self.df.loc[config_id].index.get_level_values("budget_id").values) + 1
+            )
 
         # For the first epoch we have no learning curve available
         if budget_id == 0:
@@ -336,24 +342,24 @@ class MFObservedData:
         return deepcopy(lc)
 
     def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
-        """Returns the best score recorded per config across fidelities seen.
-        """
+        """Returns the best score recorded per config across fidelities seen."""
         op = np.max if maximize else np.min
         perf = (
-            self.df
-            .sort_values("budget_id", ascending=False)  # sorts with largest budget first
+            self.df.sort_values(
+                "budget_id", ascending=False
+            )  # sorts with largest budget first
             .groupby("config_id")  # retains only config_id
             .first()  # retrieves the largest budget seen for each config_id
-            .learning_curves  # extracts all values seen till largest budget for a config
-            .apply(op)  # finds the minimum over per-config learning curve
+            .learning_curves.apply(  # extracts all values seen till largest budget for a config
+                op
+            )  # finds the minimum over per-config learning curve
         )
         return perf
 
     def get_max_observed_fidelity_level_per_config(self) -> pd.Series:
-        """Returns the highest fidelity level recorded per config seen.
-        """
+        """Returns the highest fidelity level recorded per config seen."""
         max_z_observed = {
-            _id: self.df.loc[_id,:].index.sort_values()[-1]
+            _id: self.df.loc[_id, :].index.sort_values()[-1]
             for _id in self.df.index.get_level_values("config_id").sort_values()
         }
         return pd.Series(max_z_observed)
