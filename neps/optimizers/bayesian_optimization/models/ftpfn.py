@@ -58,6 +58,9 @@ def _download_workaround_for_ifbo_issue_10(path: Path | None, version: str) -> P
     return target_path
 
 
+_CACHED_FTPFN_MODEL: dict[tuple[str, str], FTPFN] = {}
+
+
 class FTPFNSurrogate:
     """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
 
@@ -75,7 +78,13 @@ class FTPFNSurrogate:
             # We basically just do the same thing they do but manually
             target_path = _download_workaround_for_ifbo_issue_10(target_path, version)
 
-        self.ftpfn = FTPFN(target_path=target_path, version=version)
+        key = (str(target_path), version)
+        ftpfn = _CACHED_FTPFN_MODEL.get(key)
+        if ftpfn is None:
+            ftpfn = FTPFN(target_path=target_path, version=version)
+            _CACHED_FTPFN_MODEL[key] = ftpfn
+
+        self.ftpfn = ftpfn
         self.target_path = self.ftpfn.target_path
         self.version = self.ftpfn.version
         self.train_x: torch.Tensor | None = None
