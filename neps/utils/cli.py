@@ -8,9 +8,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-
-# Suppress specific warnings
-# warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
 from neps.state.trial import Trial
 import argparse
 import logging
@@ -29,6 +26,10 @@ from neps.state.filebased import (
 from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
 from neps.status.status import get_summary_dict
 from neps.api import _run_args
+from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
+
+# Suppress specific warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
 
 
 def get_root_directory(args: argparse.Namespace) -> Path | None:
@@ -67,7 +68,69 @@ def init_config(args: argparse.Namespace) -> None:
     exist.
     """
     config_path = Path(args.config_path) if args.config_path else Path("run_config.yaml")
-    if not config_path.exists():
+
+    if args.state_machine:
+        if config_path.exists():
+            run_args = get_run_args_from_yaml(config_path)
+            max_cost_total = run_args.get(MAX_COST_TOTAL)
+            # Create the optimizer
+            try:
+                searcher_info = {
+                    "searcher_name": "",
+                    "searcher_alg": "",
+                    "searcher_selection": "",
+                    "neps_decision_tree": True,
+                    "searcher_args": {},
+                }
+
+                # Call _run_args() to get optimizer_info
+                _, optimizer_info = _run_args(
+                    searcher_info=searcher_info,
+                    pipeline_space=run_args.get(PIPELINE_SPACE),
+                    max_cost_total=run_args.get(MAX_COST_TOTAL, None),
+                    ignore_errors=run_args.get(IGNORE_ERROR, False),
+                    loss_value_on_error=run_args.get(LOSS_VALUE_ON_ERROR, None),
+                    cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
+                    searcher=run_args.get(SEARCHER, "default"),
+                    **run_args.get(SEARCHER_KWARGS, {}),
+                )
+            except Exception as e:
+                print(f"Error creating optimizer: {e}")
+                return
+
+            try:
+                directory = run_args.get(ROOT_DIRECTORY)
+                if directory is not None:
+                    directory = Path(directory)
+                else:
+                    print(f"root_directory key is missing in {config_path}.")
+                is_new = not directory.exists()
+                _ = create_or_load_filebased_neps_state(
+                    directory=directory,
+                    optimizer_info=OptimizerInfo(optimizer_info),
+                    optimizer_state=OptimizationState(
+                        budget=(
+                            BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
+                            if max_cost_total is not None
+                            else None
+                        ),
+                        shared_state={},  # TODO: Unused for the time being...
+                    ),
+                )
+                if is_new:
+                    print("NePS state was successfully created.")
+                else:
+                    print("NePS state was already created.")
+            except Exception as e:
+                print(f"Error creating neps state: {e}")
+        else:
+            print(
+                f"{config_path} does not exist. Make sure that your configuration "
+                f"file already exists if you don't have specified your own path. "
+                f"Run 'neps init' to create run_config.yaml"
+            )
+
+    elif not config_path.exists():
         with config_path.open("w") as file:
             template = args.template if args.template else "basic"
             if template == "basic":
@@ -144,9 +207,6 @@ searcher: hyperband       # Internal key to select a NePS optimizer.
 pre_load_hooks:
 """
                 )
-    elif args.state_machine:
-        pass
-        # create_or_load_filebased_neps_state()
     else:
         print(f"Path {config_path} does already exist.")
 
@@ -187,6 +247,10 @@ def run_optimization(args: argparse.Namespace) -> None:
     """Collects arguments from the parser and runs the NePS optimization.
     Args: args (argparse.Namespace): Parsed command-line arguments.
     """
+    if not args.run_args:
+        run_args = Path("run_config.yaml")
+    else:
+        run_args = args.run_args
     if not isinstance(args.run_pipeline, Default):
         module_path, function_name = args.run_pipeline.split(":")
         run_pipeline = load_and_return_object(module_path, function_name, RUN_PIPELINE)
@@ -200,7 +264,7 @@ def run_optimization(args: argparse.Namespace) -> None:
 
     # Collect arguments from args and prepare them for neps.run
     options = {
-        RUN_ARGS: args.run_args,
+        RUN_ARGS: run_args,
         RUN_PIPELINE: run_pipeline,
         PIPELINE_SPACE: args.pipeline_space,
         ROOT_DIRECTORY: args.root_directory,
@@ -318,9 +382,7 @@ def sample_config(args: argparse.Namespace) -> None:
         print(f"Error: run_args file {run_args_path} does not exist.")
         return
 
-    # Load the YAML configuration
-    with run_args_path.open("r") as f:
-        run_args = get_run_args_from_yaml(run_args_path)
+    run_args = get_run_args_from_yaml(run_args_path)
 
     # Get root_directory from the run_args
     root_directory = run_args.get(ROOT_DIRECTORY)
