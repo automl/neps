@@ -6,6 +6,7 @@ import math
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Mapping
 from typing_extensions import override
 
 import numpy as np
@@ -13,9 +14,16 @@ import torch
 from torch.utils.tensorboard.summary import hparams
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from neps.runtime import get_in_progress_trial, get_workers_neps_state
+from neps.runtime import (
+    get_in_progress_trial,
+    get_workers_neps_state,
+    register_notify_trial_end,
+)
 from neps.status.status import get_summary_dict
 from neps.utils.common import get_initial_directory
+
+if TYPE_CHECKING:
+    from neps.state.trial import Trial
 
 
 class SummaryWriter_(SummaryWriter):  # noqa: N801
@@ -88,6 +96,8 @@ class tblogger:  # noqa: N801
         trial = get_in_progress_trial()
         neps_state = get_workers_neps_state()
 
+        register_notify_trial_end("NEPS_TBLOGGER", tblogger.end_of_config)
+
         # We are assuming that neps state is all filebased here
         root_dir = Path(neps_state.location)
         assert root_dir.exists()
@@ -98,12 +108,12 @@ class tblogger:  # noqa: N801
             if trial.metadata.previous_trial_location is not None
             else None
         )
+        tblogger.config_id = trial.metadata.id
         tblogger.optimizer_dir = root_dir
         tblogger.config = trial.config
 
     @staticmethod
     def _is_initialized() -> bool:
-        # Returns 'True' if config_writer is already initialized. 'False' otherwise
         return tblogger.config_writer is not None
 
     @staticmethod
@@ -111,7 +121,7 @@ class tblogger:  # noqa: N801
         # This code runs only once per config, to assign that config a config_writer.
         if (
             tblogger.config_previous_directory is None
-            and tblogger.config_working_directory
+            and tblogger.config_working_directory is not None
         ):
             # If no fidelities are there yet, define the writer via the config_id
             tblogger.config_id = str(tblogger.config_working_directory).rsplit(
@@ -121,8 +131,9 @@ class tblogger:  # noqa: N801
                 tblogger.config_working_directory / "tbevents"
             )
             return
+
         # Searching for the initial directory where tensorboard events are stored.
-        if tblogger.config_working_directory:
+        if tblogger.config_working_directory is not None:
             init_dir = get_initial_directory(
                 pipeline_directory=tblogger.config_working_directory
             )
@@ -136,7 +147,7 @@ class tblogger:  # noqa: N801
             )
 
     @staticmethod
-    def end_of_config() -> None:
+    def end_of_config(trial: Trial) -> None:  # noqa: ARG004
         """Closes the writer."""
         if tblogger.config_writer:
             # Close and reset previous config writers for consistent logging.

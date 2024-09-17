@@ -8,6 +8,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import Any
+from functools import partial
+from pathlib import Path
+from typing import Any, Iterable, Mapping, Sequence
 
 import numpy as np
 import torch
@@ -142,6 +145,9 @@ def load_lightning_checkpoint(
     return checkpoint_path, checkpoint
 
 
+_INTIAL_DIRECTORY_CACHE: dict[str, Path] = {}
+
+
 # TODO: We should have a better way to have a shared folder between trials.
 # Right now, the fidelity lineage is linear, however this will be a difficulty
 # when/if we have a tree structure.
@@ -157,12 +163,14 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     """
     neps_state = get_workers_neps_state()
     if pipeline_directory is not None:
-        pipeline_directory = Path(pipeline_directory)
         # TODO: Hard coded assumption
-        config_id = pipeline_directory.name.split("_", maxsplit=1)[-1]
+        config_id = Path(pipeline_directory).name.split("_", maxsplit=1)[-1]
         trial = neps_state.get_trial_by_id(config_id)
     else:
         trial = get_in_progress_trial()
+
+    if trial.metadata.id in _INTIAL_DIRECTORY_CACHE:
+        return _INTIAL_DIRECTORY_CACHE[trial.metadata.id]
 
     # Recursively find the initial directory
     while (prev_trial_id := trial.metadata.previous_trial_id) is not None:
@@ -172,7 +180,10 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
     # TODO: Hard coded assumption that we are operating in a filebased neps
     assert isinstance(initial_dir, str)
-    return Path(initial_dir)
+    path = Path(initial_dir)
+
+    _INTIAL_DIRECTORY_CACHE[trial.metadata.id] = path
+    return path
 
 
 def get_searcher_data(

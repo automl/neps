@@ -89,6 +89,13 @@ def get_in_progress_trial() -> Trial:
     return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
 
 
+_TRIAL_END_CALLBACKS: dict[str, Callable[[Trial], None]] = {}
+
+
+def register_notify_trial_end(key: str, callback: Callable[[Trial], None]) -> None:
+    _TRIAL_END_CALLBACKS[key] = callback
+
+
 @contextmanager
 def _set_global_trial(trial: Trial) -> Iterator[None]:
     global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
@@ -103,6 +110,8 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
     yield
+    for _key, callback in _TRIAL_END_CALLBACKS.items():
+        callback(trial)
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
 
 
