@@ -14,6 +14,7 @@ import numpy as np
 from neps.state.trial import Trial
 import argparse
 import logging
+import yaml
 from pathlib import Path
 from typing import Optional, List
 import neps
@@ -34,8 +35,6 @@ def get_root_directory(args: argparse.Namespace) -> Path:
 
     config_path = Path("run_config.yaml")
     if config_path.exists():
-        import yaml
-
         with config_path.open("r") as file:
             config = yaml.safe_load(file)
         root_directory = config.get("root_directory")
@@ -178,6 +177,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     Args: args (argparse.Namespace): Parsed command-line arguments.
     """
     if not isinstance(args.run_pipeline, Default):
+        print("fehler")
         module_path, function_name = args.run_pipeline.split(":")
         run_pipeline = load_and_return_object(module_path, function_name, "run_pipeline")
 
