@@ -16,6 +16,16 @@ def _download_workaround_for_ifbo_issue_10(path: Path | None, version: str) -> P
     target_path.mkdir(parents=True, exist_ok=True)
 
     _target_zip_path = target_path / FILENAME(version)
+
+    # Just a heuristic check to determine if the model already exists.
+    # Kind of hard to know what the name of the extracted file will be
+    # Basically we just check if the tar.gz file is there and unpacked.
+    # If there is a new version, then it wont exist and we will download it.
+    if _target_zip_path.exists() and any(
+        p.name.endswith(".pt") for p in target_path.iterdir()
+    ):
+        return target_path
+
     _file_url = FILE_URL(version)
 
     # Download the tar.gz file and decompress it
