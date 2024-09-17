@@ -11,9 +11,8 @@ def _download_workaround_for_ifbo_issue_10(path: Path | None, version: str) -> P
     # TODO: https://github.com/automl/ifBO/issues/10
     import requests
     from ifbo.download import FILE_URL, FILENAME
-    from ifbo.surrogate import _resolve_model_path
 
-    target_path = Path(path) if path is not None else Path.cwd().resolve()
+    target_path = Path(path) if path is not None else Path.cwd().resolve() / ".model"
     target_path.mkdir(parents=True, exist_ok=True)
 
     _target_zip_path = target_path / FILENAME(version)
