@@ -212,15 +212,51 @@ provided by each command using --help.
 
 
 ### **`init` Command**
-Generates a default `run_args` YAML configuration file, providing a template that you can customize for
-your experiments.
+
+Generates a default `run_args` YAML configuration file, providing a template that you can customize for your experiments.
+
+**Options:**
+
+  - `--config-path <path>`: *Optional*. Specify the custom path for generating the configuration file. Defaults to
+  `run_config.yaml` in the current working directory.
+  - `--template [basic|complete]`: *Optional*. Choose between a basic or complete template. The basic template includes only required settings, while the complete template includes all NePS configurations.
+  - `--state-machine`: *Optional*. Creates a NEPS state if set, which requires an existing `run_config.yaml`.
 
 **Example Usage:**
 ```bash
-neps init --config-path custom/path/config.yaml
+neps init --config-path custom/path/config.yaml --template complete
 ```
 
 ### **`run` Command**
+
+Executes the optimization based on the provided configuration. This command serves as a CLI wrapper around `neps.run`, effectively mapping each CLI argument to a parameter in `neps.run`. It offers a flexible interface that allows you to override the existing settings specified in the YAML configuration file, facilitating dynamic adjustments for managing your experiments.
+
+**Options:**
+
+  - `--run-args <path>`: Path to the YAML configuration file containing the run arguments.
+  - `--run-pipeline <path/to/module:function_name>`: *Optional*. Specify the path to the Python module and function to use for running the pipeline. Overrides any settings in the YAML file.
+  - `--pipeline-space <path/to/yaml>`: Path to the YAML file defining the search space for the optimization.
+  - `--root-directory <path>`: *Optional*. Directory for saving progress and synchronizing multiple processes. Defaults to the `root_directory` from `run_config.yaml` if not provided.
+  - `--overwrite-working-directory`: *Optional*. If set, deletes the working directory at the start of the run.
+  - `--development-stage-id <id>`: *Optional*. Identifier for the current development stage, useful for multi-stage projects.
+  - `--task-id <id>`: *Optional*. Identifier for the current task, useful for managing projects with multiple tasks.
+  - `--post-run-summary/--no-post-run-summary`: *Optional*. Provides a summary of the run after execution. Enabled by default.
+  - `--max-evaluations-total <int>`: *Optional*. Specifies the total number of evaluations to run.
+  - `--max-evaluations-per-run <int>`: *Optional*. Number of evaluations to run per call.
+  - `--continue-until-max-evaluation-completed`: *Optional*. If set, ensures the run continues until `max-evaluations-total` has been reached.
+  - `--max-cost-total <float>`: *Optional*. Specifies a cost threshold. No new evaluations will start if this cost is exceeded.
+  - `--ignore-errors`: *Optional*. If set, errors during the optimization will be ignored.
+  - `--loss-value-on-error <float>`: *Optional*. Specifies the loss value to assume in case of an error.
+  - `--cost-value-on-error <float>`: *Optional*. Specifies the cost value to assume in case of an error.
+  - `--searcher <key>`: Specifies the searcher algorithm for optimization.
+  - `--searcher-kwargs <key=value>`: *Optional*. Additional keyword arguments for the searcher.
+
+**Example Usage:**
+```bash
+neps run --run-args path/to/config.yaml --max-evaluations-total 50
+```
+
+### **`status` Command**
 Executes the optimization based on the provided configuration. This command serves as a CLI wrapper around neps.run,
 effectively mapping each CLI argument to a parameter in neps.run. This setup offers a flexible interface that allows
 you to override the existing settings specified in the YAML configuration file, facilitating dynamic adjustments for
