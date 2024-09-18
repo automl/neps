@@ -229,7 +229,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     """Collects arguments from the parser and runs the NePS optimization.
     Args: args (argparse.Namespace): Parsed command-line arguments.
     """
-    if not args.run_args:
+    if isinstance(args.run_args, Default):
         run_args = Path("run_config.yaml")
     else:
         run_args = args.run_args
@@ -455,7 +455,6 @@ def status(args: argparse.Namespace) -> None:
     pending_trials_count = summary["num_pending_configs"]
     succeeded_trials_count = summary["num_evaluated_configs"] - summary["num_error"]
     failed_trials_count = summary["num_error"]
-    pending_with_worker_count = summary["num_pending_configs_with_worker"]
 
     # Print summary
     print("NePS Status:")
@@ -465,7 +464,6 @@ def status(args: argparse.Namespace) -> None:
     print(f"Failed Trials (Errors): {failed_trials_count}")
     print(f"Active Trials: {evaluating_trials_count}")
     print(f"Pending Trials: {pending_trials_count}")
-    print(f"Pending Trials with Worker: {pending_with_worker_count}")
     print(f"Best Loss Achieved: {summary['best_loss']}")
 
     print("\nLatest Trials:")
@@ -869,7 +867,7 @@ def handle_report_config(args: argparse.Namespace) -> None:
     # Update state of the trial and create report
     report = trial.set_complete(
         report_as=args.reported_as,
-        time_end=0.0,
+        time_end=args.time_end,
         loss=args.loss,
         cost=args.cost,
         learning_curve=args.learning_curve,
@@ -917,6 +915,27 @@ def load_optimizer(run_args: dict) -> Tuple[Optional[BaseOptimizer], Optional[di
     except Exception as e:
         print(f"Error creating optimizer: {e}")
         return None, None
+
+
+def parse_time_end(time_str: str) -> float:
+    """Parses a UNIX timestamp or a human-readable time string
+    and returns a UNIX timestamp."""
+    try:
+        # First, try to interpret the input as a UNIX timestamp
+        return float(time_str)
+    except ValueError:
+        pass
+
+    try:
+        # If that fails, try to interpret it as a human-readable datetime
+        # string (YYYY-MM-DD HH:MM:SS)
+        dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+        return dt.timestamp()  # Convert to UNIX timestamp (float)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid time format: '{time_str}'. "
+            f"Use UNIX timestamp or 'YYYY-MM-DD HH:MM:SS'."
+        )
 
 
 def main() -> None:
@@ -1158,23 +1177,30 @@ def main() -> None:
     )
     report_parser.add_argument("--loss", type=float, help="Loss value of the trial")
     report_parser.add_argument(
-        "--run_args", type=str, help="Path to the YAML file containing run configurations"
+        "--run-args", type=str, help="Path to the YAML file containing run configurations"
     )
     report_parser.add_argument(
         "--cost", type=float, help="Cost value of the trial (optional)"
     )
     report_parser.add_argument(
-        "--learning_curve",
+        "--learning-curve",
         type=float,
         nargs="*",
-        help="Learning curve as a list of floats (optional)",
+        help="Learning curve as a list of floats (optional), provided like this "
+        "--learning-curve 0.9 0.3 0.1",
     )
     report_parser.add_argument(
-        "--duration", type=float, help="Duration of the evaluation (optional)"
+        "--duration", type=float, help="Duration of the evaluation in sec (optional)"
     )
     report_parser.add_argument("--err", type=str, help="Error message if any (optional)")
     report_parser.add_argument(
         "--tb", type=str, help="Traceback information if any (optional)"
+    )
+    report_parser.add_argument(
+        "--time-end",
+        type=parse_time_end,  # Using the custom parser function
+        help="The time the trial ended as either a "
+        "UNIX timestamp (float) or in 'YYYY-MM-DD HH:MM:SS' format",
     )
     report_parser.set_defaults(func=handle_report_config)
 
