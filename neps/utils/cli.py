@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 import warnings
+from typing import Tuple
 from datetime import timedelta, datetime
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -23,6 +24,7 @@ from neps.state.filebased import (
     create_or_load_filebased_neps_state,
     load_filebased_neps_state,
 )
+from neps.state.trial import Trial, Report
 from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
 from neps.status.status import get_summary_dict
 from neps.api import _run_args
@@ -74,28 +76,8 @@ def init_config(args: argparse.Namespace) -> None:
             run_args = get_run_args_from_yaml(config_path)
             max_cost_total = run_args.get(MAX_COST_TOTAL)
             # Create the optimizer
-            try:
-                searcher_info = {
-                    "searcher_name": "",
-                    "searcher_alg": "",
-                    "searcher_selection": "",
-                    "neps_decision_tree": True,
-                    "searcher_args": {},
-                }
-
-                # Call _run_args() to get optimizer_info
-                _, optimizer_info = _run_args(
-                    searcher_info=searcher_info,
-                    pipeline_space=run_args.get(PIPELINE_SPACE),
-                    max_cost_total=run_args.get(MAX_COST_TOTAL, None),
-                    ignore_errors=run_args.get(IGNORE_ERROR, False),
-                    loss_value_on_error=run_args.get(LOSS_VALUE_ON_ERROR, None),
-                    cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
-                    searcher=run_args.get(SEARCHER, "default"),
-                    **run_args.get(SEARCHER_KWARGS, {}),
-                )
-            except Exception as e:
-                print(f"Error creating optimizer: {e}")
+            _, optimizer_info = load_optimizer(run_args)
+            if optimizer_info is None:
                 return
 
             try:
@@ -406,29 +388,8 @@ def sample_config(args: argparse.Namespace) -> None:
     worker_id = args.worker_id
     num_configs = args.number_of_configs if args.number_of_configs else 1
 
-    # Create the optimizer
-    try:
-        searcher_info = {
-            "searcher_name": "",
-            "searcher_alg": "",
-            "searcher_selection": "",
-            "neps_decision_tree": True,
-            "searcher_args": {},
-        }
-
-        # Call _run_args() to create the optimizer
-        optimizer, _ = _run_args(
-            searcher_info=searcher_info,
-            pipeline_space=run_args.get(PIPELINE_SPACE),
-            max_cost_total=run_args.get(MAX_COST_TOTAL, None),
-            ignore_errors=run_args.get(IGNORE_ERROR, False),
-            loss_value_on_error=run_args.get(LOSS_VALUE_ON_ERROR, None),
-            cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
-            searcher=run_args.get(SEARCHER, "default"),
-            **run_args.get(SEARCHER_KWARGS, {}),
-        )
-    except Exception as e:
-        print(f"Error creating optimizer: {e}")
+    optimizer, _ = load_optimizer(run_args)
+    if optimizer is None:
         return
 
     # Sample trials
@@ -859,6 +820,105 @@ def generate_markdown_from_parser(parser: argparse.ArgumentParser, filename: str
         f.write("\n".join(lines))
 
 
+def handle_report_config(args: argparse.Namespace) -> None:
+    """Handles the report-config command which updates reports for
+    trials in the NePS state."""
+    # Load run_args from the provided path or default to run_config.yaml
+    if args.run_args:
+        run_args_path = Path(args.run_args)
+    else:
+        run_args_path = Path("run_config.yaml")
+    if not run_args_path.exists():
+        print(f"Error: run_args file {run_args_path} does not exist.")
+        return
+
+    run_args = get_run_args_from_yaml(run_args_path)
+
+    # Get root_directory from run_args
+    root_directory = run_args.get("root_directory")
+    if not root_directory:
+        print("Error: 'root_directory' is not specified in the run_args file.")
+        return
+
+    root_directory = Path(root_directory)
+    if not root_directory.exists():
+        print(f"Error: The directory {root_directory} does not exist.")
+        return
+
+    # Load the NePS state from the root_directory
+    try:
+        neps_state = load_filebased_neps_state(root_directory)
+    except VersionedResourceDoesNotExistsError:
+        print(f"No NePS state found in the directory {root_directory}.")
+        return
+
+    optimizer, _ = load_optimizer(run_args)
+    if optimizer is None:
+        return
+
+    # Load the existing trial by ID
+    try:
+        trial = neps_state.get_trial_by_id(args.trial_id)
+        if not trial:
+            print(f"No trial found with ID {args.trial_id}")
+            return
+    except Exception as e:
+        print(f"Error fetching trial with ID {args.trial_id}: {e}")
+        return None
+
+    # Update state of the trial and create report
+    report = trial.set_complete(
+        report_as=args.reported_as,
+        time_end=0.0,
+        loss=args.loss,
+        cost=args.cost,
+        learning_curve=args.learning_curve,
+        err=Exception(args.err) if args.err else None,
+        tb=args.tb,
+        evaluation_duration=args.duration,
+        extra={},
+    )
+
+    # Update NePS state
+    try:
+        neps_state.report_trial_evaluation(
+            trial=trial, report=report, worker_id=args.worker_id, optimizer=optimizer
+        )
+    except Exception as e:
+        print(f"Error updating the report for trial {args.trial_id}: {e}")
+        return None
+
+    print(f"Report for trial ID {trial.metadata.id} has been successfully updated.")
+
+
+def load_optimizer(run_args: dict) -> Tuple[Optional[BaseOptimizer], Optional[dict]]:
+    """Create an optimizer"""
+    try:
+        searcher_info = {
+            "searcher_name": "",
+            "searcher_alg": "",
+            "searcher_selection": "",
+            "neps_decision_tree": True,
+            "searcher_args": {},
+        }
+
+        # Call _run_args() to create the optimizer
+        optimizer, searcher_info = _run_args(
+            searcher_info=searcher_info,
+            pipeline_space=run_args.get(PIPELINE_SPACE),
+            max_cost_total=run_args.get(MAX_COST_TOTAL, None),
+            ignore_errors=run_args.get(IGNORE_ERROR, False),
+            loss_value_on_error=run_args.get(LOSS_VALUE_ON_ERROR, None),
+            cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
+            searcher=run_args.get(SEARCHER, "default"),
+            **run_args.get(SEARCHER_KWARGS, {}),
+        )
+        return optimizer, searcher_info
+    except Exception as e:
+        print(f"Error creating optimizer: {e}")
+        return None, None
+
+
 def main() -> None:
     """CLI entry point.
 
@@ -1080,6 +1140,43 @@ def main() -> None:
         help="Optional: Number of configurations to sample (default: 1).",
     )
     parser_sample_config.set_defaults(func=sample_config)
+
+    report_parser = subparsers.add_parser(
+        "report-config", help="Report of a specific trial"
+    )
+    report_parser.add_argument("trial_id", type=str, help="ID of the trial to report")
+    report_parser.add_argument(
+        "worker_id",
+        type=str,
+        help="The worker ID for which the configuration is being sampled.",
+    )
+    report_parser.add_argument(
+        "reported_as",
+        type=str,
+        choices=["success", "failed", "crashed"],
+        help="Outcome of the trial",
+    )
+    report_parser.add_argument("--loss", type=float, help="Loss value of the trial")
+    report_parser.add_argument(
+        "--run_args", type=str, help="Path to the YAML file containing run configurations"
+    )
+    report_parser.add_argument(
+        "--cost", type=float, help="Cost value of the trial (optional)"
+    )
+    report_parser.add_argument(
+        "--learning_curve",
+        type=float,
+        nargs="*",
+        help="Learning curve as a list of floats (optional)",
+    )
+    report_parser.add_argument(
+        "--duration", type=float, help="Duration of the evaluation (optional)"
+    )
+    report_parser.add_argument("--err", type=str, help="Error message if any (optional)")
+    report_parser.add_argument(
+        "--tb", type=str, help="Traceback information if any (optional)"
+    )
+    report_parser.set_defaults(func=handle_report_config)
 
     # Subparser for "status" command
     parser_status = subparsers.add_parser(
