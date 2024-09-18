@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Mapping
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Mapping, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import gpytorch
 import gpytorch.constraints
@@ -306,7 +307,10 @@ def optimize_acq(
         col, choice_indices = next(iter(cats.items()))
         fixed_cats = [{col: i} for i in choice_indices]
     else:
-        fixed_cats = [dict(zip(cats.keys(), combo)) for combo in product(*cats.values())]
+        fixed_cats = [
+            dict(zip(cats.keys(), combo, strict=False))
+            for combo in product(*cats.values())
+        ]
 
     # TODO: we should deterministically shuffle the fixed_categoricals
     # as the underlying function does not.

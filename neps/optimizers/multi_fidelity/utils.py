@@ -1,25 +1,28 @@
 # type: ignore
-from typing import Any, Sequence
+from __future__ import annotations
 
+from collections.abc import Sequence
 from copy import deepcopy
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import pandas as pd
-import torch
 
-from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
 
 
 def continuous_to_tabular(
     config: SearchSpace, categorical_space: SearchSpace
 ) -> SearchSpace:
-    """
-    Convert the continuous parameters in the config into categorical ones based on
-    the categorical_space provided
+    """Convert the continuous parameters in the config into categorical ones based on
+    the categorical_space provided.
     """
     result = config.clone()
     for hp_name, _ in config.items():
-        if hp_name in categorical_space.keys():
+        if hp_name in categorical_space:
             choices = np.array(categorical_space[hp_name].choices)
             diffs = choices - config[hp_name].value
             # NOTE: in case of a tie the first value in the choices array will be returned
@@ -44,14 +47,13 @@ def get_tokenized_data(
     configs: list[SearchSpace],
     ignore_fidelity: bool = True,
 ) -> np.ndarray:  # pd.Series:  # tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Extracts configurations, indices and performances given a DataFrame
+    """Extracts configurations, indices and performances given a DataFrame.
 
     Tokenizes the given set of observations as required by a PFN surrogate model.
     """
-    configs = np.array(
+    return np.array(
         [normalize_vectorize_config(c, ignore_fidelity=ignore_fidelity) for c in configs]
     )
-    return configs
 
 
 def get_freeze_thaw_normalized_step(
@@ -98,8 +100,7 @@ def get_training_data_for_freeze_thaw(
 
 
 class MFObservedData:
-    """
-    (Under development)
+    """(Under development).
 
     This module is used to unify the data access across different Multi-Fidelity
     optimizers. It stores column names and index names. Possible optimizations
@@ -176,8 +177,7 @@ class MFObservedData:
     def next_config_id(self) -> int:
         if len(self.seen_config_ids):
             return max(self.seen_config_ids) + 1
-        else:
-            return 0
+        return 0
 
     def add_data(
         self,
@@ -185,9 +185,7 @@ class MFObservedData:
         index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         error: bool = False,
     ):
-        """
-        Add data only if none of the indices are already existing in the DataFrame
-        """
+        """Add data only if none of the indices are already existing in the DataFrame."""
         # TODO: If index is only config_id extend it
         if not isinstance(index, list):
             index_list = [index]
@@ -213,16 +211,11 @@ class MFObservedData:
         index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         error: bool = False,
     ):
-        """
-        Update data if all the indices already exist in the DataFrame
-        """
-        if not isinstance(index, list):
-            index_list = [index]
-        else:
-            index_list = index
+        """Update data if all the indices already exist in the DataFrame."""
+        index_list = [index] if not isinstance(index, list) else index
         if self.df.index.isin(index_list).sum() == len(index_list):
-            column_names, data = zip(*data_dict.items())
-            data = list(zip(*data))
+            column_names, data = zip(*data_dict.items(), strict=False)
+            data = list(zip(*data, strict=False))
             self.df.loc[index_list, list(column_names)] = data
 
         elif error:
@@ -243,8 +236,7 @@ class MFObservedData:
         return self.df.loc[:, self.config_col].sort_index().values.tolist()
 
     def get_incumbents_for_budgets(self, maximize: bool = False):
-        """
-        Returns a series object with the best partial configuration for each budget id
+        """Returns a series object with the best partial configuration for each budget id.
 
         Note: this will always map the best lowest ID if two configurations
               have the same performance at the same fidelity
@@ -255,13 +247,14 @@ class MFObservedData:
         else:
             config_ids = learning_curves.idxmin(axis=0)
 
-        indices = list(zip(config_ids.values.tolist(), config_ids.index.to_list()))
+        indices = list(
+            zip(config_ids.values.tolist(), config_ids.index.to_list(), strict=False)
+        )
         partial_configs = self.df.loc[indices, self.config_col].to_list()
         return pd.Series(partial_configs, index=config_ids.index, name=self.config_col)
 
     def get_best_performance_for_each_budget(self, maximize: bool = False):
-        """
-        Returns a series object with the best partial configuration for each budget id
+        """Returns a series object with the best partial configuration for each budget id.
 
         Note: this will always map the best lowest ID if two configurations
               has the same performance at the same fidelity
@@ -280,12 +273,10 @@ class MFObservedData:
         y_star = self.get_best_seen_performance(maximize=maximize)
         # uses the minimum of the budget that see the maximum obseved score
         op = max if maximize else min
-        z_inc = int(op([_z for _z, _y in perf_per_z.items() if _y == y_star]))
-        return z_inc
+        return int(op([_z for _z, _y in perf_per_z.items() if _y == y_star]))
 
     def get_best_learning_curve_id(self, maximize: bool = False):
-        """
-        Returns a single configuration id of the best observed performance
+        """Returns a single configuration id of the best observed performance.
 
         Note: this will always return the single best lowest ID
               if two configurations has the same performance
@@ -293,25 +284,20 @@ class MFObservedData:
         learning_curves = self.get_learning_curves()
         if maximize:
             return learning_curves.max(axis=1).idxmax()
-        else:
-            return learning_curves.min(axis=1).idxmin()
+        return learning_curves.min(axis=1).idxmin()
 
     def get_best_seen_performance(self, maximize: bool = False):
         learning_curves = self.get_learning_curves()
         if maximize:
             return learning_curves.max(axis=1).max()
-        else:
-            return learning_curves.min(axis=1).min()
+        return learning_curves.min(axis=1).min()
 
     def add_budget_column(self):
         combined_df = self.df.reset_index(level=1)
-        combined_df.set_index(
-            keys=[self.budget_idx], drop=False, append=True, inplace=True
-        )
-        return combined_df
+        return combined_df.set_index(keys=[self.budget_idx], drop=False, append=True)
 
     def reduce_to_max_seen_budgets(self):
-        self.df.sort_index(inplace=True)
+        self.df = self.df.sort_index()
         combined_df = self.add_budget_column()
         return combined_df.groupby(level=0).last()
 
@@ -344,7 +330,7 @@ class MFObservedData:
     def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
         """Returns the best score recorded per config across fidelities seen."""
         op = np.max if maximize else np.min
-        perf = (
+        return (
             self.df.sort_values(
                 "budget_id", ascending=False
             )  # sorts with largest budget first
@@ -354,7 +340,6 @@ class MFObservedData:
                 op
             )  # finds the minimum over per-config learning curve
         )
-        return perf
 
     def get_max_observed_fidelity_level_per_config(self) -> pd.Series:
         """Returns the highest fidelity level recorded per config seen."""

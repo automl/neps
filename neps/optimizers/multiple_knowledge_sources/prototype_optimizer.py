@@ -1,11 +1,15 @@
-import logging
-from typing import Any, override
+from __future__ import annotations
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
-from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces.search_space import SearchSpace
-from neps.utils.data_loading import read_tasks_and_dev_stages_from_disk
+import logging
+from typing import TYPE_CHECKING, Any, override
+
 from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.utils.data_loading import read_tasks_and_dev_stages_from_disk
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult, RawConfig
 
 
 # TODO: Test if anything breaks after the recent changes

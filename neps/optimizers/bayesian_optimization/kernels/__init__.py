@@ -1,7 +1,5 @@
-
-
+from collections.abc import Callable
 from functools import partial
-from typing import Callable
 
 from .vectorial_kernels import HammingKernel, Matern32Kernel, Matern52Kernel, RBFKernel
 from .weisfilerlehman import WeisfilerLehman

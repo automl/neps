@@ -1,9 +1,11 @@
-from neps.utils.common import instance_from_map
-from ....search_spaces.architecture.core_graph_grammar import CoreGraphGrammar
-from ....search_spaces.hyperparameters.categorical import CategoricalParameter
-from ....search_spaces.hyperparameters.float import FloatParameter
-from ....search_spaces.hyperparameters.integer import IntegerParameter
-from ....utils.common import has_instance
+from __future__ import annotations
+
+from neps.search_spaces.architecture.core_graph_grammar import CoreGraphGrammar
+from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
+from neps.search_spaces.hyperparameters.float import FloatParameter
+from neps.search_spaces.hyperparameters.integer import IntegerParameter
+from neps.utils.common import has_instance, instance_from_map
+
 from . import GraphKernelMapping, StationaryKernelMapping
 
 

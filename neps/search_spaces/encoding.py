@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
-    Mapping,
-    Sequence,
     TypeAlias,
     TypeVar,
 )
@@ -264,14 +263,17 @@ class TensorEncoder:
             values[hp_name] = transformer.decode(tensor)
 
         keys = list(values.keys())
-        return [dict(zip(keys, vals)) for vals in zip(*values.values())]
+        return [
+            dict(zip(keys, vals, strict=False))
+            for vals in zip(*values.values(), strict=False)
+        ]
 
     @classmethod
     def default(cls, parameters: Mapping[str, Parameter]) -> TensorEncoder:
         sorted_params = sorted(parameters.items())
         transformers: dict[str, TensorTransformer] = {}
         for name, hp in sorted_params:
-            if isinstance(hp, (FloatParameter, IntegerParameter)):
+            if isinstance(hp, FloatParameter | IntegerParameter):
                 transformers[name] = MinMaxNormalizer(hp.domain)
             else:
                 assert isinstance(hp, CategoricalParameter)

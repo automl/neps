@@ -6,9 +6,10 @@ do not necessarily have an easily definable pdf.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Protocol, Sequence
+from typing import Protocol
 from typing_extensions import override
 
 import torch

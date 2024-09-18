@@ -74,7 +74,8 @@ reference.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, TypeVar
+from collections.abc import Callable
+from typing import TYPE_CHECKING, TypeVar
 
 from botorch.acquisition import SampleReducingMCAcquisitionFunction
 from botorch.acquisition.analytic import AcquisitionFunction, t_batch_mode_transform

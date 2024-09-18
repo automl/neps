@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Sequence, Callable
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import numpy as np
     import torch
+
     from neps.search_spaces.search_space import SearchSpace
 
 

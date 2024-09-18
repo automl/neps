@@ -1,15 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
-import pandas as pd
 import scipy
 
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
+    GraphParameter,
     NumericalParameter,
     Parameter,
-    GraphParameter,
     SearchSpace,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def update_fidelity(config, fidelity):
@@ -32,7 +38,6 @@ def local_mutation(
         new_config: dict[str, Parameter] = {}
 
         for hp_name, hp in config.items():
-
             if hp.is_fidelity or np.random.uniform() > mutation_rate:
                 new_config[hp_name] = hp.clone()
 
@@ -79,7 +84,6 @@ def custom_crossover(
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
     for _ in range(patience):
-
         child_config = config1.clone()
         for key, hyperparameter in config1.items():
             if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
@@ -121,8 +125,7 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
         config1["categorical"] + [0], config2["categorical"] + [0]
     )
 
-    distance = d_cont + d_cat
-    return distance
+    return d_cont + d_cat
 
 
 def compute_scores(
@@ -153,8 +156,7 @@ def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -
         for i in range(len(observed_configs))
         if not np.isnan(observed_configs.at[i, "perf"])
     ]
-    total_resources = sum(rung_map[r] for r in rungs_used)
-    return total_resources
+    return sum(rung_map[r] for r in rungs_used)
 
 
 # def get_prior_weight_for_decay(
@@ -176,7 +178,7 @@ def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -
 def get_prior_weight_for_decay(
     resources_used: float, eta: int, min_budget, max_budget
 ) -> float:
-    """Creates a step function schedule for the prior weight decay.
+    r"""Creates a step function schedule for the prior weight decay.
 
     The prior weight ratio is decayed every time the total resources used is
     equivalent to the cost of one successive halving bracket within the HB schedule.
@@ -186,5 +188,4 @@ def get_prior_weight_for_decay(
     decay = 2
     unit_resources = eta * max_budget
     idx = resources_used // unit_resources
-    weight = 1 / decay**idx
-    return weight
+    return 1 / decay**idx

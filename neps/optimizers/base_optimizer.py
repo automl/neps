@@ -1,15 +1,18 @@
-
+from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from typing import Any, Mapping
-
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig, ERROR, ResultDict
-from neps.search_spaces.search_space import SearchSpace
-from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
+from typing import TYPE_CHECKING, Any
+
 from neps.state.trial import Trial
+from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
+from neps.utils.types import ERROR, ConfigResult, RawConfig, ResultDict
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
 
 
 @dataclass
@@ -58,7 +61,7 @@ class BaseOptimizer:
 
     @abstractmethod
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
-        """Sample a new configuration
+        """Sample a new configuration.
 
         Returns:
             config: serializable object representing the configuration
@@ -74,7 +77,7 @@ class BaseOptimizer:
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
     ) -> tuple[SampledConfig, dict[str, Any]]:
-        """Sample a new configuration
+        """Sample a new configuration.
 
         !!! note
 
@@ -145,8 +148,8 @@ class BaseOptimizer:
         self, result: ERROR | ResultDict | float | Trial.Report
     ) -> float | ERROR:
         """Calls result.utils.get_loss() and passes the error handling through.
-        Please use self.get_loss() instead of get_loss() in all optimizer classes."""
-
+        Please use self.get_loss() instead of get_loss() in all optimizer classes.
+        """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do this
         # `_get_loss` at every call. We can also then just use `None` instead of the string `"error"`
@@ -163,7 +166,8 @@ class BaseOptimizer:
         self, result: ERROR | ResultDict | float | Trial.Report
     ) -> float | ERROR:
         """Calls result.utils.get_cost() and passes the error handling through.
-        Please use self.get_cost() instead of get_cost() in all optimizer classes."""
+        Please use self.get_cost() instead of get_cost() in all optimizer classes.
+        """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do this
         # `_get_loss` at every call
@@ -180,7 +184,8 @@ class BaseOptimizer:
         self, result: str | dict | float | Trial.Report
     ) -> list[float] | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
-        Please use self.get_loss() instead of get_loss() in all optimizer classes."""
+        Please use self.get_loss() instead of get_loss() in all optimizer classes.
+        """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do this
         # `_get_loss` at every call

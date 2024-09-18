@@ -1,18 +1,22 @@
+from __future__ import annotations
+
 import math
 import os
 import random
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 import numpy as np
 import yaml
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
-
-from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult, RawConfig
 
 
 class RegularizedEvolution(BaseOptimizer):
@@ -63,18 +67,19 @@ class RegularizedEvolution(BaseOptimizer):
         train_x = [el.config for el in previous_results.values()]
         train_y = [self.get_loss(el.result) for el in previous_results.values()]
         self.num_train_x = len(train_x)
-        self.population = [
-            (x, y)
-            for x, y in zip(
-                train_x[-self.population_size:], train_y[-self.population_size:]
+        self.population = list(
+            zip(
+                train_x[-self.population_size :],
+                train_y[-self.population_size :],
+                strict=False,
             )
-        ]
-        self.pending_evaluations = [el for el in pending_evaluations.values()]
+        )
+        self.pending_evaluations = list(pending_evaluations.values())
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         if len(self.population) < self.population_size:
             if self.assisted:
-                if 0 == len(os.listdir(self.assisted_init_population_dir)):
+                if len(os.listdir(self.assisted_init_population_dir)) == 0:
                     cur_population_size = self.population_size - len(self.population)
                     configs = [
                         self.pipeline_space.sample(
@@ -83,13 +88,12 @@ class RegularizedEvolution(BaseOptimizer):
                         for _ in range(cur_population_size * 2)
                     ]
                     if self.assisted_zero_cost_proxy is not None:
-                        zero_cost_proxy_values = self.assisted_zero_cost_proxy(
-                            x=configs)  # type:  ignore[misc]
+                        zero_cost_proxy_values = self.assisted_zero_cost_proxy(x=configs)  # type:  ignore[misc]
                     else:
                         raise Exception("Zero cost proxy function is not defined!")
                     indices = np.argsort(zero_cost_proxy_values)[-cur_population_size:][
-                              ::-1
-                              ]
+                        ::-1
+                    ]
                     for idx, config_idx in enumerate(indices):
                         filename = str(idx).zfill(
                             int(math.log10(cur_population_size)) + 1

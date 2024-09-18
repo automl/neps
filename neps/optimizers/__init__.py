@@ -1,18 +1,17 @@
-
-
+from collections.abc import Callable, Mapping
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Mapping
+from typing import TYPE_CHECKING
 
 from .base_optimizer import BaseOptimizer
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .multi_fidelity.ifbo import IFBO
 from .multi_fidelity.hyperband import (
     MOBSTER,
     AsynchronousHyperband,
     Hyperband,
     HyperbandCustomDefault,
 )
+from .multi_fidelity.ifbo import IFBO
 from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
@@ -23,9 +22,6 @@ from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
 from .multi_fidelity_prior.priorband import PriorBand
 from .random_search.optimizer import RandomSearch
 from .regularized_evolution.optimizer import RegularizedEvolution
-
-if TYPE_CHECKING:
-    from .base_optimizer import BaseOptimizer
 
 # TODO: Rename Searcher to Optimizer...
 SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {

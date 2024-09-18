@@ -335,10 +335,7 @@ class tblogger:  # noqa: N801
         if tblogger.current_epoch >= 0 and tblogger.current_epoch % counter == 0:
             # Log every multiple of "counter"
 
-            if num_images > len(image):
-                # If the number of images requested by the user
-                # is more than the ones available.
-                num_images = len(image)
+            num_images = min(num_images, len(image))
 
             if random_images is False:
                 subset_images = image[:num_images]

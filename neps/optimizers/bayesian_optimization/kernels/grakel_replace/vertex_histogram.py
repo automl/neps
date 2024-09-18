@@ -108,7 +108,7 @@ class VertexHistogram(Kernel):
             self._initialized["n_jobs"] = True
         if not self._initialized["sparse"]:
             if self.sparse not in ["auto", False, True]:
-                TypeError("sparse could be False, True or auto")
+                raise TypeError("sparse could be False, True or auto")
             self._initialized["sparse"] = True
 
     def parse_input(self, X, label_start_idx=0, label_end_idx=None):
@@ -144,100 +144,98 @@ class VertexHistogram(Kernel):
 
         if not isinstance(X, Iterable):
             raise TypeError("input must be an iterable\n")
-        else:
-            rows, cols, data = [], [], []
-            if self._method_calling in [0, 1, 2]:
-                labels = {}
-                self._labels = labels
-            elif self._method_calling == 3:
-                labels = dict(self._labels)
-            ni = 0
-            for i, x in enumerate(iter(X)):
-                is_iter = isinstance(x, Iterable)
-                if is_iter:
-                    x = list(x)
-                if is_iter and len(x) in [0, 2, 3]:
-                    if len(x) == 0:
-                        warn("Ignoring empty element on index: " + str(i))
-                        continue
-                    else:
-                        # Our element is an iterable of at least 2 elements
-                        L = x[1]
-                elif isinstance(x, Graph):
-                    # get labels in any existing format
-                    L = x.get_labels(purpose="any")
-                else:
-                    raise TypeError(
-                        "each element of X must be either a "
-                        "graph object or a list with at least "
-                        "a graph like object and node labels "
-                        "dict \n"
-                    )
-
-                # construct the data input for the numpy array
-                for label, frequency in Counter(L.values()).items():
-                    # for the row that corresponds to that graph
-                    rows.append(ni)
-
-                    # and to the value that this label is indexed
-                    if self.require_ordered_features:
-                        try:
-                            col_idx = int(label) - label_start_idx  # Offset
-                        except ValueError:
-                            logging.error(
-                                "Failed to convert label to a valid integer. Check whether all labels are"
-                                "numeric, and whether you called this kernel directly instead of from the"
-                                "Weisfiler-Lehman kernel. Falling back to the default unordered feature"
-                                "matrix."
-                            )
-                            self.require_ordered_features = False
-                    if not self.require_ordered_features:
-                        col_idx = labels.get(label, None)
-                        if col_idx is None:
-                            # if not indexed, add the new index (the next)
-                            col_idx = len(labels)
-                            labels[label] = col_idx
-
-                    # designate the certain column information
-                    cols.append(col_idx)
-
-                    # as well as the frequency value to data
-                    data.append(frequency)
-                ni += 1
-
-            if self.require_ordered_features:
-                label_length = max(label_end_idx - label_start_idx, *cols) + 1
+        rows, cols, data = [], [], []
+        if self._method_calling in [0, 1, 2]:
+            labels = {}
+            self._labels = labels
+        elif self._method_calling == 3:
+            labels = dict(self._labels)
+        ni = 0
+        for i, x in enumerate(iter(X)):
+            is_iter = isinstance(x, Iterable)
+            if is_iter:
+                x = list(x)
+            if is_iter and len(x) in [0, 2, 3]:
+                if len(x) == 0:
+                    warn("Ignoring empty element on index: " + str(i))
+                    continue
+                # Our element is an iterable of at least 2 elements
+                L = x[1]
+            elif isinstance(x, Graph):
+                # get labels in any existing format
+                L = x.get_labels(purpose="any")
             else:
-                label_length = len(labels)
-
-            if self._method_calling in [0, 1, 2]:
-                if self.sparse == "auto":
-                    self.sparse_ = len(cols) / float(ni * label_length) <= 0.5
-                else:
-                    self.sparse_ = bool(self.sparse)
-
-            if self.sparse_:
-                features = csr_matrix(
-                    (data, (rows, cols)), shape=(ni, label_length), copy=False
+                raise TypeError(
+                    "each element of X must be either a "
+                    "graph object or a list with at least "
+                    "a graph like object and node labels "
+                    "dict \n"
                 )
+
+            # construct the data input for the numpy array
+            for label, frequency in Counter(L.values()).items():
+                # for the row that corresponds to that graph
+                rows.append(ni)
+
+                # and to the value that this label is indexed
+                if self.require_ordered_features:
+                    try:
+                        col_idx = int(label) - label_start_idx  # Offset
+                    except ValueError:
+                        logging.error(
+                            "Failed to convert label to a valid integer. Check whether all labels are"
+                            "numeric, and whether you called this kernel directly instead of from the"
+                            "Weisfiler-Lehman kernel. Falling back to the default unordered feature"
+                            "matrix."
+                        )
+                        self.require_ordered_features = False
+                if not self.require_ordered_features:
+                    col_idx = labels.get(label, None)
+                    if col_idx is None:
+                        # if not indexed, add the new index (the next)
+                        col_idx = len(labels)
+                        labels[label] = col_idx
+
+                # designate the certain column information
+                cols.append(col_idx)
+
+                # as well as the frequency value to data
+                data.append(frequency)
+            ni += 1
+
+        if self.require_ordered_features:
+            label_length = max(label_end_idx - label_start_idx, *cols) + 1
+        else:
+            label_length = len(labels)
+
+        if self._method_calling in [0, 1, 2]:
+            if self.sparse == "auto":
+                self.sparse_ = len(cols) / float(ni * label_length) <= 0.5
             else:
-                # Initialise the feature matrix
-                try:
-                    features = zeros(shape=(ni, label_length))
-                    features[rows, cols] = data
+                self.sparse_ = bool(self.sparse)
 
-                except MemoryError:
-                    warn("memory-error: switching to sparse")
-                    self.sparse_, features = (
-                        True,
-                        csr_matrix(
-                            (data, (rows, cols)), shape=(ni, label_length), copy=False
-                        ),
-                    )
+        if self.sparse_:
+            features = csr_matrix(
+                (data, (rows, cols)), shape=(ni, label_length), copy=False
+            )
+        else:
+            # Initialise the feature matrix
+            try:
+                features = zeros(shape=(ni, label_length))
+                features[rows, cols] = data
 
-            if ni == 0:
-                raise ValueError("parsed input is empty")
-            return features
+            except MemoryError:
+                warn("memory-error: switching to sparse")
+                self.sparse_, features = (
+                    True,
+                    csr_matrix(
+                        (data, (rows, cols)), shape=(ni, label_length), copy=False
+                    ),
+                )
+
+        if ni == 0:
+            raise ValueError("parsed input is empty")
+        return features
 
     def _calculate_kernel_matrix(self, Y=None):
         """Calculate the kernel matrix given a target_graph and a kernel.
@@ -282,8 +280,7 @@ class VertexHistogram(Kernel):
 
         if self.sparse_:
             return K.toarray()
-        else:
-            return K
+        return K
 
     def diagonal(self, use_tensor=False):
         """Calculate the kernel matrix diagonal of the fitted data.
@@ -319,12 +316,11 @@ class VertexHistogram(Kernel):
             if use_tensor:
                 Y_diag = torch.einsum("ij, ij->i", [self.Y_tensor, self.Y_tensor])
                 return self._X_diag, Y_diag
+            if self.sparse_:
+                Y_diag = squeeze(array(self._Y.multiply(self._Y).sum(axis=1)))
             else:
-                if self.sparse_:
-                    Y_diag = squeeze(array(self._Y.multiply(self._Y).sum(axis=1)))
-                else:
-                    Y_diag = einsum("ij,ij->i", self._Y, self._Y)
-                return self._X_diag, Y_diag
+                Y_diag = einsum("ij,ij->i", self._Y, self._Y)
+            return self._X_diag, Y_diag
         except NotFittedError:
             return self._X_diag
 
@@ -360,8 +356,7 @@ class VertexHistogram(Kernel):
         # Input validation and parsing
         if X is None:
             raise ValueError("`transform` input cannot be None")
-        else:
-            Y = self.parse_input(X, **kwargs)
+        Y = self.parse_input(X, **kwargs)
         if return_embedding_only:
             return Y
 
@@ -446,8 +441,7 @@ class VertexHistogram(Kernel):
         # Input validation and parsing
         if X is None:
             raise ValueError("`fit` input cannot be None")
-        else:
-            self.X = self.parse_input(X, **kwargs)
+        self.X = self.parse_input(X, **kwargs)
 
         # Return the transformer
         return self

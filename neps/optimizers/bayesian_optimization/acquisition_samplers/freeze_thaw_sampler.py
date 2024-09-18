@@ -1,18 +1,20 @@
 from __future__ import annotations
 
-from typing import Callable
 import warnings
+from collections.abc import Callable
+from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.multi_fidelity.utils import MFObservedData
 from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
     AcquisitionSampler,
 )
 
+if TYPE_CHECKING:
+    from neps.optimizers.multi_fidelity.utils import MFObservedData
+    from neps.search_spaces.search_space import SearchSpace
 
 SAMPLES_TO_DRAW = (
     100  # number of random samples to draw for optimizing acquisition function
@@ -131,7 +133,7 @@ class FreezeThawSampler(AcquisitionSampler):
             # handles tabular data such that the entire unseen set of configs from the
             # table is considered to be the new set of candidates
             _partial_ids = {conf["id"].value for conf in partial_configs}
-            _all_ids = set(list(self.pipeline_space.custom_grid_table.keys()))
+            _all_ids = set(self.pipeline_space.custom_grid_table.keys())
 
             # accounting for unseen configs only, samples remaining table if flag is set
             max_n = len(_all_ids) + 1 if self.sample_full_table else _n
@@ -178,9 +180,7 @@ class FreezeThawSampler(AcquisitionSampler):
         for config in new_configs:
             config.update_hp_values({config.fidelity_name: new_fid})
 
-        configs = pd.concat([deepcopy(partial_configs), new_configs])
-
-        return configs  # type: ignore
+        return pd.concat([deepcopy(partial_configs), new_configs])
 
     def set_state(
         self,

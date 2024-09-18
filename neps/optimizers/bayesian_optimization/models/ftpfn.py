@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
 from pathlib import Path
-import torch
+from typing import Any
 
+import torch
 from ifbo import FTPFN
 
 
@@ -136,23 +136,21 @@ class FTPFNSurrogate:
         self, test_x: torch.Tensor, beta: float = (1 - 0.682) / 2
     ) -> torch.Tensor:
         logits = self._get_logits(test_x)
-        lcb = self.ftpfn.model.criterion.ucb(
+        return self.ftpfn.model.criterion.ucb(
             logits=logits,
             best_f=None,
             rest_prob=beta,
             maximize=False,  # IMPORTANT to be False, should calculate the LCB using the lower-bound ICDF as per beta
         )
-        return lcb
 
     @torch.no_grad()
     def get_ucb(
         self, test_x: torch.Tensor, beta: float = (1 - 0.682) / 2
     ) -> torch.Tensor:
         logits = self._get_logits(test_x)
-        lcb = self.ftpfn.model.criterion.ucb(
+        return self.ftpfn.model.criterion.ucb(
             logits=logits,
             best_f=None,
             rest_prob=beta,
             maximize=True,  # IMPORTANT to be True, should calculate the UCB using the upper-bound ICDF as per beta
         )
-        return lcb

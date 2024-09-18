@@ -1,5 +1,11 @@
-from ....search_spaces.search_space import SearchSpace
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from .base_acq_sampler import AcquisitionSampler
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
 
 
 class RandomSampler(AcquisitionSampler):

@@ -8,8 +8,8 @@ import logging
 import warnings
 from ast import literal_eval
 from collections import OrderedDict
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Iterable
 
 import numpy as np
 import torch
@@ -209,7 +209,7 @@ class WeisfeilerLehman(Kernel):
             raise ValueError(
                 "method call must be called either from fit " + "or fit-transform"
             )
-        elif hasattr(self, "_X_diag"):
+        if hasattr(self, "_X_diag"):
             # Clean _X_diag value
             delattr(self, "_X_diag")
 
@@ -221,57 +221,56 @@ class WeisfeilerLehman(Kernel):
             # Input validation and parsing
             if not isinstance(X, collections.abc.Iterable):
                 raise TypeError("input must be an iterable\n")
-            else:
-                nx = 0
-                Gs_ed, L, distinct_values, extras = {}, {}, set(), {}
-                for idx, x in enumerate(iter(X)):
-                    is_iter = isinstance(x, collections.abc.Iterable)
-                    if is_iter:
-                        x = list(x)
-                    if is_iter and (len(x) == 0 or len(x) >= 2):
-                        if len(x) == 0:
-                            warnings.warn("Ignoring empty element on index: " + str(idx))
-                            continue
-                        elif len(x) > 2:
-                            extra = ()
-                            if len(x) > 3:
-                                extra = tuple(x[3:])
-                            x = Graph(x[0], x[1], x[2], graph_format=self._graph_format)
-                            extra = (
-                                x.get_labels(
-                                    purpose=self._graph_format,
-                                    label_type="edge",
-                                    return_none=True,
-                                ),
-                                *extra,
-                            )
-                        else:
-                            x = Graph(x[0], x[1], {}, graph_format=self._graph_format)
-                            extra = ()
-
-                    elif isinstance(x, Graph):
-                        x.desired_format(self._graph_format)
-                        el = x.get_labels(
-                            purpose=self._graph_format,
-                            label_type="edge",
-                            return_none=True,
+            nx = 0
+            Gs_ed, L, distinct_values, extras = {}, {}, set(), {}
+            for idx, x in enumerate(iter(X)):
+                is_iter = isinstance(x, collections.abc.Iterable)
+                if is_iter:
+                    x = list(x)
+                if is_iter and (len(x) == 0 or len(x) >= 2):
+                    if len(x) == 0:
+                        warnings.warn("Ignoring empty element on index: " + str(idx))
+                        continue
+                    if len(x) > 2:
+                        extra = ()
+                        if len(x) > 3:
+                            extra = tuple(x[3:])
+                        x = Graph(x[0], x[1], x[2], graph_format=self._graph_format)
+                        extra = (
+                            x.get_labels(
+                                purpose=self._graph_format,
+                                label_type="edge",
+                                return_none=True,
+                            ),
+                            *extra,
                         )
-                        extra = () if el is None else (el,)
-
                     else:
-                        raise TypeError(
-                            "each element of X must be either a "
-                            + "graph object or a list with at least "
-                            + "a graph like object and node labels "
-                            + "dict \n"
-                        )
-                    Gs_ed[nx] = x.get_edge_dictionary()
-                    L[nx] = x.get_labels(purpose="dictionary")
-                    extras[nx] = extra
-                    distinct_values |= set(L[nx].values())
-                    nx += 1
-                if nx == 0:
-                    raise ValueError("parsed input is empty")
+                        x = Graph(x[0], x[1], {}, graph_format=self._graph_format)
+                        extra = ()
+
+                elif isinstance(x, Graph):
+                    x.desired_format(self._graph_format)
+                    el = x.get_labels(
+                        purpose=self._graph_format,
+                        label_type="edge",
+                        return_none=True,
+                    )
+                    extra = () if el is None else (el,)
+
+                else:
+                    raise TypeError(
+                        "each element of X must be either a "
+                        + "graph object or a list with at least "
+                        + "a graph like object and node labels "
+                        + "dict \n"
+                    )
+                Gs_ed[nx] = x.get_edge_dictionary()
+                L[nx] = x.get_labels(purpose="dictionary")
+                extras[nx] = extra
+                distinct_values |= set(L[nx].values())
+                nx += 1
+            if nx == 0:
+                raise ValueError("parsed input is empty")
 
             # Save the number of "fitted" graphs.
             self._nx = nx
@@ -411,9 +410,9 @@ class WeisfeilerLehman(Kernel):
 
         if return_embedding_only:
             return K
-        elif self._method_calling == 1:
+        if self._method_calling == 1:
             return base_graph_kernel
-        elif self._method_calling == 2:
+        if self._method_calling == 2:
             if self.as_tensor:
                 K = torch.stack(K, dim=0).sum(dim=0)
                 return K, base_graph_kernel
@@ -451,8 +450,7 @@ class WeisfeilerLehman(Kernel):
         ]  # Flush the feature dimensions
         if X is None:
             raise ValueError("transform input cannot be None")
-        else:
-            km, self.X = self.parse_input(X, gp_fit=gp_fit)
+        km, self.X = self.parse_input(X, gp_fit=gp_fit)
 
         return km
 
@@ -487,40 +485,37 @@ class WeisfeilerLehman(Kernel):
         # Input validation and parsing
         if X is None:
             raise ValueError("transform input cannot be None")
-        elif not isinstance(X, collections.abc.Iterable):
+        if not isinstance(X, collections.abc.Iterable):
             raise ValueError("input must be an iterable\n")
-        else:
-            nx = 0
-            distinct_values = set()
-            Gs_ed, L = {}, {}
-            for i, x in enumerate(iter(X)):
-                is_iter = isinstance(x, collections.abc.Iterable)
-                if is_iter:
-                    x = list(x)
-                if is_iter and len(x) in [0, 2, 3]:
-                    if len(x) == 0:
-                        warnings.warn("Ignoring empty element on index: " + str(i))
-                        continue
+        nx = 0
+        distinct_values = set()
+        Gs_ed, L = {}, {}
+        for i, x in enumerate(iter(X)):
+            is_iter = isinstance(x, collections.abc.Iterable)
+            if is_iter:
+                x = list(x)
+            if is_iter and len(x) in [0, 2, 3]:
+                if len(x) == 0:
+                    warnings.warn("Ignoring empty element on index: " + str(i))
+                    continue
 
-                    elif len(x) in [2, 3]:
-                        x = Graph(x[0], x[1], {}, self._graph_format)
-                elif isinstance(x, Graph):
-                    x.desired_format("dictionary")
-                else:
-                    raise ValueError(
-                        "each element of X must have at "
-                        + "least one and at most 3 elements\n"
-                    )
-                Gs_ed[nx] = x.get_edge_dictionary()
-                L[nx] = x.get_labels(purpose="dictionary")
+                if len(x) in [2, 3]:
+                    x = Graph(x[0], x[1], {}, self._graph_format)
+            elif isinstance(x, Graph):
+                x.desired_format("dictionary")
+            else:
+                raise ValueError(
+                    "each element of X must have at "
+                    + "least one and at most 3 elements\n"
+                )
+            Gs_ed[nx] = x.get_edge_dictionary()
+            L[nx] = x.get_labels(purpose="dictionary")
 
-                # Hold all the distinct values
-                distinct_values |= {
-                    v for v in L[nx].values() if v not in self._inv_labels[0]
-                }
-                nx += 1
-            if nx == 0:
-                raise ValueError("parsed input is empty")
+            # Hold all the distinct values
+            distinct_values |= {v for v in L[nx].values() if v not in self._inv_labels[0]}
+            nx += 1
+        if nx == 0:
+            raise ValueError("parsed input is empty")
 
         nl = len(self._inv_labels[0])
         WL_labels_inverse = {
@@ -690,8 +685,7 @@ class WeisfeilerLehman(Kernel):
                 Y_diag = torch.tensor(Y_diag)
         if self._is_transformed:
             return self._X_diag, Y_diag
-        else:
-            return self._X_diag
+        return self._X_diag
 
     @staticmethod
     def translate_label(curr_layer: dict, h: int, prev_layer: dict | None = None):
@@ -706,17 +700,16 @@ class WeisfeilerLehman(Kernel):
         """
         if h == 0:
             return {v: str(k) for k, v in curr_layer.items()}, curr_layer
-        else:
-            assert prev_layer is not None
-            label_in_node_attr, inv_label_in_node_attr = OrderedDict(), OrderedDict()
-            for pattern, encoding in curr_layer.items():
-                # current pattern is in terms of the encoding previous layer. Find the pattern from the prev_layer
-                root, leaf = literal_eval(pattern)
-                root_ = prev_layer[root]
-                leaf_ = [prev_layer[i] for i in leaf]
-                label_in_node_attr.update({encoding: "~".join([root_, *leaf_])})
-                inv_label_in_node_attr.update({"~".join([root_, *leaf_]): encoding})
-            return label_in_node_attr, inv_label_in_node_attr
+        assert prev_layer is not None
+        label_in_node_attr, inv_label_in_node_attr = OrderedDict(), OrderedDict()
+        for pattern, encoding in curr_layer.items():
+            # current pattern is in terms of the encoding previous layer. Find the pattern from the prev_layer
+            root, leaf = literal_eval(pattern)
+            root_ = prev_layer[root]
+            leaf_ = [prev_layer[i] for i in leaf]
+            label_in_node_attr.update({encoding: "~".join([root_, *leaf_])})
+            inv_label_in_node_attr.update({"~".join([root_, *leaf_]): encoding})
+        return label_in_node_attr, inv_label_in_node_attr
 
     @staticmethod
     def _compute_feature_weight(

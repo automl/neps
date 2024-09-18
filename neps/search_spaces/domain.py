@@ -44,8 +44,9 @@ or `UNIT_FLOAT_DOMAIN` constant.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Generic, Iterable, TypeVar
+from typing import Generic, TypeVar
 
 import torch
 from torch import Tensor
@@ -351,7 +352,7 @@ class Domain(Generic[V]):
             )
 
         out = torch.empty_like(x)
-        for i, (f, t) in enumerate(zip(frm, to)):
+        for i, (f, t) in enumerate(zip(frm, to, strict=False)):
             out[..., i] = t.cast(x[..., i], frm=f)
 
         return out

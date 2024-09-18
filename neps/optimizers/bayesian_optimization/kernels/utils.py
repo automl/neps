@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
@@ -22,8 +22,8 @@ def transform_to_undirected(gr: list):
     return undirected_gr
 
 
-def extract_configs(configs: list[SearchSpace]) -> Tuple[list, list]:
-    """Extracts graph & HPs from configs objects
+def extract_configs(configs: list[SearchSpace]) -> tuple[list, list]:
+    """Extracts graph & HPs from configs objects.
 
     Args:
         configs (list): Object holding graph and/or HPs
@@ -53,10 +53,7 @@ def extract_configs(configs: list[SearchSpace]) -> Tuple[list, list]:
 
 
 def graph_metrics(graph, metric=None, directed=True):
-    if directed:
-        G = graph
-    else:
-        G = graph.to_undirected()
+    G = graph if directed else graph.to_undirected()
 
     # global metrics
     if metric == "avg_path_length":
@@ -75,14 +72,14 @@ def graph_metrics(graph, metric=None, directed=True):
 
 def extract_configs_hierarchy(
     configs: list, d_graph_features: int, hierarchy_consider=None
-) -> Tuple[list, list]:
+) -> tuple[list, list]:
     """Extracts graph & graph features from configs objects
     Args:
         configs (list): Object holding graph and/or graph features
         d_graph_features (int): Number of global graph features used; if d_graph_features=0, indicate not using global graph features
         hierarchy_consider (list or None): Specify graphs at which earlier hierarchical levels to be considered
     Returns:
-        Tuple[list, list]: list of graphs, list of HPs
+        Tuple[list, list]: list of graphs, list of HPs.
     """
     N = len(configs)
 
@@ -114,7 +111,8 @@ def extract_configs_hierarchy(
                             for hierarchy_id in hierarchy_consider
                         ]
                         for g in combined_graphs
-                    ]
+                    ],
+                    strict=False,
                 ),
             )
         )

@@ -1,27 +1,31 @@
-from typing import Any
+from __future__ import annotations
+
+import warnings
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 import numpy as np
 import pandas as pd
-import warnings
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult
-from neps.utils.common import instance_from_map
-from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
-)
 from neps.optimizers.bayesian_optimization.acquisition_samplers import (
     AcquisitionSamplerMapping,
 )
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
 from neps.optimizers.multi_fidelity.mf_bo import FreezeThawModel, PFNSurrogate
 from neps.optimizers.multi_fidelity.utils import MFObservedData
+from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
+from neps.utils.common import instance_from_map
+
+if TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult
 
 
 class IFBO(BaseOptimizer):
@@ -32,7 +36,7 @@ class IFBO(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        budget: int = None,
+        budget: int | None = None,
         step_size: int | float = 1,
         optimal_assignment: bool = False,  # pylint: disable=unused-argument
         use_priors: bool = False,
@@ -45,18 +49,18 @@ class IFBO(BaseOptimizer):
         logger=None,
         # arguments for model
         surrogate_model: str | Any = "ftpfn",
-        surrogate_model_args: dict = None,
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
+        surrogate_model_args: dict | None = None,
+        domain_se_kernel: str | None = None,
+        graph_kernels: list | None = None,
+        hp_kernels: list | None = None,
         acquisition: str | BaseAcquisition = acquisition,
-        acquisition_args: dict = None,
+        acquisition_args: dict | None = None,
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
-        acquisition_sampler_args: dict = None,
+        acquisition_sampler_args: dict | None = None,
         model_policy: Any = PFNSurrogate,
         initial_design_size: int = 1,
     ):
-        """Initialise
+        """Initialise.
 
         Args:
             pipeline_space: Space in which to search
@@ -187,18 +191,17 @@ class IFBO(BaseOptimizer):
             f"Adjusted fidelity lower bound to {pipeline_space.fidelity.lower} "
             f"for equal-sized steps of {step_size}."
         )
-        print("New fidelity: ", pipeline_space.fidelity)
         return pipeline_space
 
     def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             # setup for GP implemented in NePS
             self.surrogate_model_args.update(
-                dict(
+                {
                     # domain_se_kernel=domain_se_kernel,
-                    hp_kernels=hp_kernels,
-                    graph_kernels=graph_kernels,
-                )
+                    "hp_kernels": hp_kernels,
+                    "graph_kernels": graph_kernels,
+                }
             )
             if not self.surrogate_model_args["hp_kernels"]:
                 raise ValueError("No kernels are provided!")
@@ -246,16 +249,10 @@ class IFBO(BaseOptimizer):
         n_configs = len(self.observed_configs.seen_config_ids)
         total_budget_level = sum(self.observed_configs.seen_budget_levels)
         total_initial_budget_spent = n_configs * self.pipeline_space.fidelity.lower
-        total_budget_spent = (
-            total_initial_budget_spent + total_budget_level * self.step_size
-        )
-
-        return total_budget_spent
+        return total_initial_budget_spent + total_budget_level * self.step_size
 
     def is_init_phase(self) -> bool:
-        if self.num_train_configs < self._initial_design_size:
-            return True
-        return False
+        return self.num_train_configs < self._initial_design_size
 
     @property
     def num_train_configs(self):
@@ -287,8 +284,8 @@ class IFBO(BaseOptimizer):
         self._handle_pending_evaluations(pending_evaluations)
 
         # an aesthetic choice more than a functional choice
-        self.observed_configs.df.sort_index(
-            level=self.observed_configs.df.index.names, inplace=True
+        self.observed_configs.df = self.observed_configs.df.sort_index(
+            level=self.observed_configs.df.index.names
         )
         # TODO: can we do better than keeping a copy of the observed configs?
         # TODO: can we not hide this in load_results and have something that pops out
@@ -322,7 +319,7 @@ class IFBO(BaseOptimizer):
                 tuple(index_data_split(config_id, config_val))
                 for config_id, config_val in previous_results.items()
             ]
-            indices, rows = zip(*index_row)
+            indices, rows = zip(*index_row, strict=False)
             self.observed_configs.add_data(data=list(rows), index=list(indices))
 
     def _handle_pending_evaluations(self, pending_evaluations):

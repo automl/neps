@@ -1,32 +1,38 @@
 # mypy: disable-error-code = assignment
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 import torch
 
-from neps.utils.common import instance_from_map
-from ...search_spaces.search_space import SearchSpace
-from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
-from ..bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
-)
-from ..bayesian_optimization.acquisition_functions.prior_weighted import (
+from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
+from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
     DecayingPriorWeightedAcquisition,
 )
-from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
+from neps.optimizers.bayesian_optimization.acquisition_samplers import (
+    AcquisitionSamplerMapping,
 )
-from ..bayesian_optimization.models import SurrogateModelMapping
-from ..multi_fidelity_prior.utils import (
+from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
+from neps.optimizers.multi_fidelity_prior.utils import (
     compute_config_dist,
     custom_crossover,
     local_mutation,
     update_fidelity,
 )
+from neps.utils.common import instance_from_map
+
+if TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.search_spaces.search_space import SearchSpace
 
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
@@ -35,7 +41,7 @@ TOP_EI_SAMPLE_COUNT = 10
 
 
 class SamplingPolicy(ABC):
-    """Base class for implementing a sampling strategy for SH and its subclasses"""
+    """Base class for implementing a sampling strategy for SH and its subclasses."""
 
     def __init__(self, pipeline_space: SearchSpace, patience: int = 100, logger=None):
         self.pipeline_space = pipeline_space
@@ -48,7 +54,7 @@ class SamplingPolicy(ABC):
 
 
 class RandomUniformPolicy(SamplingPolicy):
-    """A random policy for sampling configuration, i.e. the default for SH / hyperband
+    """A random policy for sampling configuration, i.e. the default for SH / hyperband.
 
     Args:
         SamplingPolicy ([type]): [description]
@@ -80,7 +86,7 @@ class FixedPriorPolicy(SamplingPolicy):
         self.fraction_from_prior = fraction_from_prior
 
     def sample(self, *args, **kwargs) -> SearchSpace:
-        """Samples from the prior with a certain probabiliyu
+        """Samples from the prior with a certain probabiliyu.
 
         Returns:
             SearchSpace: [description]
@@ -88,10 +94,9 @@ class FixedPriorPolicy(SamplingPolicy):
         user_priors = False
         if np.random.uniform() < self.fraction_from_prior:
             user_priors = True
-        config = self.pipeline_space.sample(
+        return self.pipeline_space.sample(
             patience=self.patience, user_priors=user_priors, ignore_fidelity=True
         )
-        return config
 
 
 class EnsemblePolicy(SamplingPolicy):
@@ -151,9 +156,13 @@ class EnsemblePolicy(SamplingPolicy):
         return config
 
     def sample(
-        self, inc: SearchSpace = None, weights: dict[str, float] = None, *args, **kwargs
+        self,
+        inc: SearchSpace = None,
+        weights: dict[str, float] | None = None,
+        *args,
+        **kwargs,
     ) -> SearchSpace:
-        """Samples from the prior with a certain probability
+        """Samples from the prior with a certain probability.
 
         Returns:
             SearchSpace: [description]
@@ -256,7 +265,7 @@ class EnsemblePolicy(SamplingPolicy):
 
 
 class ModelPolicy(SamplingPolicy):
-    """A policy for sampling configuration, i.e. the default for SH / hyperband
+    """A policy for sampling configuration, i.e. the default for SH / hyperband.
 
     Args:
         SamplingPolicy ([type]): [description]
@@ -266,7 +275,7 @@ class ModelPolicy(SamplingPolicy):
         self,
         pipeline_space: SearchSpace,
         surrogate_model: str | Any = "gp",
-        surrogate_model_args: dict = None,
+        surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
@@ -328,7 +337,10 @@ class ModelPolicy(SamplingPolicy):
         # self.acquisition_sampler.set_state(x=train_x, y=train_y)
 
     def sample(
-        self, active_max_fidelity: int = None, fidelity: int = None, **kwargs
+        self,
+        active_max_fidelity: int | None = None,
+        fidelity: int | None = None,
+        **kwargs,
     ) -> SearchSpace:
         """Performs the equivalent of optimizing the acquisition function.
 
@@ -381,11 +393,10 @@ class ModelPolicy(SamplingPolicy):
         # computes the EI for all `samples`
         eis = self.acquisition.eval(x=samples, asscalar=True)
         # extracting the highest scored sample
-        config = samples[np.argmax(eis)]
+        return samples[np.argmax(eis)]
         # TODO: can generalize s.t. sampler works for all types, currently,
         #  random sampler in NePS does not do what is required here
         # return self.acquisition_sampler.sample(self.acquisition)
-        return config
 
 
 class BaseDynamicModelPolicy(SamplingPolicy):
@@ -394,10 +405,10 @@ class BaseDynamicModelPolicy(SamplingPolicy):
         pipeline_space: SearchSpace,
         observed_configs: Any = None,
         surrogate_model: str | Any = "gp",
-        domain_se_kernel: str = None,
-        hp_kernels: list = None,
-        graph_kernels: list = None,
-        surrogate_model_args: dict = None,
+        domain_se_kernel: str | None = None,
+        hp_kernels: list | None = None,
+        graph_kernels: list | None = None,
+        surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         use_priors: bool = False,
         log_prior_weighted: bool = False,
@@ -541,10 +552,9 @@ class RandomPromotionDynamicPolicy(BaseDynamicModelPolicy):
 
         if is_promotion and promoted:
             return config_id
-        elif is_promotion:
+        if is_promotion:
             return None
-        else:
-            return config
+        return config
 
     # def sample(self, **kwargs):
     #     return self._sample(is_promotion=False, **kwargs)

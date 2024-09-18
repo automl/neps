@@ -9,8 +9,9 @@ See the class doc description of [`Prior`][neps.priors.Prior] for more details.
 
 from __future__ import annotations
 
+from collections.abc import Container, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Container, Iterable, Mapping, Protocol, Sequence
+from typing import TYPE_CHECKING, Any, Protocol
 from typing_extensions import override
 
 import torch
@@ -278,7 +279,9 @@ class CenteredPrior(Prior):
             self._meaningful_dists = []
             return
 
-        self._meaningful_ixs, self._meaningful_doms, self._meaningful_dists = zip(*rest)
+        self._meaningful_ixs, self._meaningful_doms, self._meaningful_dists = zip(
+            *rest, strict=False
+        )
 
     @property
     @override
@@ -311,7 +314,7 @@ class CenteredPrior(Prior):
 
         # Calculate the log probabilities of the sample domain tensors under their
         # respective distributions.
-        itr = iter(zip(self._meaningful_ixs, self._meaningful_dists))
+        itr = iter(zip(self._meaningful_ixs, self._meaningful_dists, strict=False))
         first_i, first_dist = next(itr)
         log_probs = first_dist.log_prob(translated_x[..., first_i])
 
@@ -416,7 +419,7 @@ class WeightedPrior(Prior):
     def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
         # OPTIM: Avoid an initial allocation by using the output of the first
         # distribution to store the weighted probabilities
-        itr = zip(self.probabilities, self.priors)
+        itr = zip(self.probabilities, self.priors, strict=False)
         first_prob, first_prior = next(itr)
 
         weighted_probs = first_prob * first_prior.log_prob(x, frm=frm)

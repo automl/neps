@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 from typing_extensions import override
 
 import numpy as np
@@ -119,9 +120,11 @@ class MutationSampler(AcquisitionSampler):
 
         n_best = len(self.x) if len(self.x) < self.n_best else self.n_best
         best_configs = [
-           x for (_, x) in
-           sorted(zip(self.y, self.x), key=lambda pair: pair[0])
-       ][:n_best]
+            x
+            for (_, x) in sorted(
+                zip(self.y, self.x, strict=False), key=lambda pair: pair[0]
+            )
+        ][:n_best]
 
         seen: set[int] = set()
 

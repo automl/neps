@@ -1,13 +1,10 @@
+from collections.abc import Callable
 from functools import partial
-from typing import Callable
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
     ComprehensiveExpectedImprovement,
 )
 from neps.optimizers.bayesian_optimization.acquisition_functions.mf_pi import MFPI_Random
-from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
-    UpperConfidenceBound,
-)
 from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
     DecayingPriorWeightedAcquisition,
 )

@@ -1,26 +1,33 @@
 # type: ignore
-from typing import Any, Iterable, Tuple, Union
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pandas as pd
 import torch
 
-from copy import deepcopy
-
-from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.multi_fidelity.utils import (
-    get_freeze_thaw_normalized_step, get_tokenized_data, MFObservedData
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
 )
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import BaseAcquisition
+from neps.optimizers.multi_fidelity.utils import (
+    MFObservedData,
+    get_freeze_thaw_normalized_step,
+    get_tokenized_data,
+)
+from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from neps.search_spaces.search_space import SearchSpace
 
 
 class MFPI(BaseAcquisition):
-
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        surrogate_model_name: str = None,
+        surrogate_model_name: str | None = None,
     ):
         super().__init__()
         self.pipeline_space = pipeline_space
@@ -34,7 +41,7 @@ class MFPI(BaseAcquisition):
         pipeline_space: SearchSpace,
         surrogate_model: Any,
         observations: MFObservedData,
-        b_step: Union[int, float],
+        b_step: int | float,
         **kwargs,
     ):
         # overload to select incumbent differently through observations
@@ -42,9 +49,8 @@ class MFPI(BaseAcquisition):
         self.surrogate_model = surrogate_model
         self.observations = observations
         self.b_step = b_step
-        return
 
-    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+    def preprocess(self, x: pd.Series) -> tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -52,7 +58,7 @@ class MFPI(BaseAcquisition):
         """
         raise NotImplementedError
 
-    def eval(self, x: pd.Series, asscalar: bool = False) -> Tuple[np.ndarray, pd.Series]:
+    def eval(self, x: pd.Series, asscalar: bool = False) -> tuple[np.ndarray, pd.Series]:
         # deepcopy
         # _x = pd.Series([deepcopy(x.loc[idx]) for idx in x.index.values], index=x.index)
         if self.surrogate_model_name == "ftpfn":
@@ -64,18 +70,20 @@ class MFPI(BaseAcquisition):
             idx_mask = np.where(_idx > max(self.observations.seen_config_ids))[0]
             _idx[idx_mask] = 0
             # normalizing steps
-            _steps = torch.Tensor([
-                get_freeze_thaw_normalized_step(
-                    _conf.fidelity.value,
-                    self.pipeline_space.fidelity.lower,
-                    self.pipeline_space.fidelity.upper,
-                    self.b_step
-                )
-                for _conf in _x
-            ])
-            _x_tok = torch.hstack((
-                (_idx).reshape(-1, 1), _steps.reshape(-1, 1), torch.Tensor(_x_tok)
-            ))
+            _steps = torch.Tensor(
+                [
+                    get_freeze_thaw_normalized_step(
+                        _conf.fidelity.value,
+                        self.pipeline_space.fidelity.lower,
+                        self.pipeline_space.fidelity.upper,
+                        self.b_step,
+                    )
+                    for _conf in _x
+                ]
+            )
+            _x_tok = torch.hstack(
+                ((_idx).reshape(-1, 1), _steps.reshape(-1, 1), torch.Tensor(_x_tok))
+            )
             pi = self.eval_pfn_pi(_x_tok, inc_list)
         else:
             raise ValueError(
@@ -85,12 +93,11 @@ class MFPI(BaseAcquisition):
             pi = pi.cpu()
         if len(_x) > 1 and asscalar:
             return pi.detach().numpy(), _x
-        else:
-            return pi.detach().numpy().item(), _x
+        return pi.detach().numpy().item(), _x
 
     def eval_pfn_pi(
         self, x: Iterable, inc_list: Iterable
-    ) -> Union[np.ndarray, torch.Tensor, float]:
+    ) -> np.ndarray | torch.Tensor | float:
         """PFN-PI modified to preprocess samples and accept list of incumbents."""
         pi = self.surrogate_model.get_pi(x.to(self.surrogate_model.device), inc_list)
         if len(pi.shape) == 2:
@@ -99,7 +106,6 @@ class MFPI(BaseAcquisition):
 
 
 class MFPI_Random(MFPI):
-
     BUDGET = 1000
 
     def __init__(
@@ -107,7 +113,7 @@ class MFPI_Random(MFPI):
         pipeline_space: SearchSpace,
         horizon: str = "random",
         threshold: str = "random",
-        surrogate_model_name: str = None,
+        surrogate_model_name: str | None = None,
     ):
         super().__init__(pipeline_space, surrogate_model_name)
         self.horizon = horizon
@@ -118,35 +124,34 @@ class MFPI_Random(MFPI):
         pipeline_space: SearchSpace,
         surrogate_model: Any,
         observations: MFObservedData,
-        b_step: Union[int, float],
+        b_step: int | float,
         **kwargs,
     ):
         # set RNG
         self.rng = np.random.RandomState(seed=42)
-        for i in range(len(observations.completed_runs)):
-            self.rng.uniform(-4,-1)
-            self.rng.randint(1,51)
+        for _i in range(len(observations.completed_runs)):
+            self.rng.uniform(-4, -1)
+            self.rng.randint(1, 51)
 
         return super().set_state(pipeline_space, surrogate_model, observations, b_step)
 
     def sample_horizon(self, steps_passed):
-        if self.horizon == 'random':
+        if self.horizon == "random":
             shortest = self.pipeline_space.fidelity.lower
             longest = min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
-            return self.rng.randint(shortest, longest+1)
-        elif self.horizon == 'max':
+            return self.rng.randint(shortest, longest + 1)
+        if self.horizon == "max":
             return min(self.pipeline_space.fidelity.upper, self.BUDGET - steps_passed)
-        else:
-            return int(self.horizon)
+        return int(self.horizon)
 
     def sample_performance_threshold(self, f_inc):
-        if self.threshold == 'random':
-            lu = 10**self.rng.uniform(-4,-1) # % of gap closed
+        if self.threshold == "random":
+            lu = 10 ** self.rng.uniform(-4, -1)  # % of gap closed
         else:
             lu = float(self.threshold)
         return f_inc * (1 - lu)
 
-    def preprocess(self, x: pd.Series) -> Tuple[pd.Series, torch.Tensor]:
+    def preprocess(self, x: pd.Series) -> tuple[pd.Series, torch.Tensor]:
         """Prepares the configurations for appropriate EI calculation.
 
         Takes a set of points and computes the budget and incumbent for each point, as
@@ -180,11 +185,13 @@ class MFPI_Random(MFPI):
                     indices_to_drop.append(i)
                 else:
                     # a candidate partial training run to continue
-                    config.update_hp_values({
-                        config.fidelity_name: min(
-                            config.fidelity.value + horizon, config.fidelity.upper
-                        )  # if horizon exceeds max, query at max
-                    }) 
+                    config.update_hp_values(
+                        {
+                            config.fidelity_name: min(
+                                config.fidelity.value + horizon, config.fidelity.upper
+                            )  # if horizon exceeds max, query at max
+                        }
+                    )
                     inc_list.append(inc_value)
             else:
                 # a candidate new training run that we would need to start
@@ -192,7 +199,7 @@ class MFPI_Random(MFPI):
                 inc_list.append(inc_value)
 
         # Drop unused configs
-        x.drop(labels=indices_to_drop, inplace=True)
+        x = x.drop(labels=indices_to_drop)
 
         assert len(inc_list) == len(x)
 

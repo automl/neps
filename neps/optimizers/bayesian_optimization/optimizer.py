@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Literal, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 from botorch.acquisition import LinearMCObjective
