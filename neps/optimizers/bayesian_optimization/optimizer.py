@@ -312,13 +312,15 @@ class BayesianOptimization(BaseOptimizer):
         y = _missing_y_strategy(y)
 
         # Now fit our model
-        y_model, y_likelihood = default_single_obj_gp(
+        y_model = default_single_obj_gp(
             x,
             y,
             # TODO: We should consider applying some heurisitc to see if this should
             # also include a log transform, similar as we do to cost if using `use_cost`.
-            outcome_transform=Standardize(m=1),
+            y_transform=Standardize(m=1),
         )
+        y_likelihood = y_model.likelihood
+
         fit_gpytorch_mll(
             ExactMarginalLogLikelihood(likelihood=y_likelihood, model=y_model)
         )
@@ -368,16 +370,17 @@ class BayesianOptimization(BaseOptimizer):
             cost = torch.tensor(costs, dtype=torch.float64, device=self.device)
             cost_z_score = _missing_cost_strategy(cost)
 
-            cost_model, cost_likelihood = default_single_obj_gp(
+            cost_model = default_single_obj_gp(
                 x,
                 cost_z_score,
-                outcome_transform=ChainedOutcomeTransform(
+                y_transform=ChainedOutcomeTransform(
                     # TODO: Maybe some way for a user to specify their cost
                     # is on a log scale?
                     log=Log(),
                     standardize=Standardize(m=1),
                 ),
             )
+            cost_likelihood = cost_model.likelihood
 
             # Optimize the cost model
             fit_gpytorch_mll(
