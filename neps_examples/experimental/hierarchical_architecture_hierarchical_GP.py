@@ -59,9 +59,9 @@ structure = {
 
 
 def set_recursive_attribute(op_name, predecessor_values):
-    in_channels = 64 if predecessor_values is None else predecessor_values["C_out"]
+    in_channels = 64 if predecessor_values is None else predecessor_values["c_out"]
     out_channels = in_channels * 2 if op_name == "ResNetBasicblock" else in_channels
-    return dict(C_in=in_channels, C_out=out_channels)
+    return dict(c_in=in_channels, c_out=out_channels)
 
 
 def run_pipeline(architecture):
@@ -74,7 +74,7 @@ def run_pipeline(architecture):
 
     model = architecture.to_pytorch()
     model = nn.Sequential(
-        ops.Stem(base_channels, C_in=in_channels),
+        ops.Stem(base_channels, c_in=in_channels),
         model,
         nn.AdaptiveAvgPool2d(1),
         nn.Flatten(),

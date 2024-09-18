@@ -1,25 +1,21 @@
+from __future__ import annotations
 
 import itertools
 import math
 import sys
 from collections import defaultdict, deque
-from functools import partial
-from queue import LifoQueue
-from typing import Deque, Tuple, Hashable
+from typing import Hashable
 
 import numpy as np
 from nltk import CFG, Production
 from nltk.grammar import Nonterminal
-from scipy.integrate._ivp.radau import P
-from torch import Value
 
 
 class Grammar(CFG):
-    """
-    Extended context free grammar (CFG) class from the NLTK python package
+    """Extended context free grammar (CFG) class from the NLTK python package
     We have provided functionality to sample from the CFG.
     We have included generation capability within the class (before it was an external function)
-    Also allow sampling to return whole trees (not just the string of terminals)
+    Also allow sampling to return whole trees (not just the string of terminals).
     """
 
     def __init__(self, *args, **kwargs):
@@ -96,7 +92,9 @@ class Grammar(CFG):
             int: size of space described by grammar.
         """
 
-        def recursive_worker(nonterminal: Nonterminal, memory_bank: dict = None) -> int:
+        def recursive_worker(
+            nonterminal: Nonterminal, memory_bank: dict | None = None
+        ) -> int:
             if memory_bank is None:
                 memory_bank = {}
 
@@ -110,7 +108,7 @@ class Grammar(CFG):
                 ]
                 possibilities_per_edge = [
                     memory_bank[str(e_nonterminal)]
-                    if str(e_nonterminal) in memory_bank.keys()
+                    if str(e_nonterminal) in memory_bank
                     else recursive_worker(e_nonterminal, memory_bank)
                     for e_nonterminal in edges_nonterminals
                 ]
@@ -165,7 +163,7 @@ class Grammar(CFG):
     def sampler(
         self,
         n=1,
-        start_symbol: str = None,
+        start_symbol: str | None = None,
         user_priors: bool = False,
     ):
         # sample n sequences from the CFG
@@ -178,24 +176,27 @@ class Grammar(CFG):
         # less likely it is to terminate. Therefore, we set the default sampler (setting convergent=True) to
         # downweight frequent productions when traversing the grammar.
         # see https://eli.thegreenplace.net/2010/01/28/generating-random-sentences-from-a-context-free-236grammar
-        if start_symbol is None:
-            start_symbol = self.start()
-        else:
-            start_symbol = Nonterminal(start_symbol)
+        start_symbol = self.start() if start_symbol is None else Nonterminal(start_symbol)
 
         if self.convergent:
             cfactor = 0.1
             return [
                 f"{self._convergent_sampler(symbol=start_symbol, cfactor=cfactor)[0]})"
-                for i in range(0, n)
+                for _ in range(n)
             ]
         else:
             return [
                 f"{self._sampler(symbol=start_symbol, user_priors=user_priors)})"
-                for i in range(0, n)
+                for _ in range(n)
             ]
 
-    def _sampler(self, symbol=None, user_priors: bool = False, *, _cache: dict[Hashable, str] | None = None):
+    def _sampler(
+        self,
+        symbol=None,
+        user_priors: bool = False,
+        *,
+        _cache: dict[Hashable, str] | None = None,
+    ):
         # simple sampler where each production is sampled uniformly from all possible productions
         # Tree choses if return tree or list of terminals
         # recursive implementation
@@ -207,7 +208,7 @@ class Grammar(CFG):
         # collect possible productions from the starting symbol
         productions = self.productions(lhs=symbol)
         # sample
-        if 0 == len(productions):
+        if len(productions) == 0:
             raise Exception(f"Nonterminal {symbol} has no productions!")
         if user_priors and self._prior is not None:
             production = choice(productions, probs=self._prior[str(symbol)])
@@ -228,7 +229,7 @@ class Grammar(CFG):
 
         return tree
 
-    def sampler_maxMin_func(self, symbol: str = None, largest: bool = True):
+    def sampler_maxMin_func(self, symbol: str | None = None, largest: bool = True):
         tree = "(" + str(symbol)
         # collect possible productions from the starting symbol
         productions = self.productions(lhs=symbol)
@@ -242,9 +243,7 @@ class Grammar(CFG):
                 tree = tree + " " + self.sampler_maxMin_func(sym, largest=largest) + ")"
         return tree
 
-    def _convergent_sampler(
-        self, cfactor, symbol=None, pcount=defaultdict(int)
-    ):
+    def _convergent_sampler(self, cfactor, symbol=None, pcount=None):
         # sampler that down-weights the probability of selcting the same production many times
         # ensuring that the sampled trees are not 'too' long (size to be controlled by cfactor)
         #
@@ -252,6 +251,8 @@ class Grammar(CFG):
         #:pcount: storage for the productions used in the current branch
 
         # init the sequence
+        if pcount is None:
+            pcount = defaultdict(int)
         tree = "(" + str(symbol)
         # init counter of tree depth and number of production rules
         depth, num_prod = 1, 1
@@ -301,8 +302,7 @@ class Grammar(CFG):
         symbols = self.nonterminals + self.terminals
         q_production_rules: list[tuple[list, int]] = []
         non_terminal_productions: dict[str, list[Production]] = {
-            sym: self.productions(lhs=Nonterminal(sym))
-            for sym in self.nonterminals
+            sym: self.productions(lhs=Nonterminal(sym)) for sym in self.nonterminals
         }
 
         _symbols_by_size = sorted(symbols, key=len, reverse=True)
@@ -322,11 +322,11 @@ class Grammar(CFG):
                     continue
 
                 # special case: "(" is (part of) a terminal
-                if string_tree[i - 1: i + 2] != " ( ":
+                if string_tree[i - 1 : i + 2] != " ( ":
                     i += 1
                     continue
 
-            if char == ")" and not string_tree[i - 1] == " ":
+            if char == ")" and string_tree[i - 1] != " ":
                 # closing symbol of production
                 production = q_production_rules.pop()[0][0]
                 lhs_production = production.lhs()
@@ -336,7 +336,7 @@ class Grammar(CFG):
                     prior_prob += np.log(self.prior[(lhs_production)][idx] + 1e-15)
                 else:
                     prior_prob *= self.prior[str(lhs_production)][idx]
-                i+=1
+                i += 1
                 continue
 
             _s = string_tree[i : i + _longest]
@@ -344,7 +344,9 @@ class Grammar(CFG):
                 if _s.startswith(sym):
                     break
             else:
-                raise RuntimeError(f"Terminal or nonterminal at position {i} does not exist")
+                raise RuntimeError(
+                    f"Terminal or nonterminal at position {i} does not exist"
+                )
 
             i += len(sym) - 1
 
@@ -362,8 +364,7 @@ class Grammar(CFG):
                     new_productions = [
                         production
                         for production in _productions
-                        if str(production.rhs()[_count])
-                        == sym
+                        if str(production.rhs()[_count]) == sym
                     ]
                     q_production_rules[-1] = (new_productions, _count + 1)
 
@@ -378,8 +379,7 @@ class Grammar(CFG):
         return prior_prob
 
     def _generate(self, start=None, depth=None, n=None):
-        """
-        see https://www.nltk.org/_modules/nltk/parse/generate.html
+        """See https://www.nltk.org/_modules/nltk/parse/generate.html
         Generates an iterator of all sentences from a CFG.
 
         :param grammar: The Grammar used to generate sentences.
@@ -461,9 +461,7 @@ class Grammar(CFG):
                 break
             _patience -= 1
 
-        child = self._remove_empty_spaces(child)
-
-        return child
+        return self._remove_empty_spaces(child)
 
     def crossover(
         self,
@@ -506,7 +504,7 @@ class Grammar(CFG):
 
         return False, False
 
-    def rand_subtree(self, tree: str) -> Tuple[str, int]:
+    def rand_subtree(self, tree: str) -> tuple[str, int]:
         """Helper function to choose a random subtree in a given parse tree.
         Runs a single pass through the tree (stored as string) to look for
         the location of swappable nonterminal symbols.
@@ -520,7 +518,7 @@ class Grammar(CFG):
         split_tree = tree.split(" ")
         swappable_indices = [
             i
-            for i in range(0, len(split_tree))
+            for i in range(len(split_tree))
             if split_tree[i][1:] in self.swappable_nonterminals
         ]
         r = np.random.randint(1, len(swappable_indices))
@@ -530,7 +528,7 @@ class Grammar(CFG):
 
     @staticmethod
     def rand_subtree_fixed_head(
-        tree: str, head_node: str, swappable_indices: list = None
+        tree: str, head_node: str, swappable_indices: list | None = None
     ) -> int:
         # helper function to choose a random subtree from a given tree with a specific head node
         # if no such subtree then return False, otherwise return the index of the subtree
@@ -539,7 +537,7 @@ class Grammar(CFG):
         if swappable_indices is None:
             split_tree = tree.split(" ")
             swappable_indices = [
-                i for i in range(0, len(split_tree)) if split_tree[i][1:] == head_node
+                i for i in range(len(split_tree)) if split_tree[i][1:] == head_node
             ]
         if not isinstance(swappable_indices, list):
             raise TypeError("Expected list for swappable indices!")
@@ -553,15 +551,14 @@ class Grammar(CFG):
                 if len(swappable_indices) > 1
                 else 0
             )
-            chosen_non_terminal_index = swappable_indices[r]
-            return chosen_non_terminal_index
+            return swappable_indices[r]
 
     @staticmethod
-    def remove_subtree(tree: str, index: int) -> Tuple[str, str, str]:
+    def remove_subtree(tree: str, index: int) -> tuple[str, str, str]:
         """Helper functioon to remove a subtree from a parse tree
         given its index.
         E.g. '(S (S (T 2)) (ADD +) (T 1))'
-        becomes '(S (S (T 2)) ', '(T 1))'  after removing (ADD +)
+        becomes '(S (S (T 2)) ', '(T 1))'  after removing (ADD +).
 
         Args:
             tree (str): parse tree
@@ -613,7 +610,7 @@ class DepthConstrainedGrammar(Grammar):
 
     def set_depth_constraints(self, depth_constraints):
         self.depth_constraints = depth_constraints
-        if not all(k in self.nonterminals for k in self.depth_constraints.keys()):
+        if not all(k in self.nonterminals for k in self.depth_constraints):
             raise Exception(
                 f"Nonterminal {set(self.depth_constraints.keys())-set(self.nonterminals)} does not exist in grammar"
             )
@@ -625,27 +622,24 @@ class DepthConstrainedGrammar(Grammar):
     def sampler(  # type: ignore[override]
         self,
         n: int = 1,
-        start_symbol: str = None,
-        depth_information: dict = None,
+        start_symbol: str | None = None,
+        depth_information: dict | None = None,
     ):
         if self.depth_constraints is None:
             raise ValueError("Depth constraints are not set!")
 
-        if start_symbol is None:
-            start_symbol = self.start()
-        else:
-            start_symbol = Nonterminal(start_symbol)
+        start_symbol = self.start() if start_symbol is None else Nonterminal(start_symbol)
 
         if depth_information is None:
             depth_information = {}
         return [
             f"{self._depth_constrained_sampler(symbol=start_symbol, depth_information=depth_information)})"
-            for i in range(0, n)
+            for i in range(n)
         ]
 
     def _compute_depth_information_for_pre(self, tree: str) -> dict:
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals: Deque = deque()
+        q_nonterminals: deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -666,7 +660,7 @@ class DepthConstrainedGrammar(Grammar):
         helper_subtree_depth = [0] * len(split_tree)
         helper_dict_depth_information = {nt: 0 for nt in self.nonterminals}
         helper_dict_subtree_depth: dict = {nt: deque() for nt in self.nonterminals}
-        q_nonterminals: Deque = deque()
+        q_nonterminals: deque = deque()
         for i, split in enumerate(split_tree):
             if split == "":
                 continue
@@ -692,7 +686,7 @@ class DepthConstrainedGrammar(Grammar):
     def _compute_max_depth(self, tree: str, subtree_node: str) -> int:
         max_depth = 0
         depth_information = {nt: 0 for nt in self.nonterminals}
-        q_nonterminals: Deque = deque()
+        q_nonterminals: deque = deque()
         for split in tree.split(" "):
             if split == "":
                 continue
@@ -708,19 +702,21 @@ class DepthConstrainedGrammar(Grammar):
                 split = split[:-1]
         return max_depth
 
-    def _depth_constrained_sampler(self, symbol=None, depth_information: dict = None):
+    def _depth_constrained_sampler(
+        self, symbol=None, depth_information: dict | None = None
+    ):
         if depth_information is None:
             depth_information = {}
         # init the sequence
         tree = "(" + str(symbol)
         # collect possible productions from the starting symbol & filter if constraints are violated
         lhs = str(symbol)
-        if lhs in depth_information.keys():
+        if lhs in depth_information:
             depth_information[lhs] += 1
         else:
             depth_information[lhs] = 1
         if (
-            lhs in self.depth_constraints.keys()
+            lhs in self.depth_constraints
             and depth_information[lhs] >= self.depth_constraints[lhs]
         ):
             productions = [
@@ -769,8 +765,7 @@ class DepthConstrainedGrammar(Grammar):
             if parent != child:  # ensure that parent is really mutated
                 break
             _patience -= 1
-        child = self._remove_empty_spaces(child)
-        return child
+        return self._remove_empty_spaces(child)
 
     def crossover(
         self,

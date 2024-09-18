@@ -3,19 +3,19 @@ name = "neural-pipeline-search"
 version = "v0.12.2"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
-  "Danny Stoll <stolld@cs.uni-freiburg.de>",
-  "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-  "Simon Schrodi",
-  "Eddie Bergman",
-  "Maciej Janowski",
-  "Samir Garibov",
-  "Tarek Abou Chakra",
-  "Daniel Rogalla",
-  "Carl Hvarfner",
-  "Binxin Ru",
-  "Nils Kober",
-  "Théophane Vallaeys",
-  "Frank Hutter",
+    "Danny Stoll <stolld@cs.uni-freiburg.de>",
+    "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
+    "Simon Schrodi",
+    "Eddie Bergman",
+    "Maciej Janowski",
+    "Samir Garibov",
+    "Tarek Abou Chakra",
+    "Daniel Rogalla",
+    "Carl Hvarfner",
+    "Binxin Ru",
+    "Nils Kober",
+    "Théophane Vallaeys",
+    "Frank Hutter",
 ]
 readme = "README.md"
 license = "Apache-2.0"
@@ -23,10 +23,10 @@ homepage = "https://github.com/automl/neps"
 repository = "https://github.com/automl/neps"
 documentation = "https://automl.github.io/neps/"
 keywords = [
-  "Neural Pipeline Search",
-  "Neural Architecture Search",
-  "Hyperparameter Optimization",
-  "AutoML",
+    "Neural Pipeline Search",
+    "Neural Architecture Search",
+    "Hyperparameter Optimization",
+    "AutoML",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -97,33 +97,34 @@ src = ["neps"]
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
-  "neps/search_spaces/architecture/**/*.py",
-  "neps/search_spaces/yaml_search_space_utils.py",
-  "neps/utils/run_args_from_yaml.py",
-  "neps/utils/common.py",
-  "neps/api.py",
-  "tests",
-  "neps_examples",
-  ".bzr",
-  ".direnv",
-  ".eggs",
-  ".git",
-  ".hg",
-  ".mypy_cache",
-  ".nox",
-  ".pants.d",
-  ".ruff_cache",
-  ".svn",
-  ".tox",
-  ".venv",
-  "__pypackages__",
-  "_build",
-  "buck-out",
-  "build",
-  "dist",
-  "node_modules",
-  "venv",
-  "docs",
+    "neps/optimizers/**/*.py",
+    "neps/search_spaces/architecture/**/*.py",
+    "neps/search_spaces/yaml_search_space_utils.py",
+    "neps/search_spaces/architecture",
+    "neps/utils/run_args_from_yaml.py",
+    "neps/api.py",
+    "tests",
+    "neps_examples",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "docs",
 ]
 
 [tool.ruff.lint]
@@ -137,52 +138,52 @@ extend-safe-fixes = ["ALL"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 select = [
-  "A",
-  # "ANN", # Handled by mypy
-  "ARG",
-  "B",
-  "BLE",
-  "COM",
-  "C4",
-  "D",
-  # "DTZ",  # One day I should know how to utilize timezones and dates...
-  "E",
-  # "EXE", Meh
-  "ERA",
-  "F",
-  "FBT",
-  "I",
-  # "ISC",  # Favours implicit string concatenation
-  "INP",
-  # "INT", # I don't understand this one
-  "N",
-  "NPY",
-  "PD",
-  "PLC",
-  "PLE",
-  "PLR",
-  "PLW",
-  "PIE",
-  "PT",
-  "PTH",
-  # "PYI", # Specific to .pyi files for type stubs
-  "Q",
-  "PGH004",
-  "RET",
-  "RUF",
-  "C90",
-  "S",
-  # "SLF",    # Private member accessed (sure, it's python)
-  "SIM",
-  # "TRY", # Good in principle, would take a lot of work to statisfy
-  "T10",
-  "T20",
-  "TID",
-  "TCH",
-  "UP",
-  "N",
-  "W",
-  "YTT",
+    "A",
+    # "ANN", # Handled by mypy
+    "ARG",
+    "B",
+    "BLE",
+    "COM",
+    "C4",
+    "D",
+    # "DTZ",  # One day I should know how to utilize timezones and dates...
+    "E",
+    # "EXE", Meh
+    "ERA",
+    "F",
+    "FBT",
+    "I",
+    # "ISC",  # Favours implicit string concatenation
+    "INP",
+    # "INT", # I don't understand this one
+    "N",
+    "NPY",
+    "PD",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "PIE",
+    "PT",
+    "PTH",
+    # "PYI", # Specific to .pyi files for type stubs
+    "Q",
+    "PGH004",
+    "RET",
+    "RUF",
+    "C90",
+    "S",
+    # "SLF",    # Private member accessed (sure, it's python)
+    "SIM",
+    # "TRY", # Good in principle, would take a lot of work to statisfy
+    "T10",
+    "T20",
+    "TID",
+    "TCH",
+    "UP",
+    "N",
+    "W",
+    "YTT",
 ]
 
 ignore = [
@@ -213,31 +214,31 @@ ignore = [
 # Exclude a variety of commonly ignored directories.
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
-  "S101",
-  "D101",
-  "D102",
-  "D103",
-  "ANN001",
-  "ANN201",
-  "FBT001",
-  "D100",
-  "PD901",  #  X is a bad variable name. (pandas)
-  "TCH",
-  "N803",
-  "C901",   # Too complex
+    "S101",
+    "D101",
+    "D102",
+    "D103",
+    "ANN001",
+    "ANN201",
+    "FBT001",
+    "D100",
+    "PD901", #  X is a bad variable name. (pandas)
+    "TCH",
+    "N803",
+    "C901", # Too complex
 ]
 "__init__.py" = ["I002"]
 "neps_examples/*" = [
-  "INP001",
-  "I002",
-  "E741",
-  "D101",
-  "D103",
-  "T20",
-  "D415",
-  "ERA001",
-  "E402",
-  "E501",
+    "INP001",
+    "I002",
+    "E741",
+    "D101",
+    "D103",
+    "T20",
+    "D415",
+    "ERA001",
+    "E402",
+    "E501",
 ]
 "docs/*" = ["INP001"]
 
@@ -260,12 +261,12 @@ max-args = 10 # Changed from default of 5
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
 markers = [
-  "ci_examples",
-  "core_examples",
-  "regression_all",
-  "runtime",
-  "neps_api",
-  "summary_csv",
+    "ci_examples",
+    "core_examples",
+    "regression_all",
+    "runtime",
+    "neps_api",
+    "summary_csv",
 ]
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
@@ -296,10 +297,10 @@ check_untyped_defs = true
 # TODO(eddiebergman): Improve coverage on these modules
 [[tool.mypy.overrides]]
 module = [
-  "neps.api",
-  "neps.optimizers.*",
-  "neps.search_spaces.architecture.*",
-  "neps.utils.run_args_from_yaml",
+    "neps.api",
+    "neps.optimizers.*",
+    "neps.search_spaces.architecture.*",
+    "neps.utils.run_args_from_yaml",
 ]
 ignore_errors = true
 

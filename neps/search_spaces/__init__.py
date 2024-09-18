@@ -2,8 +2,6 @@ from neps.search_spaces.architecture.api import ArchitectureParameter, FunctionP
 from neps.search_spaces.architecture.graph_grammar import (
     CoreGraphGrammar,
     GraphGrammar,
-    GraphGrammarCell,
-    GraphGrammarRepetitive,
     GraphParameter,
 )
 from neps.search_spaces.hyperparameters import (
