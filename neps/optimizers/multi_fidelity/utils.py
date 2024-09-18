@@ -1,14 +1,13 @@
 # type: ignore
-from __future__ import annotations
-
 from typing import Any, Sequence
 
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 import torch
 
-from ...optimizers.utils import map_real_hyperparameters_from_tabular_ids
-from ...search_spaces.search_space import SearchSpace
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
 
 
 def continuous_to_tabular(
@@ -34,9 +33,68 @@ def normalize_vectorize_config(
     config: SearchSpace, ignore_fidelity: bool = True
 ) -> np.ndarray:
     _new_vector = []
-    for _, hp_list in config.get_normalized_hp_categories(ignore_fidelity).items():
+    for _, hp_list in config.get_normalized_hp_categories(
+        ignore_fidelity=ignore_fidelity
+    ).items():
         _new_vector.extend(hp_list)
     return np.array(_new_vector)
+
+
+def get_tokenized_data(
+    configs: list[SearchSpace],
+    ignore_fidelity: bool = True,
+) -> np.ndarray:  # pd.Series:  # tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Extracts configurations, indices and performances given a DataFrame
+
+    Tokenizes the given set of observations as required by a PFN surrogate model.
+    """
+    configs = np.array(
+        [normalize_vectorize_config(c, ignore_fidelity=ignore_fidelity) for c in configs]
+    )
+    return configs
+
+
+def get_freeze_thaw_normalized_step(
+    fid_step: int, lower: int, upper: int, step: int
+) -> float:
+    max_fid_step = int(np.ceil((upper - lower) / step)) + 1
+    return fid_step / max_fid_step
+
+
+def get_training_data_for_freeze_thaw(
+    df: pd.DataFrame,
+    config_key: str,
+    perf_key: str,
+    pipeline_space: SearchSpace,
+    step_size: int,
+    maximize: bool = False,
+) -> tuple[list[int], list[int], list[SearchSpace], list[float]]:
+    configs = []
+    performance = []
+    idxs = []
+    steps = []
+    for idx, row in df.iterrows():
+        config_id = idx[0]
+        budget_id = idx[1]
+        if pipeline_space.has_tabular:
+            _row = pd.Series([row[config_key]], index=[config_id])
+            _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
+            configs.append(_row.values[0])
+        else:
+            configs.append(row[config_key])
+        performance.append(row[perf_key])
+        steps.append(
+            get_freeze_thaw_normalized_step(
+                budget_id + 1,  # NePS fidelity IDs begin with 0
+                pipeline_space.fidelity.lower,
+                pipeline_space.fidelity.upper,
+                step_size,
+            )
+        )
+        idxs.append(idx[0] + 1)  # NePS config IDs begin with 0
+    if maximize:
+        performance = (1 - np.array(performance)).tolist()
+    return idxs, steps, configs, performance
 
 
 class MFObservedData:
@@ -55,6 +113,7 @@ class MFObservedData:
     default_config_col = "config"
     default_perf_col = "perf"
     default_lc_col = "learning_curves"
+    # TODO: deepcopy all the mutable outputs from the dataframe
 
     def __init__(
         self,
@@ -79,6 +138,7 @@ class MFObservedData:
 
         self.config_idx = index_names[0]
         self.budget_idx = index_names[1]
+        self.index_names = index_names
 
         index = pd.MultiIndex.from_tuples([], names=index_names)
 
@@ -102,8 +162,16 @@ class MFObservedData:
         return self.df.index.levels[1].to_list()
 
     @property
+    def pending_runs_index(self) -> pd.Index | pd.MultiIndex:
+        return self.df.loc[self.pending_condition].index
+
+    @property
     def completed_runs(self):
         return self.df[~(self.pending_condition | self.error_condition)]
+
+    @property
+    def completed_runs_index(self) -> pd.Index | pd.MultiIndex:
+        return self.completed_runs.index
 
     def next_config_id(self) -> int:
         if len(self.seen_config_ids):
@@ -129,8 +197,9 @@ class MFObservedData:
             data_list = data
 
         if not self.df.index.isin(index_list).any():
-            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index_list)
-            self.df = pd.concat((self.df, _df))
+            index = pd.MultiIndex.from_tuples(index_list, names=self.index_names)
+            _df = pd.DataFrame(data_list, columns=self.df.columns, index=index)
+            self.df = _df.copy() if self.df.empty else pd.concat((self.df, _df))
         elif error:
             raise ValueError(
                 f"Data with at least one of the given indices already "
@@ -171,14 +240,14 @@ class MFObservedData:
         )
 
     def all_configs_list(self) -> list[Any]:
-        return self.df.loc[:, self.config_col].values.tolist()
+        return self.df.loc[:, self.config_col].sort_index().values.tolist()
 
     def get_incumbents_for_budgets(self, maximize: bool = False):
         """
         Returns a series object with the best partial configuration for each budget id
 
         Note: this will always map the best lowest ID if two configurations
-              has the same performance at the same fidelity
+              have the same performance at the same fidelity
         """
         learning_curves = self.get_learning_curves()
         if maximize:
@@ -204,6 +273,15 @@ class MFObservedData:
             performance = learning_curves.min(axis=0)
 
         return performance
+
+    def get_budget_level_for_best_performance(self, maximize: bool = False) -> int:
+        """Returns the lowest budget level at which the highest performance was recorded."""
+        perf_per_z = self.get_best_performance_for_each_budget(maximize=maximize)
+        y_star = self.get_best_seen_performance(maximize=maximize)
+        # uses the minimum of the budget that see the maximum obseved score
+        op = max if maximize else min
+        z_inc = int(op([_z for _z, _y in perf_per_z.items() if _y == y_star]))
+        return z_inc
 
     def get_best_learning_curve_id(self, maximize: bool = False):
         """
@@ -240,7 +318,19 @@ class MFObservedData:
     def get_partial_configs_at_max_seen(self):
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
-    def extract_learning_curve(self, config_id: int, budget_id: int) -> list[float]:
+    def extract_learning_curve(
+        self, config_id: int, budget_id: int | None = None
+    ) -> list[float]:
+        if budget_id is None:
+            # budget_id only None when predicting
+            # extract full observed learning curve for prediction pipeline
+            budget_id = (
+                max(self.df.loc[config_id].index.get_level_values("budget_id").values) + 1
+            )
+
+        # For the first epoch we have no learning curve available
+        if budget_id == 0:
+            return []
         # reduce budget_id to discount the current validation loss
         # both during training and prediction phase
         budget_id = max(0, budget_id - 1)
@@ -249,49 +339,30 @@ class MFObservedData:
         else:
             lcs = self.get_learning_curves()
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
-        return lc
+        return deepcopy(lc)
 
-    def get_training_data_4DyHPO(
-        self, df: pd.DataFrame, pipeline_space: SearchSpace | None = None
-    ):
-        configs = []
-        learning_curves = []
-        performance = []
-        for idx, row in df.iterrows():
-            config_id = idx[0]
-            budget_id = idx[1]
-            if pipeline_space.has_tabular:
-                _row = pd.Series([row[self.config_col]], index=[config_id])
-                _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
-                configs.append(_row.values[0])
-            else:
-                configs.append(row[self.config_col])
-            performance.append(row[self.perf_col])
-            learning_curves.append(self.extract_learning_curve(config_id, budget_id))
-        return configs, learning_curves, performance
+    def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
+        """Returns the best score recorded per config across fidelities seen."""
+        op = np.max if maximize else np.min
+        perf = (
+            self.df.sort_values(
+                "budget_id", ascending=False
+            )  # sorts with largest budget first
+            .groupby("config_id")  # retains only config_id
+            .first()  # retrieves the largest budget seen for each config_id
+            .learning_curves.apply(  # extracts all values seen till largest budget for a config
+                op
+            )  # finds the minimum over per-config learning curve
+        )
+        return perf
 
-    def get_tokenized_data(self, df: pd.DataFrame):
-        idxs = df.index.values
-        idxs = np.array([list(idx) for idx in idxs])
-        idxs[:, 1] += 1  # all fidelity IDs begin with 0 in NePS
-        performances = df.perf.values
-        configs = df.config.values
-        configs = np.array([normalize_vectorize_config(c) for c in configs])
-
-        return configs, idxs, performances
-
-    def tokenize(self, df: pd.DataFrame, as_tensor: bool = False):
-        """Function to format data for PFN."""
-        configs = np.array([normalize_vectorize_config(c) for c in df])
-        fidelity = np.array([c.fidelity.value for c in df]).reshape(-1, 1)
-        idx = df.index.values.reshape(-1, 1)
-
-        data = np.hstack([idx, fidelity, configs])
-
-        if as_tensor:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            data = torch.Tensor(data).to(device)
-        return data
+    def get_max_observed_fidelity_level_per_config(self) -> pd.Series:
+        """Returns the highest fidelity level recorded per config seen."""
+        max_z_observed = {
+            _id: self.df.loc[_id, :].index.sort_values()[-1]
+            for _id in self.df.index.get_level_values("config_id").sort_values()
+        }
+        return pd.Series(max_z_observed)
 
     @property
     def token_ids(self) -> np.ndarray:
@@ -315,33 +386,12 @@ if __name__ == "__main__":
         index=[(0, 2), (1, 2), (0, 1)],
     )
 
-    print(data.df)
-    print(data.get_learning_curves())
-    print(
-        "Mapping of budget IDs into best performing configurations at each fidelity:\n",
-        data.get_incumbents_for_budgets(),
-    )
-    print(
-        "Best Performance at each budget level:\n",
-        data.get_best_performance_for_each_budget(),
-    )
-    print(
-        "Configuration ID of the best observed performance so far: ",
-        data.get_best_learning_curve_id(),
-    )
-    print(data.extract_learning_curve(0, 2))
-    # data.df.sort_index(inplace=True)
-    print(data.get_partial_configs_at_max_seen())
-
     # When updating multiple indices at a time both the values in the data dictionary and the indices should be lists
     data.update_data({"perf": [1.8, 1.5]}, index=[(1, 1), (0, 0)])
-    print(data.df)
 
     data = MFObservedData(["config", "perf"], index_names=["config_id", "budget_id"])
 
     # when adding a single row second level list is not necessary
     data.add_data(["conf1", 0.5], index=(0, 0))
-    print(data.df)
 
     data.update_data({"perf": [1.8], "budget_col": [5]}, index=(0, 0))
-    print(data.df)

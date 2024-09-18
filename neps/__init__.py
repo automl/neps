@@ -1,5 +1,6 @@
 from neps.api import run
 from neps.plot.plot import plot
+from neps.plot.tensorboard_eval import tblogger
 from neps.search_spaces import (
     ArchitectureParameter,
     CategoricalParameter,
@@ -38,4 +39,5 @@ __all__ = [
     "GraphGrammar",
     "GraphGrammarCell",
     "GraphGrammarRepetitive",
+    "tblogger",
 ]

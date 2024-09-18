@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import random
 from typing import Any
 from typing_extensions import override
@@ -20,6 +18,7 @@ class GridSearch(BaseOptimizer):
             size_per_numerical_hp=grid_step_size,
             include_endpoints=True,
         )
+        # TODO: handle this shuffling better and offer more control to the user
         random.shuffle(self.configs_list)
 
     @override

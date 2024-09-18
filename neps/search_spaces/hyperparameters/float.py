@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, ClassVar, Literal, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, ClassVar, Literal
 from typing_extensions import Self, override
 
 import numpy as np

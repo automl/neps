@@ -37,8 +37,6 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: MacOS",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -48,14 +46,14 @@ packages = [{ include = "neps" }, { include = "neps_examples" }]
 
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
+python = ">=3.10,<3.12"
 ConfigSpace = "^0.7"
 grakel = "^0.1"
 numpy = "^1"
 pandas = "^2"
 networkx = "^2.6.3"
 nltk = "^3.6.4"
-scipy = "^1"
+scipy = ">=1.13.1"
 torch = ">1.7.0,!=2.0.1, !=2.1.0"
 matplotlib = "^3"
 more-itertools = "*"
@@ -65,6 +63,7 @@ pyyaml = "^6"
 tensorboard = "^2"
 typing-extensions = "*"
 torchvision = ">=0.8.0"
+ifbo = ">=0.3.10"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"
@@ -96,7 +95,7 @@ build-backend = "poetry.core.masonry.api"
 # "tests",
 # "neps_examples",
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 output-format = "full"
 line-length = 90
 src = ["neps"]
@@ -107,6 +106,7 @@ exclude = [
   "neps/search_spaces/architecture/**/*.py",
   "neps/search_spaces/yaml_search_space_utils.py",
   "neps/utils/run_args_from_yaml.py",
+  "neps/utils/common.py",
   "neps/api.py",
   "tests",
   "neps_examples",
@@ -210,6 +210,7 @@ ignore = [
   "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
   "PLR2004", # No magic numbers inline
   "N817",    # CamelCase import as (ignore for ConfigSpace)
+  "N999",    # Invalid name for module
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
 ]
 
@@ -249,8 +250,8 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["neps"]
 known-third-party = []
-no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
+no-lines-before = ["future"]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 force-wrap-aliases = true
@@ -274,7 +275,7 @@ markers = [
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
-python_version = "3.8"  # Match minimum supported version
+python_version = "3.10"  # Match minimum supported version
 packages = ["neps"]
 show_error_codes = true
 

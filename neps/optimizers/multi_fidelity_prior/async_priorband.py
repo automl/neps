@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 import typing
 
 import numpy as np
-from typing_extensions import Literal, override
+from typing import Literal
+from typing_extensions import override
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (

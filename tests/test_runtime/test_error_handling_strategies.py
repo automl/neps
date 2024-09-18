@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from neps.exceptions import WorkerRaiseError
 import pytest
 from dataclasses import dataclass

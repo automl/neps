@@ -1,12 +1,12 @@
-from __future__ import annotations
-
 from typing import Any
 from typing_extensions import override
 
 import numpy as np
+import pandas as pd
+import warnings
 
 from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
+from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -25,17 +25,17 @@ from neps.optimizers.multi_fidelity.mf_bo import FreezeThawModel, PFNSurrogate
 from neps.optimizers.multi_fidelity.utils import MFObservedData
 
 
-class MFEIBO(BaseOptimizer):
+class IFBO(BaseOptimizer):
     """Base class for MF-BO algorithms that use DyHPO-like acquisition and budgeting."""
 
-    acquisition: str = "MFEI"
+    acquisition: str = "MFPI-random"
 
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        budget: int | None = None,
+        budget: int = None,
         step_size: int | float = 1,
-        optimal_assignment: bool = False,
+        optimal_assignment: bool = False,  # pylint: disable=unused-argument
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
@@ -45,19 +45,17 @@ class MFEIBO(BaseOptimizer):
         ignore_errors: bool = False,
         logger=None,
         # arguments for model
-        surrogate_model: str | Any = "deep_gp",
-        surrogate_model_args: dict | None = None,
-        domain_se_kernel: str | None = None,
-        graph_kernels: list | None = None,
-        hp_kernels: list | None = None,
+        surrogate_model: str | Any = "ftpfn",
+        surrogate_model_args: dict = None,
+        domain_se_kernel: str = None,
+        graph_kernels: list = None,
+        hp_kernels: list = None,
         acquisition: str | BaseAcquisition = acquisition,
-        acquisition_args: dict | None = None,
+        acquisition_args: dict = None,
         acquisition_sampler: str | AcquisitionSampler = "freeze-thaw",
-        acquisition_sampler_args: dict | None = None,
-        model_policy: Any = FreezeThawModel,
-        initial_design_fraction: float = 0.75,
-        initial_design_size: int = 10,
-        initial_design_budget: int | None = None,
+        acquisition_sampler_args: dict = None,
+        model_policy: Any = PFNSurrogate,
+        initial_design_size: int = 1,
     ):
         """Initialise
 
@@ -76,7 +74,13 @@ class MFEIBO(BaseOptimizer):
                 value instead. default: None
             logger: logger object, or None to use the neps logger
             sample_default_first: Whether to sample the default configuration first
+            initial_design_size: Number of configurations to sample before starting optimization
         """
+        # Adjust pipeline space fidelity steps to be equally spaced
+        pipeline_space = self._adjust_fidelity_for_freeze_thaw_steps(
+            pipeline_space, step_size
+        )
+        # Super constructor call
         super().__init__(
             pipeline_space=pipeline_space,
             budget=budget,
@@ -92,14 +96,8 @@ class MFEIBO(BaseOptimizer):
         self.min_budget = self.pipeline_space.fidelity.lower
         # TODO: generalize this to work with real data (not benchmarks)
         self.max_budget = self.pipeline_space.fidelity.upper
+        self._initial_design_size = initial_design_size
 
-        self._initial_design_fraction = initial_design_fraction
-        (
-            self._initial_design_size,
-            self._initial_design_budget,
-        ) = self._set_initial_design(
-            initial_design_size, initial_design_budget, self._initial_design_fraction
-        )
         # TODO: Write use cases for these parameters
         self._model_update_failed = False
         self.sample_default_first = sample_default_first
@@ -129,9 +127,9 @@ class MFEIBO(BaseOptimizer):
         self._prep_model_args(self.hp_kernels, self.graph_kernels, pipeline_space)
 
         # TODO: Better solution than branching based on the surrogate name is needed
-        if surrogate_model in ["deep_gp", "gp"]:
+        if surrogate_model in ["gp", "gp_hierarchy"]:
             model_policy = FreezeThawModel
-        elif surrogate_model == "pfn":
+        elif surrogate_model == "ftpfn":
             model_policy = PFNSurrogate
         else:
             raise ValueError("Invalid model option selected!")
@@ -141,6 +139,7 @@ class MFEIBO(BaseOptimizer):
             pipeline_space=pipeline_space,
             surrogate_model=surrogate_model,
             surrogate_model_args=self.surrogate_model_args,
+            step_size=self.step_size,
         )
         self.acquisition_args = {} if acquisition_args is None else acquisition_args
         self.acquisition_args.update(
@@ -169,6 +168,29 @@ class MFEIBO(BaseOptimizer):
         )
         self.count = 0
 
+    def _adjust_fidelity_for_freeze_thaw_steps(
+        self, pipeline_space: SearchSpace, step_size: int
+    ) -> SearchSpace:
+        """Adjusts the fidelity range to be divisible by `step_size` for Freeze-Thaw."""
+        if not pipeline_space.has_fidelity:
+            return pipeline_space
+        # Check if the fidelity range is divided into equal sized steps by `step_size`
+        remainder = (
+            pipeline_space.fidelity.upper - pipeline_space.fidelity.lower
+        ) % step_size
+        if remainder == 0:
+            return pipeline_space
+        # Adjust the fidelity lower bound to be divisible by `step_size` into equal steps
+        offset = step_size - remainder
+        # Pushing the lower bound of the fidelity space by an offset to ensure equal-sized steps
+        pipeline_space.fidelity.lower += offset
+        warnings.warn(
+            f"Adjusted fidelity lower bound to {pipeline_space.fidelity.lower} "
+            f"for equal-sized steps of {step_size}."
+        )
+        print("New fidelity: ", pipeline_space.fidelity)
+        return pipeline_space
+
     def _prep_model_args(self, hp_kernels, graph_kernels, pipeline_space):
         if self.surrogate_model_name in ["gp", "gp_hierarchy"]:
             # setup for GP implemented in NePS
@@ -188,46 +210,8 @@ class MFEIBO(BaseOptimizer):
                 else pipeline_space.get_vectorial_dim()
             )
 
-    def _set_initial_design(
-        self,
-        initial_design_size: int = None,
-        initial_design_budget: int = None,
-        initial_design_fraction: float = 0.75,
-    ) -> tuple[int | float, int | float]:
-        """Sets the initial design size and budget."""
-
-        # user specified initial_design_size takes precedence
-        if initial_design_budget is not None:
-            _initial_design_budget = initial_design_budget
-        else:
-            _initial_design_budget = self.max_budget
-
-        # user specified initial_design_size takes precedence
-        _initial_design_size = np.inf
-        if initial_design_size is not None:
-            _initial_design_size = initial_design_size
-        if (
-            initial_design_size is None
-            or _initial_design_size * self.min_budget > _initial_design_budget
-        ):
-            # if the initial design budget is less than the budget spent on sampling
-            # the initial design at the minimum budget (fidelity)
-            # 2 choices here:
-            #    1. Reduce initial_design_size
-            #    2. Increase initial_design_budget
-            # we choose to reduce initial_design_size
-            _init_budget = initial_design_fraction * self.max_budget
-            # number of min budget evaluations fitting within initial design budget
-            _initial_design_size = _init_budget // self.min_budget
-
-        self.logger.info(
-            f"\n\ninitial_design_size: {_initial_design_size}\n"
-            f"initial_design_budget: {_initial_design_budget}\n"
-            f"min_budget: {self.min_budget}\n\n"
-        )
-        return _initial_design_size, _initial_design_budget
-
     def get_budget_level(self, config: SearchSpace) -> int:
+        """Calculates the discretized (int) budget level for a given configuration."""
         return int(
             np.ceil((config.fidelity.value - config.fidelity.lower) / self.step_size)
         )
@@ -252,7 +236,7 @@ class MFEIBO(BaseOptimizer):
         return budget_val
 
     def total_budget_spent(self) -> int | float:
-        """Calculates the toal budget spent so far.
+        """Calculates the toal budget spent so far, in the unit of fidelity specified.
 
         This is calculated as a function of the fidelity range provided, that takes into
         account the minimum budget and the step size.
@@ -269,15 +253,9 @@ class MFEIBO(BaseOptimizer):
 
         return total_budget_spent
 
-    def is_init_phase(self, budget_based: bool = True) -> bool:
-        if budget_based:
-            # Check if we are still in the initial design phase based on
-            # either the budget spent so far or the number of configurations evaluated
-            if self.total_budget_spent() < self._initial_design_budget:
-                return True
-        else:
-            if self.num_train_configs < self._initial_design_size:
-                return True
+    def is_init_phase(self) -> bool:
+        if self.num_train_configs < self._initial_design_size:
+            return True
         return False
 
     @property
@@ -302,7 +280,6 @@ class MFEIBO(BaseOptimizer):
             columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
         )
-
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(previous_results)
         self.total_fevals = len(previous_results) + len(pending_evaluations)
@@ -314,7 +291,6 @@ class MFEIBO(BaseOptimizer):
         self.observed_configs.df.sort_index(
             level=self.observed_configs.df.index.names, inplace=True
         )
-
         # TODO: can we do better than keeping a copy of the observed configs?
         # TODO: can we not hide this in load_results and have something that pops out
         #   more, like a set_state or policy_args
@@ -333,7 +309,7 @@ class MFEIBO(BaseOptimizer):
 
     def _load_previous_observations(self, previous_results):
         def index_data_split(config_id: str, config_val):
-            _config_id, _budget_id = MFEIBO._get_config_id_split(config_id)
+            _config_id, _budget_id = IFBO._get_config_id_split(config_id)
             index = int(_config_id), int(_budget_id)
             _data = [
                 config_val.config,
@@ -406,11 +382,13 @@ class MFEIBO(BaseOptimizer):
         budget = self.observed_configs.df.loc[_config_id].index.values[-1]
         # calculating fidelity value
         new_fidelity = self.get_budget_value(budget + 1)
-        # settingt the config fidelity
-        config.fidelity.set_value(new_fidelity)
+        # setting the config fidelity
+        config.update_hp_values({config.fidelity_name: new_fidelity})
         return config, _config_id
 
-    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
+    def get_config_and_ids(  # pylint: disable=no-self-use
+        self,
+    ) -> tuple[SearchSpace, str, str | None]:
         """...and this is the method that decides which point to query.
 
         Returns:
@@ -418,17 +396,17 @@ class MFEIBO(BaseOptimizer):
         """
         config_id = None
         previous_config_id = None
-        if self.is_init_phase(budget_based=False):
+        if self.is_init_phase():
             # sample a new config till initial design size is satisfied
             self.logger.info("sampling...")
             config = self.pipeline_space.sample(
                 patience=self.patience, user_priors=True, ignore_fidelity=False
             )
-            assert config.fidelity is not None
-            config.fidelity.set_value(self.min_budget)
-
+            _config_dict = config.hp_values()
+            _config_dict.update({config.fidelity_name: self.min_budget})
+            config.set_hyperparameters_from_dict(_config_dict)
             _config_id = self.observed_configs.next_config_id()
-        elif self.is_init_phase(budget_based=True) or self._model_update_failed:
+        elif self.is_init_phase() or self._model_update_failed:
             # promote a config randomly if initial design size is satisfied but the
             # initial design budget has not been exhausted
             self.logger.info("promoting...")
@@ -441,28 +419,43 @@ class MFEIBO(BaseOptimizer):
             # main acquisition call here after initial design is turned off
             self.logger.info("acquiring...")
             # generates candidate samples for acquisition calculation
-            assert self.pipeline_space.fidelity is not None
             samples = self.acquisition_sampler.sample(
                 set_new_sample_fidelity=self.pipeline_space.fidelity.lower
             )  # fidelity values here should be the observations or min. fidelity
+
             # calculating acquisition function values for the candidate samples
             acq, _samples = self.acquisition.eval(  # type: ignore[attr-defined]
                 x=samples, asscalar=True
             )
+            acq = pd.Series(acq, index=_samples.index)
+
             # maximizing acquisition function
-            _idx = np.argsort(acq)[-1]
+            best_idx = acq.sort_values().index[-1]
             # extracting the config ID for the selected maximizer
-            _config_id = samples.index[_samples.index.values[_idx]]
+            _config_id = best_idx  # samples.index[_samples.index.values[_idx]]
             # `_samples` should have new configs with fidelities set to as required
             # NOTE: len(samples) need not be equal to len(_samples) as `samples` contain
             # all (partials + new) configurations obtained from the sampler, but
             # in `_samples`, configs are removed that have reached maximum epochs allowed
             # NOTE: `samples` and `_samples` should share the same index values, hence,
-            # avoid using `.iloc` and work with `.loc` on pandas DataFrame/Series
+            # avoid using `.iloc` and work with `.loc` on these pandas DataFrame/Series
 
-            # Is this "config = _samples.loc[_config_id]"?
+            # assigning config hyperparameters
             config = samples.loc[_config_id]
-            config.fidelity.set_value(_samples.loc[_config_id].fidelity.value)
+            # IMPORTANT: setting the fidelity value appropriately
+            _fid_value = (
+                config.fidelity.lower
+                if best_idx > max(self.observed_configs.seen_config_ids)
+                else (
+                    self.get_budget_value(
+                        self.observed_configs.get_max_observed_fidelity_level_per_config().loc[
+                            best_idx
+                        ]
+                    )
+                    + self.step_size  # ONE-STEP FIDELITY QUERY for freeze-thaw
+                )
+            )
+            config.update_hp_values({config.fidelity_name: _fid_value})
         # generating correct IDs
         if _config_id in self.observed_configs.seen_config_ids:
             config_id = f"{_config_id}_{self.get_budget_level(config)}"
@@ -470,4 +463,4 @@ class MFEIBO(BaseOptimizer):
         else:
             config_id = f"{self.observed_configs.next_config_id()}_{self.get_budget_level(config)}"
 
-        return config.hp_values(), config_id, previous_config_id
+        return config.hp_values(), config_id, previous_config_id  # type: ignore

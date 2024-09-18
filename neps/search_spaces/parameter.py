@@ -23,8 +23,9 @@ set or empty, in which case it is `None`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Generic, Mapping, TypeVar, runtime_checkable
-from typing_extensions import Protocol, Self
+from collections.abc import Mapping
+from typing import Any, ClassVar, Generic, Protocol, TypeVar, runtime_checkable
+from typing_extensions import Self
 
 ValueT = TypeVar("ValueT")
 SerializedT = TypeVar("SerializedT")

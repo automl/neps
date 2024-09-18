@@ -6,7 +6,7 @@ from copy import deepcopy
 from functools import partial
 from typing import Any, ClassVar, Mapping
 from typing_extensions import override, Self
-from neps.utils.types import NotSet, _NotSet
+from neps.utils.types import NotSet
 
 import networkx as nx
 import numpy as np
@@ -46,22 +46,26 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
 
     @property
     @abstractmethod
-    def id(self) -> str: ...
+    def id(self) -> str:
+        ...
 
     # NOTE(eddiebergman): Unlike traditional parameters, it seems
     @property
     @abstractmethod
-    def value(self) -> nx.DiGraph: ...
+    def value(self) -> nx.DiGraph:
+        ...
 
     # NOTE(eddiebergman): This is a function common to the three graph
     # parameters that is used for `load_from`
     @abstractmethod
-    def create_from_id(self, value: str) -> None: ...
+    def create_from_id(self, value: str) -> None:
+        ...
 
     # NOTE(eddiebergman): Function shared between graph parameters.
     # Used to `set_value()`
     @abstractmethod
-    def reset(self) -> None: ...
+    def reset(self) -> None:
+        ...
 
     @override
     def __eq__(self, other: Any) -> bool:
@@ -71,7 +75,8 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
         return self.id == other.id
 
     @abstractmethod
-    def compute_prior(self, normalized_value: float) -> float: ...
+    def compute_prior(self, normalized_value: float) -> float:
+        ...
 
     @override
     def set_value(self, value: str | None) -> None:
@@ -137,7 +142,9 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
         self.create_from_id(value)
 
     @abstractmethod
-    def mutate(self, parent: Self | None = None, *, mutation_strategy: str = "bananas") -> Self: ...
+    def mutate(self, parent: Self | None = None, *,
+               mutation_strategy: str = "bananas") -> Self:
+        ...
 
     @abstractmethod
     def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
@@ -154,7 +161,7 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
 
     @override
     def clone(self) -> Self:
-        new_self =  self.__class__(**self.input_kwargs)
+        new_self = self.__class__(**self.input_kwargs)
 
         # HACK(eddiebergman): It seems the subclasses all have these and
         # so we just copy over those attributes, deepcloning anything that is mutable
@@ -177,6 +184,7 @@ class GraphParameter(ParameterWithPrior[nx.DiGraph, str], MutatableParameter):
                     setattr(new_self, _attr, retrieved_attr)
 
         return new_self
+
 
 class GraphGrammar(GraphParameter, CoreGraphGrammar):
     hp_name = "graph_grammar"
@@ -227,7 +235,8 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
     def sample(self, *, user_priors: bool = False) -> Self:
         copy_self = self.clone()
         copy_self.reset()
-        copy_self.string_tree = copy_self.grammars[0].sampler(1, user_priors=user_priors)[0]
+        copy_self.string_tree = copy_self.grammars[0].sampler(1, user_priors=user_priors)[
+            0]
         _ = copy_self.value  # required for checking if graph is valid!
         return copy_self
 
@@ -507,7 +516,8 @@ class GraphGrammarRepetitive(GraphParameter, CoreGraphGrammar):
     def sample(self, *, user_priors: bool = False) -> Self:
         copy_self = self.clone()
         copy_self.reset()
-        copy_self.string_tree_list = [grammar.sampler(1)[0] for grammar in copy_self.grammars]
+        copy_self.string_tree_list = [grammar.sampler(1)[0] for grammar in
+                                      copy_self.grammars]
         copy_self.string_tree = copy_self.assemble_trees(
             copy_self.string_tree_list[0],
             copy_self.string_tree_list[1:],
@@ -1029,8 +1039,8 @@ class GraphGrammarMultipleRepetitive(GraphParameter, CoreGraphGrammar):
                 [
                     grammar.compute_space_size
                     for grammar, n_grammar in zip(
-                        self.grammars, self.number_of_repetitive_motifs_per_grammar
-                    )
+                    self.grammars, self.number_of_repetitive_motifs_per_grammar
+                )
                     for _ in range(n_grammar)
                 ]
             )

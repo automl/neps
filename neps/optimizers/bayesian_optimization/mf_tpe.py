@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 import random
 from copy import deepcopy
-from typing import Any, Iterable
+from typing import Any, Iterable, Literal
+from typing_extensions import override
 
 import numpy as np
 import torch
 from scipy.stats import spearmanr
-from typing_extensions import Literal, override
 
 from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
@@ -225,7 +223,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
     def _get_rung_maps(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
         eta = round(1 / self.good_fraction)
-        new_min_budget = self.min_fidelity * (1 / eta**s)
+        new_min_budget = self.min_fidelity * (1 / eta ** s)
         nrungs = (
             np.floor(np.log(self.max_fidelity / new_min_budget) / np.log(eta)).astype(int)
             + 1

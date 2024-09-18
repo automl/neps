@@ -1,14 +1,13 @@
-from __future__ import annotations
+
 
 from functools import partial
 from typing import Callable, Mapping
 
 from .base_optimizer import BaseOptimizer
 from .bayesian_optimization.cost_cooling import CostCooling
-from .bayesian_optimization.mf_tpe import MultiFidelityPriorWeightedTreeParzenEstimator
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .multi_fidelity.dyhpo import MFEIBO
+from .multi_fidelity.ifbo import IFBO
 from .multi_fidelity.hyperband import (
     MOBSTER,
     AsynchronousHyperband,
@@ -41,9 +40,11 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "asha": AsynchronousSuccessiveHalving,
     "hyperband": Hyperband,
     "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
-    "multifidelity_tpe": MultiFidelityPriorWeightedTreeParzenEstimator,
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
+    "priorband_bo": partial(PriorBand, model_based=True),
+    "priorband_asha": PriorBandAsha,
+    "priorband_asha_hyperband": PriorBandAshaHB,
     "mobster": MOBSTER,
-    "mf_ei_bo": MFEIBO,
+    "ifbo": IFBO,
 }

@@ -7,9 +7,10 @@ from __future__ import annotations
 import logging
 import operator
 import pprint
+from collections.abc import Hashable, Iterator, Mapping
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Hashable, Iterator, Literal, Mapping
+from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import Self
 
 import ConfigSpace as CS
@@ -111,7 +112,7 @@ def pipeline_space_from_yaml(  # noqa: C901
             format, contents, or if the dictionary is invalid.
     """
     try:
-        if isinstance(config, (str, Path)):
+        if isinstance(config, str | Path):
             # try to load the YAML file
             try:
                 yaml_file_path = Path(config)
@@ -329,18 +330,22 @@ class SearchSpace(Mapping[str, Any]):
                 sampled_hps[name] = hp.clone()
                 continue
 
-            for _ in range(patience):
+            for attempt in range(patience):
                 try:
                     if user_priors and isinstance(hp, ParameterWithPrior):
                         sampled_hps[name] = hp.sample(user_priors=user_priors)
                     else:
                         sampled_hps[name] = hp.sample()
                     break
-                except ValueError:
+                except Exception as e:  # noqa: BLE001
                     logger.warning(
-                        f"Could not sample valid value for hyperparameter {name}!"
+                        f"Attempt {attempt + 1}/{patience} failed for"
+                        f" sampling {name}: {e!s}"
                     )
             else:
+                logger.error(
+                    f"Failed to sample valid value for {name} after {patience} attempts"
+                )
                 raise ValueError(
                     f"Could not sample valid value for hyperparameter {name}"
                     f" in {patience} tries!"
@@ -559,7 +564,7 @@ class SearchSpace(Mapping[str, Any]):
             The vectorial dimension
         """
         if not any(
-            isinstance(hp, (NumericalParameter, CategoricalParameter, ConstantParameter))
+            isinstance(hp, NumericalParameter | CategoricalParameter | ConstantParameter)
             for hp in self.values()
         ):
             return None
@@ -614,6 +619,13 @@ class SearchSpace(Mapping[str, Any]):
 
             Does not support graph parameters currently.
 
+        !!! note "TODO"
+
+            Include default hyperparameters in the grid.
+            If all HPs have a `default` then add a single configuration.
+            If only partial HPs have defaults then add all combinations of defaults, but
+                only to the end of the list of configs.
+
         Args:
             size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
             include_endpoints: Whether to include the endpoints of the grid.
@@ -657,7 +669,9 @@ class SearchSpace(Mapping[str, Any]):
             SearchSpace(
                 **{
                     name: ConstantParameter(value=value)  # type: ignore
-                    for name, value in zip(self.hyperparameters.keys(), config_values)
+                    for name, value in zip(
+                        self.hyperparameters.keys(), config_values, strict=False
+                    )
                 }
             )
             for config_values in full_grid
@@ -880,3 +894,18 @@ class SearchSpace(Mapping[str, Any]):
                 return False
 
         return True
+
+    def update_hp_values(self, new_values: dict[str, Any]) -> None:
+        """Update the hyperparameter values with new values.
+
+        Args:
+            new_values: The new values to set for the hyperparameters.
+        """
+        _hp_dict = self.hp_values()
+        _intersect = set(_hp_dict.keys()) & set(new_values.keys())
+        assert len(_intersect) == len(new_values), (
+            "All hyperparameters must be present! "
+            f"{set(_hp_dict.keys()) - set(new_values.keys())} are missing"
+        )
+        _hp_dict.update(new_values)
+        self.set_hyperparameters_from_dict(_hp_dict)

@@ -2,8 +2,6 @@
 This could be generalized if we end up with a server based implementation but
 for now we're just testing the filebased implementation."""
 
-from __future__ import annotations
-
 import time
 from pathlib import Path
 from typing import Any
@@ -93,20 +91,30 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "hyperband",
     "hyperband_custom_default",
     "priorband",
+    "priorband_bo",
     "mobster",
     "mf_ei_bo",
+    "priorband_asha",
+    "ifbo",
+    "priorband_asha_hyperband",
 ]
 OPTIMIZER_REQUIRES_BUDGET = [
     "successive_halving_prior",
     "hyperband_custom_default",
     "asha",
     "priorband",
+    "priorband_bo",
+    "priorband_asha",
+    "priorband_asha_hyperband",
     "hyperband",
     "asha_prior",
     "mobster",
 ]
 REQUIRES_PRIOR = {
     "priorband",
+    "priorband_bo",
+    "priorband_asha",
+    "priorband_asha_hyperband",
 }
 REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, Union
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
 
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 # TODO(eddiebergman): We can turn this to an enum at some
 # point to prevent having to isinstance and str match
 ERROR: TypeAlias = Literal["error"]
-Number: TypeAlias = Union[int, float, np.number]
+Number: TypeAlias = int | float | np.number
 ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
-Metadata: TypeAlias = Dict[str, Any]
+Metadata: TypeAlias = dict[str, Any]
 ResultDict: TypeAlias = Mapping[str, Any]
 
 # NOTE(eddiebergman): Getting types for scipy distributions sucks
@@ -32,7 +32,6 @@ class _NotSet:
 
 
 NotSet = _NotSet()
-
 
 f64 = np.float64
 i64 = np.int64
