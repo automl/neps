@@ -45,16 +45,3 @@ class UpperConfidenceBound(BaseAcquisition):
         ucb_scores = ucb_scores.detach().numpy() * sign  
 
         return ucb_scores
-
-
-class MF_UCB(UpperConfidenceBound):
-
-    def preprocess(self, x: Iterable) -> Iterable:
-        performances = self.observations.get_best_performance_for_each_budget()
-        pass
-
-    def eval(
-        self, x: Iterable, asscalar: bool = False
-    ) -> Union[np.ndarray, torch.Tensor, float]:
-        x = self.preprocess(x)
-        return self.eval(x, asscalar=asscalar)

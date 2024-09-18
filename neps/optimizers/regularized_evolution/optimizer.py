@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import math
 import os
 import random
@@ -10,7 +8,7 @@ from typing_extensions import override
 import numpy as np
 import yaml
 
-from neps.state.optimizer import BudgetInfo, OptimizationState
+from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 
 from neps.search_spaces.search_space import SearchSpace
@@ -68,7 +66,7 @@ class RegularizedEvolution(BaseOptimizer):
         self.population = [
             (x, y)
             for x, y in zip(
-                train_x[-self.population_size :], train_y[-self.population_size :]
+                train_x[-self.population_size:], train_y[-self.population_size:]
             )
         ]
         self.pending_evaluations = [el for el in pending_evaluations.values()]
@@ -85,12 +83,13 @@ class RegularizedEvolution(BaseOptimizer):
                         for _ in range(cur_population_size * 2)
                     ]
                     if self.assisted_zero_cost_proxy is not None:
-                        zero_cost_proxy_values = self.assisted_zero_cost_proxy(x=configs)  # type:  ignore[misc]
+                        zero_cost_proxy_values = self.assisted_zero_cost_proxy(
+                            x=configs)  # type:  ignore[misc]
                     else:
                         raise Exception("Zero cost proxy function is not defined!")
                     indices = np.argsort(zero_cost_proxy_values)[-cur_population_size:][
-                        ::-1
-                    ]
+                              ::-1
+                              ]
                     for idx, config_idx in enumerate(indices):
                         filename = str(idx).zfill(
                             int(math.log10(cur_population_size)) + 1

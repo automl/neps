@@ -4,9 +4,7 @@ import math
 from typing import TYPE_CHECKING, Any, Literal, Mapping
 
 import torch
-from botorch.acquisition import (
-    LinearMCObjective,
-)
+from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
 from botorch.models.transforms.outcome import ChainedOutcomeTransform, Log, Standardize

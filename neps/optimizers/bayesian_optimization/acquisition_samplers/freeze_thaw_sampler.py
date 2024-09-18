@@ -1,40 +1,51 @@
-# type: ignore
 from __future__ import annotations
 
+from typing import Callable
 import warnings
-from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 
-from ....search_spaces.search_space import SearchSpace
-from ...multi_fidelity.utils import MFObservedData
-from .base_acq_sampler import AcquisitionSampler
+from neps.search_spaces.search_space import SearchSpace
+from neps.optimizers.multi_fidelity.utils import MFObservedData
+from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    AcquisitionSampler,
+)
+
+
+SAMPLES_TO_DRAW = (
+    100  # number of random samples to draw for optimizing acquisition function
+)
 
 
 class FreezeThawSampler(AcquisitionSampler):
-
-    SAMPLES_TO_DRAW = 100  # number of random samples to draw at lowest fidelity
-
-    def __init__(self, **kwargs):
+    def __init__(self, samples_to_draw: int | None = None, **kwargs):
         super().__init__(**kwargs)
         self.observations = None
         self.b_step = None
         self.n = None
         self.pipeline_space = None
         # args to manage tabular spaces/grid
-        self.is_tabular = False
+        self.is_tabular = False  # flag is set by `set_state()`
         self.sample_full_table = None
+        self.samples_to_draw = (
+            samples_to_draw if samples_to_draw is not None else SAMPLES_TO_DRAW
+        )
         self.set_sample_full_tabular(True)  # sets flag that samples full table
 
-    def set_sample_full_tabular(self, flag: bool=False):
+    def set_sample_full_tabular(self, flag: bool = False):
         if self.is_tabular:
             self.sample_full_table = flag
 
     def _sample_new(
-        self, index_from: int, n: int = None, ignore_fidelity: bool = False
+        self,
+        index_from: int,
+        n: int | None = None,
+        ignore_fidelity: bool = False,
     ) -> pd.Series:
-        n = n if n is not None else self.SAMPLES_TO_DRAW
+        n = n if n is not None else self.samples_to_draw
+        assert self.pipeline_space is not None
         new_configs = [
             self.pipeline_space.sample(
                 patience=self.patience, user_priors=False, ignore_fidelity=ignore_fidelity
@@ -49,14 +60,17 @@ class FreezeThawSampler(AcquisitionSampler):
     def _sample_new_unique(
         self,
         index_from: int,
-        n: int = None,
+        n: int | None = None,
         patience: int = 10,
         ignore_fidelity: bool = False,
     ) -> pd.Series:
-        n = n if n is not None else self.SAMPLES_TO_DRAW
+        n = n if n is not None else self.samples_to_draw
         assert (
             patience > 0 and n > 0
-        ), "Patience and SAMPLES_TO_DRAW must be larger than 0"
+        ), "Patience and `samples_to_draw` must be larger than 0"
+
+        assert self.observations is not None
+        assert self.pipeline_space is not None
 
         existing_configs = self.observations.all_configs_list()
         new_configs = []
@@ -101,32 +115,23 @@ class FreezeThawSampler(AcquisitionSampler):
 
     def sample(
         self,
-        acquisition_function=None,
-        n: int = None,
-        set_new_sample_fidelity: int | float = None,
-    ) -> list():
+        acquisition_function: Callable | None = None,
+        n: int | None = None,
+        set_new_sample_fidelity: int | float | None = None,
+    ) -> pd.DataFrame:
         """Samples a new set and returns the total set of observed + new configs."""
+        assert self.observations is not None
+        assert self.pipeline_space is not None
+
         partial_configs = self.observations.get_partial_configs_at_max_seen()
-        new_configs = self._sample_new(
-            index_from=self.observations.next_config_id(), n=n, ignore_fidelity=False
-        )
 
-        def __sample_single_new_tabular(index: int):
-            """
-            A function to use in a list comprehension to slightly speed up
-            the sampling process when self.SAMPLE_TO_DRAW is large
-            """
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=False
-            )
-            config["id"].set_value(_new_configs[index])
-            config.fidelity.set_value(set_new_sample_fidelity)
-            return config
-
+        _n = n if n is not None else self.samples_to_draw
         if self.is_tabular:
-            _n = n if n is not None else self.SAMPLES_TO_DRAW
+            assert self.pipeline_space.custom_grid_table is not None
+            # handles tabular data such that the entire unseen set of configs from the
+            # table is considered to be the new set of candidates
             _partial_ids = {conf["id"].value for conf in partial_configs}
-            _all_ids = set(self.pipeline_space.custom_grid_table.index.values)
+            _all_ids = set(list(self.pipeline_space.custom_grid_table.keys()))
 
             # accounting for unseen configs only, samples remaining table if flag is set
             max_n = len(_all_ids) + 1 if self.sample_full_table else _n
@@ -135,48 +140,63 @@ class FreezeThawSampler(AcquisitionSampler):
             _new_configs = np.random.choice(
                 list(_all_ids - _partial_ids), size=_n, replace=False
             )
-            new_configs = [__sample_single_new_tabular(i) for i in range(_n)]
+            placeholder_config = self.pipeline_space.sample(
+                patience=self.patience, user_priors=False, ignore_fidelity=False
+            )
+            _configs = [placeholder_config.clone() for _id in _new_configs]
+            for _i, val in enumerate(_new_configs):
+                _configs[_i]["id"].set_value(val)
+
             new_configs = pd.Series(
-                new_configs,
+                _configs,
                 index=np.arange(
-                    len(partial_configs), len(partial_configs) + len(new_configs)
+                    len(partial_configs), len(partial_configs) + len(_new_configs)
                 ),
             )
+        else:
+            # handles sampling new configurations for continuous spaces
+            new_configs = self._sample_new(
+                index_from=self.observations.next_config_id(), n=_n, ignore_fidelity=False
+            )
+            # Continuous benchmarks need to deepcopy individual configs here,
+            # because in contrast to tabular benchmarks
+            # they are not reset in every sampling step
 
-        elif set_new_sample_fidelity is not None:
-            for config in new_configs:
-                config.fidelity.set_value(set_new_sample_fidelity)
+            # TODO: I do not know what the f p_config_ is meant to be so I don't know
+            # if we have a specific clone method or not...
+            partial_configs = pd.Series(
+                [deepcopy(p_config_) for idx, p_config_ in partial_configs.items()],
+                index=partial_configs.index,
+            )
 
-        # Deep copy configs for fidelity updates
-        partial_configs_list = []
-        index_list = []
-        for idx, config in partial_configs.items():
-            _config = config.clone()
-            partial_configs_list.append(_config)
-            index_list.append(idx)
+        # Updating fidelity values
+        new_fid = (
+            set_new_sample_fidelity
+            if set_new_sample_fidelity is not None
+            else self.pipeline_space.fidelity.lower
+        )
+        for config in new_configs:
+            config.update_hp_values({config.fidelity_name: new_fid})
 
-        # We build a new series of partial configs to avoid
-        # incrementing fidelities multiple times due to pass-by-reference
-        partial_configs = pd.Series(partial_configs_list, index=index_list)
+        configs = pd.concat([deepcopy(partial_configs), new_configs])
 
-        configs = pd.concat([partial_configs, new_configs])
-
-        return configs
+        return configs  # type: ignore
 
     def set_state(
         self,
         pipeline_space: SearchSpace,
         observations: MFObservedData,
         b_step: int,
-        n: int = None,
-    ):
+        n: int | None = None,
+    ) -> None:
         # overload to select incumbent differently through observations
         self.pipeline_space = pipeline_space
         self.observations = observations
         self.b_step = b_step
-        self.n = n if n is not None else self.SAMPLES_TO_DRAW
+        self.n = n if n is not None else self.samples_to_draw
         if (
             hasattr(self.pipeline_space, "custom_grid_table")
             and self.pipeline_space.custom_grid_table is not None
         ):
             self.is_tabular = True
+            self.set_sample_full_tabular(True)

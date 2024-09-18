@@ -22,8 +22,9 @@ and [`crossover()`][neps.search_spaces.NumericalParameter.crossover] operations.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Mapping, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
 from typing_extensions import Self, override
 
 import numpy as np

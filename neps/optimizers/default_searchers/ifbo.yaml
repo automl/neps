@@ -1,0 +1,9 @@
+strategy: ifbo
+surrogate_model: ftpfn
+surrogate_model_args:
+  version: "0.0.1"
+acquisition: MFPI-random
+acquisition_sampler: freeze-thaw
+acquisition_sampler_args:
+  samples_to_draw: 250
+model_policy: PFNSurrogate

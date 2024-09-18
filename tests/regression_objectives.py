@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 import warnings
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 import numpy as np
-from typing_extensions import Literal
 
 import neps
 from neps.search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
