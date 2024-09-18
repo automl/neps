@@ -7,9 +7,8 @@ from collections.abc import Mapping
 from functools import reduce
 from typing import TYPE_CHECKING, Any, TypeVar
 
-import gpytorch
-import gpytorch.constraints
 import torch
+import gpytorch.constraints
 from botorch.acquisition.analytic import SingleTaskGP
 from botorch.models.gp_regression import (
     get_covar_module_with_dim_scaled_prior,
@@ -18,7 +17,8 @@ from botorch.models.gp_regression_mixed import CategoricalKernel, OutcomeTransfo
 from botorch.models.transforms.outcome import Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch.kernels import ScaleKernel
-from torch._dynamo.utils import product
+from botorch.optim import optimize_acqf, optimize_acqf_mixed
+from itertools import product
 
 from neps.search_spaces.encoding import (
     CategoricalToIntegerTransformer,
