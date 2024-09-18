@@ -53,7 +53,7 @@ def load_checkpoint(
     if not checkpoint_path.exists():
         return None
 
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=True)
 
     if model is not None and "model_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -141,7 +141,7 @@ def load_lightning_checkpoint(
 
     assert len(ckpt_files) == 1
     checkpoint_path = ckpt_files[0]
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=True)
     return checkpoint_path, checkpoint
 
 

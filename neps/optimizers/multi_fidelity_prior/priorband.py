@@ -296,8 +296,6 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         initial_design_size: int | None = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
-        domain_se_kernel: str | None = None,
-        hp_kernels: list | None = None,
         surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
@@ -339,8 +337,6 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
 
         bo_args = {
             "surrogate_model": surrogate_model,
-            "domain_se_kernel": domain_se_kernel,
-            "hp_kernels": hp_kernels,
             "surrogate_model_args": surrogate_model_args,
             "acquisition": acquisition,
             "log_prior_weighted": log_prior_weighted,

@@ -8,7 +8,7 @@ sample_default_first: false
 sample_default_at_target: false
 
 # arguments for model
-surrogate_model: gp  # or {"gp_hierarchy"}
+surrogate_model: gp
 acquisition: EI  # or {"LogEI", "AEI"}
 log_prior_weighted: false
 acquisition_sampler: random  # or {"mutation", "evolution"}

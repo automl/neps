@@ -58,11 +58,21 @@ def _download_workaround_for_ifbo_issue_10(path: Path | None, version: str) -> P
     return target_path
 
 
+def _cast_tensor_shapes(x: torch.Tensor) -> torch.Tensor:
+    if len(x.shape) == 3 and x.shape[1] == 1:
+        return x
+    if len(x.shape) == 2:
+        return x.reshape(x.shape[0], 1, x.shape[1])
+    if len(x.shape) == 1:
+        return x.reshape(x.shape[0], 1)
+    raise ValueError(f"Shape not recognized: {x.shape}")
+
+
 _CACHED_FTPFN_MODEL: dict[tuple[str, str], FTPFN] = {}
 
 
-class FTPFNSurrogate:
-    """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
+class FTPFNModel:
+    """Wrapper around the IfBO model."""
 
     def __init__(
         self,
@@ -85,57 +95,64 @@ class FTPFNSurrogate:
             _CACHED_FTPFN_MODEL[key] = ftpfn
 
         self.ftpfn = ftpfn
-        self.target_path = self.ftpfn.target_path
-        self.version = self.ftpfn.version
-        self.train_x: torch.Tensor | None = None
-        self.train_y: torch.Tensor | None = None
+        self.device = self.ftpfn.device
 
-    @property
-    def device(self):
-        return self.ftpfn.device
-
-    def _get_logits(self, test_x: torch.Tensor) -> torch.Tensor:
-        assert self.train_x is not None, "Train data is not set."
-        assert self.train_y is not None, "Train data is not set."
+    def _get_logits(
+        self, train_x: torch.Tensor, train_y: torch.Tensor, test_x: torch.Tensor
+    ) -> torch.Tensor:
         return self.ftpfn.model(
-            self._cast_tensor_shapes(self.train_x),
-            self._cast_tensor_shapes(self.train_y),
-            self._cast_tensor_shapes(test_x),
+            _cast_tensor_shapes(train_x),
+            _cast_tensor_shapes(train_y),
+            _cast_tensor_shapes(test_x),
         )
 
-    def _cast_tensor_shapes(self, x: torch.Tensor) -> torch.Tensor:
-        if len(x.shape) == 3 and x.shape[1] == 1:
-            return x
-        if len(x.shape) == 2:
-            return x.reshape(x.shape[0], 1, x.shape[1])
-        if len(x.shape) == 1:
-            return x.reshape(x.shape[0], 1)
-        raise ValueError(f"Shape not recognized: {x.shape}")
-
     @torch.no_grad()
-    def get_mean_performance(self, test_x: torch.Tensor) -> torch.Tensor:
-        logits = self._get_logits(test_x).squeeze()
+    def get_mean_performance(
+        self,
+        train_x: torch.Tensor,
+        train_y: torch.Tensor,
+        test_x: torch.Tensor,
+    ) -> torch.Tensor:
+        logits = self._get_logits(train_x, train_y, test_x).squeeze()
         return self.ftpfn.model.criterion.mean(logits)
 
     @torch.no_grad()
-    def get_pi(self, test_x: torch.Tensor, y_best: torch.Tensor) -> torch.Tensor:
-        logits = self._get_logits(test_x)
+    def get_pi(
+        self,
+        train_x: torch.Tensor,
+        train_y: torch.Tensor,
+        test_x: torch.Tensor,
+        # TODO: just calculate from train_y?
+        y_best: torch.Tensor,
+    ) -> torch.Tensor:
+        logits = self._get_logits(train_x, train_y, test_x)
         return self.ftpfn.model.criterion.pi(
-            logits.squeeze(), best_f=(1 - y_best).unsqueeze(1)
+            logits.squeeze(),
+            best_f=(1 - y_best).unsqueeze(1),
         )
 
     @torch.no_grad()
-    def get_ei(self, test_x: torch.Tensor, y_best: torch.Tensor) -> torch.Tensor:
-        logits = self._get_logits(test_x)
+    def get_ei(
+        self,
+        train_x: torch.Tensor,
+        train_y: torch.Tensor,
+        test_x: torch.Tensor,
+        y_best: torch.Tensor,
+    ) -> torch.Tensor:
+        logits = self._get_logits(train_x, train_y, test_x)
         return self.ftpfn.model.criterion.ei(
             logits.squeeze(), best_f=(1 - y_best).unsqueeze(1)
         )
 
     @torch.no_grad()
     def get_lcb(
-        self, test_x: torch.Tensor, beta: float = (1 - 0.682) / 2
+        self,
+        train_x: torch.Tensor,
+        train_y: torch.Tensor,
+        test_x: torch.Tensor,
+        beta: float = (1 - 0.682) / 2,
     ) -> torch.Tensor:
-        logits = self._get_logits(test_x)
+        logits = self._get_logits(train_x, train_y, test_x)
         return self.ftpfn.model.criterion.ucb(
             logits=logits,
             best_f=None,
@@ -145,9 +162,13 @@ class FTPFNSurrogate:
 
     @torch.no_grad()
     def get_ucb(
-        self, test_x: torch.Tensor, beta: float = (1 - 0.682) / 2
+        self,
+        train_x: torch.Tensor,
+        train_y: torch.Tensor,
+        test_x: torch.Tensor,
+        beta: float = (1 - 0.682) / 2,
     ) -> torch.Tensor:
-        logits = self._get_logits(test_x)
+        logits = self._get_logits(train_x, train_y, test_x)
         return self.ftpfn.model.criterion.ucb(
             logits=logits,
             best_f=None,

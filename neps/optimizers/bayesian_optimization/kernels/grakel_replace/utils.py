@@ -37,7 +37,7 @@ def calculate_kernel_matrix_as_tensor(
         K = se_kernel.forward(X, X) if se_kernel is not None else X @ X.t()
         if normalize:
             K_diag = torch.sqrt(torch.diag(K))
-            K_diag_outer = torch.ger(K_diag, K_diag)
+            K_diag_outer = torch.outer(K_diag, K_diag)
             return K / K_diag_outer
     else:
         assert Y.shape[1] == X.shape[1], (
@@ -51,7 +51,7 @@ def calculate_kernel_matrix_as_tensor(
             Kyy = calculate_kernel_matrix_as_tensor(
                 Y, Y, oa=oa, se_kernel=se_kernel, normalize=False
             )
-            K_diag_outer = torch.ger(
+            K_diag_outer = torch.outer(
                 torch.sqrt(torch.diag(Kyy)), torch.sqrt(torch.diag(Kxx))
             )
             return K / K_diag_outer

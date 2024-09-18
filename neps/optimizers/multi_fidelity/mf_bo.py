@@ -6,7 +6,9 @@ from copy import deepcopy
 import torch
 
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
+from neps.optimizers.bayesian_optimization.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.multi_fidelity.utils import (
+    MFObservedData,
     get_tokenized_data,
     get_training_data_for_freeze_thaw,
 )
@@ -183,66 +185,30 @@ class MFBOBase:
         return config
 
 
-class FreezeThawModel:
-    """Designed to work with model search in unit step multi-fidelity algorithms."""
+class PFNSurrogate:
+    """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
 
     def __init__(
         self,
-        pipeline_space,
+        pipeline_space: SearchSpace,
         surrogate_model: str = "ftpfn",
         surrogate_model_args: dict | None = None,
         step_size: int = 1,
     ):
-        self.observed_configs = None
+        self.train_x = None
+        self.train_y = None
+        self.observed_configs: MFObservedData | None = None
         self.pipeline_space = pipeline_space
         self.surrogate_model_name = surrogate_model
         self.surrogate_model_args = (
             surrogate_model_args if surrogate_model_args is not None else {}
         )
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            self.surrogate_model_name,
-            name="surrogate model",
-            kwargs=self.surrogate_model_args,
-        )
+
+        # TODO: Lift this into the responsility of the caller of this function.
+        self.surrogate_model = FTPFNSurrogate(**surrogate_model_args)
         self.step_size = step_size
 
-    def _fantasize_pending(self, train_x, train_y, pending_x):
-        raise NotImplementedError("Fantasization not implemented yet!")
-
-    def _fit(self, train_x, train_y, train_lcs):
-        raise NotImplementedError("Predict not implemented yet!")
-
-    def _predict(self, test_x) -> torch.Tensor:
-        raise NotImplementedError("Predict not implemented yet!")
-
-    def set_state(
-        self,
-        pipeline_space,
-        surrogate_model_args,
-        **kwargs,  # pylint: disable=unused-argument
-    ):
-        self.pipeline_space = pipeline_space
-        self.surrogate_model_args = (
-            surrogate_model_args if surrogate_model_args is not None else {}
-        )
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            self.surrogate_model_name,
-            name="surrogate model",
-            kwargs=self.surrogate_model_args,
-        )
-
-
-class PFNSurrogate(FreezeThawModel):
-    """Special class to deal with PFN surrogate model and freeze-thaw acquisition."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.train_x = None
-        self.train_y = None
-
-    def update_model(self):
+    def update_model(self) -> None:
         # tokenize the observations
         idxs, steps, configs, performance = get_training_data_for_freeze_thaw(
             self.observed_configs.df.loc[self.observed_configs.completed_runs_index],
@@ -295,7 +261,7 @@ class PFNSurrogate(FreezeThawModel):
             # refit the model, on completed runs + fantasized pending runs
             self._fit(train_x, train_y)
 
-    def _fit(self, train_x: torch.Tensor, train_y: torch.Tensor):  # pylint: disable=unused-argument
+    def _fit(self, train_x: torch.Tensor, train_y: torch.Tensor) -> None:
         # no training required,, only preprocessing the training data as context during inference
         assert self.surrogate_model is not None, "Surrogate model not set!"
         self.surrogate_model.train_x = train_x
@@ -306,10 +272,12 @@ class PFNSurrogate(FreezeThawModel):
             self.surrogate_model.train_x is not None
             and self.surrogate_model.train_y is not None
         ), "Model not trained yet!"
-        if self.surrogate_model_name == "ftpfn":
-            mean = self.surrogate_model.get_mean_performance(test_x)
-            if mean.is_cuda:
-                mean = mean.cpu()
-            return mean
-        # check neps/optimizers/bayesian_optimization/models/__init__.py for options
-        raise ValueError(f"Surrogate model {self.surrogate_model_name} not supported!")
+        return self.surrogate_model.get_mean_performance(test_x)
+
+    def set_state(
+        self,
+        pipeline_space,
+        surrogate_model_args,
+        **kwargs,  # pylint: disable=unused-argument
+    ):
+        self.pipeline_space = pipeline_space

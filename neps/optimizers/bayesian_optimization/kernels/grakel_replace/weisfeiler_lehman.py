@@ -620,7 +620,7 @@ class WeisfeilerLehman(Kernel):
         if self.normalize:
             X_diag, Y_diag = self.diagonal()
             if self.as_tensor:
-                div_ = torch.sqrt(torch.ger(Y_diag, X_diag))
+                div_ = torch.sqrt(torch.outer(Y_diag, X_diag))
                 K /= div_
             else:
                 old_settings = np.seterr(divide="ignore")

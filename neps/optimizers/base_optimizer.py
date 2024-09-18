@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any
 
-from neps.state.trial import Trial
+from neps.state.trial import Report, Trial
 from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
 from neps.utils.types import ERROR, ConfigResult, RawConfig, ResultDict
 
@@ -144,16 +144,14 @@ class BaseOptimizer:
         # state["key"] = "value"
         return state
 
-    def get_loss(
-        self, result: ERROR | ResultDict | float | Trial.Report
-    ) -> float | ERROR:
+    def get_loss(self, result: ERROR | ResultDict | float | Report) -> float | ERROR:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes.
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do this
         # `_get_loss` at every call. We can also then just use `None` instead of the string `"error"`
-        if isinstance(result, Trial.Report):
+        if isinstance(result, Report):
             return result.loss if result.loss is not None else "error"
 
         return _get_loss(
@@ -162,16 +160,14 @@ class BaseOptimizer:
             ignore_errors=self.ignore_errors,
         )
 
-    def get_cost(
-        self, result: ERROR | ResultDict | float | Trial.Report
-    ) -> float | ERROR:
+    def get_cost(self, result: ERROR | ResultDict | float | Report) -> float | ERROR:
         """Calls result.utils.get_cost() and passes the error handling through.
         Please use self.get_cost() instead of get_cost() in all optimizer classes.
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do this
         # `_get_loss` at every call
-        if isinstance(result, Trial.Report):
+        if isinstance(result, Report):
             return result.loss if result.loss is not None else "error"
 
         return _get_cost(
@@ -181,7 +177,7 @@ class BaseOptimizer:
         )
 
     def get_learning_curve(
-        self, result: str | dict | float | Trial.Report
+        self, result: str | dict | float | Report
     ) -> list[float] | Any:
         """Calls result.utils.get_loss() and passes the error handling through.
         Please use self.get_loss() instead of get_loss() in all optimizer classes.
@@ -189,7 +185,7 @@ class BaseOptimizer:
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do this
         # `_get_loss` at every call
-        if isinstance(result, Trial.Report):
+        if isinstance(result, Report):
             return result.learning_curve
 
         return _get_learning_curve(

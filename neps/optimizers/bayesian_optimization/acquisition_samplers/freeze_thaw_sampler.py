@@ -120,7 +120,7 @@ class FreezeThawSampler(AcquisitionSampler):
         acquisition_function: Callable | None = None,
         n: int | None = None,
         set_new_sample_fidelity: int | float | None = None,
-    ) -> pd.DataFrame:
+    ) -> pd.Series:
         """Samples a new set and returns the total set of observed + new configs."""
         assert self.observations is not None
         assert self.pipeline_space is not None

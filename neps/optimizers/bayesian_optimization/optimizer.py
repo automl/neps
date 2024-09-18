@@ -180,7 +180,6 @@ class BayesianOptimization(BaseOptimizer):
         device: torch.device | None = None,
         encoder: TensorEncoder | None = None,
         treat_fidelity_as_hyperparameters: bool = False,
-        **kwargs: Any,  # TODO: Remove
     ):
         """Initialise the BO loop.
 
@@ -250,9 +249,9 @@ class BayesianOptimization(BaseOptimizer):
                 "Seed is not yet implemented for BayesianOptimization"
             )
 
-        n_trials_completed = len(trials)
+        n_trials_sampled = len(trials)
         space = self.pipeline_space
-        config_id = str(n_trials_completed + 1)
+        config_id = str(n_trials_sampled + 1)
 
         # Fill intitial design data if we don't have any...
         if self.initial_design_ is None:
@@ -278,8 +277,8 @@ class BayesianOptimization(BaseOptimizer):
             self.initial_design_.extend(configs)
 
         # If we havn't passed the intial design phase
-        if n_trials_completed < len(self.initial_design_):
-            config = self.initial_design_[n_trials_completed]
+        if n_trials_sampled < len(self.initial_design_):
+            config = self.initial_design_[n_trials_sampled]
             sample = SampledConfig(id=config_id, config=config, previous_config_id=None)
             return sample, optimizer_state
 
@@ -346,7 +345,7 @@ class BayesianOptimization(BaseOptimizer):
         # the probability of it being sampled from the prior.
         if self.prior:
             pibo_exp_term = _pibo_exp_term(
-                n_trials_completed,
+                n_trials_sampled,
                 self.encoder.ncols,
                 self.n_initial_design,
             )

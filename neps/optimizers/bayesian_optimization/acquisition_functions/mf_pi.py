@@ -125,10 +125,12 @@ class MFPI_Random(MFPI):
         surrogate_model: Any,
         observations: MFObservedData,
         b_step: int | float,
-        **kwargs,
-    ):
+        seed: int = 42,
+    ) -> None:
         # set RNG
-        self.rng = np.random.RandomState(seed=42)
+        self.rng = np.random.RandomState(seed=seed)
+
+        # TODO: wut is this?
         for _i in range(len(observations.completed_runs)):
             self.rng.uniform(-4, -1)
             self.rng.randint(1, 51)

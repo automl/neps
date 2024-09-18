@@ -2,9 +2,6 @@ import logging
 
 import neps
 from neps.optimizers.bayesian_optimization.kernels import GraphKernelMapping
-from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
-    ComprehensiveGPHierarchy,
-)
 
 pipeline_space_fidelity_priors = dict(
     val1=neps.FloatParameter(lower=-10, upper=10, default=1),
@@ -63,7 +60,7 @@ graph_kernels = [
     )
     for j, kernel in enumerate(graph_kernels)
 ]
-surrogate_model = ComprehensiveGPHierarchy
+surrogate_model =
 surrogate_model_args = {
     "graph_kernels": graph_kernels,
     "hp_kernels": [],

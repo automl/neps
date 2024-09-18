@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
+from typing_extensions import Self
 
 import numpy as np
 import pandas as pd
@@ -352,6 +353,50 @@ class MFObservedData:
     @property
     def token_ids(self) -> np.ndarray:
         return self.df.index.values
+
+    @classmethod
+    def from_trials(cls, trials: Mapping[str, Trial]) -> Self:
+        observed_configs = MFObservedData(
+            columns=["config", "perf", "learning_curves"],
+            index_names=["config_id", "budget_id"],
+        )
+
+        def _data(trial: Trial) -> Any:
+            # Considered pending
+            if report is None:
+                loss = np.nan
+                lc = [np.nan]
+            else:
+                loss = report.loss if report.loss is not None else "error"
+                lc = (
+                    report.learning_curve
+                    if report.learning_curve is not None
+                    else "error"
+                )
+
+            return [trial.config, loss, lc]
+
+        # previous optimization run exists and needs to be loaded
+        def index_data_split(
+            config_id: str, trial: Trial
+        ) -> tuple[tuple[int, int], list]:
+            _config_id, _budget_id = config_id.split("_")
+            index = int(_config_id), int(_budget_id)
+            return index, _data(trial)
+
+        if len(trials) > 0:
+            index_row = [
+                tuple(index_data_split(trial_id, trial))
+                for trial_id, trial in trials.items()
+            ]
+            indices, rows = zip(*index_row, strict=True)
+            observed_configs.add_data(data=list(rows), index=list(indices))
+
+        # an aesthetic choice more than a functional choice
+        observed_configs.df = observed_configs.df.sort_index(
+            level=self.observed_configs.df.index.names, inplace=True
+        )
+        return observed_configs
 
 
 if __name__ == "__main__":
