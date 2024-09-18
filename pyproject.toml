@@ -54,7 +54,7 @@ pandas = "^2"
 networkx = "^2.6.3"
 nltk = "^3.6.4"
 scipy = ">=1.13.1"
-torch = ">1.7.0,!=2.0.1, !=2.1.0"
+torch = ">=2.0.1"
 matplotlib = "^3"
 more-itertools = "*"
 portalocker = "^2"
@@ -64,6 +64,8 @@ tensorboard = "^2"
 typing-extensions = "*"
 torchvision = ">=0.8.0"
 ifbo = ">=0.3.10"
+botorch = ">=0.12"
+gpytorch = "1.13.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
@@ -79,13 +81,6 @@ mkdocstrings = { extras = ["python"], version = "*" }
 mkdocs-literate-nav = "*"
 mike = "*"
 black = "*"                                           # This allows mkdocstrings to format signatures in the docs
-
-
-[tool.poetry.group.experimental]
-optional = true
-
-[tool.poetry.group.experimental.dependencies]
-gpytorch = "1.8.0"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]
