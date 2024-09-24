@@ -102,16 +102,56 @@ class CategoricalToIntegerTransformer(TensorTransformer):
         return [self.choices[int(i)] for i in torch.round(x).tolist()]
 
 
+@dataclass
+class CategoricalToUnitNorm(TensorTransformer):
+    choices: Sequence[Any]
+
+    domain: Domain = field(init=False)
+    _integer_transformer: CategoricalToIntegerTransformer = field(init=False)
+
+    def __post_init__(self):
+        self._integer_transformer = CategoricalToIntegerTransformer(self.choices)
+
+    @override
+    def encode(
+        self,
+        x: Sequence[Any],
+        *,
+        out: torch.Tensor | None = None,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        integers = self._integer_transformer.encode(
+            x,
+            dtype=dtype if dtype is not None else torch.float64,
+            device=device,
+            out=out,
+        )
+        if out is not None:
+            return integers.div_(len(self.choices) - 1)
+
+        return integers / (len(self.choices) - 1)
+
+    @override
+    def decode(self, x: torch.Tensor) -> list[Any]:
+        x = torch.round(x * (len(self.choices) - 1)).type(torch.int64)
+        return self._integer_transformer.decode(x)
+
+
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
 # and `-0.5` as lower bound with `0.5` as upper bound.
 @dataclass
 class MinMaxNormalizer(TensorTransformer, Generic[V]):
     original_domain: Domain[V]
+    bins: int | None = None
 
     domain: Domain[float] = field(init=False)
 
     def __post_init__(self):
-        self.domain = UNIT_FLOAT_DOMAIN
+        if self.bins is None:
+            self.domain = UNIT_FLOAT_DOMAIN
+        else:
+            self.domain = Domain.float(0.0, 1.0, bins=self.bins)
 
     @override
     def encode(
@@ -128,7 +168,7 @@ class MinMaxNormalizer(TensorTransformer, Generic[V]):
         else:
             dtype = torch.float64 if dtype is None else dtype
 
-        values = torch.tensor(list(x), dtype=dtype, device=device)
+        values = torch.tensor(x, dtype=dtype, device=device)
         values = self.domain.cast(values, frm=self.original_domain)
         if out is None:
             return values
@@ -251,7 +291,10 @@ class TensorEncoder:
         return buffer
 
     def pack(
-        self, x: Sequence[Mapping[str, Any]], *, device: torch.device | None = None
+        self,
+        x: Sequence[Mapping[str, Any]],
+        *,
+        device: torch.device | None = None,
     ) -> TensorPack:
         return TensorPack(self.encode(x, device=device), self)
 
@@ -269,15 +312,27 @@ class TensorEncoder:
         ]
 
     @classmethod
-    def default(cls, parameters: Mapping[str, Parameter]) -> TensorEncoder:
+    def default(
+        cls,
+        parameters: Mapping[str, Parameter],
+        *,
+        custom_transformers: dict[str, TensorTransformer] | None = None,
+    ) -> TensorEncoder:
+        custom = custom_transformers or {}
         sorted_params = sorted(parameters.items())
         transformers: dict[str, TensorTransformer] = {}
         for name, hp in sorted_params:
-            if isinstance(hp, FloatParameter | IntegerParameter):
-                transformers[name] = MinMaxNormalizer(hp.domain)
-            else:
-                assert isinstance(hp, CategoricalParameter)
-                transformers[name] = CategoricalToIntegerTransformer(hp.choices)
+            if name in custom:
+                transformers[name] = custom[name]
+                continue
+
+            match hp:
+                case FloatParameter() | IntegerParameter():
+                    transformers[name] = MinMaxNormalizer(hp.domain)
+                case CategoricalParameter():
+                    transformers[name] = CategoricalToIntegerTransformer(hp.choices)
+                case _:
+                    raise ValueError(f"Unsupported parameter type: {type(hp)}")
 
         return TensorEncoder(transformers)
 

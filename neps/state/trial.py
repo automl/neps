@@ -132,7 +132,7 @@ class Trial:
     MetaData: ClassVar = MetaData
     NotReportedYetError: ClassVar = NotReportedYetError
 
-    config: dict[str, Any]
+    config: Mapping[str, Any]
     metadata: MetaData
     state: State
     report: Report | None

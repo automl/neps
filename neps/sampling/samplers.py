@@ -9,13 +9,16 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from typing_extensions import override
 
 import torch
 from more_itertools import all_equal
 
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
+
+if TYPE_CHECKING:
+    from neps.sampling.priors import UniformPrior
 
 
 class Sampler(Protocol):
@@ -53,18 +56,31 @@ class Sampler(Protocol):
         ...
 
     @classmethod
-    def sobol(cls, ndim: int, *, scramble: bool = True, seed: int | None = None) -> Sobol:
+    def sobol(cls, ndim: int, *, scramble: bool = True) -> Sobol:
         """Create a Sobol sampler.
 
         Args:
             ndim: The number of columns to sample.
             scramble: Whether to scramble the Sobol sequence.
-            seed: The seed for the Sobol sequence.
 
         Returns:
             A Sobol sampler.
         """
-        return Sobol(ndim=ndim, scramble=scramble, seed=seed)
+        return Sobol(ndim=ndim, scramble=scramble)
+
+    @classmethod
+    def uniform(cls, ndim: int) -> UniformPrior:
+        """Create a uniform sampler.
+
+        Args:
+            ndim: The number of columns to sample.
+
+        Returns:
+            A uniform sampler.
+        """
+        from neps.sampling.priors import UniformPrior
+
+        return UniformPrior(ndims=ndim)
 
 
 # Technically this could be a prior with a uniform distribution
@@ -74,9 +90,6 @@ class Sobol(Sampler):
 
     ndim: int
     """The number of dimensions to sample for."""
-
-    seed: int | None = None
-    """The seed for the Sobol sequence."""
 
     scramble: bool = True
     """Whether to scramble the Sobol sequence."""
@@ -113,7 +126,7 @@ class Sobol(Sampler):
         sobol = torch.quasirandom.SobolEngine(
             dimension=self.ndim,
             scramble=self.scramble,
-            seed=self.seed,
+            seed=seed,
         )
 
         out = torch.empty(_n, self.ncols, dtype=torch.float64, device=device)

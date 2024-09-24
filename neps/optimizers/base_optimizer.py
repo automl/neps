@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class SampledConfig:
     id: Trial.ID
     config: Mapping[str, Any]
-    previous_config_id: Trial.ID | None
+    previous_config_id: Trial.ID | None = None
 
 
 class BaseOptimizer:
@@ -76,7 +76,7 @@ class BaseOptimizer:
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
-    ) -> tuple[SampledConfig, dict[str, Any]]:
+    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
         """Sample a new configuration.
 
         !!! note
@@ -134,7 +134,7 @@ class BaseOptimizer:
         config, config_id, previous_config_id = self.get_config_and_ids()
         return SampledConfig(
             id=config_id, config=config, previous_config_id=previous_config_id
-        ), optimizer_state
+        )
 
     def update_state_post_evaluation(
         self, state: dict[str, Any], report: Trial.Report

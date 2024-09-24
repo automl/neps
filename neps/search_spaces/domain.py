@@ -179,6 +179,15 @@ class Domain(Generic[V]):
             bins=bins,
         )
 
+    def next_value(self, x: Tensor) -> Tensor:
+        """Get the next value for a tensor of values."""
+        if self.cardinality is None:
+            raise ValueError("Domain is non-finite, cannot get next value.")
+        cardinality_domain = Domain.indices(self.cardinality)
+        current_step = cardinality_domain.cast(x, frm=self)
+        bounded_next_step = (current_step + 1).clamp_max(self.cardinality - 1)
+        return self.cast(bounded_next_step, frm=cardinality_domain)
+
     @classmethod
     def indices(cls, n: int) -> Domain[int]:
         """Create a domain for a range of indices.
@@ -348,7 +357,7 @@ class Domain(Generic[V]):
             raise ValueError(
                 "The number of domains in `to` must match the number of tensors"
                 " if provided as a list."
-                f" Expected {ndims} from last dimension of {x.shape}, got {len(to)}."
+                f" Expected {ndims} from last dimension of {x.shape=}, got {len(to)}."
             )
 
         out = torch.empty_like(x)
@@ -356,6 +365,40 @@ class Domain(Generic[V]):
             out[..., i] = t.cast(x[..., i], frm=f)
 
         return out
+
+    def cast_one(self, x: float | int, frm: Domain) -> float | int:
+        """Cast a single value from the domain `frm` to this domain.
+
+        Args:
+            x: Value in the `frm` domain to cast to this domain.
+            frm: The domain to cast from.
+
+        Returns:
+            Value cast to this domain.
+        """
+        return self.cast(torch.tensor(x), frm=frm).item()
+
+    def from_unit_one(self, x: float) -> float | int:
+        """Transform a single value from the unit interval [0, 1] to this domain.
+
+        Args:
+            x: A value in the unit interval [0, 1] to convert.
+
+        Returns:
+            Value lifted into this domain.
+        """
+        return self.from_unit(torch.tensor(x)).item()
+
+    def to_unit_one(self, x: float | int) -> float:
+        """Transform a single value from this domain to the unit interval [0, 1].
+
+        Args:
+            x: Value in this domain to convert.
+
+        Returns:
+            Value normalized to the unit interval [0, 1].
+        """
+        return self.to_unit(torch.tensor(x)).item()
 
 
 UNIT_FLOAT_DOMAIN = Domain.float(0.0, 1.0)

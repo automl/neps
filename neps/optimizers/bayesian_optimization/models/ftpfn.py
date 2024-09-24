@@ -71,14 +71,14 @@ def _cast_tensor_shapes(x: torch.Tensor) -> torch.Tensor:
 _CACHED_FTPFN_MODEL: dict[tuple[str, str], FTPFN] = {}
 
 
-class FTPFNModel:
+class FTPFNSurrogate:
     """Wrapper around the IfBO model."""
 
     def __init__(
         self,
         target_path: Path | None = None,
         version: str = "0.0.1",
-        **kwargs: Any,
+        device: torch.device | None = None,
     ):
         if target_path is None:
             # TODO: We also probably want to link this to the actual root directory
@@ -91,7 +91,7 @@ class FTPFNModel:
         key = (str(target_path), version)
         ftpfn = _CACHED_FTPFN_MODEL.get(key)
         if ftpfn is None:
-            ftpfn = FTPFN(target_path=target_path, version=version)
+            ftpfn = FTPFN(target_path=target_path, version=version, device=device)
             _CACHED_FTPFN_MODEL[key] = ftpfn
 
         self.ftpfn = ftpfn

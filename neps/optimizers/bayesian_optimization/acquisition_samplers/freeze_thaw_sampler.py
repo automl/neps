@@ -59,62 +59,6 @@ class FreezeThawSampler(AcquisitionSampler):
             new_configs, index=range(index_from, index_from + len(new_configs))
         )
 
-    def _sample_new_unique(
-        self,
-        index_from: int,
-        n: int | None = None,
-        patience: int = 10,
-        ignore_fidelity: bool = False,
-    ) -> pd.Series:
-        n = n if n is not None else self.samples_to_draw
-        assert (
-            patience > 0 and n > 0
-        ), "Patience and `samples_to_draw` must be larger than 0"
-
-        assert self.observations is not None
-        assert self.pipeline_space is not None
-
-        existing_configs = self.observations.all_configs_list()
-        new_configs = []
-        for _ in range(n):
-            # Sample patience times for an unobserved configuration
-            for _ in range(patience):
-                _config = self.pipeline_space.sample(
-                    patience=self.patience,
-                    user_priors=False,
-                    ignore_fidelity=ignore_fidelity,
-                )
-                # # Convert continuous into tabular if the space is tabular
-                # _config = continuous_to_tabular(_config, self.tabular_space)
-                # Iterate over all observed configs
-                for config in existing_configs:
-                    if _config.is_equal_value(
-                        config, include_fidelity=not ignore_fidelity
-                    ):
-                        # if the sampled config already exists
-                        # do the next iteration of patience
-                        break
-                else:
-                    # If the new sample is not equal to any previous
-                    # then it's a new config
-                    new_config = _config
-                    break
-            else:
-                # TODO: use logger.warn here instead (karibbov)
-                warnings.warn(
-                    f"Couldn't find an unobserved configuration in {patience} "
-                    f"iterations. Using an observed config instead"
-                )
-                # patience budget exhausted use the last sampled config anyway
-                new_config = _config
-
-            # append the new config to the list
-            new_configs.append(new_config)
-
-        return pd.Series(
-            new_configs, index=range(index_from, index_from + len(new_configs))
-        )
-
     def sample(
         self,
         acquisition_function: Callable | None = None,

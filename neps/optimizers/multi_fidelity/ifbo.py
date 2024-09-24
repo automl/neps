@@ -1,70 +1,61 @@
-from __future__ import annotations
+from typing import Any, Mapping
 
-import warnings
-from typing import TYPE_CHECKING, Any, Mapping
-
+import math
 import numpy as np
+import torch
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.bayesian_optimization.acquisition_functions.mf_pi import MFPI_Random
-from neps.optimizers.bayesian_optimization.acquisition_samplers.freeze_thaw_sampler import (
-    FreezeThawSampler,
-)
-from neps.optimizers.multi_fidelity.mf_bo import PFNSurrogate
-from neps.optimizers.multi_fidelity.utils import MFObservedData
+from neps.optimizers.bayesian_optimization.models.ftpfn import FTPFNSurrogate
+from neps.optimizers.intial_design import make_initial_design
+from neps.sampling.samplers import Sampler
+from neps.search_spaces.domain import Domain
+from neps.search_spaces.encoding import CategoricalToUnitNorm, TensorEncoder
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.state.trial import Trial
-
-if TYPE_CHECKING:
-    from neps.state.optimizer import BudgetInfo
+from neps.state.optimizer import BudgetInfo
 
 
-def _adjust_fidelity_for_freeze_thaw_steps(
-    pipeline_space: SearchSpace,
-    step_size: int,
-) -> SearchSpace:
-    """Adjusts the fidelity range to be divisible by `step_size` for Freeze-Thaw."""
-    assert pipeline_space.fidelity is not None
-
-    # Check if the fidelity range is divided into equal sized steps by `step_size`
-    fid_range = pipeline_space.fidelity.upper - pipeline_space.fidelity.lower
-    remainder = fid_range % step_size
-    if remainder == 0:
-        return pipeline_space
-
-    # Adjust the fidelity lower bound to be divisible by `step_size` into equal steps
-    # Pushing the lower bound of the fidelity space by an offset to ensure equal-sized steps
-    offset = step_size - remainder
-    pipeline_space.fidelity.lower += offset
-
-    warnings.warn(
-        f"Adjusted fidelity lower bound to {pipeline_space.fidelity.lower} "
-        f"for equal-sized steps of {step_size}.",
-        UserWarning,
-        stacklevel=3,
-    )
-    return pipeline_space
+def _select_trials(trials: Mapping[str, Trial]) -> Mapping[str, Trial]:
+    return {
+        trial_id: trial
+        for trial_id, trial in trials.items()
+        if trial.state
+        not in (
+            Trial.State.FAILED,
+            Trial.State.CRASHED,
+            Trial.State.UNKNOWN,
+            Trial.State.CORRUPTED,
+        )
+    }
 
 
-# TODO: Maybe make this a part of searchspace functionality
-def get_budget_value(
-    space: SearchSpace,
-    step_size: int,
-    budget_level: int | float,
-) -> int | float:
-    assert space.fidelity is not None
-    match space.fidelity:
-        case IntegerParameter():
-            return int(step_size * budget_level + space.fidelity.lower)
-        case FloatParameter():
-            return step_size * budget_level + space.fidelity.lower
-        case _:
-            raise NotImplementedError(
-                f"Fidelity parameter: {space.fidelity}"
-                f"must be one of the types: "
-                f"[IntegerParameter, FloatParameter], but is type:"
-                f"{type(space.fidelity)}"
-            )
+def _remove_duplicates(x: torch.Tensor) -> torch.Tensor:
+    # Does a lexsort, same as if we sorted by (config_id, budget), where
+    # theyre are sorted according to increasing config_id and then increasing budget.
+    # x[i2] -> sorted by config id and budget
+    i1 = torch.argsort(x[:, 1])
+    i2 = i1[torch.argsort(x[i1][:, 0], stable=True)]
+    sorted_x = x[i2]
+
+    # Now that it's sorted, we essentially want to count the occurence of each id into counts
+    _, counts = torch.unique_consecutive(sorted_x[:, 0], return_counts=True)
+
+    # Now we can use these counts to get to the last occurence of each id
+    # The -1 is because we want to index from 0 but sum starts at 1.
+    ii = counts.cumsum(0) - 1
+    return sorted_x[ii]
+
+
+# NOTE: Ifbo was trained using 32 bit
+FTPFN_DTYPE = torch.float32
+
+
+def tokenize(
+    ids: torch.Tensor,
+    budgets: torch.Tensor,
+    configs: torch.Tensor,
+) -> torch.Tensor:
+    return torch.cat([ids.unsqueeze(1), budgets.unsqueeze(1), configs], dim=1)
 
 
 class IFBO(BaseOptimizer):
@@ -77,10 +68,11 @@ class IFBO(BaseOptimizer):
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
-        patience: int = 100,
         # arguments for model
         surrogate_model_args: dict | None = None,
-        initial_design_size: int = 1,
+        initial_design_size: int | None = None,
+        device: torch.device | None = None,
+        **kwargs: Any,  # TODO: Remove this
     ):
         """Initialise.
 
@@ -92,29 +84,66 @@ class IFBO(BaseOptimizer):
             promotion_policy: The type of promotion procedure to use
             sample_default_first: Whether to sample the default configuration first
             initial_design_size: Number of configurations to sample before starting optimization
+
+                If None, the number of configurations will be equal to the number of dimensions.
+
+            device: Device to use for the model
         """
-        assert self.pipeline_space.fidelity is not None
+        assert pipeline_space.fidelity is not None
+        assert isinstance(pipeline_space.fidelity_name, str)
 
-        # Adjust pipeline space fidelity steps to be equally spaced
-        pipeline_space = _adjust_fidelity_for_freeze_thaw_steps(pipeline_space, step_size)
-        super().__init__(pipeline_space=pipeline_space, patience=patience)
-
+        super().__init__(pipeline_space=pipeline_space)
         self.step_size = step_size
         self.use_priors = use_priors
-        self.surrogate_model_args = surrogate_model_args
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
+        self.surrogate_model_args = surrogate_model_args or {}
+        self.device = device
+        self.n_initial_design: int | None = initial_design_size
 
-        self._initial_design_size = initial_design_size
+        self._min_budget: int | float = pipeline_space.fidelity.lower
+        self._max_budget: int | float = pipeline_space.fidelity.upper
+        self._fidelity_name: str = pipeline_space.fidelity_name
+        self._ftpfn_encoder: TensorEncoder = TensorEncoder.default(
+            {
+                **self.pipeline_space.numerical,
+                **self.pipeline_space.categoricals,
+            },
+            custom_transformers={
+                cat_name: CategoricalToUnitNorm(choices=cat.choices)
+                for cat_name, cat in self.pipeline_space.categoricals.items()
+            },
+        )
+        self._initial_design: list[dict[str, Any]] | None = None
 
-        self.min_budget: int | float = self.pipeline_space.fidelity.lower
-        self.max_budget: int | float = self.pipeline_space.fidelity.upper
+        # TODO: We want it to be evenly divided by step size, so we need
+        # to add something to the minimum fidelity to ensure this.
 
-        fidelity_name = self.pipeline_space.fidelity_name
-        assert isinstance(fidelity_name, str)
-        self.fidelity_name: str = fidelity_name
+        # NOTE: The PFN model expects fidelities to be normalized between 0 and 1,
+        # hence, we make sure to do min-max normalization but include the number of bins.
+        # Also, it expects it specifically in column 1 so we can't include it with the configs
+        maybe_bins = math.ceil((self._max_budget - self._min_budget) / self.step_size) + 1
+        match pipeline_space.fidelity:
+            case IntegerParameter():
+                assert pipeline_space.fidelity.domain.cardinality is not None
+                bins = max(maybe_bins, pipeline_space.fidelity.domain.cardinality)
+            case FloatParameter():
+                bins = maybe_bins
+            case _:
+                raise NotImplementedError(
+                    f"Fidelity type {type(pipeline_space.fidelity)} not supported"
+                )
 
-        self._model_update_failed = False
+        # Domain of fidelity values, i.e. what is given in the configs that we
+        # give to the user to evaluate at.
+        self._fid_domain = pipeline_space.fidelity.domain
+
+        # Domain in which we should pass budgets to ifbo model
+        self._budget_domain = Domain.float(1 / self._max_budget, 1)
+
+        # Domain from which we assign an index to each budget
+        # Automatically takes care of rounding
+        self._budget_index_domain = Domain.indices(bins)
 
     def ask(
         self,
@@ -122,102 +151,187 @@ class IFBO(BaseOptimizer):
         budget_info: BudgetInfo,
         optimizer_state: dict[str, Any],
         seed: int | None = None,
-    ) -> tuple[SampledConfig, dict[str, Any]]:
+    ) -> SampledConfig:
         if seed is not None:
             raise NotImplementedError("Seed is not yet implemented for IFBO")
 
-        observed_configs = MFObservedData.from_trials(trials)
+        trials = _select_trials(trials)
 
-        in_initial_design_phase = (
-            len(observed_configs.completed_runs) < self._initial_design_size
-        )
-        if in_initial_design_phase:
-            # TODO: Copy BO setup where we can sample SOBOL or from Prior
-            self.logger.debug("Sampling from initial design...")
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=False
-            )
-            _config_dict = config.hp_values()
-            _config_dict.update({self.fidelity_name: self.min_budget})
-            config.set_hyperparameters_from_dict(_config_dict)
-            _config_id = observed_configs.next_config_id()
-            return SampledConfig(
-                config=config.hp_values(), id=_config_id, previous_config_id=None
-            ), optimizer_state
+        ids = [
+            int(trial.metadata.id.split("_", maxsplit=1)[0]) for trial in trials.values()
+        ]
+        n_unique_ids = len(set(ids))
+        new_id = max(ids) + 1 if len(ids) > 0 else 0
 
-        # TODO: Maybe just remove `PFNSurrogate` as a whole and use FTPFN directly...
-        #    this depends on whether we can actually create a proper surrogate model abstraction
-        # TODO: Really all of this should just be passed into an __init__ instead of 3 stage process
-        model_policy = PFNSurrogate(
-            pipeline_space=self.pipeline_space,
-            surrogate_model_args=self.surrogate_model_args,
-            step_size=self.step_size,
-        )
-        model_policy.observed_configs = observed_configs
-        model_policy.update_model()
-
-        # TODO: Replace with more efficient samplers we have from BO
-        # TODO: Just make this take in everything at __init__ instead of a 2 stage init
-        acquisition_sampler = FreezeThawSampler(
-            pipeline_space=self.pipeline_space, patience=self.patience
-        )
-        acquisition_sampler.set_state(
-            self.pipeline_space, observed_configs, self.step_size
-        )
-
-        samples = acquisition_sampler.sample(set_new_sample_fidelity=self.min_budget)
-
-        # TODO: See if we can get away from `set_state` style things
-        # and just instantiate it with what it needs
-        acquisition = MFPI_Random(
-            pipeline_space=self.pipeline_space, surrogate_model_name="ftpfn"
-        )
-        acquisition.set_state(
-            self.pipeline_space,
-            model_policy.surrogate_model,
-            observed_configs,
-            self.step_size,
-        )
-
-        # `_samples` should have new configs with fidelities set to as required
-        acq, _samples = acquisition.eval(x=samples, asscalar=True)
-        # NOTE: len(samples) need not be equal to len(_samples) as `samples` contain
-        # all (partials + new) configurations obtained from the sampler, but
-        # in `_samples`, configs are removed that have reached maximum epochs allowed
-
-        best_idx = acq.argmax()
-        _config_id = best_idx
-
-        # NOTE: `samples` and `_samples` should share the same index values, hence,
-        # avoid using `.iloc` and work with `.loc` on these pandas DataFrame/Series
-        config: SearchSpace = samples.loc[_config_id]
-        config = config.clone()
-
-        # IMPORTANT: setting the fidelity value appropriately
-        if best_idx > max(observed_configs.seen_config_ids):
-            next_fid_value = self.min_budget
-        else:
-            max_observed_fids = (
-                observed_configs.get_max_observed_fidelity_level_per_config()
-            )
-            best_configs_max_fid = max_observed_fids.loc[best_idx]
-            budget_value = get_budget_value(
+        # If we havn't passed the intial design phase
+        if self._initial_design is None:
+            self._initial_design = make_initial_design(
                 space=self.pipeline_space,
-                step_size=self.step_size,
-                budget_level=best_configs_max_fid,
+                encoder=self._ftpfn_encoder,
+                sample_default_first=self.sample_default_first,
+                sampler="sobol",
+                seed=seed,
+                sample_fidelity="min",
+                sample_size=(
+                    "ndim" if self.n_initial_design is None else self.n_initial_design
+                ),
             )
-            next_fid_value = budget_value + self.step_size
 
-        config.update_hp_values({self.fidelity_name: next_fid_value})
+        if n_unique_ids < len(self._initial_design):
+            config = self._initial_design[n_unique_ids]
+            return SampledConfig(id=f"{new_id}_0", config=config)
 
-        # Lastly, we need to generate config id for it.
-        budget_level = int(np.ceil((next_fid_value - self.min_budget) / self.step_size))
-        if _config_id in observed_configs.seen_config_ids:
-            config_id = f"{_config_id}_{budget_level}"
-            previous_config_id = f"{_config_id}_{budget_value - 1}"
+        # Otherwise, we proceed to surrogate phase
+        ftpfn = FTPFNSurrogate(
+            target_path=self.surrogate_model_args.get("target_path", None),
+            version=self.surrogate_model_args.get("version", "0.0.1"),
+            device=self.device,
+        )
+
+        # NOTE: `0` is reserved in PFN, we add an additional +1 to all ids
+        train_ids = torch.tensor(ids, dtype=FTPFN_DTYPE, device=self.device) + 1
+        train_configs = self._ftpfn_encoder.encode([t.config for t in trials.values()])
+
+        train_fidelities = [t.config[self._fidelity_name] for t in trials.values()]
+        train_budgets = self._budget_domain.cast(
+            torch.tensor(train_fidelities, device=self.device, dtype=FTPFN_DTYPE),
+            frm=self._fid_domain,
+        )
+        x_train = tokenize(ids=train_ids, budgets=train_budgets, configs=train_configs)
+        x_train = x_train.to(FTPFN_DTYPE)
+
+        # TODO: Document that it's on the user to ensure these are already all bounded
+        # We could possibly include some bounded transform to assert this.
+        minimize_ys = torch.tensor(
+            [
+                trial.report.loss
+                if trial.report is not None and trial.report.loss is not None
+                else np.nan
+                for trial in trials.values()
+            ],
+            device=self.device,
+            dtype=FTPFN_DTYPE,
+        )
+        if not all(0 <= y <= 1.0 for y in minimize_ys):
+            raise RuntimeError(
+                "ifBO requires that all loss values reported lie in the interval [0, 1]"
+                " but recieved loss value outside of that range!"
+                f"\n{minimize_ys}"
+            )
+        # Invert the ys
+        maximize_ys = 1 - minimize_ys
+        maximize_best_y = maximize_ys.max().item()
+        is_pending = minimize_ys.isnan()
+
+        maximize_ys[is_pending] = ftpfn.get_mean_performance(
+            train_x=x_train[~is_pending],
+            train_y=maximize_ys[~is_pending],
+            test_x=x_train[is_pending],
+        )
+
+        rng = np.random.RandomState(seed)
+        n_rand = 1_000  # TODO: parametrize
+
+        # TODO: Could also sample from a prior...
+        uniform = Sampler.uniform(ndim=self._ftpfn_encoder.ncols)
+
+        # We sample the horizon in terms of step numbers to take
+        lower_index = self._budget_index_domain.lower
+        upper_index = self._budget_index_domain.upper
+        # The plus 1 here is because we want to sample that at least one step
+        # should be taken.
+        horizon_index_increment = rng.randint(lower_index, upper_index) + 1
+
+        # We then normalize it to FTPFN normalized budget domain
+        horizon = self._budget_domain.cast_one(
+            horizon_index_increment,
+            frm=self._budget_index_domain,
+        )
+
+        # Now let's create the random configurations
+        rand_configs = uniform.sample(
+            n=n_rand,
+            to=self._ftpfn_encoder.domains,
+            seed=None,  # TODO
+            device=self.device,
+        ).to(FTPFN_DTYPE)
+
+        # We give them all the special 0 id, as well as set the budget accordinly
+        acq_new = tokenize(
+            ids=torch.zeros(n_rand, dtype=FTPFN_DTYPE, device=self.device),
+            budgets=torch.zeros(n_rand, dtype=FTPFN_DTYPE, device=self.device),
+            configs=rand_configs,
+        )
+
+        # Construct all our samples for acqusition:
+        # 1. Take all non-pending configs
+        acq_train = x_train[~is_pending].clone().detach()
+
+        # 2. We only want to include the configuration rows
+        #   that are at their highest budget,
+        #   i.e. don't include config_0_0 and config_0_1
+        acq_train = _remove_duplicates(acq_train)
+
+        # 3. Sub select all that are at a partial budget i.e. can evaluate further
+        #   Note, it's important to do this after the above
+        partial_eval_mask = acq_train[:, 1] < 1
+        acq_train = acq_train[partial_eval_mask]
+
+        # 4. Add in the new sampled configurations
+        acq_samples = torch.vstack([acq_train, acq_new])
+
+        # 5. Add on the horizon to the budget, and clamping to maximum
+        #     Note that we hold onto the intermediate unclamped budget for later
+        unclamped_budgets = acq_samples[:, 1] + horizon
+        acq_samples[:, 1] = torch.clamp(unclamped_budgets, max=1)
+
+        # Now get the PI of these samples
+        lu = 10 ** rng.uniform(-4, -1)
+        f_inc = maximize_best_y * (1 - lu)
+        pi_new_samples = ftpfn.get_pi(
+            train_x=x_train.to(FTPFN_DTYPE),
+            train_y=maximize_ys.to(FTPFN_DTYPE),
+            test_x=acq_samples.to(FTPFN_DTYPE),
+            y_best=torch.full(
+                size=(len(acq_samples),),
+                fill_value=f_inc,
+                dtype=FTPFN_DTYPE,
+            ),
+        )
+        best_ix = pi_new_samples.argmax()
+
+        # Extract out the row which had the best PI
+        best_id = int(acq_samples[best_ix, 0].round().item())
+        best_vector = acq_samples[best_ix, 2:].unsqueeze(0)
+        best_config = self._ftpfn_encoder.unpack(best_vector)[0]
+
+        if best_id == 0:
+            # A newly sampled configuration was deemed more promising
+            config_id = f"{new_id}_0"
+            best_config[self._fidelity_name] = self._min_budget
+            previous_config_id = None
+            return SampledConfig(config_id, best_config, previous_config_id)
+
         else:
-            config_id = f"{observed_configs.next_config_id()}_{budget_level}"
+            # To calculate the next step to take in fidelity space, we remove the horizon
+            previous_budget_of_acquired_config = unclamped_budgets[best_ix] - horizon
 
-        return SampledConfig(
-            config=config.hp_values(), id=config_id, previous_config_id=previous_config_id
-        ), optimizer_state
+            # Then we transform this:
+            # 1. Back to budget_index space
+            # 2. Increment it by one
+            # 3. Transform back to fidelity space
+            budget_ix = self._budget_index_domain.cast_one(
+                float(previous_budget_of_acquired_config), frm=self._budget_domain
+            )
+            budget_ix += 1
+            fid_value = self._fid_domain.cast_one(
+                budget_ix, frm=self._budget_index_domain
+            )
+
+            real_best_id = best_id - 1  # NOTE: Remove the +1 we added to all ids
+            best_config[self._fidelity_name] = fid_value
+
+            config_id = f"{real_best_id}_{budget_ix}"
+            previous_config_id = f"{real_best_id}_{budget_ix - 1}"
+
+            return SampledConfig(config_id, best_config, previous_config_id)

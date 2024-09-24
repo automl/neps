@@ -22,7 +22,8 @@ from neps.optimizers.bayesian_optimization.models.gp import (
     default_single_obj_gp,
     optimize_acq,
 )
-from neps.sampling import Prior, Sampler
+from neps.optimizers.intial_design import make_initial_design
+from neps.sampling import Prior
 from neps.search_spaces.encoding import TensorEncoder
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 
@@ -129,43 +130,6 @@ def _cost_used_budget_percentage(budget_info: BudgetInfo) -> float:
     raise ValueError("No cost budget provided!")
 
 
-# TODO: This needs to be moved to the search space class, however
-# to not break the current prior based APIs used elsewhere, we can
-# just manually create this here.
-# We use confidence here where `0` means no confidence and `1` means
-# absolute confidence. This gets translated in to std's and weights
-# accordingly in a `CenteredPrior`
-def _make_prior(
-    parameters: dict[str, CategoricalParameter | FloatParameter | IntegerParameter],
-) -> Prior:
-    _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
-
-    domains: dict[str, Domain] = {}
-    centers: dict[str, tuple[Any, float]] = {}
-    categoricals: set[str] = set()
-    for name, hp in parameters.items():
-        domains[name] = hp.domain  # type: ignore
-
-        if isinstance(hp, CategoricalParameter):
-            categoricals.add(name)
-
-        if hp.default is None:
-            continue
-
-        confidence_str = hp.default_confidence_choice
-        confidence_score = _mapping[confidence_str]
-        center = hp._default_index if isinstance(hp, CategoricalParameter) else hp.default
-
-        centers[name] = (center, confidence_score)
-
-    # Uses truncnorms for numerical and weighted choices categoricals
-    return Prior.make_centered(
-        domains=domains,
-        centers=centers,
-        categoricals=categoricals,
-    )
-
-
 class BayesianOptimization(BaseOptimizer):
     """Implements the basic BO loop."""
 
@@ -179,6 +143,7 @@ class BayesianOptimization(BaseOptimizer):
         sample_default_first: bool = False,
         device: torch.device | None = None,
         encoder: TensorEncoder | None = None,
+        seed: int | None = None,
         treat_fidelity_as_hyperparameters: bool = False,
     ):
         """Initialise the BO loop.
@@ -186,8 +151,7 @@ class BayesianOptimization(BaseOptimizer):
         Args:
             pipeline_space: Space in which to search
             initial_design_size: Number of samples used before using the surrogate model.
-                If None, it will take `int(log(N) ** 2)` samples where `N` is the number
-                of parameters in the search space.
+                If None, it will use the number of parameters in the search space.
             use_priors: Whether to use priors set on the hyperparameters during search.
             use_cost: Whether to consider reported "cost" from configurations in decision
                 making. If True, the optimizer will weigh potential candidates by how much
@@ -199,6 +163,7 @@ class BayesianOptimization(BaseOptimizer):
                     If using `cost`, cost must be provided in the reports of the trials.
 
             sample_default_first: Whether to sample the default configuration first.
+            seed: Seed to use for the random number generator of samplers.
             device: Device to use for the optimization.
             encoder: Encoder to use for encoding the configurations. If None, it will
                 will use the default encoder.
@@ -221,17 +186,11 @@ class BayesianOptimization(BaseOptimizer):
         if treat_fidelity_as_hyperparameters:
             params.update(pipeline_space.fidelities)
 
-        if initial_design_size is None:
-            # As we have fairly regularized GPs, who start with a more smooth landscape
-            # model, we don't need a high level of initial samples.
-            ndims = len(params)
-            initial_design_size = max(2, int(math.log(ndims) ** 2))
-        elif initial_design_size < 1:
-            raise ValueError("Initial_design_size to be at least 1")
-
         self.encoder = TensorEncoder.default(params) if encoder is None else encoder
+        self.prior = Prior.from_parameters(params) if use_priors is True else None
+        self.treat_fidelity_as_hyperparameters = treat_fidelity_as_hyperparameters
+        self.seed = seed
         self.use_cost = use_cost
-        self.prior = _make_prior(params) if use_priors is True else None
         self.device = device
         self.sample_default_first = sample_default_first
         self.n_initial_design = initial_design_size
@@ -243,44 +202,34 @@ class BayesianOptimization(BaseOptimizer):
         budget_info: BudgetInfo,
         optimizer_state: dict[str, Any],
         seed: int | None = None,
-    ) -> tuple[SampledConfig, dict[str, Any]]:
+    ) -> SampledConfig:
         if seed is not None:
             raise NotImplementedError(
                 "Seed is not yet implemented for BayesianOptimization"
             )
 
         n_trials_sampled = len(trials)
-        space = self.pipeline_space
         config_id = str(n_trials_sampled + 1)
 
-        # Fill intitial design data if we don't have any...
-        if self.initial_design_ is None:
-            self.initial_design_ = []
-
-            if self.sample_default_first:
-                config = space.sample_default_configuration()
-                self.initial_design_.append(config.hp_values())
-
-            sampler = (
-                self.prior if self.prior else Sampler.sobol(self.encoder.ncols, seed=seed)
-            )
-            n_samples = self.n_initial_design - len(self.initial_design_)
-
-            x = sampler.sample(
-                n_samples * 2,
-                to=self.encoder.domains,
-                seed=seed,
-                device=self.device,
-            )
-            uniq_x = torch.unique(x, dim=0)
-            configs = self.encoder.unpack(uniq_x[:n_samples])
-            self.initial_design_.extend(configs)
-
         # If we havn't passed the intial design phase
+        if self.initial_design_ is None:
+            self.initial_design_ = make_initial_design(
+                space=self.pipeline_space,
+                encoder=self.encoder,
+                sample_default_first=self.sample_default_first,
+                sampler=self.prior if self.prior is not None else "sobol",
+                seed=seed,
+                sample_size=(
+                    "ndim" if self.n_initial_design is None else self.n_initial_design
+                ),
+                sample_fidelity=(
+                    "max" if not self.treat_fidelity_as_hyperparameters else True
+                ),
+            )
+
         if n_trials_sampled < len(self.initial_design_):
             config = self.initial_design_[n_trials_sampled]
-            sample = SampledConfig(id=config_id, config=config, previous_config_id=None)
-            return sample, optimizer_state
+            return SampledConfig(id=config_id, config=config)
 
         # Now we actually do the BO loop, start by encoding the data
         # TODO: Lift this into runtime, let the optimizer advertise the encoding wants...
@@ -347,7 +296,7 @@ class BayesianOptimization(BaseOptimizer):
             pibo_exp_term = _pibo_exp_term(
                 n_trials_sampled,
                 self.encoder.ncols,
-                self.n_initial_design,
+                len(self.initial_design_),
             )
 
             # If the amount of weight derived from the pibo exponent becomes
@@ -398,5 +347,4 @@ class BayesianOptimization(BaseOptimizer):
         assert len(candidates) == 1, "Expected only one candidate!"
         config = self.encoder.unpack(candidates)[0]
 
-        sample = SampledConfig(id=config_id, config=config, previous_config_id=None)
-        return sample, optimizer_state
+        return SampledConfig(id=config_id, config=config)

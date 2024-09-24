@@ -22,10 +22,13 @@ from neps.sampling.distributions import (
     TruncatedNormal,
 )
 from neps.sampling.samplers import Sampler, WeightedSampler
+from neps.search_spaces import CategoricalParameter
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
+
+    from neps.search_spaces import FloatParameter, IntegerParameter
 
 
 class Prior(Sampler, Protocol):
@@ -103,7 +106,50 @@ class Prior(Sampler, Protocol):
         Args:
             ncols: The number of columns in the tensor to sample.
         """
-        return UniformPrior(ncols=ncols)
+        return UniformPrior(ndims=ncols)
+
+    @classmethod
+    def from_parameters(
+        cls,
+        parameters: dict[str, CategoricalParameter | FloatParameter | IntegerParameter],
+    ) -> Prior:
+        """Please refer to [`make_centered()`][neps.priors.Prior.make_centered]
+        for more details. This is a shortcut method.
+        """
+        # TODO: This needs to be moved to the search space class, however
+        # to not break the current prior based APIs used elsewhere, we can
+        # just manually create this here.
+        # We use confidence here where `0` means no confidence and `1` means
+        # absolute confidence. This gets translated in to std's and weights
+        # accordingly in a `CenteredPrior`
+        _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
+
+        domains: dict[str, Domain] = {}
+        centers: dict[str, tuple[Any, float]] = {}
+        categoricals: set[str] = set()
+        for name, hp in parameters.items():
+            domains[name] = hp.domain  # type: ignore
+
+            if isinstance(hp, CategoricalParameter):
+                categoricals.add(name)
+
+            if hp.default is None:
+                continue
+
+            confidence_str = hp.default_confidence_choice
+            confidence_score = _mapping[confidence_str]
+            center = (
+                hp._default_index if isinstance(hp, CategoricalParameter) else hp.default
+            )
+
+            centers[name] = (center, confidence_score)
+
+        # Uses truncnorms for numerical and weighted choices categoricals
+        return Prior.make_centered(
+            domains=domains,
+            centers=centers,
+            categoricals=categoricals,
+        )
 
     @classmethod
     def make_centered(
@@ -356,8 +402,13 @@ class UniformPrior(Prior):
     Uses a UnitUniform under the hood before converting to the value domain.
     """
 
-    ncols: int
+    ndims: int
     """The number of columns in the tensor to sample from."""
+
+    @property
+    @override
+    def ncols(self) -> int:
+        return self.ndims
 
     @override
     def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
@@ -378,9 +429,9 @@ class UniformPrior(Prior):
             raise NotImplementedError("Seeding is not yet implemented.")
 
         _n = (
-            torch.Size((n, self.ncols))
+            torch.Size((n, self.ndims))
             if isinstance(n, int)
-            else torch.Size((*n, self.ncols))
+            else torch.Size((*n, self.ndims))
         )
         samples = torch.rand(_n, device=device, dtype=torch.float64)
         return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to)

@@ -355,47 +355,55 @@ class MFObservedData:
         return self.df.index.values
 
     @classmethod
-    def from_trials(cls, trials: Mapping[str, Trial]) -> Self:
-        observed_configs = MFObservedData(
+    def from_trials(
+        cls,
+        trials: Mapping[str, Trial],
+        *,
+        # TODO: We should store dicts, not the SearchSpace object...
+        # Once done, we can remove this
+        space: SearchSpace,
+        on_error: Literal["ignore"] | float = "ignore",
+    ) -> Self:
+        observed_configs = cls(
             columns=["config", "perf", "learning_curves"],
             index_names=["config_id", "budget_id"],
         )
 
-        def _data(trial: Trial) -> Any:
-            # Considered pending
-            if report is None:
+        records: list[dict[str, Any]] = []
+        for trial_id, trial in trials.items():
+            _config_id, _budget_id = trial_id.split("_")
+
+            if trial.report is None:
                 loss = np.nan
                 lc = [np.nan]
-            else:
-                loss = report.loss if report.loss is not None else "error"
-                lc = (
-                    report.learning_curve
-                    if report.learning_curve is not None
-                    else "error"
-                )
+            elif trial.report.loss is None:
+                assert trial.report.err is not None
+                if on_error == "ignore":
+                    return None
 
-            return [trial.config, loss, lc]
+                loss = on_error
+                lc = [on_error]
+            elif trial.report.loss is not None:
+                loss = trial.report.loss
+                assert trial.report.learning_curve is not None
+                lc = trial.report.learning_curve
 
-        # previous optimization run exists and needs to be loaded
-        def index_data_split(
-            config_id: str, trial: Trial
-        ) -> tuple[tuple[int, int], list]:
-            _config_id, _budget_id = config_id.split("_")
-            index = int(_config_id), int(_budget_id)
-            return index, _data(trial)
+            records.append(
+                {
+                    "config_id": int(_config_id),
+                    "budget_id": int(_budget_id),
+                    # NOTE: Behavoiour around data in this requires that the dataframe stores
+                    # `SearchSpace` objects and not dictionaries
+                    "config": space.from_dict(trial.config),
+                    "perf": loss,
+                    "learning_curves": lc,
+                }
+            )
 
-        if len(trials) > 0:
-            index_row = [
-                tuple(index_data_split(trial_id, trial))
-                for trial_id, trial in trials.items()
-            ]
-            indices, rows = zip(*index_row, strict=True)
-            observed_configs.add_data(data=list(rows), index=list(indices))
-
-        # an aesthetic choice more than a functional choice
-        observed_configs.df = observed_configs.df.sort_index(
-            level=self.observed_configs.df.index.names, inplace=True
-        )
+        observed_configs.df = pd.DataFrame.from_records(
+            records,
+            index=["config_id", "budget_id"],
+        ).sort_index()
         return observed_configs
 
 
