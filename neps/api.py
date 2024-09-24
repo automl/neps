@@ -286,7 +286,7 @@ def _run_args(
             "asha",
             "regularized_evolution",
         ]
-        | BaseOptimizer, dict
+        | BaseOptimizer | dict
     ) = "default",
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:

@@ -9,7 +9,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-from neps.state.trial import Trial
 import argparse
 import logging
 import yaml
@@ -17,7 +16,26 @@ from pathlib import Path
 from typing import Optional, List
 import neps
 from neps.api import Default
-from neps.utils.run_args import *
+from neps.utils.run_args import (
+    RUN_ARGS,
+    RUN_PIPELINE,
+    ROOT_DIRECTORY,
+    POST_RUN_SUMMARY,
+    MAX_EVALUATIONS_PER_RUN,
+    MAX_EVALUATIONS_TOTAL,
+    MAX_COST_TOTAL,
+    PIPELINE_SPACE,
+    DEVELOPMENT_STAGE_ID,
+    TASK_ID,
+    SEARCHER,
+    SEARCHER_KWARGS,
+    IGNORE_ERROR,
+    LOSS_VALUE_ON_ERROR,
+    COST_VALUE_ON_ERROR,
+    CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED,
+    OVERWRITE_WORKING_DIRECTORY,
+    get_run_args_from_yaml,
+)
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.utils.run_args import load_and_return_object
 from neps.state.filebased import (
@@ -1143,8 +1161,9 @@ def main() -> None:
         "sample-config", help="Sample configurations from the existing NePS state."
     )
     parser_sample_config.add_argument(
-        "worker_id",
+        "--worker_id",
         type=str,
+        default="cli",
         help="The worker ID for which the configuration is being sampled.",
     )
     parser_sample_config.add_argument(
@@ -1165,15 +1184,16 @@ def main() -> None:
     )
     report_parser.add_argument("trial_id", type=str, help="ID of the trial to report")
     report_parser.add_argument(
-        "worker_id",
-        type=str,
-        help="The worker ID for which the configuration is being sampled.",
-    )
-    report_parser.add_argument(
         "reported_as",
         type=str,
         choices=["success", "failed", "crashed"],
         help="Outcome of the trial",
+    )
+    report_parser.add_argument(
+        "--worker_id",
+        type=str,
+        default="cli",
+        help="The worker ID for which the configuration is being sampled.",
     )
     report_parser.add_argument("--loss", type=float, help="Loss value of the trial")
     report_parser.add_argument(
@@ -1185,7 +1205,7 @@ def main() -> None:
     report_parser.add_argument(
         "--learning-curve",
         type=float,
-        nargs="*",
+        nargs="+",
         help="Learning curve as a list of floats (optional), provided like this "
         "--learning-curve 0.9 0.3 0.1",
     )
