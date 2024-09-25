@@ -1,4 +1,7 @@
-
+raise NotImplementedError(
+    "Support for graphs was temporarily removed, if you'd like to use a version"
+    " of NePS that supports graphs, please use version v0.12.2"
+)
 
 import logging
 

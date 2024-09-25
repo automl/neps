@@ -130,5 +130,5 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/user_priors_with_graphs",
     max_evaluations_total=15,
-    log_prior_weighted=True,
+    use_priors=True,
 )

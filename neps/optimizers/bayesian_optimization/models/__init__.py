@@ -1,9 +1,4 @@
 from neps.optimizers.bayesian_optimization.models.ftpfn import FTPFNSurrogate
+from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
 
-# TODO: Need the GP back here
-#  * What actually uses the GP
-SurrogateModelMapping = {
-    "ftpfn": FTPFNSurrogate,
-}
-
-__all__ = ["FTPFNSurrogate", "SurrogateModelMapping"]
+__all__ = ["FTPFNSurrogate", "make_default_single_obj_gp"]

@@ -50,7 +50,7 @@ def default_categorical_kernel(
     )
 
 
-def default_single_obj_gp(
+def make_default_single_obj_gp(
     x: TensorPack,
     y: torch.Tensor,
     *,

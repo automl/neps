@@ -19,7 +19,7 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
 )
 from neps.optimizers.bayesian_optimization.models.gp import (
-    default_single_obj_gp,
+    make_default_single_obj_gp,
     optimize_acq,
 )
 from neps.optimizers.intial_design import make_initial_design
@@ -28,10 +28,7 @@ from neps.search_spaces.encoding import TensorEncoder
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 
 if TYPE_CHECKING:
-    from neps.search_spaces import (
-        SearchSpace,
-    )
-    from neps.search_spaces.domain import Domain
+    from neps.search_spaces import SearchSpace
     from neps.search_spaces.hyperparameters.float import FloatParameter
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.state import BudgetInfo, Trial
@@ -144,7 +141,11 @@ class BayesianOptimization(BaseOptimizer):
         device: torch.device | None = None,
         encoder: TensorEncoder | None = None,
         seed: int | None = None,
-        treat_fidelity_as_hyperparameters: bool = False,
+        budget: Any | None = None,  # TODO: remove
+        surrogate_model: Any | None = None,  # TODO: remove
+        loss_value_on_error: Any | None = None,  # TODO: remove
+        cost_value_on_error: Any | None = None,  # TODO: remove
+        ignore_errors: Any | None = None,  # TODO: remove
     ):
         """Initialise the BO loop.
 
@@ -167,9 +168,6 @@ class BayesianOptimization(BaseOptimizer):
             device: Device to use for the optimization.
             encoder: Encoder to use for encoding the configurations. If None, it will
                 will use the default encoder.
-            treat_fidelity_as_hyperparameters: Whether to treat fidelities as
-                hyperparameters. If left as False, fidelities will be ignored
-                and configurations will always be sampled at the maximum fidelity.
 
         Raises:
             ValueError: if initial_design_size < 1
@@ -183,12 +181,8 @@ class BayesianOptimization(BaseOptimizer):
             **pipeline_space.numerical,
             **pipeline_space.categoricals,
         }
-        if treat_fidelity_as_hyperparameters:
-            params.update(pipeline_space.fidelities)
-
         self.encoder = TensorEncoder.default(params) if encoder is None else encoder
         self.prior = Prior.from_parameters(params) if use_priors is True else None
-        self.treat_fidelity_as_hyperparameters = treat_fidelity_as_hyperparameters
         self.seed = seed
         self.use_cost = use_cost
         self.device = device
@@ -222,9 +216,7 @@ class BayesianOptimization(BaseOptimizer):
                 sample_size=(
                     "ndim" if self.n_initial_design is None else self.n_initial_design
                 ),
-                sample_fidelity=(
-                    "max" if not self.treat_fidelity_as_hyperparameters else True
-                ),
+                sample_fidelity="max",
             )
 
         if n_trials_sampled < len(self.initial_design_):
@@ -233,10 +225,10 @@ class BayesianOptimization(BaseOptimizer):
 
         # Now we actually do the BO loop, start by encoding the data
         # TODO: Lift this into runtime, let the optimizer advertise the encoding wants...
-        x_configs: list[dict[str, Any]] = []
+        x_configs: list[Mapping[str, Any]] = []
         ys: list[float] = []
         costs: list[float] = []
-        pending: list[dict[str, Any]] = []
+        pending: list[Mapping[str, Any]] = []
         for trial in trials.values():
             if trial.state.pending():
                 pending.append(trial.config)
@@ -260,7 +252,7 @@ class BayesianOptimization(BaseOptimizer):
         y = _missing_y_strategy(y)
 
         # Now fit our model
-        y_model = default_single_obj_gp(
+        y_model = make_default_single_obj_gp(
             x,
             y,
             # TODO: We should consider applying some heurisitc to see if this should
@@ -318,7 +310,7 @@ class BayesianOptimization(BaseOptimizer):
             cost = torch.tensor(costs, dtype=torch.float64, device=self.device)
             cost_z_score = _missing_cost_strategy(cost)
 
-            cost_model = default_single_obj_gp(
+            cost_model = make_default_single_obj_gp(
                 x,
                 cost_z_score,
                 y_transform=ChainedOutcomeTransform(

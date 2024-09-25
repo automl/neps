@@ -3,14 +3,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-import torch
 
-from neps.optimizers.bayesian_optimization.models.ftpfn import FTPFNSurrogate
-from neps.optimizers.multi_fidelity.utils import (
-    MFObservedData,
-    get_tokenized_data,
-    get_training_data_for_freeze_thaw,
-)
 from neps.optimizers.multi_fidelity_prior.utils import (
     calc_total_resources_spent,
     update_fidelity,
