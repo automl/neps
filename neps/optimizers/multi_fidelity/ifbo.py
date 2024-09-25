@@ -1,6 +1,5 @@
 from typing import Any, Mapping, Literal
 
-import math
 import numpy as np
 import torch
 
@@ -18,6 +17,8 @@ from neps.state.optimizer import BudgetInfo
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
+ID_COL = 0
+BUDGET_COL = 1
 
 
 def _adjust_pipeline_space_to_match_stepsize(
@@ -65,6 +66,7 @@ def _adjust_pipeline_space_to_match_stepsize(
         upper=fidelity.upper,
         log=fidelity.log,
         default=fidelity.default,
+        is_fidelity=True,
         default_confidence=fidelity.default_confidence_choice,
     )
     return (
@@ -78,7 +80,9 @@ def _tokenize(
     budgets: torch.Tensor,
     configs: torch.Tensor,
 ) -> torch.Tensor:
-    return torch.cat([ids.unsqueeze(1), budgets.unsqueeze(1), configs], dim=1)
+    return torch.cat([ids.unsqueeze(1), budgets.unsqueeze(1), configs], dim=1).to(
+        FTPFN_DTYPE
+    )
 
 
 def _encode_for_ftpfn(
@@ -147,7 +151,6 @@ def _encode_for_ftpfn(
         device=device,
         dtype=torch.float64,
     )
-    ids = ids + 1  # We add one to all ids to make room for the test configurations
     train_fidelities = torch.tensor(
         [t.config[space.fidelity_name] for t in selected.values()],
         device=device,
@@ -155,7 +158,9 @@ def _encode_for_ftpfn(
     )
     train_budgets = budget_domain.cast(train_fidelities, frm=space.fidelity.domain)
     X = _tokenize(
-        ids=torch.tensor(ids, device=device), budgets=train_budgets, configs=train_configs
+        ids=torch.tensor(ids, device=device),
+        budgets=train_budgets,
+        configs=train_configs,
     ).to(dtype)
 
     # TODO: Document that it's on the user to ensure these are already all bounded
@@ -184,12 +189,12 @@ def _keep_highest_budget_evaluation(x: torch.Tensor) -> torch.Tensor:
     # Does a lexsort, same as if we sorted by (config_id, budget), where
     # theyre are sorted according to increasing config_id and then increasing budget.
     # x[i2] -> sorted by config id and budget
-    i1 = torch.argsort(x[:, 1])
-    i2 = i1[torch.argsort(x[i1][:, 0], stable=True)]
+    i1 = torch.argsort(x[:, BUDGET_COL])
+    i2 = i1[torch.argsort(x[i1][:, ID_COL], stable=True)]
     sorted_x = x[i2]
 
     # Now that it's sorted, we essentially want to count the occurence of each id into counts
-    _, counts = torch.unique_consecutive(sorted_x[:, 0], return_counts=True)
+    _, counts = torch.unique_consecutive(sorted_x[:, ID_COL], return_counts=True)
 
     # Now we can use these counts to get to the last occurence of each id
     # The -1 is because we want to index from 0 but sum starts at 1.
@@ -237,12 +242,14 @@ class IFBO(BaseOptimizer):
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
-        # arguments for model
         surrogate_model_args: dict | None = None,
-        initial_design_size: int | None = None,
+        initial_design_size: int | Literal["ndim"] = "ndim",
         n_acquisition_new_configs: int = 1_000,
         device: torch.device | None = None,
-        **kwargs: Any,  # TODO: Remove this
+        budget: int | float | None = None,  # TODO: Remove
+        loss_value_on_error: float | None = None,  # TODO: Remove
+        cost_value_on_error: float | None = None,  # TODO: Remove
+        ignore_errors: bool = False,  # TODO: Remove
     ):
         """Initialise.
 
@@ -272,7 +279,7 @@ class IFBO(BaseOptimizer):
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
         self.device = device
-        self.n_initial_design = initial_design_size
+        self.n_initial_design: int | Literal["ndim"] = initial_design_size
         self.n_acquisition_new_configs = n_acquisition_new_configs
         self.surrogate_model_args = surrogate_model_args or {}
 
@@ -325,9 +332,7 @@ class IFBO(BaseOptimizer):
                 sampler="sobol" if self._prior is None else self._prior,
                 seed=seed,
                 sample_fidelity="min",
-                sample_size=(
-                    "ndim" if self.n_initial_design is None else self.n_initial_design
-                ),
+                sample_size=self.n_initial_design,
             )
 
         if new_id < len(self._initial_design):
@@ -347,7 +352,7 @@ class IFBO(BaseOptimizer):
             device=self.device,
         )
         # PFN uses `0` id for test configurations, we remove this later
-        x_train[:, 1] = x_train[:, 1] + 1
+        x_train[:, ID_COL] = x_train[:, ID_COL] + 1
 
         # Fantasize the result of pending trials
         is_pending = maximize_ys.isnan()
@@ -391,23 +396,27 @@ class IFBO(BaseOptimizer):
 
         # Construct all our samples for acqusition:
         # 1. Take all non-pending configs
-        acq_continue_existing = x_train[~is_pending].clone().detach()
+        acq_existing = x_train[~is_pending].clone().detach()
 
         # 2. We only want to include the configuration at their highest
         # budget evaluated, i.e. don't include config_0_0 if config_0_1 is highest
-        acq_continue_existing = _keep_highest_budget_evaluation(acq_continue_existing)
+        acq_existing = _keep_highest_budget_evaluation(acq_existing)
 
         # 3. Sub select all that are not fully evaluated
-        acq_continue_existing = acq_continue_existing[acq_continue_existing[:, 1] < 1]
+        acq_existing = acq_existing[
+            acq_existing[:, BUDGET_COL] < self._budget_domain.upper
+        ]
 
         # 4. Add in the new sampled configurations
-        acq_samples = torch.vstack([acq_continue_existing, acq_new])
+        acq_samples = torch.vstack([acq_existing, acq_new])
 
         # 5. Add on the horizon to the budget
-        unclamped_budgets = acq_samples[:, 1] + horizon
+        unclamped_budgets = acq_samples[:, BUDGET_COL] + horizon
 
         # 6. Clamp to the maximum of the budget domain
-        acq_samples[:, 1] = torch.clamp(unclamped_budgets, max=self._budget_domain.upper)
+        acq_samples[:, BUDGET_COL] = torch.clamp(
+            unclamped_budgets, max=self._budget_domain.upper
+        )
 
         # Now get the PI of these samples according to MFPI_Random
         maximize_best_y = maximize_ys.max().item()
@@ -425,7 +434,7 @@ class IFBO(BaseOptimizer):
 
         # Extract out the row which had the best PI
         best_ix = acq_scores.argmax()
-        best_id = int(acq_samples[best_ix, 0].round().item())
+        best_id = int(acq_samples[best_ix, ID_COL].round().item())
         best_vector = acq_samples[best_ix, 2:].unsqueeze(0)
         best_config = self._ftpfn_encoder.unpack(best_vector)[0]
 
