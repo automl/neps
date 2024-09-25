@@ -89,6 +89,43 @@ def _encode_for_ftpfn(
     device: torch.device | None = None,
     dtype: torch.dtype = FTPFN_DTYPE,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Encode the trials into a format that the FTPFN model can understand.
+
+    !!! warning "loss values reported"
+
+        The `ys` are a single dimension but consist of the losses inverted to scores.
+        As result, we have to assert that the loss values provided in the trials are
+        in the range [0, 1].
+
+    !!! note "X layout"
+
+        The layout of the X is:
+
+        ```
+        | config_id | budget (normalized from fidelity) | hp_1 | hp_2 | ... | hp_n |
+        ```
+
+        Here the `budget` is normalized to the range [0, 1] while the hp parameters
+        are encoded according to the provided encoder, which should map the parameter
+        values from the original domain to some domain in [0, 1].
+
+    !!! warning "Pending and Error trials"
+
+        We currently do not handle error cases, **and they are ignored**.
+        For trials which do not have a loss reported yet, they are considered pending
+        and will have `torch.nan` as their score inside the returned y values.
+
+    Args:
+        trials: The trials to encode
+        encoder: The encoder to use
+        space: The search space
+        budget_domain: The domain to use for the budgets of the FTPFN
+        device: The device to use
+        dtype: The dtype to use
+
+    Returns:
+        The encoded trials and their corresponding **scores**
+    """
     # TODO: Currently we do not handle error cases, we can't use NaN as that
     # is what we use for trials that have no loss yet, i.e. pending trials.
     selected = {
@@ -110,7 +147,7 @@ def _encode_for_ftpfn(
         device=device,
         dtype=torch.float64,
     )
-    ids = ids
+    ids = ids + 1  # We add one to all ids to make room for the test configurations
     train_fidelities = torch.tensor(
         [t.config[space.fidelity_name] for t in selected.values()],
         device=device,
@@ -143,7 +180,7 @@ def _encode_for_ftpfn(
     return X, maximize_ys
 
 
-def _remove_duplicates(x: torch.Tensor) -> torch.Tensor:
+def _keep_highest_budget_evaluation(x: torch.Tensor) -> torch.Tensor:
     # Does a lexsort, same as if we sorted by (config_id, budget), where
     # theyre are sorted according to increasing config_id and then increasing budget.
     # x[i2] -> sorted by config id and budget
@@ -358,7 +395,7 @@ class IFBO(BaseOptimizer):
 
         # 2. We only want to include the configuration at their highest
         # budget evaluated, i.e. don't include config_0_0 if config_0_1 is highest
-        acq_continue_existing = _remove_duplicates(acq_continue_existing)
+        acq_continue_existing = _keep_highest_budget_evaluation(acq_continue_existing)
 
         # 3. Sub select all that are not fully evaluated
         acq_continue_existing = acq_continue_existing[acq_continue_existing[:, 1] < 1]
@@ -417,5 +454,4 @@ class IFBO(BaseOptimizer):
 
         config_id = f"{real_best_id}_{budget_ix}"
         previous_config_id = f"{real_best_id}_{budget_ix - 1}"
-
         return SampledConfig(config_id, best_config, previous_config_id)
