@@ -5,7 +5,6 @@ from copy import deepcopy
 
 import torch
 
-from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 from neps.optimizers.bayesian_optimization.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.multi_fidelity.utils import (
     MFObservedData,
