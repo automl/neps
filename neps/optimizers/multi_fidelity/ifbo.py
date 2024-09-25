@@ -130,18 +130,12 @@ def _encode_for_ftpfn(
     Returns:
         The encoded trials and their corresponding **scores**
     """
-    # TODO: Currently we do not handle error cases, we can't use NaN as that
-    # is what we use for trials that have no loss yet, i.e. pending trials.
+    # Select all trials which have something we can actually use for modelling
+    # The absence of a report signifies pending
     selected = {
         trial_id: trial
         for trial_id, trial in trials.items()
-        if trial.state
-        not in (
-            Trial.State.FAILED,
-            Trial.State.CRASHED,
-            Trial.State.UNKNOWN,
-            Trial.State.CORRUPTED,
-        )
+        if trial.report is None or trial.report.loss is not None
     }
     assert space.fidelity_name is not None
     assert space.fidelity is not None
