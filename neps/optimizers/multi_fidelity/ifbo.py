@@ -118,15 +118,11 @@ class IFBO(BaseOptimizer):
 
         # TODO: We want it to be evenly divided by step size, so we need
         # to add something to the minimum fidelity to ensure this.
-
-        # NOTE: The PFN model expects fidelities to be normalized between 0 and 1,
-        # hence, we make sure to do min-max normalization but include the number of bins.
-        # Also, it expects it specifically in column 1 so we can't include it with the configs
         maybe_bins = math.ceil((self._max_budget - self._min_budget) / self.step_size) + 1
         match pipeline_space.fidelity:
             case IntegerParameter():
                 assert pipeline_space.fidelity.domain.cardinality is not None
-                bins = max(maybe_bins, pipeline_space.fidelity.domain.cardinality)
+                bins = min(maybe_bins, pipeline_space.fidelity.domain.cardinality)
             case FloatParameter():
                 bins = maybe_bins
             case _:
