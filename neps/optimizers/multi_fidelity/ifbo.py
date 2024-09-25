@@ -20,6 +20,59 @@ from neps.state.optimizer import BudgetInfo
 FTPFN_DTYPE = torch.float32
 
 
+def _adjust_pipeline_space_to_match_stepsize(
+    pipeline_space: SearchSpace,
+    step_size: int | float,
+) -> tuple[SearchSpace, int]:
+    """Adjust the pipeline space to be evenly divisible by the step size.
+
+    This is done by incrementing the lower bound of the fidelity domain to the
+    that enables this.
+
+    Args:
+        pipeline_space: The pipeline space to adjust
+        step_size: The size of the step to take in the fidelity domain.
+
+    Returns:
+        The adjusted pipeline space and the number of bins it can be divided into
+    """
+    fidelity = pipeline_space.fidelity
+    fidelity_name = pipeline_space.fidelity_name
+    assert fidelity_name is not None
+    assert isinstance(fidelity, FloatParameter | IntegerParameter)
+    if fidelity.log:
+        raise NotImplementedError("Log fidelity not yet supported")
+
+    # Can't use mod since it's quite innacurate for floats
+    # Use the fact that we can always write x = n*k + r
+    # where k = stepsize and x = (fid_upper - fid_lower)
+    # x = n*k + r
+    # n = x // k
+    # r = x - n*k
+    x = fidelity.upper - fidelity.lower
+    n = int(x // step_size)
+
+    if n <= 0:
+        raise ValueError(
+            f"Step size ({step_size}) is too large for the fidelity domain {fidelity}."
+            "Considering lowering this parameter to ifBO."
+        )
+
+    r = x - n * step_size
+    new_lower = fidelity.lower + r
+    new_fid = fidelity.__class__(
+        lower=new_lower,
+        upper=fidelity.upper,
+        log=fidelity.log,
+        default=fidelity.default,
+        default_confidence=fidelity.default_confidence_choice,
+    )
+    return (
+        SearchSpace(**{**pipeline_space.hyperparameters, fidelity_name: new_fid}),
+        n,
+    )
+
+
 def _tokenize(
     ids: torch.Tensor,
     budgets: torch.Tensor,
@@ -143,7 +196,7 @@ class IFBO(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        step_size: int = 1,
+        step_size: int | float = 1,
         use_priors: bool = False,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
@@ -168,25 +221,30 @@ class IFBO(BaseOptimizer):
 
             device: Device to use for the model
         """
-        assert pipeline_space.fidelity is not None
-        assert isinstance(pipeline_space.fidelity_name, str)
+        # TODO: I'm not sure how this might effect tables, whose lowest fidelity
+        # might be below to possibly increased lower bound.
+        space, fid_bins = _adjust_pipeline_space_to_match_stepsize(
+            pipeline_space, step_size
+        )
+        assert space.fidelity is not None
+        assert isinstance(space.fidelity_name, str)
 
-        super().__init__(pipeline_space=pipeline_space)
+        super().__init__(pipeline_space=space)
         self.step_size = step_size
         self.use_priors = use_priors
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
-        self.surrogate_model_args = surrogate_model_args or {}
         self.device = device
-        self.n_initial_design: int | None = initial_design_size
+        self.n_initial_design = initial_design_size
         self.n_acquisition_new_configs = n_acquisition_new_configs
+        self.surrogate_model_args = surrogate_model_args or {}
 
-        self._min_budget: int | float = pipeline_space.fidelity.lower
-        self._max_budget: int | float = pipeline_space.fidelity.upper
-        self._fidelity_name: str = pipeline_space.fidelity_name
+        self._min_budget: int | float = space.fidelity.lower
+        self._max_budget: int | float = space.fidelity.upper
+        self._fidelity_name: str = space.fidelity_name
         self._initial_design: list[dict[str, Any]] | None = None
 
-        params = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
+        params = {**space.numerical, **space.categoricals}
         self._prior = Prior.from_parameters(params) if use_priors else None
         self._ftpfn_encoder: TensorEncoder = TensorEncoder.default(
             params,
@@ -194,34 +252,19 @@ class IFBO(BaseOptimizer):
             # in the unit norm
             custom_transformers={
                 cat_name: CategoricalToUnitNorm(choices=cat.choices)
-                for cat_name, cat in self.pipeline_space.categoricals.items()
+                for cat_name, cat in space.categoricals.items()
             },
         )
 
-        # TODO: We want it to be evenly divided by step size, so we need
-        # to add something to the minimum fidelity to ensure this.
-        maybe_bins = math.ceil((self._max_budget - self._min_budget) / self.step_size) + 1
-        match pipeline_space.fidelity:
-            case IntegerParameter():
-                assert pipeline_space.fidelity.domain.cardinality is not None
-                bins = min(maybe_bins, pipeline_space.fidelity.domain.cardinality)
-            case FloatParameter():
-                bins = maybe_bins
-            case _:
-                raise NotImplementedError(
-                    f"Fidelity type {type(pipeline_space.fidelity)} not supported"
-                )
-
         # Domain of fidelity values, i.e. what is given in the configs that we
         # give to the user to evaluate at.
-        self._fid_domain = pipeline_space.fidelity.domain
+        self._fid_domain = space.fidelity.domain
 
         # Domain in which we should pass budgets to ifbo model
         self._budget_domain = Domain.float(1 / self._max_budget, 1)
 
         # Domain from which we assign an index to each budget
-        # Automatically takes care of rounding
-        self._budget_ix_domain = Domain.indices(bins)
+        self._budget_ix_domain = Domain.indices(fid_bins)
 
     def ask(
         self,
