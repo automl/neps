@@ -15,8 +15,29 @@ from neps.state.trial import Trial
 from neps.state.optimizer import BudgetInfo
 
 
-def _select_trials(trials: Mapping[str, Trial]) -> Mapping[str, Trial]:
-    return {
+# NOTE: Ifbo was trained using 32 bit
+FTPFN_DTYPE = torch.float32
+
+
+def tokenize(
+    ids: torch.Tensor,
+    budgets: torch.Tensor,
+    configs: torch.Tensor,
+) -> torch.Tensor:
+    return torch.cat([ids.unsqueeze(1), budgets.unsqueeze(1), configs], dim=1)
+
+
+def _encode_ftpfn(
+    trials: Mapping[str, Trial],
+    encoder: TensorEncoder,
+    space: SearchSpace,
+    budget_domain: Domain,
+    device: torch.device | None = None,
+    dtype: torch.dtype = FTPFN_DTYPE,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    # TODO: Currently we do not handle error cases, we can't use NaN as that
+    # is what we use for trials that have no loss yet, i.e. pending trials.
+    selected = {
         trial_id: trial
         for trial_id, trial in trials.items()
         if trial.state
@@ -27,6 +48,45 @@ def _select_trials(trials: Mapping[str, Trial]) -> Mapping[str, Trial]:
             Trial.State.CORRUPTED,
         )
     }
+    assert space.fidelity_name is not None
+    assert space.fidelity is not None
+    train_configs = encoder.encode([t.config for t in selected.values()], device=device)
+    ids = torch.tensor(
+        [int(config_id.split("_", maxsplit=1)[0]) for config_id in selected.keys()],
+        device=device,
+        dtype=torch.float64,
+    )
+    ids = ids
+    train_fidelities = torch.tensor(
+        [t.config[space.fidelity_name] for t in selected.values()],
+        device=device,
+        dtype=torch.float64,
+    )
+    train_budgets = budget_domain.cast(train_fidelities, frm=space.fidelity.domain)
+    X = tokenize(
+        ids=torch.tensor(ids, device=device), budgets=train_budgets, configs=train_configs
+    ).to(dtype)
+
+    # TODO: Document that it's on the user to ensure these are already all bounded
+    # We could possibly include some bounded transform to assert this.
+    minimize_ys = torch.tensor(
+        [
+            trial.report.loss
+            if trial.report is not None and trial.report.loss is not None
+            else np.nan
+            for trial in trials.values()
+        ],
+        device=device,
+        dtype=FTPFN_DTYPE,
+    )
+    if minimize_ys.max() > 1 or minimize_ys.min() < 0:
+        raise RuntimeError(
+            "ifBO requires that all loss values reported lie in the interval [0, 1]"
+            " but recieved loss value outside of that range!"
+            f"\n{minimize_ys}"
+        )
+    maximize_ys = 1 - minimize_ys
+    return X, maximize_ys
 
 
 def _remove_duplicates(x: torch.Tensor) -> torch.Tensor:
@@ -46,18 +106,6 @@ def _remove_duplicates(x: torch.Tensor) -> torch.Tensor:
     return sorted_x[ii]
 
 
-# NOTE: Ifbo was trained using 32 bit
-FTPFN_DTYPE = torch.float32
-
-
-def tokenize(
-    ids: torch.Tensor,
-    budgets: torch.Tensor,
-    configs: torch.Tensor,
-) -> torch.Tensor:
-    return torch.cat([ids.unsqueeze(1), budgets.unsqueeze(1), configs], dim=1)
-
-
 class IFBO(BaseOptimizer):
     """Base class for MF-BO algorithms that use DyHPO-like acquisition and budgeting."""
 
@@ -71,6 +119,7 @@ class IFBO(BaseOptimizer):
         # arguments for model
         surrogate_model_args: dict | None = None,
         initial_design_size: int | None = None,
+        n_acquisition_new_configs: int = 1_000,
         device: torch.device | None = None,
         **kwargs: Any,  # TODO: Remove this
     ):
@@ -100,6 +149,7 @@ class IFBO(BaseOptimizer):
         self.surrogate_model_args = surrogate_model_args or {}
         self.device = device
         self.n_initial_design: int | None = initial_design_size
+        self.n_acquisition_new_configs = n_acquisition_new_configs
 
         self._min_budget: int | float = pipeline_space.fidelity.lower
         self._max_budget: int | float = pipeline_space.fidelity.upper
@@ -151,12 +201,7 @@ class IFBO(BaseOptimizer):
         if seed is not None:
             raise NotImplementedError("Seed is not yet implemented for IFBO")
 
-        trials = _select_trials(trials)
-
-        ids = [
-            int(trial.metadata.id.split("_", maxsplit=1)[0]) for trial in trials.values()
-        ]
-        n_unique_ids = len(set(ids))
+        ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials.keys()]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
 
         # If we havn't passed the intial design phase
@@ -173,9 +218,8 @@ class IFBO(BaseOptimizer):
                 ),
             )
 
-        if n_unique_ids < len(self._initial_design):
-            config = self._initial_design[n_unique_ids]
-            return SampledConfig(id=f"{new_id}_0", config=config)
+        if new_id < len(self._initial_design):
+            return SampledConfig(id=f"{new_id}_0", config=self._initial_design[new_id])
 
         # Otherwise, we proceed to surrogate phase
         ftpfn = FTPFNSurrogate(
@@ -183,42 +227,20 @@ class IFBO(BaseOptimizer):
             version=self.surrogate_model_args.get("version", "0.0.1"),
             device=self.device,
         )
-
-        # NOTE: `0` is reserved in PFN, we add an additional +1 to all ids
-        train_ids = torch.tensor(ids, dtype=FTPFN_DTYPE, device=self.device) + 1
-        train_configs = self._ftpfn_encoder.encode([t.config for t in trials.values()])
-
-        train_fidelities = [t.config[self._fidelity_name] for t in trials.values()]
-        train_budgets = self._budget_domain.cast(
-            torch.tensor(train_fidelities, device=self.device, dtype=FTPFN_DTYPE),
-            frm=self._fid_domain,
-        )
-        x_train = tokenize(ids=train_ids, budgets=train_budgets, configs=train_configs)
-        x_train = x_train.to(FTPFN_DTYPE)
-
-        # TODO: Document that it's on the user to ensure these are already all bounded
-        # We could possibly include some bounded transform to assert this.
-        minimize_ys = torch.tensor(
-            [
-                trial.report.loss
-                if trial.report is not None and trial.report.loss is not None
-                else np.nan
-                for trial in trials.values()
-            ],
+        x_train, maximize_ys = _encode_ftpfn(
+            trials=trials,
+            encoder=self._ftpfn_encoder,
+            space=self.pipeline_space,
+            budget_domain=self._budget_domain,
             device=self.device,
-            dtype=FTPFN_DTYPE,
         )
-        if minimize_ys.max() > 1 or minimize_ys.min() < 0:
-            raise RuntimeError(
-                "ifBO requires that all loss values reported lie in the interval [0, 1]"
-                " but recieved loss value outside of that range!"
-                f"\n{minimize_ys}"
-            )
-        # Invert the ys
-        maximize_ys = 1 - minimize_ys
-        maximize_best_y = maximize_ys.max().item()
-        is_pending = minimize_ys.isnan()
+        x_train[:, 1] = x_train[:, 1] + 1  # PFN uses `0` id for test configurations
 
+        # Get the best performance so far
+        maximize_best_y = maximize_ys.max().item()
+
+        # Fantasize the result of pending trials
+        is_pending = maximize_ys.isnan()
         maximize_ys[is_pending] = ftpfn.get_mean_performance(
             train_x=x_train[~is_pending],
             train_y=maximize_ys[~is_pending],
@@ -226,9 +248,6 @@ class IFBO(BaseOptimizer):
         )
 
         rng = np.random.RandomState(seed)
-        n_rand = 1_000  # TODO: parametrize
-
-        # TODO: Could also sample from a prior...
         uniform = Sampler.uniform(ndim=self._ftpfn_encoder.ncols)
 
         # We sample the horizon in terms of step numbers to take
@@ -244,19 +263,16 @@ class IFBO(BaseOptimizer):
             frm=self._budget_index_domain,
         )
 
-        # Now let's create the random configurations
-        rand_configs = uniform.sample(
-            n=n_rand,
-            to=self._ftpfn_encoder.domains,
-            seed=None,  # TODO
-            device=self.device,
-        ).to(FTPFN_DTYPE)
-
         # We give them all the special 0 id, as well as set the budget accordinly
         acq_new = tokenize(
-            ids=torch.zeros(n_rand, dtype=FTPFN_DTYPE, device=self.device),
-            budgets=torch.zeros(n_rand, dtype=FTPFN_DTYPE, device=self.device),
-            configs=rand_configs,
+            ids=torch.zeros(self.n_acquisition_new_configs, device=self.device),
+            budgets=torch.zeros(self.n_acquisition_new_configs, device=self.device),
+            configs=uniform.sample(
+                n=self.n_acquisition_new_configs,
+                to=self._ftpfn_encoder.domains,
+                seed=None,  # TODO
+                device=self.device,
+            ),
         )
 
         # Construct all our samples for acqusition:
@@ -284,15 +300,12 @@ class IFBO(BaseOptimizer):
         # Now get the PI of these samples
         lu = 10 ** rng.uniform(-4, -1)
         f_inc = maximize_best_y * (1 - lu)
+        n_acq_samples = len(acq_samples)
         pi_new_samples = ftpfn.get_pi(
-            train_x=x_train.to(FTPFN_DTYPE),
-            train_y=maximize_ys.to(FTPFN_DTYPE),
-            test_x=acq_samples.to(FTPFN_DTYPE),
-            y_best=torch.full(
-                size=(len(acq_samples),),
-                fill_value=f_inc,
-                dtype=FTPFN_DTYPE,
-            ),
+            train_x=x_train,
+            train_y=maximize_ys,
+            test_x=acq_samples,
+            y_best=torch.full(size=(n_acq_samples,), fill_value=f_inc, dtype=FTPFN_DTYPE),
         )
         best_ix = pi_new_samples.argmax()
 

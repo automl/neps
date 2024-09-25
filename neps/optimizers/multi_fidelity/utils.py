@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
-from typing_extensions import Self
 
 import numpy as np
 import pandas as pd
@@ -353,58 +352,6 @@ class MFObservedData:
     @property
     def token_ids(self) -> np.ndarray:
         return self.df.index.values
-
-    @classmethod
-    def from_trials(
-        cls,
-        trials: Mapping[str, Trial],
-        *,
-        # TODO: We should store dicts, not the SearchSpace object...
-        # Once done, we can remove this
-        space: SearchSpace,
-        on_error: Literal["ignore"] | float = "ignore",
-    ) -> Self:
-        observed_configs = cls(
-            columns=["config", "perf", "learning_curves"],
-            index_names=["config_id", "budget_id"],
-        )
-
-        records: list[dict[str, Any]] = []
-        for trial_id, trial in trials.items():
-            _config_id, _budget_id = trial_id.split("_")
-
-            if trial.report is None:
-                loss = np.nan
-                lc = [np.nan]
-            elif trial.report.loss is None:
-                assert trial.report.err is not None
-                if on_error == "ignore":
-                    return None
-
-                loss = on_error
-                lc = [on_error]
-            elif trial.report.loss is not None:
-                loss = trial.report.loss
-                assert trial.report.learning_curve is not None
-                lc = trial.report.learning_curve
-
-            records.append(
-                {
-                    "config_id": int(_config_id),
-                    "budget_id": int(_budget_id),
-                    # NOTE: Behavoiour around data in this requires that the dataframe stores
-                    # `SearchSpace` objects and not dictionaries
-                    "config": space.from_dict(trial.config),
-                    "perf": loss,
-                    "learning_curves": lc,
-                }
-            )
-
-        observed_configs.df = pd.DataFrame.from_records(
-            records,
-            index=["config_id", "budget_id"],
-        ).sort_index()
-        return observed_configs
 
 
 if __name__ == "__main__":
