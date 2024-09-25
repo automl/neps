@@ -208,7 +208,7 @@ class IFBO(BaseOptimizer):
             device=self.device,
             dtype=FTPFN_DTYPE,
         )
-        if not all(0 <= y <= 1.0 for y in minimize_ys):
+        if minimize_ys.max() > 1 or minimize_ys.min() < 0:
             raise RuntimeError(
                 "ifBO requires that all loss values reported lie in the interval [0, 1]"
                 " but recieved loss value outside of that range!"
