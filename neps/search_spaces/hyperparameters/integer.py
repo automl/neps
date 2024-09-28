@@ -8,7 +8,7 @@ from typing_extensions import Self, override
 
 import numpy as np
 
-from neps.search_spaces.hyperparameters.float import FloatParameter
+from neps.search_spaces.hyperparameters.float import Float
 from neps.search_spaces.hyperparameters.numerical import NumericalParameter
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class IntegerParameter(NumericalParameter[int]):
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
         # i.e. [x - 0.499999, x + 0.499999]
-        self.float_hp = FloatParameter(
+        self.float_hp = Float(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,

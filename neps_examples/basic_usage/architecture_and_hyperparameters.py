@@ -110,7 +110,7 @@ pipeline_space = dict(
         primitives=primitives,
     ),
     optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
-    learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+    learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
 )
 
 logging.basicConfig(level=logging.INFO)

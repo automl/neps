@@ -59,7 +59,7 @@ def run_pipeline( # (1)!
 
 pipeline_space = {  # (3)!
     "hyperparameter_b":neps.IntegerParameter(1, 42, is_fidelity=True), #! (4)
-    "hyperparameter_a":neps.FloatParameter(1e-3, 1e-1, log=True) #! (5)
+    "hyperparameter_a":neps.Float(1e-3, 1e-1, log=True) #! (5)
     "architecture_parameter": neps.CategoricalParameter(["option_a", "option_b", "option_c"]),
 }
 

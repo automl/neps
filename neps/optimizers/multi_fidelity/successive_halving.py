@@ -14,7 +14,7 @@ from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
-    FloatParameter,
+    Float,
     IntegerParameter,
     SearchSpace,
 )
@@ -28,7 +28,7 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     RandomUniformPolicy,
 )
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
@@ -459,7 +459,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         for k, v in self.pipeline_space.items():
             if v.is_fidelity or isinstance(v, ConstantParameter):
                 continue
-            elif isinstance(v, (FloatParameter, IntegerParameter)):
+            elif isinstance(v, (Float, IntegerParameter)):
                 if confidence_score is None:
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:

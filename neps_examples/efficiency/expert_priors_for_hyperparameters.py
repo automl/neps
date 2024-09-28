@@ -23,7 +23,7 @@ def run_pipeline(some_float, some_integer, some_cat):
 # neps uses the default values and a confidence in this default value to construct a prior
 # that speeds up the search
 pipeline_space = dict(
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
     some_integer=neps.IntegerParameter(

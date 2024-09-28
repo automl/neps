@@ -4,7 +4,7 @@ from pathlib import Path
 import neps
 
 pipeline_space = dict(
-    val1=neps.FloatParameter(lower=-10, upper=10),
+    val1=neps.Float(lower=-10, upper=10),
     val2=neps.IntegerParameter(lower=1, upper=5),
 )
 

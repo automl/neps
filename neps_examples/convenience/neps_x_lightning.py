@@ -251,8 +251,8 @@ def search_space() -> dict:
     space = dict(
         data_dir=neps.ConstantParameter("./data"),
         batch_size=neps.ConstantParameter(64),
-        lr=neps.FloatParameter(lower=1e-5, upper=1e-2, log=True, default=1e-3),
-        weight_decay=neps.FloatParameter(
+        lr=neps.Float(lower=1e-5, upper=1e-2, log=True, default=1e-3),
+        weight_decay=neps.Float(
             lower=1e-5, upper=1e-3, log=True, default=5e-4
         ),
         optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),

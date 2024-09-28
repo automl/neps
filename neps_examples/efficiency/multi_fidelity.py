@@ -73,7 +73,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate,
 
 
 pipeline_space = dict(
-    learning_rate=neps.FloatParameter(lower=1e-4, upper=1e0, log=True),
+    learning_rate=neps.Float(lower=1e-4, upper=1e0, log=True),
     epoch=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
 )
 

@@ -15,7 +15,7 @@ def run_pipeline(learning_rate, epochs, optimizer, batch_size):
 
 # For testing the functionality of loading a dictionary from a YAML configuration.
 pipeline_space = dict(
-    learning_rate=neps.FloatParameter(lower=1e-6, upper=1e-1, log=False),
+    learning_rate=neps.Float(lower=1e-6, upper=1e-1, log=False),
     epochs=neps.IntegerParameter(lower=1, upper=3, is_fidelity=False),
     optimizer=neps.CategoricalParameter(choices=["a", "b", "c"]),
     batch_size=neps.ConstantParameter(64),

@@ -19,8 +19,8 @@ def run_pipeline(
 
 
 pipeline_space = dict(
-    float1=neps.FloatParameter(lower=0, upper=1, log=False),
-    float2=neps.FloatParameter(
+    float1=neps.Float(lower=0, upper=1, log=False),
+    float2=neps.Float(
         lower=0, upper=10, log=False, default=10, default_confidence="medium"
     ),
     categorical=neps.CategoricalParameter(choices=[0, 1]),

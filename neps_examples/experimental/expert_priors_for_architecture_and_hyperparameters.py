@@ -113,7 +113,7 @@ pipeline_space = dict(
         name="pibo",
         prior=prior_distr,
     ),
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
     some_integer=neps.IntegerParameter(
