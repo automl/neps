@@ -48,7 +48,7 @@ def pipeline_space() -> dict:
     # Create the search space based on NEPS parameters and return the dictionary.
     # IMPORTANT:
     space = dict(
-        lr=neps.FloatParameter(
+        lr=neps.Float(
             lower=1e-5,
             upper=1e-2,
             log=True,  # If True, the search space is sampled in log space

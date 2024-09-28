@@ -13,7 +13,7 @@ from neps.utils.common import instance_from_map
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
-    FloatParameter,
+    Float,
     IntegerParameter,
     SearchSpace,
 )
@@ -26,7 +26,7 @@ from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler
 )
 from neps.optimizers.bayesian_optimization.models import SurrogateModelMapping
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
@@ -213,7 +213,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         for k in self.pipeline_space.keys():
             if self.pipeline_space[k].is_fidelity:
                 continue
-            elif isinstance(self.pipeline_space[k], (FloatParameter, IntegerParameter)):
+            elif isinstance(self.pipeline_space[k], (Float, IntegerParameter)):
                 confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
             elif isinstance(self.pipeline_space[k], CategoricalParameter):
@@ -269,7 +269,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 types.append("o")
                 logs.append(False)
                 num_values.append(hp.upper - hp.lower + 1)
-            elif isinstance(hp, FloatParameter):
+            elif isinstance(hp, Float):
                 # c as in continous
                 types.append("f")
                 logs.append(hp.log)

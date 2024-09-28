@@ -74,7 +74,7 @@ def run_pipeline(
 
 # 2. Define a search space of parameters; use the same parameter names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(
+    hyperparameter_a=neps.Float(
         lower=0.001, upper=0.1, log=True  # The search space is sampled in log space
     ),
     hyperparameter_b=neps.IntegerParameter(lower=1, upper=42),

@@ -280,7 +280,7 @@ class HartmannObjective(RegressionObjectiveBase):
             )
 
         self.pipeline_space: dict[str, Any] = {
-            f"X_{i}": neps.FloatParameter(lower=0.0, upper=1.0) for i in range(self.dim)
+            f"X_{i}": neps.Float(lower=0.0, upper=1.0) for i in range(self.dim)
         }
 
         if self.has_fidelity:

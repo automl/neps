@@ -11,7 +11,7 @@ def run_pipeline(some_float, some_integer, some_cat):
 # Current API
 # User prior is given as a default value and a confidence level specified in the parameter itself
 pipeline_space = dict(
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
     some_integer=neps.IntegerParameter(
@@ -37,7 +37,7 @@ neps.run(
 # 3) A dictionary of default values and confidence levels for each parameter. Then a gaussian prior is used.
 
 pipeline_space = dict(
-    some_float=neps.FloatParameter(lower=1, upper=1000, log=True),
+    some_float=neps.Float(lower=1, upper=1000, log=True),
     some_integer=neps.IntegerParameter(lower=0, upper=50),
     some_cat=neps.CategoricalParameter(choices=["a", "b", "c"])
 )
@@ -95,7 +95,7 @@ def prior_01(some_float, some_integer, some_cat):
         return np.exp(-(-some_float - some_integer + 1050))
 
 pipeline_space_01 = dict(
-    some_float=neps.FloatParameter(lower=1, upper=1000, log=True),
+    some_float=neps.Float(lower=1, upper=1000, log=True),
     some_integer=neps.IntegerParameter(lower=0, upper=50),
     some_cat=neps.CategoricalParameter(choices=["a", "b", "c"]),
     _prior=prior_01
@@ -103,7 +103,7 @@ pipeline_space_01 = dict(
 
 # 2) A dictionary of marginal densities for each parameter. Then the factorized density is used.
 pipeline_space_02 = dict(
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True,
         prior_fun=lambda x: 1/400 if 800 < x < 1000 else 1/1600
     ),
@@ -118,7 +118,7 @@ pipeline_space_02 = dict(
 # 3) A dictionary of default values and confidence levels for each parameter. Then a gaussian prior is used.
 # Same as in the current API
 pipeline_space_03 = dict(
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
     some_integer=neps.IntegerParameter(
@@ -131,7 +131,7 @@ pipeline_space_03 = dict(
 
 # Combination of 2) and 3)
 pipeline_space_04 = dict(
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium",
     ),
     some_integer=neps.IntegerParameter(

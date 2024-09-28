@@ -4,7 +4,7 @@ range.
 
 The two primary numerical hyperparameters are:
 
-* [`FloatParameter`][neps.search_spaces.FloatParameter] for continuous
+* [`Float`][neps.search_spaces.Float] for continuous
     float values.
 * [`IntegerParameter`][neps.search_spaces.IntegerParameter] for discrete
     integer values.
@@ -33,7 +33,7 @@ import scipy
 from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
 if TYPE_CHECKING:
-    from neps.search_spaces.hyperparameters.float import FloatParameter
+    from neps.search_spaces.hyperparameters.float import Float
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.utils.types import TruncNorm
 
@@ -263,11 +263,11 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         int_hp.set_value(as_int(self.value) if self.value is not None else None)
         return int_hp
 
-    def to_float(self) -> FloatParameter:
+    def to_float(self) -> Float:
         """Convert the numerical hyperparameter to a float hyperparameter."""
-        from neps.search_spaces.hyperparameters.integer import FloatParameter
+        from neps.search_spaces.hyperparameters.integer import Float
 
-        float_hp = FloatParameter(
+        float_hp = Float(
             lower=float(self.lower),
             upper=float(self.upper),
             is_fidelity=self.is_fidelity,

@@ -5,7 +5,7 @@ from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from typing import Union, Callable, Dict, List, Type
 
 BASE_PATH = "tests/test_yaml_run_args/"
-pipeline_space = dict(lr=neps.FloatParameter(lower=1e-3, upper=0.1),
+pipeline_space = dict(lr=neps.Float(lower=1e-3, upper=0.1),
                       optimizer=neps.CategoricalParameter(choices=["adam", "sgd",
                                                                    "adamw"]),
                       epochs=neps.IntegerParameter(lower=1, upper=10),

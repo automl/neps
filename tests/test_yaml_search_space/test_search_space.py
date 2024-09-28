@@ -6,7 +6,7 @@ from neps.search_spaces.search_space import (
     pipeline_space_from_yaml,
 )
 
-from neps import CategoricalParameter, ConstantParameter, FloatParameter, IntegerParameter
+from neps import CategoricalParameter, ConstantParameter, Float, IntegerParameter
 
 BASE_PATH = "tests/test_yaml_search_space/"
 
@@ -17,13 +17,13 @@ def test_correct_yaml_files():
         """Test the function with a correctly formatted YAML file."""
         pipeline_space = pipeline_space_from_yaml(path)
         assert isinstance(pipeline_space, dict)
-        float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False)
+        float1 = Float(0.00001, 0.1, log=True, is_fidelity=False)
         assert float1.__eq__(pipeline_space["param_float1"]) is True
         int1 = IntegerParameter(-3, 30, log=False, is_fidelity=True)
         assert int1.__eq__(pipeline_space["param_int1"]) is True
         int2 = IntegerParameter(100, 30000, log=True, is_fidelity=False)
         assert int2.__eq__(pipeline_space["param_int2"]) is True
-        float2 = FloatParameter(3.3e-5, 0.15, log=False)
+        float2 = Float(3.3e-5, 0.15, log=False)
         assert float2.__eq__(pipeline_space["param_float2"]) is True
         cat1 = CategoricalParameter([2, "sgd", 10e-3])
         assert cat1.__eq__(pipeline_space["param_cat"]) is True
@@ -43,7 +43,7 @@ def test_correct_including_priors_yaml_file():
         BASE_PATH + "correct_config_including_priors.yml"
     )
     assert isinstance(pipeline_space, dict)
-    float1 = FloatParameter(0.00001, 0.1, log=True, is_fidelity=False, default=3.3e-2, default_confidence="high")
+    float1 = Float(0.00001, 0.1, log=True, is_fidelity=False, default=3.3e-2, default_confidence="high")
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
     int1 = IntegerParameter(3, 30, log=False, is_fidelity=True)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
@@ -127,7 +127,7 @@ def test_float_log_not_boolean():
 
 @pytest.mark.neps_api
 def test_float_is_fidelity_not_boolean():
-    """Test if an exception is raised when for FloatParameter the 'is_fidelity'
+    """Test if an exception is raised when for Float the 'is_fidelity'
     attribute is not a boolean."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(

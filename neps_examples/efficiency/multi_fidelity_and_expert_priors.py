@@ -11,10 +11,10 @@ def run_pipeline(float1, float2, integer1, fidelity):
 
 
 pipeline_space = dict(
-    float1=neps.FloatParameter(
+    float1=neps.Float(
         lower=1, upper=1000, log=False, default=600, default_confidence="medium"
     ),
-    float2=neps.FloatParameter(
+    float2=neps.Float(
         lower=-10, upper=10, default=0, default_confidence="medium"
     ),
     integer1=neps.IntegerParameter(

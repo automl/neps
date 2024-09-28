@@ -21,7 +21,7 @@ from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.hyperparameters import (
     CategoricalParameter,
     ConstantParameter,
-    FloatParameter,
+    Float,
     IntegerParameter,
     NumericalParameter,
 )
@@ -83,7 +83,7 @@ def pipeline_space_from_configspace(
                 default=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.UniformFloatHyperparameter):
-            parameter = FloatParameter(
+            parameter = Float(
                 lower=hyperparameter.lower,
                 upper=hyperparameter.upper,
                 log=hyperparameter.log,
@@ -145,7 +145,7 @@ def pipeline_space_from_yaml(  # noqa: C901
                 pipeline_space[name] = IntegerParameter(**formatted_details)
             elif param_type == "float":
                 formatted_details = formatting_float(name, details)
-                pipeline_space[name] = FloatParameter(**formatted_details)
+                pipeline_space[name] = Float(**formatted_details)
             elif param_type in ("cat", "categorical"):
                 formatted_details = formatting_cat(name, details)
                 pipeline_space[name] = CategoricalParameter(**formatted_details)

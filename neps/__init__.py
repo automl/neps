@@ -5,6 +5,7 @@ from neps.search_spaces import (
     ArchitectureParameter,
     CategoricalParameter,
     ConstantParameter,
+    Float,
     FloatParameter,
     FunctionParameter,
     GraphGrammar,
@@ -15,7 +16,6 @@ from neps.search_spaces import (
 from neps.status.status import get_summary_dict, status
 
 Integer = IntegerParameter
-Float = FloatParameter
 Categorical = CategoricalParameter
 Constant = ConstantParameter
 Architecture = ArchitectureParameter

@@ -13,7 +13,7 @@ effectively incorporate various parameter types, ensuring that NePS can utilize 
 NePS currently features 4 primary hyperparameter types:
 
 * [`CategoricalParameter`][neps.search_spaces.hyperparameters.categorical.CategoricalParameter]
-* [`FloatParameter`][neps.search_spaces.hyperparameters.float.FloatParameter]
+* [`Float`][neps.search_spaces.hyperparameters.float.Float]
 * [`IntegerParameter`][neps.search_spaces.hyperparameters.integer.IntegerParameter]
 * [`ConstantParameter`][neps.search_spaces.hyperparameters.constant.ConstantParameter]
 
@@ -25,7 +25,7 @@ for optimizing a deep learning model:
 
 ```python
 pipeline_space = {
-    "learning_rate": neps.FloatParameter(0.00001, 0.1, log=True),
+    "learning_rate": neps.Float(0.00001, 0.1, log=True),
     "num_epochs": neps.IntegerParameter(3, 30, is_fidelity=True),
     "optimizer": neps.CategoricalParameter(["adam", "sgd", "rmsprop"]),
     "dropout_rate": neps.ConstantParameter(0.5),
@@ -40,9 +40,9 @@ neps.run(.., pipeline_space=pipeline_space)
 
         ::: neps.search_spaces.hyperparameters.categorical.CategoricalParameter
 
-    === "`FloatParameter`"
+    === "`Float`"
 
-        ::: neps.search_spaces.hyperparameters.float.FloatParameter
+        ::: neps.search_spaces.hyperparameters.float.Float
 
     === "`IntegerParameter`"
 
@@ -70,7 +70,7 @@ import neps
 neps.run(
     ...,
     pipeline_space={
-        "learning_rate": neps.FloatParameter(1e-4, 1e-1, log=True, default=1e-2, default_confidence="medium"),
+        "learning_rate": neps.Float(1e-4, 1e-1, log=True, default=1e-2, default_confidence="medium"),
         "num_epochs": neps.IntegerParameter(3, 30, is_fidelity=True),
         "optimizer": neps.CategoricalParameter(["adam", "sgd", "rmsprop"], default="adam", default_confidence="low"),
         "dropout_rate": neps.ConstantParameter(0.5),

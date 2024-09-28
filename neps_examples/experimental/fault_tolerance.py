@@ -78,7 +78,7 @@ def run_pipeline(pipeline_directory, learning_rate):
 
 
 pipeline_space = dict(
-    learning_rate=neps.FloatParameter(lower=0, upper=1),
+    learning_rate=neps.Float(lower=0, upper=1),
 )
 
 logging.basicConfig(level=logging.INFO)

@@ -7,22 +7,22 @@ from neps.optimizers.bayesian_optimization.models.gp_hierarchy import (
 )
 
 pipeline_space_fidelity_priors = dict(
-    val1=neps.FloatParameter(lower=-10, upper=10, default=1),
+    val1=neps.Float(lower=-10, upper=10, default=1),
     val2=neps.IntegerParameter(lower=1, upper=5, is_fidelity=True),
 )
 
 pipeline_space_not_fidelity_priors = dict(
-    val1=neps.FloatParameter(lower=-10, upper=10, default=1),
+    val1=neps.Float(lower=-10, upper=10, default=1),
     val2=neps.IntegerParameter(lower=1, upper=5, default=1),
 )
 
 pipeline_space_fidelity = dict(
-    val1=neps.FloatParameter(lower=-10, upper=10),
+    val1=neps.Float(lower=-10, upper=10),
     val2=neps.IntegerParameter(lower=1, upper=5, is_fidelity=True),
 )
 
 pipeline_space_not_fidelity = dict(
-    val1=neps.FloatParameter(lower=-10, upper=10),
+    val1=neps.Float(lower=-10, upper=10),
     val2=neps.IntegerParameter(lower=1, upper=5),
 )
 

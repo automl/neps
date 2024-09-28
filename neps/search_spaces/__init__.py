@@ -8,6 +8,7 @@ from neps.search_spaces.architecture.graph_grammar import (
 from neps.search_spaces.hyperparameters import (
     CategoricalParameter,
     ConstantParameter,
+    Float,
     FloatParameter,
     IntegerParameter,
     NumericalParameter,
@@ -23,6 +24,7 @@ __all__ = [
     "ArchitectureParameter",
     "CategoricalParameter",
     "ConstantParameter",
+    "Float",
     "FloatParameter",
     "FunctionParameter",
     "GraphGrammar",

@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.hyperparameters import (
-    FloatParameter,
+    Float,
     IntegerParameter,
     ConstantParameter,
     CategoricalParameter,
@@ -29,7 +29,7 @@ from neps.utils.common import MissingDependencyError
 @case
 def case_search_space_no_fid() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1),
+        a=Float(0, 1),
         b=CategoricalParameter(["a", "b", "c"]),
         c=ConstantParameter("a"),
         d=IntegerParameter(0, 10),
@@ -39,7 +39,7 @@ def case_search_space_no_fid() -> SearchSpace:
 @case
 def case_search_space_with_fid() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1),
+        a=Float(0, 1),
         b=CategoricalParameter(["a", "b", "c"]),
         c=ConstantParameter("a"),
         d=IntegerParameter(0, 10),
@@ -50,7 +50,7 @@ def case_search_space_with_fid() -> SearchSpace:
 @case
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1, default=0.5),
+        a=Float(0, 1, default=0.5),
         b=CategoricalParameter(["a", "b", "c"], default="a"),
         c=ConstantParameter("a"),
         d=IntegerParameter(0, 10, default=5),
@@ -60,7 +60,7 @@ def case_search_space_no_fid_with_prior() -> SearchSpace:
 @case
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1, default=0.5),
+        a=Float(0, 1, default=0.5),
         b=CategoricalParameter(["a", "b", "c"], default="a"),
         c=ConstantParameter("a"),
         d=IntegerParameter(0, 10, default=5),
