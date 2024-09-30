@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Optional, List
 import neps
 from neps.api import Default
+from neps.status.status import post_run_csv
+import pandas as pd
 from neps.utils.run_args import (
     RUN_ARGS,
     RUN_PIPELINE,
@@ -42,7 +44,8 @@ from neps.state.filebased import (
     create_or_load_filebased_neps_state,
     load_filebased_neps_state,
 )
-from neps.state.trial import Trial, Report
+from neps.state.neps_state import NePSState
+from neps.state.trial import Trial
 from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
 from neps.status.status import get_summary_dict
 from neps.api import _run_args
@@ -52,35 +55,62 @@ from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
 
 
-def get_root_directory(args: argparse.Namespace) -> Path | None:
-    """Load the root directory from the provided argument or from the config.yaml file."""
-    if args.root_directory:
-        return Path(args.root_directory)
+def validate_directory(path: Path) -> bool:
+    """
+    Validates whether the given path exists and is a directory.
 
+    Args:
+        path (Path): The path to validate.
+
+    Returns:
+        bool: True if valid, False otherwise.
+    """
+    if not path.exists():
+        print(f"Error: The directory '{path}' does not exist.")
+        return False
+    if not path.is_dir():
+        print(f"Error: The path '{path}' exists but is not a directory.")
+        return False
+    return True
+
+
+def get_root_directory(args: argparse.Namespace) -> Optional[Path]:
+    # Command-line argument handling
+    if args.root_directory:
+        root_dir = Path(args.root_directory)
+        if validate_directory(root_dir):
+            return root_dir
+        else:
+            return None
+
+    # Configuration file handling
     config_path = Path("run_config.yaml")
     if config_path.exists():
-        with config_path.open("r") as file:
-            config = yaml.safe_load(file)
+        try:
+            with config_path.open("r") as file:
+                config = yaml.safe_load(file)
+        except yaml.YAMLError as e:
+            print(f"Error parsing '{config_path}': {e}")
+            return None
+
         root_directory = config.get(ROOT_DIRECTORY)
         if root_directory:
             root_directory_path = Path(root_directory)
-            if not root_directory_path.exists() or not root_directory_path.is_dir():
-                print(
-                    f"Error: The directory {root_directory_path} does not exist or is "
-                    f"not a "
-                    f"directory."
-                )
+            if validate_directory(root_directory_path):
+                return root_directory_path
+            else:
                 return None
-            return root_directory_path
         else:
-            raise ValueError(
-                "The config.yaml file exists but does not contain 'root_directory'."
+            print(
+                "Error: The 'run_config.yaml' file exists but does not contain the 'root_directory' key."
             )
+            return None
     else:
-        raise ValueError(
-            "Either the root_directory must be provided as an argument or config.yaml "
-            "must exist with a 'root_directory' key."
+        print(
+            "Error: 'root_directory' must be provided as a command-line argument "
+            "or defined in 'run_config.yaml'."
         )
+        return None
 
 
 def init_config(args: argparse.Namespace) -> None:
@@ -89,7 +119,7 @@ def init_config(args: argparse.Namespace) -> None:
     """
     config_path = Path(args.config_path) if args.config_path else Path("run_config.yaml")
 
-    if args.state_machine:
+    if args.database:
         if config_path.exists():
             run_args = get_run_args_from_yaml(config_path)
             max_cost_total = run_args.get(MAX_COST_TOTAL)
@@ -100,10 +130,8 @@ def init_config(args: argparse.Namespace) -> None:
 
             try:
                 directory = run_args.get(ROOT_DIRECTORY)
-                if directory is not None:
-                    directory = Path(directory)
-                else:
-                    print(f"root_directory key is missing in {config_path}.")
+                if directory is None:
+                    return
                 is_new = not directory.exists()
                 _ = create_or_load_filebased_neps_state(
                     directory=directory,
@@ -579,6 +607,191 @@ def status(args: argparse.Namespace) -> None:
         print("-----------------------------")
 
 
+def results(args: argparse.Namespace) -> None:
+    """Handles the 'results' command by displaying incumbents, optionally plotting,
+    and dumping results to files based on the specified options."""
+    directory_path = get_root_directory(args)
+    if directory_path is None:
+        return
+
+    # Attempt to generate the summary CSV
+    try:
+        csv_config_data_path, _ = post_run_csv(directory_path)
+    except Exception as e:
+        print(f"Error generating summary CSV: {e}")
+        return
+
+    summary_csv_dir = csv_config_data_path.parent  # 'summary_csv' directory
+
+    # Load NePS state once
+    neps_state = load_neps_state(directory_path)
+    if neps_state is None:
+        return
+
+    # Load and sort all trials
+
+    trials = neps_state.get_all_trials()
+    sorted_trials = sorted(trials.values(), key=lambda x: int(x.id))
+
+    # Compute incumbents once
+    incumbents = compute_incumbents(sorted_trials)
+    incumbents_ids = [int(trial.id) for trial in incumbents]
+
+    # Handle Dump Options
+    if args.dump_all_configs or args.dump_incumbents:
+        if args.dump_all_configs:
+            dump_all_configs(csv_config_data_path, summary_csv_dir, args.dump_all_configs)
+            return  # Exit after dumping all trials
+
+        if args.dump_incumbents:
+            dump_incumbents(
+                csv_config_data_path,
+                summary_csv_dir,
+                args.dump_incumbents,
+                incumbents_ids,
+            )
+            return  # Exit after dumping incumbents
+
+    # Display Results
+    display_results(directory_path, incumbents)
+
+    # Handle Plotting
+    if args.plot:
+        plot_path = plot_incumbents(sorted_trials, incumbents, summary_csv_dir)
+        print(f"Plot saved to '{plot_path}'.")
+
+
+def load_neps_state(directory_path: Path) -> Optional[NePSState[Path]]:
+    """Load the NePS state with error handling."""
+    try:
+        return load_filebased_neps_state(directory_path)
+    except VersionedResourceDoesNotExistsError:
+        print(f"Error: No NePS state found in the directory '{directory_path}'.")
+        print("Ensure that the NePS run has been initialized correctly.")
+    except Exception as e:
+        print(f"Unexpected error loading NePS state: {e}")
+    return None
+
+
+def compute_incumbents(sorted_trials: List[Trial]) -> List[Trial]:
+    """Compute the list of incumbent trials based on the best loss."""
+    best_loss = float("inf")
+    incumbents = []
+    for trial in sorted_trials:
+        if trial.report and trial.report.loss < best_loss:
+            best_loss = trial.report.loss
+            incumbents.append(trial)
+    return incumbents[::-1]  # Reverse for most recent first
+
+
+def dump_all_configs(
+    csv_config_data_path: Path, summary_csv_dir: Path, dump_format: str
+) -> None:
+    """Dump all configurations to the specified format."""
+    dump_format = dump_format.lower()
+    supported_formats = ["csv", "json", "parquet"]
+    if dump_format not in supported_formats:
+        print(
+            f"Unsupported dump format: '{dump_format}'. "
+            f"Supported formats are: {supported_formats}."
+        )
+        return
+
+    base_name = csv_config_data_path.stem  # 'config_data'
+
+    if dump_format == "csv":
+        # CSV is already available
+        print(
+            f"All trials successfully dumped to '{summary_csv_dir}/{base_name}.{dump_format}'."
+        )
+    else:
+        # Define output file path with desired extension
+        output_file_name = f"{base_name}.{dump_format}"
+        output_file_path = summary_csv_dir / output_file_name
+
+        try:
+            # Read the existing CSV into DataFrame
+            df = pd.read_csv(csv_config_data_path)
+
+            # Save to the desired format
+            if dump_format == "json":
+                df.to_json(output_file_path, orient="records", indent=4)
+            elif dump_format == "parquet":
+                df.to_parquet(output_file_path, index=False)
+
+            print(f"All trials successfully dumped to '{output_file_path}'.")
+        except Exception as e:
+            print(f"Error dumping all trials to '{dump_format}': {e}")
+
+
+def dump_incumbents(
+    csv_config_data_path: Path,
+    summary_csv_dir: Path,
+    dump_format: str,
+    incumbents_ids: List[int],
+) -> None:
+    """Dump incumbent trials to the specified format."""
+    dump_format = dump_format.lower()
+    supported_formats = ["csv", "json", "parquet"]
+    if dump_format not in supported_formats:
+        print(
+            f"Unsupported dump format: '{dump_format}'. Supported formats are: {supported_formats}."
+        )
+        return
+
+    base_name = "incumbents"  # Name for incumbents file
+
+    if not incumbents_ids:
+        print("No incumbent trials found to dump.")
+        return
+
+    try:
+        # Read the existing CSV into DataFrame
+        df = pd.read_csv(csv_config_data_path)
+
+        # Filter DataFrame for incumbent IDs
+        df_incumbents = df[df["config_id"].isin(incumbents_ids)]
+
+        if df_incumbents.empty:
+            print("No incumbent trials found in the summary CSV.")
+            return
+
+        # Define output file path with desired extension
+        output_file_name = f"{base_name}.{dump_format}"
+        output_file_path = summary_csv_dir / output_file_name
+
+        # Save to the desired format
+        if dump_format == "csv":
+            df_incumbents.to_csv(output_file_path, index=False)
+        elif dump_format == "json":
+            df_incumbents.to_json(output_file_path, orient="records", indent=4)
+        elif dump_format == "parquet":
+            df_incumbents.to_parquet(output_file_path, index=False)
+
+        print(f"Incumbent trials successfully dumped to '{output_file_path}'.")
+    except Exception as e:
+        print(f"Error dumping incumbents to '{dump_format}': {e}")
+
+
+def display_results(directory_path: Path, incumbents: List[Trial]) -> None:
+    """Display the results of the NePS run."""
+    print(f"Results for NePS run: {directory_path}")
+    print("--------------------")
+    print("All Incumbent Trials:")
+    header = f"{'ID':<6} {'Loss':<12} {'Config':<60}"
+    print(header)
+    print("-" * len(header))
+    if incumbents:
+        for trial in incumbents:
+            if trial.report is not None and trial.report.loss is not None:
+                config = ", ".join(f"{k}: {v}" for k, v in trial.config.items())
+                print(f"{trial.id:<6} {trial.report.loss:<12.6f} {config:<60}")
+            else:
+                print(f"Trial {trial.id} has no valid loss.")
+    else:
+        print("No Incumbent Trials found.")
+
+
 def plot_incumbents(
     all_trials: List[Trial], incumbents: List[Trial], directory_path: Path
 ) -> str:
@@ -632,56 +845,6 @@ def plot_incumbents(
     return plot_path
 
 
-def results(args: argparse.Namespace) -> None:
-    """Handles the 'results' command by displaying incumbents in
-    reverse order and
-    optionally plotting and saving the results."""
-    directory_path = get_root_directory(args)
-    if directory_path is None:
-        return
-
-    try:
-        neps_state = load_filebased_neps_state(directory_path)
-    except VersionedResourceDoesNotExistsError:
-        print(f"No NePS state found in the directory {directory_path}.")
-        return
-
-    trials = neps_state.get_all_trials()
-    # Sort trials by trial ID
-    sorted_trials = sorted(trials.values(), key=lambda x: int(x.id))
-
-    # Compute incumbents
-    best_loss = float("inf")
-    incumbents = []
-    for trial in sorted_trials:
-        if trial.report and trial.report.loss < best_loss:
-            best_loss = trial.report.loss
-            incumbents.append(trial)
-
-    # Reverse the list for displaying, so the most recent incumbent is shown first
-    incumbents_display = incumbents[::-1]
-
-    if not args.plot:
-        print(f"Results for NePS run: {directory_path}")
-        print("--------------------")
-        print("All Incumbent Trials:")
-        header = f"{'ID':<6} {'Loss':<12} {'Config':<60}"
-        print(header)
-        print("-" * len(header))
-        if len(incumbents_display) > 0:
-            for trial in incumbents_display:
-                if trial.report is not None and trial.report.loss is not None:
-                    config = ", ".join(f"{k}: {v}" for k, v in trial.config.items())
-                    print(f"{trial.id:<6} {trial.report.loss:<12.6f} {config:<60}")
-                else:
-                    print(f"Trial {trial.id} has no valid loss.")
-        else:
-            print("No Incumbent Trials found.")
-    else:
-        plot_path = plot_incumbents(sorted_trials, incumbents, directory_path)
-        print(f"Plot saved to {plot_path}")
-
-
 def print_help(args: Optional[argparse.Namespace] = None) -> None:
     """Prints help information for the NEPS CLI."""
     help_text = """
@@ -696,7 +859,7 @@ neps init [OPTIONS]
     --config-path <path/to/config.yaml> (Optional: Specify the path for the config
     file. Default is run_config.yaml)
     --template [basic|complete] (Optional: Choose between a basic or complete template.)
-    --state-machine (Optional: Creates a NEPS state. Requires an existing config.yaml.)
+    --database (Optional: Creates a NEPS state. Requires an existing config.yaml.)
 
 neps run [OPTIONS]
     Runs a neural pipeline search.
@@ -989,7 +1152,7 @@ def main() -> None:
         "all neps configs (complete)",
     )
     parser_init.add_argument(
-        "--state-machine",
+        "--database",
         action="store_true",
         help="If set, creates a NEPS state. Requires an existing config.yaml.",
     )
@@ -1258,6 +1421,23 @@ def main() -> None:
     parser_results.add_argument(
         "--plot", action="store_true", help="Plot the results if set."
     )
+
+    # Create a mutually exclusive group for dump options
+    dump_group = parser_results.add_mutually_exclusive_group()
+    dump_group.add_argument(
+        "--dump-all-configs",
+        type=str,
+        choices=["csv", "json", "parquet"],
+        help="Dump all trials to a file in the specified format (csv, json, parquet).",
+    )
+    dump_group.add_argument(
+        "--dump-incumbents",
+        type=str,
+        choices=["csv", "json", "parquet"],
+        help="Dump incumbent trials to a file in the specified format "
+        "(csv, json, parquet).",
+    )
+
     parser_results.set_defaults(func=results)
 
     # Subparser for "help" command
