@@ -2,29 +2,21 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
-from botorch.fit import fit_gpytorch_mll
-from botorch.models.transforms.outcome import ChainedOutcomeTransform, Log, Standardize
-from gpytorch import ExactMarginalLogLikelihood
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
-    cost_cooled_acq,
-)
-from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
-    pibo_acquisition,
-)
 from neps.optimizers.bayesian_optimization.models.gp import (
+    fit_and_acquire_from_gp,
+    encode_trials_for_gp,
     make_default_single_obj_gp,
-    optimize_acq,
 )
 from neps.optimizers.intial_design import make_initial_design
 from neps.sampling import Prior
-from neps.search_spaces.encoding import TensorEncoder
+from neps.search_spaces.encoding import ConfigEncoder
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 
 if TYPE_CHECKING:
@@ -32,62 +24,6 @@ if TYPE_CHECKING:
     from neps.search_spaces.hyperparameters.float import FloatParameter
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.state import BudgetInfo, Trial
-
-
-def _missing_fill_strategy(
-    y: torch.Tensor,
-    strategy: Literal["mean", "worst", "3std", "nan"],
-    *,
-    lower_is_better: bool,
-) -> torch.Tensor:
-    # Assumes minimization
-    if y.ndim != 1:
-        raise ValueError("Only supports single objective optimization for now!")
-
-    match strategy:
-        case "nan":
-            return y
-        case "mean":
-            return torch.nan_to_num(y, nan=y.mean().item())
-        case "worst":
-            worst = y.min() if lower_is_better else y.max()
-            return torch.nan_to_num(y, nan=worst.item())
-        case "3std":
-            sign = 1 if lower_is_better else -1
-            std = y.std()
-            return torch.nan_to_num(y, nan=y.mean().item() + sign * 3 * std.item())
-        case _:
-            raise ValueError(f"Unknown strategy: {strategy}")
-
-
-def _missing_y_strategy(y: torch.Tensor) -> torch.Tensor:
-    # TODO: Figure out what to do if there's no reported loss value.
-    # Some strategies:
-    # 1. Replace with NaN, in which case GPYtorch ignores it
-    #   * Good if crash is random crash, in which case we do not wish to model
-    #   a performance because of it.
-    # 2. Replace with worst value seen so far
-    #   * Good if crash is systematic, in which case we wish to model it as
-    #   basically, "don't go here" while remaining in the range of possible
-    #   values for the GP.
-    # 3. Replace with mean
-    #   * Same as above but keeps the optimization of the GP landscape
-    #   smoother. Good if we have a mix of non-systematic and systematic
-    #   crashed. Likely the safest option as GP will likely be unconfident in
-    #   unsystematic crash cases, especially if it seems like a rare-event.
-    #   Will also unlikely be a candidate region if systematic and we observe
-    #   a few crashes there. However would take longer to learn of systematic
-    #   crash regions.
-    return _missing_fill_strategy(y, strategy="mean", lower_is_better=True)
-
-
-def _missing_cost_strategy(cost: torch.Tensor) -> torch.Tensor:
-    # TODO: Figure out what to do if there's no reported cost value
-    # Likely best to just fill in worst cost seen so far as this crash
-    # cost us a lot of time and we do not want to waste time on this
-    # region again. However if the crash was random, we might enter some
-    # issues.
-    return _missing_fill_strategy(cost, strategy="3std", lower_is_better=True)
 
 
 def _pibo_exp_term(
@@ -120,13 +56,6 @@ def _pibo_exp_term(
     return math.exp(-n_bo_samples / ndims)
 
 
-def _cost_used_budget_percentage(budget_info: BudgetInfo) -> float:
-    if budget_info.max_cost_budget is not None:
-        return budget_info.used_cost_budget / budget_info.max_cost_budget
-
-    raise ValueError("No cost budget provided!")
-
-
 class BayesianOptimization(BaseOptimizer):
     """Implements the basic BO loop."""
 
@@ -137,9 +66,10 @@ class BayesianOptimization(BaseOptimizer):
         initial_design_size: int | None = None,
         use_priors: bool = False,
         use_cost: bool = False,
+        cost_on_log_scale: bool = True,
         sample_default_first: bool = False,
         device: torch.device | None = None,
-        encoder: TensorEncoder | None = None,
+        encoder: ConfigEncoder | None = None,
         seed: int | None = None,
         budget: Any | None = None,  # TODO: remove
         surrogate_model: Any | None = None,  # TODO: remove
@@ -163,6 +93,7 @@ class BayesianOptimization(BaseOptimizer):
 
                     If using `cost`, cost must be provided in the reports of the trials.
 
+            cost_on_log_scale: Whether to use the log of the cost when using cost.
             sample_default_first: Whether to sample the default configuration first.
             seed: Seed to use for the random number generator of samplers.
             device: Device to use for the optimization.
@@ -181,14 +112,16 @@ class BayesianOptimization(BaseOptimizer):
             **pipeline_space.numerical,
             **pipeline_space.categoricals,
         }
-        self.encoder = TensorEncoder.default(params) if encoder is None else encoder
+        self.encoder = encoder or ConfigEncoder.default(params)
         self.prior = Prior.from_parameters(params) if use_priors is True else None
         self.seed = seed
         self.use_cost = use_cost
+        self.use_priors = use_priors
+        self.cost_on_log_scale = cost_on_log_scale
         self.device = device
         self.sample_default_first = sample_default_first
         self.n_initial_design = initial_design_size
-        self.initial_design_: list[dict[str, Any]] | None = None
+        self.init_design: list[dict[str, Any]] | None = None
 
     def ask(
         self,
@@ -202,13 +135,14 @@ class BayesianOptimization(BaseOptimizer):
                 "Seed is not yet implemented for BayesianOptimization"
             )
 
-        n_trials_sampled = len(trials)
-        config_id = str(n_trials_sampled + 1)
+        n_sampled = len(trials)
+        config_id = str(n_sampled + 1)
+        space = self.pipeline_space
 
         # If we havn't passed the intial design phase
-        if self.initial_design_ is None:
-            self.initial_design_ = make_initial_design(
-                space=self.pipeline_space,
+        if self.init_design is None:
+            self.init_design = make_initial_design(
+                space=space,
                 encoder=self.encoder,
                 sample_default_first=self.sample_default_first,
                 sampler=self.prior if self.prior is not None else "sobol",
@@ -219,124 +153,53 @@ class BayesianOptimization(BaseOptimizer):
                 sample_fidelity="max",
             )
 
-        if n_trials_sampled < len(self.initial_design_):
-            config = self.initial_design_[n_trials_sampled]
-            return SampledConfig(id=config_id, config=config)
+        if n_sampled < len(self.init_design):
+            return SampledConfig(id=config_id, config=self.init_design[n_sampled])
 
-        # Now we actually do the BO loop, start by encoding the data
-        # TODO: Lift this into runtime, let the optimizer advertise the encoding wants...
-        x_configs: list[Mapping[str, Any]] = []
-        ys: list[float] = []
-        costs: list[float] = []
-        pending: list[Mapping[str, Any]] = []
-        for trial in trials.values():
-            if trial.state.pending():
-                pending.append(trial.config)
-            else:
-                assert trial.report is not None
-                x_configs.append(trial.config)
-                ys.append(
-                    trial.report.loss if trial.report.loss is not None else torch.nan
-                )
-                if self.use_cost:
-                    cost_z_score = trial.report.cost
-                    costs.append(cost_z_score if cost_z_score is not None else torch.nan)
-
-        x = self.encoder.pack(x_configs, device=self.device)
-        maybe_x_pending_tensor = None
-        if len(pending) > 0:
-            x_pending = self.encoder.pack(pending, device=self.device)
-            maybe_x_pending_tensor = x_pending.tensor
-
-        y = torch.tensor(ys, dtype=torch.float64, device=self.device)
-        y = _missing_y_strategy(y)
-
-        # Now fit our model
-        y_model = make_default_single_obj_gp(
-            x,
-            y,
-            # TODO: We should consider applying some heurisitc to see if this should
-            # also include a log transform, similar as we do to cost if using `use_cost`.
-            y_transform=Standardize(m=1),
-        )
-        y_likelihood = y_model.likelihood
-
-        fit_gpytorch_mll(
-            ExactMarginalLogLikelihood(likelihood=y_likelihood, model=y_model)
+        # Otherwise, we encode trials and setup to fit and acquire from a GP
+        data, encoder = encode_trials_for_gp(
+            trials, space, device=self.device, encoder=self.encoder
         )
 
-        # NOTE: We use:
-        # * q - allows accounting for pending points, normally used to get a batch
-        #       of points.
-        # * log - More numerically stable
-        # * Noisy - In Deep-Learning, we shouldn't take f.min() incase it was a noise
-        #           spike. This accounts for noise in objective.
-        # * ExpectedImprovement - Cause ya know, the default.
-        acq = qLogNoisyExpectedImprovement(
-            y_model,
-            X_baseline=x.tensor,
-            X_pending=maybe_x_pending_tensor,
-            # Unfortunatly, there's no option to indicate that we minimize
-            # the AcqFunction so we need to do some kind of transformation.
-            # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-            objective=LinearMCObjective(weights=torch.tensor([-1.0])),
-        )
+        cost_percent = None
+        if self.use_cost:
+            if budget_info.max_cost_budget is None:
+                raise ValueError("Cost budget must be set if using cost")
+            cost_percent = budget_info.used_cost_budget / budget_info.max_cost_budget
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.
+        pibo_exp_term = None
+        prior = None
         if self.prior:
             pibo_exp_term = _pibo_exp_term(
-                n_trials_sampled,
-                self.encoder.ncols,
-                len(self.initial_design_),
+                n_sampled, encoder.ncols, len(self.init_design)
             )
+            # If the exp term is insignificant, skip prior acq. weighting
+            prior = None if pibo_exp_term < 1e-4 else self.prior
 
-            # If the amount of weight derived from the pibo exponent becomes
-            # insignificant, we don't use it as it as it adds extra computational
-            # burden and introduces more chance of numerical instability.
-            significant_lower_bound = 1e-4
-            if pibo_exp_term > significant_lower_bound:
-                acq = pibo_acquisition(
-                    acq,
-                    prior=self.prior,
-                    prior_exponent=pibo_exp_term,
-                    x_domain=self.encoder.domains,
-                    X_pending=maybe_x_pending_tensor,
-                )
+        gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+        candidate = fit_and_acquire_from_gp(
+            gp=gp,
+            x_train=data.x,
+            y_train=data.y,
+            encoder=encoder,
+            acquisition=qLogNoisyExpectedImprovement(
+                model=gp,
+                X_baseline=data.x,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                X_pending=data.x_pending,
+                prune_baseline=True,
+            ),
+            prior=prior,
+            pibo_exp_term=pibo_exp_term,
+            costs=data.cost if self.use_cost else None,
+            cost_percentage_used=cost_percent,
+            costs_on_log_scale=self.cost_on_log_scale,
+        )
 
-        # If we should use cost, weight the acquisition function by the cost
-        # of the configurations.
-        if self.use_cost:
-            cost = torch.tensor(costs, dtype=torch.float64, device=self.device)
-            cost_z_score = _missing_cost_strategy(cost)
-
-            cost_model = make_default_single_obj_gp(
-                x,
-                cost_z_score,
-                y_transform=ChainedOutcomeTransform(
-                    # TODO: Maybe some way for a user to specify their cost
-                    # is on a log scale?
-                    log=Log(),
-                    standardize=Standardize(m=1),
-                ),
-            )
-            cost_likelihood = cost_model.likelihood
-
-            # Optimize the cost model
-            fit_gpytorch_mll(
-                ExactMarginalLogLikelihood(likelihood=cost_likelihood, model=cost_model)
-            )
-            acq = cost_cooled_acq(
-                acq_fn=acq,
-                model=cost_model,
-                used_budget_percentage=_cost_used_budget_percentage(budget_info),
-                X_pending=maybe_x_pending_tensor,
-            )
-
-        # Finally, optimize the acquisition function to get a configuration
-        candidates, _eis = optimize_acq(acq_fn=acq, encoder=self.encoder, acq_options={})
-
-        assert len(candidates) == 1, "Expected only one candidate!"
-        config = self.encoder.unpack(candidates)[0]
-
+        config = encoder.decode(candidate)[0]
         return SampledConfig(id=config_id, config=config)

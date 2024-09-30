@@ -3,25 +3,39 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Mapping
 
+from botorch.acquisition import (
+    AcquisitionFunction,
+    LinearMCObjective,
+    qLogNoisyExpectedImprovement,
+)
+from botorch.acquisition.analytic import SingleTaskGP
+from botorch.fit import fit_gpytorch_mll
+from gpytorch import ExactMarginalLogLikelihood
 import numpy as np
 import pandas as pd
 import torch
 
 from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
+from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
+    pibo_acquisition,
+)
 from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
     DecayingPriorWeightedAcquisition,
 )
 from neps.optimizers.bayesian_optimization.acquisition_samplers import (
     AcquisitionSamplerMapping,
 )
+from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
 from neps.optimizers.multi_fidelity_prior.utils import (
     compute_config_dist,
     custom_crossover,
     local_mutation,
     update_fidelity,
 )
+from neps.sampling.priors import Prior
+from neps.search_spaces.encoding import ConfigEncoder
 from neps.utils.common import instance_from_map
 
 if TYPE_CHECKING:
@@ -273,67 +287,68 @@ class ModelPolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        surrogate_model: str | Any = "gp",
-        surrogate_model_args: dict | None = None,
-        acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
-        patience: int = 100,
-        logger=None,
+        prior: Prior | None = None,
+        use_cost: bool = False,
+        device: torch.device | None = None,
     ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        if prior:
+            raise NotImplementedError("Priors are not implemented yet.")
+        if use_cost:
+            raise NotImplementedError("Cost is not implemented yet.")
 
-        surrogate_model_args = surrogate_model_args or {}
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            surrogate_model,
-            name="surrogate model",
-            kwargs=surrogate_model_args,
+        super().__init__(pipeline_space=pipeline_space)
+        self.device = device
+        self.prior = prior
+        self._encoder = ConfigEncoder.default(
+            {**pipeline_space.numerical, **pipeline_space.categoricals}
+        )
+        self._model: SingleTaskGP | None = None
+        self._acq: AcquisitionFunction | None = None
+
+    def update_model(
+        self,
+        train_x: list[SearchSpace],
+        train_y: list[float],
+        pending_x: list[SearchSpace],
+        decay_t: float | None = None,
+    ):
+        x_train = self._encoder.encode([config.hp_values() for config in train_x])
+        x_pending = self._encoder.encode([config.hp_values() for config in pending_x])
+        y_train = torch.tensor(train_y, dtype=torch.float64, device=self.device)
+
+        y_model = make_default_single_obj_gp(x_train, y_train, encoder=self._encoder)
+
+        fit_gpytorch_mll(
+            ExactMarginalLogLikelihood(likelihood=y_model.likelihood, model=y_model),
+        )
+        acq = qLogNoisyExpectedImprovement(
+            y_model,
+            X_baseline=x_train,
+            X_pending=x_pending,
+            # Unfortunatly, there's no option to indicate that we minimize
+            # the AcqFunction so we need to do some kind of transformation.
+            # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+            objective=LinearMCObjective(weights=torch.tensor([-1.0])),
         )
 
-        self.acquisition = instance_from_map(
-            AcquisitionMapping,
-            acquisition,
-            name="acquisition function",
-        )
+        # If we have a prior, wrap the above acquisitionm with a prior weighting
+        if self.prior is not None:
+            assert decay_t is not None
+            # TODO: Ideally we have something based on budget and dimensions, not an arbitrary term
+            # This 10 is extracted from the old DecayingWeightedPrior
+            pibo_exp_term = 10 / decay_t
+            significant_lower_bound = 1e-4  # No significant impact beyond this point
+            if pibo_exp_term < significant_lower_bound:
+                acq = pibo_acquisition(
+                    acq,
+                    prior=self.prior,
+                    prior_exponent=pibo_exp_term,
+                    x_domain=self._encoder.domains,
+                    x_pending=x_pending,
+                )
 
-        # TODO: Enable only when a flag exists to toggle prior-based decaying of AF
-        # if pipeline_space.has_prior:
-        #     self.acquisition = DecayingPriorWeightedAcquisition(
-        #         self.acquisition, log=log_prior_weighted
-        #     )
-
-        self.acquisition_sampler = instance_from_map(
-            AcquisitionSamplerMapping,
-            acquisition_sampler,
-            name="acquisition sampler function",
-            kwargs={"patience": patience, "pipeline_space": pipeline_space},
-        )
-
-        self.sampling_args: dict = {}
-
-    def _fantasize_pending(self, train_x, train_y, pending_x):
-        if len(pending_x) == 0:
-            return train_x, train_y
-        # fit model on finished evaluations
-        self.surrogate_model.fit(train_x, train_y)
-        # hallucinating: predict for the pending evaluations
-        _y, _ = self.surrogate_model.predict(pending_x)
-        _y = _y.detach().numpy().tolist()
-        # appending to training data
-        train_x.extend(pending_x)
-        train_y.extend(_y)
-        return train_x, train_y
-
-    def update_model(self, train_x, train_y, pending_x, decay_t=None):
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
-        self.surrogate_model.fit(train_x, train_y)
-        self.acquisition.set_state(self.surrogate_model, decay_t=decay_t)
-        # TODO: set_state should generalize to all options
-        #  no needed to set state of sampler when using `random`
-        # self.acquisition_sampler.set_state(x=train_x, y=train_y)
+        self._y_model = y_model
+        self._acq = acq
 
     def sample(
         self,
@@ -354,8 +369,6 @@ class ModelPolicy(SamplingPolicy):
               variable set to the same value. This value is same as that of the fidelity
               value of the configs in the training data.
         """
-        self.logger.info("Acquiring...")
-
         # sampling random configurations
         samples = [
             self.pipeline_space.sample(user_priors=False, ignore_fidelity=True)

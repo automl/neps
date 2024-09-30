@@ -89,19 +89,18 @@ class Domain(Generic[V]):
     value.
     """
 
-    dtype: torch.dtype = field(init=False, repr=False)
     is_unit_float: bool = field(init=False, repr=False)
     midpoint: V = field(init=False, repr=False)
     is_log: bool = field(init=False, repr=False)
     length: V = field(init=False, repr=False)
     cardinality: int | None = field(init=False, repr=False)
     bounds: tuple[V, V] = field(init=False, repr=False)
+    preffered_dtype: torch.dtype = field(init=False, repr=False)
 
     def __post_init__(self):
         assert isinstance(self.lower, type(self.upper))
         is_int = isinstance(self.lower, int)
         object.__setattr__(self, "is_log", self.log_bounds is not None)
-        object.__setattr__(self, "dtype", torch.int64 if is_int else torch.float64)
         object.__setattr__(
             self,
             "is_unit_float",
@@ -116,10 +115,14 @@ class Domain(Generic[V]):
         else:
             cardinality = None
 
-        object.__setattr__(self, "cardinality", cardinality)
+        preferred_dtype = torch.int64 if is_int else torch.float64
+        object.__setattr__(self, "preffered_dtype", preferred_dtype)
+
         mid = self.from_unit(torch.tensor(0.5)).item()
-        if self.dtype == torch.int64:
+        if is_int:
             mid = int(round(mid))
+
+        object.__setattr__(self, "cardinality", cardinality)
         object.__setattr__(self, "midpoint", mid)
         object.__setattr__(self, "bounds", (self.lower, self.upper))
 
@@ -203,17 +206,23 @@ class Domain(Generic[V]):
         """
         return Domain.int(0, n - 1)
 
-    def to_unit(self, x: Tensor) -> Tensor:
+    def to_unit(self, x: Tensor, *, dtype: torch.dtype | None = None) -> Tensor:
         """Transform a tensor of values from this domain to the unit interval [0, 1].
 
         Args:
             x: Tensor of values in this domain to convert.
+            dtype: The dtype to convert to
 
         Returns:
             Same shape tensor with the values normalized to the unit interval [0, 1].
         """
+        if dtype is None:
+            dtype = torch.float64
+        else:
+            assert dtype.is_floating_point, "Unit interval is only for floats."
+
         if self.is_unit_float:
-            return x
+            return x.to(dtype)
 
         if self.log_bounds is not None:
             x = torch.log(x)
@@ -221,19 +230,22 @@ class Domain(Generic[V]):
         else:
             lower, upper = self.lower, self.upper
 
-        return (x - lower) / (upper - lower)
+        x = (x - lower) / (upper - lower)
+        return x.type(dtype)
 
-    def from_unit(self, x: Tensor) -> Tensor:
+    def from_unit(self, x: Tensor, *, dtype: torch.dtype | None = None) -> Tensor:
         """Transform a tensor of values from the unit interval [0, 1] to this domain.
 
         Args:
             x: A tensor of values in the unit interval [0, 1] to convert.
+            dtype: The dtype to convert to
 
         Returns:
             Same shape tensor with the lifted into this domain.
         """
+        dtype = dtype or self.preffered_dtype
         if self.is_unit_float:
-            return x
+            return x.to(dtype)
 
         bins = self.bins
         if bins is not None:
@@ -252,9 +264,9 @@ class Domain(Generic[V]):
         if self.round:
             x = torch.round(x)
 
-        return x.type(self.dtype)
+        return x.type(dtype)
 
-    def cast(self, x: Tensor, frm: Domain) -> Tensor:
+    def cast(self, x: Tensor, frm: Domain, *, dtype: torch.dtype | None = None) -> Tensor:
         """Cast a tensor of values frm the domain `frm` to this domain.
 
         If you need to cast a tensor of mixed domains, use
@@ -263,10 +275,12 @@ class Domain(Generic[V]):
         Args:
             x: Tensor of values in the `frm` domain to cast to this domain.
             frm: The domain to cast from.
+            dtype: The dtype to convert to
 
         Returns:
             Same shape tensor with the values cast to this domain.
         """
+        dtype = dtype or self.preffered_dtype
         # NOTE: In general, we should always be able to go through the unit interval
         # [0, 1] to be able to transform between domains. However sometimes we can
         # bypass some steps, dependant on the domains, hence the ugliness...
@@ -281,12 +295,12 @@ class Domain(Generic[V]):
         if same_bounds and same_log_bounds and (self.bins is None or same_bins):
             if self.round:
                 x = torch.round(x)
-            return x.type(self.dtype) if x.dtype != self.dtype else x
+            return x.type(dtype)
 
         # Shortcut 2. (From normalized)
         # The domain we are coming from is already normalized, we only need to lift
         if frm.is_unit_float:
-            return self.from_unit(x)  # type: ignore
+            return self.from_unit(x, dtype=dtype)  # type: ignore
 
         # Shortcut 3. (Log lift)
         # We can also shortcut out if the only diffrence is that we are coming frm the
@@ -296,11 +310,10 @@ class Domain(Generic[V]):
             x = torch.exp(x)
             if self.round:
                 x = torch.round(x)
-            return x.type(self.dtype)
+            return x.type(dtype)
 
         # Otherwise, through the unit interval we go
-        norm = frm.to_unit(x)
-        lift = self.from_unit(norm)
+        lift = self.from_unit(frm.to_unit(x), dtype=dtype)
         return lift  # noqa: RET504
 
     @classmethod
@@ -314,6 +327,8 @@ class Domain(Generic[V]):
         x: Tensor,
         frm: Domain | Iterable[Domain],
         to: Domain | Iterable[Domain],
+        *,
+        dtype: torch.dtype | None = None,
     ) -> Tensor:
         """Cast a tensor of mixed domains to a new set of mixed domains.
 
@@ -326,6 +341,7 @@ class Domain(Generic[V]):
             to: List of domains to cast to. If list, must be length as `n_dims`,
                 otherwise we assume the single domain provided is the one to be used
                 across all dimensions.
+            dtype: The dtype of the converted tensor
 
         Returns:
             Tensor of the same shape as `x` with the last dimension casted
@@ -341,7 +357,7 @@ class Domain(Generic[V]):
 
         # If both are not a list, we can just cast the whole tensor
         if isinstance(frm, Domain) and isinstance(to, Domain):
-            return to.cast(x, frm=frm)
+            return to.cast(x, frm=frm, dtype=dtype)
 
         frm = [frm] * ndims if isinstance(frm, Domain) else list(frm)
         to = [to] * ndims if isinstance(to, Domain) else list(to)
@@ -360,9 +376,9 @@ class Domain(Generic[V]):
                 f" Expected {ndims} from last dimension of {x.shape=}, got {len(to)}."
             )
 
-        out = torch.empty_like(x)
+        out = torch.empty_like(x, dtype=dtype)
         for i, (f, t) in enumerate(zip(frm, to, strict=False)):
-            out[..., i] = t.cast(x[..., i], frm=f)
+            out[..., i] = t.cast(x[..., i], frm=f, dtype=dtype)
 
         return out
 

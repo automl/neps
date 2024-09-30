@@ -40,7 +40,7 @@ def apply_pibo_acquisition_weight(
     prior_exponent: float,
 ):
     if acq._log:
-        weighted_log_probs = prior.log_prob(X, frm=x_domain) * prior_exponent
+        weighted_log_probs = prior.log_prob(X, frm=x_domain) + prior_exponent
         return acq_values + weighted_log_probs
 
     weighted_probs = prior.prob(X, frm=x_domain).pow(prior_exponent)
@@ -52,7 +52,6 @@ def pibo_acquisition(
     prior: Prior,
     prior_exponent: float,
     x_domain: Domain | list[Domain],
-    X_pending: Tensor | None = None,
 ) -> WeightedAcquisition:
     return WeightedAcquisition(
         acq=acq_fn,
@@ -62,5 +61,4 @@ def pibo_acquisition(
             x_domain=x_domain,
             prior_exponent=prior_exponent,
         ),
-        X_pending=X_pending,
     )

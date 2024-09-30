@@ -34,8 +34,9 @@ class Sampler(Protocol):
         n: int | torch.Size,
         *,
         to: Domain | list[Domain],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
         """Sample `n` points and convert them to the given domain.
 
@@ -47,7 +48,7 @@ class Sampler(Protocol):
             to: If a single domain, `.ncols` columns will be produced form that one
                 domain. If a list of domains, then it must have the same length as the
                 number of columns, with each column being in the corresponding domain.
-            seed: The seed for the random number generator.
+            seed: The seed generator
             device: The device to cast the samples to.
 
         Returns:
@@ -82,6 +83,18 @@ class Sampler(Protocol):
 
         return UniformPrior(ndims=ndim)
 
+    @classmethod
+    def borders(cls, ndim: int) -> BorderSampler:
+        """Create a border sampler.
+
+        Args:
+            ndim: The number of dimensions to sample.
+
+        Returns:
+            A border sampler.
+        """
+        return BorderSampler(ndim=ndim)
+
 
 # Technically this could be a prior with a uniform distribution
 @dataclass
@@ -112,8 +125,9 @@ class Sobol(Sampler):
         n: int | torch.Size,
         *,
         to: Domain | list[Domain],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
         if seed is not None:
             raise NotImplementedError("Setting the seed is not supported yet")
@@ -123,14 +137,15 @@ class Sobol(Sampler):
         # and reshape the output tensor to the desired shape, if needed.
         _n = n if isinstance(n, int) else reduce(lambda x, y: x * y, n)
 
+        _seed = (
+            None if seed is None else torch.randint(0, 2**31, (1,), generator=seed).item()
+        )
         sobol = torch.quasirandom.SobolEngine(
-            dimension=self.ndim,
-            scramble=self.scramble,
-            seed=seed,
+            dimension=self.ndim, scramble=self.scramble, seed=_seed
         )
 
-        out = torch.empty(_n, self.ncols, dtype=torch.float64, device=device)
-        x = sobol.draw(_n, dtype=torch.float64, out=out)
+        out = torch.empty(_n, self.ncols, dtype=dtype, device=device)
+        x = sobol.draw(_n, dtype=dtype, out=out)
 
         # If we got extra dimensions, such as batch dimensions, we need to
         # reshape the tensor to the desired shape.
@@ -185,8 +200,9 @@ class WeightedSampler(Sampler):
         n: int | torch.Size,
         *,
         to: Domain | list[Domain],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
         if seed is not None:
             raise NotImplementedError("Seeding is not yet implemented.")
@@ -205,12 +221,15 @@ class WeightedSampler(Sampler):
             self.probabilities,
             total_samples,
             replacement=True,
+            generator=seed,
             out=chosen_samplers,
         )
 
         # Create an empty tensor to hold all samples
         output_samples = torch.empty(
-            (total_samples, self.ncols), device=device, dtype=torch.float64
+            (total_samples, self.ncols),
+            device=device,
+            dtype=dtype,
         )
 
         # Loop through each sampler and its associated indices
@@ -221,10 +240,73 @@ class WeightedSampler(Sampler):
 
             if len(indices) > 0:
                 # Sample from the sampler for the required number of indices
-                samples_from_sampler = sampler.sample(len(indices), to=to, device=device)
+                samples_from_sampler = sampler.sample(
+                    len(indices),
+                    to=to,
+                    seed=seed,
+                    device=device,
+                    dtype=dtype,
+                )
                 output_samples[indices] = samples_from_sampler
 
         # Reshape to the output shape including ncols dimension
         output_samples = output_samples.view(output_shape)
 
         return Domain.translate(output_samples, frm=UNIT_FLOAT_DOMAIN, to=to)
+
+
+@dataclass
+class BorderSampler(Sampler):
+    """A sampler that samples from the border of a hypercube."""
+
+    ndim: int
+
+    @property
+    @override
+    def ncols(self) -> int:
+        return self.ndim
+
+    @property
+    def n_possible(self) -> int:
+        """The amount of possible border configurations."""
+        return 2**self.ndim
+
+    @override
+    def sample(
+        self,
+        n: int | torch.Size,
+        *,
+        to: Domain | list[Domain],
+        seed: torch.Generator | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> torch.Tensor:
+        _arange = torch.arange(self.n_possible, device=device, dtype=torch.int32)
+        # Calculate the total number of samples required
+        if isinstance(n, int):
+            total_samples = min(n, self.n_possible)
+            output_shape = (total_samples, self.ncols)
+        else:
+            total_samples = reduce(lambda x, y: x * y, n)
+            if total_samples > self.n_possible:
+                raise ValueError(
+                    f"The shape of samples requested (={n}) is more than the number of "
+                    f"possible border configurations (={self.n_possible})."
+                )
+            output_shape = (*n, self.ncols)
+
+        if self.n_possible <= total_samples:
+            configs = _arange
+        else:
+            # Otherwise, we take a random sample of the 2**n possible border configs
+            rand_ix = torch.randperm(self.n_possible, generator=seed, device=device)[
+                :total_samples
+            ]
+            configs = _arange[rand_ix]
+
+        # https://stackoverflow.com/a/63546308/5332072
+        bit_masks = 2 ** _arange[: self.ndim]
+        configs = configs.unsqueeze(1).bitwise_and(bit_masks).ne(0).to(dtype)
+        # Reshape to the output shape including ncols dimension
+        configs.view(output_shape)
+        return Domain.translate(configs, frm=UNIT_FLOAT_DOMAIN, to=to)

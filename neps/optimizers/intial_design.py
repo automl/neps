@@ -1,25 +1,24 @@
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from __future__ import annotations
 
 from typing import Literal, Any, Mapping
 
 from neps.sampling import Sampler
 from neps.sampling.priors import Prior
-from neps.search_spaces.encoding import TensorEncoder
+from neps.search_spaces.encoding import ConfigEncoder
 from neps.search_spaces.search_space import SearchSpace
 import torch
 
 
 def make_initial_design(
     space: SearchSpace,
-    encoder: TensorEncoder,
+    encoder: ConfigEncoder,
     sampler: Literal["sobol", "prior", "uniform"] | Sampler,
     sample_size: int | Literal["ndim"] | None = "ndim",
     sample_default_first: bool = True,
     sample_fidelity: (
         Literal["min", "max", True] | int | float | dict[str, int | float]
     ) = True,
-    seed: int | None = None,
+    seed: torch.Generator | None = None,
 ) -> list[dict[str, Any]]:
     """Generate the initial design of the optimization process.
 
@@ -50,7 +49,7 @@ def make_initial_design(
             When specified as a dictionary, the keys should be the names of the
             fidelity parameters and the values should be the target fidelities.
             If set to `True`, the configuration will have its fidelity randomly sampled.
-        seed: The seed to use for the random number generator of samplers.
+        seed: The seed to use for the random number generation.
 
     """
     configs: list[dict[str, Any]] = []
@@ -124,7 +123,7 @@ def make_initial_design(
             seed=seed,
         )
         uniq_x = torch.unique(encoded_configs, dim=0)
-        sample_configs = encoder.unpack(uniq_x[:sample_size])
+        sample_configs = encoder.decode(uniq_x[:sample_size])
         configs.extend([{**config, **fids} for config in sample_configs])
 
     return configs

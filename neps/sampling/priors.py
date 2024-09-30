@@ -375,8 +375,9 @@ class CenteredPrior(Prior):
         n: int | torch.Size,
         *,
         to: Domain | list[Domain],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
         if seed is not None:
             raise NotImplementedError("Seeding is not yet implemented.")
@@ -388,11 +389,11 @@ class CenteredPrior(Prior):
         )
         _n = torch.Size((n,)) if isinstance(n, int) else n
 
-        out = torch.empty(_out_shape, device=device, dtype=torch.float64)
+        out = torch.empty(_out_shape, device=device, dtype=dtype)
         for i, dist in enumerate(self.distributions):
             out[..., i] = dist.distribution.sample(_n)
 
-        return Domain.translate(out, frm=self._distribution_domains, to=to)
+        return Domain.translate(out, frm=self._distribution_domains, to=to, dtype=dtype)
 
 
 @dataclass
@@ -422,8 +423,9 @@ class UniformPrior(Prior):
         n: int | torch.Size,
         *,
         to: Domain | list[Domain],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
         if seed is not None:
             raise NotImplementedError("Seeding is not yet implemented.")
@@ -433,8 +435,8 @@ class UniformPrior(Prior):
             if isinstance(n, int)
             else torch.Size((*n, self.ndims))
         )
-        samples = torch.rand(_n, device=device, dtype=torch.float64)
-        return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to)
+        samples = torch.rand(_n, device=device, dtype=dtype)
+        return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to, dtype=dtype)
 
 
 @dataclass
@@ -485,7 +487,10 @@ class WeightedPrior(Prior):
         n: int | torch.Size,
         *,
         to: Domain | list[Domain],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
-        return self._weighted_sampler.sample(n, to=to, seed=seed, device=device)
+        return self._weighted_sampler.sample(
+            n, to=to, seed=seed, device=device, dtype=dtype
+        )

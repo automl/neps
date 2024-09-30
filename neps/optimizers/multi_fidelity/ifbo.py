@@ -1,15 +1,21 @@
+from functools import partial
 from typing import Any, Mapping, Literal
 
 import numpy as np
 import torch
 
+import warnings
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.bayesian_optimization.models.ftpfn import FTPFNSurrogate
+from neps.optimizers.bayesian_optimization.models.ftpfn import (
+    FTPFNSurrogate,
+    acquire_next_from_ftpfn,
+    encode_trials_for_ftpfn,
+)
 from neps.optimizers.intial_design import make_initial_design
 from neps.sampling.priors import Prior
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import Domain
-from neps.search_spaces.encoding import CategoricalToUnitNorm, TensorEncoder
+from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
 from neps.state.trial import Trial
 from neps.state.optimizer import BudgetInfo
@@ -87,7 +93,7 @@ def _tokenize(
 
 def _encode_for_ftpfn(
     trials: Mapping[str, Trial],
-    encoder: TensorEncoder,
+    encoder: ConfigEncoder,
     space: SearchSpace,
     budget_domain: Domain,
     device: torch.device | None = None,
@@ -196,36 +202,6 @@ def _keep_highest_budget_evaluation(x: torch.Tensor) -> torch.Tensor:
     return sorted_x[ii]
 
 
-def _acquire_pfn(
-    train_x: torch.Tensor,
-    train_y: torch.Tensor,
-    test_x: torch.Tensor,
-    ftpfn: FTPFNSurrogate,
-    y_to_beat: float,
-    how: Literal["pi", "ei", "ucb", "lcb"],
-) -> torch.Tensor:
-    match how:
-        case "pi":
-            y_best = torch.full(
-                size=(len(test_x),), fill_value=y_to_beat, dtype=FTPFN_DTYPE
-            )
-            return ftpfn.get_pi(train_x, train_y, test_x, y_best=y_best)
-        case "ei":
-            y_best = torch.full(
-                size=(len(test_x),), fill_value=y_to_beat, dtype=FTPFN_DTYPE
-            )
-            return ftpfn.get_ei(train_x, train_y, test_x, y_best=y_best)
-        case "ucb":
-            y_best = torch.full(
-                size=(len(test_x),), fill_value=y_to_beat, dtype=FTPFN_DTYPE
-            )
-            return ftpfn.get_ucb(train_x, train_y, test_x)
-        case "lcb":
-            return ftpfn.get_lcb(train_x, train_y, test_x)
-        case _:
-            raise ValueError(f"Unknown acquisition function {how}")
-
-
 class IFBO(BaseOptimizer):
     """Base class for MF-BO algorithms that use DyHPO-like acquisition and budgeting."""
 
@@ -284,7 +260,7 @@ class IFBO(BaseOptimizer):
 
         params = {**space.numerical, **space.categoricals}
         self._prior = Prior.from_parameters(params) if use_priors else None
-        self._ftpfn_encoder: TensorEncoder = TensorEncoder.default(
+        self._config_encoder: ConfigEncoder = ConfigEncoder.default(
             params,
             # FTPFN doesn't support categoricals and we were recomenned to just evenly distribute
             # in the unit norm
@@ -293,6 +269,8 @@ class IFBO(BaseOptimizer):
                 for cat_name, cat in space.categoricals.items()
             },
         )
+        self._border_sampler = Sampler.borders(len(params))
+        self._cached_border_configs: torch.Tensor | None = None
 
         # Domain of fidelity values, i.e. what is given in the configs that we
         # give to the user to evaluate at.
@@ -309,7 +287,7 @@ class IFBO(BaseOptimizer):
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo,
         optimizer_state: dict[str, Any],
-        seed: int | None = None,
+        seed: torch.Generator | None = None,
     ) -> SampledConfig:
         if seed is not None:
             raise NotImplementedError("Seed is not yet implemented for IFBO")
@@ -321,7 +299,7 @@ class IFBO(BaseOptimizer):
         if self._initial_design is None:
             self._initial_design = make_initial_design(
                 space=self.pipeline_space,
-                encoder=self._ftpfn_encoder,
+                encoder=self._config_encoder,
                 sample_default_first=self.sample_default_first,
                 sampler="sobol" if self._prior is None else self._prior,
                 seed=seed,
@@ -333,128 +311,116 @@ class IFBO(BaseOptimizer):
             return SampledConfig(id=f"{new_id}_0", config=self._initial_design[new_id])
 
         # Otherwise, we proceed to surrogate phase
-        ftpfn = FTPFNSurrogate(
-            target_path=self.surrogate_model_args.get("target_path", None),
-            version=self.surrogate_model_args.get("version", "0.0.1"),
-            device=self.device,
-        )
-        x_train, maximize_ys = _encode_for_ftpfn(
+        data = encode_trials_for_ftpfn(
             trials=trials,
-            encoder=self._ftpfn_encoder,
             space=self.pipeline_space,
+            encoder=self._config_encoder,
             budget_domain=self._budget_domain,
             device=self.device,
         )
-        # PFN uses `0` id for test configurations, we remove this later
-        x_train[:, ID_COL] = x_train[:, ID_COL] + 1
 
-        # Fantasize the result of pending trials
-        is_pending = maximize_ys.isnan()
-        maximize_ys[is_pending] = ftpfn.get_mean_performance(
-            train_x=x_train[~is_pending],
-            train_y=maximize_ys[~is_pending],
-            test_x=x_train[is_pending],
-        )
+        # TODO: Very little chance mfpi_random is best but for now it's stable
+        def _mfpi_random(
+            _X: torch.Tensor,
+            _y: torch.Tensor,
+            _acq_samples: torch.Tensor,
+            _ftpfn: FTPFNSurrogate,
+            how: Literal["pi", "ei"],
+        ) -> torch.Tensor:
+            rng = np.random.RandomState(None if seed is None else seed + len(trials))
+            _low = self._budget_ix_domain.lower
+            _high = self._budget_ix_domain.upper
+            horizon_index = rng.randint(_low, _high) + 1
+            horizon = self._budget_domain.cast_one(
+                horizon_index, frm=self._budget_ix_domain
+            )
+            f_best = _y.max().item()
+            r = rng.uniform(-4, -1)
+            threshold = f_best + (10**r) * (1 - f_best)
 
-        # We then sample a horizon, minimum one budget index increment and cast
-        # to the budget domain expected by the ftpfn model
-        rng = np.random.RandomState(seed)
-        lower_index = self._budget_ix_domain.lower
-        upper_index = self._budget_ix_domain.upper
-        horizon = self._budget_domain.cast_one(
-            rng.randint(lower_index, upper_index) + 1,
-            frm=self._budget_ix_domain,
-        )
+            # NOTE: If converting f_inc to be seperate per acq sample, you
+            # need to add an extra batch dimension to y_best, i.e. (n, 1)
+            # Budget column is between 0 and 1, but we want to add the horizon
+            BUDGET_COL = 1
+            _acq_samples[:, BUDGET_COL] += horizon
+            _acq_samples[:, BUDGET_COL] = torch.clamp(
+                _acq_samples[:, BUDGET_COL], max=self._budget_domain.upper
+            )
 
-        # Now we sample some new configurations into the domain expected by the FTPFN
-        if self._prior is not None:
-            acq_sampler = self._prior
-        else:
-            acq_sampler = Sampler.uniform(ndim=self._ftpfn_encoder.ncols)
+            match how:
+                case "pi":
+                    return _ftpfn.get_pi(_X, _y, _acq_samples, y_best=threshold)
+                case "ei":
+                    return _ftpfn.get_ei(_X, _y, _acq_samples, y_best=threshold)
+                case _:
+                    raise ValueError(f"Unknown acquisition strategy: {how=}")
 
-        new_acq_configs = acq_sampler.sample(
+        ndims = self._config_encoder.ncols
+
+        # Sample some configurations at uniform for acq.
+        uniform_sampler = Sampler.uniform(ndim=ndims)
+        uniform_configs = uniform_sampler.sample(
             self.n_acquisition_new_configs,
-            to=self._ftpfn_encoder.domains,
+            to=self._config_encoder.domains,
+            seed=seed,
             device=self.device,
-            seed=None,  # TODO
+            dtype=FTPFN_DTYPE,
         )
-        acq_new = _tokenize(
-            ids=torch.zeros(self.n_acquisition_new_configs, device=self.device),
-            budgets=torch.full(
-                size=(self.n_acquisition_new_configs,),
-                fill_value=self._budget_domain.lower,
+
+        # Also sample some border configurations for acq.
+        # OPTIM: If we are below the amount possible, there is no randomness and we can cache them
+        border_sampler = Sampler.borders(ndim=ndims)
+        N_border = 2**9  # 512, if we go over, we subselect 512 border configs
+        if N_border <= border_sampler.n_possible:
+            if self._cached_border_configs is not None:
+                border_configs = self._cached_border_configs
+            else:
+                self._cached_border_configs = border_sampler.sample(
+                    n=N_border,
+                    to=self._config_encoder.domains,
+                    seed=seed,
+                    device=self.device,
+                    dtype=FTPFN_DTYPE,
+                )
+                border_configs = self._cached_border_configs
+        else:
+            border_configs = border_sampler.sample(
+                n=N_border,
+                to=self._config_encoder.domains,
+                seed=seed,
+                device=self.device,
+                dtype=FTPFN_DTYPE,
+            )
+
+        id, current_fid, config = acquire_next_from_ftpfn(
+            ftpfn=FTPFNSurrogate(
+                target_path=self.surrogate_model_args.get("target_path", None),
+                version=self.surrogate_model_args.get("version", "0.0.1"),
                 device=self.device,
             ),
-            configs=new_acq_configs,
+            data=data,
+            seed=seed,
+            encoder=self._config_encoder,
+            budget_domain=self._budget_domain,
+            fidelity_domain=self._fid_domain,
+            extra_acq_samples=torch.cat([uniform_configs, border_configs], dim=0),
+            acq_strategy=partial(_mfpi_random, how="ei"),
         )
-
-        # Construct all our samples for acqusition:
-        # 1. Take all non-pending configs
-        acq_existing = x_train[~is_pending].clone().detach()
-
-        # 2. We only want to include the configuration at their highest
-        # budget evaluated, i.e. don't include config_0_0 if config_0_1 is highest
-        acq_existing = _keep_highest_budget_evaluation(acq_existing)
-
-        # 3. Sub select all that are not fully evaluated
-        acq_existing = acq_existing[
-            acq_existing[:, BUDGET_COL] < self._budget_domain.upper
-        ]
-
-        # 4. Add in the new sampled configurations
-        acq_samples = torch.vstack([acq_existing, acq_new])
-
-        # 5. Add on the horizon to the budget
-        unclamped_budgets = acq_samples[:, BUDGET_COL] + horizon
-
-        # 6. Clamp to the maximum of the budget domain
-        acq_samples[:, BUDGET_COL] = torch.clamp(
-            unclamped_budgets, max=self._budget_domain.upper
-        )
-
-        # Now get the PI of these samples according to MFPI_Random
-        maximize_best_y = maximize_ys.max().item()
-        lu = 10 ** rng.uniform(-4, -1)
-        f_inc = maximize_best_y * (1 - lu)
-
-        acq_scores = _acquire_pfn(
-            train_x=x_train,
-            train_y=maximize_ys[~is_pending],
-            test_x=acq_samples,
-            ftpfn=ftpfn,
-            y_to_beat=f_inc,
-            how="pi",
-        )
-
-        # Extract out the row which had the best PI
-        best_ix = acq_scores.argmax()
-        best_id = int(acq_samples[best_ix, ID_COL].round().item())
-        best_vector = acq_samples[best_ix, 2:].unsqueeze(0)
-        best_config = self._ftpfn_encoder.unpack(best_vector)[0]
-
-        if best_id == 0:
-            # A newly sampled configuration was deemed more promising
-            config_id = f"{new_id}_0"
-            best_config[self._fidelity_name] = self._min_budget
-            previous_config_id = None
-            return SampledConfig(config_id, best_config, previous_config_id)
-
-        # To get to the next fidelity value to provide,
-        # 1. Get the budget before we added the horizon
-        budget = float(unclamped_budgets[best_ix] - horizon)
-
-        # 2. Cast to budget index domain
-        budget_ix = self._budget_ix_domain.cast_one(budget, frm=self._budget_domain)
-
-        # 3. Increment it to the next budget index
-        budget_ix += 1
-
-        # 4. And finally convert back into the fidelity domain
-        fid_value = self._fid_domain.cast_one(budget_ix, frm=self._budget_ix_domain)
-
-        real_best_id = best_id - 1  # NOTE: Remove the +1 we added to all ids earlier
-        best_config[self._fidelity_name] = fid_value
-
-        config_id = f"{real_best_id}_{budget_ix}"
-        previous_config_id = f"{real_best_id}_{budget_ix - 1}"
-        return SampledConfig(config_id, best_config, previous_config_id)
+        if current_fid is None:
+            assert id is None
+            config[self._fidelity_name] = self._fid_domain.lower
+            return SampledConfig(id=f"{new_id}_0", config=config)
+        else:
+            current_budget_ix = self._budget_ix_domain.cast_one(
+                current_fid, frm=self._fid_domain
+            )
+            next_budget_ix = current_budget_ix + 1
+            next_fid = self._fid_domain.cast_one(
+                next_budget_ix, frm=self._budget_ix_domain
+            )
+            config[self._fidelity_name] = next_fid
+            return SampledConfig(
+                id=f"{id}_{next_budget_ix}",
+                config=config,
+                previous_config_id=f"{id}_{current_budget_ix}",
+            )

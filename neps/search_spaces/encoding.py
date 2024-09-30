@@ -11,10 +11,7 @@ from typing import (
 )
 from typing_extensions import Protocol, override
 
-import numpy as np
-import numpy.typing as npt
 import torch
-from grakel.utils import graph_from_networkx
 
 from neps.search_spaces.domain import (
     UNIT_FLOAT_DOMAIN,
@@ -25,10 +22,7 @@ from neps.search_spaces.hyperparameters.float import FloatParameter
 from neps.search_spaces.hyperparameters.integer import IntegerParameter
 
 if TYPE_CHECKING:
-    import networkx as nx
-
     from neps.search_spaces.parameter import Parameter
-    from neps.search_spaces.search_space import SearchSpace
 
 WLInput: TypeAlias = tuple[dict, dict | None, dict | None]
 V = TypeVar("V", int, float)
@@ -183,50 +177,7 @@ class MinMaxNormalizer(TensorTransformer, Generic[V]):
 
 
 @dataclass
-class WLInputTransformer(Transformer[WLInput]):
-    hp: str
-
-    def encode(self, x: Sequence[nx.Graph]) -> list[WLInput]:
-        return [graph_from_networkx(g) for g in x]  # type: ignore
-
-    def decode(self, x: Mapping[str, Sequence[WLInput]]) -> dict[str, list[Any]]:
-        raise NotImplementedError("Cannot decode WLInput to values.")
-
-
-@dataclass
-class GraphEncoder:
-    transformers: dict[str, WLInputTransformer]
-    column_lookup: dict[str, int] = field(init=False)
-
-    def __post_init__(self):
-        transformers = sorted(self.transformers.items(), key=lambda t: t[0])
-        self.transformers = dict(transformers)
-        self.column_lookup: dict[str, int] = {
-            name: i for i, (name, _) in enumerate(self.transformers.items())
-        }
-
-    def select(
-        self, x: npt.NDArray[np.object_], hp: str | Sequence[str]
-    ) -> npt.NDArray[np.object_]:
-        # Kind of a redundant function but made to be compatible with TensorPack
-        if isinstance(hp, str):
-            return x[:, self.column_lookup[hp]]
-
-        return x[:, [self.column_lookup[h] for h in hp]]
-
-    def encode(self, x: Sequence[Any]) -> npt.NDArray[np.object_]:
-        buffer = np.empty((len(x), len(self.transformers)), dtype=np.object_)
-        for hp, transformer in self.transformers.items():
-            values = [conf[hp] for conf in x]
-            buffer[:, self.column_lookup[hp]] = transformer.encode(values)  # type: ignore
-        return buffer
-
-    def decode_dicts(self, x: npt.NDArray[np.object_]) -> list[dict[str, Any]]:
-        raise NotImplementedError("Cannot decode graph embeddings.")
-
-
-@dataclass
-class TensorEncoder:
+class ConfigEncoder:
     transformers: dict[str, TensorTransformer]
     index_of: dict[str, int] = field(init=False)
     domain_of: dict[str, Domain] = field(init=False)
@@ -290,15 +241,7 @@ class TensorEncoder:
 
         return buffer
 
-    def pack(
-        self,
-        x: Sequence[Mapping[str, Any]],
-        *,
-        device: torch.device | None = None,
-    ) -> TensorPack:
-        return TensorPack(self.encode(x, device=device), self)
-
-    def unpack(self, x: torch.Tensor) -> list[dict[str, Any]]:
+    def decode(self, x: torch.Tensor) -> list[dict[str, Any]]:
         values: dict[str, list[Any]] = {}
         for hp_name, transformer in self.transformers.items():
             lookup = self.index_of[hp_name]
@@ -317,7 +260,7 @@ class TensorEncoder:
         parameters: Mapping[str, Parameter],
         *,
         custom_transformers: dict[str, TensorTransformer] | None = None,
-    ) -> TensorEncoder:
+    ) -> ConfigEncoder:
         custom = custom_transformers or {}
         sorted_params = sorted(parameters.items())
         transformers: dict[str, TensorTransformer] = {}
@@ -334,59 +277,13 @@ class TensorEncoder:
                 case _:
                     raise ValueError(f"Unsupported parameter type: {type(hp)}")
 
-        return TensorEncoder(transformers)
+        return ConfigEncoder(transformers)
 
 
 @dataclass
-class TensorPack:
-    tensor: torch.Tensor
-    encoder: TensorEncoder
+class EncodedPending:
+    """Tensor data of pending configurations."""
 
-    def __len__(self) -> int:
-        return len(self.tensor)
-
-    @property
-    def n_numerical(self) -> int:
-        return self.encoder.n_numerical
-
-    @property
-    def n_categorical(self) -> int:
-        return self.encoder.n_categorical
-
-    @property
-    def ncols(self) -> int:
-        return self.encoder.ncols
-
-    @property
-    def domains(self) -> dict[str, Domain]:
-        return self.encoder.domains
-
-    def select(self, hp: str | Sequence[str]) -> torch.Tensor | npt.NDArray[np.object_]:
-        return self.encoder.select(self.tensor, hp)
-
-    def names(self) -> list[str]:
-        return self.encoder.names()
-
-    def to_dicts(self) -> list[dict[str, Any]]:
-        return self.encoder.unpack(self.tensor)
-
-    def split(self, index: int) -> tuple[TensorPack, TensorPack]:
-        left = TensorPack(self.encoder, tensor=self.tensor[:index])
-        right = TensorPack(self.encoder, tensor=self.tensor[index:])
-        return left, right
-
-    def join(self, *other: TensorPack) -> TensorPack:
-        assert all(o.encoder == self.encoder for o in other)
-
-        numerical = torch.cat([self.tensor, *[o.tensor for o in other]], dim=0)
-        return TensorPack(self.encoder, tensor=numerical)
-
-    @classmethod
-    def default_encoding(
-        cls,
-        x: Sequence[Mapping[str, Any]],
-        space: SearchSpace,
-    ) -> TensorPack:
-        default_encoder = TensorEncoder.default(space)
-        tensor = default_encoder.encode(x)
-        return TensorPack(default_encoder, tensor)
+    ids: torch.Tensor
+    x: torch.Tensor
+    fid: torch.Tensor | None

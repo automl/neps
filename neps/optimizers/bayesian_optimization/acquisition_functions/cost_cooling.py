@@ -42,7 +42,6 @@ def cost_cooled_acq(
     acq_fn: AcquisitionFunction,
     model: GPyTorchModel,
     used_budget_percentage: float,
-    X_pending: torch.Tensor | None = None,
 ) -> WeightedAcquisition:
     assert 0 <= used_budget_percentage <= 1
     return WeightedAcquisition(
@@ -52,5 +51,4 @@ def cost_cooled_acq(
             cost_model=model,
             alpha=1 - used_budget_percentage,
         ),
-        X_pending=X_pending,
     )

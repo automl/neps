@@ -97,7 +97,6 @@ class WeightedAcquisition(AcquisitionFunction):
         self,
         acq: A,
         apply_weight: Callable[[Tensor, Tensor, A], Tensor],
-        X_pending: Tensor | None = None,
     ) -> None:
         """Initialize the weighted acquisition function.
 
@@ -109,15 +108,19 @@ class WeightedAcquisition(AcquisitionFunction):
 
                 Please see the module docstring for more information on the dimensions
                 and how to handle them.
-            X_pending: `n x d` Tensor with `n` `d`-dim design points that have
-                been submitted for evaluation but have not yet been evaluated.
         """
         super().__init__(model=acq.model)
         # NOTE: We remove the X_pending from the base acquisition function as we will get
         # it in our own forward with `@concatenate_pending_points` and pass that forward.
-        # This avoids possible duplicates
-        acq.set_X_pending(None)
-        self.set_X_pending(X_pending)
+        # This avoids possible duplicates. Also important to explicitly set it to None
+        # even if it does not exist as otherwise the attribute does not exists -_-
+        if (X_pending := getattr(acq, "X_pending", None)) is not None:
+            acq.set_X_pending(None)
+            self.set_X_pending(X_pending)
+        else:
+            acq.set_X_pending(None)
+            self.set_X_pending(None)
+
         self.apply_weight = apply_weight
         self.acq = acq
         self._log = acq._log
