@@ -102,7 +102,8 @@ def get_root_directory(args: argparse.Namespace) -> Optional[Path]:
                 return None
         else:
             print(
-                "Error: The 'run_config.yaml' file exists but does not contain the 'root_directory' key."
+                "Error: The 'run_config.yaml' file exists but does not contain the "
+                "'root_directory' key."
             )
             return None
     else:
@@ -132,6 +133,8 @@ def init_config(args: argparse.Namespace) -> None:
                 directory = run_args.get(ROOT_DIRECTORY)
                 if directory is None:
                     return
+                else:
+                    directory = Path(directory)
                 is_new = not directory.exists()
                 _ = create_or_load_filebased_neps_state(
                     directory=directory,
@@ -324,10 +327,8 @@ def info_config(args: argparse.Namespace) -> None:
         return
     config_id = args.id
 
-    try:
-        neps_state = load_filebased_neps_state(directory_path)
-    except VersionedResourceDoesNotExistsError:
-        print(f"No NePS state found in the directory {directory_path}.")
+    neps_state = load_neps_state(directory_path)
+    if neps_state is None:
         return
     try:
         trial = neps_state.get_trial_by_id(config_id)
@@ -373,10 +374,8 @@ def load_neps_errors(args: argparse.Namespace) -> None:
     if directory_path is None:
         return
 
-    try:
-        neps_state = load_filebased_neps_state(directory_path)
-    except VersionedResourceDoesNotExistsError:
-        print(f"No NePS state found in the directory {directory_path}.")
+    neps_state = load_neps_state(directory_path)
+    if neps_state is None:
         return
     errors = neps_state.get_errors()
 
@@ -423,11 +422,8 @@ def sample_config(args: argparse.Namespace) -> None:
         print(f"Error: The directory {root_directory} does not exist.")
         return
 
-    # Load the NePS state from the root_directory
-    try:
-        neps_state = load_filebased_neps_state(root_directory)
-    except VersionedResourceDoesNotExistsError:
-        print(f"No NePS state found in the directory {root_directory}.")
+    neps_state = load_neps_state(root_directory)
+    if neps_state is None:
         return
 
     # Get the worker_id and number_of_configs from arguments
@@ -484,10 +480,8 @@ def status(args: argparse.Namespace) -> None:
     if directory_path is None:
         return
 
-    try:
-        neps_state = load_filebased_neps_state(directory_path)
-    except VersionedResourceDoesNotExistsError:
-        print(f"No NePS state found in the directory {directory_path}.")
+    neps_state = load_neps_state(directory_path)
+    if neps_state is None:
         return
 
     summary = get_summary_dict(directory_path, add_details=True)
@@ -623,17 +617,16 @@ def results(args: argparse.Namespace) -> None:
 
     summary_csv_dir = csv_config_data_path.parent  # 'summary_csv' directory
 
-    # Load NePS state once
+    # Load NePS state
     neps_state = load_neps_state(directory_path)
     if neps_state is None:
         return
 
     # Load and sort all trials
-
     trials = neps_state.get_all_trials()
     sorted_trials = sorted(trials.values(), key=lambda x: int(x.id))
 
-    # Compute incumbents once
+    # Compute incumbents
     incumbents = compute_incumbents(sorted_trials)
     incumbents_ids = [int(trial.id) for trial in incumbents]
 
@@ -641,7 +634,7 @@ def results(args: argparse.Namespace) -> None:
     if args.dump_all_configs or args.dump_incumbents:
         if args.dump_all_configs:
             dump_all_configs(csv_config_data_path, summary_csv_dir, args.dump_all_configs)
-            return  # Exit after dumping all trials
+            return
 
         if args.dump_incumbents:
             dump_incumbents(
@@ -650,7 +643,7 @@ def results(args: argparse.Namespace) -> None:
                 args.dump_incumbents,
                 incumbents_ids,
             )
-            return  # Exit after dumping incumbents
+            return
 
     # Display Results
     display_results(directory_path, incumbents)
@@ -1024,11 +1017,8 @@ def handle_report_config(args: argparse.Namespace) -> None:
         print(f"Error: The directory {root_directory} does not exist.")
         return
 
-    # Load the NePS state from the root_directory
-    try:
-        neps_state = load_filebased_neps_state(root_directory)
-    except VersionedResourceDoesNotExistsError:
-        print(f"No NePS state found in the directory {root_directory}.")
+    neps_state = load_neps_state(root_directory)
+    if neps_state is None:
         return
 
     optimizer, _ = load_optimizer(run_args)
@@ -1068,6 +1058,29 @@ def handle_report_config(args: argparse.Namespace) -> None:
         return None
 
     print(f"Report for trial ID {trial.metadata.id} has been successfully updated.")
+
+    print("\n--- Report Summary ---")
+    print(f"Trial ID: {trial.metadata.id}")
+    print(f"Reported As: {report.reported_as}")
+    print(f"Time Ended: {convert_timestamp(trial.metadata.time_end)}")
+    print(f"Loss: {report.loss if report.loss is not None else 'N/A'}")
+    print(f"Cost: {report.cost if report.cost is not None else 'N/A'}")
+    print(f"Evaluation Duration: {format_duration(report.evaluation_duration)}")
+
+    if report.learning_curve:
+        print(f"Learning Curve: {' '.join(map(str, report.learning_curve))}")
+    else:
+        print("Learning Curve: N/A")
+
+    if report.err:
+        print(f"Error Type: {type(report.err).__name__}")
+        print(f"Error Message: {str(report.err)}")
+        print("Traceback:")
+        print(report.tb if report.tb else "N/A")
+    else:
+        print("Error: None")
+
+    print("----------------------\n")
 
 
 def load_optimizer(run_args: dict) -> Tuple[Optional[BaseOptimizer], Optional[dict]]:
@@ -1124,10 +1137,6 @@ def main() -> None:
 
     This function sets up the command-line interface (CLI) for NePS using argparse.
     It defines the available subcommands and their respective arguments.
-
-    Available commands:
-        - init: Generates a 'run_args' YAML template file.
-        - run: Runs the optimization with specified configuration.
     """
     parser = argparse.ArgumentParser(description="NePS Command Line Interface")
     subparsers = parser.add_subparsers(
@@ -1324,7 +1333,7 @@ def main() -> None:
         "sample-config", help="Sample configurations from the existing NePS state."
     )
     parser_sample_config.add_argument(
-        "--worker_id",
+        "--worker-id",
         type=str,
         default="cli",
         help="The worker ID for which the configuration is being sampled.",
@@ -1353,7 +1362,7 @@ def main() -> None:
         help="Outcome of the trial",
     )
     report_parser.add_argument(
-        "--worker_id",
+        "--worker-id",
         type=str,
         default="cli",
         help="The worker ID for which the configuration is being sampled.",
