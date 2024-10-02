@@ -208,7 +208,6 @@ def acquire_next_from_ftpfn(
     continuation_samples: torch.Tensor,
     encoder: ConfigEncoder,
     budget_domain: Domain,
-    fidelity_domain: Domain,
     initial_samplers: list[tuple[Sampler, int]],
     local_search_sample_size: int = 128,
     local_search_confidence: float = 0.95,  # [0, 1]
@@ -224,10 +223,6 @@ def acquire_next_from_ftpfn(
     # 2. Remove configs that have been fully evaluated
     acq_existing = acq_existing[acq_existing[:, 1] < budget_domain.upper]
     if len(acq_existing) != 0:
-        # We keep a copy of the original budgets incase they get modified
-        # so we can return the fidelity of the sample that had the best acquisition score
-        budgets_prior_to_acq = acq_existing[:, 1].clone().detach()
-
         # Get the best configuration for continuation
         acq_scores = acq_function(acq_existing)
         best_ix = acq_scores.argmax()

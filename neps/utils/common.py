@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 import inspect
-import random
 from collections.abc import Iterable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import Any
-from functools import partial
-from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
 
-import numpy as np
 import torch
 import yaml
 

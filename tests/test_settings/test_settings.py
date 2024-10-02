@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 from neps.utils.run_args import Settings, Default
 import pytest
-import neps
-from neps.utils.run_args import get_run_args_from_yaml
+from pathlib import Path
 from tests.test_yaml_run_args.test_yaml_run_args import (
     run_pipeline,
     hook1,
@@ -9,9 +10,8 @@ from tests.test_yaml_run_args.test_yaml_run_args import (
     pipeline_space,
 )
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from typing import Union, Callable, Dict, List, Type
 
-BASE_PATH = "tests/test_settings"
+BASE_PATH = Path("tests") / "test_settings"
 run_pipeline = run_pipeline
 hook1 = hook1
 hook2 = hook2
@@ -86,7 +86,7 @@ my_bayesian = BayesianOptimization
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
             },
-            "/run_args_required.yaml",
+            "run_args_required.yaml",
             {
                 "run_pipeline": run_pipeline,
                 "root_directory": "path/to/root_directory",
@@ -128,7 +128,7 @@ my_bayesian = BayesianOptimization
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
             },
-            "/run_args_optional.yaml",
+            "run_args_optional.yaml",
             {
                 "run_pipeline": run_pipeline,
                 "root_directory": "path/to/root_directory",
@@ -170,7 +170,7 @@ my_bayesian = BayesianOptimization
                 "searcher": "default",
                 "searcher_kwargs": {},
             },
-            "/overwrite_run_args.yaml",
+            "overwrite_run_args.yaml",
             {
                 "run_pipeline": run_pipeline,
                 "root_directory": "path/to/root_directory",
@@ -218,7 +218,7 @@ my_bayesian = BayesianOptimization
                     "sample_default_at_target": False,
                 },
             },
-            "/run_args_optimizer_settings.yaml",
+            "run_args_optimizer_settings.yaml",
             {
                 "run_pipeline": run_pipeline,
                 "root_directory": "path/to/root_directory",
@@ -273,11 +273,10 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {
-                    "random_interleave_prob": 0.2,
                     "initial_design_size": 9,
                 },
             },
-            "/run_args_optimizer_outside.yaml",
+            "run_args_optimizer_outside.yaml",
             {
                 "run_pipeline": run_pipeline,
                 "root_directory": "path/to/root_directory",
@@ -295,24 +294,21 @@ my_bayesian = BayesianOptimization
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": my_bayesian,
-                "searcher_kwargs": {
-                    "acquisition": "EI",
-                    "acquisition_sampler": "random",
-                    "random_interleave_prob": 0.2,
-                    "initial_design_size": 9,
-                },
+                "searcher_kwargs": {"initial_design_size": 9},
             },
         ),
     ],
 )
-def test_check_settings(func_args: Dict, yaml_args: str, expected_output: Dict) -> None:
+def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) -> None:
     """
     Check if expected settings are set
     """
-    if not isinstance(yaml_args, Default):
-        yaml_args = BASE_PATH + yaml_args
-    settings = Settings(func_args, yaml_args)
-    print(settings)
+    if isinstance(yaml_args, str):
+        args = BASE_PATH / yaml_args
+    else:
+        args = yaml_args
+
+    settings = Settings(func_args, args)
     for key, value in expected_output.items():
         assert getattr(settings, key) == value
 
@@ -347,7 +343,7 @@ def test_check_settings(func_args: Dict, yaml_args: str, expected_output: Dict) 
     ],
 )
 def test_settings_initialization_error(
-    func_args: Dict, yaml_args: Union[str, Default], error: Exception
+    func_args: dict, yaml_args: str | Default, error: Exception
 ) -> None:
     """
     Test if Settings raises Error when essential arguments are missing

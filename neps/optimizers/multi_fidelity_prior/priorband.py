@@ -15,6 +15,7 @@ from neps.optimizers.multi_fidelity_prior.utils import (
     compute_scores,
     get_prior_weight_for_decay,
 )
+from neps.sampling.priors import Prior
 
 if typing.TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
@@ -335,13 +336,6 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             },
         }
 
-        bo_args = {
-            "surrogate_model": surrogate_model,
-            "surrogate_model_args": surrogate_model_args,
-            "acquisition": acquisition,
-            "log_prior_weighted": log_prior_weighted,
-            "acquisition_sampler": acquisition_sampler,
-        }
         self.model_based = model_based
         self.modelling_type = modelling_type
         self.initial_design_size = initial_design_size
@@ -355,7 +349,11 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
-        self.model_policy = model_policy(pipeline_space, **bo_args)
+        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
+        self.model_policy = model_policy(
+            pipeline_space,
+            prior=Prior.from_parameters(parameters.values()),
+        )
 
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy

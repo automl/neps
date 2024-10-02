@@ -1,7 +1,5 @@
 """API for the neps package."""
 
-
-
 import inspect
 import logging
 import warnings
@@ -31,11 +29,7 @@ def run(
     run_pipeline: Callable | None = Default(None),
     root_directory: str | Path | None = Default(None),
     pipeline_space: (
-        dict[str, Parameter | CS.ConfigurationSpace]
-        | str
-        | Path
-        | CS.ConfigurationSpace
-        | None
+        dict[str, Parameter] | str | Path | CS.ConfigurationSpace | None
     ) = Default(None),
     run_args: str | Path | None = Default(None),
     overwrite_working_directory: bool = Default(False),

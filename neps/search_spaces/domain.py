@@ -107,7 +107,7 @@ class Domain(Generic[V]):
     bounds: tuple[V, V] = field(init=False, repr=False)
     preffered_dtype: torch.dtype = field(init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         assert isinstance(self.lower, type(self.upper))
         is_int = isinstance(self.lower, int)
         object.__setattr__(self, "is_int", is_int)
@@ -144,7 +144,7 @@ class Domain(Generic[V]):
         object.__setattr__(self, "bounds", (self.lower, self.upper))
 
     @classmethod
-    def float(
+    def floating(
         cls,
         lower: Number,
         upper: Number,
@@ -175,7 +175,7 @@ class Domain(Generic[V]):
         )
 
     @classmethod
-    def int(
+    def integer(
         cls,
         lower: Number,
         upper: Number,
@@ -219,7 +219,7 @@ class Domain(Generic[V]):
         Returns:
             A domain for a range of indices.
         """
-        return Domain.int(0, n - 1, is_categorical=is_categorical)
+        return Domain.integer(0, n - 1, is_categorical=is_categorical)
 
     def next_value(self, x: Tensor) -> Tensor:
         """Get the next value for a tensor of values."""
@@ -456,4 +456,4 @@ class Domain(Generic[V]):
         return Domain.indices(self.cardinality, is_categorical=self.is_categorical)
 
 
-UNIT_FLOAT_DOMAIN = Domain.float(0.0, 1.0)
+UNIT_FLOAT_DOMAIN = Domain.floating(0.0, 1.0)

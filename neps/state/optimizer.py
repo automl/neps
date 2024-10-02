@@ -24,6 +24,7 @@ class BudgetInfo:
         return self.max_cost_budget - self.used_cost_budget
 
     def clone(self) -> BudgetInfo:
+        """Create a copy of the budget info."""
         return BudgetInfo(
             max_cost_budget=self.max_cost_budget,
             used_cost_budget=self.used_cost_budget,

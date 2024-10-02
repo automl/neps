@@ -23,6 +23,7 @@ from neps.optimizers.multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingBase,
 )
+from neps.sampling.priors import Prior
 
 if typing.TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
@@ -514,15 +515,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
 
         self.pipeline_space.has_prior = self.use_priors
 
-        bo_args = {
-            "surrogate_model": surrogate_model,
-            "domain_se_kernel": domain_se_kernel,
-            "hp_kernels": hp_kernels,
-            "surrogate_model_args": surrogate_model_args,
-            "acquisition": acquisition,
-            "log_prior_weighted": log_prior_weighted,
-            "acquisition_sampler": acquisition_sampler,
-        }
         # counting non-fidelity dimensions in search space
         ndims = sum(
             1
@@ -531,7 +523,17 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         )
         n_min = ndims + 1
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
-        self.model_policy = model_policy(pipeline_space, **bo_args)
+
+        if self.use_priors:
+            parameters = {
+                **self.pipeline_space.numerical,
+                **self.pipeline_space.categoricals,
+            }
+            prior = Prior.from_parameters(parameters.values())
+        else:
+            prior = None
+
+        self.model_policy = model_policy(pipeline_space, prior=prior)
 
         for _, sh in self.sh_brackets.items():
             sh.model_policy = self.model_policy

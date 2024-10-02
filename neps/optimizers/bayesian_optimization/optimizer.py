@@ -106,13 +106,22 @@ class BayesianOptimization(BaseOptimizer):
         """
         if any(pipeline_space.graphs):
             raise NotImplementedError("Only supports flat search spaces for now!")
+        if any(pipeline_space.fidelities):
+            raise ValueError(
+                "Fidelities are not supported for BayesianOptimization."
+                " Please consider setting the fidelity to a constant value."
+                f" Got: {pipeline_space.fidelities}"
+            )
+
         super().__init__(pipeline_space=pipeline_space)
 
         params: dict[str, CategoricalParameter | FloatParameter | IntegerParameter] = {
             **pipeline_space.numerical,
             **pipeline_space.categoricals,
         }
-        self.encoder = encoder or ConfigEncoder.default(params)
+        self.encoder = encoder or ConfigEncoder.default(
+            params, constants=pipeline_space.constants
+        )
         self.prior = (
             Prior.from_parameters(params.values()) if use_priors is True else None
         )

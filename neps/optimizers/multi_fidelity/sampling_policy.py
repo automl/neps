@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Mapping
+from typing import TYPE_CHECKING
 
 from botorch.acquisition import (
     AcquisitionFunction,
@@ -17,15 +17,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
 from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
-)
-from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
-    DecayingPriorWeightedAcquisition,
-)
-from neps.optimizers.bayesian_optimization.acquisition_samplers import (
-    AcquisitionSamplerMapping,
 )
 from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
 from neps.optimizers.multi_fidelity_prior.utils import (
@@ -36,15 +29,8 @@ from neps.optimizers.multi_fidelity_prior.utils import (
 )
 from neps.sampling.priors import Prior
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.utils.common import instance_from_map
 
 if TYPE_CHECKING:
-    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-        BaseAcquisition,
-    )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-        AcquisitionSampler,
-    )
     from neps.search_spaces.search_space import SearchSpace
 
 TOLERANCE = 1e-2  # 1%
@@ -291,8 +277,6 @@ class ModelPolicy(SamplingPolicy):
         use_cost: bool = False,
         device: torch.device | None = None,
     ):
-        if prior:
-            raise NotImplementedError("Priors are not implemented yet.")
         if use_cost:
             raise NotImplementedError("Cost is not implemented yet.")
 
@@ -300,7 +284,8 @@ class ModelPolicy(SamplingPolicy):
         self.device = device
         self.prior = prior
         self._encoder = ConfigEncoder.default(
-            {**pipeline_space.numerical, **pipeline_space.categoricals}
+            {**pipeline_space.numerical, **pipeline_space.categoricals},
+            constants=pipeline_space.constants,
         )
         self._model: SingleTaskGP | None = None
         self._acq: AcquisitionFunction | None = None
@@ -316,6 +301,8 @@ class ModelPolicy(SamplingPolicy):
         x_pending = self._encoder.encode([config.hp_values() for config in pending_x])
         y_train = torch.tensor(train_y, dtype=torch.float64, device=self.device)
 
+        # TODO: Most of this just copies BO and the duplication can be replaced
+        # once we don't have the two stage `update_model()` and `sample()`
         y_model = make_default_single_obj_gp(x_train, y_train, encoder=self._encoder)
 
         fit_gpytorch_mll(
@@ -344,7 +331,6 @@ class ModelPolicy(SamplingPolicy):
                     prior=self.prior,
                     prior_exponent=pibo_exp_term,
                     x_domain=self._encoder.domains,
-                    x_pending=x_pending,
                 )
 
         self._y_model = y_model

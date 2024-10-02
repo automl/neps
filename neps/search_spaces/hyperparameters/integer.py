@@ -77,7 +77,7 @@ class IntegerParameter(NumericalParameter[int]):
             is_fidelity=is_fidelity,
             default=int(np.rint(default)) if default is not None else None,
             default_confidence=default_confidence,
-            domain=Domain.int(lower, upper, log=log),
+            domain=Domain.integer(lower, upper, log=log),
         )
 
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that

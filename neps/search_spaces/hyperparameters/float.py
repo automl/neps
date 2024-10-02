@@ -72,7 +72,7 @@ class FloatParameter(NumericalParameter[float]):
             default=float(default) if default is not None else None,
             default_confidence=default_confidence,
             is_fidelity=is_fidelity,
-            domain=Domain.float(lower, upper, log=log),
+            domain=Domain.floating(lower, upper, log=log),
         )
 
     @override

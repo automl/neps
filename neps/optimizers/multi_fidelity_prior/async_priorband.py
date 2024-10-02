@@ -13,6 +13,7 @@ from neps.optimizers.multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalvingWithPriors,
 )
 from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
+from neps.sampling.priors import Prior
 
 if typing.TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
@@ -121,7 +122,12 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         self.init_size = n_min + 1  # in BOHB: init_design >= N_dim + 2
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
-        self.model_policy = model_policy(pipeline_space, **bo_args)
+
+        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
+        self.model_policy = model_policy(
+            pipeline_space,
+            prior=Prior.from_parameters(parameters.values()),
+        )
 
     def get_config_and_ids(
         self,

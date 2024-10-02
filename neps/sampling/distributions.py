@@ -98,22 +98,22 @@ class TruncatedStandardNormal(Distribution):
         )
         self._entropy = CONST_LOG_SQRT_2PI_E + self._log_Z - 0.5 * self._lpbb_m_lpaa_d_Z
 
-    @constraints.dependent_property
-    @override
+    @constraints.dependent_property  # type: ignore
+    @override  # type: ignore
     def support(self) -> constraints._Interval:
         return constraints.interval(self.a, self.b)
 
     @property
-    @override
+    @override  # type: ignore
     def mean(self) -> torch.Tensor:
         return self._mean
 
     @property
-    @override
+    @override  # type: ignore
     def variance(self) -> torch.Tensor:
         return self._variance
 
-    @override
+    @override  # type: ignore
     def entropy(self) -> torch.Tensor:
         return self._entropy
 
@@ -129,25 +129,25 @@ class TruncatedStandardNormal(Distribution):
     def _inv_big_phi(x: torch.Tensor) -> torch.Tensor:
         return CONST_SQRT_2 * (2 * x - 1).erfinv()
 
-    @override
+    @override  # type: ignore
     def cdf(self, value: torch.Tensor) -> torch.Tensor:
         if self._validate_args:
             self._validate_sample(value)
         return ((self._big_phi(value) - self._big_phi_a) / self._Z).clamp(0, 1)
 
-    @override
+    @override  # type: ignore
     def icdf(self, value: torch.Tensor) -> torch.Tensor:
         y = self._big_phi_a + value * self._Z
         y = y.clamp(self.eps, 1 - self.eps)
         return self._inv_big_phi(y)
 
-    @override
+    @override  # type: ignore
     def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         if self._validate_args:
             self._validate_sample(value)
         return CONST_LOG_INV_SQRT_2PI - self._log_Z - (value**2) * 0.5
 
-    @override
+    @override  # type: ignore
     def rsample(self, sample_shape: torch.Size | None = None) -> torch.Tensor:
         if sample_shape is None:
             sample_shape = torch.Size([])
@@ -199,18 +199,18 @@ class TruncatedNormal(TruncatedStandardNormal):
         self._variance = self._variance * self.scale**2
         self._entropy += self._log_scale
 
-    def _to_std_rv(self, value):
+    def _to_std_rv(self, value: torch.Tensor) -> torch.Tensor:
         return (value - self.loc) / self.scale
 
-    def _from_std_rv(self, value):
+    def _from_std_rv(self, value: torch.Tensor) -> torch.Tensor:
         return value * self.scale + self.loc
 
     @override
-    def cdf(self, value):
+    def cdf(self, value: torch.Tensor) -> torch.Tensor:
         return super().cdf(self._to_std_rv(value))
 
     @override
-    def icdf(self, value):
+    def icdf(self, value: torch.Tensor) -> torch.Tensor:
         sample = self._from_std_rv(super().icdf(value))
 
         # clamp data but keep gradients
@@ -224,7 +224,7 @@ class TruncatedNormal(TruncatedStandardNormal):
         return sample
 
     @override
-    def log_prob(self, value):
+    def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         value = self._to_std_rv(value)
         return super().log_prob(value) - self._log_scale
 
@@ -240,7 +240,7 @@ class UniformWithUpperBound(Uniform):
     # OPTIM: This could probably be optimized a lot but I'm not sure how it effects
     # gradients. Could probably do a different path depending on if `value` requires
     # gradients or not.
-    @override
+    @override  # type: ignore
     def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         if self._validate_args:
             self._validate_sample(value)
@@ -252,6 +252,8 @@ class UniformWithUpperBound(Uniform):
 
 @dataclass
 class TorchDistributionWithDomain:
+    """A torch distribution with an associated domain it samples over."""
+
     distribution: Distribution
     domain: Domain
 

@@ -289,7 +289,7 @@ class CenteredPrior(Prior):
     _meaningful_doms: list[Domain] = field(init=False)
     _meaningful_dists: list[Distribution] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._distribution_domains = [dist.domain for dist in self.distributions]
 
         rest: list[tuple[int, Domain, Distribution]] = []
@@ -303,8 +303,8 @@ class CenteredPrior(Prior):
             self._meaningful_dists = []
             return
 
-        self._meaningful_ixs, self._meaningful_doms, self._meaningful_dists = zip(
-            *rest, strict=False
+        self._meaningful_ixs, self._meaningful_doms, self._meaningful_dists = zip(  # type: ignore
+            *rest, strict=True
         )
 
     @property
@@ -429,7 +429,7 @@ class WeightedPrior(Prior):
 
     _weighted_sampler: WeightedSampler = field(init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         from neps.sampling.samplers import WeightedSampler
 
         self._weighted_sampler = WeightedSampler(

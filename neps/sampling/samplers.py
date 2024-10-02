@@ -49,6 +49,7 @@ class Sampler(Protocol):
                 domain. If a list of domains, then it must have the same length as the
                 number of columns, with each column being in the corresponding domain.
             seed: The seed generator
+            dtype: The dtype of the output tensor.
             device: The device to cast the samples to.
 
         Returns:
@@ -120,7 +121,7 @@ class Sobol(Sampler):
     scramble: bool = True
     """Whether to scramble the Sobol sequence."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.ndim < 1:
             raise ValueError(
                 "The number of dimensions must be at least 1."
@@ -181,7 +182,7 @@ class WeightedSampler(Sampler):
     probabilities: torch.Tensor = field(init=False, repr=False)
     """The probabilities for each sampler. Normalized weights."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if len(self.samplers) < 2:
             raise ValueError(
                 f"At least two samplers must be given. Got {len(self.samplers)}"

@@ -134,7 +134,7 @@ def optimize_acq(
     *,
     n_candidates_required: int = 1,
     num_restarts: int = 20,
-    n_intial_start_points: int | None = None,
+    n_intial_start_points: int = 256,
     acq_options: Mapping[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -146,9 +146,7 @@ def optimize_acq(
     bounds = torch.tensor([lower, upper], dtype=torch.float64)
 
     cat_transformers = {
-        name: t
-        for name, t in encoder.transformers.items()
-        if isinstance(t, CategoricalToIntegerTransformer)
+        name: t for name, t in encoder.transformers.items() if t.domain.is_categorical
     }
     if not any(cat_transformers):
         # Small heuristic to increase the number of candidates as our dimensionality
@@ -172,7 +170,9 @@ def optimize_acq(
     # We need to generate the product of all possible combinations of categoricals,
     # first we do a sanity check
     n_combos = reduce(
-        lambda x, y: x * y, [len(t.choices) for t in cat_transformers.values()]
+        lambda x, y: x * y,  # type: ignore
+        [t.domain.cardinality for t in cat_transformers.values()],
+        1,
     )
     if n_combos > maximum_allowed_categorical_combinations:
         raise ValueError(
@@ -187,7 +187,10 @@ def optimize_acq(
     # First, just collect the possible values per cat column
     # NOTE: Botorchs optim requires them to be as floats
     cats: dict[int, list[float]] = {
-        encoder.index_of[name]: [float(i) for i in range(len(transformer.choices))]
+        encoder.index_of[name]: [
+            float(i)
+            for i in range(len(transformer.domain.cardinality))  # type: ignore
+        ]
         for name, transformer in cat_transformers.items()
     }
 
@@ -228,7 +231,10 @@ def encode_trials_for_gp(
     pending_configs: list[Mapping[str, Any]] = []
 
     if encoder is None:
-        encoder = ConfigEncoder.default({**space.numerical, **space.categoricals})
+        encoder = ConfigEncoder.default(
+            {**space.numerical, **space.categoricals},
+            constants=space.constants,
+        )
 
     for trial in trials.values():
         if trial.report is None:
@@ -272,7 +278,7 @@ def fit_and_acquire_from_gp(
     seed: int | None = None,
     n_candidates_required: int | None = None,
     num_restarts: int = 20,
-    n_initial_start_points: int | None = None,
+    n_initial_start_points: int = 256,
     maximum_allowed_categorical_combinations: int = 30,
     acq_options: Mapping[str, Any] | None = None,
 ) -> torch.Tensor:

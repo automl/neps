@@ -105,7 +105,6 @@ def make_initial_design(
             "The sample size should be a positive integer if passing an int."
         )
 
-    print("sample", sample_size, ndims)
     if sample_size is not None:
         match sampler:
             case "sobol":

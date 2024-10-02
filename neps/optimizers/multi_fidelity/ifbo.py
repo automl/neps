@@ -139,6 +139,7 @@ class IFBO(BaseOptimizer):
         self._prior = Prior.from_parameters(params.values()) if use_priors else None
         self._config_encoder: ConfigEncoder = ConfigEncoder.default(
             params,
+            constants=self.pipeline_space.constants,
             # FTPFN doesn't support categoricals and we were recomenned to just evenly distribute
             # in the unit norm
             custom_transformers={
@@ -154,7 +155,7 @@ class IFBO(BaseOptimizer):
         self._fid_domain = space.fidelity.domain
 
         # Domain in which we should pass budgets to ifbo model
-        self._budget_domain = Domain.float(1 / self._max_budget, 1)
+        self._budget_domain = Domain.floating(1 / self._max_budget, 1)
 
         # Domain from which we assign an index to each budget
         self._budget_ix_domain = Domain.indices(fid_bins)
@@ -185,7 +186,9 @@ class IFBO(BaseOptimizer):
             )
 
         if new_id < len(self._initial_design):
-            return SampledConfig(id=f"{new_id}_0", config=self._initial_design[new_id])
+            config = self._initial_design[new_id]
+            config[self._fidelity_name] = self._min_budget
+            return SampledConfig(id=f"{new_id}_0", config=config)
 
         # Otherwise, we proceed to surrogate phase
         ftpfn = FTPFNSurrogate(

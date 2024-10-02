@@ -79,6 +79,10 @@ JUST_SKIP = [
 #
 OPTIMIZER_FAILS_WITH_FIDELITY = [
     "random_search",
+    "bayesian_optimization",
+    "pibo",
+    "cost_cooling_bayesian_optimization",
+    "cost_cooling",
 ]
 
 # There's no programattic way to check if a class requires a fidelity.
