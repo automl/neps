@@ -113,7 +113,9 @@ class BayesianOptimization(BaseOptimizer):
             **pipeline_space.categoricals,
         }
         self.encoder = encoder or ConfigEncoder.default(params)
-        self.prior = Prior.from_parameters(params) if use_priors is True else None
+        self.prior = (
+            Prior.from_parameters(params.values()) if use_priors is True else None
+        )
         self.seed = seed
         self.use_cost = use_cost
         self.use_priors = use_priors

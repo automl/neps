@@ -113,15 +113,11 @@ def make_initial_design(
             case "uniform":
                 sampler = Sampler.uniform(ndim=len(params))
             case "prior":
-                sampler = Prior.from_parameters(params)
+                sampler = Prior.from_parameters(params.values())
             case _:
                 sampler = sampler
 
-        encoded_configs = sampler.sample(
-            sample_size * 2,
-            to=encoder.domains,
-            seed=seed,
-        )
+        encoded_configs = sampler.sample(sample_size * 2, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)
         sample_configs = encoder.decode(uniq_x[:sample_size])
         configs.extend([{**config, **fids} for config in sample_configs])

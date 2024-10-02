@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
-
+from typing import Any
 import torch
 from ifbo import FTPFN
 
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import Domain
-from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
+from neps.search_spaces.encoding import ConfigEncoder
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.trial import Trial
 
@@ -101,7 +99,7 @@ def _cast_tensor_shapes(x: torch.Tensor) -> torch.Tensor:
 FTPFN_DTYPE = torch.float32
 
 
-def encode_trials_for_ftpfn(
+def encode_ftpfn(
     trials: Mapping[str, Trial],
     space: SearchSpace,
     budget_domain: Domain,
@@ -110,16 +108,14 @@ def encode_trials_for_ftpfn(
     device: torch.device | None = None,
     dtype: torch.dtype = FTPFN_DTYPE,
     error_value: float = 0.0,
-) -> FTPFNData:
+    pending_value: float = torch.nan,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """Encode the trials into a format that the FTPFN model can understand.
 
     !!! warning "Pending trials"
 
-        For trials which do not have a loss reported yet, they are considered pending
-        and will have `torch.nan` as their score inside the returned y values.
-        If using
-        [`acquire_next_from_ftpfn()`][neps.optimizers.bayesian_optimization.models.ftpfn.acquire_next_from_ftpfn],
-        the result of these configurations will be fantasized.
+        For trials which do not have a loss reported yet, they are considered pending.
+        By default this is torch.nan and we recommend fantasizing these values.
 
     !!! warning "Error values"
 
@@ -144,7 +140,9 @@ def encode_trials_for_ftpfn(
     assert space.fidelity_name is not None
     assert space.fidelity is not None
     assert 0 <= error_value <= 1
-    train_configs = encoder.encode([t.config for t in selected.values()], device=device)
+    train_configs = encoder.encode(
+        [t.config for t in selected.values()], device=device, dtype=dtype
+    )
     ids = torch.tensor(
         [int(config_id.split("_", maxsplit=1)[0]) for config_id in selected.keys()],
         device=device,
@@ -158,13 +156,15 @@ def encode_trials_for_ftpfn(
         device=device,
         dtype=dtype,
     )
-    train_budgets = budget_domain.cast(train_fidelities, frm=space.fidelity.domain)
+    train_budgets = budget_domain.cast(
+        train_fidelities, frm=space.fidelity.domain, dtype=dtype
+    )
 
     # TODO: Document that it's on the user to ensure these are already all bounded
     # We could possibly include some bounded transform to assert this.
     minimize_ys = torch.tensor(
         [
-            torch.nan
+            pending_value
             if trial.report is None
             else (error_value if trial.report.loss is None else trial.report.loss)
             for trial in trials.values()
@@ -179,149 +179,119 @@ def encode_trials_for_ftpfn(
             f"\n{minimize_ys}"
         )
     maximize_ys = 1 - minimize_ys
-    return FTPFNData(
-        ids=ids,
-        x=train_configs,
-        y=maximize_ys,
-        budgets=train_budgets,
-        pending_mask=minimize_ys.isnan(),
+    x_train = torch.cat(
+        [ids.unsqueeze(1), train_budgets.unsqueeze(1), train_configs], dim=1
     )
+    return x_train, maximize_ys
 
 
-@dataclass
-class FTPFNData:
-    """Dataclass to hold the data for the FTPFN model.
+def decode_ftpfn_data(
+    x: torch.Tensor,
+    encoder: ConfigEncoder,
+    budget_domain: Domain,
+    fidelity_domain: Domain,
+) -> list[tuple[int | None, int | float, dict[str, Any]]]:
+    if x.ndim == 1:
+        x = x.unsqueeze(0)
 
-    The layout of the data is as follows:
-
-    * `ids`: The configuration ids. These will have +1 added to them as FTPFN uses `0`
-    for test configurations, but NePS starts ids at `0`.
-    * `x`: The encoded configurations, includes everything that was encoded by the encoder
-        passed to
-        [`encode_trials_for_ftpfn()`][neps.optimizers.bayesian_optimization.models.ftpfn.encode_trials_for_ftpfn]
-    * `y`: The scores of the configurations, these are inverted such they are to be maximized, where 1 is the maximum
-        score obtainable and 0 is the minimum. Any configuration which did not have a loss gets a score of `nan`.
-    * `budgets`: The budgets of the configurations, normalized to the range [0, 1].
-        These are normalized such that the lower bound of the fidelity domain maps to `1/max_fid`
-        while the upper bound maps to `1`.
-    * `pending_mask`: A mask to indicate which configurations are pending, i.e. have not been evaluated yet.
-        If there are no pending configurations, this should be `None`.
-    """
-
-    ids: torch.Tensor
-    x: torch.Tensor
-    y: torch.Tensor
-    budgets: torch.Tensor
-    pending_mask: torch.Tensor | None = None
-
-
-def create_border_configs(
-    ndims: int,
-    *,
-    dtype: torch.dtype | None = None,
-    device: torch.device | None = None,
-    max_samples: int = 2**9,
-) -> torch.Tensor:
-    n_samples = 2**ndims
-    _arange = torch.arange(n_samples, device=device, dtype=torch.int32)
-    # 2**9 is only 512 samples, so we can afford to exhaustively generate them
-    # We likely won't have this many hyperparameters anywho
-    if n_samples <= max_samples:
-        configs = _arange
-    else:
-        # Otherwise, we take a random sample of the 2**n possible border configs
-        rand_uniq_indices = torch.randperm(n_samples, device=device)[:max_samples]
-        configs = _arange[rand_uniq_indices]
-
-    # https://stackoverflow.com/a/63546308/5332072
-    bit_masks = 2 ** _arange[ndims]
-    return configs.unsqueeze(1).bitwise_and(bit_masks).ne(0).to(dtype)
+    _raw_ids = x[:, 0].tolist()
+    # Here, we subtract 1 to get the real id, otherwise if it was a test ID, we say it had None
+    real_ids = [None if _id == 0 else int(_id) - 1 for _id in _raw_ids]
+    fidelities = fidelity_domain.cast(x[:, 1], frm=budget_domain).tolist()
+    configs = encoder.decode(x[:, 2:])
+    return list(zip(real_ids, fidelities, configs))
 
 
 def acquire_next_from_ftpfn(
     *,
     ftpfn: FTPFNSurrogate,
-    data: FTPFNData,
+    continuation_samples: torch.Tensor,
     encoder: ConfigEncoder,
     budget_domain: Domain,
     fidelity_domain: Domain,
-    seed: int | None = None,
-    acq_strategy: Callable[
-        [torch.Tensor, torch.Tensor, torch.Tensor, FTPFNSurrogate], torch.Tensor
-    ],
+    initial_samplers: list[tuple[Sampler, int]],
+    local_search_sample_size: int = 128,
+    local_search_confidence: float = 0.95,  # [0, 1]
+    acq_function: Callable[[torch.Tensor], torch.Tensor],
+    seed: torch.Generator | None = None,
     dtype: torch.dtype | None = FTPFN_DTYPE,
-    extra_acq_samples: torch.Tensor | None = None,
-) -> tuple[int | None, int | float | None, dict[str, Any]]:
-    X = torch.cat([data.ids.unsqueeze(1), data.budgets.unsqueeze(1), data.x], dim=1).to(
-        dtype
+) -> torch.Tensor:
+    # 1. Remove duplicate configurations from continuation_samples, keeping only the most recent eval
+    acq_existing = _keep_highest_budget_evaluation(
+        continuation_samples, id_col=0, budget_col=1
     )
-    ys = data.y.clone().detach()
 
-    # In-fill pending with predicted performance
-    if data.pending_mask is not None:
-        not_pending = ~data.pending_mask
-        pending_ys = ftpfn.get_mean_performance(
-            train_x=X[not_pending],
-            train_y=ys[not_pending],
-            test_x=X[data.pending_mask],
-        )
-        ys[data.pending_mask] = pending_ys
-
-    # We also need to append existing configurations that are in training data, but bump up their
-    # budget by one step.
-    # 1. Exclude all configurations which are currently pending
-    acq_existing = X
-    if data.pending_mask is not None:
-        acq_existing = X[~data.pending_mask]
-
-    # 2. Remove duplicate configurations from x train, keeping only the most recent eval
-    acq_existing = _keep_highest_budget_evaluation(acq_existing, id_col=0, budget_col=1)
-
-    # 3. Remove configs that have been fully evaluated
+    # 2. Remove configs that have been fully evaluated
     acq_existing = acq_existing[acq_existing[:, 1] < budget_domain.upper]
+    if len(acq_existing) != 0:
+        # We keep a copy of the original budgets incase they get modified
+        # so we can return the fidelity of the sample that had the best acquisition score
+        budgets_prior_to_acq = acq_existing[:, 1].clone().detach()
 
-    # 4. Include the extra acquisition samples
-    if extra_acq_samples is None:
-        samples = [acq_existing]
+        # Get the best configuration for continuation
+        acq_scores = acq_function(acq_existing)
+        best_ix = acq_scores.argmax()
+
+        best_score = acq_scores[best_ix].item()
+        best_row = acq_existing[best_ix].clone().detach()
+        del acq_existing
+        del acq_scores
     else:
-        _shape = (len(extra_acq_samples), 1)
-        acq_extra = torch.cat(
-            [
-                torch.zeros(_shape, dtype=dtype, device=ftpfn.device),
-                torch.full(_shape, budget_domain.lower, dtype=dtype, device=ftpfn.device),
-                extra_acq_samples,
-            ],
-            dim=1,
+        best_score = -float("inf")
+        best_row = torch.tensor([])
+
+    # We'll be re-using 0 id and min budget alot, just create them once and re-use
+    _N = max(max(s[1] for s in initial_samplers), local_search_sample_size)
+    ids = torch.zeros((_N, 1), dtype=dtype, device=ftpfn.device)
+    min_budget = torch.full(
+        size=(_N, 1), fill_value=budget_domain.lower, dtype=dtype, device=ftpfn.device
+    )
+
+    # Now begin acquisition maximization by sampling from given samplers and performing an additional
+    # round of local sampling around the best point
+    local_sample_confidence = [local_search_confidence] * len(encoder.domains)
+    for sampler, size in initial_samplers:
+        # 1. Use provided sampler and eval samples with acq
+        samples = sampler.sample(
+            size, to=encoder.domains, seed=seed, device=ftpfn.device, dtype=dtype
         )
-        samples = [acq_existing, acq_extra]
+        _N = len(samples)
+        X_test = torch.cat([ids[:_N], min_budget[:_N], samples], dim=1)
+        acq_scores = acq_function(X_test)
 
-    # 5. Now we can fuse them together
-    acq_samples = torch.cat(samples, dim=0).to(dtype=dtype)
+        # ... update best if needed
+        sample_best_ix = acq_scores.argmax()
+        sample_best_score = acq_scores[sample_best_ix]
+        sample_best_row = X_test[sample_best_ix].clone().detach()
+        if sample_best_score > best_score:
+            best_score = sample_best_score
+            best_row = sample_best_row
 
-    # We keep a copy of the original budgets incase they get modified
-    # so we can return the fidelity of the sample that had the best acquisition score
-    budgets_prior_to_acq = acq_samples[:, 1].clone().detach()
-
-    # Now we offload acquisition to the caller
-    acq_scores = acq_strategy(X, ys, acq_samples, ftpfn)
-
-    # Extract out the row which had the best PI
-    best_ix = acq_scores.argmax()
-
-    best_id = int(acq_samples[best_ix, 0].round().item())
-    if best_id == 0:  # It was a new acq. sample
-        best_real_id = None
-        best_fid = None
-    else:  # It was a sample to continue, decrement the 1 added earlier
-        best_real_id = best_id - 1
-        best_fid = fidelity_domain.cast_one(
-            budgets_prior_to_acq[best_ix].item(), frm=budget_domain
+        # 2. Sample around best point from above samples and eval acq.
+        _mode = sample_best_row[2:]
+        local_sampler = Sampler.centered(
+            centers=list(zip(_mode.tolist(), local_sample_confidence)),
+            domains=encoder.domains,
         )
+        samples = local_sampler.sample(
+            local_search_sample_size,
+            to=encoder.domains,
+            seed=seed,
+            device=ftpfn.device,
+            dtype=dtype,
+        )
+        _N = len(samples)
+        X_test = torch.cat([ids[:_N], min_budget[:_N], samples], dim=1)
+        acq_scores = acq_function(X_test)
 
-    best_vector = acq_samples[best_ix, 2:].unsqueeze(0)
-    best_config = encoder.decode(best_vector)[0]
+        local_best_ix = acq_scores.argmax()
+        local_best_score = acq_scores[local_best_ix].clone().detach()
+        if local_best_score > best_score:
+            best_score = local_best_score
+            best_row = X_test[local_best_ix].clone().detach()
 
-    return best_real_id, best_fid, best_config
+    # Finally, if the best
+    return best_row
 
 
 _CACHED_FTPFN_MODEL: dict[tuple[str, str], FTPFN] = {}

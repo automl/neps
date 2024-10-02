@@ -6,7 +6,7 @@ do not necessarily have an easily definable pdf.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from functools import reduce
 from typing import TYPE_CHECKING, Protocol
@@ -18,7 +18,7 @@ from more_itertools import all_equal
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 
 if TYPE_CHECKING:
-    from neps.sampling.priors import UniformPrior
+    from neps.sampling.priors import CenteredPrior, UniformPrior
 
 
 class Sampler(Protocol):
@@ -94,6 +94,19 @@ class Sampler(Protocol):
             A border sampler.
         """
         return BorderSampler(ndim=ndim)
+
+    @classmethod
+    def centered(
+        cls,
+        domains: list[Domain],
+        centers: Iterable[None | tuple[int | float, float]],
+        *,
+        device: torch.device | None = None,
+    ) -> CenteredPrior:
+        """See [`Prior.make_centered`][neps.sampling.priors.Prior.make_centered]."""
+        from neps.sampling.priors import Prior
+
+        return Prior.make_centered(domains=domains, centers=centers, device=device)
 
 
 # Technically this could be a prior with a uniform distribution

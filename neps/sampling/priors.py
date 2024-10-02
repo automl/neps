@@ -9,7 +9,7 @@ See the class doc description of [`Prior`][neps.priors.Prior] for more details.
 
 from __future__ import annotations
 
-from collections.abc import Container, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 from typing_extensions import override
@@ -111,7 +111,7 @@ class Prior(Sampler, Protocol):
     @classmethod
     def from_parameters(
         cls,
-        parameters: dict[str, CategoricalParameter | FloatParameter | IntegerParameter],
+        parameters: Iterable[CategoricalParameter | FloatParameter | IntegerParameter],
     ) -> Prior:
         """Please refer to [`make_centered()`][neps.priors.Prior.make_centered]
         for more details. This is a shortcut method.
@@ -124,16 +124,13 @@ class Prior(Sampler, Protocol):
         # accordingly in a `CenteredPrior`
         _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
 
-        domains: dict[str, Domain] = {}
-        centers: dict[str, tuple[Any, float]] = {}
-        categoricals: set[str] = set()
-        for name, hp in parameters.items():
-            domains[name] = hp.domain  # type: ignore
-
-            if isinstance(hp, CategoricalParameter):
-                categoricals.add(name)
+        domains: list[Domain] = []
+        centers: list[tuple[Any, float] | None] = []
+        for hp in parameters:
+            domains.append(hp.domain)
 
             if hp.default is None:
+                centers.append(None)
                 continue
 
             confidence_str = hp.default_confidence_choice
@@ -141,31 +138,25 @@ class Prior(Sampler, Protocol):
             center = (
                 hp._default_index if isinstance(hp, CategoricalParameter) else hp.default
             )
+            centers.append((center, confidence_score))
 
-            centers[name] = (center, confidence_score)
-
-        # Uses truncnorms for numerical and weighted choices categoricals
-        return Prior.make_centered(
-            domains=domains,
-            centers=centers,
-            categoricals=categoricals,
-        )
+        return Prior.make_centered(domains=domains, centers=centers)
 
     @classmethod
     def make_centered(
         cls,
-        domains: Mapping[str, Domain],
-        centers: Mapping[str, tuple[Any, float]],
+        domains: Iterable[Domain],
+        centers: Iterable[None | tuple[int | float, float]],
         *,
-        categoricals: Container[str] = (),
         device: torch.device | None = None,
     ) -> CenteredPrior:
         """Create a prior for a given list of domains.
 
         Will use a `TruncatedNormal` distribution for all parameters,
-        except those contained within `categoricals`, which will
-        use a `Categorical` instead. If no center is given for a domain,
-        a uniform prior will be used.
+        except those who have a domain marked with `is_categorical=True`,
+        using a `Categorical` distribution instead.
+        If the center for a given domain is `None`, a uniform prior
+        will be used instead.
 
         For non-categoricals, this will be interpreted as the mean and
         std `(1 - confidence)` for a truncnorm. For categorical values,
@@ -180,68 +171,57 @@ class Prior(Sampler, Protocol):
 
         Args:
             domains: domains over which to have a centered prior.
-            centers: centers for the priors. Should be a mapping
-                from the domain name to the center value and confidence level.
-                If no center is given, a uniform prior will be used.
+            centers: centers for the priors, i.e. the mode of the prior for that
+                domain, along with the confidence of that mode, which get's
+                re-interpreted as the std of the truncnorm or the probability
+                mass for the categorical.
+
+                If `None`, a uniform prior will be used.
 
                 !!! warning
 
                     The values contained in centers should be contained within the
                     domain. All confidence levels should be within the `[0, 1]` range.
 
-            categoricals: The names of the domains that are categorical and which
-                a `Categorical` distribution will be used, rather than a
-                `TruncatedNormal`.
-
-                !!! warning
-
-                    Categoricals require that the corresponding domain has a
-                    `.cardinality`, i.e. it is not a float/continuous domain.
-
-            device: Device to place the tensors on.
-
+            confidence: The confidence level for the center. Entries containing `None`
+                should match with `centers` that are `None`. If not, this is considered an
+                error.
+            device: Device to place the tensors on for distributions.
 
         Returns:
             A prior for the search space.
         """
-        for name, (_, confidence) in centers.items():
-            if not 0 <= confidence <= 1:
-                raise ValueError(
-                    f"Confidence level for {name} must be in the range [0, 1]."
-                    f" Got {confidence}."
-                )
+        domains = list(domains)
 
         distributions: list[TorchDistributionWithDomain] = []
-        for name, domain in domains.items():
-            center_confidence = centers.get(name)
-            if center_confidence is None:
+        for domain, center_conf in zip(domains, centers, strict=True):
+            # If the center is None, we use a uniform distribution. We try to match
+            # the distributions to all be unit uniform as it can speed up sampling when
+            # consistentaly the same. This still works for categoricals
+            if center_conf is None:
                 distributions.append(UNIT_UNIFORM_DIST)
                 continue
 
-            center, confidence = center_confidence
-            if name in categoricals:
-                if domain.cardinality is None:
-                    raise ValueError(
-                        f"{name} is not a finite domain and cannot be used as a"
-                        " categorical. Please remove it from the categoricals list."
-                    )
+            center, conf = center_conf
+            assert 0 <= conf <= 1
 
-                if not isinstance(center, int):
-                    raise ValueError(
-                        f"{name} is a categorical domain and should have an integer"
-                        f" center. Got {center} of type {type(center)}."
-                    )
+            # If categorical, treat it as a weighted distribution over integers
+            if domain.is_categorical:
+                domain_as_ints = domain.as_integer_domain()
+                assert domain_as_ints.cardinality is not None
 
-                remaining_weight = 1 - confidence
-                distributed_weight = remaining_weight / (domain.cardinality - 1)
+                weight_for_choice = conf
+                remaining_weight = 1 - weight_for_choice
+
+                distributed_weight = remaining_weight / (domain_as_ints.cardinality - 1)
                 weights = torch.full(
-                    (domain.cardinality,),
+                    (domain_as_ints.cardinality,),
                     distributed_weight,
                     device=device,
                     dtype=torch.float64,
                 )
-
-                weights[center] = confidence
+                center_index = domain_as_ints.cast_one(center, frm=domain)
+                weights[int(center_index)] = conf
 
                 dist = TorchDistributionWithDomain(
                     distribution=torch.distributions.Categorical(
@@ -252,11 +232,9 @@ class Prior(Sampler, Protocol):
                 distributions.append(dist)
                 continue
 
-            # We place a truncnorm over a unitnorm
-            unit_center = domain.to_unit(
-                torch.tensor(center, device=device, dtype=torch.float64)
-            )
-            scale = torch.tensor(1 - confidence, device=device, dtype=torch.float64)
+            # Otherwise, we use a continuous truncnorm
+            unit_center = domain.to_unit_one(center)
+            scale = torch.tensor(1 - conf, device=device, dtype=torch.float64)
             a = torch.tensor(0.0, device=device, dtype=torch.float64)
             b = torch.tensor(1.0, device=device, dtype=torch.float64)
             dist = TorchDistributionWithDomain(

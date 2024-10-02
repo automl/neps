@@ -2,21 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Generic,
-    TypeAlias,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
 from typing_extensions import Protocol, override
 
 import torch
 
-from neps.search_spaces.domain import (
-    UNIT_FLOAT_DOMAIN,
-    Domain,
-)
+from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 from neps.search_spaces.hyperparameters.float import FloatParameter
 from neps.search_spaces.hyperparameters.integer import IntegerParameter
@@ -58,7 +49,7 @@ class CategoricalToIntegerTransformer(TensorTransformer):
     def __post_init__(self):
         assert len(self.choices) > 0
 
-        self.domain = Domain.indices(len(self.choices))
+        self.domain = Domain.indices(len(self.choices), categorical=True)
         self._lookup = None
         if len(self.choices) > 3:
             try:
@@ -104,6 +95,7 @@ class CategoricalToUnitNorm(TensorTransformer):
     _integer_transformer: CategoricalToIntegerTransformer = field(init=False)
 
     def __post_init__(self):
+        self._domain = Domain.float(0.0, 1.0, bins=len(self.choices), categorical=True)
         self._integer_transformer = CategoricalToIntegerTransformer(self.choices)
 
     @override
@@ -119,12 +111,14 @@ class CategoricalToUnitNorm(TensorTransformer):
             x,
             dtype=dtype if dtype is not None else torch.float64,
             device=device,
-            out=out,
+        )
+        binned_floats = self.domain.cast(
+            integers, frm=self._integer_transformer.domain, dtype=dtype
         )
         if out is not None:
-            return integers.div_(len(self.choices) - 1)
+            return out.copy_(binned_floats)
 
-        return integers / (len(self.choices) - 1)
+        return binned_floats
 
     @override
     def decode(self, x: torch.Tensor) -> list[Any]:
@@ -191,7 +185,7 @@ class ConfigEncoder:
         n_numerical = 0
         n_categorical = 0
         for _, transformer in transformers:
-            if isinstance(transformer, CategoricalToIntegerTransformer):
+            if transformer.domain.is_categorical:
                 n_categorical += 1
             else:
                 n_numerical += 1
@@ -223,9 +217,11 @@ class ConfigEncoder:
         x: Sequence[Mapping[str, Any]],
         *,
         device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
+        dtype = torch.float64 if dtype is None else dtype
         width = len(self.transformers)
-        buffer = torch.empty((len(x), width), dtype=torch.float64, device=device)
+        buffer = torch.empty((len(x), width), dtype=dtype, device=device)
 
         for hp_name, transformer in self.transformers.items():
             values = [conf[hp_name] for conf in x]
@@ -235,7 +231,7 @@ class ConfigEncoder:
             transformer.encode(
                 values,
                 out=buffer[:, lookup],
-                dtype=torch.float64,
+                dtype=dtype,
                 device=device,
             )
 
@@ -278,12 +274,3 @@ class ConfigEncoder:
                     raise ValueError(f"Unsupported parameter type: {type(hp)}")
 
         return ConfigEncoder(transformers)
-
-
-@dataclass
-class EncodedPending:
-    """Tensor data of pending configurations."""
-
-    ids: torch.Tensor
-    x: torch.Tensor
-    fid: torch.Tensor | None

@@ -89,9 +89,19 @@ class Domain(Generic[V]):
     value.
     """
 
+    is_categorical: bool = False
+    """Whether the domain is representing a categorical.
+
+    The domain does not use this information directly, but it can be useful for external
+    classes that consume Domain objects. This can only be set to `True` if the
+    `cardinality` of the domain is finite, i.e. `bins` is not `None` OR `round`
+    is `True` or the boundaries are both integers.
+    """
+
     is_unit_float: bool = field(init=False, repr=False)
-    midpoint: V = field(init=False, repr=False)
+    is_int: bool = field(init=False, repr=False)
     is_log: bool = field(init=False, repr=False)
+    midpoint: V = field(init=False, repr=False)
     length: V = field(init=False, repr=False)
     cardinality: int | None = field(init=False, repr=False)
     bounds: tuple[V, V] = field(init=False, repr=False)
@@ -100,6 +110,7 @@ class Domain(Generic[V]):
     def __post_init__(self):
         assert isinstance(self.lower, type(self.upper))
         is_int = isinstance(self.lower, int)
+        object.__setattr__(self, "is_int", is_int)
         object.__setattr__(self, "is_log", self.log_bounds is not None)
         object.__setattr__(
             self,
@@ -114,6 +125,12 @@ class Domain(Generic[V]):
             cardinality = int(self.upper - self.lower + 1)
         else:
             cardinality = None
+            if self.is_categorical:
+                raise ValueError(
+                    "Categorical domain must have finite cardinality but"
+                    " `bins` is `None` and `round` is `False` and"
+                    " boundaries are not integers."
+                )
 
         preferred_dtype = torch.int64 if is_int else torch.float64
         object.__setattr__(self, "preffered_dtype", preferred_dtype)
@@ -134,6 +151,7 @@ class Domain(Generic[V]):
         *,
         log: bool = False,
         bins: int | None = None,
+        is_categorical: bool = False,
     ) -> Domain[float]:
         """Create a domain for a range of float values.
 
@@ -142,6 +160,7 @@ class Domain(Generic[V]):
             upper: The upper bound of the domain.
             log: Whether the domain is in log space.
             bins: The number of discrete bins to split the domain into.
+            is_categorical: Whether the domain is representing a categorical.
 
         Returns:
             A domain for a range of float values.
@@ -152,6 +171,7 @@ class Domain(Generic[V]):
             log_bounds=(math.log(lower), math.log(upper)) if log else None,
             bins=bins,
             round=False,
+            is_categorical=is_categorical,
         )
 
     @classmethod
@@ -162,6 +182,7 @@ class Domain(Generic[V]):
         *,
         log: bool = False,
         bins: int | None = None,
+        is_categorical: bool = False,
     ) -> Domain[int]:
         """Create a domain for a range of integer values.
 
@@ -170,6 +191,7 @@ class Domain(Generic[V]):
             upper: The upper bound of the domain.
             log: Whether the domain is in log space.
             bins: The number of discrete bins to split the domain into.
+            is_categorical: Whether the domain is representing a categorical.
 
         Returns:
             A domain for a range of integer values.
@@ -180,7 +202,24 @@ class Domain(Generic[V]):
             log_bounds=(math.log(lower), math.log(upper)) if log else None,
             round=True,
             bins=bins,
+            is_categorical=is_categorical,
         )
+
+    @classmethod
+    def indices(cls, n: int, *, is_categorical: bool = False) -> Domain[int]:
+        """Create a domain for a range of indices.
+
+        Like range based functions this domain is inclusive of the lower bound
+        and exclusive of the upper bound.
+
+        Args:
+            n: The number of indices.
+            is_categorical: Whether the domain is representing a categorical.
+
+        Returns:
+            A domain for a range of indices.
+        """
+        return Domain.int(0, n - 1, is_categorical=is_categorical)
 
     def next_value(self, x: Tensor) -> Tensor:
         """Get the next value for a tensor of values."""
@@ -190,21 +229,6 @@ class Domain(Generic[V]):
         current_step = cardinality_domain.cast(x, frm=self)
         bounded_next_step = (current_step + 1).clamp_max(self.cardinality - 1)
         return self.cast(bounded_next_step, frm=cardinality_domain)
-
-    @classmethod
-    def indices(cls, n: int) -> Domain[int]:
-        """Create a domain for a range of indices.
-
-        Like range based functions this domain is inclusive of the lower bound
-        and exclusive of the upper bound.
-
-        Args:
-            n: The number of indices.
-
-        Returns:
-            A domain for a range of indices.
-        """
-        return Domain.int(0, n - 1)
 
     def to_unit(self, x: Tensor, *, dtype: torch.dtype | None = None) -> Tensor:
         """Transform a tensor of values from this domain to the unit interval [0, 1].
@@ -415,6 +439,21 @@ class Domain(Generic[V]):
             Value normalized to the unit interval [0, 1].
         """
         return self.to_unit(torch.tensor(x)).item()
+
+    def as_integer_domain(self) -> Domain:
+        """Get the integer version of this domain.
+
+        !!! warning
+
+            This is only possible if this domain has a finite cardinality
+        """
+        if self.cardinality is None:
+            raise ValueError(
+                "Cannot get integer representation of this domain as its"
+                " cardinality is non-finite."
+            )
+
+        return Domain.indices(self.cardinality, is_categorical=self.is_categorical)
 
 
 UNIT_FLOAT_DOMAIN = Domain.float(0.0, 1.0)
