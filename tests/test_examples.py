@@ -40,6 +40,7 @@ def test_core_examples(example):
 
     if example.name in (
         "architecture.py",
+        "architecture_and_hyperparameters.py",
         "hierarchical_architecture.py",
         "expert_priors_for_architecture_and_hyperparameters.py",
     ):
