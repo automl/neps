@@ -189,7 +189,7 @@ def optimize_acq(
     cats: dict[int, list[float]] = {
         encoder.index_of[name]: [
             float(i)
-            for i in range(len(transformer.domain.cardinality))  # type: ignore
+            for i in range(transformer.domain.cardinality)  # type: ignore
         ]
         for name, transformer in cat_transformers.items()
     }
