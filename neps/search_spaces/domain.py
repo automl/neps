@@ -221,15 +221,6 @@ class Domain(Generic[V]):
         """
         return Domain.integer(0, n - 1, is_categorical=is_categorical)
 
-    def next_value(self, x: Tensor) -> Tensor:
-        """Get the next value for a tensor of values."""
-        if self.cardinality is None:
-            raise ValueError("Domain is non-finite, cannot get next value.")
-        cardinality_domain = Domain.indices(self.cardinality)
-        current_step = cardinality_domain.cast(x, frm=self)
-        bounded_next_step = (current_step + 1).clamp_max(self.cardinality - 1)
-        return self.cast(bounded_next_step, frm=cardinality_domain)
-
     def to_unit(self, x: Tensor, *, dtype: torch.dtype | None = None) -> Tensor:
         """Transform a tensor of values from this domain to the unit interval [0, 1].
 
@@ -242,10 +233,11 @@ class Domain(Generic[V]):
         """
         if dtype is None:
             dtype = torch.float64
-        else:
-            assert dtype.is_floating_point, "Unit interval is only for floats."
+        elif not dtype.is_floating_point:
+            raise ValueError(f"Unit interval only allows floating dtypes, got {dtype}.")
 
-        if self.is_unit_float:
+        bins = self.bins
+        if self.is_unit_float and self.bins is not None:
             return x.to(dtype)
 
         if self.log_bounds is not None:
@@ -255,6 +247,11 @@ class Domain(Generic[V]):
             lower, upper = self.lower, self.upper
 
         x = (x - lower) / (upper - lower)
+
+        if bins is not None:
+            quantization_levels = torch.floor(x * bins).clip(0, bins - 1)
+            x = quantization_levels / (bins - 1)
+
         return x.type(dtype)
 
     def from_unit(self, x: Tensor, *, dtype: torch.dtype | None = None) -> Tensor:
