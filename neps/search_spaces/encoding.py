@@ -240,9 +240,10 @@ class ConfigEncoder:
     """
 
     transformers: dict[str, TensorTransformer]
+    constants: Mapping[str, Any] = field(default_factory=dict)
+
     index_of: dict[str, int] = field(init=False)
     domain_of: dict[str, Domain] = field(init=False)
-    constants: Mapping[str, Any] = field(default_factory=dict)
     n_numerical: int = field(init=False)
     n_categorical: int = field(init=False)
 
@@ -369,7 +370,23 @@ class ConfigEncoder:
         Returns:
             A `ConfigEncoder` instance
         """
-        constants = constants or {}
+        if constants is not None:
+            overlap = set(parameters) & set(constants)
+            if any(overlap):
+                raise ValueError(
+                    "`constants=` and `parameters=` cannot have overlapping"
+                    f" keys: {overlap=}"
+                )
+            if custom_transformers is not None:
+                overlap = set(custom_transformers) & set(constants)
+                if any(overlap):
+                    raise ValueError(
+                        f"Can not apply `custom_transformers=`"
+                        f" to `constants=`: {overlap=}"
+                    )
+        else:
+            constants = {}
+
         custom = custom_transformers or {}
         sorted_params = sorted(parameters.items())
         transformers: dict[str, TensorTransformer] = {}
@@ -384,6 +401,9 @@ class ConfigEncoder:
                 case CategoricalParameter():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:
-                    raise ValueError(f"Unsupported parameter type: {type(hp)}")
+                    raise ValueError(
+                        f"Unsupported parameter type: {type(hp)}. If hp is a constant, "
+                        " please provide it as `constants=`."
+                    )
 
         return ConfigEncoder(transformers, constants=constants)
