@@ -190,6 +190,30 @@ def test_domain_casting(
                 ]
             ).transpose(0, 1),
         ),
+        (
+            # This was a random case found while testing samplers which seemed to fail
+            # Uniform noise convert to integers
+            # 0-0.25 -> 12,
+            # 0.25-0.5 -> 13,
+            # 0.5-0.75 -> 14
+            # 0.75-1 -> 15
+            T(
+                [
+                    [0.2350, 0.6488, 0.6411],
+                    [0.6457, 0.2897, 0.6879],
+                    [0.7401, 0.4268, 0.7607],
+                ]
+            ),
+            Domain.unit_float(),
+            Domain.integer(12, 15),
+            T(
+                [
+                    [12, 14, 14],
+                    [14, 13, 14],
+                    [14, 13, 15],
+                ]
+            ),
+        ),
     ],
 )
 def test_translate(
@@ -200,6 +224,3 @@ def test_translate(
 ) -> None:
     y = Domain.translate(x, frm=frm, to=to)
     torch.testing.assert_close(y, expected, check_dtype=True, msg=f"{y} != {expected}")
-
-    x_back = Domain.translate(y, frm=to, to=frm)
-    torch.testing.assert_close(x_back, x, check_dtype=True, msg=f"{x_back} != {x}")

@@ -131,6 +131,7 @@ class Domain(Generic[V]):
                     " `bins` is `None` and `round` is `False` and"
                     " boundaries are not integers."
                 )
+        object.__setattr__(self, "cardinality", cardinality)
 
         preferred_dtype = torch.int64 if is_int else torch.float64
         object.__setattr__(self, "preffered_dtype", preferred_dtype)
@@ -139,7 +140,6 @@ class Domain(Generic[V]):
         if is_int:
             mid = int(round(mid))
 
-        object.__setattr__(self, "cardinality", cardinality)
         object.__setattr__(self, "midpoint", mid)
         object.__setattr__(self, "bounds", (self.lower, self.upper))
 
@@ -188,7 +188,7 @@ class Domain(Generic[V]):
 
         Args:
             lower: The lower bound of the domain.
-            upper: The upper bound of the domain.
+            upper: The upper bound of the domain (inclusive).
             log: Whether the domain is in log space.
             bins: The number of discrete bins to split the domain into.
             is_categorical: Whether the domain is representing a categorical.
@@ -236,8 +236,8 @@ class Domain(Generic[V]):
         elif not dtype.is_floating_point:
             raise ValueError(f"Unit interval only allows floating dtypes, got {dtype}.")
 
-        bins = self.bins
-        if self.is_unit_float and self.bins is not None:
+        q = self.cardinality
+        if self.is_unit_float and q is None:
             return x.to(dtype)
 
         if self.log_bounds is not None:
@@ -248,9 +248,9 @@ class Domain(Generic[V]):
 
         x = (x - lower) / (upper - lower)
 
-        if bins is not None:
-            quantization_levels = torch.floor(x * bins).clip(0, bins - 1)
-            x = quantization_levels / (bins - 1)
+        if q is not None:
+            quantization_levels = torch.floor(x * q).clip(0, q - 1)
+            x = quantization_levels / (q - 1)
 
         return x.type(dtype)
 
@@ -268,10 +268,10 @@ class Domain(Generic[V]):
         if self.is_unit_float:
             return x.to(dtype)
 
-        bins = self.bins
-        if bins is not None:
-            quantization_levels = torch.floor(x * bins).clip(0, bins - 1)
-            x = quantization_levels / (bins - 1)
+        q = self.cardinality
+        if q is not None:
+            quantization_levels = torch.floor(x * q).clip(0, q - 1)
+            x = quantization_levels / (q - 1)
 
         # Now we scale to the new domain
         if self.log_bounds is not None:
@@ -312,8 +312,8 @@ class Domain(Generic[V]):
         # have to go through unit space to figure out the bins
         same_bounds = self.lower == frm.lower and self.upper == frm.upper
         same_log_bounds = self.log_bounds == frm.log_bounds
-        same_bins = self.bins == frm.bins
-        if same_bounds and same_log_bounds and (self.bins is None or same_bins):
+        same_cardinality = self.cardinality == frm.cardinality
+        if same_bounds and same_log_bounds and same_cardinality:
             if self.round:
                 x = torch.round(x)
             return x.type(dtype)
@@ -327,7 +327,7 @@ class Domain(Generic[V]):
         # We can also shortcut out if the only diffrence is that we are coming frm the
         # log bounds of this domain. We dont care if where we came from was binned or not,
         # we just lift it up with `np.exp` and round if needed
-        if (self.lower, self.upper) == frm.log_bounds and self.bins is None:
+        if (self.lower, self.upper) == frm.log_bounds and self.cardinality is None:
             x = torch.exp(x)
             if self.round:
                 x = torch.round(x)
