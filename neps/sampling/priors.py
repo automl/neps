@@ -106,7 +106,7 @@ class Prior(Sampler, Protocol):
         Args:
             ncols: The number of columns in the tensor to sample.
         """
-        return UniformPrior(ndims=ncols)
+        return UniformPrior(ndim=ncols)
 
     @classmethod
     def from_parameters(
@@ -342,8 +342,10 @@ class CenteredPrior(Prior):
         first_i, first_dist = next(itr)
         log_probs = first_dist.log_prob(translated_x[..., first_i])
 
+        _weight = 1 / len(self.distributions)
+
         for i, dist in itr:
-            log_probs = log_probs + dist.log_prob(translated_x[..., i])
+            log_probs = log_probs + _weight * dist.log_prob(translated_x[..., i])
 
         return log_probs
 
@@ -381,18 +383,18 @@ class UniformPrior(Prior):
     Uses a UnitUniform under the hood before converting to the value domain.
     """
 
-    ndims: int
+    ndim: int
     """The number of columns in the tensor to sample from."""
 
     @property
     @override
     def ncols(self) -> int:
-        return self.ndims
+        return self.ndim
 
     @override
     def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
         # NOTE: We just assume everything is in bounds...
-        shape = x.shape[:-1]
+        shape = x.shape[:-1]  # Select everything up to last dimension (configuration)
         return torch.zeros(shape, dtype=torch.float64, device=x.device)
 
     @override
@@ -409,11 +411,16 @@ class UniformPrior(Prior):
             raise NotImplementedError("Seeding is not yet implemented.")
 
         _n = (
-            torch.Size((n, self.ndims))
+            torch.Size((n, self.ndim))
             if isinstance(n, int)
-            else torch.Size((*n, self.ndims))
+            else torch.Size((*n, self.ndim))
         )
-        samples = torch.rand(_n, device=device, dtype=dtype)
+        # Doesn't like integer dtypes
+        if dtype is not None and dtype.is_floating_point:
+            samples = torch.rand(_n, device=device, dtype=dtype)
+        else:
+            samples = torch.rand(_n, device=device)
+
         return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to, dtype=dtype)
 
 
@@ -437,9 +444,9 @@ class WeightedPrior(Prior):
         )
 
     @property
-    def probabilities(self) -> torch.Tensor:
+    def sampler_probabilities(self) -> torch.Tensor:
         """The probabilities for each sampler. Normalized weights."""
-        return self._weighted_sampler.probabilities
+        return self._weighted_sampler.sampler_probabilities
 
     @property
     @override
@@ -450,12 +457,20 @@ class WeightedPrior(Prior):
     def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
         # OPTIM: Avoid an initial allocation by using the output of the first
         # distribution to store the weighted probabilities
-        itr = zip(self.probabilities, self.priors, strict=False)
+        itr = zip(self.sampler_probabilities, self.priors, strict=False)
         first_prob, first_prior = next(itr)
 
-        weighted_probs = first_prob * first_prior.log_prob(x, frm=frm)
-        for prob, prior in itr:
-            weighted_probs = weighted_probs + prob * prior.log_prob(x, frm=frm)
+        if first_prob == 0.0:
+            weighted_probs = first_prob * first_prior.log_prob(x, frm=frm)
+        else:
+            weighted_probs = torch.zeros(
+                x.shape[:-1], dtype=torch.float64, device=x.device
+            )
+
+        for sampler_prob, prior in itr:
+            if sampler_prob == 0.0:
+                continue
+            weighted_probs = weighted_probs + sampler_prob * prior.log_prob(x, frm=frm)
 
         return weighted_probs
 

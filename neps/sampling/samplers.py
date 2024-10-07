@@ -82,7 +82,7 @@ class Sampler(Protocol):
         """
         from neps.sampling.priors import UniformPrior
 
-        return UniformPrior(ndims=ndim)
+        return UniformPrior(ndim=ndim)
 
     @classmethod
     def borders(cls, ndim: int) -> BorderSampler:
@@ -158,8 +158,12 @@ class Sobol(Sampler):
             dimension=self.ndim, scramble=self.scramble, seed=_seed
         )
 
-        out = torch.empty(_n, self.ncols, dtype=dtype, device=device)
-        x = sobol.draw(_n, dtype=dtype, out=out)
+        # If integer dtype, sobol will refuse, we need to cast then
+        if dtype is not None and not dtype.is_floating_point:
+            x = sobol.draw(_n, dtype=torch.float64)
+            x = x.to(dtype=dtype, device=device)
+        else:
+            x = sobol.draw(_n, dtype=dtype)
 
         # If we got extra dimensions, such as batch dimensions, we need to
         # reshape the tensor to the desired shape.
@@ -179,7 +183,7 @@ class WeightedSampler(Sampler):
     weights: torch.Tensor
     """The weights for each sampler."""
 
-    probabilities: torch.Tensor = field(init=False, repr=False)
+    sampler_probabilities: torch.Tensor = field(init=False, repr=False)
     """The probabilities for each sampler. Normalized weights."""
 
     def __post_init__(self) -> None:
@@ -201,7 +205,7 @@ class WeightedSampler(Sampler):
             )
 
         self._ncols = ncols[0]
-        self.probabilities = self.weights / self.weights.sum()
+        self.sampler_probabilities = self.weights / self.weights.sum()
 
     @property
     @override
@@ -218,6 +222,16 @@ class WeightedSampler(Sampler):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
+        if dtype is None:
+            if isinstance(to, Domain):
+                dtype = to.preffered_dtype
+            else:
+                dtype = (
+                    torch.float64
+                    if any(d.preffered_dtype.is_floating_point for d in to)
+                    else torch.int64
+                )
+
         if seed is not None:
             raise NotImplementedError("Seeding is not yet implemented.")
 
@@ -232,7 +246,7 @@ class WeightedSampler(Sampler):
         # Randomly select which sampler to sample from for each of the total_samples
         chosen_samplers = torch.empty((total_samples,), device=device, dtype=torch.int64)
         chosen_samplers = torch.multinomial(
-            self.probabilities,
+            self.sampler_probabilities,
             total_samples,
             replacement=True,
             generator=seed,
@@ -264,9 +278,7 @@ class WeightedSampler(Sampler):
                 output_samples[indices] = samples_from_sampler
 
         # Reshape to the output shape including ncols dimension
-        output_samples = output_samples.view(output_shape)
-
-        return Domain.translate(output_samples, frm=UNIT_FLOAT_DOMAIN, to=to)
+        return output_samples.view(output_shape)
 
 
 @dataclass
@@ -295,6 +307,8 @@ class BorderSampler(Sampler):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
+        dtype = dtype or torch.float64
+
         _arange = torch.arange(self.n_possible, device=device, dtype=torch.int32)
         # Calculate the total number of samples required
         if isinstance(n, int):
@@ -322,5 +336,5 @@ class BorderSampler(Sampler):
         bit_masks = 2 ** _arange[: self.ndim]
         configs = configs.unsqueeze(1).bitwise_and(bit_masks).ne(0).to(dtype)
         # Reshape to the output shape including ncols dimension
-        configs.view(output_shape)
+        configs = configs.view(output_shape)
         return Domain.translate(configs, frm=UNIT_FLOAT_DOMAIN, to=to)
