@@ -15,7 +15,7 @@ from neps.exceptions import NePSError
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
-    from neps.utils.types import ERROR, RawConfig
+    from neps.utils.types import ERROR, ConfigResult, RawConfig
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class MetaData:
 
     id: str
     location: str
-    previous_trial_id: Trial.ID | None
+    previous_trial_id: str | None
     previous_trial_location: str | None
     sampling_worker_id: str
     time_sampled: float
@@ -64,7 +64,7 @@ class MetaData:
 class Report:
     """A failed report of the evaluation of a configuration."""
 
-    trial_id: Trial.ID
+    trial_id: str
     loss: float | None
     cost: float | None
     learning_curve: list[float] | None  # TODO: Serializing a large list into yaml sucks!
@@ -126,7 +126,6 @@ class Report:
 class Trial:
     """A trial is a configuration and it's associated data."""
 
-    ID: ClassVar = str
     State: ClassVar = State
     Report: ClassVar = Report
     MetaData: ClassVar = MetaData
@@ -141,10 +140,10 @@ class Trial:
     def new(
         cls,
         *,
-        trial_id: Trial.ID,
+        trial_id: str,
         config: Mapping[str, Any],
         location: str,
-        previous_trial: Trial.ID | None,
+        previous_trial: str | None,
         previous_trial_location: str | None,
         time_sampled: float,
         worker_id: int | str,
@@ -166,7 +165,7 @@ class Trial:
         )
 
     @property
-    def id(self) -> Trial.ID:
+    def id(self) -> str:
         """Return the id of the trial."""
         return self.metadata.id
 

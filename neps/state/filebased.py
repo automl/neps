@@ -84,10 +84,10 @@ class TrialRepoInDirectory(TrialRepo[Path]):
     """A repository of Trials that are stored in a directory."""
 
     directory: Path
-    _cache: dict[Trial.ID, Synced[Trial, Path]] = field(default_factory=dict)
+    _cache: dict[str, Synced[Trial, Path]] = field(default_factory=dict)
 
     @override
-    def all_trial_ids(self) -> set[Trial.ID]:
+    def all_trial_ids(self) -> set[str]:
         """List all the trial ids in this trial Repo."""
         return {
             config_path.name.replace("config_", "")
@@ -98,7 +98,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
     @override
     def get_by_id(
         self,
-        trial_id: Trial.ID,
+        trial_id: str,
         *,
         lock_poll: float = TRIAL_FILELOCK_POLL,
         lock_timeout: float | None = TRIAL_FILELOCK_TIMEOUT,
@@ -142,7 +142,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         return trial
 
     @override
-    def get_by_ids(self, trial_ids: Iterable[Trial.ID]) -> dict[str, Synced[Trial, Path]]:
+    def get_by_ids(self, trial_ids: Iterable[str]) -> dict[str, Synced[Trial, Path]]:
         """Get multiple Trials by their IDs.
 
         !!! note
@@ -206,7 +206,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         return shared_trial
 
     @override
-    def all(self) -> dict[Trial.ID, Synced[Trial, Path]]:
+    def all(self) -> dict[str, Synced[Trial, Path]]:
         """Get a dictionary of all the Trials in the repository.
 
         !!! note
@@ -216,7 +216,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         return {trial_id: self.get_by_id(trial_id) for trial_id in self.all_trial_ids()}
 
     @override
-    def pending(self) -> Iterable[tuple[Trial.ID, Synced[Trial, Path]]]:
+    def pending(self) -> Iterable[tuple[str, Synced[Trial, Path]]]:
         pending = [
             (_id, t, trial.metadata.time_sampled)
             for (_id, t) in self.all().items()

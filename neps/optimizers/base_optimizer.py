@@ -17,9 +17,9 @@ if TYPE_CHECKING:
 
 @dataclass
 class SampledConfig:
-    id: Trial.ID
+    id: str
     config: Mapping[str, Any]
-    previous_config_id: Trial.ID | None = None
+    previous_config_id: str | None = None
 
 
 class BaseOptimizer:

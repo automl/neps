@@ -297,7 +297,6 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = [
     "neps.api",
-    "neps.optimizers.*",
     "neps.search_spaces.architecture.*",
     "neps.utils.run_args_from_yaml",
 ]

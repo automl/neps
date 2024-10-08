@@ -96,7 +96,7 @@ class NePSState(Generic[Loc]):
             ),
             self._seed_state.acquire() as (seed_state, put_seed_state),
         ):
-            trials: dict[Trial.ID, Trial] = {}
+            trials: dict[str, Trial] = {}
             for trial_id, shared_trial in self._trials.all().items():
                 trial = shared_trial.synced()
                 trials[trial_id] = trial
@@ -222,11 +222,11 @@ class NePSState(Generic[Loc]):
             return take(n, _pending_itr)
         return next(_pending_itr, None)
 
-    def all_trial_ids(self) -> set[Trial.ID]:
+    def all_trial_ids(self) -> set[str]:
         """Get all the trial ids that are known about."""
         return self._trials.all_trial_ids()
 
-    def get_all_trials(self) -> dict[Trial.ID, Trial]:
+    def get_all_trials(self) -> dict[str, Trial]:
         """Get all the trials that are known about."""
         return {_id: trial.synced() for _id, trial in self._trials.all().items()}
 
