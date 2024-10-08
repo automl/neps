@@ -1,23 +1,23 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Any
-from typing_extensions import override
+from typing import TYPE_CHECKING, Any, Mapping
 
-from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
+from neps.state.trial import Trial
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
-    from neps.utils.types import ConfigResult, RawConfig
 
 
 class GridSearch(BaseOptimizer):
     def __init__(
-        self, pipeline_space: SearchSpace, grid_step_size: int = 10, **optimizer_kwargs
+        self,
+        pipeline_space: SearchSpace,
+        grid_step_size: int = 10,
     ):
-        super().__init__(pipeline_space=pipeline_space, **optimizer_kwargs)
-        self._num_previous_configs: int = 0
+        super().__init__(pipeline_space=pipeline_space)
         self.configs_list = self.pipeline_space.get_search_space_grid(
             size_per_numerical_hp=grid_step_size,
             include_endpoints=True,
@@ -25,19 +25,20 @@ class GridSearch(BaseOptimizer):
         # TODO: handle this shuffling better and offer more control to the user
         random.shuffle(self.configs_list)
 
-    @override
-    def load_optimization_state(
+    def ask(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
+        trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
-    ) -> None:
-        self._num_previous_configs = len(previous_results) + len(pending_evaluations)
-
-    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
-        if self._num_previous_configs > len(self.configs_list) - 1:
+    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
+        _num_previous_configs = len(trials)
+        if _num_previous_configs > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")
-        config = self.configs_list[self._num_previous_configs]
-        config_id = str(self._num_previous_configs)
-        return config.hp_values(), config_id, None
+
+        config = self.configs_list[_num_previous_configs]
+        config_id = str(_num_previous_configs)
+        return SampledConfig(
+            config=config.hp_values(),
+            id=config_id,
+            previous_config_id=None,
+        )
