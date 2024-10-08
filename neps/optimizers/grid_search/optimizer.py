@@ -16,14 +16,15 @@ class GridSearch(BaseOptimizer):
         self,
         pipeline_space: SearchSpace,
         grid_step_size: int = 10,
+        seed: int | None = None,
     ):
         super().__init__(pipeline_space=pipeline_space)
         self.configs_list = self.pipeline_space.get_search_space_grid(
             size_per_numerical_hp=grid_step_size,
             include_endpoints=True,
         )
-        # TODO: handle this shuffling better and offer more control to the user
-        random.shuffle(self.configs_list)
+        self.seed = seed
+        random.Random(seed).shuffle(self.configs_list)
 
     def ask(
         self,
