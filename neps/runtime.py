@@ -43,7 +43,7 @@ def _default_worker_name() -> str:
     return f"{os.getpid()}-{isoformat}"
 
 
-N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 10
+N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 0
 N_FAILED_TO_SET_TRIAL_STATE = 10
 
 Loc = TypeVar("Loc")
@@ -394,7 +394,7 @@ class DefaultWorker(Generic[Loc]):
                 _repeated_fail_get_next_trial_count = 0
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
-                logger.error(
+                logger.debug(
                     "Error while trying to get the next trial to evaluate.", exc_info=True
                 )
 
@@ -519,9 +519,12 @@ def _launch_runtime(  # noqa: PLR0913
         optimizer_info=OptimizerInfo(optimizer_info),
         optimizer_state=OptimizationState(
             budget=(
-                BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
-                if max_cost_total is not None
-                else None
+                BudgetInfo(
+                    max_cost_budget=max_cost_total,
+                    used_cost_budget=0,
+                    max_evaluations=max_evaluations_total,
+                    used_evaluations=0,
+                )
             ),
             shared_state={},  # TODO: Unused for the time being...
         ),

@@ -4,20 +4,12 @@ from __future__ import annotations
 import random
 import typing
 from copy import deepcopy
-
-import numpy as np
-import pandas as pd
 from typing import Literal
 from typing_extensions import override
 
-from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    SearchSpace,
-)
+import numpy as np
+import pandas as pd
+
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
@@ -27,6 +19,16 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     FixedPriorPolicy,
     RandomUniformPolicy,
 )
+from neps.search_spaces import (
+    CategoricalParameter,
+    ConstantParameter,
+    FloatParameter,
+    IntegerParameter,
+    SearchSpace,
+)
+
+if typing.TYPE_CHECKING:
+    from neps.utils.types import ConfigResult, RawConfig
 
 CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
@@ -43,7 +45,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        budget: int = None,
+        budget: int | None = None,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
@@ -54,7 +56,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
@@ -142,9 +144,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # crucial data structure used for determining promotion candidates
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
         # stores which configs occupy each rung at any time
-        self.rung_members: dict = dict()  # stores config IDs per rung
-        self.rung_members_performance: dict = dict()  # performances recorded per rung
-        self.rung_promotions: dict = dict()  # records a promotable config per rung
+        self.rung_members: dict = {}  # stores config IDs per rung
+        self.rung_members_performance: dict = {}  # performances recorded per rung
+        self.rung_promotions: dict = {}  # records a promotable config per rung
         self.total_fevals = 0
 
         # setup SH state counter
@@ -178,7 +180,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def _get_rung_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
         assert s <= self.stopping_rate_limit
-        new_min_budget = self.min_budget * (self.eta ** s)
+        new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
             np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
                 int
@@ -186,7 +188,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             + 1
         )
         _max_budget = self.max_budget
-        rung_map = dict()
+        rung_map = {}
         for i in reversed(range(nrungs)):
             rung_map[i + s] = (
                 int(_max_budget)
@@ -197,9 +199,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return rung_map
 
     def _get_config_map(self, s: int = 0) -> dict:
-        """Maps rungs (0,1,...,k) to the number of configs for each fidelity"""
+        """Maps rungs (0,1,...,k) to the number of configs for each fidelity."""
         assert s <= self.stopping_rate_limit
-        new_min_budget = self.min_budget * (self.eta ** s)
+        new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
             np.floor(np.log(self.max_budget / new_min_budget) / np.log(self.eta)).astype(
                 int
@@ -209,8 +211,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         s_max = self.stopping_rate_limit + 1
         _s = self.stopping_rate_limit - s
         # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
-        _n_config = np.floor(s_max / (_s + 1)) * self.eta ** _s
-        config_map = dict()
+        _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
+        config_map = {}
         for i in range(nrungs):
             config_map[i + s] = int(_n_config)
             _n_config //= self.eta
@@ -253,7 +255,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
             # rung histories are collected only for `previous` and not `pending` configs
             self.rung_histories[int(_rung)]["config"].append(int(_config))
             self.rung_histories[int(_rung)]["perf"].append(perf)
-        return
 
     def _handle_pending_evaluations(
         self, pending_evaluations: dict[str, ConfigResult]
@@ -274,12 +275,11 @@ class SuccessiveHalvingBase(BaseOptimizer):
             else:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
                 self.observed_configs.at[int(_config), "perf"] = np.nan
-        return
 
     def clean_rung_information(self):
-        self.rung_members = {k: [] for k in self.rung_map.keys()}
-        self.rung_members_performance = {k: [] for k in self.rung_map.keys()}
-        self.rung_promotions = {k: [] for k in self.rung_map.keys()}
+        self.rung_members = {k: [] for k in self.rung_map}
+        self.rung_members_performance = {k: [] for k in self.rung_map}
+        self.rung_promotions = {k: [] for k in self.rung_map}
 
     def _get_rungs_state(self, observed_configs=None):
         """Collects info on configs at a rung and their performance there."""
@@ -303,7 +303,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
             idxs = observed_configs.rung == _rung
             self.rung_members[_rung] = observed_configs.index[idxs].values
             self.rung_members_performance[_rung] = observed_configs.perf[idxs].values
-        return
 
     def _handle_promotions(self):
         self.promotion_policy.set_state(
@@ -357,14 +356,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # fit any model/surrogates
         self._fit_models()
 
-        return
-
     def is_init_phase(self) -> bool:
         return True
 
     def sample_new_config(
         self,
-        rung: int = None,
+        rung: int | None = None,
         **kwargs,
     ):
         # Samples configuration from policy or random
@@ -459,7 +456,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         for k, v in self.pipeline_space.items():
             if v.is_fidelity or isinstance(v, ConstantParameter):
                 continue
-            elif isinstance(v, (FloatParameter, IntegerParameter)):
+            if isinstance(v, FloatParameter | IntegerParameter):
                 if confidence_score is None:
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
@@ -478,7 +475,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 class SuccessiveHalving(SuccessiveHalvingBase):
     def _calc_budget_used_in_bracket(self, config_history: list[int]):
         budget = 0
-        for rung in self.config_map.keys():
+        for rung in self.config_map:
             count = sum(config_history == rung)
             # `range(min_rung, rung+1)` counts the black-box cost of promotions since
             # SH budgets assume each promotion involves evaluation from scratch
@@ -598,7 +595,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,

@@ -7,10 +7,7 @@ pipeline_space:
     lower: 1e-5
     upper: 1e-1
     log: True  # Log scale for learning rate
-  epochs:
-    lower: 5
-    upper: 20
-    is_fidelity: True
+  epochs: 20
   optimizer:
     choices: [adam, sgd, adamw]
   batch_size: 64
@@ -22,9 +19,5 @@ searcher:
   name: "my_bayesian"
   # Specific arguments depending on the searcher
   initial_design_size: 7
-  surrogate_model: gp
-  acquisition: EI
-  acquisition_sampler: random
-  random_interleave_prob: 0.1
 
 overwrite_working_directory: True

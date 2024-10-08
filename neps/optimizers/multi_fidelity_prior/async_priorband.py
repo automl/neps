@@ -1,18 +1,11 @@
-import typing
+from __future__ import annotations
 
-import numpy as np
+import typing
 from typing import Literal
 from typing_extensions import override
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
-)
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
+import numpy as np
+
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
@@ -20,6 +13,18 @@ from neps.optimizers.multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalvingWithPriors,
 )
 from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
+from neps.sampling.priors import Prior
+
+if typing.TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult, RawConfig
 
 
 class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
@@ -50,12 +55,12 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
         modelling_type: str = "joint",  # could also be {"rung"}
-        initial_design_size: int = None,
+        initial_design_size: int | None = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
-        domain_se_kernel: str = None,
-        hp_kernels: list = None,
-        surrogate_model_args: dict = None,
+        domain_se_kernel: str | None = None,
+        hp_kernels: list | None = None,
+        surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
@@ -95,15 +100,15 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
             },
         }
 
-        bo_args = dict(
-            surrogate_model=surrogate_model,
-            domain_se_kernel=domain_se_kernel,
-            hp_kernels=hp_kernels,
-            surrogate_model_args=surrogate_model_args,
-            acquisition=acquisition,
-            log_prior_weighted=log_prior_weighted,
-            acquisition_sampler=acquisition_sampler,
-        )
+        bo_args = {
+            "surrogate_model": surrogate_model,
+            "domain_se_kernel": domain_se_kernel,
+            "hp_kernels": hp_kernels,
+            "surrogate_model_args": surrogate_model_args,
+            "acquisition": acquisition,
+            "log_prior_weighted": log_prior_weighted,
+            "acquisition_sampler": acquisition_sampler,
+        }
         self.model_based = model_based
         self.modelling_type = modelling_type
         self.initial_design_size = initial_design_size
@@ -117,7 +122,12 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         self.init_size = n_min + 1  # in BOHB: init_design >= N_dim + 2
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
-        self.model_policy = model_policy(pipeline_space, **bo_args)
+
+        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
+        self.model_policy = model_policy(
+            pipeline_space,
+            prior=Prior.from_parameters(parameters.values()),
+        )
 
     def get_config_and_ids(
         self,
@@ -128,10 +138,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
             [type]: [description]
         """
         rung_to_promote = self.is_promotable()
-        if rung_to_promote is not None:
-            rung = rung_to_promote + 1
-        else:
-            rung = self.min_rung
+        rung = rung_to_promote + 1 if rung_to_promote is not None else self.min_rung
         self.set_sampling_weights_and_inc(rung=rung)
         # performs standard ASHA but sampling happens as per the EnsemblePolicy
         return super().get_config_and_ids()
@@ -166,43 +173,43 @@ class PriorBandAshaHB(PriorBandAsha):
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
         modelling_type: str = "joint",  # could also be {"rung"}
-        initial_design_size: int = None,
+        initial_design_size: int | None = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
-        domain_se_kernel: str = None,
-        hp_kernels: list = None,
-        surrogate_model_args: dict = None,
+        domain_se_kernel: str | None = None,
+        hp_kernels: list | None = None,
+        surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
     ):
         # collecting arguments required by ASHA
-        args = dict(
-            pipeline_space=pipeline_space,
-            budget=budget,
-            eta=eta,
-            early_stopping_rate=self.early_stopping_rate,
-            initial_design_type=initial_design_type,
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-            logger=logger,
-            prior_confidence=prior_confidence,
-            random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
-        )
-        bo_args = dict(
-            surrogate_model=surrogate_model,
-            domain_se_kernel=domain_se_kernel,
-            hp_kernels=hp_kernels,
-            surrogate_model_args=surrogate_model_args,
-            acquisition=acquisition,
-            log_prior_weighted=log_prior_weighted,
-            acquisition_sampler=acquisition_sampler,
-        )
+        args = {
+            "pipeline_space": pipeline_space,
+            "budget": budget,
+            "eta": eta,
+            "early_stopping_rate": self.early_stopping_rate,
+            "initial_design_type": initial_design_type,
+            "sampling_policy": sampling_policy,
+            "promotion_policy": promotion_policy,
+            "loss_value_on_error": loss_value_on_error,
+            "cost_value_on_error": cost_value_on_error,
+            "ignore_errors": ignore_errors,
+            "logger": logger,
+            "prior_confidence": prior_confidence,
+            "random_interleave_prob": random_interleave_prob,
+            "sample_default_first": sample_default_first,
+            "sample_default_at_target": sample_default_at_target,
+        }
+        bo_args = {
+            "surrogate_model": surrogate_model,
+            "domain_se_kernel": domain_se_kernel,
+            "hp_kernels": hp_kernels,
+            "surrogate_model_args": surrogate_model_args,
+            "acquisition": acquisition,
+            "log_prior_weighted": log_prior_weighted,
+            "acquisition_sampler": acquisition_sampler,
+        }
         super().__init__(
             **args,
             prior_weight_type=prior_weight_type,
@@ -257,7 +264,7 @@ class PriorBandAshaHB(PriorBandAsha):
             previous_results=previous_results,
             pending_evaluations=pending_evaluations,
             budget_info=budget_info,
-            optimizer_state=optimizer_state
+            optimizer_state=optimizer_state,
         )
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
@@ -278,8 +285,7 @@ class PriorBandAshaHB(PriorBandAsha):
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-        bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
-        return bracket_next
+        return np.random.choice(range(self.max_rung + 1), p=bracket_probs)
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.

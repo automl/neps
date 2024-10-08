@@ -212,7 +212,7 @@ class SearchSpace(Mapping[str, Any]):
 
                 if not isinstance(hp, NumericalParameter):
                     raise ValueError(
-                        "neps only suport float and integer fidelity parameters"
+                        f"Only float and integer fidelities supported, got {hp}"
                     )
 
                 _fidelity_param = hp
@@ -232,6 +232,26 @@ class SearchSpace(Mapping[str, Any]):
         self.custom_grid_table: pd.Series | pd.DataFrame | None = None
         self.raw_tabular_space: SearchSpace | None = None
         self.has_tabular: bool = False
+
+        self.categoricals: Mapping[str, CategoricalParameter] = {
+            k: hp for k, hp in _hyperparameters if isinstance(hp, CategoricalParameter)
+        }
+        self.numerical: Mapping[str, IntegerParameter | FloatParameter] = {
+            k: hp
+            for k, hp in _hyperparameters
+            if isinstance(hp, IntegerParameter | FloatParameter) and not hp.is_fidelity
+        }
+        self.graphs: Mapping[str, GraphParameter] = {
+            k: hp for k, hp in _hyperparameters if isinstance(hp, GraphParameter)
+        }
+        self.constants: Mapping[str, Any] = {
+            k: hp.value for k, hp in _hyperparameters if isinstance(hp, ConstantParameter)
+        }
+        # NOTE: For future of multiple fidelities
+        self.fidelities: Mapping[str, IntegerParameter | FloatParameter] = {}
+        if _fidelity_param is not None and _fidelity_name is not None:
+            assert isinstance(_fidelity_param, IntegerParameter | FloatParameter)
+            self.fidelities = {_fidelity_name: _fidelity_param}
 
     def set_custom_grid_space(
         self,

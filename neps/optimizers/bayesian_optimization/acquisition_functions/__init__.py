@@ -1,19 +1,15 @@
-
-
+from collections.abc import Callable
 from functools import partial
-from typing import Callable
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
     ComprehensiveExpectedImprovement,
 )
-from neps.optimizers.bayesian_optimization.acquisition_functions.mf_pi import MFPI_Random
-from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
-    UpperConfidenceBound,
-)
 from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
     DecayingPriorWeightedAcquisition,
 )
-
+from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
+    UpperConfidenceBound,
+)
 
 AcquisitionMapping: dict[str, Callable] = {
     "EI": partial(
@@ -34,11 +30,6 @@ AcquisitionMapping: dict[str, Callable] = {
         in_fill="posterior",
         augmented_ei=True,
     ),
-    "MFPI-random": partial(
-        MFPI_Random,
-        threshold="random",
-        horizon="random",
-    ),
     "UCB": partial(
         UpperConfidenceBound,
         maximize=False,
@@ -50,5 +41,4 @@ __all__ = [
     "ComprehensiveExpectedImprovement",
     "UpperConfidenceBound",
     "DecayingPriorWeightedAcquisition",
-    "MFPI_Random",
 ]

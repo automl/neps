@@ -6,16 +6,15 @@ from collections import deque
 from copy import deepcopy
 from functools import partial
 from queue import LifoQueue
-from typing import Deque
 
 import numpy as np
 from nltk.grammar import Nonterminal
 
-from ..cfg import Grammar, choice
+from neps.search_spaces.architecture.cfg import Grammar, choice
 
 
 class Constraint:
-    def __init__(self, current_derivation: str = None) -> None:
+    def __init__(self, current_derivation: str | None = None) -> None:
         self.current_derivation = current_derivation
 
     @staticmethod
@@ -46,7 +45,7 @@ class ConstrainedGrammar(Grammar):
 
         self._prior: dict = None
 
-    def set_constraints(self, constraints: dict, none_operation: str = None):
+    def set_constraints(self, constraints: dict, none_operation: str | None = None):
         self.constraints = constraints
         self.none_operation = none_operation
         self.constraint_is_class = isinstance(self.constraints, Constraint)
@@ -85,14 +84,11 @@ class ConstrainedGrammar(Grammar):
     def sampler(  # type: ignore[override]
         self,
         n=1,
-        start_symbol: str = None,
+        start_symbol: str | None = None,
         not_allowed_productions=None,
         user_priors: bool = False,
     ):
-        if start_symbol is None:
-            start_symbol = self.start()
-        else:
-            start_symbol = Nonterminal(start_symbol)
+        start_symbol = self.start() if start_symbol is None else Nonterminal(start_symbol)
 
         return [
             self._constrained_sampler(
@@ -154,7 +150,7 @@ class ConstrainedGrammar(Grammar):
                 probs = [p for i, p in enumerate(probs) if i not in not_allowed_indices]
                 # rescale s.t. probs sum up to one
                 cur_prob_sum = sum(probs)
-                probs = list(map(lambda x: x / cur_prob_sum, probs))
+                probs = [x / cur_prob_sum for x in probs]
             assert len(probs) == len(productions)
 
             production = choice(productions, probs=probs)
@@ -216,9 +212,7 @@ class ConstrainedGrammar(Grammar):
                 and string_tree[i + 1] == " "
             ):
                 return False
-            if char == "(":
-                return True
-            return False
+            return char == "("
 
         def find_longest_match(
             i: int, string_tree: str, symbols: list, max_match: int
@@ -253,7 +247,7 @@ class ConstrainedGrammar(Grammar):
             char = string_tree[i]
             if skip_char(char):
                 pass
-            elif char == ")" and not string_tree[i - 1] == " ":
+            elif char == ")" and string_tree[i - 1] != " ":
                 # closing symbol of production
                 production = q_production_rules.get(block=False)[0][0]
                 idx = self.productions(production.lhs()).index(production)
@@ -264,9 +258,9 @@ class ConstrainedGrammar(Grammar):
                 ):
                     outer_production = q_production_rules.queue[-1][0][0]
                     if len(q_production_rules.queue) not in current_derivations:
-                        current_derivations[
-                            len(q_production_rules.queue)
-                        ] = self.constraints(outer_production.rhs()[0])
+                        current_derivations[len(q_production_rules.queue)] = (
+                            self.constraints(outer_production.rhs()[0])
+                        )
                     context_information = self.constraints(
                         outer_production.rhs()[0],
                         current_derivations[len(q_production_rules.queue)],
@@ -303,7 +297,7 @@ class ConstrainedGrammar(Grammar):
                         ]
                         # rescale s.t. prior sum up to one
                         cur_prob_sum = sum(prior)
-                        prior = list(map(lambda x: x / cur_prob_sum, prior))
+                        prior = [x / cur_prob_sum for x in prior]
                         idx -= sum(idx > i for i in not_allowed_indices)
 
                 prior = prior[idx]
@@ -343,7 +337,7 @@ class ConstrainedGrammar(Grammar):
         return prior_prob
 
     def _compute_current_context(self, pre_subtree: str, post_subtree: str):
-        q_nonterminals: Deque = deque()
+        q_nonterminals: deque = deque()
         for sym in pre_subtree.split(" "):
             if sym == "":
                 continue
@@ -371,7 +365,7 @@ class ConstrainedGrammar(Grammar):
         if len(productions) == 0:
             raise Exception("Cannot find corresponding production!")
 
-        q_context: Deque = deque()
+        q_context: deque = deque()
         current_derivation = []
         rhs_counter = 0
         tmp_str = ""
@@ -476,9 +470,9 @@ class ConstrainedGrammar(Grammar):
                     not_allowed_productions = self._get_not_allowed_productions(
                         self.productions(lhs=Nonterminal(subtree_node)),
                         context_information[
-                            [i for i, cd in enumerate(current_derivation) if cd is None][
-                                0
-                            ]
+                            next(
+                                i for i, cd in enumerate(current_derivation) if cd is None
+                            )
                         ],
                     )
                 elif isinstance(context_information, bool):
@@ -508,8 +502,7 @@ class ConstrainedGrammar(Grammar):
             ):
                 break
             _patience -= 1
-        child = self._remove_empty_spaces(child)
-        return child
+        return self._remove_empty_spaces(child)
 
     def crossover(
         self,
@@ -534,7 +527,7 @@ class ConstrainedGrammar(Grammar):
                 parent1_not_allowed_productions = self._get_not_allowed_productions(
                     self.productions(lhs=Nonterminal(subtree_node)),
                     context_information[
-                        [i for i, cd in enumerate(current_derivation) if cd is None][0]
+                        next(i for i, cd in enumerate(current_derivation) if cd is None)
                     ],
                 )
             elif isinstance(context_information, bool):
@@ -570,11 +563,11 @@ class ConstrainedGrammar(Grammar):
                             self._get_not_allowed_productions(
                                 self.productions(lhs=Nonterminal(subtree_node)),
                                 context_information[
-                                    [
+                                    next(
                                         i
                                         for i, cd in enumerate(current_derivation)
                                         if cd is None
-                                    ][0]
+                                    )
                                 ],
                             )
                         )
@@ -637,7 +630,9 @@ class ConstrainedGrammar(Grammar):
             int: size of space described by grammar.
         """
 
-        def recursive_worker(nonterminal: Nonterminal, memory_bank: dict = None) -> int:
+        def recursive_worker(
+            nonterminal: Nonterminal, memory_bank: dict | None = None
+        ) -> int:
             def _get_all_variants(production):
                 variants = [production]
                 nonterminals = [
@@ -715,18 +710,17 @@ class ConstrainedGrammar(Grammar):
                             potential_production
                         )
                     )
-                else:
-                    if any(
-                        production.rhs()[0] == self.none_operation
-                        for nonterminal in nonterminals
-                        for production in self.productions(nonterminal)
-                    ):
-                        potential_productions += _get_all_variants(potential_production)
-                    elif not (
-                        len(potential_production.rhs()) == 1
-                        and potential_production.rhs()[0] == self.none_operation
-                    ):
-                        potential_productions.append(potential_production)
+                elif any(
+                    production.rhs()[0] == self.none_operation
+                    for nonterminal in nonterminals
+                    for production in self.productions(nonterminal)
+                ):
+                    potential_productions += _get_all_variants(potential_production)
+                elif not (
+                    len(potential_production.rhs()) == 1
+                    and potential_production.rhs()[0] == self.none_operation
+                ):
+                    potential_productions.append(potential_production)
             _possibilites = 0
             for potential_production in potential_productions:
                 nonterminals = [
@@ -736,7 +730,7 @@ class ConstrainedGrammar(Grammar):
                 ]
                 possibilities_per_edge = [
                     memory_bank[str(e_nonterminal)]
-                    if str(e_nonterminal) in memory_bank.keys()
+                    if str(e_nonterminal) in memory_bank
                     else recursive_worker(e_nonterminal, memory_bank)
                     for e_nonterminal in nonterminals
                 ]

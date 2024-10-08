@@ -16,7 +16,7 @@ inc_style: dynamic
 model_based: true # crucial argument to set to allow model-search
 modelling_type: joint
 initial_design_size: 10
-surrogate_model: gp  # or {"gp_hierarchy"}
+surrogate_model: gp
 acquisition: EI  # or {"LogEI", "AEI"}
 log_prior_weighted: false
 acquisition_sampler: mutation  # or {"random", "evolution"}

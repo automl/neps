@@ -38,6 +38,14 @@ def test_core_examples(example):
         # Run hyperparameters example to have something to analyse
         runpy.run_path(str(core_examples_scripts[0]), run_name="__main__")
 
+    if example.name in (
+        "architecture.py",
+        "architecture_and_hyperparameters.py",
+        "hierarchical_architecture.py",
+        "expert_priors_for_architecture_and_hyperparameters.py",
+    ):
+        pytest.xfail("Architecture were removed temporarily")
+
     runpy.run_path(str(example), run_name="__main__")
 
 

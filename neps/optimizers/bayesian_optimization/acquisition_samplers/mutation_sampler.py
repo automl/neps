@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
 from typing_extensions import override
 
 import numpy as np
@@ -48,7 +49,7 @@ class MutationSampler(AcquisitionSampler):
         pipeline_space,
         pool_size: int = 250,
         n_best: int = 10,
-        mutate_size: int | None = None,
+        mutate_size: float | int = 0.5,
         allow_isomorphism: bool = False,
         check_isomorphism_history: bool = True,
         patience: int = 50,
@@ -57,6 +58,11 @@ class MutationSampler(AcquisitionSampler):
         self.pool_size = pool_size
         self.n_best = n_best
         self.mutate_size = mutate_size
+        if isinstance(mutate_size, int):
+            assert (
+                pool_size >= mutate_size
+            ), " pool_size must be larger or equal to mutate_size"
+
         self.allow_isomorphism = allow_isomorphism
         self.check_isomorphism_history = (
             check_isomorphism_history  # check for isomorphisms also in previous graphs
@@ -83,7 +89,12 @@ class MutationSampler(AcquisitionSampler):
         acquisition_function: Callable,
         batch: int,
     ) -> list[SearchSpace]:
-        pool = self.create_pool(acquisition_function, self.pool_size)
+        pool = self.create_pool(
+            x=self.x,
+            y=self.y,
+            acquisition_function=acquisition_function,
+            pool_size=self.pool_size,
+        )
 
         samples, _, _ = _propose_location(
             acquisition_function=acquisition_function,
@@ -94,24 +105,26 @@ class MutationSampler(AcquisitionSampler):
 
     def create_pool(
         self,
+        x: list[SearchSpace],
+        y: Sequence[float] | np.ndarray | torch.Tensor,
         acquisition_function: Callable,
         pool_size: int,
     ) -> list[SearchSpace]:
-        if len(self.x) == 0:
+        if len(x) == 0:
             return self.random_sampling.sample_batch(acquisition_function, pool_size)
 
-        mutate_size = (
-            int(0.5 * pool_size) if self.mutate_size is None else self.mutate_size
-        )
-        assert (
-            pool_size >= mutate_size
-        ), " pool_size must be larger or equal to mutate_size"
+        if isinstance(self.mutate_size, int):
+            mutate_size = self.mutate_size
+        else:
+            mutate_size = int(self.mutate_size * pool_size)
 
         n_best = len(self.x) if len(self.x) < self.n_best else self.n_best
         best_configs = [
-                           x for (_, x) in
-                           sorted(zip(self.y, self.x), key=lambda pair: pair[0])
-                       ][:n_best]
+            x
+            for (_, x) in sorted(
+                zip(self.y, self.x, strict=False), key=lambda pair: pair[0]
+            )
+        ][:n_best]
 
         seen: set[int] = set()
 

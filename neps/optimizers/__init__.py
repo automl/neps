@@ -1,19 +1,17 @@
-
-
+from collections.abc import Callable, Mapping
 from functools import partial
-from typing import Callable, Mapping
+from typing import TYPE_CHECKING
 
 from .base_optimizer import BaseOptimizer
-from .bayesian_optimization.cost_cooling import CostCooling
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
-from .multi_fidelity.ifbo import IFBO
 from .multi_fidelity.hyperband import (
     MOBSTER,
     AsynchronousHyperband,
     Hyperband,
     HyperbandCustomDefault,
 )
+from .multi_fidelity.ifbo import IFBO
 from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
@@ -27,11 +25,9 @@ from .regularized_evolution.optimizer import RegularizedEvolution
 
 # TODO: Rename Searcher to Optimizer...
 SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
-    "bayesian_optimization": BayesianOptimization,
-    "pibo": partial(BayesianOptimization, disable_priors=False),
-    "cost_cooling_bayesian_optimization": CostCooling,
+    "bayesian_optimization": partial(BayesianOptimization, use_priors=False),
+    "pibo": partial(BayesianOptimization, use_priors=True),
     "random_search": RandomSearch,
-    "cost_cooling": CostCooling,
     "regularized_evolution": RegularizedEvolution,
     "assisted_regularized_evolution": partial(RegularizedEvolution, assisted=True),
     "grid_search": GridSearch,

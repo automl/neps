@@ -1,7 +1,23 @@
 all_main_examples = {  # Used for printing in python -m neps_examples
-    "basic_usage": ["analyse", "architecture", "architecture_and_hyperparameters", "hpo_usage_example", "hyperparameters"],
-    "convenience": ["logging_additional_info", "neps_tblogger_tutorial", "running_on_slurm_scripts", "neps_x_lightning", "working_directory_per_pipeline"],
-    "efficiency": ["expert_priors_for_hyperparameters", "multi_fidelity", "multi_fidelity_and_expert_priors"],
+    "basic_usage": [
+        "analyse",
+        "architecture",
+        "architecture_and_hyperparameters",
+        "hpo_usage_example",
+        "hyperparameters",
+    ],
+    "convenience": [
+        "logging_additional_info",
+        "neps_tblogger_tutorial",
+        "running_on_slurm_scripts",
+        "neps_x_lightning",
+        "working_directory_per_pipeline",
+    ],
+    "efficiency": [
+        "expert_priors_for_hyperparameters",
+        "multi_fidelity",
+        "multi_fidelity_and_expert_priors",
+    ],
 }
 
 core_examples = [  # Run locally and on github actions
@@ -15,7 +31,6 @@ ci_examples = [  # Run on github actions
     "basic_usage/architecture_and_hyperparameters",
     "experimental/hierarchical_architecture",
     "efficiency/expert_priors_for_hyperparameters",
-    "experimental/hierarchical_architecture_hierarchical_GP",
     "convenience/logging_additional_info",
     "convenience/working_directory_per_pipeline",
     "convenience/neps_tblogger_tutorial",

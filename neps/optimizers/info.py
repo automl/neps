@@ -1,18 +1,18 @@
+from __future__ import annotations
+
 import os
 
 import yaml
 
 
 class SearcherConfigs:
-    """
-    This class provides methods to access default configuration details
+    """This class provides methods to access default configuration details
     for NePS optimizers.
     """
 
     @staticmethod
     def _get_searchers_folder_path() -> str:
-        """
-        Helper method to get the folder path for default searchers.
+        """Helper method to get the folder path for default searchers.
 
         Returns:
             str: The absolute path to the default searchers folder.
@@ -22,8 +22,7 @@ class SearcherConfigs:
 
     @staticmethod
     def get_searchers() -> list[str]:
-        """
-        List all the searcher names that can be used in neps run.
+        """List all the searcher names that can be used in neps run.
 
         Returns:
             list[str]: A list of searcher names.
@@ -40,8 +39,7 @@ class SearcherConfigs:
 
     @staticmethod
     def get_available_algorithms() -> list[str]:
-        """
-        List all available algorithms used by NePS searchers.
+        """List all available algorithms used by NePS searchers.
 
         Returns:
             list[str]: A list of algorithm names.
@@ -62,8 +60,7 @@ class SearcherConfigs:
 
     @staticmethod
     def get_searcher_from_algorithm(algorithm: str) -> list[str]:
-        """
-        Get all NePS searchers that use a specific searching algorithm.
+        """Get all NePS searchers that use a specific searching algorithm.
 
         Args:
             algorithm (str): The name of the algorithm needed for the search.
@@ -86,8 +83,7 @@ class SearcherConfigs:
 
     @staticmethod
     def get_searcher_kwargs(searcher: str) -> str:
-        """
-        Get the kwargs and algorithm setup for a specific searcher.
+        """Get the kwargs and algorithm setup for a specific searcher.
 
         Args:
             searcher (str): The name of the searcher to check the details of.

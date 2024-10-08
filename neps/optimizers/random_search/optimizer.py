@@ -1,10 +1,14 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces.search_space import SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult, RawConfig
 
 
 class RandomSearch(BaseOptimizer):

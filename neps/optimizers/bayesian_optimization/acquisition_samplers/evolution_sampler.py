@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import random
 from heapq import nlargest
-from typing import List, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from ....search_spaces.search_space import SearchSpace
 from .base_acq_sampler import AcquisitionSampler
 from .random_sampler import RandomSampler
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
 
 
 class EvolutionSampler(AcquisitionSampler):
@@ -113,7 +117,7 @@ class EvolutionSampler(AcquisitionSampler):
         acquisition_function,
         previous_samples: list,
         population_size: int,
-        batch_size: int = None,
+        batch_size: int | None = None,
     ):
         def inner_loop(population, fitness, X_max, acq_max):
             try:
@@ -142,7 +146,7 @@ class EvolutionSampler(AcquisitionSampler):
             if not self.allow_isomorphism and self.check_isomorphism_history
             else []
         )
-        population: List[SearchSpace] = []
+        population: list[SearchSpace] = []
         remaining_patience = self.patience
         while (
             population_size - len(previous_samples) > len(population)
@@ -186,7 +190,10 @@ class EvolutionSampler(AcquisitionSampler):
                     population, fitness, X_max, acq_max
                 )
                 if all(
-                    all(np.isclose(x, l) for l in list(zip(*iterations_best[-5:]))[j])
+                    all(
+                        np.isclose(x, l)
+                        for l in list(zip(*iterations_best[-5:], strict=False))[j]
+                    )
                     for j, x in enumerate(acq_max)
                 ):
                     break
@@ -195,8 +202,8 @@ class EvolutionSampler(AcquisitionSampler):
 
         return X_max, population, acq_max
 
-    def sample(self, acquisition_function) -> Tuple[list, list, list]:
-        population: List[SearchSpace] = []
+    def sample(self, acquisition_function) -> tuple[list, list, list]:
+        population: list[SearchSpace] = []
         if self.initial_history_last > 0 and len(self.x) >= self.initial_history_last:
             population = self.x[-self.initial_history_last :]
         if self.initial_history_best > 0 and len(self.x) >= self.initial_history_best:

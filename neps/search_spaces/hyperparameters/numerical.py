@@ -33,6 +33,7 @@ import scipy
 from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
 if TYPE_CHECKING:
+    from neps.search_spaces.domain import Domain
     from neps.search_spaces.hyperparameters.float import FloatParameter
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.utils.types import TruncNorm
@@ -82,6 +83,7 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         log: bool = False,
         default: T | None,
         is_fidelity: bool,
+        domain: Domain[T],
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize the numerical hyperparameter.
@@ -92,6 +94,7 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             log: Whether the hyperparameter is in log space.
             default: The default value of the hyperparameter.
             is_fidelity: Whether the hyperparameter is a fidelity parameter.
+            domain: The domain of the hyperparameter.
             default_confidence: The default confidence choice.
         """
         super().__init__(value=None, default=default, is_fidelity=is_fidelity)  # type: ignore
@@ -134,6 +137,7 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         self.lower: T = lower
         self.upper: T = upper
         self.log: bool = log
+        self.domain: Domain[T] = domain
         self.log_value: float | None = None
         self.log_bounds: tuple[float, float] | None = None
         self.log_default: float | None = None

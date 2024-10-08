@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typing
 from copy import deepcopy
 from typing import Any, Literal
@@ -5,15 +7,6 @@ from typing_extensions import override
 
 import numpy as np
 
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
-)
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
@@ -30,6 +23,18 @@ from neps.optimizers.multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingBase,
 )
+from neps.sampling.priors import Prior
+
+if typing.TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ConfigResult, RawConfig
 
 
 class HyperbandBase(SuccessiveHalvingBase):
@@ -50,29 +55,29 @@ class HyperbandBase(SuccessiveHalvingBase):
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
     ):
-        args = dict(
-            pipeline_space=pipeline_space,
-            budget=budget,
-            eta=eta,
-            early_stopping_rate=self.early_stopping_rate,  # HB subsumes this param of SH
-            initial_design_type=initial_design_type,
-            use_priors=use_priors,
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-            logger=logger,
-            prior_confidence=prior_confidence,
-            random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
-        )
+        args = {
+            "pipeline_space": pipeline_space,
+            "budget": budget,
+            "eta": eta,
+            "early_stopping_rate": self.early_stopping_rate,  # HB subsumes this param of SH
+            "initial_design_type": initial_design_type,
+            "use_priors": use_priors,
+            "sampling_policy": sampling_policy,
+            "promotion_policy": promotion_policy,
+            "loss_value_on_error": loss_value_on_error,
+            "cost_value_on_error": cost_value_on_error,
+            "ignore_errors": ignore_errors,
+            "logger": logger,
+            "prior_confidence": prior_confidence,
+            "random_interleave_prob": random_interleave_prob,
+            "sample_default_first": sample_default_first,
+            "sample_default_at_target": sample_default_at_target,
+        }
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
         # for (n,r) pairing, i.e., (num. configs, fidelity)
@@ -120,7 +125,6 @@ class HyperbandBase(SuccessiveHalvingBase):
         # promotions are handled by the individual SH brackets which are explicitly
         # called in the _update_sh_bracket_state() function
         # overloaded function disables the need for retrieving promotions for HB overall
-        return
 
     @override
     def load_optimization_state(
@@ -134,7 +138,7 @@ class HyperbandBase(SuccessiveHalvingBase):
             previous_results=previous_results,
             pending_evaluations=pending_evaluations,
             budget_info=budget_info,
-            optimizer_state=optimizer_state
+            optimizer_state=optimizer_state,
         )
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
@@ -340,28 +344,28 @@ class AsynchronousHyperband(HyperbandBase):
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
     ):
-        args = dict(
-            pipeline_space=pipeline_space,
-            budget=budget,
-            eta=eta,
-            initial_design_type=initial_design_type,
-            use_priors=use_priors,
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-            logger=logger,
-            prior_confidence=prior_confidence,
-            random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
-        )
+        args = {
+            "pipeline_space": pipeline_space,
+            "budget": budget,
+            "eta": eta,
+            "initial_design_type": initial_design_type,
+            "use_priors": use_priors,
+            "sampling_policy": sampling_policy,
+            "promotion_policy": promotion_policy,
+            "loss_value_on_error": loss_value_on_error,
+            "cost_value_on_error": cost_value_on_error,
+            "ignore_errors": ignore_errors,
+            "logger": logger,
+            "prior_confidence": prior_confidence,
+            "random_interleave_prob": random_interleave_prob,
+            "sample_default_first": sample_default_first,
+            "sample_default_at_target": sample_default_at_target,
+        }
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
         self.sh_brackets = {}
@@ -402,8 +406,7 @@ class AsynchronousHyperband(HyperbandBase):
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-        bracket_next = np.random.choice(range(self.max_rung + 1), p=bracket_probs)
-        return bracket_next
+        return np.random.choice(range(self.max_rung + 1), p=bracket_probs)
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -477,50 +480,41 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
         # new arguments for model
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | Any = "gp",
-        domain_se_kernel: str = None,
-        hp_kernels: list = None,
-        surrogate_model_args: dict = None,
+        domain_se_kernel: str | None = None,
+        hp_kernels: list | None = None,
+        surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
     ):
-        hb_args = dict(
-            pipeline_space=pipeline_space,
-            budget=budget,
-            eta=eta,
-            initial_design_type=initial_design_type,
-            use_priors=use_priors,
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-            logger=logger,
-            prior_confidence=prior_confidence,
-            random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
-        )
+        hb_args = {
+            "pipeline_space": pipeline_space,
+            "budget": budget,
+            "eta": eta,
+            "initial_design_type": initial_design_type,
+            "use_priors": use_priors,
+            "sampling_policy": sampling_policy,
+            "promotion_policy": promotion_policy,
+            "loss_value_on_error": loss_value_on_error,
+            "cost_value_on_error": cost_value_on_error,
+            "ignore_errors": ignore_errors,
+            "logger": logger,
+            "prior_confidence": prior_confidence,
+            "random_interleave_prob": random_interleave_prob,
+            "sample_default_first": sample_default_first,
+            "sample_default_at_target": sample_default_at_target,
+        }
         super().__init__(**hb_args)
 
         self.pipeline_space.has_prior = self.use_priors
 
-        bo_args = dict(
-            surrogate_model=surrogate_model,
-            domain_se_kernel=domain_se_kernel,
-            hp_kernels=hp_kernels,
-            surrogate_model_args=surrogate_model_args,
-            acquisition=acquisition,
-            log_prior_weighted=log_prior_weighted,
-            acquisition_sampler=acquisition_sampler,
-        )
         # counting non-fidelity dimensions in search space
         ndims = sum(
             1
@@ -529,10 +523,21 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         )
         n_min = ndims + 1
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
-        self.model_policy = model_policy(pipeline_space, **bo_args)
+
+        if self.use_priors:
+            parameters = {
+                **self.pipeline_space.numerical,
+                **self.pipeline_space.categoricals,
+            }
+            prior = Prior.from_parameters(parameters.values())
+        else:
+            prior = None
+
+        self.model_policy = model_policy(pipeline_space, prior=prior)
 
         for _, sh in self.sh_brackets.items():
             sh.model_policy = self.model_policy
             sh.sample_new_config = self.sample_new_config
+
 
 # TODO: TrulyAsyncHyperband

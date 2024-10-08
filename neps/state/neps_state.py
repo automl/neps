@@ -111,11 +111,17 @@ class NePSState(Generic[Loc]):
 
             # NOTE: We don't want optimizers mutating this before serialization
             budget = opt_state.budget.clone() if opt_state.budget is not None else None
-            sampled_config, new_opt_state = optimizer.ask(
+            sampled_config_maybe_new_opt_state = optimizer.ask(
                 trials=trials,
                 budget_info=budget,
                 optimizer_state=opt_state.shared_state,
             )
+
+            if isinstance(sampled_config_maybe_new_opt_state, tuple):
+                sampled_config, new_opt_state = sampled_config_maybe_new_opt_state
+            else:
+                sampled_config = sampled_config_maybe_new_opt_state
+                new_opt_state = opt_state.shared_state
 
             if sampled_config.previous_config_id is not None:
                 previous_trial = trials.get(sampled_config.previous_config_id)

@@ -1,16 +1,10 @@
+from __future__ import annotations
+
 import typing
 from typing import Literal
 
 import numpy as np
 
-from neps.utils.types import RawConfig
-from neps.search_spaces.search_space import SearchSpace
-from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
-)
-from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
 from neps.optimizers.multi_fidelity.hyperband import HyperbandCustomDefault
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
@@ -21,6 +15,17 @@ from neps.optimizers.multi_fidelity_prior.utils import (
     compute_scores,
     get_prior_weight_for_decay,
 )
+from neps.sampling.priors import Prior
+
+if typing.TYPE_CHECKING:
+    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+        BaseAcquisition,
+    )
+    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+        AcquisitionSampler,
+    )
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.utils.types import RawConfig
 
 
 class PriorBandBase:
@@ -35,16 +40,14 @@ class PriorBandBase:
         # computing distance of incumbent from all seen points in history
         distances = [dist(config) for config in self.observed_configs.config]
         # ensuring the distances exclude 0 or the distance from itself
-        distances = [d for d in distances if d > 0]
-        return distances
+        return [d for d in distances if d > 0]
 
     def find_1nn_distance_from_incumbent(self, incumbent):
         """Finds the distance to the nearest neighbour."""
         distances = self.find_all_distances_from_incumbent(incumbent)
-        distance = min(distances)
-        return distance
+        return min(distances)
 
-    def find_incumbent(self, rung: int = None) -> SearchSpace:
+    def find_incumbent(self, rung: int | None = None) -> SearchSpace:
         """Find the best performing configuration seen so far."""
         rungs = self.observed_configs.rung.values
         idxs = self.observed_configs.index.values
@@ -120,7 +123,7 @@ class PriorBandBase:
         continuation_resources = bracket.rung_map[bracket.min_rung]
         resources = bracket.config_map[bracket.min_rung] * continuation_resources
         for r in range(1, len(bracket.rung_map)):
-            rung = sorted(list(bracket.rung_map.keys()), reverse=False)[r]
+            rung = sorted(bracket.rung_map.keys(), reverse=False)[r]
             continuation_resources = bracket.rung_map[rung] - bracket.rung_map[rung - 1]
             resources += bracket.config_map[rung] * continuation_resources
 
@@ -144,7 +147,7 @@ class PriorBandBase:
             # scales weight of prior by eta raised to the current rung level
             # at the base rung thus w_prior = w_random
             # at the max rung r, w_prior = eta^r * w_random
-            _w_prior = (self.eta ** rung) * _w_random
+            _w_prior = (self.eta**rung) * _w_random
         elif self.prior_weight_type == "linear":
             _w_random = 1
             w_prior_min_rung = 1 * _w_random
@@ -174,12 +177,11 @@ class PriorBandBase:
         w_inc = _w_inc * w_prior
         w_prior = _w_prior * w_prior
 
-        sampling_args = {
+        return {
             "prior": w_prior,
             "inc": w_inc,
             "random": w_random,
         }
-        return sampling_args
 
     def prior_to_incumbent_ratio(self) -> float | float:
         """Calculates the normalized weight distribution between prior and incumbent.
@@ -188,15 +190,14 @@ class PriorBandBase:
         """
         if self.inc_style == "constant":
             return self._prior_to_incumbent_ratio_constant()
-        elif self.inc_style == "decay":
+        if self.inc_style == "decay":
             resources = calc_total_resources_spent(self.observed_configs, self.rung_map)
             return self._prior_to_incumbent_ratio_decay(
                 resources, self.eta, self.min_budget, self.max_budget
             )
-        elif self.inc_style == "dynamic":
+        if self.inc_style == "dynamic":
             return self._prior_to_incumbent_ratio_dynamic(self.max_rung)
-        else:
-            raise ValueError(f"Invalid option {self.inc_style}")
+        raise ValueError(f"Invalid option {self.inc_style}")
 
     def _prior_to_incumbent_ratio_decay(
         self, resources: float, eta: int, min_budget, max_budget
@@ -256,17 +257,14 @@ class PriorBandBase:
             # normalizing scores to be weighted ratios
             w_prior = prior_score / sum(weighted_top_config_scores)
             w_inc = inc_score / sum(weighted_top_config_scores)
+        elif rung == self.min_rung:
+            # setting `w_inc = eta * w_prior` as default till score calculation begins
+            w_prior = self.eta / (1 + self.eta)
+            w_inc = 1 / (1 + self.eta)
         else:
-            # if eta-configurations NOT recorded yet
-            # check if it is the base rung
-            if rung == self.min_rung:
-                # setting `w_inc = eta * w_prior` as default till score calculation begins
-                w_prior = self.eta / (1 + self.eta)
-                w_inc = 1 / (1 + self.eta)
-            else:
-                # if rung > min.rung then the lower rung could already have enough
-                # configurations and thus can be recursively queried till the base rung
-                return self._prior_to_incumbent_ratio_dynamic(rung - 1)
+            # if rung > min.rung then the lower rung could already have enough
+            # configurations and thus can be recursively queried till the base rung
+            return self._prior_to_incumbent_ratio_dynamic(rung - 1)
         return w_prior, w_inc
 
 
@@ -296,12 +294,10 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
         modelling_type: str = "joint",  # could also be {"rung"}
-        initial_design_size: int = None,
+        initial_design_size: int | None = None,
         model_policy: typing.Any = ModelPolicy,
         surrogate_model: str | typing.Any = "gp",
-        domain_se_kernel: str = None,
-        hp_kernels: list = None,
-        surrogate_model_args: dict = None,
+        surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
         acquisition_sampler: str | AcquisitionSampler = "random",
@@ -340,15 +336,6 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             },
         }
 
-        bo_args = dict(
-            surrogate_model=surrogate_model,
-            domain_se_kernel=domain_se_kernel,
-            hp_kernels=hp_kernels,
-            surrogate_model_args=surrogate_model_args,
-            acquisition=acquisition,
-            log_prior_weighted=log_prior_weighted,
-            acquisition_sampler=acquisition_sampler,
-        )
         self.model_based = model_based
         self.modelling_type = modelling_type
         self.initial_design_size = initial_design_size
@@ -362,7 +349,11 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
-        self.model_policy = model_policy(pipeline_space, **bo_args)
+        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
+        self.model_policy = model_policy(
+            pipeline_space,
+            prior=Prior.from_parameters(parameters.values()),
+        )
 
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy

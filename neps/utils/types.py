@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 # TODO(eddiebergman): We can turn this to an enum at some
 # point to prevent having to isinstance and str match
 ERROR: TypeAlias = Literal["error"]
-Number: TypeAlias = int | float | np.number
+Number: TypeAlias = int | float
 ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
 Metadata: TypeAlias = dict[str, Any]

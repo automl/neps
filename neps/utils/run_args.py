@@ -41,7 +41,7 @@ SEARCHER_KWARGS = "searcher_kwargs"
 MAX_EVALUATIONS_PER_RUN = "max_evaluations_per_run"
 
 
-def get_run_args_from_yaml(path: str) -> dict:
+def get_run_args_from_yaml(path: str | Path) -> dict:
     """Load and validate NEPS run arguments from a specified YAML configuration file
     provided via run_args.
 
@@ -116,7 +116,7 @@ def get_run_args_from_yaml(path: str) -> dict:
     return settings
 
 
-def config_loader(path: str) -> dict:
+def config_loader(path: str | Path) -> dict:
     """Loads a YAML file and returns the contents under the 'run_args' key.
 
     Args:
@@ -506,7 +506,7 @@ class Settings:
     arguments (run_args (yaml) and neps func_args).
     """
 
-    def __init__(self, func_args: dict, yaml_args: str | Default | None = None):
+    def __init__(self, func_args: dict, yaml_args: Path | str | Default | None = None):
         """Initializes the Settings object by merging function arguments with YAML
         configuration settings and assigning them to class attributes. It checks for
         necessary configurations and handles default values where specified.

@@ -9,6 +9,7 @@ from typing_extensions import Self, override
 
 import numpy as np
 
+from neps.search_spaces.domain import Domain
 from neps.search_spaces.hyperparameters.numerical import NumericalParameter
 
 if TYPE_CHECKING:
@@ -71,6 +72,7 @@ class FloatParameter(NumericalParameter[float]):
             default=float(default) if default is not None else None,
             default_confidence=default_confidence,
             is_fidelity=is_fidelity,
+            domain=Domain.floating(lower, upper, log=log),
         )
 
     @override

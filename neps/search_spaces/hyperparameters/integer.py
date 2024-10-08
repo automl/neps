@@ -8,6 +8,7 @@ from typing_extensions import Self, override
 
 import numpy as np
 
+from neps.search_spaces.domain import Domain
 from neps.search_spaces.hyperparameters.float import FloatParameter
 from neps.search_spaces.hyperparameters.numerical import NumericalParameter
 
@@ -76,6 +77,7 @@ class IntegerParameter(NumericalParameter[int]):
             is_fidelity=is_fidelity,
             default=int(np.rint(default)) if default is not None else None,
             default_confidence=default_confidence,
+            domain=Domain.integer(lower, upper, log=log),
         )
 
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that

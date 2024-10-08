@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 import numpy as np
 
 
 class PromotionPolicy(ABC):
-    """Base class for implementing a sampling straregy for SH and its subclasses"""
+    """Base class for implementing a sampling straregy for SH and its subclasses."""
 
     def __init__(self, eta: int):
         self.rung_members: dict = {}
@@ -54,12 +56,12 @@ class SyncPromotionPolicy(PromotionPolicy):
         self.config_map = config_map
 
     def retrieve_promotions(self) -> dict:
-        """Returns the top 1/eta configurations per rung if enough configurations seen"""
+        """Returns the top 1/eta configurations per rung if enough configurations seen."""
         assert self.config_map is not None
 
-        self.rung_promotions = {rung: [] for rung in self.config_map.keys()}
+        self.rung_promotions = {rung: [] for rung in self.config_map}
         total_rung_evals = 0
-        for rung in reversed(sorted(self.config_map.keys())):
+        for rung in sorted(self.config_map.keys(), reverse=True):
             total_rung_evals += len(self.rung_members[rung])
             if (
                 total_rung_evals >= self.config_map[rung]
@@ -93,7 +95,7 @@ class AsyncPromotionPolicy(PromotionPolicy):
         super().__init__(eta, **kwargs)
 
     def retrieve_promotions(self) -> dict:
-        """Returns the top 1/eta configurations per rung if enough configurations seen"""
+        """Returns the top 1/eta configurations per rung if enough configurations seen."""
         for rung in range(self.max_rung + 1):
             if rung == self.max_rung:
                 # cease promotions for the highest rung (configs at max budget)
@@ -102,6 +104,6 @@ class AsyncPromotionPolicy(PromotionPolicy):
             top_k = len(self.rung_members_performance[rung]) // self.eta
             _ordered_idx = np.argsort(self.rung_members_performance[rung])
             self.rung_promotions[rung] = np.array(self.rung_members[rung])[_ordered_idx][
-                                         :top_k
-                                         ].tolist()
+                :top_k
+            ].tolist()
         return self.rung_promotions

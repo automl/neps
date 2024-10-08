@@ -8,8 +8,6 @@ from neps.search_spaces import (
     FloatParameter,
     FunctionParameter,
     GraphGrammar,
-    GraphGrammarCell,
-    GraphGrammarRepetitive,
     IntegerParameter,
 )
 from neps.status.status import get_summary_dict, status
