@@ -1,3 +1,5 @@
+"""Utility functions for the optimizers module."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -22,8 +24,12 @@ def map_real_hyperparameters_from_tabular_ids(
         pd.Series: A pandas series with the actual HPs.
             TODO: Mention expected format of the series.
     """
+    if pipeline_space.custom_grid_table is None:
+        raise ValueError("pipeline_space.custom_grid_table is None")
+
     if len(x) == 0:
         return x
+
     # copying hyperparameter configs based on IDs
     _x = pd.Series(
         [

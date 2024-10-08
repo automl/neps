@@ -18,10 +18,10 @@ from neps.optimizers.multi_fidelity_prior.utils import (
 from neps.sampling.priors import Prior
 
 if typing.TYPE_CHECKING:
-    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    from neps.optimizers.bayesian_optimization.acquisition_samplers import (
         AcquisitionSampler,
     )
     from neps.search_spaces.search_space import SearchSpace
@@ -78,7 +78,7 @@ class PriorBandBase:
             )
         return inc
 
-    def set_sampling_weights_and_inc(self, rung: int):
+    def _set_sampling_weights_and_inc(self, rung: int):
         sampling_args = self.calc_sampling_args(rung)
         if not self.is_activate_inc():
             sampling_args["prior"] += sampling_args["inc"]
@@ -270,8 +270,11 @@ class PriorBandBase:
 
 # order of inheritance (method resolution order) extremely essential for correct behaviour
 class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
+    """PriorBand optimizer for multi-fidelity optimization."""
+
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -296,11 +299,11 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         modelling_type: str = "joint",  # could also be {"rung"}
         initial_design_size: int | None = None,
         model_policy: typing.Any = ModelPolicy,
-        surrogate_model: str | typing.Any = "gp",
-        surrogate_model_args: dict | None = None,
-        acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
+        surrogate_model: str | typing.Any = "gp",  # TODO: Remove
+        surrogate_model_args: dict | None = None,  # TODO: Remove
+        acquisition: str | BaseAcquisition = "EI",  # TODO: Remove
+        log_prior_weighted: bool = False,  # TODO: Remove
+        acquisition_sampler: str | AcquisitionSampler = "random",  # TODO: Remove
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -367,7 +370,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         Returns:
             [type]: [description]
         """
-        self.set_sampling_weights_and_inc(rung=self.current_sh_bracket)
+        self._set_sampling_weights_and_inc(rung=self.current_sh_bracket)
 
         for _, sh in self.sh_brackets.items():
             sh.sampling_args = self.sampling_args
@@ -381,8 +384,8 @@ class PriorBandNoIncToPrior(PriorBand):
     relationship is controlled by the `prior_weight_type` argument.
     """
 
-    def set_sampling_weights_and_inc(self, rung: int):
-        super().set_sampling_weights_and_inc(rung)
+    def _set_sampling_weights_and_inc(self, rung: int):
+        super()._set_sampling_weights_and_inc(rung)
         # distributing the inc weight to the prior entirely
         self.sampling_args["weights"]["prior"] += self.sampling_args["weights"]["inc"]
         self.sampling_args["weights"]["inc"] = 0
@@ -398,8 +401,8 @@ class PriorBandNoPriorToInc(PriorBand):
         # cannot use prior in this version
         self.pipeline_space.has_prior = False
 
-    def set_sampling_weights_and_inc(self, rung: int):
-        super().set_sampling_weights_and_inc(rung)
+    def _set_sampling_weights_and_inc(self, rung: int):
+        super()._set_sampling_weights_and_inc(rung)
         # distributing the prior weight to the incumbent entirely
         if self.sampling_args["weights"]["inc"] > 0:
             self.sampling_args["weights"]["inc"] += self.sampling_args["weights"]["prior"]

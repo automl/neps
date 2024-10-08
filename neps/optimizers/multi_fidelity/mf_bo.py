@@ -103,8 +103,8 @@ class MFBOBase:
         # and set the acquisition states
         self.model_policy.update_model(train_x, train_y, pending_x, decay_t=decay_t)
 
-    def _active_rung(self):
-        """Returns the highest rung that can fit a model, `None` if no rung is eligible."""
+    def _active_rung(self) -> int | None:
+        """The highest rung that can fit a model, `None` if no rung is eligible."""
         rung = self.max_rung
         while rung >= self.min_rung:
             if len(self.rung_histories[rung]["config"]) >= self.init_size:

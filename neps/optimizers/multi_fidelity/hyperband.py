@@ -5,6 +5,7 @@ from abc import abstractmethod
 from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Literal
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd
@@ -29,10 +30,10 @@ from neps.optimizers.multi_fidelity.successive_halving import (
 from neps.sampling.priors import Prior
 
 if typing.TYPE_CHECKING:
-    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    from neps.optimizers.bayesian_optimization.acquisition_samplers import (
         AcquisitionSampler,
     )
     from neps.search_spaces.search_space import SearchSpace
@@ -48,6 +49,7 @@ class HyperbandBase(SuccessiveHalvingBase):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -68,7 +70,7 @@ class HyperbandBase(SuccessiveHalvingBase):
             "pipeline_space": pipeline_space,
             "budget": budget,
             "eta": eta,
-            "early_stopping_rate": self.early_stopping_rate,  # HB subsumes this param of SH
+            "early_stopping_rate": self.early_stopping_rate,  # HB subsumes this from SH
             "initial_design_type": initial_design_type,
             "use_priors": use_priors,
             "sampling_policy": sampling_policy,
@@ -130,6 +132,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         # called in the _update_sh_bracket_state() function
         # overloaded function disables the need for retrieving promotions for HB overall
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],
@@ -280,6 +283,7 @@ class HyperbandWithPriors(Hyperband):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -319,6 +323,7 @@ class HyperbandCustomDefault(HyperbandWithPriors):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -370,6 +375,7 @@ class AsynchronousHyperband(HyperbandBase):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -466,6 +472,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -506,6 +513,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -523,13 +531,13 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         sample_default_at_target: bool = False,
         # new arguments for model
         model_policy: typing.Any = ModelPolicy,
-        surrogate_model: str | Any = "gp",
-        domain_se_kernel: str | None = None,
-        hp_kernels: list | None = None,
-        surrogate_model_args: dict | None = None,
-        acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
+        surrogate_model: str | Any = "gp",  # TODO: Remove
+        domain_se_kernel: str | None = None,  # TODO: Remove
+        hp_kernels: list | None = None,  # TODO: Remove
+        surrogate_model_args: dict | None = None,  # TODO: Remove
+        acquisition: str | BaseAcquisition = "EI",  # TODO: Remove
+        log_prior_weighted: bool = False,  # TODO: Remove
+        acquisition_sampler: str | AcquisitionSampler = "random",  # TODO: Remove
     ):
         hb_args = {
             "pipeline_space": pipeline_space,

@@ -6,6 +6,7 @@ import typing
 from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Literal
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd
@@ -46,6 +47,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int | None = None,
         eta: int = 3,
@@ -234,12 +236,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
             perf = self.get_loss(config_val.result)
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
-                rung_recorded = self.observed_configs.at[int(_config), "rung"]
+                rung_recorded = self.observed_configs.loc[int(_config), "rung"]
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.at[int(_config), "config"] = config_val.config
-                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.at[int(_config), "perf"] = perf
+                    self.observed_configs.loc[int(_config), "config"] = config_val.config
+                    self.observed_configs.loc[int(_config), "rung"] = int(_rung)
+                    self.observed_configs.loc[int(_config), "perf"] = perf
             else:
                 _df = pd.DataFrame(
                     [[config_val.config, int(_rung), perf]],
@@ -275,8 +277,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     (self.observed_configs, _df)
                 ).sort_index()
             else:
-                self.observed_configs.at[int(_config), "rung"] = int(_rung)
-                self.observed_configs.at[int(_config), "perf"] = np.nan
+                self.observed_configs.loc[int(_config), "rung"] = int(_rung)
+                self.observed_configs.loc[int(_config), "perf"] = np.nan
 
     def clean_rung_information(self):
         self.rung_members = {k: [] for k in self.rung_map}
@@ -323,6 +325,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # if adding model-based search to the basic multi-fidelity algorithm
         return
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],
@@ -427,6 +430,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         else:
             rung_id = self.min_rung
             # using random instead of np.random to be consistent with NePS BO
+            rng = random.Random(seed=None)  # TODO: Seeding
+
             if (
                 self.use_priors
                 and self.sample_default_first
@@ -439,7 +444,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 self.logger.info("Sampling the default configuration...")
                 config = self.pipeline_space.sample_default_configuration()
 
-            elif random.random() < self.random_interleave_prob:
+            elif rng.random() < self.random_interleave_prob:
                 config = self.pipeline_space.sample(
                     patience=self.patience,
                     user_priors=False,  # sample uniformly random
@@ -555,6 +560,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -596,6 +602,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -640,6 +647,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,

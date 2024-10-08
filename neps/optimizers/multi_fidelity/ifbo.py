@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
+from typing_extensions import override
 
 import numpy as np
 import torch
@@ -13,7 +14,7 @@ from neps.optimizers.bayesian_optimization.models.ftpfn import (
     decode_ftpfn_data,
     encode_ftpfn,
 )
-from neps.optimizers.intial_design import make_initial_design
+from neps.optimizers.initial_design import make_initial_design
 from neps.sampling.priors import Prior
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import Domain
@@ -54,9 +55,9 @@ def _adjust_pipeline_space_to_match_stepsize(
     # Can't use mod since it's quite innacurate for floats
     # Use the fact that we can always write x = n*k + r
     # where k = stepsize and x = (fid_upper - fid_lower)
-    # x = n*k + r
-    # n = x // k
-    # r = x - n*k
+    # > x = n*k + r
+    # > n = x // k
+    # > r = x - n*k
     x = fidelity.upper - fidelity.lower
     n = int(x // step_size)
 
@@ -87,6 +88,7 @@ class IFBO(BaseOptimizer):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         step_size: int | float = 1,
         use_priors: bool = False,
@@ -109,9 +111,9 @@ class IFBO(BaseOptimizer):
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
             sample_default_first: Whether to sample the default configuration first
-            initial_design_size: Number of configurations to sample before starting optimization
+            initial_design_size: Number of configs to sample before starting optimization
 
-                If None, the number of configurations will be equal to the number of dimensions.
+                If None, the number of configs will be equal to the number of dimensions.
 
             device: Device to use for the model
         """
@@ -143,8 +145,8 @@ class IFBO(BaseOptimizer):
         self._config_encoder: ConfigEncoder = ConfigEncoder.default(
             params,
             constants=self.pipeline_space.constants,
-            # FTPFN doesn't support categoricals and we were recomenned to just evenly distribute
-            # in the unit norm
+            # FTPFN doesn't support categoricals and we were recomended
+            # to just evenly distribute in the unit norm
             custom_transformers={
                 cat_name: CategoricalToUnitNorm(choices=cat.choices)
                 for cat_name, cat in space.categoricals.items()
@@ -163,6 +165,7 @@ class IFBO(BaseOptimizer):
         # Domain from which we assign an index to each budget
         self._budget_ix_domain = Domain.indices(fid_bins)
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],
@@ -235,7 +238,8 @@ class IFBO(BaseOptimizer):
         threshold = f_best + (10 ** rng.uniform(-4, -1)) * (1 - f_best)
 
         def _mfpi_random(samples: torch.Tensor) -> torch.Tensor:
-            # HACK: Because we are modifying the samples inplace, we do, and then undo the addition
+            # HACK: Because we are modifying the samples inplace, we do,
+            # and then undo the addition
             original_budget_column = samples[..., 1].clone()
             samples[..., 1].add_(horizon_increment).clamp_max_(self._budget_domain.upper)
 
@@ -251,7 +255,6 @@ class IFBO(BaseOptimizer):
             # How to encode
             encoder=self._config_encoder,
             budget_domain=self._budget_domain,
-            fidelity_domain=self._fid_domain,
             # Acquisition function
             acq_function=_mfpi_random,
             # Which acquisition samples to consider for continuation

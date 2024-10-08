@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
+from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 
@@ -27,6 +28,7 @@ class GridSearch(BaseOptimizer):
         self.configs_list = [c.hp_values() for c in grid]
         self.seed = seed
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],

@@ -97,6 +97,7 @@ src = ["neps"]
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
+    "neps/optimizers/multi_fidelity_prior/utils.py",
     "neps/search_spaces/architecture/**/*.py",
     "neps/search_spaces/yaml_search_space_utils.py",
     "neps/search_spaces/architecture",
@@ -207,6 +208,7 @@ ignore = [
   "N999",    # Invalid name for module
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
   "N803",    # Arguments should start with a lower case letter.
+  "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
 
 
@@ -240,6 +242,12 @@ ignore = [
     "E501",
 ]
 "docs/*" = ["INP001"]
+# TODO
+"neps/optimizers/**.py" = [
+  "D", # Documentation of everything
+  "ARG002", # Unused arguments, bunch of them in inits
+  "PLR0913", # Too many arguments...
+]
 
 
 [tool.ruff.lint.isort]

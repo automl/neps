@@ -1,13 +1,11 @@
 from collections.abc import Callable, Mapping
 from functools import partial
-from typing import TYPE_CHECKING
 
 from .base_optimizer import BaseOptimizer
 from .bayesian_optimization.optimizer import BayesianOptimization
 from .grid_search.optimizer import GridSearch
 from .multi_fidelity.hyperband import (
     MOBSTER,
-    AsynchronousHyperband,
     Hyperband,
     HyperbandCustomDefault,
 )

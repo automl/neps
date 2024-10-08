@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 from collections.abc import Mapping
 from typing import Any, Literal
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd
@@ -18,10 +19,10 @@ from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
 from neps.sampling.priors import Prior
 
 if typing.TYPE_CHECKING:
-    from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers.base_acq_sampler import (
+    from neps.optimizers.bayesian_optimization.acquisition_samplers import (
         AcquisitionSampler,
     )
     from neps.search_spaces.search_space import SearchSpace
@@ -35,6 +36,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -133,7 +135,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         """
         rung_to_promote = self.is_promotable()
         rung = rung_to_promote + 1 if rung_to_promote is not None else self.min_rung
-        self.set_sampling_weights_and_inc(rung=rung)
+        self._set_sampling_weights_and_inc(rung=rung)
         # performs standard ASHA but sampling happens as per the EnsemblePolicy
         return super().get_config_and_ids()
 
@@ -145,6 +147,7 @@ class PriorBandAshaHB(PriorBandAsha):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         budget: int,
         eta: int = 3,
@@ -246,6 +249,7 @@ class PriorBandAshaHB(PriorBandAsha):
             bracket.observed_configs = self.observed_configs.copy()
             bracket.rung_histories = self.rung_histories
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],
@@ -323,7 +327,7 @@ class PriorBandAshaHB(PriorBandAsha):
         # the rung to sample at
         bracket_to_run = self._get_bracket_to_run()
 
-        self.set_sampling_weights_and_inc(rung=bracket_to_run)
+        self._set_sampling_weights_and_inc(rung=bracket_to_run)
         self.sh_brackets[bracket_to_run].sampling_args = self.sampling_args
         config, config_id, previous_config_id = self.sh_brackets[
             bracket_to_run

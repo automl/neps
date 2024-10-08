@@ -1,7 +1,10 @@
+"""Random search optimizer."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
+from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 
@@ -12,6 +15,8 @@ if TYPE_CHECKING:
 
 
 class RandomSearch(BaseOptimizer):
+    """A simple random search optimizer."""
+
     def __init__(
         self,
         *,
@@ -20,6 +25,15 @@ class RandomSearch(BaseOptimizer):
         ignore_fidelity: bool = True,
         seed: int | None = None,
     ):
+        """Initialize the random search optimizer.
+
+        Args:
+            pipeline_space: The search space to sample from.
+            use_priors: Whether to use priors when sampling.
+            ignore_fidelity: Whether to ignore fidelity when sampling.
+                In this case, the max fidelity is always used.
+            seed: The seed for the random number generator.
+        """
         super().__init__(pipeline_space=pipeline_space)
         self.use_priors = use_priors
         self.ignore_fidelity = ignore_fidelity
@@ -28,6 +42,7 @@ class RandomSearch(BaseOptimizer):
 
         self.seed = seed
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],

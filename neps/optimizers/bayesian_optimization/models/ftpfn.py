@@ -28,7 +28,7 @@ def _keep_highest_budget_evaluation(
     i2 = i1[torch.argsort(x[i1][:, id_col], stable=True)]
     sorted_x = x[i2]
 
-    # Now that it's sorted, we essentially want to count the occurence of each id into counts
+    # Now that it's sorted, we want to count the occurence of each id into counts
     _, counts = torch.unique_consecutive(sorted_x[:, id_col], return_counts=True)
 
     # Now we can use these counts to get to the last occurence of each id
@@ -59,14 +59,14 @@ def _download_workaround_for_ifbo_issue_10(path: Path | None, version: str) -> P
     _file_url = FILE_URL(version)
 
     # Download the tar.gz file and decompress it
-    response = requests.get(_file_url, allow_redirects=True)
+    response = requests.get(_file_url, allow_redirects=True, timeout=10)
     if response.status_code != 200:
         raise ValueError(
             f"Failed to download the surrogate model from {_file_url}."
             f" Got status code: {response.status_code}"
         )
 
-    with open(_target_zip_path, "wb") as f:
+    with Path(_target_zip_path).open("wb") as f:
         try:
             f.write(response.content)
         except Exception as e:
@@ -79,7 +79,11 @@ def _download_workaround_for_ifbo_issue_10(path: Path | None, version: str) -> P
 
     try:
         with tarfile.open(_target_zip_path, "r:gz") as tar:
-            tar.extractall(path=target_path)
+            # NOTE: There is a filter available from 3.12,
+            # Ideally this should be fixed upstream in ifbo.
+            # Essentially we'd like to only extract the .pt files
+            # and not allow absolute paths
+            tar.extractall(path=target_path)  # noqa: S202
     except Exception as e:
         raise ValueError(
             f"Failed to decompress the surrogate model at {_target_zip_path}."
@@ -123,8 +127,8 @@ def encode_ftpfn(
     !!! warning "Error values"
 
         The FTPFN model requires that all loss values lie in the interval [0, 1].
-        By default, using the value of `error_value=0.0`, we encode crashed configurations as
-        having an error value of 0.
+        By default, using the value of `error_value=0.0`, we encode crashed configurations
+        as having an error value of 0.
 
     Args:
         trials: The trials to encode
@@ -198,7 +202,7 @@ def decode_ftpfn_data(
         x = x.unsqueeze(0)
 
     _raw_ids = x[:, 0].tolist()
-    # Here, we subtract 1 to get the real id, otherwise if it was a test ID, we say it had None
+    # Subtract 1 to get the real id, otherwise if it was a test ID, we say it had None
     real_ids = [None if _id == 0 else int(_id) - 1 for _id in _raw_ids]
     fidelities = fidelity_domain.cast(x[:, 1], frm=budget_domain).tolist()
     configs = encoder.decode(x[:, 2:])
@@ -218,7 +222,8 @@ def acquire_next_from_ftpfn(
     seed: torch.Generator | None = None,
     dtype: torch.dtype | None = FTPFN_DTYPE,
 ) -> torch.Tensor:
-    # 1. Remove duplicate configurations from continuation_samples, keeping only the most recent eval
+    # 1. Remove duplicate configurations from continuation_samples,
+    # keeping only the most recent eval
     acq_existing = _keep_highest_budget_evaluation(
         continuation_samples, id_col=0, budget_col=1
     )
@@ -245,7 +250,7 @@ def acquire_next_from_ftpfn(
         size=(_N, 1), fill_value=budget_domain.lower, dtype=dtype, device=ftpfn.device
     )
 
-    # Now begin acquisition maximization by sampling from given samplers and performing an additional
+    # Acquisition maximization by sampling from samplers and performing an additional
     # round of local sampling around the best point
     local_sample_confidence = [local_search_confidence] * len(encoder.domains)
     for sampler, size in initial_samplers:
@@ -375,7 +380,8 @@ class FTPFNSurrogate:
             logits=logits,
             best_f=None,
             rest_prob=beta,
-            maximize=False,  # IMPORTANT to be False, should calculate the LCB using the lower-bound ICDF as per beta
+            # IMPORTANT to be False, calculate the LCB using lower-bound ICDF as per beta
+            maximize=False,
         )
 
     @torch.no_grad()
@@ -391,5 +397,6 @@ class FTPFNSurrogate:
             logits=logits,
             best_f=None,
             rest_prob=beta,
-            maximize=True,  # IMPORTANT to be True, should calculate the UCB using the upper-bound ICDF as per beta
+            # IMPORTANT to be True, calculate the UCB using upper-bound ICDF as per beta
+            maximize=True,
         )

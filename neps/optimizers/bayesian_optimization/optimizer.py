@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
+from typing_extensions import override
 
 import torch
 from botorch.acquisition import LinearMCObjective
@@ -14,7 +15,7 @@ from neps.optimizers.bayesian_optimization.models.gp import (
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
-from neps.optimizers.intial_design import make_initial_design
+from neps.optimizers.initial_design import make_initial_design
 from neps.sampling import Prior
 from neps.search_spaces.encoding import ConfigEncoder
 
@@ -59,7 +60,7 @@ def _pibo_exp_term(
 class BayesianOptimization(BaseOptimizer):
     """Implements the basic BO loop."""
 
-    def __init__(  # noqa: D417
+    def __init__(
         self,
         pipeline_space: SearchSpace,
         *,
@@ -134,6 +135,7 @@ class BayesianOptimization(BaseOptimizer):
         self.n_initial_design = initial_design_size
         self.init_design: list[dict[str, Any]] | None = None
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],

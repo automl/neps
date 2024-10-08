@@ -152,9 +152,9 @@ def compute_scores(
 def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -> float:
     # collects a list of fidelities/rungs reached by configurations that are not pending
     rungs_used = [
-        observed_configs.at[i, "rung"]
+        observed_configs.loc[i, "rung"]
         for i in range(len(observed_configs))
-        if not np.isnan(observed_configs.at[i, "perf"])
+        if not np.isnan(observed_configs.loc[i, "perf"])
     ]
     return sum(rung_map[r] for r in rungs_used)
 

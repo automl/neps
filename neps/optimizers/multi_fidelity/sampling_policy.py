@@ -155,9 +155,9 @@ class EnsemblePolicy(SamplingPolicy):
         # end of while
         return config
 
-    def sample(
+    def sample(  # noqa: PLR0912, C901
         self,
-        inc: SearchSpace = None,
+        inc: SearchSpace | None = None,
         weights: dict[str, float] | None = None,
         *args,
         **kwargs,
@@ -273,6 +273,7 @@ class ModelPolicy(SamplingPolicy):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         prior: Prior | None = None,
         use_cost: bool = False,
@@ -322,8 +323,8 @@ class ModelPolicy(SamplingPolicy):
         # If we have a prior, wrap the above acquisitionm with a prior weighting
         if self.prior is not None:
             assert decay_t is not None
-            # TODO: Ideally we have something based on budget and dimensions, not an arbitrary term
-            # This 10 is extracted from the old DecayingWeightedPrior
+            # TODO: Ideally we have something based on budget and dimensions, not an
+            # arbitrary term. This 10 is extracted from the old DecayingWeightedPrior
             pibo_exp_term = 10 / decay_t
             significant_lower_bound = 1e-4  # No significant impact beyond this point
             if pibo_exp_term < significant_lower_bound:
@@ -393,6 +394,3 @@ class ModelPolicy(SamplingPolicy):
         eis = self.acquisition.eval(x=samples, asscalar=True)
         # extracting the highest scored sample
         return samples[np.argmax(eis)]
-        # TODO: can generalize s.t. sampler works for all types, currently,
-        #  random sampler in NePS does not do what is required here
-        # return self.acquisition_sampler.sample(self.acquisition)

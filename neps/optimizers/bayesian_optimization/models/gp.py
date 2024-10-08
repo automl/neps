@@ -322,8 +322,8 @@ def fit_and_acquire_from_gp(
             then a secondary GP will be used to estimate the cost of a given
             configuration and factor into the weighting during the acquisiton of a new
             configuration.
-        cost_percentage_used: The percentage of the budget used so far. This is used to determine
-            the strength of the cost cooling. Should be between 0 and 1.
+        cost_percentage_used: The percentage of the budget used so far. This is used to
+            determine the strength of the cost cooling. Should be between 0 and 1.
             Must be provided if costs is provided.
         costs_on_log_scale: Whether the costs are on a log scale.
         encoder: The encoder used for encoding the configurations
@@ -332,7 +332,8 @@ def fit_and_acquire_from_gp(
             as `None`, only the best candidate will be returned. Otherwise
             a list of candidates will be returned.
         num_restarts: The number of restarts to use during optimization.
-        n_initial_start_points: The number of initial start points to use during optimization.
+        n_initial_start_points: The number of initial start points to use during
+            optimization.
         maximum_allowed_categorical_combinations: The maximum number of categorical
             combinations to allow. If the number of combinations exceeds this, an error
             will be raised.
@@ -342,6 +343,9 @@ def fit_and_acquire_from_gp(
         The encoded next configuration(s) to evaluate. Use the encoder you provided
         to decode the configuration.
     """
+    if seed is not None:
+        raise NotImplementedError("Seed is not implemented yet for gps")
+
     fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
 
     if fantasize_pending is not None:
@@ -371,8 +375,8 @@ def fit_and_acquire_from_gp(
         missing_costs = torch.isnan(costs)
         if missing_costs.any():
             raise ValueError(
-                "Must have at least some configurations reported with a cost if using costs"
-                " with a GP."
+                "Must have at least some configurations reported with a cost"
+                " if using costs with a GP."
             )
 
         if missing_costs.any():

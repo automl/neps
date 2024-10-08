@@ -25,8 +25,12 @@ class SampledConfig:
 class BaseOptimizer:
     """Base sampler class. Implements all the low-level work."""
 
+    # TODO: Remove a lot of these init params
+    # Ideally we just make this a `Protocol`, i.e. an interface
+    # and it has no functionality
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         patience: int = 50,
         logger: logging.Logger | None = None,
@@ -34,7 +38,7 @@ class BaseOptimizer:
         loss_value_on_error: float | None = None,
         cost_value_on_error: float | None = None,
         learning_curve_on_error: float | list[float] | None = None,
-        ignore_errors=False,
+        ignore_errors: bool = False,
     ) -> None:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
@@ -60,21 +64,15 @@ class BaseOptimizer:
 
         !!! note
 
-            The plan is this method replaces the two-step procedure of `load_optimization_state`
-            and `get_config_and_ids` in the future, replacing both with a single method `ask`
-            which would be easier for developer of NePS optimizers to implement.
+            The `optimizer_state` right now is just a `dict` that optimizers are free to
+            mutate as desired. A `dict` is not ideal as its _stringly_ typed but this was
+            the least invasive way to add this at the moment. It's actually an existing
+            feature no optimizer uses except _cost-cooling_ which basically just took a
+            value from `budget_info`.
 
-        !!! note
-
-            The `optimizer_state` right now is just a `dict` that optimizers are free to mutate
-            as desired. A `dict` is not ideal as its _stringly_ typed but this was the least
-            invasive way to add this at the moment. It's actually an existing feature no
-            optimizer uses except _cost-cooling_ which basically just took a value from
-            `budget_info`.
-
-            Ideally an optimizer overwriting this can decide what to return instead of having
-            to rely on them mutating it, however this is the best work-around I could come up with
-            for now.
+            Ideally an optimizer overwriting this can decide what to return instead of
+            having to rely on them mutating it, however this is the best work-around I
+            could come up with for now.
 
         Args:
             trials: All of the trials that are known about.
@@ -92,8 +90,9 @@ class BaseOptimizer:
         Please use self.get_loss() instead of get_loss() in all optimizer classes.
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do this
-        # `_get_loss` at every call. We can also then just use `None` instead of the string `"error"`
+        # use `Trial` and `Report`, they already take care of this and save having to do
+        # this `_get_loss` at every call. We can also then just use `None` instead of
+        # the string `"error"`
         if isinstance(result, Report):
             return result.loss if result.loss is not None else "error"
 
@@ -108,8 +107,8 @@ class BaseOptimizer:
         Please use self.get_cost() instead of get_cost() in all optimizer classes.
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do this
-        # `_get_loss` at every call
+        # use `Trial` and `Report`, they already take care of this and save having to do
+        # this `_get_loss` at every call
         if isinstance(result, Report):
             return result.loss if result.loss is not None else "error"
 
@@ -126,8 +125,8 @@ class BaseOptimizer:
         Please use self.get_loss() instead of get_loss() in all optimizer classes.
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do this
-        # `_get_loss` at every call
+        # use `Trial` and `Report`, they already take care of this and save having to do
+        # this `_get_loss` at every call
         if isinstance(result, Report):
             return result.learning_curve
 

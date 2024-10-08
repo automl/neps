@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 class ComprehensiveExpectedImprovement(BaseAcquisition):
     def __init__(
         self,
+        *,
         augmented_ei: bool = False,
         xi: float = 0.0,
         in_fill: str = "best",
@@ -57,6 +58,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
     def eval(
         self,
         x: Sequence[SearchSpace],
+        *,
         asscalar: bool = False,
     ) -> np.ndarray | torch.Tensor | float:
         """Return the negative expected improvement at the query point x2."""
@@ -75,8 +77,8 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         mu_star = self.incumbent
 
         gauss = Normal(torch.zeros(1, device=mu.device), torch.ones(1, device=mu.device))
-        # u = (mu - mu_star - self.xi) / std
-        # ei = std * updf + (mu - mu_star - self.xi) * ucdf
+        # > u = (mu - mu_star - self.xi) / std
+        # > ei = std * updf + (mu - mu_star - self.xi) * ucdf
         if self.log_ei:
             # we expect that f_min is in log-space
             f_min = mu_star - self.xi
