@@ -18,9 +18,7 @@ class RegressionObjectiveBase:
     def __init__(self, optimizer: str, task: str):
         self.optimizer = optimizer
         self.task = task
-        self.has_fidelity = (self.optimizer != "regularized_evolution") and (
-            self.optimizer != "random_search"
-        )
+        self.has_fidelity = self.optimizer != "random_search"
         self._run_pipeline: Callable | None = None
         self._pipeline_space: SearchSpace | dict[str, Any] = {}
 
@@ -118,9 +116,6 @@ class JAHSObjective(RegressionObjectiveBase):
         self.benchmark = None
 
         self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
-
-        # For Regularized evolution sampler ignores fidelity hyperparameters
-        # by sampling None for them
 
         self.pipeline_space["epoch"] = neps.IntegerParameter(
             lower=1, upper=200, is_fidelity=self.has_fidelity

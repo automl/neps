@@ -7,7 +7,6 @@ OPTIMIZERS = [
     "random_search",
     # "mf_bayesian_optimization",
     "bayesian_optimization",
-    "regularized_evolution",
 ]
 
 TASKS = [
