@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import typing
+from abc import abstractmethod
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Literal
-from typing_extensions import override
 
 import numpy as np
+import pandas as pd
 
+from neps.optimizers.base_optimizer import SampledConfig
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
@@ -34,6 +37,7 @@ if typing.TYPE_CHECKING:
     )
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
+    from neps.state.trial import Trial
     from neps.utils.types import ConfigResult, RawConfig
 
 
@@ -126,23 +130,56 @@ class HyperbandBase(SuccessiveHalvingBase):
         # called in the _update_sh_bracket_state() function
         # overloaded function disables the need for retrieving promotions for HB overall
 
-    @override
-    def load_optimization_state(
+    def ask(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
+        trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
-    ) -> None:
-        super().load_optimization_state(
-            previous_results=previous_results,
-            pending_evaluations=pending_evaluations,
-            budget_info=budget_info,
-            optimizer_state=optimizer_state,
-        )
+    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
+        completed: dict[str, ConfigResult] = {
+            trial_id: trial.into_config_result(self.pipeline_space.from_dict)
+            for trial_id, trial in trials.items()
+            if trial.report is not None
+        }
+        pending: dict[str, SearchSpace] = {
+            trial_id: self.pipeline_space.from_dict(trial.config)
+            for trial_id, trial in trials.items()
+            if trial.report is None
+        }
+
+        self.rung_histories = {
+            rung: {"config": [], "perf": []}
+            for rung in range(self.min_rung, self.max_rung + 1)
+        }
+
+        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+
+        # previous optimization run exists and needs to be loaded
+        self._load_previous_observations(completed)
+        self.total_fevals = len(trials)
+
+        # account for pending evaluations
+        self._handle_pending_evaluations(pending)
+
+        # process optimization state and bucket observations per rung
+        self._get_rungs_state()
+
+        # filter/reset old SH brackets
+        self.clear_old_brackets()
+
+        # identifying promotion list per rung
+        self._handle_promotions()
+
+        # fit any model/surrogates
+        self._fit_models()
+
         # important for the global HB to run the right SH
         self._update_sh_bracket_state()
 
+        config, _id, previous_id = self.get_config_and_ids()
+        return SampledConfig(id=_id, config=config, previous_config_id=previous_id)
+
+    @abstractmethod
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
 

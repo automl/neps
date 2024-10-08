@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import random
 import typing
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Literal
-from typing_extensions import override
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 
-from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
     SyncPromotionPolicy,
@@ -28,6 +28,8 @@ from neps.search_spaces import (
 )
 
 if typing.TYPE_CHECKING:
+    from neps.state.optimizer import BudgetInfo
+    from neps.state.trial import Trial
     from neps.utils.types import ConfigResult, RawConfig
 
 CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
@@ -257,7 +259,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             self.rung_histories[int(_rung)]["perf"].append(perf)
 
     def _handle_pending_evaluations(
-        self, pending_evaluations: dict[str, ConfigResult]
+        self, pending_evaluations: dict[str, SearchSpace]
     ) -> None:
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
@@ -321,15 +323,24 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # if adding model-based search to the basic multi-fidelity algorithm
         return
 
-    @override
-    def load_optimization_state(
+    def ask(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
+        trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
-    ) -> None:
+    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
         """This is basically the fit method."""
+        completed: dict[str, ConfigResult] = {
+            trial_id: trial.into_config_result(self.pipeline_space.from_dict)
+            for trial_id, trial in trials.items()
+            if trial.report is not None
+        }
+        pending: dict[str, SearchSpace] = {
+            trial_id: self.pipeline_space.from_dict(trial.config)
+            for trial_id, trial in trials.items()
+            if trial.report is None
+        }
+
         self.rung_histories = {
             rung: {"config": [], "perf": []}
             for rung in range(self.min_rung, self.max_rung + 1)
@@ -338,11 +349,11 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
 
         # previous optimization run exists and needs to be loaded
-        self._load_previous_observations(previous_results)
-        self.total_fevals = len(previous_results) + len(pending_evaluations)
+        self._load_previous_observations(completed)
+        self.total_fevals = len(trials)
 
         # account for pending evaluations
-        self._handle_pending_evaluations(pending_evaluations)
+        self._handle_pending_evaluations(pending)
 
         # process optimization state and bucket observations per rung
         self._get_rungs_state()
@@ -355,6 +366,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
         # fit any model/surrogates
         self._fit_models()
+
+        config, _id, previous_id = self.get_config_and_ids()
+        return SampledConfig(id=_id, config=config, previous_config_id=previous_id)
 
     def is_init_phase(self) -> bool:
         return True
@@ -384,7 +398,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def is_promotable(self) -> int | None:
         """Returns an int if a rung can be promoted, else a None."""
         rung_to_promote = None
-
         # # iterates starting from the highest fidelity promotable to the lowest fidelity
         for rung in reversed(range(self.min_rung, self.max_rung)):
             if len(self.rung_promotions[rung]) > 0:
