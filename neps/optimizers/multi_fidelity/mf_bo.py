@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-
 from neps.optimizers.multi_fidelity_prior.utils import (
     calc_total_resources_spent,
     update_fidelity,

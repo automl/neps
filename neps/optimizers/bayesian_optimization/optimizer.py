@@ -10,17 +10,17 @@ from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.bayesian_optimization.models.gp import (
-    fit_and_acquire_from_gp,
     encode_trials_for_gp,
+    fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
 from neps.optimizers.intial_design import make_initial_design
 from neps.sampling import Prior
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
+    from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
     from neps.search_spaces.hyperparameters.float import FloatParameter
     from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.state import BudgetInfo, Trial

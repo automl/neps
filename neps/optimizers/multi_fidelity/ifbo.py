@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Any, Mapping, Literal
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
@@ -17,9 +19,10 @@ from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import Domain
 from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
-from neps.state.trial import Trial
-from neps.state.optimizer import BudgetInfo
 
+if TYPE_CHECKING:
+    from neps.state.optimizer import BudgetInfo
+    from neps.state.trial import Trial
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
@@ -170,7 +173,7 @@ class IFBO(BaseOptimizer):
         if seed is not None:
             raise NotImplementedError("Seed is not yet implemented for IFBO")
 
-        ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials.keys()]
+        ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
 
         # If we havn't passed the intial design phase
@@ -274,15 +277,14 @@ class IFBO(BaseOptimizer):
         if _id is None:
             config[self._fidelity_name] = fid
             return SampledConfig(id=f"{new_id}_0", config=config)
-        else:
-            # Convert fidelity to budget index, bump by 1 and convert back
-            budget_ix = self._budget_ix_domain.cast_one(fid, frm=self._fid_domain)
-            next_ix = budget_ix + 1
-            next_fid = self._fid_domain.cast_one(next_ix, frm=self._budget_ix_domain)
+        # Convert fidelity to budget index, bump by 1 and convert back
+        budget_ix = self._budget_ix_domain.cast_one(fid, frm=self._fid_domain)
+        next_ix = budget_ix + 1
+        next_fid = self._fid_domain.cast_one(next_ix, frm=self._budget_ix_domain)
 
-            config[self._fidelity_name] = next_fid
-            return SampledConfig(
-                id=f"{_id}_{next_ix}",
-                config=config,
-                previous_config_id=f"{_id}_{budget_ix}",
-            )
+        config[self._fidelity_name] = next_fid
+        return SampledConfig(
+            id=f"{_id}_{next_ix}",
+            config=config,
+            previous_config_id=f"{_id}_{budget_ix}",
+        )

@@ -5,17 +5,16 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+import numpy as np
+import pandas as pd
+import torch
 from botorch.acquisition import (
     AcquisitionFunction,
     LinearMCObjective,
     qLogNoisyExpectedImprovement,
 )
-from botorch.acquisition.analytic import SingleTaskGP
 from botorch.fit import fit_gpytorch_mll
 from gpytorch import ExactMarginalLogLikelihood
-import numpy as np
-import pandas as pd
-import torch
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
@@ -27,10 +26,12 @@ from neps.optimizers.multi_fidelity_prior.utils import (
     local_mutation,
     update_fidelity,
 )
-from neps.sampling.priors import Prior
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
+    from botorch.acquisition.analytic import SingleTaskGP
+
+    from neps.sampling.priors import Prior
     from neps.search_spaces.search_space import SearchSpace
 
 TOLERANCE = 1e-2  # 1%

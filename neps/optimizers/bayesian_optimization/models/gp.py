@@ -4,22 +4,21 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from functools import reduce
-from typing import TYPE_CHECKING, Any, TypeVar
 from dataclasses import dataclass
+from functools import reduce
+from itertools import product
+from typing import TYPE_CHECKING, Any, TypeVar
 
-from botorch.fit import fit_gpytorch_mll
-from gpytorch import ExactMarginalLogLikelihood
-import torch
 import gpytorch.constraints
+import torch
+from botorch.fit import fit_gpytorch_mll
 from botorch.models import SingleTaskGP
 from botorch.models.gp_regression import Log, get_covar_module_with_dim_scaled_prior
 from botorch.models.gp_regression_mixed import CategoricalKernel, OutcomeTransform
 from botorch.models.transforms.outcome import ChainedOutcomeTransform, Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
+from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
-from botorch.optim import optimize_acqf, optimize_acqf_mixed
-from itertools import product
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     cost_cooled_acq,
@@ -27,13 +26,14 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling im
 from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
 )
-from neps.sampling.priors import Prior
 from neps.search_spaces.encoding import CategoricalToIntegerTransformer, ConfigEncoder
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.trial import Trial
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
+
+    from neps.sampling.priors import Prior
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.trial import Trial
 
 logger = logging.getLogger(__name__)
 

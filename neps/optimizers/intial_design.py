@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from typing import Literal, Any, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal
+
+import torch
 
 from neps.sampling import Sampler
 from neps.sampling.priors import Prior
-from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.search_space import SearchSpace
-import torch
+
+if TYPE_CHECKING:
+    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.search_spaces.search_space import SearchSpace
 
 
 def make_initial_design(

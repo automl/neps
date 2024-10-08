@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Any, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.state.trial import Trial
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
+    from neps.state.trial import Trial
 
 
 class GridSearch(BaseOptimizer):

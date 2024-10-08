@@ -2,15 +2,18 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
 import torch
 from ifbo import FTPFN
 
 from neps.sampling.samplers import Sampler
-from neps.search_spaces.domain import Domain
-from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.trial import Trial
+
+if TYPE_CHECKING:
+    from neps.search_spaces.domain import Domain
+    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.trial import Trial
 
 
 def _keep_highest_budget_evaluation(
@@ -136,7 +139,7 @@ def encode_ftpfn(
     """
     # Select all trials which have something we can actually use for modelling
     # The absence of a report signifies pending
-    selected = {trial_id: trial for trial_id, trial in trials.items()}
+    selected = dict(trials.items())
     assert space.fidelity_name is not None
     assert space.fidelity is not None
     assert 0 <= error_value <= 1
@@ -144,7 +147,7 @@ def encode_ftpfn(
         [t.config for t in selected.values()], device=device, dtype=dtype
     )
     ids = torch.tensor(
-        [int(config_id.split("_", maxsplit=1)[0]) for config_id in selected.keys()],
+        [int(config_id.split("_", maxsplit=1)[0]) for config_id in selected],
         device=device,
         dtype=dtype,
     )
@@ -199,7 +202,7 @@ def decode_ftpfn_data(
     real_ids = [None if _id == 0 else int(_id) - 1 for _id in _raw_ids]
     fidelities = fidelity_domain.cast(x[:, 1], frm=budget_domain).tolist()
     configs = encoder.decode(x[:, 2:])
-    return list(zip(real_ids, fidelities, configs))
+    return list(zip(real_ids, fidelities, configs, strict=False))
 
 
 def acquire_next_from_ftpfn(
@@ -236,7 +239,7 @@ def acquire_next_from_ftpfn(
         best_row = torch.tensor([])
 
     # We'll be re-using 0 id and min budget alot, just create them once and re-use
-    _N = max(max(s[1] for s in initial_samplers), local_search_sample_size)
+    _N = max(*(s[1] for s in initial_samplers), local_search_sample_size)
     ids = torch.zeros((_N, 1), dtype=dtype, device=ftpfn.device)
     min_budget = torch.full(
         size=(_N, 1), fill_value=budget_domain.lower, dtype=dtype, device=ftpfn.device
@@ -265,7 +268,7 @@ def acquire_next_from_ftpfn(
         # 2. Sample around best point from above samples and eval acq.
         _mode = sample_best_row[2:]
         local_sampler = Sampler.centered(
-            centers=list(zip(_mode.tolist(), local_sample_confidence)),
+            centers=list(zip(_mode.tolist(), local_sample_confidence, strict=False)),
             domains=encoder.domains,
         )
         samples = local_sampler.sample(
