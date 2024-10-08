@@ -155,7 +155,6 @@ class NePSState(Generic[Loc]):
         self,
         trial: Trial,
         report: Trial.Report,
-        optimizer: BaseOptimizer,
         *,
         worker_id: str,
     ) -> None:
@@ -176,8 +175,6 @@ class NePSState(Generic[Loc]):
         shared_trial.put(trial)
         logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
         with self._optimizer_state.acquire() as (opt_state, put_opt_state):
-            optimizer.update_state_post_evaluation(opt_state.shared_state, report)
-
             # TODO: If an optimizer doesn't use the state, this is a waste of time.
             # Update the budget if we have one.
             if opt_state.budget is not None:

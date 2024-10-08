@@ -12,7 +12,7 @@ from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
-    from neps.utils.types import ERROR, ConfigResult, RawConfig, ResultDict
+    from neps.utils.types import ERROR, ResultDict
 
 
 @dataclass
@@ -50,27 +50,6 @@ class BaseOptimizer:
         self.ignore_errors = ignore_errors
 
     @abstractmethod
-    def load_optimization_state(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
-        budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
-        """Sample a new configuration.
-
-        Returns:
-            config: serializable object representing the configuration
-            config_id: unique identifier for the configuration
-            previous_config_id: if provided, id of a previous on which this
-                configuration is based
-        """
-        raise NotImplementedError
-
     def ask(
         self,
         trials: Mapping[str, Trial],
@@ -106,34 +85,7 @@ class BaseOptimizer:
             SampledConfig: a sampled configuration
             dict: state the optimizer would like to keep between calls
         """
-        completed: dict[str, ConfigResult] = {
-            trial_id: trial.into_config_result(self.pipeline_space.from_dict)
-            for trial_id, trial in trials.items()
-            if trial.report is not None
-        }
-        pending: dict[str, SearchSpace] = {
-            trial_id: self.pipeline_space.from_dict(trial.config)
-            for trial_id, trial in trials.items()
-            if trial.report is None
-        }
-        self.load_optimization_state(
-            previous_results=completed,
-            pending_evaluations=pending,
-            budget_info=budget_info,
-            optimizer_state=optimizer_state,
-        )
-        config, config_id, previous_config_id = self.get_config_and_ids()
-        return SampledConfig(
-            id=config_id, config=config, previous_config_id=previous_config_id
-        )
-
-    def update_state_post_evaluation(
-        self, state: dict[str, Any], report: Trial.Report
-    ) -> dict[str, Any]:
-        # TODO: There's a slot in `OptimizerState` to store extra things
-        # required for the optimizer but is currently not used
-        # state["key"] = "value"
-        return state
+        ...
 
     def get_loss(self, result: ERROR | ResultDict | float | Report) -> float | ERROR:
         """Calls result.utils.get_loss() and passes the error handling through.
