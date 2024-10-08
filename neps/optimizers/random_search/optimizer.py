@@ -1,38 +1,47 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
-from typing_extensions import override
 
-from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
-    from neps.utils.types import ConfigResult, RawConfig
+    from neps.state.trial import Trial
 
 
 class RandomSearch(BaseOptimizer):
-    def __init__(self, use_priors=False, ignore_fidelity=True, **optimizer_kwargs):
-        super().__init__(**optimizer_kwargs)
-        self._num_previous_configs: int = 0
+    def __init__(
+        self,
+        *,
+        pipeline_space: SearchSpace,
+        use_priors: bool = False,
+        ignore_fidelity: bool = True,
+        seed: int | None = None,
+    ):
+        super().__init__(pipeline_space=pipeline_space)
         self.use_priors = use_priors
         self.ignore_fidelity = ignore_fidelity
+        if seed is not None:
+            raise NotImplementedError("Seed is not implemented yet for RandomSearch")
 
-    @override
-    def load_optimization_state(
+        self.seed = seed
+
+    def ask(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
+        trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         optimizer_state: dict[str, Any],
-    ) -> None:
-        self._num_previous_configs = len(previous_results) + len(pending_evaluations)
-
-    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
+    ) -> SampledConfig:
+        # TODO: Replace with sampler objects and not `pipeline_space.sample`
+        n_trials = len(trials)
         config = self.pipeline_space.sample(
             patience=self.patience,
             user_priors=self.use_priors,
             ignore_fidelity=self.ignore_fidelity,
         )
-        config_id = str(self._num_previous_configs + 1)
-        return config.hp_values(), config_id, None
+        config_id = str(n_trials + 1)
+        return SampledConfig(
+            config=config.hp_values(), id=config_id, previous_config_id=None
+        )
