@@ -169,13 +169,8 @@ class IFBO(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo,
-        optimizer_state: dict[str, Any],
-        seed: torch.Generator | None = None,
+        budget_info: BudgetInfo | None = None,
     ) -> SampledConfig:
-        if seed is not None:
-            raise NotImplementedError("Seed is not yet implemented for IFBO")
-
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
 
@@ -186,7 +181,7 @@ class IFBO(BaseOptimizer):
                 encoder=self._config_encoder,
                 sample_default_first=self.sample_default_first,
                 sampler="sobol" if self._prior is None else self._prior,
-                seed=seed,
+                seed=None,  # TODO:
                 sample_fidelity="min",
                 sample_size=self.n_initial_design,
             )
@@ -228,7 +223,7 @@ class IFBO(BaseOptimizer):
         # 1. The encoding is such that the loss is 1 - loss
         # 2. The budget is the second column
         # 3. The budget is encoded between 1/max_fid and 1
-        rng = np.random.RandomState(None if seed is None else seed + len(trials))
+        rng = np.random.RandomState(len(trials))
         # Cast the a random budget index into the ftpfn budget domain
         horizon_increment = self._budget_domain.cast_one(
             rng.randint(*self._budget_ix_domain.bounds) + 1,
@@ -265,7 +260,7 @@ class IFBO(BaseOptimizer):
                 (Sampler.uniform(ndim=sample_dims), 512),
                 (Sampler.borders(ndim=sample_dims), 256),
             ],
-            seed=seed,
+            seed=None,  # TODO: Seeding
             # A next step local sampling around best point found by initial_samplers
             local_search_sample_size=256,
             local_search_confidence=0.95,

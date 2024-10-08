@@ -73,6 +73,9 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
             self.value_to_normalized(value) if value is not None else None
         )
 
+        # TODO: Pass in through subclasses
+        self.default_confidence_score: float
+
     # TODO(eddiebergman): All this does is just check values which highly unlikely
     # what we want. However this needs to be tackled in a seperate PR.
     #

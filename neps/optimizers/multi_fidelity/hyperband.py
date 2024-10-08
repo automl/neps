@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import typing
 from abc import abstractmethod
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import override
 
 import numpy as np
@@ -29,7 +28,7 @@ from neps.optimizers.multi_fidelity.successive_halving import (
 )
 from neps.sampling.priors import Prior
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
@@ -55,12 +54,11 @@ class HyperbandBase(SuccessiveHalvingBase):
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
+        sampling_policy: Any = RandomUniformPolicy,
+        promotion_policy: Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
@@ -78,7 +76,6 @@ class HyperbandBase(SuccessiveHalvingBase):
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
-            "logger": logger,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
             "sample_default_first": sample_default_first,
@@ -88,14 +85,14 @@ class HyperbandBase(SuccessiveHalvingBase):
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
         # for (n,r) pairing, i.e., (num. configs, fidelity)
         self.full_rung_trace = []
-        self.sh_brackets = {}
+        self.sh_brackets: dict[int, SuccessiveHalvingBase] = {}
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             self.sh_brackets[s] = SuccessiveHalving(**args)
             # `full_rung_trace` contains the index of SH bracket to run sequentially
             self.full_rung_trace.extend([s] * len(self.sh_brackets[s].full_rung_trace))
         # book-keeping variables
-        self.current_sh_bracket = None  # type: ignore
+        self.current_sh_bracket: int = 0
         self.old_history_len = None
 
     def _update_state_counter(self) -> None:
@@ -114,14 +111,14 @@ class HyperbandBase(SuccessiveHalvingBase):
         bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
         bracket.observed_configs = self.observed_configs.copy()
 
-    def clear_old_brackets(self):
+    def clear_old_brackets(self) -> None:
         """Enforces reset at each new bracket."""
         # unlike synchronous SH, the state is not reset at each rung and a configuration
         # is promoted if the rung has eta configs if it is the top performing
         # base class allows for retaining the whole optimization state
         return
 
-    def _handle_promotions(self):
+    def _handle_promotions(self) -> None:
         self.promotion_policy.set_state(
             max_rung=self.max_rung,
             members=self.rung_members,
@@ -137,8 +134,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
+    ) -> SampledConfig:
         completed: dict[str, ConfigResult] = {
             trial_id: trial.into_config_result(self.pipeline_space.from_dict)
             for trial_id, trial in trials.items()
@@ -193,7 +189,7 @@ class HyperbandBase(SuccessiveHalvingBase):
 
 
 class Hyperband(HyperbandBase):
-    def clear_old_brackets(self):
+    def clear_old_brackets(self) -> None:
         """Enforces reset at each new bracket.
 
         The _get_rungs_state() function creates the `rung_promotions` dict mapping which
@@ -227,6 +223,7 @@ class Hyperband(HyperbandBase):
             # for the SH bracket in start-end, calculate total SH budget used, from the
             # correct SH bracket object to make the right budget calculations
 
+            assert isinstance(sh_bracket, SuccessiveHalving)
             bracket_budget_used = sh_bracket._calc_budget_used_in_bracket(
                 deepcopy(self.observed_configs.rung.values[start:end])
             )
@@ -271,7 +268,7 @@ class Hyperband(HyperbandBase):
             [type]: [description]
         """
         config, config_id, previous_config_id = self.sh_brackets[
-            self.current_sh_bracket  # type: ignore
+            self.current_sh_bracket
         ].get_config_and_ids()
         return config, config_id, previous_config_id
 
@@ -288,12 +285,11 @@ class HyperbandWithPriors(Hyperband):
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = FixedPriorPolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
+        sampling_policy: Any = FixedPriorPolicy,
+        promotion_policy: Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
@@ -310,7 +306,6 @@ class HyperbandWithPriors(Hyperband):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
@@ -328,12 +323,11 @@ class HyperbandCustomDefault(HyperbandWithPriors):
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = EnsemblePolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
+        sampling_policy: Any = EnsemblePolicy,
+        promotion_policy: Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
@@ -349,7 +343,6 @@ class HyperbandCustomDefault(HyperbandWithPriors):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
@@ -381,12 +374,11 @@ class AsynchronousHyperband(HyperbandBase):
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        sampling_policy: Any = RandomUniformPolicy,
+        promotion_policy: Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
@@ -403,7 +395,6 @@ class AsynchronousHyperband(HyperbandBase):
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
-            "logger": logger,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
             "sample_default_first": sample_default_first,
@@ -411,7 +402,7 @@ class AsynchronousHyperband(HyperbandBase):
         }
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
-        self.sh_brackets = {}
+        self.sh_brackets: dict[int, SuccessiveHalvingBase] = {}
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             # key difference from vanilla HB where it runs synchronous SH brackets
@@ -433,7 +424,7 @@ class AsynchronousHyperband(HyperbandBase):
             bracket.rung_promotions = bracket.promotion_policy.retrieve_promotions()
             bracket.observed_configs = self.observed_configs.copy()
 
-    def _get_bracket_to_run(self):
+    def _get_bracket_to_run(self) -> int:
         """Samples the ASHA bracket to run.
 
         The selected bracket always samples at its minimum rung. Thus, selecting a bracket
@@ -477,12 +468,11 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = FixedPriorPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        sampling_policy: Any = FixedPriorPolicy,
+        promotion_policy: Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
@@ -499,7 +489,6 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
@@ -519,18 +508,17 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,
+        sampling_policy: Any = RandomUniformPolicy,
+        promotion_policy: Any = AsyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
         # new arguments for model
-        model_policy: typing.Any = ModelPolicy,
+        model_policy: Any = ModelPolicy,
         surrogate_model: str | Any = "gp",  # TODO: Remove
         domain_se_kernel: str | None = None,  # TODO: Remove
         hp_kernels: list | None = None,  # TODO: Remove
@@ -550,7 +538,6 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
-            "logger": logger,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
             "sample_default_first": sample_default_first,
@@ -581,8 +568,8 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         self.model_policy = model_policy(pipeline_space, prior=prior)
 
         for _, sh in self.sh_brackets.items():
-            sh.model_policy = self.model_policy
-            sh.sample_new_config = self.sample_new_config
+            sh.model_policy = self.model_policy  # type: ignore
+            sh.sample_new_config = self.sample_new_config  # type: ignore
 
 
 # TODO: TrulyAsyncHyperband

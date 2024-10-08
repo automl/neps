@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class DecayingPriorWeightedAcquisition(BaseAcquisition):
     def __init__(
         self,
-        base_acquisition,
+        base_acquisition: BaseAcquisition,
         *,
         pibo_beta: int = 10,
         log: bool = False,
@@ -30,7 +30,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
     def eval(
         self,
         x: Iterable,
-        **base_acquisition_kwargs,
+        **base_acquisition_kwargs: Any,
     ) -> np.ndarray | torch.Tensor | float:
         acquisition = self.base_acquisition(x, **base_acquisition_kwargs)
 
@@ -54,7 +54,7 @@ class DecayingPriorWeightedAcquisition(BaseAcquisition):
                     )
         return acquisition
 
-    def set_state(self, surrogate_model, **kwargs):
+    def set_state(self, surrogate_model: Any, **kwargs: Any) -> None:
         if "decay_t" in kwargs:
             decay_t = kwargs.pop("decay_t")
         else:

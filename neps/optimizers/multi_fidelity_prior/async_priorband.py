@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import typing
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import override
 
 import numpy as np
@@ -18,7 +17,7 @@ from neps.optimizers.multi_fidelity.successive_halving import (
 from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
 from neps.sampling.priors import Prior
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
@@ -42,27 +41,28 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = EnsemblePolicy,  # key difference to ASHA
-        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
+        sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
+        promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         sample_default_at_target: bool = True,
-        prior_weight_type: str = "geometric",  # could also be {"linear", "50-50"}
-        inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
+        prior_weight_type: Literal["geometric", "linear", "50-50"] = "geometric",
+        inc_sample_type: Literal[
+            "crossover", "gaussian", "hypersphere", "mutation"
+        ] = "mutation",
         inc_mutation_rate: float = 0.5,
         inc_mutation_std: float = 0.25,
-        inc_style: str = "dynamic",  # could also be {"decay", "constant"}
+        inc_style: Literal["dynamic", "constant", "decay"] = "dynamic",
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
-        modelling_type: str = "joint",  # could also be {"rung"}
+        modelling_type: Literal["joint", "rung"] = "joint",
         initial_design_size: int | None = None,
-        model_policy: typing.Any = ModelPolicy,
-        surrogate_model: str | typing.Any = "gp",
+        model_policy: Any = ModelPolicy,
+        surrogate_model: str | Any = "gp",
         domain_se_kernel: str | None = None,
         hp_kernels: list | None = None,
         surrogate_model_args: dict | None = None,
@@ -81,7 +81,6 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
@@ -152,27 +151,28 @@ class PriorBandAshaHB(PriorBandAsha):
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = EnsemblePolicy,  # key difference to ASHA
-        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from PB
+        sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
+        promotion_policy: Any = AsyncPromotionPolicy,  # key difference from PB
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         sample_default_at_target: bool = True,
-        prior_weight_type: str = "geometric",  # could also be {"linear", "50-50"}
-        inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
+        prior_weight_type: Literal["geometric", "linear", "50-50"] = "geometric",
+        inc_sample_type: Literal[
+            "crossover", "gaussian", "hypersphere", "mutation"
+        ] = "mutation",
         inc_mutation_rate: float = 0.5,
         inc_mutation_std: float = 0.25,
-        inc_style: str = "dynamic",  # could also be {"decay", "constant"}
+        inc_style: Literal["dynamic", "constant", "decay"] = "dynamic",
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
-        modelling_type: str = "joint",  # could also be {"rung"}
+        modelling_type: Literal["joint", "rung"] = "joint",
         initial_design_size: int | None = None,
-        model_policy: typing.Any = ModelPolicy,
-        surrogate_model: str | typing.Any = "gp",
+        model_policy: Any = ModelPolicy,
+        surrogate_model: str | Any = "gp",
         domain_se_kernel: str | None = None,
         hp_kernels: list | None = None,
         surrogate_model_args: dict | None = None,
@@ -181,7 +181,7 @@ class PriorBandAshaHB(PriorBandAsha):
         acquisition_sampler: str | AcquisitionSampler = "random",
     ):
         # collecting arguments required by ASHA
-        args = {
+        args: dict[str, Any] = {
             "pipeline_space": pipeline_space,
             "budget": budget,
             "eta": eta,
@@ -192,13 +192,12 @@ class PriorBandAshaHB(PriorBandAsha):
             "loss_value_on_error": loss_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
-            "logger": logger,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
             "sample_default_first": sample_default_first,
             "sample_default_at_target": sample_default_at_target,
         }
-        bo_args = {
+        bo_args: dict[str, Any] = {
             "surrogate_model": surrogate_model,
             "domain_se_kernel": domain_se_kernel,
             "hp_kernels": hp_kernels,
@@ -229,8 +228,8 @@ class PriorBandAshaHB(PriorBandAsha):
             self.sh_brackets[s] = AsynchronousSuccessiveHalvingWithPriors(**args)
             self.sh_brackets[s].sampling_policy = self.sampling_policy
             self.sh_brackets[s].sampling_args = self.sampling_args
-            self.sh_brackets[s].model_policy = self.model_policy
-            self.sh_brackets[s].sample_new_config = self.sample_new_config
+            self.sh_brackets[s].model_policy = self.model_policy  # type: ignore
+            self.sh_brackets[s].sample_new_config = self.sample_new_config  # type: ignore
 
     def _update_sh_bracket_state(self) -> None:
         # `load_results()` for each of the SH bracket objects are not called as they are
@@ -249,13 +248,12 @@ class PriorBandAshaHB(PriorBandAsha):
             bracket.observed_configs = self.observed_configs.copy()
             bracket.rung_histories = self.rung_histories
 
-    @override
+    @override  # type: ignore
     def ask(
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
+    ) -> SampledConfig:
         """This is basically the fit method."""
         completed: dict[str, ConfigResult] = {
             trial_id: trial.into_config_result(self.pipeline_space.from_dict)
@@ -300,7 +298,7 @@ class PriorBandAshaHB(PriorBandAsha):
         config, _id, previous_id = self.get_config_and_ids()
         return SampledConfig(id=_id, config=config, previous_config_id=previous_id)
 
-    def _get_bracket_to_run(self):
+    def _get_bracket_to_run(self) -> int:
         """Samples the ASHA bracket to run.
 
         The selected bracket always samples at its minimum rung. Thus, selecting a bracket
@@ -332,4 +330,4 @@ class PriorBandAshaHB(PriorBandAsha):
         config, config_id, previous_config_id = self.sh_brackets[
             bracket_to_run
         ].get_config_and_ids()
-        return config, config_id, previous_config_id  # type: ignore
+        return config, config_id, previous_config_id

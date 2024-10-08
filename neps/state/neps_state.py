@@ -114,7 +114,6 @@ class NePSState(Generic[Loc]):
             sampled_config_maybe_new_opt_state = optimizer.ask(
                 trials=trials,
                 budget_info=budget,
-                optimizer_state=opt_state.shared_state,
             )
 
             if isinstance(sampled_config_maybe_new_opt_state, tuple):

@@ -1,12 +1,20 @@
-# type: ignore
 from __future__ import annotations
 
+import logging
 from copy import deepcopy
+from typing import TYPE_CHECKING, Any, Literal
 
 from neps.optimizers.multi_fidelity_prior.utils import (
     calc_total_resources_spent,
     update_fidelity,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from neps.search_spaces import SearchSpace
+
+logger = logging.getLogger(__name__)
 
 
 class MFBOBase:
@@ -15,7 +23,24 @@ class MFBOBase:
     Requires certain strict assumptions about fidelities and rung maps.
     """
 
-    def _fit_models(self):
+    # TODO: Make pure function...
+    model_based: bool
+    pipeline_space: SearchSpace
+    observed_configs: pd.DataFrame
+    rung_map: dict
+    max_budget: float
+    modelling_type: Literal["rung", "joint"]
+    rung_histories: dict
+    min_rung: int
+    max_rung: int
+    model_policy: Any
+    sampling_args: dict
+    sampling_policy: Any
+    patience: int
+    use_priors: bool
+    init_size: int
+
+    def _fit_models(self) -> None:
         """Performs necessary procedures to build and use models."""
         if not self.model_based:
             # do nothing here if the algorithm has model-based search disabled
@@ -50,7 +75,7 @@ class MFBOBase:
                 raise ValueError(
                     "Returned rung is None. Should not be so when not init phase."
                 )
-            self.logger.info(f"Building model at rung {rung}")
+            logger.info(f"Building model at rung {rung}")
             # collecting finished evaluations at `rung`
             train_df = self.observed_configs.loc[
                 self.rung_histories[rung]["config"]
@@ -136,8 +161,8 @@ class MFBOBase:
     def sample_new_config(
         self,
         rung: int | None = None,
-        **kwargs,  # pylint: disable=unused-argument
-    ):
+        **kwargs: Any,
+    ) -> SearchSpace:
         """Samples configuration from policies or random."""
         if self.model_based and not self.is_init_phase():
             incumbent = None
@@ -152,7 +177,7 @@ class MFBOBase:
                 # IMPORTANT step for correct 2-step acquisition
                 incumbent = min(self.rung_histories[rung]["perf"])
             else:
-                fidelity = active_max_fidelity = None
+                raise ValueError("Choice of modelling_type not in 'rung', 'joint'")
             assert (
                 (fidelity is None and active_max_fidelity is not None)
                 or (active_max_fidelity is None and fidelity is not None)

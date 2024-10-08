@@ -48,7 +48,7 @@ class MutationSampler(AcquisitionSampler):
     def __init__(
         self,
         *,
-        pipeline_space,
+        pipeline_space: SearchSpace,
         pool_size: int = 250,
         n_best: int = 10,
         mutate_size: float | int = 0.5,

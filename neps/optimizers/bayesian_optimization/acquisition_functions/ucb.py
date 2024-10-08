@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 import torch
@@ -29,7 +30,7 @@ class UpperConfidenceBound(BaseAcquisition):
         # to be initialized as part of the state
         self.surrogate_model = None
 
-    def set_state(self, surrogate_model, **kwargs):
+    def set_state(self, surrogate_model: Any, **kwargs: Any) -> None:
         super().set_state(surrogate_model)
         self.surrogate_model = surrogate_model
         if "beta" in kwargs:
@@ -44,6 +45,7 @@ class UpperConfidenceBound(BaseAcquisition):
         *,
         asscalar: bool = False,
     ) -> np.ndarray | torch.Tensor | float:
+        assert self.surrogate_model is not None, "Surrogate model is not set."
         try:
             mu, cov = self.surrogate_model.predict(x)
             std = torch.sqrt(torch.diag(cov))

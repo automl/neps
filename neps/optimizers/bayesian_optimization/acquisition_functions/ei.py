@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import torch
 from torch.distributions import Normal
@@ -52,7 +52,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         self.xi = xi
         self.in_fill = in_fill
         self.log_ei = log_ei
-        self.incumbent = None
+        self.incumbent: float | None = None
         self.optimize_on_max_fidelity = optimize_on_max_fidelity
 
     def eval(
@@ -63,13 +63,14 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
     ) -> np.ndarray | torch.Tensor | float:
         """Return the negative expected improvement at the query point x2."""
         assert self.incumbent is not None, "EI function not fitted on model"
+        assert self.surrogate_model is not None
 
         if x[0].has_fidelity and self.optimize_on_max_fidelity:
             _x = [e.clone() for e in x]
             for e in _x:
                 e.set_to_max_fidelity()
         else:
-            _x = x
+            _x = list(x)
 
         mu, cov = self.surrogate_model.predict(_x)
 
@@ -106,16 +107,19 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
             )
         if isinstance(_x, list) and asscalar:
             return ei.detach().numpy()
+
         if asscalar:
             ei = ei.detach().numpy().item()
+
         return ei
 
-    def set_state(self, surrogate_model, **kwargs):
+    def set_state(self, surrogate_model: Any, **kwargs: Any) -> None:
         super().set_state(surrogate_model, **kwargs)
+        assert self.surrogate_model is not None
 
         # Compute incumbent
         if self.in_fill == "best":
-            self.incumbent = torch.min(self.surrogate_model.y_)
+            self.incumbent = float(torch.min(self.surrogate_model.y_))
         else:
             x = self.surrogate_model.x
             mu_train, _ = self.surrogate_model.predict(x)

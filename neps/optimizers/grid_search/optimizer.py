@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
@@ -30,11 +30,8 @@ class GridSearch(BaseOptimizer):
 
     @override
     def ask(
-        self,
-        trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
+        self, trials: Mapping[str, Trial], budget_info: BudgetInfo | None
+    ) -> SampledConfig:
         _num_previous_configs = len(trials)
         if _num_previous_configs > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")

@@ -58,26 +58,12 @@ class BaseOptimizer:
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> SampledConfig | tuple[SampledConfig, dict[str, Any]]:
+    ) -> SampledConfig:
         """Sample a new configuration.
-
-        !!! note
-
-            The `optimizer_state` right now is just a `dict` that optimizers are free to
-            mutate as desired. A `dict` is not ideal as its _stringly_ typed but this was
-            the least invasive way to add this at the moment. It's actually an existing
-            feature no optimizer uses except _cost-cooling_ which basically just took a
-            value from `budget_info`.
-
-            Ideally an optimizer overwriting this can decide what to return instead of
-            having to rely on them mutating it, however this is the best work-around I
-            could come up with for now.
 
         Args:
             trials: All of the trials that are known about.
             budget_info: information about the budget
-            optimizer_state: extra state the optimizer would like to keep between calls
 
         Returns:
             SampledConfig: a sampled configuration

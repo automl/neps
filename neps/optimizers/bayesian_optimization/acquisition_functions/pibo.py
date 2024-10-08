@@ -38,7 +38,7 @@ def apply_pibo_acquisition_weight(
     prior: Prior,
     x_domain: Domain | list[Domain],
     prior_exponent: float,
-):
+) -> Tensor:
     if acq._log:
         weighted_log_probs = prior.log_prob(X, frm=x_domain) + prior_exponent
         return acq_values + weighted_log_probs

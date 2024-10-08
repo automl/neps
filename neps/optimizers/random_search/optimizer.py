@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
@@ -47,7 +47,6 @@ class RandomSearch(BaseOptimizer):
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
     ) -> SampledConfig:
         # TODO: Replace with sampler objects and not `pipeline_space.sample`
         n_trials = len(trials)

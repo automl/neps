@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import typing
-from typing import Literal
+import logging
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -9,6 +9,7 @@ from neps.optimizers.multi_fidelity.hyperband import HyperbandCustomDefault
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
+from neps.optimizers.multi_fidelity.successive_halving import SuccessiveHalvingBase
 from neps.optimizers.multi_fidelity_prior.utils import (
     calc_total_resources_spent,
     compute_config_dist,
@@ -17,7 +18,9 @@ from neps.optimizers.multi_fidelity_prior.utils import (
 )
 from neps.sampling.priors import Prior
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
+    import pandas as pd
+
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
@@ -27,14 +30,34 @@ if typing.TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.utils.types import RawConfig
 
+logger = logging.getLogger(__name__)
 
+
+# TODO: We should just make these functions...
 class PriorBandBase:
     """Class that defines essential properties needed by PriorBand.
 
     Designed to work with the topmost parent class as SuccessiveHalvingBase.
     """
 
-    def find_all_distances_from_incumbent(self, incumbent):
+    # TODO: Dependant variables which should just be made into functions
+    observed_configs: pd.DataFrame
+    eta: int
+    pipeline_space: SearchSpace
+    inc_sample_type: Literal["hypersphere", "mutation", "crossover", "gaussian"]
+    inc_mutation_rate: float
+    inc_mutation_std: float
+    rung_histories: dict[int, dict[Literal["config", "perf"], list[int | float]]]
+    max_rung: int
+    min_rung: int
+    rung_map: dict
+    prior_weight_type: Literal["geometric", "linear", "50-50"]
+    sampling_args: dict[str, Any]
+    inc_style: Literal["dynamic", "decay", "constant"]
+    min_budget: int | float
+    max_budget: int | float
+
+    def find_all_distances_from_incumbent(self, incumbent: SearchSpace) -> list[float]:
         """Finds the distance to the nearest neighbour."""
         dist = lambda x: compute_config_dist(incumbent, x)
         # computing distance of incumbent from all seen points in history
@@ -42,7 +65,7 @@ class PriorBandBase:
         # ensuring the distances exclude 0 or the distance from itself
         return [d for d in distances if d > 0]
 
-    def find_1nn_distance_from_incumbent(self, incumbent):
+    def find_1nn_distance_from_incumbent(self, incumbent: SearchSpace) -> float:
         """Finds the distance to the nearest neighbour."""
         distances = self.find_all_distances_from_incumbent(incumbent)
         return min(distances)
@@ -54,12 +77,12 @@ class PriorBandBase:
         while rung is not None:
             # enters this scope is `rung` argument passed and not left empty or None
             if rung not in rungs:
-                self.logger.warn(f"{rung} not in {np.unique(idxs)}")
+                logger.warning(f"{rung} not in {np.unique(idxs)}")  # type: ignore
             # filtering by rung based on argument passed
             idxs = self.observed_configs.rung.values == rung
             # checking width of current rung
             if len(idxs) < self.eta:
-                self.logger.warn(
+                logger.warn(
                     f"Selecting incumbent from a rung with width less than {self.eta}"
                 )
         # extracting the incumbent configuration
@@ -72,13 +95,13 @@ class PriorBandBase:
             # THIS block should not ever execute, but for runtime anomalies, if no
             # incumbent can be extracted, the prior is treated as the incumbent
             inc = self.pipeline_space.sample_default_configuration()
-            self.logger.warn(
+            logger.warning(
                 "Treating the prior as the incumbent. "
                 "Please check if this should not happen."
             )
         return inc
 
-    def _set_sampling_weights_and_inc(self, rung: int):
+    def _set_sampling_weights_and_inc(self, rung: int) -> dict:
         sampling_args = self.calc_sampling_args(rung)
         if not self.is_activate_inc():
             sampling_args["prior"] += sampling_args["inc"]
@@ -111,12 +134,15 @@ class PriorBandBase:
         activate_inc = False
 
         # calculate total resource cost required for the first SH bracket in HB
-        if hasattr(self, "sh_brackets") and len(self.sh_brackets) > 1:
+        if hasattr(self, "sh_brackets") and len(self.sh_brackets) > 1:  # type: ignore
             # for HB or AsyncHB which invokes multiple SH brackets
-            bracket = self.sh_brackets[self.min_rung]
+            bracket = self.sh_brackets[self.min_rung]  # type: ignore
         else:
             # for SH or ASHA which do not invoke multiple SH brackets
             bracket = self
+
+        assert isinstance(bracket, SuccessiveHalvingBase)
+
         # calculating the total resources spent in the first SH bracket, taking into
         # account the continuations, that is, the resources spent on a promoted config is
         # not fidelity[rung] but (fidelity[rung] - fidelity[rung - 1])
@@ -140,7 +166,7 @@ class PriorBandBase:
             activate_inc = True
         return activate_inc
 
-    def calc_sampling_args(self, rung) -> dict:
+    def calc_sampling_args(self, rung: int) -> dict:
         """Sets the weights for each of the sampling techniques."""
         if self.prior_weight_type == "geometric":
             _w_random = 1
@@ -183,7 +209,7 @@ class PriorBandBase:
             "random": w_random,
         }
 
-    def prior_to_incumbent_ratio(self) -> float | float:
+    def prior_to_incumbent_ratio(self) -> tuple[float, float]:
         """Calculates the normalized weight distribution between prior and incumbent.
 
         Sum of the weights should be 1.
@@ -200,14 +226,14 @@ class PriorBandBase:
         raise ValueError(f"Invalid option {self.inc_style}")
 
     def _prior_to_incumbent_ratio_decay(
-        self, resources: float, eta: int, min_budget, max_budget
-    ) -> float | float:
+        self, resources: float, eta: int, min_budget: int | float, max_budget: int | float
+    ) -> tuple[float, float]:
         """Decays the prior weightage and increases the incumbent weightage."""
         w_prior = get_prior_weight_for_decay(resources, eta, min_budget, max_budget)
         w_inc = 1 - w_prior
         return w_prior, w_inc
 
-    def _prior_to_incumbent_ratio_constant(self) -> float | float:
+    def _prior_to_incumbent_ratio_constant(self) -> tuple[float, float]:
         """Fixes the weightage of incumbent sampling to 1/eta of prior sampling."""
         # fixing weight of incumbent to 1/eta of prior
         _w_prior = self.eta
@@ -216,7 +242,7 @@ class PriorBandBase:
         w_inc = _w_inc / (_w_prior + _w_inc)
         return w_prior, w_inc
 
-    def _prior_to_incumbent_ratio_dynamic(self, rung: int) -> float | float:
+    def _prior_to_incumbent_ratio_dynamic(self, rung: int) -> tuple[float, float]:
         """Dynamically determines the ratio of weights for prior and incumbent sampling.
 
         Finds the highest rung with eta configurations recorded. Picks the top-1/eta
@@ -279,27 +305,28 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         budget: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = EnsemblePolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
+        sampling_policy: Any = EnsemblePolicy,
+        promotion_policy: Any = SyncPromotionPolicy,
         loss_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = True,
         sample_default_at_target: bool = True,
-        prior_weight_type: str = "geometric",  # could also be {"linear", "50-50"}
-        inc_sample_type: str = "mutation",  # or {"crossover", "gaussian", "hypersphere"}
+        prior_weight_type: Literal["geometric", "linear", "50-50"] = "geometric",
+        inc_sample_type: Literal[
+            "hypersphere", "mutation", "crossover", "gaussian"
+        ] = "mutation",
         inc_mutation_rate: float = 0.5,
         inc_mutation_std: float = 0.25,
-        inc_style: str = "dynamic",  # could also be {"decay", "constant"}
+        inc_style: Literal["dynamic", "decay", "constant"] = "dynamic",
         # arguments for model
         model_based: bool = False,  # crucial argument to set to allow model-search
-        modelling_type: str = "joint",  # could also be {"rung"}
+        modelling_type: Literal["joint", "rung"] = "joint",
         initial_design_size: int | None = None,
-        model_policy: typing.Any = ModelPolicy,
-        surrogate_model: str | typing.Any = "gp",  # TODO: Remove
+        model_policy: Any = ModelPolicy,
+        surrogate_model: str | Any = "gp",  # TODO: Remove
         surrogate_model_args: dict | None = None,  # TODO: Remove
         acquisition: str | BaseAcquisition = "EI",  # TODO: Remove
         log_prior_weighted: bool = False,  # TODO: Remove
@@ -315,7 +342,6 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
@@ -330,7 +356,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         )
         # determines the kind of trade-off between incumbent and prior weightage
         self.inc_style = inc_style  # used by PriorBandBase
-        self.sampling_args = {
+        self.sampling_args: dict[str, Any] = {
             "inc": None,
             "weights": {
                 "prior": 1,  # begin with only prior sampling
@@ -361,8 +387,8 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy
             sh.sampling_args = self.sampling_args
-            sh.model_policy = self.model_policy
-            sh.sample_new_config = self.sample_new_config
+            sh.model_policy = self.model_policy  # type: ignore
+            sh.sample_new_config = self.sample_new_config  # type: ignore
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -384,7 +410,7 @@ class PriorBandNoIncToPrior(PriorBand):
     relationship is controlled by the `prior_weight_type` argument.
     """
 
-    def _set_sampling_weights_and_inc(self, rung: int):
+    def _set_sampling_weights_and_inc(self, rung: int) -> dict:
         super()._set_sampling_weights_and_inc(rung)
         # distributing the inc weight to the prior entirely
         self.sampling_args["weights"]["prior"] += self.sampling_args["weights"]["inc"]
@@ -396,12 +422,12 @@ class PriorBandNoIncToPrior(PriorBand):
 class PriorBandNoPriorToInc(PriorBand):
     """Disables prior based sampling to replace with incumbent-based sampling."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
         # cannot use prior in this version
         self.pipeline_space.has_prior = False
 
-    def _set_sampling_weights_and_inc(self, rung: int):
+    def _set_sampling_weights_and_inc(self, rung: int) -> dict:
         super()._set_sampling_weights_and_inc(rung)
         # distributing the prior weight to the incumbent entirely
         if self.sampling_args["weights"]["inc"] > 0:

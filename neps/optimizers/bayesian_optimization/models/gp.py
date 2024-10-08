@@ -134,7 +134,7 @@ def optimize_acq(
     *,
     n_candidates_required: int = 1,
     num_restarts: int = 20,
-    n_intial_start_points: int = 256,
+    n_intial_start_points: int | None = None,
     acq_options: Mapping[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -265,9 +265,7 @@ def fit_and_acquire_from_gp(
     *,
     gp: SingleTaskGP,
     x_train: torch.Tensor,
-    y_train: torch.Tensor,
     encoder: ConfigEncoder,
-    fantasize_pending: torch.Tensor | None = None,
     acquisition: AcquisitionFunction,
     prior: Prior | None = None,
     pibo_exp_term: float | None = None,
@@ -294,21 +292,7 @@ def fit_and_acquire_from_gp(
     Args:
         gp: The GP model to use.
         x_train: The encoded configurations that have already been evaluated
-        y_train: The loss of the evaluated configurations.
-
-            !!! note "NaNs"
-
-                Any y values encoded with NaNs will automatically be filled with
-                the mean loss value. This is to ensure a smoother acquisition
-                function optimization landscape. While this is a poorer
-                approximation of the landscape, this does not matter as we are
-                aiming to ensure that the GP models good areas as being better
-                than any other area, regardless of whether they are average or garbage.
-
         encoder: The encoder used for encoding the configurations
-        fantasize_pending: The pending configurations to fantasize over. Please be aware
-            that there are more efficient strategies as some acquisition functions can
-            handle this explicitly.
         acquisition: The acquisition function to use.
 
             A good default is `qLogNoisyExpectedImprovement` which can
@@ -347,10 +331,6 @@ def fit_and_acquire_from_gp(
         raise NotImplementedError("Seed is not implemented yet for gps")
 
     fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
-
-    if fantasize_pending is not None:
-        y_train = torch.cat([y_train, gp.posterior(fantasize_pending).mean], dim=0)
-        x_train = torch.cat([x_train, fantasize_pending], dim=0)
 
     if prior:
         if pibo_exp_term is None:

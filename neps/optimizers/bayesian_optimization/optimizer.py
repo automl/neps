@@ -105,6 +105,10 @@ class BayesianOptimization(BaseOptimizer):
             ValueError: if initial_design_size < 1
             ValueError: if no kernel is provided
         """
+        if seed is not None:
+            raise NotImplementedError(
+                "Seed is not implemented yet for BayesianOptimization"
+            )
         if any(pipeline_space.graphs):
             raise NotImplementedError("Only supports flat search spaces for now!")
         if any(pipeline_space.fidelities):
@@ -126,7 +130,6 @@ class BayesianOptimization(BaseOptimizer):
         self.prior = (
             Prior.from_parameters(params.values()) if use_priors is True else None
         )
-        self.seed = seed
         self.use_cost = use_cost
         self.use_priors = use_priors
         self.cost_on_log_scale = cost_on_log_scale
@@ -139,15 +142,8 @@ class BayesianOptimization(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo,
-        optimizer_state: dict[str, Any],
-        seed: int | None = None,
+        budget_info: BudgetInfo | None = None,
     ) -> SampledConfig:
-        if seed is not None:
-            raise NotImplementedError(
-                "Seed is not yet implemented for BayesianOptimization"
-            )
-
         n_sampled = len(trials)
         config_id = str(n_sampled + 1)
         space = self.pipeline_space
@@ -159,7 +155,7 @@ class BayesianOptimization(BaseOptimizer):
                 encoder=self.encoder,
                 sample_default_first=self.sample_default_first,
                 sampler=self.prior if self.prior is not None else "sobol",
-                seed=seed,
+                seed=None,  # TODO: Seeding
                 sample_size=(
                     "ndim" if self.n_initial_design is None else self.n_initial_design
                 ),
@@ -176,6 +172,11 @@ class BayesianOptimization(BaseOptimizer):
 
         cost_percent = None
         if self.use_cost:
+            if budget_info is None:
+                raise ValueError(
+                    "Must provide a 'cost' to configurations if using cost"
+                    " with BayesianOptimization."
+                )
             if budget_info.max_cost_budget is None:
                 raise ValueError("Cost budget must be set if using cost")
             cost_percent = budget_info.used_cost_budget / budget_info.max_cost_budget
@@ -195,7 +196,6 @@ class BayesianOptimization(BaseOptimizer):
         candidate = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
-            y_train=data.y,
             encoder=encoder,
             acquisition=qLogNoisyExpectedImprovement(
                 model=gp,

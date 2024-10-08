@@ -335,7 +335,7 @@ class FTPFNSurrogate:
             _cast_tensor_shapes(test_x),
         )
 
-    @torch.no_grad()
+    @torch.no_grad()  # type: ignore
     def get_mean_performance(
         self,
         train_x: torch.Tensor,
@@ -345,7 +345,7 @@ class FTPFNSurrogate:
         logits = self._get_logits(train_x, train_y, test_x).squeeze()
         return self.ftpfn.model.criterion.mean(logits)
 
-    @torch.no_grad()
+    @torch.no_grad()  # type: ignore
     def get_pi(
         self,
         train_x: torch.Tensor,
@@ -356,7 +356,7 @@ class FTPFNSurrogate:
         logits = self._get_logits(train_x, train_y, test_x)
         return self.ftpfn.model.criterion.pi(logits.squeeze(), best_f=y_best)
 
-    @torch.no_grad()
+    @torch.no_grad()  # type: ignore
     def get_ei(
         self,
         train_x: torch.Tensor,
@@ -367,7 +367,7 @@ class FTPFNSurrogate:
         logits = self._get_logits(train_x, train_y, test_x)
         return self.ftpfn.model.criterion.ei(logits.squeeze(), best_f=y_best)
 
-    @torch.no_grad()
+    @torch.no_grad()  # type: ignore
     def get_lcb(
         self,
         train_x: torch.Tensor,
@@ -384,7 +384,7 @@ class FTPFNSurrogate:
             maximize=False,
         )
 
-    @torch.no_grad()
+    @torch.no_grad()  # type: ignore
     def get_ucb(
         self,
         train_x: torch.Tensor,
