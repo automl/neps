@@ -10,7 +10,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
-    from neps.state.trial import Trial
+    from neps.state.trial import Report
 
 # TODO(eddiebergman): We can turn this to an enum at some
 # point to prevent having to isinstance and str match
@@ -50,7 +50,7 @@ class ConfigResult:
     config: SearchSpace
     """Configuration that was evaluated."""
 
-    result: Trial.Report | ResultDict | ERROR
+    result: Report | ResultDict | ERROR
     """Some dictionary of results."""
 
     metadata: dict

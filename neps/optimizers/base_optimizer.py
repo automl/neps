@@ -3,16 +3,16 @@ from __future__ import annotations
 import logging
 from abc import abstractmethod
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from neps.state.trial import Report, Trial
 from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
-from neps.utils.types import ERROR, ConfigResult, RawConfig, ResultDict
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ERROR, ConfigResult, RawConfig, ResultDict
 
 
 @dataclass
@@ -106,25 +106,16 @@ class BaseOptimizer:
             SampledConfig: a sampled configuration
             dict: state the optimizer would like to keep between calls
         """
-        completed: dict[Trial.ID, ConfigResult] = {}
-        pending: dict[Trial.ID, SearchSpace] = {}
-        for trial_id, trial in trials.items():
-            if trial.report is not None:
-                completed[trial_id] = ConfigResult(
-                    id=trial_id,
-                    config=self.pipeline_space.from_dict(trial.config),
-                    result=trial.report,
-                    # TODO: Better if we could just pass around this metadata
-                    # object instead of converting to a dict each time.
-                    metadata=asdict(trial.metadata),
-                )
-            elif trial.state in (
-                Trial.State.PENDING,
-                Trial.State.SUBMITTED,
-                Trial.State.EVALUATING,
-            ):
-                pending[trial_id] = self.pipeline_space.from_dict(trial.config)
-
+        completed: dict[str, ConfigResult] = {
+            trial_id: trial.into_config_result(self.pipeline_space.from_dict)
+            for trial_id, trial in trials.items()
+            if trial.report is not None
+        }
+        pending: dict[str, SearchSpace] = {
+            trial_id: self.pipeline_space.from_dict(trial.config)
+            for trial_id, trial in trials.items()
+            if trial.report is None
+        }
         self.load_optimization_state(
             previous_results=completed,
             pending_evaluations=pending,

@@ -97,7 +97,6 @@ src = ["neps"]
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
-    "neps/optimizers/**/*.py",
     "neps/search_spaces/architecture/**/*.py",
     "neps/search_spaces/yaml_search_space_utils.py",
     "neps/search_spaces/architecture",
