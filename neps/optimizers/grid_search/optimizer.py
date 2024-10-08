@@ -19,12 +19,12 @@ class GridSearch(BaseOptimizer):
         seed: int | None = None,
     ):
         super().__init__(pipeline_space=pipeline_space)
-        self.configs_list = self.pipeline_space.get_search_space_grid(
+        grid = self.pipeline_space.get_search_space_grid(
             size_per_numerical_hp=grid_step_size,
             include_endpoints=True,
         )
+        self.configs_list = [c.hp_values() for c in grid]
         self.seed = seed
-        random.Random(seed).shuffle(self.configs_list)
 
     def ask(
         self,
@@ -36,10 +36,9 @@ class GridSearch(BaseOptimizer):
         if _num_previous_configs > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")
 
-        config = self.configs_list[_num_previous_configs]
+        rng = random.Random(self.seed)
+        configs = rng.sample(self.configs_list, len(self.configs_list))
+
+        config = configs[_num_previous_configs]
         config_id = str(_num_previous_configs)
-        return SampledConfig(
-            config=config.hp_values(),
-            id=config_id,
-            previous_config_id=None,
-        )
+        return SampledConfig(config=config, id=config_id, previous_config_id=None)
