@@ -106,18 +106,6 @@ class AbstractTopology(Graph, metaclass=ABCMeta):  # noqa: D101
         return inputs
 
 
-class AbstractVariableTopology(AbstractTopology):  # noqa: D101
-    def __init__(  # noqa: D107
-        self, name: str | None = None, scope: str | None = None, **kwargs
-    ):
-        super().__init__(name, scope, **kwargs)
-
-    @staticmethod
-    @abstractmethod
-    def get_edge_list(**kwargs):  # noqa: D102
-        raise NotImplementedError
-
-
 class _SequentialNEdge(AbstractTopology):
     edge_list: list = []  # noqa: RUF012
 

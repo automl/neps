@@ -39,17 +39,6 @@ TRIAL_FILELOCK_TIMEOUT = get_env(
     default=120,
 )
 
-JOBQUEUE_FILELOCK_POLL = get_env(
-    "NEPS_JOBQUEUE_FILELOCK_POLL",
-    parse=float,
-    default=0.05,
-)
-JOBQUEUE_FILELOCK_TIMEOUT = get_env(
-    "NEPS_JOBQUEUE_FILELOCK_TIMEOUT",
-    parse=lambda e: None if is_nullable(e) else float(e),
-    default=120,
-)
-
 SEED_SNAPSHOT_FILELOCK_POLL = get_env(
     "NEPS_SEED_SNAPSHOT_FILELOCK_POLL",
     parse=float,

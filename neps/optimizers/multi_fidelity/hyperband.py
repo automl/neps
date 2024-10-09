@@ -93,11 +93,6 @@ class HyperbandBase(SuccessiveHalvingBase):
             self.full_rung_trace.extend([s] * len(self.sh_brackets[s].full_rung_trace))
         # book-keeping variables
         self.current_sh_bracket: int = 0
-        self.old_history_len = None
-
-    def _update_state_counter(self) -> None:
-        # TODO: get rid of this dependency
-        self._counter += 1
 
     def _update_sh_bracket_state(self) -> None:
         # `load_results()` for each of the SH bracket objects are not called as they are
@@ -155,7 +150,6 @@ class HyperbandBase(SuccessiveHalvingBase):
 
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(completed)
-        self.total_fevals = len(trials)
 
         # account for pending evaluations
         self._handle_pending_evaluations(pending)

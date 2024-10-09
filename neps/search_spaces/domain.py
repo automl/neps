@@ -5,7 +5,6 @@ Some properties include:
 * The lower and upper bounds of the domain.
 * Whether the domain is a log domain.
 * Whether the domain is float/int.
-* The midpoint of the domain.
 * Whether the domain is split into bins.
 
 With that, the primary method of a domain is to be able to
@@ -53,7 +52,6 @@ from torch import Tensor
 
 Number = int | float
 V = TypeVar("V", int, float)
-V2 = TypeVar("V2", int, float)
 
 
 @dataclass(frozen=True)
@@ -100,8 +98,6 @@ class Domain(Generic[V]):
 
     is_unit_float: bool = field(init=False, repr=False)
     is_int: bool = field(init=False, repr=False)
-    is_log: bool = field(init=False, repr=False)
-    midpoint: V = field(init=False, repr=False)
     length: V = field(init=False, repr=False)
     cardinality: int | None = field(init=False, repr=False)
     bounds: tuple[V, V] = field(init=False, repr=False)
@@ -111,7 +107,6 @@ class Domain(Generic[V]):
         assert isinstance(self.lower, type(self.upper))
         is_int = isinstance(self.lower, int)
         object.__setattr__(self, "is_int", is_int)
-        object.__setattr__(self, "is_log", self.log_bounds is not None)
         object.__setattr__(
             self,
             "is_unit_float",
@@ -140,7 +135,6 @@ class Domain(Generic[V]):
         if is_int:
             mid = int(round(mid))
 
-        object.__setattr__(self, "midpoint", mid)
         object.__setattr__(self, "bounds", (self.lower, self.upper))
 
     @classmethod
@@ -414,17 +408,6 @@ class Domain(Generic[V]):
             Value cast to this domain.
         """
         return self.cast(torch.tensor(x), frm=frm).item()
-
-    def from_unit_one(self, x: float) -> float | int:
-        """Transform a single value from the unit interval [0, 1] to this domain.
-
-        Args:
-            x: A value in the unit interval [0, 1] to convert.
-
-        Returns:
-            Value lifted into this domain.
-        """
-        return self.from_unit(torch.tensor(x)).item()
 
     def to_unit_one(self, x: float | int) -> float:
         """Transform a single value from this domain to the unit interval [0, 1].

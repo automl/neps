@@ -375,13 +375,3 @@ def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
         df_run_data,
     )
     return csv_config_data, csv_rundata
-
-
-# TODO(eddiebergman): This function name is misleading as it doesn't get anything.
-def get_run_summary_csv(root_directory: str | Path) -> None:
-    """Create CSV files summarizing the run data.
-
-    Args:
-        root_directory: The root directory of the NePS run.
-    """
-    post_run_csv(root_directory=root_directory)

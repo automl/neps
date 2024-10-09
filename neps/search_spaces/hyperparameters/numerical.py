@@ -34,8 +34,6 @@ from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 
 if TYPE_CHECKING:
     from neps.search_spaces.domain import Domain
-    from neps.search_spaces.hyperparameters.float import FloatParameter
-    from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.utils.types import TruncNorm
 
 T = TypeVar("T", int, float)
@@ -64,7 +62,6 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         lower: The lower bound of the numerical hyperparameter.
         upper: The upper bound of the numerical hyperparameter.
         log: Whether the hyperparameter is in log space.
-        log_value: The log value of the hyperparameter, if `log=True`.
         log_bounds: The log bounds of the hyperparameter, if `log=True`.
         log_default: The log default value of the hyperparameter, if `log=True`
             and a `default` is set.
@@ -138,7 +135,6 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         self.upper: T = upper
         self.log: bool = log
         self.domain: Domain[T] = domain
-        self.log_value: float | None = None
         self.log_bounds: tuple[float, float] | None = None
         self.log_default: float | None = None
         if self.log:
@@ -250,36 +246,6 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             default=default,
             confidence_score=self.default_confidence_score,
         )
-
-    def to_integer(self) -> IntegerParameter:
-        """Convert the numerical hyperparameter to an integer hyperparameter."""
-        from neps.search_spaces.hyperparameters.integer import IntegerParameter
-
-        as_int = lambda x: int(np.rint(x))
-
-        int_hp = IntegerParameter(
-            lower=as_int(self.lower),
-            upper=as_int(self.upper),
-            is_fidelity=self.is_fidelity,
-            default=as_int(self.default) if self.default is not None else None,
-            default_confidence=self.default_confidence_choice,  # type: ignore
-        )
-        int_hp.set_value(as_int(self.value) if self.value is not None else None)
-        return int_hp
-
-    def to_float(self) -> FloatParameter:
-        """Convert the numerical hyperparameter to a float hyperparameter."""
-        from neps.search_spaces.hyperparameters.integer import FloatParameter
-
-        float_hp = FloatParameter(
-            lower=float(self.lower),
-            upper=float(self.upper),
-            is_fidelity=self.is_fidelity,
-            default=float(self.default) if self.default is not None else None,
-            default_confidence=self.default_confidence_choice,  # type: ignore
-        )
-        float_hp.set_value(float(self.value) if self.value is not None else None)
-        return float_hp
 
     def grid(self, *, size: int, include_endpoint: bool = True) -> list[T]:
         """Generate a grid of values for the numerical hyperparameter.

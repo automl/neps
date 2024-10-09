@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 from typing_extensions import Protocol, override
 
 import torch
@@ -23,7 +23,6 @@ from neps.search_spaces.hyperparameters.integer import IntegerParameter
 if TYPE_CHECKING:
     from neps.search_spaces.parameter import Parameter
 
-WLInput: TypeAlias = tuple[dict, dict | None, dict | None]
 V = TypeVar("V", int, float)
 
 

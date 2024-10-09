@@ -9,7 +9,7 @@ See the class doc description of [`Prior`][neps.priors.Prior] for more details.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 from typing_extensions import override
@@ -21,7 +21,7 @@ from neps.sampling.distributions import (
     TorchDistributionWithDomain,
     TruncatedNormal,
 )
-from neps.sampling.samplers import Sampler, WeightedSampler
+from neps.sampling.samplers import Sampler
 from neps.search_spaces import CategoricalParameter
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 
@@ -252,18 +252,6 @@ class Prior(Sampler, Protocol):
 
         return CenteredPrior(distributions=distributions)
 
-    @classmethod
-    def weighted(cls, priors: Iterable[Prior], weights: torch.Tensor) -> WeightedPrior:
-        """Create a weighted prior for a given list of priors.
-
-        Args:
-            priors: The list of priors to sample from.
-            weights: The weights for each prior. Will be normalized to sum to 1.
-                Please specify the device of your weights if required.
-        """
-        priors = list(priors)
-        return WeightedPrior(priors=list(priors), weights=weights)
-
 
 @dataclass
 class CenteredPrior(Prior):
@@ -422,68 +410,3 @@ class UniformPrior(Prior):
             samples = torch.rand(_n, device=device)
 
         return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to, dtype=dtype)
-
-
-@dataclass
-class WeightedPrior(Prior):
-    """A prior consisting of multiple priors with weights."""
-
-    priors: Sequence[Prior]
-    """The list of priors to sample from."""
-
-    weights: torch.Tensor
-    """The weights for each prior."""
-
-    _weighted_sampler: WeightedSampler = field(init=False, repr=False)
-
-    def __post_init__(self) -> None:
-        from neps.sampling.samplers import WeightedSampler
-
-        self._weighted_sampler = WeightedSampler(
-            samplers=self.priors, weights=self.weights
-        )
-
-    @property
-    def sampler_probabilities(self) -> torch.Tensor:
-        """The probabilities for each sampler. Normalized weights."""
-        return self._weighted_sampler.sampler_probabilities
-
-    @property
-    @override
-    def ncols(self) -> int:
-        return self._weighted_sampler.ncols
-
-    @override
-    def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
-        # OPTIM: Avoid an initial allocation by using the output of the first
-        # distribution to store the weighted probabilities
-        itr = zip(self.sampler_probabilities, self.priors, strict=False)
-        first_prob, first_prior = next(itr)
-
-        if first_prob == 0.0:
-            weighted_probs = first_prob * first_prior.log_prob(x, frm=frm)
-        else:
-            weighted_probs = torch.zeros(
-                x.shape[:-1], dtype=torch.float64, device=x.device
-            )
-
-        for sampler_prob, prior in itr:
-            if sampler_prob == 0.0:
-                continue
-            weighted_probs = weighted_probs + sampler_prob * prior.log_prob(x, frm=frm)
-
-        return weighted_probs
-
-    @override
-    def sample(
-        self,
-        n: int | torch.Size,
-        *,
-        to: Domain | list[Domain],
-        seed: torch.Generator | None = None,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ) -> torch.Tensor:
-        return self._weighted_sampler.sample(
-            n, to=to, seed=seed, device=device, dtype=dtype
-        )

@@ -131,7 +131,6 @@ class IntegerParameter(NumericalParameter[int]):
         if value is None:
             self._value = None
             self.normalized_value = None
-            self.log_value = None
             self.float_hp.set_value(None)
             return
 
@@ -148,8 +147,6 @@ class IntegerParameter(NumericalParameter[int]):
         self.float_hp.set_value(value)
         self._value = value
         self.normalized_value = self.value_to_normalized(value)
-        if self.log:
-            self.log_value = np.log(value)
 
     @override
     def sample_value(self, *, user_priors: bool = False) -> int:

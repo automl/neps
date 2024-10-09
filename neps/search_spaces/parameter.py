@@ -176,10 +176,6 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         std: float = 0.2,
     ) -> list[Self]: ...
 
-    def _get_single_neighbor(self, *, std: float = 0.2) -> Self:
-        """Override this if a faster implementation is possible."""
-        return self._get_non_unique_neighbors(num_neighbours=1, std=std)[0]
-
     @classmethod
     @abstractmethod
     def serialize_value(cls, value: ValueT) -> SerializedT:

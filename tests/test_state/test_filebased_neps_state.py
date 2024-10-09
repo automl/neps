@@ -54,9 +54,6 @@ def test_create_with_new_filebased_neps_state(
     with pytest.raises(TrialNotFoundError):
         assert neps_state.get_trial_by_id("1")
 
-    with pytest.raises(TrialNotFoundError):
-        assert neps_state.get_trials_by_ids(["1", "2"])
-
 
 def test_create_or_load_with_load_filebased_neps_state(
     tmp_path: Path,

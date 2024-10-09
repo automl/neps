@@ -1,33 +1,11 @@
-# type: ignore
 from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
-
-
-def continuous_to_tabular(
-    config: SearchSpace, categorical_space: SearchSpace
-) -> SearchSpace:
-    """Convert the continuous parameters in the config into categorical ones based on
-    the categorical_space provided.
-    """
-    result = config.clone()
-    for hp_name, _ in config.items():
-        if hp_name in categorical_space:
-            choices = np.array(categorical_space[hp_name].choices)
-            diffs = choices - config[hp_name].value
-            # NOTE: in case of a tie the first value in the choices array will be returned
-            closest = choices[np.abs(diffs).argmin()]
-            result[hp_name].set_value(closest)
-
-    return result
 
 
 class MFObservedData:
@@ -241,10 +219,6 @@ class MFObservedData:
             for _id in self.df.index.get_level_values("config_id").sort_values()
         }
         return pd.Series(max_z_observed)
-
-    @property
-    def token_ids(self) -> np.ndarray:
-        return self.df.index.values
 
 
 if __name__ == "__main__":

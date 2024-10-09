@@ -67,8 +67,3 @@ def deserialize(path: Path | str) -> dict[str, Any]:
         )
 
     return data
-
-
-def empty_file(file_path: Path) -> bool:
-    """Check if a file does not exist, or if it does, if it is empty."""
-    return not file_path.exists() or file_path.stat().st_size <= 0

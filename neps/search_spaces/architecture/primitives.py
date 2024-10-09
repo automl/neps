@@ -14,15 +14,6 @@ class _AbstractPrimitive(nn.Module, metaclass=ABCMeta):
     which requires naslib to detect and properly process them.
     """
 
-    def __init__(self, kwargs):
-        super().__init__()
-
-        self.init_params = {
-            k: v
-            for k, v in kwargs.items()
-            if k != "self" and not k.startswith("_") and k != "kwargs"
-        }
-
     @abstractmethod
     def forward(self, x):
         """The forward processing of the operation."""

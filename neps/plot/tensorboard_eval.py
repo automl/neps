@@ -74,10 +74,6 @@ class tblogger:  # noqa: N801
 
     disable_logging: ClassVar[bool] = False
 
-    logger_bool: ClassVar[bool] = False
-    """logger_bool is true only if tblogger.log is used by the user, this
-    allows to always capturing the configuration data."""
-
     loss: ClassVar[float | None] = None
     current_epoch: ClassVar[int | None] = None
 
@@ -503,10 +499,7 @@ class tblogger:  # noqa: N801
             extra_data: Additional experiment data for logging.
         """
         if tblogger.disable_logging:
-            tblogger.logger_bool = False
             return
-
-        tblogger.logger_bool = True
 
         tblogger.current_epoch = current_epoch
         tblogger.loss = loss

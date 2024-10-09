@@ -52,7 +52,3 @@ class WorkerRaiseError(NePSError):
 
     Includes additional information on how to recover
     """
-
-
-class SurrogateFailedToFitError(NePSError):
-    """Raised when a surrogate model fails to fit."""

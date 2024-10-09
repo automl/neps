@@ -3,101 +3,17 @@ from __future__ import annotations
 import copy
 import inspect
 import logging
-import os
 import random
-import sys
 import types
-from collections import Counter
 from pathlib import Path
-from typing import (
-    Callable,
-    Counter as CounterType,
-)
+from more_itertools import collapse
 
 import networkx as nx
 import torch
 from networkx.algorithms.dag import lexicographical_topological_sort
 from torch import nn
 
-from neps.utils.types import AttrDict
-
 from .primitives import AbstractPrimitive, Identity
-
-
-def log_formats(x):
-    if isinstance(x, torch.Tensor):
-        return x.shape
-    if isinstance(x, dict):
-        return {k: log_formats(v) for k, v in x.items()}
-    else:
-        return x
-
-
-def _find_caller():
-    """Returns:
-    str: module name of the caller
-    tuple: a hashable key to be used to identify different callers.
-    """
-    frame = sys._getframe(2)
-    while frame:
-        code = frame.f_code
-        if os.path.join("utils", "logger.") not in code.co_filename:
-            mod_name = frame.f_globals["__name__"]
-            if mod_name == "__main__":
-                mod_name = "detectron2"
-            return mod_name, (code.co_filename, frame.f_lineno, code.co_name)
-        frame = frame.f_back
-    return None
-
-
-_LOG_COUNTER: CounterType = Counter()
-_LOG_TIMER: dict = {}
-
-
-def log_first_n(lvl, msg, n=1, *, name=None, key="caller"):
-    """Log only for the first n times.
-
-    Args:
-        lvl (int): the logging level
-        msg (str):
-        n (int):
-        name (str): name of the logger to use. Will use the caller's module by default.
-        key (str or tuple[str]): the string(s) can be one of "caller" or
-            "message", which defines how to identify duplicated logs.
-            For example, if called with `n=1, key="caller"`, this function
-            will only log the first call from the same caller, regardless of
-            the message content.
-            If called with `n=1, key="message"`, this function will log the
-            same content only once, even if they are called from different places.
-            If called with `n=1, key=("caller", "message")`, this function
-            will not log only if the same caller has logged the same message before.
-    """
-    if isinstance(key, str):
-        key = (key,)
-    assert len(key) > 0
-
-    caller_module, caller_key = _find_caller()
-    hash_key = ()
-    if "caller" in key:
-        hash_key = hash_key + caller_key
-    if "message" in key:
-        hash_key = (*hash_key, msg)
-
-    _LOG_COUNTER[hash_key] += 1
-    if _LOG_COUNTER[hash_key] <= n:
-        logging.getLogger(name or caller_module).log(lvl, msg)
-
-
-def iter_flatten(iterable):
-    """Flatten a potentially deeply nested python list."""
-    # taken from https://rightfootin.blogspot.com/2006/09/more-on-python-flatten.html
-    it = iter(iterable)
-    for e in it:
-        if isinstance(e, (list, tuple)):
-            yield from iter_flatten(e)
-        else:
-            yield e
-
 
 logger = logging.getLogger(__name__)
 
@@ -237,16 +153,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
     def __repr__(self):
         return f"Graph {self.name}-{self._id:.07f}, scope {self.scope}, {self.number_of_nodes()} nodes"
 
-    def modules_str(self):
-        """Once the graph has been parsed, prints the modules as they appear in pytorch."""
-        if self.is_parsed:
-            result = ""
-            for g in [*self._get_child_graphs(single_instances=True), self]:
-                result += f"Graph {g.name}:\n {torch.nn.Module.__repr__(g)}\n==========\n"
-            return result
-        else:
-            return self.__repr__()
-
     def set_scope(self, scope: str, recursively=True):
         """Sets the scope of this instance of the graph.
 
@@ -308,49 +214,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
         G.scope = self.scope
         G.name = self.name
         return G
-
-    def set_input(self, node_idxs: list):  # noqa: D417
-        """Route the input from specific parent edges to the input nodes of
-        this subgraph. Inputs are assigned in lexicographical order.
-
-        Example:
-        - Parent node (i.e. node where `self` is located on) has two
-          incoming edges from nodes 3 and 5.
-        - `self` has two input nodes 1 and 2 (i.e. nodes without
-          an incoming edge)
-        - `node_idxs = [5, 3]`
-        Then input of node 5 is routed to node 1 and input of node 3
-        is routed to node 2.
-
-        Similarly, if `node_idxs = [5, 5]` then input of node 5 is routed
-        to both node 1 and 2. Warning: In this case the output of another
-        incoming edge is ignored!
-
-        Should be used in a builder-like pattern: `'subgraph'=Graph().set_input([5, 3])`
-
-        Args:
-            node_idx (list): The index of the nodes where the data is coming from.
-
-        Returns:
-            Graph: self with input node indices set.
-
-        """
-        num_innodes = sum(self.in_degree(n) == 0 for n in self.nodes)
-        assert num_innodes == len(node_idxs), (
-            f"Expecting node index for every input node. Excpected {num_innodes}, "
-            f"got {len(node_idxs)}"
-        )
-        self.input_node_idxs = node_idxs  # type: ignore[assignment]
-        return self
-
-    def num_input_nodes(self) -> int:
-        """The number of input nodes, i.e. the nodes without an
-        incoming edge.
-
-        Returns:
-            int: Number of input nodes.
-        """
-        return sum(self.in_degree(n) == 0 for n in self.nodes)
 
     def to_pytorch(self, **kwargs) -> nn.Module:
         return self._to_pytorch(**kwargs)
@@ -466,7 +329,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
         model.set_module_list(submodule_list)
 
         if write_out:
-            tmp_path = Path(os.path.dirname(os.path.realpath(__file__))) / "model.py"
+            tmp_path = Path(__file__).parent.resolve() / "model.py"
             with open(tmp_path, "w", encoding="utf-8") as outfile:
                 outfile.write(model_file)
 
@@ -596,7 +459,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
             else:
                 raise ValueError(f"Unknown format of op: {edge_data.op}")
 
-        graphs = list(iter_flatten(graphs))
+        graphs = list(collapse(graphs))
 
         if single_instances:
             single: list = []
@@ -641,159 +504,6 @@ class Graph(torch.nn.Module, nx.DiGraph):
                     else:
                         raise ValueError(f"Unkown format of op: {op}")
 
-    @staticmethod
-    def _verify_update_function(update_func: Callable, private_edge_data: bool):
-        """Verify that the update function actually modifies only
-        shared/private edge data attributes based on setting of
-        `private_edge_data`.
-
-        Args:
-            update_func (callable): callable that expects one argument
-                named `current_edge_data`.
-            private_edge_data (bool): Whether the update function is applied
-                to all graph instances including copies or just to one instance
-                per graph
-        """
-        test = EdgeData()
-        test.set("shared", True, shared=True)
-        test.set("op", [True])
-
-        try:
-            result = test.clone()
-            update_func(current_edge_data=result)
-        except Exception:
-            log_first_n(
-                logging.WARN,
-                "Update function could not be veryfied. Be cautious with the "
-                "setting of `private_edge_data` in `update_edges()`",
-                n=5,
-            )
-            return
-
-        assert isinstance(
-            result, EdgeData
-        ), "Update function does not return the edge data object."
-
-        if private_edge_data:
-            assert result._shared == test._shared, (
-                "The update function changes shared data although `private_edge_data` set to True. "
-                "This is not the indended use of `update_edges`. The update function should only modify "
-                "private edge data."
-            )
-        else:
-            assert result._private == test._private, (
-                "The update function changes private data although `private_edge_data` set to False. "
-                "This is not the indended use of `update_edges`. The update function should only modify "
-                "shared edge data."
-            )
-
-    def update_edges(
-        self, update_func: Callable, scope="all", private_edge_data: bool = False
-    ):
-        """This updates the edge data of this graph and all child graphs.
-        This is the preferred way to manipulate the edges after the definition
-        of the graph, e.g. by optimizers who want to insert their own op.
-        `update_func(current_edge_data)`. This way optimizers
-        can initialize and store necessary information at edges.
-
-        Note that edges marked as 'final' will not be updated here.
-
-        Args:
-            update_func (callable): Function which accepts one argument called `current_edge_data`.
-                and returns the modified EdgeData object.
-            scope (str or list(str)): Can be "all" or list of scopes to be updated.
-            private_edge_data (bool): If set to true, this means update_func will be
-                applied to all edges. THIS IS NOT RECOMMENDED FOR SHARED
-                ATTRIBUTES. Shared attributes should be set only once, we
-                take care it is syncronized across all copies of this graph.
-
-                The only usecase for setting it to true is when actually changing
-                `op` during the initialization of the optimizer (e.g. replacing it
-                with MixedOp or SampleOp)
-        """
-        Graph._verify_update_function(update_func, private_edge_data)
-        assert scope is not None
-        for graph in [
-            *self._get_child_graphs(single_instances=not private_edge_data),
-            self,
-        ]:
-            if (
-                scope in ("all", graph.scope)
-                or isinstance(scope, list)
-                and graph.scope in scope
-            ):
-                logger.debug(f"Updating edges of graph {graph.name}")
-                for u, v, edge_data in graph.edges.data():
-                    if not edge_data.is_final():
-                        edge = AttrDict(head=u, tail=v, data=edge_data)
-                        update_func(edge=edge)
-        self._delete_flagged_edges()
-
-    def update_nodes(
-        self, update_func: Callable, scope="all", single_instances: bool = True
-    ):
-        """Update the nodes of the graph and its incoming and outgoing edges by iterating over the
-        graph and applying `update_func` to each of it. This is the
-        preferred way to change the search space once it has been defined.
-
-        Note that edges marked as 'final' will not be updated here.
-
-        Args:
-            update_func (callable): Function that accepts three incoming parameters named
-                `node, in_edges, out_edges`.
-                    - `node` is a tuple (int, dict) containing the
-                      index and the attributes of the current node.
-                    - `in_edges` is a list of tuples with the index of
-                      the tail of the edge and its EdgeData.
-                    - `out_edges is a list of tuples with the index of
-                      the head of the edge and its EdgeData.
-            scope (str or list(str)): Can be "all" or list of scopes to be updated. Only graphs
-                and child graphs with the specified scope are considered
-            single_instance (bool): If set to false, this means update_func will be
-                applied to nodes of all copies of a graphs. THIS IS NOT RECOMMENDED FOR SHARED
-                ATTRIBUTES, i.e. when manipulating the shared data of incoming or outgoing edges.
-                Shared attributes should be set only once, we take care it is syncronized across
-                all copies of this graph.
-
-                The only usecase for setting it to true is when actually changing
-                `op` during the initialization of the optimizer (e.g. replacing it
-                with MixedOp or SampleOp)
-        """
-        assert scope is not None
-        for graph in [*self._get_child_graphs(single_instances), self]:
-            if (
-                scope in ("all", graph.scope)
-                or isinstance(scope, list)
-                and graph.scope in scope
-            ):
-                logger.debug(f"Updating nodes of graph {graph.name}")
-                for node_idx in lexicographical_topological_sort(graph):
-                    node = (node_idx, graph.nodes[node_idx])
-                    in_edges = list(graph.in_edges(node_idx, data=True))  # (v, u, data)
-                    in_edges = [
-                        (v, data) for v, u, data in in_edges if not data.is_final()
-                    ]  # u is same for all
-                    out_edges = list(graph.out_edges(node_idx, data=True))  # (v, u, data)
-                    out_edges = [
-                        (u, data) for v, u, data in out_edges if not data.is_final()
-                    ]  # v is same for all
-                    update_func(node=node, in_edges=in_edges, out_edges=out_edges)
-        self._delete_flagged_edges()
-
-    def _delete_flagged_edges(self):
-        """Delete edges which associated EdgeData is flagged as deleted."""
-        for graph in [
-            *self._get_child_graphs(single_instances=False),
-            self,
-        ]:  # we operate on shallow copies
-            to_remove = []
-            for u, v, edge_data in graph.edges.data():
-                if edge_data.is_deleted():
-                    to_remove.append((u, v))
-            if to_remove:
-                # logger.info("Removing edges {} from graph {}".format(to_remove, graph))
-                graph.remove_edges_from(to_remove)
-
     def clone(self):
         """Deep copy of the current graph.
 
@@ -835,19 +545,6 @@ class EdgeData:
         self.set("op", Identity(), shared=False)
         for k, v in data.items():
             self.set(k, v, shared=False)
-
-    def has(self, key: str):
-        """Checks whether `key` exists.
-
-        Args:
-            key (str): The key to check.
-
-        Returns:
-            bool: True if key exists, False otherwise.
-
-        """
-        assert not key.startswith("_"), "Access to private keys not allowed!"
-        return key in self._private or key in self._shared
 
     def __getitem__(self, key: str):
         assert not str(key).startswith("_"), "Access to private keys not allowed!"
@@ -973,22 +670,6 @@ class EdgeData:
             EdgeData: New independent instance.
         """
         return copy.deepcopy(self)
-
-    def delete(self):
-        """Flag to delete the edge where this instance is attached to."""
-        self._shared["_deleted"] = True
-
-    def is_deleted(self):
-        """Returns true if the edge is flagged to be deleted."""
-        return self._shared["_deleted"]
-
-    def finalize(self):
-        """Sets this edge as final. This means it cannot be changed
-        anymore and will also not appear in the update functions
-        of the graph.
-        """
-        self._private["_final"] = True
-        return self
 
     def is_final(self):
         """Returns:

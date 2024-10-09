@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 
@@ -16,21 +16,9 @@ class BudgetInfo:
     max_evaluations: int | None = None
     used_evaluations: int = 0
 
-    @property
-    def remaining_cost_budget(self) -> float | None:
-        """The remaining budget."""
-        if self.max_cost_budget is None:
-            return None
-        return self.max_cost_budget - self.used_cost_budget
-
     def clone(self) -> BudgetInfo:
         """Create a copy of the budget info."""
-        return BudgetInfo(
-            max_cost_budget=self.max_cost_budget,
-            used_cost_budget=self.used_cost_budget,
-            max_evaluations=self.max_evaluations,
-            used_evaluations=self.used_evaluations,
-        )
+        return replace(self)
 
 
 @dataclass

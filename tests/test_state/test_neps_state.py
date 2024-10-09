@@ -23,7 +23,6 @@ from pytest_cases import fixture, parametrize, parametrize_with_cases, case
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.optimizers import SearcherMapping
-from neps.utils.common import MissingDependencyError
 
 
 @case
@@ -143,10 +142,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
 
     optimizer_cls = SearcherMapping[key]
 
-    try:
-        return optimizer_cls(**kwargs), key
-    except MissingDependencyError as e:
-        pytest.xfail(f"{key} requires {e.dep} to run.")
+    return optimizer_cls(**kwargs), key
 
 
 @parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])

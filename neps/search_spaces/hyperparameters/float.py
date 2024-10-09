@@ -116,7 +116,6 @@ class FloatParameter(NumericalParameter[float]):
         if value is None:
             self._value = None
             self.normalized_value = None
-            self.log_value = None
             return
 
         if not self.lower <= value <= self.upper:
@@ -130,8 +129,6 @@ class FloatParameter(NumericalParameter[float]):
         value = float(value)
         self._value = value
         self.normalized_value = self.value_to_normalized(value)
-        if self.log:
-            self.log_value = np.log(value)
 
     @override
     def sample_value(self, *, user_priors: bool = False) -> float:

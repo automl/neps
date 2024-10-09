@@ -18,7 +18,6 @@ ERROR: TypeAlias = Literal["error"]
 Number: TypeAlias = int | float
 ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
-Metadata: TypeAlias = dict[str, Any]
 ResultDict: TypeAlias = Mapping[str, Any]
 
 # NOTE(eddiebergman): Getting types for scipy distributions sucks
@@ -34,7 +33,6 @@ class _NotSet:
 NotSet = _NotSet()
 
 f64 = np.float64
-i64 = np.int64
 
 
 # TODO(eddiebergman): Ideally, use `Trial` objects which can carry a lot more
@@ -74,14 +72,3 @@ class _ConfigResultForStats:
         if isinstance(self.result, dict):
             return float(self.result["loss"])
         return "error"
-
-
-# NOTE: Please try to avoid using this class and prefer a dict if its dynamic
-# or make a dataclass if the fields are known and are static
-class AttrDict(dict):
-    """Dictionary that allows access to keys as attributes."""
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Initialize like a dict."""
-        super().__init__(*args, **kwargs)
-        self.__dict__ = self

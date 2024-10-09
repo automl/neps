@@ -36,6 +36,10 @@ from neps.env import (
     ENV_VARS_USED,
     GLOBAL_ERR_FILELOCK_POLL,
     GLOBAL_ERR_FILELOCK_TIMEOUT,
+    OPTIMIZER_INFO_FILELOCK_POLL,
+    OPTIMIZER_INFO_FILELOCK_TIMEOUT,
+    OPTIMIZER_STATE_FILELOCK_POLL,
+    OPTIMIZER_STATE_FILELOCK_TIMEOUT,
     SEED_SNAPSHOT_FILELOCK_POLL,
     SEED_SNAPSHOT_FILELOCK_TIMEOUT,
     TRIAL_FILELOCK_POLL,
@@ -140,25 +144,6 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         )
         self._cache[trial_id] = trial
         return trial
-
-    @override
-    def get_by_ids(self, trial_ids: Iterable[str]) -> dict[str, Synced[Trial, Path]]:
-        """Get multiple Trials by their IDs.
-
-        !!! note
-            See [`get_by_id()`][neps.state.filebased.TrialRepoInDirectory.get_by_id]
-            for notes on the trials syncing.
-
-        Args:
-            trial_ids: The IDs of the trials to get.
-
-        Returns:
-            A dictionary of the trials with the given IDs.
-
-        Raises:
-            TrialRepo.TrialNotFoundError: If a trial is not found.
-        """
-        return {trial_id: self.get_by_id(trial_id) for trial_id in trial_ids}
 
     @override
     def put_new(
@@ -645,8 +630,8 @@ def create_or_load_filebased_neps_state(
             versioner=FileVersioner(version_file=optimizer_info_dir / ".version"),
             locker=FileLocker(
                 lock_path=optimizer_info_dir / ".lock",
-                poll=0.01,
-                timeout=None,
+                poll=OPTIMIZER_INFO_FILELOCK_POLL,
+                timeout=OPTIMIZER_INFO_FILELOCK_TIMEOUT,
             ),
             reader_writer=ReaderWriterOptimizerInfo(),
         ),
@@ -679,8 +664,8 @@ def create_or_load_filebased_neps_state(
             versioner=FileVersioner(version_file=optimizer_state_dir / ".version"),
             locker=FileLocker(
                 lock_path=optimizer_state_dir / ".lock",
-                poll=GLOBAL_ERR_FILELOCK_POLL,
-                timeout=GLOBAL_ERR_FILELOCK_TIMEOUT,
+                poll=OPTIMIZER_STATE_FILELOCK_POLL,
+                timeout=OPTIMIZER_STATE_FILELOCK_TIMEOUT,
             ),
         ),
     )
