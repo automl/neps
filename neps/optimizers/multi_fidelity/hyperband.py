@@ -108,7 +108,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         # `clean_active_brackets` takes care of setting rung information and promotion
         # for the current SH bracket in HB
         # TODO: can we avoid copying full observation history
-        bracket = self.sh_brackets[self.current_sh_bracket]  # type: ignore
+        bracket = self.sh_brackets[self.current_sh_bracket]
         bracket.observed_configs = self.observed_configs.copy()
 
     def clear_old_brackets(self) -> None:
@@ -440,7 +440,7 @@ class AsynchronousHyperband(HyperbandBase):
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-        return np.random.choice(range(self.max_rung + 1), p=bracket_probs)
+        return int(np.random.choice(range(self.max_rung + 1), p=bracket_probs))
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -453,7 +453,7 @@ class AsynchronousHyperband(HyperbandBase):
         config, config_id, previous_config_id = self.sh_brackets[
             bracket_to_run
         ].get_config_and_ids()
-        return config, config_id, previous_config_id  # type: ignore
+        return config, config_id, previous_config_id
 
 
 class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
@@ -565,7 +565,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         else:
             prior = None
 
-        self.model_policy = model_policy(pipeline_space, prior=prior)
+        self.model_policy = model_policy(pipeline_space=pipeline_space, prior=prior)
 
         for _, sh in self.sh_brackets.items():
             sh.model_policy = self.model_policy  # type: ignore

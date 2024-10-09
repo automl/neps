@@ -11,12 +11,12 @@ from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
 from neps.optimizers.multi_fidelity.successive_halving import SuccessiveHalvingBase
 from neps.optimizers.multi_fidelity_prior.utils import (
-    calc_total_resources_spent,
     compute_config_dist,
     compute_scores,
     get_prior_weight_for_decay,
 )
 from neps.sampling.priors import Prior
+from neps.search_spaces.search_space import SearchSpace
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_samplers import (
         AcquisitionSampler,
     )
-    from neps.search_spaces.search_space import SearchSpace
     from neps.utils.types import RawConfig
 
 logger = logging.getLogger(__name__)
@@ -91,6 +90,7 @@ class PriorBandBase:
             _perfs = self.observed_configs.loc[idxs].perf.values
             inc_idx = np.nanargmin([np.nan if t is None else t for t in _perfs])
             inc = self.observed_configs.loc[idxs].iloc[inc_idx].config
+            assert isinstance(inc, SearchSpace)
         else:
             # THIS block should not ever execute, but for runtime anomalies, if no
             # incumbent can be extracted, the prior is treated as the incumbent
@@ -134,9 +134,10 @@ class PriorBandBase:
         activate_inc = False
 
         # calculate total resource cost required for the first SH bracket in HB
-        if hasattr(self, "sh_brackets") and len(self.sh_brackets) > 1:  # type: ignore
+        sh_brackets = getattr(self, "sh_brackets", None)
+        if sh_brackets is not None and len(sh_brackets) > 1:
             # for HB or AsyncHB which invokes multiple SH brackets
-            bracket = self.sh_brackets[self.min_rung]  # type: ignore
+            bracket = sh_brackets[self.min_rung]
         else:
             # for SH or ASHA which do not invoke multiple SH brackets
             bracket = self
@@ -154,7 +155,9 @@ class PriorBandBase:
             resources += bracket.config_map[rung] * continuation_resources
 
         # find resources spent so far for all finished evaluations
-        resources_used = calc_total_resources_spent(self.observed_configs, self.rung_map)
+        valid_perf_mask = self.observed_configs["perf"].notna()
+        rungs = self.observed_configs.loc[valid_perf_mask, "rung"]
+        resources_used = sum(self.rung_map[r] for r in rungs)
 
         if resources_used >= resources and len(
             self.rung_histories[self.max_rung]["config"]
@@ -217,7 +220,9 @@ class PriorBandBase:
         if self.inc_style == "constant":
             return self._prior_to_incumbent_ratio_constant()
         if self.inc_style == "decay":
-            resources = calc_total_resources_spent(self.observed_configs, self.rung_map)
+            valid_perf_mask = self.observed_configs["perf"].notna()
+            rungs = self.observed_configs.loc[valid_perf_mask, "rung"]
+            resources = sum(self.rung_map[r] for r in rungs)
             return self._prior_to_incumbent_ratio_decay(
                 resources, self.eta, self.min_budget, self.max_budget
             )
@@ -380,7 +385,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
             self.init_size = self.initial_design_size
         parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
         self.model_policy = model_policy(
-            pipeline_space,
+            pipeline_space=pipeline_space,
             prior=Prior.from_parameters(parameters.values()),
         )
 

@@ -4,10 +4,12 @@ import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Literal
 
-from neps.optimizers.multi_fidelity_prior.utils import (
-    calc_total_resources_spent,
-    update_fidelity,
-)
+
+def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
+    assert config.fidelity is not None
+    config.fidelity.set_value(fidelity)
+    return config
+
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -51,9 +53,9 @@ class MFBOBase:
 
         if self.pipeline_space.has_prior:
             # PriorBand + BO
-            total_resources = calc_total_resources_spent(
-                self.observed_configs, self.rung_map
-            )
+            valid_perf_mask = self.observed_configs["perf"].notna()
+            rungs = self.observed_configs.loc[valid_perf_mask, "rung"]
+            total_resources = sum(self.rung_map[r] for r in rungs)
             decay_t = total_resources / self.max_budget
         else:
             # Mobster
@@ -150,8 +152,10 @@ class MFBOBase:
             # builds a model across all fidelities with the fidelity as a dimension
             # in this case, calculate the total number of function evaluations spent
             # and in vanilla BO fashion use that to compare with the initital design size
-            resources = calc_total_resources_spent(self.observed_configs, self.rung_map)
-            resources /= self.max_budget
+            valid_perf_mask = self.observed_configs["perf"].notna()
+            rungs = self.observed_configs.loc[valid_perf_mask, "rung"]
+            total_resources = sum(self.rung_map[r] for r in rungs)
+            resources = total_resources / self.max_budget
             if resources < self.init_size:
                 return True
         else:

@@ -346,7 +346,7 @@ class tblogger:  # noqa: N801
                 # We do not interfere with any randomness from the pipeline
                 num_total_images = len(image)
                 indices = seed.choice(num_total_images, num_images, replace=False)
-                subset_images = image[indices]  # type: ignore
+                subset_images = image[indices]
 
             resized_images = torch.nn.functional.interpolate(
                 subset_images,

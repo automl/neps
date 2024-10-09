@@ -46,7 +46,7 @@ class Plotter3D:
             self.df = pd.read_csv(
                 self.data_path,
                 index_col=0,
-                float_precision="round_trip",  # type: ignore
+                float_precision="round_trip",
             )
 
             # Assigned at prep_df stage

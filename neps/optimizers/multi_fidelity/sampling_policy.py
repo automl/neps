@@ -1,4 +1,3 @@
-# mypy: disable-error-code = assignment
 from __future__ import annotations
 
 import logging
@@ -20,12 +19,6 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
 )
 from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
-from neps.optimizers.multi_fidelity_prior.utils import (
-    compute_config_dist,
-    custom_crossover,
-    local_mutation,
-    update_fidelity,
-)
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
@@ -40,6 +33,12 @@ DELTA_THRESHOLD = 1e-2  # 1%
 TOP_EI_SAMPLE_COUNT = 10
 
 logger = logging.getLogger(__name__)
+
+
+def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
+    assert config.fidelity is not None
+    config.fidelity.set_value(fidelity)
+    return config
 
 
 class SamplingPolicy(ABC):
@@ -135,6 +134,10 @@ class EnsemblePolicy(SamplingPolicy):
         """Samples a config from around the `incumbent` within radius as `distance`."""
         # TODO: how does tolerance affect optimization on landscapes of different scale
         sample_counter = 0
+        from neps.optimizers.multi_fidelity_prior.utils import (
+            compute_config_dist,
+        )
+
         while True:
             # sampling a config
             config = self.pipeline_space.sample(
@@ -167,6 +170,11 @@ class EnsemblePolicy(SamplingPolicy):
         Returns:
             SearchSpace: [description]
         """
+        from neps.optimizers.multi_fidelity_prior.utils import (
+            custom_crossover,
+            local_mutation,
+        )
+
         if weights is not None:
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value

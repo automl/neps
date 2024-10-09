@@ -251,6 +251,18 @@ def encode_trials_for_gp(
 
     x_train = encoder.encode(train_configs, device=device)
     y_train = torch.tensor(train_losses, dtype=torch.float64, device=device)
+
+    # OPTIM: The issue here is that the error could be a bug, in which case
+    # if the user restarts, we don't want to too heavily penalize that area.
+    # On the flip side, if the configuration is actually what's causing the
+    # crashes, then we just want to ensure that the GP is discouraged from
+    # visiting that area. Setting to the median also ensures that the GP does
+    # not end up with a highly skewed function apprxoimation, for example,
+    # setting tiny lengthscales, to ensure it can model the sharp change
+    # in the performance around the crashed config.
+    fill_value = torch.nanmedian(y_train).item()
+    y_train = torch.nan_to_num(y_train, nan=fill_value)
+
     cost_train = torch.tensor(train_costs, dtype=torch.float64, device=device)
     if len(pending_configs) > 0:
         x_pending = encoder.encode(pending_configs, device=device)

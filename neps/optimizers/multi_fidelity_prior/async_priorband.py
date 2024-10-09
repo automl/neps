@@ -120,7 +120,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
 
         parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
         self.model_policy = model_policy(
-            pipeline_space,
+            pipeline_space=pipeline_space,
             prior=Prior.from_parameters(parameters.values()),
         )
 
@@ -248,7 +248,7 @@ class PriorBandAshaHB(PriorBandAsha):
             bracket.observed_configs = self.observed_configs.copy()
             bracket.rung_histories = self.rung_histories
 
-    @override  # type: ignore
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],
@@ -314,7 +314,7 @@ class PriorBandAshaHB(PriorBandAsha):
             self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
         ]
         bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-        return np.random.choice(range(self.max_rung + 1), p=bracket_probs)
+        return int(np.random.choice(range(self.max_rung + 1), p=bracket_probs))
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.

@@ -236,12 +236,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
             perf = self.get_loss(config_val.result)
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
-                rung_recorded = self.observed_configs.loc[int(_config), "rung"]
+                rung_recorded = self.observed_configs.at[int(_config), "rung"]
                 if rung_recorded < int(_rung):
                     # config recorded for a lower rung but higher rung eval available
-                    self.observed_configs.loc[int(_config), "config"] = config_val.config
-                    self.observed_configs.loc[int(_config), "rung"] = int(_rung)
-                    self.observed_configs.loc[int(_config), "perf"] = perf
+                    self.observed_configs.at[int(_config), "config"] = config_val.config
+                    self.observed_configs.at[int(_config), "rung"] = int(_rung)
+                    self.observed_configs.at[int(_config), "perf"] = perf
             else:
                 _df = pd.DataFrame(
                     [[config_val.config, int(_rung), perf]],
@@ -277,8 +277,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     (self.observed_configs, _df)
                 ).sort_index()
             else:
-                self.observed_configs.loc[int(_config), "rung"] = int(_rung)
-                self.observed_configs.loc[int(_config), "perf"] = np.nan
+                self.observed_configs.at[int(_config), "rung"] = int(_rung)
+                self.observed_configs.at[int(_config), "perf"] = np.nan
 
     def clean_rung_information(self) -> None:
         self.rung_members = {k: [] for k in self.rung_map}
@@ -396,8 +396,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             return 0
 
         _max = self.observed_configs.index.max()
-        assert isinstance(_max, int)
-        return _max + 1
+        return int(_max) + 1  # type: ignore
 
     def is_promotable(self) -> int | None:
         """Returns an int if a rung can be promoted, else a None."""
@@ -461,7 +460,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
             previous_config_id = None
             config_id = f"{self._generate_new_config_id()}_{rung_id}"
 
-        return config.hp_values(), config_id, previous_config_id  # type: ignore
+        return config.hp_values(), config_id, previous_config_id
 
     def _enhance_priors(self, confidence_score: dict[str, float] | None = None) -> None:
         """Only applicable when priors are given along with a confidence.

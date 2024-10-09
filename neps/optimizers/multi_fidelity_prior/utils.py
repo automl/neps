@@ -150,32 +150,6 @@ def compute_scores(
     return prior_score, inc_score
 
 
-def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -> float:
-    # collects a list of fidelities/rungs reached by configurations that are not pending
-    rungs_used = [
-        observed_configs.loc[i, "rung"]
-        for i in range(len(observed_configs))
-        if not np.isnan(observed_configs.loc[i, "perf"])
-    ]
-    return sum(rung_map[r] for r in rungs_used)
-
-
-# def get_prior_weight_for_decay(
-#     resources_used: float, eta: int, min_budget, max_budget
-# ) -> float:
-#     nrungs = np.floor(np.log(max_budget / min_budget) / np.log(eta)).astype(int) + 1
-#     unit_HB_resources = nrungs * eta * max_budget
-#     idx = resources_used // unit_HB_resources
-#     start_weight = 1 / eta**idx
-#     end_weight = start_weight / eta
-#     _resources = resources_used / unit_HB_resources - idx
-#
-#     # equation for line in the idx-th HB bracket in terms of resource usage
-#     y = (end_weight - start_weight) * _resources + start_weight
-#
-#     return y
-
-
 def get_prior_weight_for_decay(
     resources_used: float, eta: int, min_budget: int | float, max_budget: int | float
 ) -> float:
