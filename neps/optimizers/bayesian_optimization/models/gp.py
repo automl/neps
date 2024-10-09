@@ -4,22 +4,21 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from functools import reduce
-from typing import TYPE_CHECKING, Any, TypeVar
 from dataclasses import dataclass
+from functools import reduce
+from itertools import product
+from typing import TYPE_CHECKING, Any, TypeVar
 
-from botorch.fit import fit_gpytorch_mll
-from gpytorch import ExactMarginalLogLikelihood
-import torch
 import gpytorch.constraints
+import torch
+from botorch.fit import fit_gpytorch_mll
 from botorch.models import SingleTaskGP
 from botorch.models.gp_regression import Log, get_covar_module_with_dim_scaled_prior
 from botorch.models.gp_regression_mixed import CategoricalKernel, OutcomeTransform
 from botorch.models.transforms.outcome import ChainedOutcomeTransform, Standardize
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
+from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
-from botorch.optim import optimize_acqf, optimize_acqf_mixed
-from itertools import product
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
     cost_cooled_acq,
@@ -27,13 +26,14 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling im
 from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
 )
-from neps.sampling.priors import Prior
 from neps.search_spaces.encoding import CategoricalToIntegerTransformer, ConfigEncoder
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.trial import Trial
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
+
+    from neps.sampling.priors import Prior
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.trial import Trial
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ def optimize_acq(
     *,
     n_candidates_required: int = 1,
     num_restarts: int = 20,
-    n_intial_start_points: int = 256,
+    n_intial_start_points: int | None = None,
     acq_options: Mapping[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -251,6 +251,18 @@ def encode_trials_for_gp(
 
     x_train = encoder.encode(train_configs, device=device)
     y_train = torch.tensor(train_losses, dtype=torch.float64, device=device)
+
+    # OPTIM: The issue here is that the error could be a bug, in which case
+    # if the user restarts, we don't want to too heavily penalize that area.
+    # On the flip side, if the configuration is actually what's causing the
+    # crashes, then we just want to ensure that the GP is discouraged from
+    # visiting that area. Setting to the median also ensures that the GP does
+    # not end up with a highly skewed function apprxoimation, for example,
+    # setting tiny lengthscales, to ensure it can model the sharp change
+    # in the performance around the crashed config.
+    fill_value = torch.nanmedian(y_train).item()
+    y_train = torch.nan_to_num(y_train, nan=fill_value)
+
     cost_train = torch.tensor(train_costs, dtype=torch.float64, device=device)
     if len(pending_configs) > 0:
         x_pending = encoder.encode(pending_configs, device=device)
@@ -265,9 +277,7 @@ def fit_and_acquire_from_gp(
     *,
     gp: SingleTaskGP,
     x_train: torch.Tensor,
-    y_train: torch.Tensor,
     encoder: ConfigEncoder,
-    fantasize_pending: torch.Tensor | None = None,
     acquisition: AcquisitionFunction,
     prior: Prior | None = None,
     pibo_exp_term: float | None = None,
@@ -294,21 +304,7 @@ def fit_and_acquire_from_gp(
     Args:
         gp: The GP model to use.
         x_train: The encoded configurations that have already been evaluated
-        y_train: The loss of the evaluated configurations.
-
-            !!! note "NaNs"
-
-                Any y values encoded with NaNs will automatically be filled with
-                the mean loss value. This is to ensure a smoother acquisition
-                function optimization landscape. While this is a poorer
-                approximation of the landscape, this does not matter as we are
-                aiming to ensure that the GP models good areas as being better
-                than any other area, regardless of whether they are average or garbage.
-
         encoder: The encoder used for encoding the configurations
-        fantasize_pending: The pending configurations to fantasize over. Please be aware
-            that there are more efficient strategies as some acquisition functions can
-            handle this explicitly.
         acquisition: The acquisition function to use.
 
             A good default is `qLogNoisyExpectedImprovement` which can
@@ -322,8 +318,8 @@ def fit_and_acquire_from_gp(
             then a secondary GP will be used to estimate the cost of a given
             configuration and factor into the weighting during the acquisiton of a new
             configuration.
-        cost_percentage_used: The percentage of the budget used so far. This is used to determine
-            the strength of the cost cooling. Should be between 0 and 1.
+        cost_percentage_used: The percentage of the budget used so far. This is used to
+            determine the strength of the cost cooling. Should be between 0 and 1.
             Must be provided if costs is provided.
         costs_on_log_scale: Whether the costs are on a log scale.
         encoder: The encoder used for encoding the configurations
@@ -332,7 +328,8 @@ def fit_and_acquire_from_gp(
             as `None`, only the best candidate will be returned. Otherwise
             a list of candidates will be returned.
         num_restarts: The number of restarts to use during optimization.
-        n_initial_start_points: The number of initial start points to use during optimization.
+        n_initial_start_points: The number of initial start points to use during
+            optimization.
         maximum_allowed_categorical_combinations: The maximum number of categorical
             combinations to allow. If the number of combinations exceeds this, an error
             will be raised.
@@ -342,11 +339,10 @@ def fit_and_acquire_from_gp(
         The encoded next configuration(s) to evaluate. Use the encoder you provided
         to decode the configuration.
     """
-    fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
+    if seed is not None:
+        raise NotImplementedError("Seed is not implemented yet for gps")
 
-    if fantasize_pending is not None:
-        y_train = torch.cat([y_train, gp.posterior(fantasize_pending).mean], dim=0)
-        x_train = torch.cat([x_train, fantasize_pending], dim=0)
+    fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
 
     if prior:
         if pibo_exp_term is None:
@@ -371,8 +367,8 @@ def fit_and_acquire_from_gp(
         missing_costs = torch.isnan(costs)
         if missing_costs.any():
             raise ValueError(
-                "Must have at least some configurations reported with a cost if using costs"
-                " with a GP."
+                "Must have at least some configurations reported with a cost"
+                " if using costs with a GP."
             )
 
         if missing_costs.any():

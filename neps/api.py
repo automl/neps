@@ -53,7 +53,6 @@ def run(
             "priorband",
             "mobster",
             "asha",
-            "regularized_evolution",
         ]
         | BaseOptimizer
         | Path
@@ -278,7 +277,6 @@ def _run_args(
             "priorband",
             "mobster",
             "asha",
-            "regularized_evolution",
         ]
         | BaseOptimizer
     ) = "default",

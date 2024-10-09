@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict
 from itertools import chain
 from pathlib import Path
@@ -105,7 +105,7 @@ def _get_learning_curve(
 
 
 def read_tasks_and_dev_stages_from_disk(
-    paths: list[str | Path],
+    paths: Iterable[str | Path],
 ) -> dict[int, dict[int, dict[str, _ConfigResultForStats]]]:
     """Reads the given tasks and dev stages from the disk.
 

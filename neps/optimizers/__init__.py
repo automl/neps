@@ -1,35 +1,31 @@
 from collections.abc import Callable, Mapping
 from functools import partial
-from typing import TYPE_CHECKING
 
-from .base_optimizer import BaseOptimizer
-from .bayesian_optimization.optimizer import BayesianOptimization
-from .grid_search.optimizer import GridSearch
-from .multi_fidelity.hyperband import (
+from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
+from neps.optimizers.grid_search.optimizer import GridSearch
+from neps.optimizers.multi_fidelity import (
+    IFBO,
     MOBSTER,
-    AsynchronousHyperband,
-    Hyperband,
-    HyperbandCustomDefault,
-)
-from .multi_fidelity.ifbo import IFBO
-from .multi_fidelity.successive_halving import (
     AsynchronousSuccessiveHalving,
     AsynchronousSuccessiveHalvingWithPriors,
+    Hyperband,
+    HyperbandCustomDefault,
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
-from .multi_fidelity_prior.async_priorband import PriorBandAsha, PriorBandAshaHB
-from .multi_fidelity_prior.priorband import PriorBand
-from .random_search.optimizer import RandomSearch
-from .regularized_evolution.optimizer import RegularizedEvolution
+from neps.optimizers.multi_fidelity_prior import (
+    PriorBand,
+    PriorBandAsha,
+    PriorBandAshaHB,
+)
+from neps.optimizers.random_search.optimizer import RandomSearch
 
 # TODO: Rename Searcher to Optimizer...
 SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "bayesian_optimization": partial(BayesianOptimization, use_priors=False),
     "pibo": partial(BayesianOptimization, use_priors=True),
     "random_search": RandomSearch,
-    "regularized_evolution": RegularizedEvolution,
-    "assisted_regularized_evolution": partial(RegularizedEvolution, assisted=True),
     "grid_search": GridSearch,
     "successive_halving": SuccessiveHalving,
     "successive_halving_prior": SuccessiveHalvingWithPriors,

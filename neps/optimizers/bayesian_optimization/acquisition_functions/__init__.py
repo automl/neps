@@ -1,6 +1,9 @@
 from collections.abc import Callable
 from functools import partial
 
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
 from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
     ComprehensiveExpectedImprovement,
 )
@@ -23,8 +26,9 @@ AcquisitionMapping: dict[str, Callable] = {
         augmented_ei=False,
         log_ei=True,
     ),
-    ## Uses the augmented EI heuristic and changed the in-fill criterion to the best test location with
-    ## the highest *posterior mean*, which are preferred when the optimisation is noisy.
+    ## Uses the augmented EI heuristic and changed the in-fill criterion to the best test
+    ## location with the highest *posterior mean*, which are preferred when the
+    ## optimisation is noisy.
     "AEI": partial(
         ComprehensiveExpectedImprovement,
         in_fill="posterior",
@@ -41,4 +45,5 @@ __all__ = [
     "ComprehensiveExpectedImprovement",
     "UpperConfidenceBound",
     "DecayingPriorWeightedAcquisition",
+    "BaseAcquisition",
 ]

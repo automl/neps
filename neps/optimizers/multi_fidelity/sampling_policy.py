@@ -1,36 +1,30 @@
-# mypy: disable-error-code = assignment
 from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
+import numpy as np
+import pandas as pd
+import torch
 from botorch.acquisition import (
     AcquisitionFunction,
     LinearMCObjective,
     qLogNoisyExpectedImprovement,
 )
-from botorch.acquisition.analytic import SingleTaskGP
 from botorch.fit import fit_gpytorch_mll
 from gpytorch import ExactMarginalLogLikelihood
-import numpy as np
-import pandas as pd
-import torch
 
 from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
 )
 from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
-from neps.optimizers.multi_fidelity_prior.utils import (
-    compute_config_dist,
-    custom_crossover,
-    local_mutation,
-    update_fidelity,
-)
-from neps.sampling.priors import Prior
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
+    from botorch.acquisition.analytic import SingleTaskGP
+
+    from neps.sampling.priors import Prior
     from neps.search_spaces.search_space import SearchSpace
 
 TOLERANCE = 1e-2  # 1%
@@ -38,18 +32,24 @@ SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere
 DELTA_THRESHOLD = 1e-2  # 1%
 TOP_EI_SAMPLE_COUNT = 10
 
+logger = logging.getLogger(__name__)
+
+
+def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
+    assert config.fidelity is not None
+    config.fidelity.set_value(fidelity)
+    return config
+
 
 class SamplingPolicy(ABC):
     """Base class for implementing a sampling strategy for SH and its subclasses."""
 
-    def __init__(self, pipeline_space: SearchSpace, patience: int = 100, logger=None):
+    def __init__(self, pipeline_space: SearchSpace, patience: int = 100):
         self.pipeline_space = pipeline_space
         self.patience = patience
-        self.logger = logger or logging.getLogger("neps")
 
     @abstractmethod
-    def sample(self, *args, **kwargs) -> SearchSpace:
-        pass
+    def sample(self, *args: Any, **kwargs: Any) -> SearchSpace: ...
 
 
 class RandomUniformPolicy(SamplingPolicy):
@@ -59,14 +59,10 @@ class RandomUniformPolicy(SamplingPolicy):
         SamplingPolicy ([type]): [description]
     """
 
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        logger=None,
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+    def __init__(self, pipeline_space: SearchSpace):
+        super().__init__(pipeline_space=pipeline_space)
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
+    def sample(self, *args: Any, **kwargs: Any) -> SearchSpace:
         return self.pipeline_space.sample(
             patience=self.patience, user_priors=False, ignore_fidelity=True
         )
@@ -77,14 +73,12 @@ class FixedPriorPolicy(SamplingPolicy):
     a fixed fraction from the prior.
     """
 
-    def __init__(
-        self, pipeline_space: SearchSpace, fraction_from_prior: float = 1, logger=None
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+    def __init__(self, pipeline_space: SearchSpace, fraction_from_prior: float = 1):
+        super().__init__(pipeline_space=pipeline_space)
         assert 0 <= fraction_from_prior <= 1
         self.fraction_from_prior = fraction_from_prior
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
+    def sample(self, *args: Any, **kwargs: Any) -> SearchSpace:
         """Samples from the prior with a certain probabiliyu.
 
         Returns:
@@ -108,8 +102,9 @@ class EnsemblePolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        inc_type: str = "mutation",
-        logger=None,
+        inc_type: Literal[
+            "hypersphere", "gaussian", "crossover", "mutation"
+        ] = "mutation",
     ):
         """Samples a policy as per its weights and performs the selected sampling.
 
@@ -125,15 +120,24 @@ class EnsemblePolicy(SamplingPolicy):
                     50% (mutation_rate=0.5) probability of selecting each hyperparmeter
                     for perturbation, sampling a deviation N(value, mutation_std=0.5))
         """
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        super().__init__(pipeline_space=pipeline_space)
         self.inc_type = inc_type
         # setting all probabilities uniformly
         self.policy_map = {"random": 0.33, "prior": 0.34, "inc": 0.33}
 
-    def sample_neighbour(self, incumbent, distance, tolerance=TOLERANCE):
+    def sample_neighbour(
+        self,
+        incumbent: SearchSpace,
+        distance: float,
+        tolerance: float = TOLERANCE,
+    ) -> SearchSpace:
         """Samples a config from around the `incumbent` within radius as `distance`."""
         # TODO: how does tolerance affect optimization on landscapes of different scale
         sample_counter = 0
+        from neps.optimizers.multi_fidelity_prior.utils import (
+            compute_config_dist,
+        )
+
         while True:
             # sampling a config
             config = self.pipeline_space.sample(
@@ -154,28 +158,33 @@ class EnsemblePolicy(SamplingPolicy):
         # end of while
         return config
 
-    def sample(
+    def sample(  # noqa: PLR0912, C901
         self,
-        inc: SearchSpace = None,
+        inc: SearchSpace | None = None,
         weights: dict[str, float] | None = None,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> SearchSpace:
         """Samples from the prior with a certain probability.
 
         Returns:
             SearchSpace: [description]
         """
+        from neps.optimizers.multi_fidelity_prior.utils import (
+            custom_crossover,
+            local_mutation,
+        )
+
         if weights is not None:
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value
         else:
-            self.logger.info(f"Using default policy weights: {self.policy_map}")
+            logger.info(f"Using default policy weights: {self.policy_map}")
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 
-        self.logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
+        logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
 
         if policy == "prior":
             config = self.pipeline_space.sample(
@@ -192,7 +201,7 @@ class EnsemblePolicy(SamplingPolicy):
 
             if inc is None:
                 inc = self.pipeline_space.sample_default_configuration().clone()
-                self.logger.warning(
+                logger.warning(
                     "No incumbent config found, using default as the incumbent."
                 )
 
@@ -229,7 +238,7 @@ class EnsemblePolicy(SamplingPolicy):
                     and not self.pipeline_space.has_prior
                 ):
                     user_priors = False
-                self.logger.info(
+                logger.info(
                     f"Crossing over with user_priors={user_priors} with p={probs}"
                 )
                 # sampling a configuration either randomly or from a prior
@@ -272,6 +281,7 @@ class ModelPolicy(SamplingPolicy):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         prior: Prior | None = None,
         use_cost: bool = False,
@@ -296,7 +306,7 @@ class ModelPolicy(SamplingPolicy):
         train_y: list[float],
         pending_x: list[SearchSpace],
         decay_t: float | None = None,
-    ):
+    ) -> None:
         x_train = self._encoder.encode([config.hp_values() for config in train_x])
         x_pending = self._encoder.encode([config.hp_values() for config in pending_x])
         y_train = torch.tensor(train_y, dtype=torch.float64, device=self.device)
@@ -321,8 +331,8 @@ class ModelPolicy(SamplingPolicy):
         # If we have a prior, wrap the above acquisitionm with a prior weighting
         if self.prior is not None:
             assert decay_t is not None
-            # TODO: Ideally we have something based on budget and dimensions, not an arbitrary term
-            # This 10 is extracted from the old DecayingWeightedPrior
+            # TODO: Ideally we have something based on budget and dimensions, not an
+            # arbitrary term. This 10 is extracted from the old DecayingWeightedPrior
             pibo_exp_term = 10 / decay_t
             significant_lower_bound = 1e-4  # No significant impact beyond this point
             if pibo_exp_term < significant_lower_bound:
@@ -336,11 +346,12 @@ class ModelPolicy(SamplingPolicy):
         self._y_model = y_model
         self._acq = acq
 
+    # TODO: rework with MFBO
     def sample(
         self,
         active_max_fidelity: int | None = None,
         fidelity: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> SearchSpace:
         """Performs the equivalent of optimizing the acquisition function.
 
@@ -392,6 +403,3 @@ class ModelPolicy(SamplingPolicy):
         eis = self.acquisition.eval(x=samples, asscalar=True)
         # extracting the highest scored sample
         return samples[np.argmax(eis)]
-        # TODO: can generalize s.t. sampler works for all types, currently,
-        #  random sampler in NePS does not do what is required here
-        # return self.acquisition_sampler.sample(self.acquisition)

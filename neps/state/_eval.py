@@ -25,7 +25,7 @@ class GotNonePendingTrialForEvalautionError(NePSError):
 
     def __init__(
         self,
-        trial_id: Trial.ID,
+        trial_id: str,
         state: Trial.State,
         worker_id: str,
         *args: Any,

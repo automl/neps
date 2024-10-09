@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 from botorch.acquisition.logei import partial
 
-from neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition import (
+from neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition import (  # noqa: E501
     WeightedAcquisition,
 )
 
@@ -38,7 +38,7 @@ def apply_pibo_acquisition_weight(
     prior: Prior,
     x_domain: Domain | list[Domain],
     prior_exponent: float,
-):
+) -> Tensor:
     if acq._log:
         weighted_log_probs = prior.log_prob(X, frm=x_domain) + prior_exponent
         return acq_values + weighted_log_probs

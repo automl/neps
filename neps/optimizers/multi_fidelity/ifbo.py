@@ -1,5 +1,8 @@
 from __future__ import annotations
-from typing import Any, Mapping, Literal
+
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal
+from typing_extensions import override
 
 import numpy as np
 import torch
@@ -11,15 +14,16 @@ from neps.optimizers.bayesian_optimization.models.ftpfn import (
     decode_ftpfn_data,
     encode_ftpfn,
 )
-from neps.optimizers.intial_design import make_initial_design
+from neps.optimizers.initial_design import make_initial_design
 from neps.sampling.priors import Prior
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import Domain
 from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
-from neps.state.trial import Trial
-from neps.state.optimizer import BudgetInfo
 
+if TYPE_CHECKING:
+    from neps.state.optimizer import BudgetInfo
+    from neps.state.trial import Trial
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
@@ -51,9 +55,9 @@ def _adjust_pipeline_space_to_match_stepsize(
     # Can't use mod since it's quite innacurate for floats
     # Use the fact that we can always write x = n*k + r
     # where k = stepsize and x = (fid_upper - fid_lower)
-    # x = n*k + r
-    # n = x // k
-    # r = x - n*k
+    # > x = n*k + r
+    # > n = x // k
+    # > r = x - n*k
     x = fidelity.upper - fidelity.lower
     n = int(x // step_size)
 
@@ -84,6 +88,7 @@ class IFBO(BaseOptimizer):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         step_size: int | float = 1,
         use_priors: bool = False,
@@ -106,9 +111,9 @@ class IFBO(BaseOptimizer):
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
             sample_default_first: Whether to sample the default configuration first
-            initial_design_size: Number of configurations to sample before starting optimization
+            initial_design_size: Number of configs to sample before starting optimization
 
-                If None, the number of configurations will be equal to the number of dimensions.
+                If None, the number of configs will be equal to the number of dimensions.
 
             device: Device to use for the model
         """
@@ -140,8 +145,8 @@ class IFBO(BaseOptimizer):
         self._config_encoder: ConfigEncoder = ConfigEncoder.default(
             params,
             constants=self.pipeline_space.constants,
-            # FTPFN doesn't support categoricals and we were recomenned to just evenly distribute
-            # in the unit norm
+            # FTPFN doesn't support categoricals and we were recomended
+            # to just evenly distribute in the unit norm
             custom_transformers={
                 cat_name: CategoricalToUnitNorm(choices=cat.choices)
                 for cat_name, cat in space.categoricals.items()
@@ -160,17 +165,13 @@ class IFBO(BaseOptimizer):
         # Domain from which we assign an index to each budget
         self._budget_ix_domain = Domain.indices(fid_bins)
 
+    @override
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo,
-        optimizer_state: dict[str, Any],
-        seed: torch.Generator | None = None,
+        budget_info: BudgetInfo | None = None,
     ) -> SampledConfig:
-        if seed is not None:
-            raise NotImplementedError("Seed is not yet implemented for IFBO")
-
-        ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials.keys()]
+        ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
 
         # If we havn't passed the intial design phase
@@ -180,7 +181,7 @@ class IFBO(BaseOptimizer):
                 encoder=self._config_encoder,
                 sample_default_first=self.sample_default_first,
                 sampler="sobol" if self._prior is None else self._prior,
-                seed=seed,
+                seed=None,  # TODO:
                 sample_fidelity="min",
                 sample_size=self.n_initial_design,
             )
@@ -222,7 +223,7 @@ class IFBO(BaseOptimizer):
         # 1. The encoding is such that the loss is 1 - loss
         # 2. The budget is the second column
         # 3. The budget is encoded between 1/max_fid and 1
-        rng = np.random.RandomState(None if seed is None else seed + len(trials))
+        rng = np.random.RandomState(len(trials))
         # Cast the a random budget index into the ftpfn budget domain
         horizon_increment = self._budget_domain.cast_one(
             rng.randint(*self._budget_ix_domain.bounds) + 1,
@@ -232,7 +233,8 @@ class IFBO(BaseOptimizer):
         threshold = f_best + (10 ** rng.uniform(-4, -1)) * (1 - f_best)
 
         def _mfpi_random(samples: torch.Tensor) -> torch.Tensor:
-            # HACK: Because we are modifying the samples inplace, we do, and then undo the addition
+            # HACK: Because we are modifying the samples inplace, we do,
+            # and then undo the addition
             original_budget_column = samples[..., 1].clone()
             samples[..., 1].add_(horizon_increment).clamp_max_(self._budget_domain.upper)
 
@@ -248,7 +250,6 @@ class IFBO(BaseOptimizer):
             # How to encode
             encoder=self._config_encoder,
             budget_domain=self._budget_domain,
-            fidelity_domain=self._fid_domain,
             # Acquisition function
             acq_function=_mfpi_random,
             # Which acquisition samples to consider for continuation
@@ -259,7 +260,7 @@ class IFBO(BaseOptimizer):
                 (Sampler.uniform(ndim=sample_dims), 512),
                 (Sampler.borders(ndim=sample_dims), 256),
             ],
-            seed=seed,
+            seed=None,  # TODO: Seeding
             # A next step local sampling around best point found by initial_samplers
             local_search_sample_size=256,
             local_search_confidence=0.95,
@@ -274,15 +275,14 @@ class IFBO(BaseOptimizer):
         if _id is None:
             config[self._fidelity_name] = fid
             return SampledConfig(id=f"{new_id}_0", config=config)
-        else:
-            # Convert fidelity to budget index, bump by 1 and convert back
-            budget_ix = self._budget_ix_domain.cast_one(fid, frm=self._fid_domain)
-            next_ix = budget_ix + 1
-            next_fid = self._fid_domain.cast_one(next_ix, frm=self._budget_ix_domain)
+        # Convert fidelity to budget index, bump by 1 and convert back
+        budget_ix = self._budget_ix_domain.cast_one(fid, frm=self._fid_domain)
+        next_ix = budget_ix + 1
+        next_fid = self._fid_domain.cast_one(next_ix, frm=self._budget_ix_domain)
 
-            config[self._fidelity_name] = next_fid
-            return SampledConfig(
-                id=f"{_id}_{next_ix}",
-                config=config,
-                previous_config_id=f"{_id}_{budget_ix}",
-            )
+        config[self._fidelity_name] = next_fid
+        return SampledConfig(
+            id=f"{_id}_{next_ix}",
+            config=config,
+            previous_config_id=f"{_id}_{budget_ix}",
+        )

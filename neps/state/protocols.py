@@ -113,15 +113,15 @@ class TrialRepo(Protocol[K]):
     TrialAlreadyExistsError: ClassVar = TrialAlreadyExistsError
     TrialNotFoundError: ClassVar = TrialNotFoundError
 
-    def all_trial_ids(self) -> set[Trial.ID]:
+    def all_trial_ids(self) -> set[str]:
         """List all the trial ids in this trial Repo."""
         ...
 
-    def get_by_id(self, trial_id: Trial.ID) -> Synced[Trial, K]:
+    def get_by_id(self, trial_id: str) -> Synced[Trial, K]:
         """Get a trial by its id."""
         ...
 
-    def get_by_ids(self, trial_ids: list[Trial.ID]) -> dict[str, Synced[Trial, K]]:
+    def get_by_ids(self, trial_ids: list[str]) -> dict[str, Synced[Trial, K]]:
         """Get trials by their ids."""
         ...
 
@@ -129,11 +129,11 @@ class TrialRepo(Protocol[K]):
         """Put a new trial in the repo."""
         ...
 
-    def all(self) -> dict[Trial.ID, Synced[Trial, K]]:
+    def all(self) -> dict[str, Synced[Trial, K]]:
         """Get all trials in the repo."""
         ...
 
-    def pending(self) -> Iterable[tuple[Trial.ID, Synced[Trial, K]]]:
+    def pending(self) -> Iterable[tuple[str, Synced[Trial, K]]]:
         """Get all pending trials in the repo.
 
         !!! note

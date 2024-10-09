@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-from typing import Literal, Any, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal
+
+import torch
 
 from neps.sampling import Sampler
 from neps.sampling.priors import Prior
-from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.search_space import SearchSpace
-import torch
+
+if TYPE_CHECKING:
+    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.search_spaces.search_space import SearchSpace
 
 
-def make_initial_design(
+def make_initial_design(  # noqa: PLR0912, C901
+    *,
     space: SearchSpace,
     encoder: ConfigEncoder,
     sampler: Literal["sobol", "prior", "uniform"] | Sampler,
@@ -36,7 +41,7 @@ def make_initial_design(
         sample_size:
             The number of configurations to sample.
 
-            If "ndim", the number of configurations will be equal to the number of dimensions.
+            If "ndim", the number of configs will be equal to the number of dimensions.
             If None, no configurations will be sampled.
 
         sample_default_first: Whether to sample the default configuration first.
@@ -114,7 +119,7 @@ def make_initial_design(
             case "prior":
                 sampler = Prior.from_parameters(params.values())
             case _:
-                sampler = sampler
+                pass
 
         encoded_configs = sampler.sample(sample_size * 2, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)

@@ -19,7 +19,7 @@ initial_design_size: 10
 surrogate_model: gp
 acquisition: EI  # or {"LogEI", "AEI"}
 log_prior_weighted: false
-acquisition_sampler: mutation  # or {"random", "evolution"}
+acquisition_sampler: mutation  # or {"random"}
 
 # Arguments that can not be modified by the user
 # sampling_policy: EnsemblePolicy

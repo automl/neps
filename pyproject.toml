@@ -97,7 +97,7 @@ src = ["neps"]
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
-    "neps/optimizers/**/*.py",
+    "neps/optimizers/multi_fidelity_prior/utils.py",
     "neps/search_spaces/architecture/**/*.py",
     "neps/search_spaces/yaml_search_space_utils.py",
     "neps/search_spaces/architecture",
@@ -202,12 +202,14 @@ ignore = [
   "B010",    # Do not use `setattr`
   "PD901",   # Use a better name than 'df'
   "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
+  "PD008",   # Use `.loc` instead of `.at`. If speed is important, use NumPy.
   "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
   "PLR2004", # No magic numbers inline
   "N817",    # CamelCase import as (ignore for ConfigSpace)
   "N999",    # Invalid name for module
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
   "N803",    # Arguments should start with a lower case letter.
+  "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
 
 
@@ -241,6 +243,12 @@ ignore = [
     "E501",
 ]
 "docs/*" = ["INP001"]
+# TODO
+"neps/optimizers/**.py" = [
+  "D", # Documentation of everything
+  "ARG002", # Unused arguments, bunch of them in inits
+  "PLR0913", # Too many arguments...
+]
 
 
 [tool.ruff.lint.isort]
@@ -298,9 +306,17 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = [
     "neps.api",
-    "neps.optimizers.*",
     "neps.search_spaces.architecture.*",
     "neps.utils.run_args_from_yaml",
+    "neps.optimizers.multi_fidelity.successive_halving",
+    "neps.optimizers.multi_fidelity.sampling_policy",
+    "neps.optimizers.multi_fidelity.promotion_policy",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.ei",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.ucb",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition",
+    "requests.*",
 ]
 ignore_errors = true
 

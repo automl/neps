@@ -68,9 +68,6 @@ def case_search_space_fid_with_prior() -> SearchSpace:
     )
 
 
-# See issue #118
-NON_INSTANTIABLE_SEARCH_SPACES_WITHOUT_SPECIFIC_KWARGS = "assisted_regularized_evolution"
-
 # See issue #121
 JUST_SKIP = [
     "multifidelity_tpe",
@@ -124,14 +121,7 @@ REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
 
 @fixture
-@parametrize(
-    "key",
-    [
-        k
-        for k in SearcherMapping.keys()
-        if k not in NON_INSTANTIABLE_SEARCH_SPACES_WITHOUT_SPECIFIC_KWARGS
-    ],
-)
+@parametrize("key", [k for k in SearcherMapping.keys()])
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
 def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimizer, str]:
     if key in JUST_SKIP:

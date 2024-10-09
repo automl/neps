@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
-from neps.optimizers.utils import map_real_hyperparameters_from_tabular_ids
-
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
 
@@ -30,73 +28,6 @@ def continuous_to_tabular(
             result[hp_name].set_value(closest)
 
     return result
-
-
-def normalize_vectorize_config(
-    config: SearchSpace, ignore_fidelity: bool = True
-) -> np.ndarray:
-    _new_vector = []
-    for _, hp_list in config.get_normalized_hp_categories(
-        ignore_fidelity=ignore_fidelity
-    ).items():
-        _new_vector.extend(hp_list)
-    return np.array(_new_vector)
-
-
-def get_tokenized_data(
-    configs: list[SearchSpace],
-    ignore_fidelity: bool = True,
-) -> np.ndarray:  # pd.Series:  # tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Extracts configurations, indices and performances given a DataFrame.
-
-    Tokenizes the given set of observations as required by a PFN surrogate model.
-    """
-    return np.array(
-        [normalize_vectorize_config(c, ignore_fidelity=ignore_fidelity) for c in configs]
-    )
-
-
-def get_freeze_thaw_normalized_step(
-    fid_step: int, lower: int, upper: int, step: int
-) -> float:
-    max_fid_step = int(np.ceil((upper - lower) / step)) + 1
-    return fid_step / max_fid_step
-
-
-def get_training_data_for_freeze_thaw(
-    df: pd.DataFrame,
-    config_key: str,
-    perf_key: str,
-    pipeline_space: SearchSpace,
-    step_size: int,
-    maximize: bool = False,
-) -> tuple[list[int], list[int], list[SearchSpace], list[float]]:
-    configs = []
-    performance = []
-    idxs = []
-    steps = []
-    for idx, row in df.iterrows():
-        config_id = idx[0]
-        budget_id = idx[1]
-        if pipeline_space.has_tabular:
-            _row = pd.Series([row[config_key]], index=[config_id])
-            _row = map_real_hyperparameters_from_tabular_ids(_row, pipeline_space)
-            configs.append(_row.values[0])
-        else:
-            configs.append(row[config_key])
-        performance.append(row[perf_key])
-        steps.append(
-            get_freeze_thaw_normalized_step(
-                budget_id + 1,  # NePS fidelity IDs begin with 0
-                pipeline_space.fidelity.lower,
-                pipeline_space.fidelity.upper,
-                step_size,
-            )
-        )
-        idxs.append(idx[0] + 1)  # NePS config IDs begin with 0
-    if maximize:
-        performance = (1 - np.array(performance)).tolist()
-    return idxs, steps, configs, performance
 
 
 class MFObservedData:
@@ -147,7 +78,7 @@ class MFObservedData:
 
     @property
     def pending_condition(self):
-        return self.df[self.perf_col].isnull()
+        return self.df[self.perf_col].isna()
 
     @property
     def error_condition(self):
@@ -183,6 +114,7 @@ class MFObservedData:
         self,
         data: list[Any] | list[list[Any]],
         index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
+        *,
         error: bool = False,
     ):
         """Add data only if none of the indices are already existing in the DataFrame."""
@@ -209,6 +141,7 @@ class MFObservedData:
         self,
         data_dict: dict[str, list[Any]],
         index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
+        *,
         error: bool = False,
     ):
         """Update data if all the indices already exist in the DataFrame."""
@@ -235,47 +168,7 @@ class MFObservedData:
     def all_configs_list(self) -> list[Any]:
         return self.df.loc[:, self.config_col].sort_index().values.tolist()
 
-    def get_incumbents_for_budgets(self, maximize: bool = False):
-        """Returns a series object with the best partial configuration for each budget id.
-
-        Note: this will always map the best lowest ID if two configurations
-              have the same performance at the same fidelity
-        """
-        learning_curves = self.get_learning_curves()
-        if maximize:
-            config_ids = learning_curves.idxmax(axis=0)
-        else:
-            config_ids = learning_curves.idxmin(axis=0)
-
-        indices = list(
-            zip(config_ids.values.tolist(), config_ids.index.to_list(), strict=False)
-        )
-        partial_configs = self.df.loc[indices, self.config_col].to_list()
-        return pd.Series(partial_configs, index=config_ids.index, name=self.config_col)
-
-    def get_best_performance_for_each_budget(self, maximize: bool = False):
-        """Returns a series object with the best partial configuration for each budget id.
-
-        Note: this will always map the best lowest ID if two configurations
-              has the same performance at the same fidelity
-        """
-        learning_curves = self.get_learning_curves()
-        if maximize:
-            performance = learning_curves.max(axis=0)
-        else:
-            performance = learning_curves.min(axis=0)
-
-        return performance
-
-    def get_budget_level_for_best_performance(self, maximize: bool = False) -> int:
-        """Returns the lowest budget level at which the highest performance was recorded."""
-        perf_per_z = self.get_best_performance_for_each_budget(maximize=maximize)
-        y_star = self.get_best_seen_performance(maximize=maximize)
-        # uses the minimum of the budget that see the maximum obseved score
-        op = max if maximize else min
-        return int(op([_z for _z, _y in perf_per_z.items() if _y == y_star]))
-
-    def get_best_learning_curve_id(self, maximize: bool = False):
+    def get_best_learning_curve_id(self, *, maximize: bool = False):
         """Returns a single configuration id of the best observed performance.
 
         Note: this will always return the single best lowest ID
@@ -286,7 +179,7 @@ class MFObservedData:
             return learning_curves.max(axis=1).idxmax()
         return learning_curves.min(axis=1).idxmin()
 
-    def get_best_seen_performance(self, maximize: bool = False):
+    def get_best_seen_performance(self, *, maximize: bool = False):
         learning_curves = self.get_learning_curves()
         if maximize:
             return learning_curves.max(axis=1).max()
@@ -327,7 +220,7 @@ class MFObservedData:
             lc = lcs.loc[config_id, :budget_id].values.flatten().tolist()
         return deepcopy(lc)
 
-    def get_best_performance_per_config(self, maximize: bool = False) -> pd.Series:
+    def get_best_performance_per_config(self, *, maximize: bool = False) -> pd.Series:
         """Returns the best score recorded per config across fidelities seen."""
         op = np.max if maximize else np.min
         return (
@@ -336,7 +229,7 @@ class MFObservedData:
             )  # sorts with largest budget first
             .groupby("config_id")  # retains only config_id
             .first()  # retrieves the largest budget seen for each config_id
-            .learning_curves.apply(  # extracts all values seen till largest budget for a config
+            .learning_curves.apply(  # extracts all values seen till largest budget
                 op
             )  # finds the minimum over per-config learning curve
         )
@@ -361,7 +254,8 @@ if __name__ == "__main__":
     """
     data = MFObservedData(["config", "perf"], index_names=["config_id", "budget_id"])
 
-    # When adding multiple indices data should be list of rows(lists) and the index should be list of tuples
+    # When adding multiple indices data should be list of rows(lists) and the
+    # index should be list of tuples
     data.add_data(
         [["conf1", 0.5], ["conf2", 0.7], ["conf1", 0.6], ["conf2", 0.4]],
         index=[(0, 0), (1, 1), (0, 3), (1, 0)],
@@ -371,7 +265,8 @@ if __name__ == "__main__":
         index=[(0, 2), (1, 2), (0, 1)],
     )
 
-    # When updating multiple indices at a time both the values in the data dictionary and the indices should be lists
+    # When updating multiple indices at a time both the values in the data dictionary
+    # and the indices should be lists
     data.update_data({"perf": [1.8, 1.5]}, index=[(1, 1), (0, 0)])
 
     data = MFObservedData(["config", "perf"], index_names=["config_id", "budget_id"])

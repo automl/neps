@@ -18,7 +18,8 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-def update_fidelity(config, fidelity):
+def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
+    assert config.fidelity is not None
     config.fidelity.set_value(fidelity)
     return config
 
@@ -110,19 +111,19 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     Distance returned is the sum of the Euclidean distance of the continous subspace and
     the Hamming distance of the categorical subspace.
     """
-    config1 = config1.get_normalized_hp_categories(ignore_fidelity=True)
-    config2 = config2.get_normalized_hp_categories(ignore_fidelity=True)
+    c1 = config1.get_normalized_hp_categories(ignore_fidelity=True)
+    c2 = config2.get_normalized_hp_categories(ignore_fidelity=True)
 
     # adding a dim with 0 to all subspaces in case the search space is not mixed type
 
     # computing euclidean distance over the continuous subspace
-    diff = np.array(config1["continuous"] + [0]) - np.array(config2["continuous"] + [0])
+    diff = np.array(c1["continuous"] + [0]) - np.array(c2["continuous"] + [0])
     d_cont = np.linalg.norm(diff, ord=2)
 
     # TODO: can we consider the number of choices per dimension
     # computing hamming distance over the categorical subspace
     d_cat = scipy.spatial.distance.hamming(
-        config1["categorical"] + [0], config2["categorical"] + [0]
+        c1["categorical"] + [0], c2["categorical"] + [0]
     )
 
     return d_cont + d_cat
@@ -149,34 +150,8 @@ def compute_scores(
     return prior_score, inc_score
 
 
-def calc_total_resources_spent(observed_configs: pd.DataFrame, rung_map: dict) -> float:
-    # collects a list of fidelities/rungs reached by configurations that are not pending
-    rungs_used = [
-        observed_configs.at[i, "rung"]
-        for i in range(len(observed_configs))
-        if not np.isnan(observed_configs.at[i, "perf"])
-    ]
-    return sum(rung_map[r] for r in rungs_used)
-
-
-# def get_prior_weight_for_decay(
-#     resources_used: float, eta: int, min_budget, max_budget
-# ) -> float:
-#     nrungs = np.floor(np.log(max_budget / min_budget) / np.log(eta)).astype(int) + 1
-#     unit_HB_resources = nrungs * eta * max_budget
-#     idx = resources_used // unit_HB_resources
-#     start_weight = 1 / eta**idx
-#     end_weight = start_weight / eta
-#     _resources = resources_used / unit_HB_resources - idx
-#
-#     # equation for line in the idx-th HB bracket in terms of resource usage
-#     y = (end_weight - start_weight) * _resources + start_weight
-#
-#     return y
-
-
 def get_prior_weight_for_decay(
-    resources_used: float, eta: int, min_budget, max_budget
+    resources_used: float, eta: int, min_budget: int | float, max_budget: int | float
 ) -> float:
     r"""Creates a step function schedule for the prior weight decay.
 

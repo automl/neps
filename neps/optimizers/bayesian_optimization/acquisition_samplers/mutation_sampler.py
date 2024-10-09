@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 def _propose_location(
+    *,
     acquisition_function: Callable,
     candidates: list[SearchSpace],
     top_n: int = 5,
@@ -40,13 +41,14 @@ def _propose_location(
         _, indices = eis.topk(top_n)
 
     xs = [candidates[int(i)] for i in indices]
-    return xs, eis, indices
+    return xs, eis, np.asarray(indices)
 
 
 class MutationSampler(AcquisitionSampler):
     def __init__(
         self,
-        pipeline_space,
+        *,
+        pipeline_space: SearchSpace,
         pool_size: int = 250,
         n_best: int = 10,
         mutate_size: float | int = 0.5,
@@ -122,7 +124,8 @@ class MutationSampler(AcquisitionSampler):
         best_configs = [
             x
             for (_, x) in sorted(
-                zip(self.y, self.x, strict=False), key=lambda pair: pair[0]
+                zip(self.y, self.x, strict=False),
+                key=lambda pair: pair[0],
             )
         ][:n_best]
 
@@ -139,19 +142,22 @@ class MutationSampler(AcquisitionSampler):
             for _ in range(per_arch):
                 while remaining_patience:
                     try:
-                        # needs to throw an Exception if config is not valid, e.g., empty graph etc.!
+                        # needs to throw an Exception if config is not valid,
+                        # e.g., empty graph etc.!
                         child = config.mutate()
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         remaining_patience -= 1
                         continue
                     hash_child = _hash(child)
 
-                    if not self.allow_isomorphism:
-                        # if disallow isomorphism, we enforce that each time, we mutate n distinct graphs.
-                        # For now we do not check the isomorphism in all of the previous graphs though
-                        if child == config or hash_child in seen:
-                            remaining_patience -= 1
-                            continue
+                    # if disallow isomorphism, we enforce that each time,
+                    # we mutate n distinct graphs. For now we do not check
+                    # the isomorphism in all of the previous graphs though
+                    if not self.allow_isomorphism and (
+                        child == config or hash_child in seen
+                    ):
+                        remaining_patience -= 1
+                        continue
 
                     evaluation_pool.append(child)
                     seen.add(hash_child)

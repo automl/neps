@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 
@@ -12,16 +13,16 @@ class PromotionPolicy(ABC):
         self.rung_members: dict = {}
         self.rung_members_performance: dict = {}
         self.rung_promotions: dict = {}
-        self.eta = eta  # type: int
-        self.max_rung: int = None
+        self.eta: int = eta
+        self.max_rung: int | None = None
 
     def set_state(
         self,
-        *,  # allows only keyword args
+        *,
         max_rung: int,
         members: dict,
         performances: dict,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         self.max_rung = max_rung
         self.rung_members = members
@@ -38,19 +39,19 @@ class SyncPromotionPolicy(PromotionPolicy):
     Promotes only when all predefined number of config slots are full.
     """
 
-    def __init__(self, eta, **kwargs):
+    def __init__(self, eta: int, **kwargs: Any):
         super().__init__(eta, **kwargs)
-        self.config_map: dict = None
-        self.rung_promotions = None
+        self.config_map: dict | None = None
+        self.rung_promotions: dict | None = None
 
     def set_state(
         self,
-        *,  # allows only keyword args
+        *,
         max_rung: int,
         members: dict,
         performances: dict,
         config_map: dict,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().set_state(max_rung=max_rung, members=members, performances=performances)
         self.config_map = config_map
@@ -91,11 +92,12 @@ class AsyncPromotionPolicy(PromotionPolicy):
     Promotes whenever a higher fidelity has at least eta configurations.
     """
 
-    def __init__(self, eta, **kwargs):
+    def __init__(self, eta: int, **kwargs: Any):
         super().__init__(eta, **kwargs)
 
     def retrieve_promotions(self) -> dict:
         """Returns the top 1/eta configurations per rung if enough configurations seen."""
+        assert self.max_rung is not None
         for rung in range(self.max_rung + 1):
             if rung == self.max_rung:
                 # cease promotions for the highest rung (configs at max budget)

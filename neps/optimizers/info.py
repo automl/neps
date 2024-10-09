@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 import yaml
+
+HERE = Path(__file__).parent.resolve()
 
 
 class SearcherConfigs:
@@ -11,14 +13,13 @@ class SearcherConfigs:
     """
 
     @staticmethod
-    def _get_searchers_folder_path() -> str:
+    def _get_searchers_folder_path() -> Path:
         """Helper method to get the folder path for default searchers.
 
         Returns:
             str: The absolute path to the default searchers folder.
         """
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(script_directory, "default_searchers")
+        return HERE / "default_searchers"
 
     @staticmethod
     def get_searchers() -> list[str]:
@@ -30,10 +31,9 @@ class SearcherConfigs:
         folder_path = SearcherConfigs._get_searchers_folder_path()
         searchers = []
 
-        for file_name in os.listdir(folder_path):
-            if file_name.endswith(".yaml"):
-                searcher_name = os.path.splitext(file_name)[0]
-                searchers.append(searcher_name)
+        for file in folder_path.iterdir():
+            if file.suffix == ".yaml":
+                searchers.append(file.stem)
 
         return searchers
 
@@ -47,11 +47,10 @@ class SearcherConfigs:
         folder_path = SearcherConfigs._get_searchers_folder_path()
         prev_algorithms = set()
 
-        for filename in os.listdir(folder_path):
-            if filename.endswith(".yaml"):
-                file_path = os.path.join(folder_path, filename)
-                with open(file_path) as file:
-                    searcher_config = yaml.safe_load(file)
+        for file in folder_path.iterdir():
+            if file.suffix == ".yaml":
+                with file.open("r") as f:
+                    searcher_config = yaml.safe_load(f)
                     algorithm = searcher_config.get("strategy")
                     if algorithm:
                         prev_algorithms.add(algorithm)
@@ -71,13 +70,12 @@ class SearcherConfigs:
         folder_path = SearcherConfigs._get_searchers_folder_path()
         searchers = []
 
-        for filename in os.listdir(folder_path):
-            if filename.endswith(".yaml"):
-                file_path = os.path.join(folder_path, filename)
-                with open(file_path) as file:
-                    searcher_config = yaml.safe_load(file)
+        for file in folder_path.iterdir():
+            if file.suffix == ".yaml":
+                with file.open("r") as f:
+                    searcher_config = yaml.safe_load(f)
                     if searcher_config.get("strategy") == algorithm:
-                        searchers.append(os.path.splitext(filename)[0])
+                        searchers.append(file.stem)
 
         return searchers
 
@@ -93,10 +91,10 @@ class SearcherConfigs:
         """
         folder_path = SearcherConfigs._get_searchers_folder_path()
 
-        for filename in os.listdir(folder_path):
-            if filename.endswith(".yaml") and filename.startswith(searcher):
-                file_path = os.path.join(folder_path, filename)
-                with open(file_path) as file:
-                    searcher_config = file.read()
+        for file in folder_path.iterdir():
+            if file.suffix == ".yaml" and file.stem.startswith(searcher):
+                return file.read_text()
 
-        return searcher_config
+        raise FileNotFoundError(
+            f"Searcher {searcher} not found in default searchers folder."
+        )

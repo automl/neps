@@ -475,7 +475,6 @@ class DefaultWorker(Generic[Loc]):
                 _error_from_evaluation = report.err
 
             self.state.report_trial_evaluation(
-                optimizer=self.optimizer,
                 trial=evaluated_trial,
                 report=report,
                 worker_id=self.worker_id,

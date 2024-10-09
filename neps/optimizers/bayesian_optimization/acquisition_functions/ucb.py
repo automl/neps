@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
+from typing import Any
 
 import numpy as np
 import torch
 
-from .base_acquisition import BaseAcquisition
+from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
+    BaseAcquisition,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class UpperConfidenceBound(BaseAcquisition):
-    def __init__(self, beta: float = 1.0, maximize: bool = False):
+    def __init__(self, *, beta: float = 1.0, maximize: bool = False):
         """Upper Confidence Bound (UCB) acquisition function.
 
         Args:
@@ -24,18 +30,22 @@ class UpperConfidenceBound(BaseAcquisition):
         # to be initialized as part of the state
         self.surrogate_model = None
 
-    def set_state(self, surrogate_model, **kwargs):
+    def set_state(self, surrogate_model: Any, **kwargs: Any) -> None:
         super().set_state(surrogate_model)
         self.surrogate_model = surrogate_model
         if "beta" in kwargs:
             if not isinstance(kwargs["beta"], list | np.array):
                 self.beta = kwargs["beta"]
             else:
-                self.logger.warning("Beta is a list, not updating beta value!")
+                logger.warning("Beta is a list, not updating beta value!")
 
     def eval(
-        self, x: Iterable, asscalar: bool = False
+        self,
+        x: Iterable,
+        *,
+        asscalar: bool = False,
     ) -> np.ndarray | torch.Tensor | float:
+        assert self.surrogate_model is not None, "Surrogate model is not set."
         try:
             mu, cov = self.surrogate_model.predict(x)
             std = torch.sqrt(torch.diag(cov))
