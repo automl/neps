@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
@@ -24,7 +24,7 @@ class RandomSearch(BaseOptimizer):
         use_priors: bool = False,
         ignore_fidelity: bool = True,
         seed: int | None = None,
-        **kwargs,  # TODO: Remove
+        **kwargs: Any,  # TODO: Remove
     ):
         """Initialize the random search optimizer.
 
