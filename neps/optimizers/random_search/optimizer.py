@@ -24,6 +24,7 @@ class RandomSearch(BaseOptimizer):
         use_priors: bool = False,
         ignore_fidelity: bool = True,
         seed: int | None = None,
+        **kwargs,  # TODO: Remove
     ):
         """Initialize the random search optimizer.
 
