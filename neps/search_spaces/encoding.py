@@ -247,6 +247,8 @@ class ConfigEncoder:
     n_categorical: int = field(init=False)
     categorical_slice: slice | None = field(init=False)
     numerical_slice: slice | None = field(init=False)
+    numerical_domains: list[Domain] = field(init=False)
+    categorical_domains: list[Domain] = field(init=False)
 
     def __post_init__(self) -> None:
         # Sort such that numericals are sorted first and categoricals after,
@@ -269,6 +271,12 @@ class ConfigEncoder:
         self.domain_of = {name: t.domain for name, t in self.transformers.items()}
         self.n_numerical = n_numerical
         self.n_categorical = n_categorical
+        self.numerical_domains = [
+            t.domain for t in self.transformers.values() if not t.domain.is_categorical
+        ]
+        self.categorical_domains = [
+            t.domain for t in self.transformers.values() if t.domain.is_categorical
+        ]
         self.numerical_slice = slice(0, n_numerical) if n_numerical > 0 else None
         self.categorical_slice = (
             slice(n_numerical, n_numerical + n_categorical) if n_categorical > 0 else None
@@ -314,6 +322,9 @@ class ConfigEncoder:
         """Compute the pairwise distance between rows of a tensor.
 
         Will sum the results of the numerical and categorical distances.
+        The encoding will be normalized such that all numericals lie within the unit
+        cube, and categoricals will by default, have a `p=0` norm, which is equivalent
+        to the Hamming distance.
 
         Args:
             x: A tensor of shape `(N, ncols)`.
@@ -330,26 +341,31 @@ class ConfigEncoder:
         categoricals = self.select_categorical(x)
         numericals = self.select_numerical(x)
 
-        if categoricals is None and numericals is None:
-            N = len(x)
-            if square_form:
-                return torch.zeros((N, N), dtype=dtype)
+        dists: torch.Tensor | None = None
+        if numericals is not None:
+            # Ensure they are all within the unit cube
+            numericals = Domain.translate(
+                numericals,
+                frm=self.numerical_domains,
+                to=UNIT_FLOAT_DOMAIN,
+            )
 
-            return torch.zeros((N * (N - 1)) // 2, dtype=dtype)
-
-        if categoricals is None:
-            assert numericals is not None
             dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
-        elif numericals is None:
-            dists = torch.nn.functional.pdist(categoricals, p=categorical_ord)
-        else:
-            num_dist = torch.nn.functional.pdist(numericals, p=numerical_ord)
-            cat_dist = torch.nn.functional.pdist(categoricals, p=categorical_ord)
-            dists = num_dist + cat_dist
+
+        if categoricals is not None:
+            cat_dists = torch.nn.functional.pdist(categoricals, p=categorical_ord)
+            if dists is None:
+                dists = cat_dists
+            else:
+                dists += cat_dists
+
+        if dists is None:
+            raise ValueError("No columns to compute distances on.")
 
         if not square_form:
             return dists
 
+        # Turn the single dimensional vector into a square matrix
         N = len(x)
         sq = torch.zeros((N, N), dtype=dtype)
         row_ix, col_ix = torch.triu_indices(N, N, offset=1)
