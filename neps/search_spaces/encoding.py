@@ -245,9 +245,16 @@ class ConfigEncoder:
     domain_of: dict[str, Domain] = field(init=False)
     n_numerical: int = field(init=False)
     n_categorical: int = field(init=False)
+    categorical_slice: slice | None = field(init=False)
+    numerical_slice: slice | None = field(init=False)
 
     def __post_init__(self) -> None:
-        transformers = sorted(self.transformers.items(), key=lambda t: t[0])
+        # Sort such that numericals are sorted first and categoricals after,
+        # with sorting within each group being done by name
+        transformers = sorted(
+            self.transformers.items(),
+            key=lambda t: (not t[1].domain.is_categorical, t[0]),
+        )
         self.transformers = dict(transformers)
 
         n_numerical = 0
@@ -262,6 +269,93 @@ class ConfigEncoder:
         self.domain_of = {name: t.domain for name, t in self.transformers.items()}
         self.n_numerical = n_numerical
         self.n_categorical = n_categorical
+        self.categorical_slice = slice(0, n_categorical) if n_categorical > 0 else None
+        self.numerical_slice = (
+            slice(n_categorical, n_categorical + n_numerical) if n_numerical > 0 else None
+        )
+
+    def select_categorical(self, x: torch.Tensor) -> torch.Tensor | None:
+        """Select the categorical columns from a tensor.
+
+        Args:
+            x: A tensor of shape `(N, ncols)`.
+
+        Returns:
+            A tensor of shape `(N, n_categorical)`.
+        """
+        if self.categorical_slice is None:
+            return None
+
+        return x[:, self.categorical_slice]
+
+    def select_numerical(self, x: torch.Tensor) -> torch.Tensor | None:
+        """Select the numerical columns from a tensor.
+
+        Args:
+            x: A tensor of shape `(N, ncols)`.
+
+        Returns:
+            A tensor of shape `(N, n_numerical)`.
+        """
+        if self.numerical_slice is None:
+            return None
+
+        return x[:, self.numerical_slice]
+
+    def pdist(
+        self,
+        x: torch.Tensor,
+        *,
+        numerical_ord: int = 2,
+        categorical_ord: int = 0,
+        dtype: torch.dtype = torch.float64,
+        square_form: bool = False,
+    ) -> torch.Tensor:
+        """Compute the pairwise distance between rows of a tensor.
+
+        Will sum the results of the numerical and categorical distances.
+
+        Args:
+            x: A tensor of shape `(N, ncols)`.
+            numerical_ord: The order of the norm to use for the numerical columns.
+            categorical_ord: The order of the norm to use for the categorical columns.
+            dtype: The dtype of the output tensor.
+            square_form: If `True`, the output will be a square matrix of shape
+                `(N, N)`. If `False`, the output will be a single dim tensor of shape
+                `1/2 * N * (N - 1)`.
+
+        Returns:
+            The distances, shaped according to `square_form`.
+        """
+        categoricals = self.select_categorical(x)
+        numericals = self.select_numerical(x)
+
+        if categoricals is None and numericals is None:
+            N = len(x)
+            if square_form:
+                return torch.zeros((N, N), dtype=dtype)
+
+            return torch.zeros((N * (N - 1)) // 2, dtype=dtype)
+
+        if categoricals is None:
+            assert numericals is not None
+            dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
+        elif numericals is None:
+            dists = torch.nn.functional.pdist(categoricals, p=categorical_ord)
+        else:
+            num_dist = torch.nn.functional.pdist(numericals, p=numerical_ord)
+            cat_dist = torch.nn.functional.pdist(categoricals, p=categorical_ord)
+            dists = num_dist + cat_dist
+
+        if not square_form:
+            return dists
+
+        N = len(x)
+        sq = torch.zeros((N, N), dtype=dtype)
+        row_ix, col_ix = torch.triu_indices(N, N, offset=1)
+        sq[row_ix, col_ix] = dists
+        sq[col_ix, row_ix] = dists
+        return sq
 
     @property
     def ncols(self) -> int:
@@ -387,16 +481,15 @@ class ConfigEncoder:
             constants = {}
 
         custom = custom_transformers or {}
-        sorted_params = sorted(parameters.items())
         transformers: dict[str, TensorTransformer] = {}
-        for name, hp in sorted_params:
+        for name, hp in parameters.items():
             if name in custom:
                 transformers[name] = custom[name]
                 continue
 
             match hp:
                 case FloatParameter() | IntegerParameter():
-                    transformers[name] = MinMaxNormalizer(hp.domain)  # type: ignore
+                    transformers[name] = MinMaxNormalizer(hp.domain)
                 case CategoricalParameter():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:

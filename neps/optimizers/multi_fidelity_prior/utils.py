@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import scipy
+import torch
 
 from neps.search_spaces import (
     CategoricalParameter,
@@ -13,6 +13,7 @@ from neps.search_spaces import (
     Parameter,
     SearchSpace,
 )
+from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -111,22 +112,10 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     Distance returned is the sum of the Euclidean distance of the continous subspace and
     the Hamming distance of the categorical subspace.
     """
-    c1 = config1.get_normalized_hp_categories(ignore_fidelity=True)
-    c2 = config2.get_normalized_hp_categories(ignore_fidelity=True)
-
-    # adding a dim with 0 to all subspaces in case the search space is not mixed type
-
-    # computing euclidean distance over the continuous subspace
-    diff = np.array(c1["continuous"] + [0]) - np.array(c2["continuous"] + [0])
-    d_cont = np.linalg.norm(diff, ord=2)
-
-    # TODO: can we consider the number of choices per dimension
-    # computing hamming distance over the categorical subspace
-    d_cat = scipy.spatial.distance.hamming(
-        c1["categorical"] + [0], c2["categorical"] + [0]
-    )
-
-    return d_cont + d_cat
+    encoder = ConfigEncoder.default({**config1.numerical, **config1.categoricals})
+    configs = encoder.encode([config1.hp_values(), config2.hp_values()])
+    dist = encoder.pdist(configs, square_form=False)
+    return float(dist.item())
 
 
 def compute_scores(

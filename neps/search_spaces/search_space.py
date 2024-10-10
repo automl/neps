@@ -502,54 +502,6 @@ class SearchSpace(Mapping[str, Any]):
 
         return new_config1, new_config2
 
-    def get_normalized_hp_categories(
-        self,
-        *,
-        ignore_fidelity: bool = False,
-    ) -> dict[Literal["continuous", "categorical", "graphs"], list[Any]]:
-        """Get the normalized values for each hyperparameter in the configuraiton.
-
-        Args:
-            ignore_fidelity: Whether to ignore the fidelity parameter when getting the
-                normalized values.
-
-        Returns:
-            A dictionary of the normalized values for each hyperparameter,
-            separated by type.
-        """
-        hps: dict[Literal["continuous", "categorical", "graphs"], list[Any]] = {
-            "continuous": [],
-            "categorical": [],
-            "graphs": [],
-        }
-        for hp in self.values():
-            if ignore_fidelity and hp.is_fidelity:
-                continue
-
-            if isinstance(hp, ConstantParameter):
-                continue
-
-            # TODO(eddiebergman): Not sure this covers all graph parameters but a search
-            # for `def value` that have a property decorator is all that could have
-            # worked previously for graphs
-            if isinstance(hp, GraphParameter):
-                hps["graphs"].append(hp.value)
-
-            elif isinstance(hp, CategoricalParameter):
-                assert hp.value is not None
-                hp_value = hp.value_to_normalized(hp.value)
-                hps["categorical"].append(hp_value)
-
-            # TODO(eddiebergman): Technically integer is not continuous
-            elif isinstance(hp, NumericalParameter):
-                assert hp.value is not None
-                hp_value = hp.value_to_normalized(hp.value)
-                hps["continuous"].append(hp_value)
-            else:
-                raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
-
-        return hps
-
     def hp_values(self) -> dict[str, Any]:
         """Get the values for each hyperparameter in this configuration."""
         return {
