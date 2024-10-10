@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import torch
 
+from neps.sampling.priors import Prior
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
@@ -36,6 +37,11 @@ def local_mutation(
     mutate_graphs: bool = True,
 ) -> SearchSpace:
     """Performs a local search by mutating randomly chosen hyperparameters."""
+    # Used to check uniqueness later.
+    _existing = {
+        k: v for k, v in config.hp_values().items() if k not in config.fidelities
+    }
+
     for _ in range(patience):
         new_config: dict[str, Parameter] = {}
 
@@ -67,9 +73,9 @@ def local_mutation(
                 raise NotImplementedError(f"Unknown hp type for {hp_name}: {type(hp)}")
 
         # if the new config doesn't differ from the original config then regenerate
-        _new_ss = SearchSpace(**new_config)
-        if not config.is_equal_value(_new_ss, include_fidelity=False):
-            return _new_ss
+        _new = {k: v for k, v in new_config.items() if k not in config.fidelities}
+        if _existing != _new:
+            return SearchSpace(**new_config)
 
     return config.clone()
 
@@ -85,13 +91,17 @@ def custom_crossover(
     Returns a configuration where each HP in config1 has `crossover_prob`% chance of
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
+    _existing = config1.hp_values()
+
     for _ in range(patience):
-        child_config = config1.clone()
+        child_config = {}
         for key, hyperparameter in config1.items():
             if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
-                child_config[key].set_value(config2[key].value)
+                child_config[key] = config2[key].value
+            else:
+                child_config[key] = hyperparameter.value
 
-        if not child_config.is_equal_value(config1):
+        if _existing != child_config:
             return SearchSpace(**child_config)
 
     # fail safe check to handle edge cases where config1=config2 or
