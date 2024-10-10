@@ -11,11 +11,7 @@ from neps.search_spaces.hyperparameters import (
     IntegerParameter,
     NumericalParameter,
 )
-from neps.search_spaces.parameter import (
-    MutatableParameter,
-    Parameter,
-    ParameterWithPrior,
-)
+from neps.search_spaces.parameter import Parameter, ParameterWithPrior
 from neps.search_spaces.search_space import SearchSpace
 
 __all__ = [
@@ -26,13 +22,10 @@ __all__ = [
     "FloatParameter",
     "FunctionParameter",
     "GraphGrammar",
-    "GraphGrammarCell",
-    "GraphGrammarRepetitive",
     "GraphParameter",
     "IntegerParameter",
     "NumericalParameter",
     "Parameter",
     "ParameterWithPrior",
-    "MutatableParameter",
     "SearchSpace",
 ]

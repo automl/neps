@@ -24,9 +24,6 @@ if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers import (
-        AcquisitionSampler,
-    )
     from neps.utils.types import RawConfig
 
 logger = logging.getLogger(__name__)
@@ -331,11 +328,12 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         modelling_type: Literal["joint", "rung"] = "joint",
         initial_design_size: int | None = None,
         model_policy: Any = ModelPolicy,
-        surrogate_model: str | Any = "gp",  # TODO: Remove
+        # TODO: Remove these when fixing ModelPolicy
+        surrogate_model: str | Any = "gp",
         surrogate_model_args: dict | None = None,  # TODO: Remove
         acquisition: str | BaseAcquisition = "EI",  # TODO: Remove
         log_prior_weighted: bool = False,  # TODO: Remove
-        acquisition_sampler: str | AcquisitionSampler = "random",  # TODO: Remove
+        acquisition_sampler: str = "random",  # TODO: Remove
     ):
         super().__init__(
             pipeline_space=pipeline_space,

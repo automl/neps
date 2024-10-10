@@ -11,7 +11,7 @@ import numpy.typing as npt
 from more_itertools import all_unique
 
 from neps.search_spaces.domain import Domain
-from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
+from neps.search_spaces.parameter import ParameterWithPrior
 
 if TYPE_CHECKING:
     from neps.utils.types import f64
@@ -19,10 +19,7 @@ if TYPE_CHECKING:
 CategoricalTypes: TypeAlias = float | int | str
 
 
-class CategoricalParameter(
-    ParameterWithPrior[CategoricalTypes, CategoricalTypes],
-    MutatableParameter,
-):
+class CategoricalParameter(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
     """A list of **unordered** choices for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
@@ -42,7 +39,6 @@ class CategoricalParameter(
 
     Please see the [`Parameter`][neps.search_spaces.parameter],
     [`ParameterWithPrior`][neps.search_spaces.parameter.ParameterWithPrior],
-    [`MutatableParameter`][neps.search_spaces.parameter.MutatableParameter] classes
     for more details on the methods available for this class.
     """
 
@@ -187,25 +183,6 @@ class CategoricalParameter(
             raise ValueError("Parent is the same as child!")
 
         return child
-
-    @override
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        if self.is_fidelity:
-            raise ValueError("Trying to crossover fidelity param!")
-
-        if parent2 is None:
-            parent2 = self
-
-        assert parent1.value is not None
-        assert parent2.value is not None
-
-        child1 = parent1.clone()
-        child1.set_value(parent2.value)
-
-        child2 = parent2.clone()
-        child2.set_value(parent1.value)
-
-        return child1, child2
 
     @override
     def _get_non_unique_neighbors(

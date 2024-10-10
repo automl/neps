@@ -10,11 +10,10 @@ from typing_extensions import Self, override
 
 import networkx as nx
 
-from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
+from neps.search_spaces.parameter import ParameterWithPrior
 from neps.utils.types import NotSet
 
 from .core_graph_grammar import CoreGraphGrammar
-from .crossover import simple_crossover
 from .mutations import bananas_mutate, simple_mutate
 
 if TYPE_CHECKING:
@@ -30,7 +29,7 @@ if TYPE_CHECKING:
 # and the `.value` to be the same type, which is not the case for
 # graph based parameters.
 class GraphParameter(  # noqa: D101
-    ParameterWithPrior[nx.DiGraph, str], MutatableParameter
+    ParameterWithPrior[nx.DiGraph, str]
 ):
     # NOTE(eddiebergman): What I've managed to learn so far is that
     # these hyperparameters work mostly with strings externally,
@@ -144,11 +143,6 @@ class GraphParameter(  # noqa: D101
     def mutate(  # noqa: D102
         self, parent: Self | None = None, *, mutation_strategy: str = "bananas"
     ) -> Self: ...
-
-    @abstractmethod
-    def crossover(  # noqa: D102
-        self, parent1: Self, parent2: Self | None = None
-    ) -> tuple[Self, Self]: ...
 
     def _get_non_unique_neighbors(self, num_neighbours: int) -> list[Self]:
         raise NotImplementedError
@@ -295,23 +289,6 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
 
         return parent.create_new_instance_from_id(
             self.string_tree_to_id(child_string_tree)
-        )
-
-    @override
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        if parent2 is None:
-            parent2 = self
-        parent1_string_tree = parent1.string_tree
-        parent2_string_tree = parent2.string_tree
-        children = simple_crossover(
-            parent1_string_tree, parent2_string_tree, self.grammars[0]
-        )
-        if all(not c for c in children):
-            raise Exception("Cannot create crossover")
-
-        return tuple(
-            parent2.create_new_instance_from_id(self.string_tree_to_id(child))
-            for child in children
         )
 
     @override

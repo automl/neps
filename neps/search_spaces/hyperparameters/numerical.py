@@ -14,10 +14,7 @@ base class for both of these hyperparameters, and includes methods from
 both [`ParameterWithPrior`][neps.search_spaces.ParameterWithPrior],
 allowing you to set a confidence along with a
 [`.default`][neps.search_spaces.Parameter.default] that can be used
-with certain algorithms, as well as
-[`MutatableParameter`][neps.search_spaces.MutatableParameter],
-which allows for [`mutate()`][neps.search_spaces.NumericalParameter.mutate]
-and [`crossover()`][neps.search_spaces.NumericalParameter.crossover] operations.
+with certain algorithms.
 """
 
 from __future__ import annotations
@@ -30,7 +27,7 @@ from typing_extensions import Self, override
 import numpy as np
 import scipy
 
-from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
+from neps.search_spaces.parameter import ParameterWithPrior
 
 if TYPE_CHECKING:
     from neps.search_spaces.domain import Domain
@@ -55,7 +52,7 @@ def _get_truncnorm_prior_and_std(
     return scipy.stats.truncnorm(a, b), float(std)
 
 
-class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
+class NumericalParameter(ParameterWithPrior[T, T]):
     """A numerical hyperparameter is bounded by a lower and upper value.
 
     Attributes:
@@ -181,14 +178,22 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
         prior = np.log(dist.pdf(value) + 1e-12) if log else dist.pdf(value)
         return float(prior)
 
-    @override
     def mutate(
         self,
         parent: Self | None = None,
-        mutation_rate: float = 1.0,
         mutation_strategy: str = "local_search",
         **kwargs: Any,
     ) -> Self:
+        """Mutate the numerical hyperparameter.
+
+        Args:
+            parent: The parent hyperparameter to mutate.
+            mutation_strategy: The mutation strategy to use.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            The mutated hyperparameter.
+        """
         if self.is_fidelity:
             raise ValueError("Trying to mutate fidelity param!")
 
@@ -209,26 +214,6 @@ class NumericalParameter(ParameterWithPrior[T, T], MutatableParameter):
             raise ValueError("Parent is the same as child!")
 
         return child
-
-    @override
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        if self.is_fidelity:
-            raise ValueError("Trying to crossover fidelity param!")
-
-        if parent2 is None:
-            parent2 = self
-
-        assert parent1.value is not None
-        assert parent2.value is not None
-
-        crossover_value = (parent1.value + parent2.value) / 2
-
-        proxy_self = self.clone()
-        proxy_self.set_value(crossover_value)  # type: ignore
-
-        tt = tuple(proxy_self._get_non_unique_neighbors(std=0.1, num_neighbours=2))
-        assert len(tt) == 2
-        return tt
 
     def _get_truncnorm_prior_and_std(self) -> tuple[TruncNorm, float]:
         if self.log:
