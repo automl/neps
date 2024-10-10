@@ -15,49 +15,52 @@ from neps.search_spaces.hyperparameters import (
 
 def test_config_encoder_default() -> None:
     parameters = {
+        "a": CategoricalParameter(["cat", "mouse", "dog"]),
         "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "c": FloatParameter(5, 6),
     }
 
     encoder = ConfigEncoder.default(parameters)
 
-    # Min-max numericals, integer categoricals.
+    # Numericals first, alphabetic
+    # Categoricals last, alphabetic
     assert encoder.transformers == {
-        "a": MinMaxNormalizer(parameters["a"].domain),
         "b": MinMaxNormalizer(parameters["b"].domain),
-        "c": CategoricalToIntegerTransformer(parameters["c"].choices),
+        "c": MinMaxNormalizer(parameters["c"].domain),
+        "a": CategoricalToIntegerTransformer(parameters["a"].choices),
     }
 
     # Domains, (of each column) match those of the transformers
     assert encoder.domains == [
         Domain.unit_float(),
         Domain.unit_float(),
-        Domain.indices(n=len(parameters["c"].choices), is_categorical=True),
+        Domain.indices(n=len(parameters["a"].choices), is_categorical=True),
     ]
 
     assert encoder.ncols == len(parameters)
     assert encoder.n_numerical == 2
     assert encoder.n_categorical == 1
-    assert encoder.index_of == {"a": 0, "b": 1, "c": 2}
+    assert encoder.numerical_slice == slice(0, 2)
+    assert encoder.categorical_slice == slice(2, 3)
+    assert encoder.index_of == {"a": 2, "b": 0, "c": 1}
     assert encoder.domain_of == {
-        "a": Domain.unit_float(),
         "b": Domain.unit_float(),
-        "c": Domain.indices(n=len(parameters["c"].choices), is_categorical=True),
+        "c": Domain.unit_float(),
+        "a": Domain.indices(n=len(parameters["a"].choices), is_categorical=True),
     }
     assert encoder.constants == {}
 
     configs = [
-        {"a": 5.5, "b": 5, "c": "cat"},
-        {"a": 5.5, "b": 5, "c": "dog"},
-        {"a": 6, "b": 6, "c": "mouse"},
+        {"c": 5.5, "b": 5, "a": "cat"},
+        {"c": 5.5, "b": 5, "a": "dog"},
+        {"c": 6, "b": 6, "a": "mouse"},
     ]
     encoded = encoder.encode(configs)
     expcected_encoding = torch.tensor(
         [
-            # a,   b,   c
-            [0.5, 0.0, 0.0],  # config 1
-            [0.5, 0.0, 2.0],  # config 2
+            # b,   c,   a
+            [0.0, 0.5, 0.0],  # config 1
+            [0.0, 0.5, 2.0],  # config 2
             [1.0, 1.0, 1.0],  # config 3
         ],
         dtype=torch.float64,
@@ -124,9 +127,9 @@ def test_config_encoder_complains_if_missing_entry_in_config() -> None:
 
 def test_config_encoder_sorts_parameters_by_name_for_consistent_ordering() -> None:
     parameters = {
+        "a": CategoricalParameter([0, 1]),
         "b": IntegerParameter(0, 1),
-        "a": FloatParameter(0, 1),
-        "c": CategoricalParameter([0, 1]),
+        "c": FloatParameter(0, 1),
     }
     p1 = dict(sorted(parameters.items()))
     p2 = dict(sorted(parameters.items(), reverse=True))
@@ -134,10 +137,10 @@ def test_config_encoder_sorts_parameters_by_name_for_consistent_ordering() -> No
     encoder_1 = ConfigEncoder.default(p1)
     encoder_2 = ConfigEncoder.default(p2)
 
-    assert encoder_1.index_of["a"] == 0
-    assert encoder_1.index_of["b"] == 1
-    assert encoder_1.index_of["c"] == 2
+    assert encoder_1.index_of["a"] == 2
+    assert encoder_1.index_of["b"] == 0
+    assert encoder_1.index_of["c"] == 1
 
-    assert encoder_2.index_of["a"] == 0
-    assert encoder_2.index_of["b"] == 1
-    assert encoder_2.index_of["c"] == 2
+    assert encoder_2.index_of["a"] == 2
+    assert encoder_2.index_of["b"] == 0
+    assert encoder_2.index_of["c"] == 1

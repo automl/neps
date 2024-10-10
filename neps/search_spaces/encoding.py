@@ -253,7 +253,7 @@ class ConfigEncoder:
         # with sorting within each group being done by name
         transformers = sorted(
             self.transformers.items(),
-            key=lambda t: (not t[1].domain.is_categorical, t[0]),
+            key=lambda t: (t[1].domain.is_categorical, t[0]),
         )
         self.transformers = dict(transformers)
 
@@ -269,9 +269,9 @@ class ConfigEncoder:
         self.domain_of = {name: t.domain for name, t in self.transformers.items()}
         self.n_numerical = n_numerical
         self.n_categorical = n_categorical
-        self.categorical_slice = slice(0, n_categorical) if n_categorical > 0 else None
-        self.numerical_slice = (
-            slice(n_categorical, n_categorical + n_numerical) if n_numerical > 0 else None
+        self.numerical_slice = slice(0, n_numerical) if n_numerical > 0 else None
+        self.categorical_slice = (
+            slice(n_numerical, n_numerical + n_categorical) if n_categorical > 0 else None
         )
 
     def select_categorical(self, x: torch.Tensor) -> torch.Tensor | None:
