@@ -521,8 +521,8 @@ def load_filebased_neps_state(directory: Path) -> NePSState[Path]:
             versioner=FileVersioner(version_file=optimizer_info_dir / ".version"),
             locker=FileLocker(
                 lock_path=optimizer_info_dir / ".lock",
-                poll=0.01,
-                timeout=None,
+                poll=OPTIMIZER_INFO_FILELOCK_POLL,
+                timeout=OPTIMIZER_INFO_FILELOCK_TIMEOUT,
             ),
             reader_writer=ReaderWriterOptimizerInfo(),
         ),
@@ -552,8 +552,8 @@ def load_filebased_neps_state(directory: Path) -> NePSState[Path]:
             versioner=FileVersioner(version_file=optimizer_state_dir / ".version"),
             locker=FileLocker(
                 lock_path=optimizer_state_dir / ".lock",
-                poll=GLOBAL_ERR_FILELOCK_POLL,
-                timeout=GLOBAL_ERR_FILELOCK_TIMEOUT,
+                poll=OPTIMIZER_STATE_FILELOCK_POLL,
+                timeout=OPTIMIZER_STATE_FILELOCK_TIMEOUT,
             ),
         ),
     )
