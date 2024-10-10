@@ -104,14 +104,14 @@ class Grammar(CFG):
         # init the sequence
         tree = "(" + str(symbol)
         # collect possible productions from the starting symbol
-        productions = self.productions(lhs=symbol)
+        productions = list(self.productions(lhs=symbol))
         # sample
         if len(productions) == 0:
             raise Exception(f"Nonterminal {symbol} has no productions!")
         if user_priors and self._prior is not None:
-            production = choice(productions, probs=self._prior[str(symbol)])
+            production = np.random.choice(productions, p=self._prior[str(symbol)])
         else:
-            production = choice(productions)
+            production = np.random.choice(productions)
 
         for sym in production.rhs():
             if isinstance(sym, str):
@@ -359,20 +359,3 @@ class Grammar(CFG):
         post_subtree = right[current_index + 1 :]
         removed = "".join(split_tree[index]) + " " + right[: current_index + 1]
         return (pre_subtree, removed, post_subtree)
-
-
-# helper function for quickly getting a single sample from multinomial with probs
-def choice(options, probs=None):
-    x = np.random.rand()
-    if probs is None:
-        # then uniform probs
-        num = len(options)
-        probs = [1 / num] * num
-    cum = 0
-    choice = -1
-    for i, p in enumerate(probs):
-        cum += p
-        if x < cum:
-            choice = i
-            break
-    return options[choice]

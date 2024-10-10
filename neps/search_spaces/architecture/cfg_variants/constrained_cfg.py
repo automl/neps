@@ -8,7 +8,7 @@ from queue import LifoQueue
 import numpy as np
 from nltk.grammar import Nonterminal
 
-from neps.search_spaces.architecture.cfg import Grammar, choice
+from neps.search_spaces.architecture.cfg import Grammar
 
 
 class Constraint:
@@ -117,7 +117,7 @@ class ConstrainedGrammar(Grammar):
         # init the sequence
         tree = "(" + str(symbol)
         # collect possible productions from the starting symbol
-        productions = self.productions(lhs=symbol)
+        productions = list(self.productions(lhs=symbol))
         if not_allowed_productions is not None and len(not_allowed_productions) > 0:
             productions = list(
                 filter(
@@ -144,9 +144,9 @@ class ConstrainedGrammar(Grammar):
                 probs = [x / cur_prob_sum for x in probs]
             assert len(probs) == len(productions)
 
-            production = choice(productions, probs=probs)
+            production = np.random.choice(productions, p=probs)
         else:
-            production = choice(productions)
+            production = np.random.choice(productions)
         counter = 0
         if self.constraint_is_class:
             constraints = self.constraints.initialize_constraints(production.rhs()[0])
