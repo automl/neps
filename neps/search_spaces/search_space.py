@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import operator
 import pprint
-from collections.abc import Hashable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from itertools import product
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -597,17 +597,6 @@ class SearchSpace(Mapping[str, Any]):
             )
             for config_values in full_grid
         ]
-
-    def serialize(self) -> dict[str, Hashable]:
-        """Serialize the configuration to a dictionary that can be written to disk."""
-        serialized_config = {}
-        for name, hp in self.hyperparameters.items():
-            if hp.value is None:
-                raise ValueError(
-                    f"Hyperparameter {name} has no value set and can't" " be serialized!"
-                )
-            serialized_config[name] = hp.serialize_value(hp.value)
-        return serialized_config
 
     def from_dict(self, config: Mapping[str, Any | GraphParameter]) -> SearchSpace:
         """Create a new instance of this search space with parameters set from the config.
