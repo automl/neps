@@ -7,11 +7,10 @@ from __future__ import annotations
 import logging
 import operator
 import pprint
-from collections.abc import Hashable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any
 
 import ConfigSpace as CS
 import numpy as np
@@ -25,7 +24,7 @@ from neps.search_spaces.hyperparameters import (
     IntegerParameter,
     NumericalParameter,
 )
-from neps.search_spaces.parameter import MutatableParameter, Parameter, ParameterWithPrior
+from neps.search_spaces.parameter import Parameter, ParameterWithPrior
 from neps.search_spaces.yaml_search_space_utils import (
     SearchSpaceFromYamlFileError,
     deduce_type,
@@ -373,183 +372,6 @@ class SearchSpace(Mapping[str, Any]):
 
         return SearchSpace(**sampled_hps)
 
-    def mutate(
-        self,
-        *,
-        parent: SearchSpace | None = None,
-        mutation_rate: float = 1.0,
-        mutation_strategy: Literal["smbo"] = "smbo",
-        patience: int = 50,
-        **kwargs: Any,
-    ) -> SearchSpace:
-        """Mutate the search space.
-
-        Args:
-            parent: The parent configuration to mutate from.
-            mutation_rate: The rate at which to mutate the search space.
-            mutation_strategy: The strategy to use for mutation.
-            patience: The number of times to try to mutate a valid value for a
-                hyperparameter.
-            **kwargs: Additional keyword arguments to pass to the mutation strategy.
-
-        Returns:
-            The mutated search space.
-        """
-        if mutation_strategy == "smbo":
-            args = {
-                "parent": parent,
-                "mutation_rate": mutation_rate,
-                "mutation_strategy": "local_search",  # fixing property for SMBO mutation
-            }
-            kwargs.update(args)
-            new_config = self._smbo_mutation(patience=patience, **kwargs)
-        else:
-            raise NotImplementedError("No such mutation strategy!")
-
-        return SearchSpace(**new_config)
-
-    # TODO(eddiebergman): This function seems very weak, i.e. it's only mutating
-    # one hyperparamter and copying the rest, very expensive for little gain.
-    def _smbo_mutation(self, *, patience: int = 5, **kwargs: Any) -> Self:
-        non_fidelity_mutatable_params = {
-            hp_name: hp
-            for hp_name, hp in self.hyperparameters.items()
-            if not hp.is_fidelity and isinstance(hp, MutatableParameter)
-        }
-
-        for _ in range(patience):
-            chosen_hp_name = np.random.choice(list(non_fidelity_mutatable_params))
-            hp = non_fidelity_mutatable_params[chosen_hp_name]
-
-            try:
-                mutated_param = hp.mutate(**kwargs)
-            except Exception as e:  # noqa: BLE001
-                logger.warning(f"{chosen_hp_name} failed to mutate! Error: {e}, {kwargs}")
-                continue
-
-            new_params = {
-                hp_name: hp.clone() if hp_name != chosen_hp_name else mutated_param
-                for hp_name, hp in self.hyperparameters.items()
-            }
-            return self.__class__(**new_params)
-
-        raise ValueError(
-            f"Could not mutate valid value for hyperparameter in {patience} tries!"
-        )
-
-    def crossover(
-        self,
-        config2: SearchSpace,
-        crossover_probability_per_hyperparameter: float = 1.0,
-        patience: int = 50,
-        crossover_strategy: str = "simple",
-    ) -> tuple[SearchSpace, SearchSpace]:
-        """Crossover this configuration with another.
-
-        Args:
-            config2: The other search space to crossover with.
-            crossover_probability_per_hyperparameter: The probability of crossing over
-                each hyperparameter.
-            patience: The number of times to try to crossover a valid value for a
-                hyperparameter.
-            crossover_strategy: The strategy to use for crossover.
-
-        Returns:
-            A tuple of the two new configurations.
-        """
-        if crossover_strategy == "simple":
-            new_config1, new_config2 = self._simple_crossover(
-                config2=config2,
-                crossover_probability_per_hyperparameter=crossover_probability_per_hyperparameter,
-                patience=patience,
-            )
-        else:
-            raise NotImplementedError("No such crossover strategy!")
-
-        if len(self.hyperparameters.keys()) != len(new_config1):
-            raise Exception("Cannot crossover")
-
-        return SearchSpace(**new_config1), SearchSpace(**new_config2)
-
-    def _simple_crossover(
-        self,
-        config2: SearchSpace,
-        crossover_probability_per_hyperparameter: float = 1.0,
-        patience: int = 50,
-    ) -> tuple[dict[str, Parameter], dict[str, Parameter]]:
-        new_config1: dict[str, Parameter] = {}
-        new_config2: dict[str, Parameter] = {}
-
-        for key, hyperparameter in self.hyperparameters.items():
-            other_hp = config2.hyperparameters[key]
-            if (
-                isinstance(hyperparameter, MutatableParameter)
-                and not hyperparameter.is_fidelity
-                and np.random.random() < crossover_probability_per_hyperparameter
-            ):
-                for _ in range(patience):
-                    try:
-                        child1, child2 = hyperparameter.crossover(other_hp)  # type: ignore
-                        new_config1[key] = child1
-                        new_config2[key] = child2
-                    except Exception:  # noqa: S112, BLE001
-                        continue
-                    else:
-                        break
-            else:
-                new_config1[key] = hyperparameter.clone()
-                new_config2[key] = other_hp.clone()
-
-        return new_config1, new_config2
-
-    def get_normalized_hp_categories(
-        self,
-        *,
-        ignore_fidelity: bool = False,
-    ) -> dict[Literal["continuous", "categorical", "graphs"], list[Any]]:
-        """Get the normalized values for each hyperparameter in the configuraiton.
-
-        Args:
-            ignore_fidelity: Whether to ignore the fidelity parameter when getting the
-                normalized values.
-
-        Returns:
-            A dictionary of the normalized values for each hyperparameter,
-            separated by type.
-        """
-        hps: dict[Literal["continuous", "categorical", "graphs"], list[Any]] = {
-            "continuous": [],
-            "categorical": [],
-            "graphs": [],
-        }
-        for hp in self.values():
-            if ignore_fidelity and hp.is_fidelity:
-                continue
-
-            if isinstance(hp, ConstantParameter):
-                continue
-
-            # TODO(eddiebergman): Not sure this covers all graph parameters but a search
-            # for `def value` that have a property decorator is all that could have
-            # worked previously for graphs
-            if isinstance(hp, GraphParameter):
-                hps["graphs"].append(hp.value)
-
-            elif isinstance(hp, CategoricalParameter):
-                assert hp.value is not None
-                hp_value = hp.value_to_normalized(hp.value)
-                hps["categorical"].append(hp_value)
-
-            # TODO(eddiebergman): Technically integer is not continuous
-            elif isinstance(hp, NumericalParameter):
-                assert hp.value is not None
-                hp_value = hp.value_to_normalized(hp.value)
-                hps["continuous"].append(hp_value)
-            else:
-                raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
-
-        return hps
-
     def hp_values(self) -> dict[str, Any]:
         """Get the values for each hyperparameter in this configuration."""
         return {
@@ -645,17 +467,6 @@ class SearchSpace(Mapping[str, Any]):
             )
             for config_values in full_grid
         ]
-
-    def serialize(self) -> dict[str, Hashable]:
-        """Serialize the configuration to a dictionary that can be written to disk."""
-        serialized_config = {}
-        for name, hp in self.hyperparameters.items():
-            if hp.value is None:
-                raise ValueError(
-                    f"Hyperparameter {name} has no value set and can't" " be serialized!"
-                )
-            serialized_config[name] = hp.serialize_value(hp.value)
-        return serialized_config
 
     def from_dict(self, config: Mapping[str, Any | GraphParameter]) -> SearchSpace:
         """Create a new instance of this search space with parameters set from the config.
@@ -820,46 +631,3 @@ class SearchSpace(Mapping[str, Any]):
 
     def __str__(self) -> str:
         return pprint.pformat(self.hyperparameters)
-
-    def is_equal_value(
-        self,
-        other: SearchSpace,
-        *,
-        include_fidelity: bool = True,
-        on_decimal: int = 8,
-    ) -> bool:
-        """Check if the configuration is equal to another configuration.
-
-        !!! warning
-
-            This does **NOT** check that the entire `SearchSpace` is equal (and thus it is
-            not a dunder method), but only checks the configuration values.
-
-        Args:
-            other: The other configuration to compare to.
-            include_fidelity: Whether to include the fidelity parameter in the comparison.
-            on_decimal: The decimal to round to when comparing float values.
-
-        Returns:
-            Whether the configuration values are equal.
-        """
-        if self.hyperparameters.keys() != other.hyperparameters.keys():
-            return False
-
-        for hp_key, this_hp in self.hyperparameters.items():
-            if this_hp.is_fidelity and (not include_fidelity):
-                continue
-
-            other_hp = other.hyperparameters[hp_key]
-            if not isinstance(other_hp, type(this_hp)):
-                return False
-
-            if isinstance(this_hp.value, float):
-                this_norm = this_hp.value_to_normalized(this_hp.value)
-                other_norm = other_hp.value_to_normalized(other_hp.value)  # type: ignore
-                if np.round(this_norm - other_norm, on_decimal) != 0:
-                    return False
-            elif this_hp.value != other_hp.value:
-                return False
-
-        return True

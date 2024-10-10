@@ -3,8 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import scipy
+import torch
 
+from neps.sampling.priors import Prior
 from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
@@ -13,6 +14,7 @@ from neps.search_spaces import (
     Parameter,
     SearchSpace,
 )
+from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -35,6 +37,11 @@ def local_mutation(
     mutate_graphs: bool = True,
 ) -> SearchSpace:
     """Performs a local search by mutating randomly chosen hyperparameters."""
+    # Used to check uniqueness later.
+    _existing = {
+        k: v for k, v in config.hp_values().items() if k not in config.fidelities
+    }
+
     for _ in range(patience):
         new_config: dict[str, Parameter] = {}
 
@@ -66,9 +73,9 @@ def local_mutation(
                 raise NotImplementedError(f"Unknown hp type for {hp_name}: {type(hp)}")
 
         # if the new config doesn't differ from the original config then regenerate
-        _new_ss = SearchSpace(**new_config)
-        if not config.is_equal_value(_new_ss, include_fidelity=False):
-            return _new_ss
+        _new = {k: v for k, v in new_config.items() if k not in config.fidelities}
+        if _existing != _new:
+            return SearchSpace(**new_config)
 
     return config.clone()
 
@@ -84,13 +91,17 @@ def custom_crossover(
     Returns a configuration where each HP in config1 has `crossover_prob`% chance of
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
+    _existing = config1.hp_values()
+
     for _ in range(patience):
-        child_config = config1.clone()
+        child_config = {}
         for key, hyperparameter in config1.items():
             if not hyperparameter.is_fidelity and np.random.random() < crossover_prob:
-                child_config[key].set_value(config2[key].value)
+                child_config[key] = config2[key].value
+            else:
+                child_config[key] = hyperparameter.value
 
-        if not child_config.is_equal_value(config1):
+        if _existing != child_config:
             return SearchSpace(**child_config)
 
     # fail safe check to handle edge cases where config1=config2 or
@@ -111,22 +122,10 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     Distance returned is the sum of the Euclidean distance of the continous subspace and
     the Hamming distance of the categorical subspace.
     """
-    c1 = config1.get_normalized_hp_categories(ignore_fidelity=True)
-    c2 = config2.get_normalized_hp_categories(ignore_fidelity=True)
-
-    # adding a dim with 0 to all subspaces in case the search space is not mixed type
-
-    # computing euclidean distance over the continuous subspace
-    diff = np.array(c1["continuous"] + [0]) - np.array(c2["continuous"] + [0])
-    d_cont = np.linalg.norm(diff, ord=2)
-
-    # TODO: can we consider the number of choices per dimension
-    # computing hamming distance over the categorical subspace
-    d_cat = scipy.spatial.distance.hamming(
-        c1["categorical"] + [0], c2["categorical"] + [0]
-    )
-
-    return d_cont + d_cat
+    encoder = ConfigEncoder.default({**config1.numerical, **config1.categoricals})
+    configs = encoder.encode([config1.hp_values(), config2.hp_values()])
+    dist = encoder.pdist(configs, square_form=False)
+    return float(dist.item())
 
 
 def compute_scores(

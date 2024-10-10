@@ -6,11 +6,6 @@ set or empty, in which case it is `None`.
 
 !!! tip
 
-    A `Parameter` which allows for mutations and crossovers should implement
-    the [`MutatableParameter`][neps.search_spaces.MutatableParameter] protocol.
-
-!!! tip
-
     A `Parameter` which allows for defining a
     [`.default`][neps.search_spaces.Parameter.default] and some prior,
     i.e. some default value along with a confidence that this is a good setting,
@@ -24,7 +19,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, ClassVar, Generic, Protocol, TypeVar, runtime_checkable
+from typing import Any, ClassVar, Generic, TypeVar
 from typing_extensions import Self
 
 ValueT = TypeVar("ValueT")
@@ -287,39 +282,3 @@ class ParameterWithPrior(Parameter[ValueT, SerializedT]):
         copy_self = self.clone()
         copy_self.set_value(value)
         return copy_self
-
-
-@runtime_checkable
-class MutatableParameter(Protocol):
-    """A protocol for hyperparameters that can be mutated.
-
-    Particpating parameters must implement the
-    [`mutate()`][neps.search_spaces.MutatableParameter.mutate] method
-    and the [`crossover()`][neps.search_spaces.MutatableParameter.crossover]
-    method.
-    """
-
-    def mutate(self, parent: Self | None = None) -> Self:
-        """Mutate the hyperparameter.
-
-        Args:
-            parent: the parent hyperparameter to mutate from.
-
-        Returns:
-            The mutated hyperparameter.
-        """
-        ...
-
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        """Crossover the hyperparameter with another hyperparameter.
-
-        Args:
-            parent1: the first parent hyperparameter.
-            parent2: the second parent hyperparameter.
-                If left as `None`, this hyperparameter will be used as the second parent
-                to crossover with.
-
-        Returns:
-            A tuple of the two crossovered hyperparameters.
-        """
-        ...

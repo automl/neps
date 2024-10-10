@@ -237,47 +237,6 @@ class Grammar(CFG):
 
         return child.strip()
 
-    def crossover(
-        self,
-        parent1: str,
-        parent2: str,
-        patience: int = 50,
-        return_crossover_subtrees: bool = False,
-    ):
-        # randomly swap subtrees in two trees
-        # if no suitiable subtree exists then return False
-        subtree_node, subtree_index = self.rand_subtree(parent1)
-        # chop out subtree
-        pre, sub, post = self.remove_subtree(parent1, subtree_index)
-        _patience = patience
-        while _patience > 0:
-            # sample subtree from donor
-            donor_subtree_index = self.rand_subtree_fixed_head(parent2, subtree_node)
-            # if no subtrees with right head node return False
-            if not donor_subtree_index:
-                _patience -= 1
-            else:
-                donor_pre, donor_sub, donor_post = self.remove_subtree(
-                    parent2, donor_subtree_index
-                )
-                # return the two new tree
-                child1 = pre + donor_sub + post
-                child2 = donor_pre + sub + donor_post
-
-                child1 = child1.strip()
-                child2 = child2.strip()
-
-                if return_crossover_subtrees:
-                    return (
-                        child1,
-                        child2,
-                        (pre, sub, post),
-                        (donor_pre, donor_sub, donor_post),
-                    )
-                return child1, child2
-
-        return False, False
-
     def rand_subtree(self, tree: str) -> tuple[str, int]:
         """Helper function to choose a random subtree in a given parse tree.
         Runs a single pass through the tree (stored as string) to look for

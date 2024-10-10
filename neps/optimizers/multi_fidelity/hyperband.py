@@ -32,9 +32,6 @@ if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers import (
-        AcquisitionSampler,
-    )
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
@@ -519,7 +516,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         surrogate_model_args: dict | None = None,  # TODO: Remove
         acquisition: str | BaseAcquisition = "EI",  # TODO: Remove
         log_prior_weighted: bool = False,  # TODO: Remove
-        acquisition_sampler: str | AcquisitionSampler = "random",  # TODO: Remove
+        acquisition_sampler: str = "random",  # TODO: Remove
     ):
         hb_args = {
             "pipeline_space": pipeline_space,

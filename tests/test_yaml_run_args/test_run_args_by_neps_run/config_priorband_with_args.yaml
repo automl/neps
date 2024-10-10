@@ -34,6 +34,5 @@ searcher:
   surrogate_model: gp
   acquisition: EI
   log_prior_weighted: false
-  acquisition_sampler: mutation
 
 pre_load_hooks: None

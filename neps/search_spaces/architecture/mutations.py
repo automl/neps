@@ -1,7 +1,7 @@
-from __future__ import annotations  # noqa: D100
+from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .cfg import Grammar
