@@ -557,57 +557,6 @@ class SearchSpace(Mapping[str, Any]):
             for hp_name, hp in self.hyperparameters.items()
         }
 
-    def add_hyperparameter(self, name: str, hp: Parameter) -> None:
-        """Add a hyperparameter to the search space.
-
-        Args:
-            name: The name of the hyperparameter.
-            hp: The hyperparameter to add.
-        """
-        self.hyperparameters[str(name)] = hp
-        self.hyperparameters = dict(
-            sorted(self.hyperparameters.items(), key=lambda x: x[0])
-        )
-
-    def get_vectorial_dim(self) -> dict[Literal["continuous", "categorical"], int] | None:
-        """Get the vectorial dimension of the search space.
-
-        The count of [`NumericalParameter`][neps.search_spaces.NumericalParameter]
-        are put under the key `#!python "continuous"` and the count of
-        [`CategoricalParameter`][neps.search_spaces.CategoricalParameter] are put under
-        the key `#!python "categorical"` in the return dict.
-
-        If there are no numerical or categorical hyperparameters **or constant**
-        parameters, then `None` is returned.
-
-        Returns:
-            The vectorial dimension
-        """
-        if not any(
-            isinstance(hp, NumericalParameter | CategoricalParameter | ConstantParameter)
-            for hp in self.values()
-        ):
-            return None
-
-        features: dict[Literal["continuous", "categorical"], int] = {
-            "continuous": 0,
-            "categorical": 0,
-        }
-        for hp in self.values():
-            if isinstance(hp, ConstantParameter):
-                pass
-            elif isinstance(hp, GraphParameter):
-                # TODO(eddiebergman): This was what the old behaviour would do...
-                pass
-            elif isinstance(hp, CategoricalParameter):
-                features["categorical"] += 1
-            elif isinstance(hp, NumericalParameter):
-                features["continuous"] += 1
-            else:
-                raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
-
-        return features
-
     def set_to_max_fidelity(self) -> None:
         """Set the configuration to the maximum fidelity."""
         if self.fidelity is None:
@@ -914,18 +863,3 @@ class SearchSpace(Mapping[str, Any]):
                 return False
 
         return True
-
-    def update_hp_values(self, new_values: dict[str, Any]) -> None:
-        """Update the hyperparameter values with new values.
-
-        Args:
-            new_values: The new values to set for the hyperparameters.
-        """
-        _hp_dict = self.hp_values()
-        _intersect = set(_hp_dict.keys()) & set(new_values.keys())
-        assert len(_intersect) == len(new_values), (
-            "All hyperparameters must be present! "
-            f"{set(_hp_dict.keys()) - set(new_values.keys())} are missing"
-        )
-        _hp_dict.update(new_values)
-        self.set_hyperparameters_from_dict(_hp_dict)

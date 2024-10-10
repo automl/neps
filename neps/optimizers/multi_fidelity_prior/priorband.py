@@ -406,39 +406,3 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         for _, sh in self.sh_brackets.items():
             sh.sampling_args = self.sampling_args
         return super().get_config_and_ids()
-
-
-class PriorBandNoIncToPrior(PriorBand):
-    """Disables incumbent sampling to replace with prior-based sampling.
-
-    This is equivalent to running HyperBand with Prior and Random sampling, where their
-    relationship is controlled by the `prior_weight_type` argument.
-    """
-
-    def _set_sampling_weights_and_inc(self, rung: int) -> dict:
-        super()._set_sampling_weights_and_inc(rung)
-        # distributing the inc weight to the prior entirely
-        self.sampling_args["weights"]["prior"] += self.sampling_args["weights"]["inc"]
-        self.sampling_args["weights"]["inc"] = 0
-
-        return self.sampling_args
-
-
-class PriorBandNoPriorToInc(PriorBand):
-    """Disables prior based sampling to replace with incumbent-based sampling."""
-
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs)
-        # cannot use prior in this version
-        self.pipeline_space.has_prior = False
-
-    def _set_sampling_weights_and_inc(self, rung: int) -> dict:
-        super()._set_sampling_weights_and_inc(rung)
-        # distributing the prior weight to the incumbent entirely
-        if self.sampling_args["weights"]["inc"] > 0:
-            self.sampling_args["weights"]["inc"] += self.sampling_args["weights"]["prior"]
-            self.sampling_args["weights"]["prior"] = 0
-        else:
-            self.sampling_args["weights"]["random"] = 1
-        self.sampling_args["weights"]["prior"] = 0
-        return self.sampling_args

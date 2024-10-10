@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -255,34 +255,6 @@ def get_value(obj: Any) -> Any:
     return obj.__name__
 
 
-def has_instance(itr: Iterable[Any], *types: type) -> bool:
-    """Check if any instance in the collection is of the given types."""
-    return any(isinstance(el, types) for el in itr)
-
-
-def filter_instances(itr: Iterable[Any], *types: type) -> list[Any]:
-    """Filter instances of a collection by the given types."""
-    return [el for el in itr if isinstance(el, types)]
-
-
-class MissingDependencyError(ImportError):
-    """Raise when a dependency is missing for an optional feature."""
-
-    def __init__(self, dep: str, cause: Exception, *args: Any):
-        """Initialize the error with the missing dependency and the original error."""
-        super().__init__(dep, cause, *args)
-        self.dep = dep
-        self.__cause__ = cause  # This is what `raise a from b` does
-
-    def __str__(self) -> str:
-        return (
-            f"Some required dependency-({self.dep}) to use this optional feature is "
-            f"missing. Please, include neps[experimental] dependency group in your "
-            f"installation of neps to be able to use all the optional features."
-            f" Otherwise, just install ({self.dep})"
-        )
-
-
 def is_partial_class(obj: Any) -> bool:
     """Check if the object is a (partial) class, or an instance."""
     if isinstance(obj, partial):
@@ -290,7 +262,7 @@ def is_partial_class(obj: Any) -> bool:
     return inspect.isclass(obj)
 
 
-def instance_from_map(  # noqa: C901, PLR0912
+def instance_from_map(  # noqa: C901
     mapping: dict[str, Any],
     request: str | list | tuple | type,
     name: str = "mapping",
@@ -340,9 +312,6 @@ def instance_from_map(  # noqa: C901, PLR0912
         instance = request
     else:
         raise ValueError(f"Object {request} invalid key for {name}")
-
-    if isinstance(instance, MissingDependencyError):
-        raise instance
 
     # Check if the request is a class if it is mandatory
     if (args_dict or as_class) and not is_partial_class(instance):

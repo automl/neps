@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections import OrderedDict
 from copy import deepcopy
-from functools import partial
 from typing import Any, ClassVar, Mapping
 from typing_extensions import override, Self
 from neps.utils.types import NotSet
@@ -11,18 +9,16 @@ from typing import TYPE_CHECKING, Any, ClassVar, Mapping
 from typing_extensions import Self, override
 
 import networkx as nx
-import numpy as np
 
 from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
 from neps.utils.types import NotSet
 
 from .core_graph_grammar import CoreGraphGrammar
-from .crossover import repetitive_search_space_crossover, simple_crossover
-from .mutations import bananas_mutate, repetitive_search_space_mutation, simple_mutate
+from .crossover import simple_crossover
+from .mutations import bananas_mutate, simple_mutate
 
 if TYPE_CHECKING:
     from .cfg import Grammar
-    from .cfg_variants.constrained_cfg import ConstrainedGrammar
 
 
 # TODO(eddiebergman): This is a halfway solution, but essentially a lot
@@ -174,7 +170,6 @@ class GraphParameter(  # noqa: D101
                 ("_value", True),
                 ("string_tree", False),
                 ("string_tree_list", False),
-                ("nxTree", False),
                 ("_function_id", False),
             )
             for _attr, is_mutable in _attrs_that_subclasses_use_to_reoresent_a_value:
@@ -232,7 +227,6 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
 
         self.string_tree: str = ""
         self._function_id: str = ""
-        self.nxTree: nx.DiGraph | None = None
         self.new_graph_repr_func = new_graph_repr_func
 
         if prior is not None:
@@ -351,10 +345,6 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
     def string_tree_to_id(string_tree: str) -> str:  # noqa: D102
         return string_tree
 
-    @property
-    def search_space_size(self) -> int:  # noqa: D102
-        return self.grammars[0].compute_space_size
-
     @abstractmethod
     def create_new_instance_from_id(self, identifier: str):  # noqa: D102
         raise NotImplementedError
@@ -362,7 +352,6 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
     def reset(self) -> None:  # noqa: D102
         self.clear_graph()
         self.string_tree = ""
-        self.nxTree = None
         self._value = None
         self._function_id = ""
 
@@ -371,19 +360,3 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
         flatten_graph: bool = True,  # noqa: FBT001, FBT002
     ) -> nx.DiGraph:
         return self._compose_functions(self.id, self.grammars[0], flatten_graph)
-
-    def unparse_tree(  # noqa: D102
-        self,
-        identifier: str,
-        as_composition: bool = True,  # noqa: FBT001, FBT002
-    ):
-        return self._unparse_tree(identifier, self.grammars[0], as_composition)
-
-    def get_dictionary(self) -> dict[str, str]:  # noqa: D102
-        return {"graph_grammar": self.id}
-
-    def create_nx_tree(self, string_tree: str) -> nx.DiGraph:  # noqa: D102
-        nxTree = self.from_stringTree_to_nxTree(string_tree, self.grammars[0])
-        return self.prune_tree(
-            nxTree, terminal_to_torch_map_keys=self.terminal_to_op_names.keys()
-        )

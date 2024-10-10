@@ -148,10 +148,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.rung_members: dict = {}  # stores config IDs per rung
         self.rung_members_performance: dict = {}  # performances recorded per rung
         self.rung_promotions: dict = {}  # records a promotable config per rung
-        self.total_fevals = 0
 
         # setup SH state counter
-        self._counter = 0
         self.full_rung_trace = SuccessiveHalving._get_rung_trace(
             self.rung_map, self.config_map
         )
@@ -173,12 +171,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         for rung in sorted(rung_map.keys()):
             rung_trace.extend([rung] * config_map[rung])
         return rung_trace
-
-    def get_incumbent_score(self) -> float:
-        y_star = np.inf  # minimizing optimizer
-        if len(self.observed_configs):
-            y_star = self.observed_configs.perf.values.min()
-        return y_star
 
     def _get_rung_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
@@ -352,7 +344,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(completed)
-        self.total_fevals = len(trials)
 
         # account for pending evaluations
         self._handle_pending_evaluations(pending)

@@ -65,13 +65,6 @@ class NePSState(Generic[Loc]):
         """Get a trial by its id."""
         return self._trials.get_by_id(trial_id).synced()
 
-    def get_trials_by_ids(self, trial_ids: list[str], /) -> dict[str, Trial | None]:
-        """Get trials by their ids."""
-        return {
-            _id: shared_trial.synced()
-            for _id, shared_trial in self._trials.get_by_ids(trial_ids).items()
-        }
-
     def sample_trial(
         self,
         optimizer: BaseOptimizer,

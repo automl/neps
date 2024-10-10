@@ -152,8 +152,6 @@ class IFBO(BaseOptimizer):
                 for cat_name, cat in space.categoricals.items()
             },
         )
-        self._border_sampler = Sampler.borders(len(params))
-        self._cached_border_configs: torch.Tensor | None = None
 
         # Domain of fidelity values, i.e. what is given in the configs that we
         # give to the user to evaluate at.

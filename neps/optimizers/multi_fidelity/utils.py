@@ -1,33 +1,11 @@
-# type: ignore
 from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 import pandas as pd
-
-if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
-
-
-def continuous_to_tabular(
-    config: SearchSpace, categorical_space: SearchSpace
-) -> SearchSpace:
-    """Convert the continuous parameters in the config into categorical ones based on
-    the categorical_space provided.
-    """
-    result = config.clone()
-    for hp_name, _ in config.items():
-        if hp_name in categorical_space:
-            choices = np.array(categorical_space[hp_name].choices)
-            diffs = choices - config[hp_name].value
-            # NOTE: in case of a tie the first value in the choices array will be returned
-            closest = choices[np.abs(diffs).argmin()]
-            result[hp_name].set_value(closest)
-
-    return result
 
 
 class MFObservedData:
@@ -77,11 +55,11 @@ class MFObservedData:
         self.df = pd.DataFrame([], columns=columns, index=index)
 
     @property
-    def pending_condition(self):
+    def pending_condition(self) -> pd.Series:
         return self.df[self.perf_col].isna()
 
     @property
-    def error_condition(self):
+    def error_condition(self) -> pd.Series:
         return self.df[self.perf_col] == "error"
 
     @property
@@ -98,7 +76,7 @@ class MFObservedData:
         return self.df.loc[self.pending_condition].index
 
     @property
-    def completed_runs(self):
+    def completed_runs(self) -> pd.DataFrame:
         return self.df[~(self.pending_condition | self.error_condition)]
 
     @property
@@ -116,7 +94,7 @@ class MFObservedData:
         index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         *,
         error: bool = False,
-    ):
+    ) -> None:
         """Add data only if none of the indices are already existing in the DataFrame."""
         # TODO: If index is only config_id extend it
         if not isinstance(index, list):
@@ -143,7 +121,7 @@ class MFObservedData:
         index: tuple[int, ...] | Sequence[tuple[int, ...]] | Sequence[int] | int,
         *,
         error: bool = False,
-    ):
+    ) -> None:
         """Update data if all the indices already exist in the DataFrame."""
         index_list = [index] if not isinstance(index, list) else index
         if self.df.index.isin(index_list).sum() == len(index_list):
@@ -158,7 +136,7 @@ class MFObservedData:
                 f"Given indices: {index_list}"
             )
 
-    def get_learning_curves(self):
+    def get_learning_curves(self) -> pd.DataFrame:
         return self.df.pivot_table(
             index=self.df.index.names[0],
             columns=self.df.index.names[1],
@@ -168,7 +146,7 @@ class MFObservedData:
     def all_configs_list(self) -> list[Any]:
         return self.df.loc[:, self.config_col].sort_index().values.tolist()
 
-    def get_best_learning_curve_id(self, *, maximize: bool = False):
+    def get_best_learning_curve_id(self, *, maximize: bool = False) -> int:
         """Returns a single configuration id of the best observed performance.
 
         Note: this will always return the single best lowest ID
@@ -179,22 +157,22 @@ class MFObservedData:
             return learning_curves.max(axis=1).idxmax()
         return learning_curves.min(axis=1).idxmin()
 
-    def get_best_seen_performance(self, *, maximize: bool = False):
+    def get_best_seen_performance(self, *, maximize: bool = False) -> float:
         learning_curves = self.get_learning_curves()
         if maximize:
             return learning_curves.max(axis=1).max()
         return learning_curves.min(axis=1).min()
 
-    def add_budget_column(self):
+    def add_budget_column(self) -> pd.DataFrame:
         combined_df = self.df.reset_index(level=1)
         return combined_df.set_index(keys=[self.budget_idx], drop=False, append=True)
 
-    def reduce_to_max_seen_budgets(self):
+    def reduce_to_max_seen_budgets(self) -> pd.DataFrame:
         self.df = self.df.sort_index()
         combined_df = self.add_budget_column()
         return combined_df.groupby(level=0).last()
 
-    def get_partial_configs_at_max_seen(self):
+    def get_partial_configs_at_max_seen(self) -> pd.Series:
         return self.reduce_to_max_seen_budgets()[self.config_col]
 
     def extract_learning_curve(
@@ -241,10 +219,6 @@ class MFObservedData:
             for _id in self.df.index.get_level_values("config_id").sort_values()
         }
         return pd.Series(max_z_observed)
-
-    @property
-    def token_ids(self) -> np.ndarray:
-        return self.df.index.values
 
 
 if __name__ == "__main__":

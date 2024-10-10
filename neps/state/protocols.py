@@ -121,10 +121,6 @@ class TrialRepo(Protocol[K]):
         """Get a trial by its id."""
         ...
 
-    def get_by_ids(self, trial_ids: list[str]) -> dict[str, Synced[Trial, K]]:
-        """Get trials by their ids."""
-        ...
-
     def put_new(self, trial: Trial) -> Synced[Trial, K]:
         """Put a new trial in the repo."""
         ...

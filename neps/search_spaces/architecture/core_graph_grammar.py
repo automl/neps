@@ -1,5 +1,3 @@
-
-
 import collections
 import inspect
 import queue
@@ -28,14 +26,11 @@ def get_edge_lists_of_topologies(terminal_map: dict) -> dict:
         if is_topology:
             if isinstance(v, partial):
                 if hasattr(v.func, "get_edge_list"):
-                    func_args = inspect.getfullargspec(
-                        v.func.get_edge_list).args  # type: ignore[attr-defined]
+                    func_args = inspect.getfullargspec(v.func.get_edge_list).args  # type: ignore[attr-defined]
                     kwargs = {k: v for k, v in v.keywords.items() if k in func_args}
-                    topology_edge_lists[k] = v.func.get_edge_list(
-                        **kwargs)  # type: ignore[attr-defined]
+                    topology_edge_lists[k] = v.func.get_edge_list(**kwargs)  # type: ignore[attr-defined]
                 elif hasattr(v.func, "edge_list"):
-                    topology_edge_lists[
-                        k] = v.func.edge_list  # type: ignore[attr-defined]
+                    topology_edge_lists[k] = v.func.edge_list  # type: ignore[attr-defined]
                 else:
                     raise Exception(
                         f"Please implement a get_edge_list static method for {v.func.__name__} or set edge_list!"
@@ -92,9 +87,6 @@ class CoreGraphGrammar(Graph):
         self.return_all_subgraphs = return_all_subgraphs
         self.return_graph_per_hierarchy = return_graph_per_hierarchy
 
-    def get_grammars(self) -> list[Grammar]:
-        return self.grammars
-
     def clear_graph(self):
         while len(self.nodes()) != 0:
             self.remove_node(next(iter(self.nodes())))
@@ -119,168 +111,6 @@ class CoreGraphGrammar(Graph):
     def _check_graph(graph: nx.DiGraph):
         if len(graph) == 0 or graph.number_of_edges() == 0:
             raise ValueError("Invalid DAG")
-
-    def prune_tree(
-        self,
-        tree: nx.DiGraph,
-        terminal_to_torch_map_keys: collections.abc.KeysView,
-        node_label: str = "op_name",
-    ) -> nx.DiGraph:
-        """Prunes unnecessary parts of parse tree, i.e., only one child.
-
-        Args:
-            tree (nx.DiGraph): Parse tree
-
-        Returns:
-            nx.DiGraph: Pruned parse tree
-        """
-
-        def dfs(visited: set, tree: nx.DiGraph, node: int) -> nx.DiGraph:
-            if node not in visited:
-                visited.add(node)
-
-                i = 0
-                while i < len(tree.nodes[node]["children"]):
-                    former_len = len(tree.nodes[node]["children"])
-                    child = tree.nodes[node]["children"][i]
-                    tree = dfs(
-                        visited,
-                        tree,
-                        child,
-                    )
-                    if former_len == len(tree.nodes[node]["children"]):
-                        i += 1
-
-                if len(tree.nodes[node]["children"]) == 1:
-                    predecessor = list(tree.pred[node])
-                    if len(predecessor) > 0:
-                        tree.add_edge(predecessor[0], tree.nodes[node]["children"][0])
-                        old_children = tree.nodes[predecessor[0]]["children"]
-                        idx = next(i for i, c in enumerate(old_children) if c == node)
-                        tree.nodes[predecessor[0]]["children"] = (
-                            old_children[: idx + 1]
-                            + [tree.nodes[node]["children"][0]]
-                            + old_children[idx + 1:]
-                        )
-                        tree.nodes[predecessor[0]]["children"].remove(node)
-
-                    tree.remove_node(node)
-                elif (
-                    tree.nodes[node]["terminal"]
-                    and tree.nodes[node][node_label] not in terminal_to_torch_map_keys
-                ):
-                    predecessor = next(iter(tree.pred[node]))
-                    tree.nodes[predecessor]["children"].remove(node)
-                    tree.remove_node(node)
-            return tree
-
-        return dfs(set(), tree, self._find_root(tree))
-
-    @staticmethod
-    def _find_root(G):
-        return next(n for n, d in G.in_degree() if d == 0)
-
-    @staticmethod
-    def from_stringTree_to_nxTree(
-        string_tree: str, grammar: Grammar, sym_name: str = "op_name"
-    ) -> nx.DiGraph:
-        """Transforms a parse tree from string representation to NetworkX representation.
-
-        Args:
-            string_tree (str): parse tree.
-            grammar (Grammar): context-free grammar which generated the parse tree in string represenation.
-            sym_name (str, optional): Key to save the terminal symbols. Defaults to "op_name".
-
-        Returns:
-            nx.DiGraph: parse tree as NetworkX representation.
-        """
-
-        def skip_char(char: str) -> bool:
-            if char in [" ", "\t", "\n"]:
-                return True
-            # special case: "(" is (part of) a terminal
-            if (
-                i != 0
-                and char == "("
-                and string_tree[i - 1] == " "
-                and string_tree[i + 1] == " "
-            ):
-                return False
-            return char == "("
-
-        def find_longest_match(
-            i: int, string_tree: str, symbols: list[str], max_match: int
-        ) -> int:
-            # search for longest matching symbol and add it
-            # assumes that the longest match is the true match
-            j = min(i + max_match, len(string_tree) - 1)
-            while j > i and j < len(string_tree):
-                if string_tree[i:j] in symbols:
-                    break
-                j -= 1
-            if j == i:
-                raise Exception(f"Terminal or nonterminal at position {i} does not exist")
-            return j
-
-        if isinstance(grammar, list) and len(grammar) > 1:
-            full_grammar = deepcopy(grammar[0])
-            rules = full_grammar.productions()
-            nonterminals = full_grammar.nonterminals
-            terminals = full_grammar.terminals
-            for g in grammar[1:]:
-                rules.extend(g.productions())
-                nonterminals.extend(g.nonterminals)
-                terminals.extend(g.terminals)
-            grammar = full_grammar
-            raise NotImplementedError("TODO check implementation")
-
-        symbols = grammar.nonterminals + grammar.terminals
-        max_match = max(map(len, symbols))
-        find_longest_match_func = partial(
-            find_longest_match,
-            string_tree=string_tree,
-            symbols=symbols,
-            max_match=max_match,
-        )
-
-        G = nx.DiGraph()
-        q: queue.LifoQueue = queue.LifoQueue()
-        q_children: queue.LifoQueue = queue.LifoQueue()
-        node_number = 0
-        i = 0
-        while i < len(string_tree):
-            char = string_tree[i]
-            if skip_char(char):
-                pass
-            elif char == ")" and string_tree[i - 1] != " ":
-                # closing symbol of production
-                _node_number = q.get(block=False)
-                _node_children = q_children.get(block=False)
-                G.nodes[_node_number]["children"] = _node_children
-            else:
-                j = find_longest_match_func(i)
-                sym = string_tree[i:j]
-                i = j - 1
-                node_number += 1
-                G.add_node(
-                    node_number,
-                    **{
-                        sym_name: sym,
-                        "terminal": sym in grammar.terminals,
-                        "children": [],
-                    },
-                )
-                if not q.empty():
-                    G.add_edge(q.queue[-1], node_number)
-                    q_children.queue[-1].append(node_number)
-                if sym in grammar.nonterminals:
-                    q.put(node_number)
-                    q_children.put([])
-            i += 1
-
-        if len(q.queue) != 0:
-            raise Exception("Invalid string_tree")
-        return G
 
     def update_op_names(self):
         # update op names
@@ -649,11 +479,11 @@ class CoreGraphGrammar(Graph):
                                     [
                                         (n_in, n_out)
                                         for n_in in q_subgraphs[-1]["graph"].predecessors(
-                                        n
-                                    )
+                                            n
+                                        )
                                         for n_out in q_subgraphs[-1]["graph"].successors(
-                                        n
-                                    )
+                                            n
+                                        )
                                     ]
                                 )
                                 q_subgraphs[-1]["graph"].remove_node(n)
@@ -865,9 +695,9 @@ class CoreGraphGrammar(Graph):
                     if q_nonterminals.qsize() == q_topologies.qsize():
                         topology, number_of_primitives = q_topologies.get(block=False)
                         primitives = [
-                                         q_primitives.get(block=False)
-                                         for _ in range(number_of_primitives)
-                                     ][::-1]
+                            q_primitives.get(block=False)
+                            for _ in range(number_of_primitives)
+                        ][::-1]
                         if (
                             topology in terminal_to_graph
                             and terminal_to_graph[topology] is not None
@@ -1021,8 +851,7 @@ class CoreGraphGrammar(Graph):
                 nodes[u] = _u
                 if _u not in flattened_graph.nodes:  # type: ignore[union-attr]
                     flattened_graph.add_node(_u)  # type: ignore[union-attr]
-                    flattened_graph.nodes[_u].update(
-                        graph.nodes[u])  # type: ignore[union-attr]
+                    flattened_graph.nodes[_u].update(graph.nodes[u])  # type: ignore[union-attr]
 
             if v in nodes:
                 _v = nodes[v]
@@ -1084,9 +913,8 @@ class CoreGraphGrammar(Graph):
                 if q_nonterminals.qsize() == q_topologies.qsize():
                     topology, number_of_primitives = q_topologies.get(block=False)
                     primitives = [
-                                     q_primitives.get(block=False) for _ in
-                                     range(number_of_primitives)
-                                 ][::-1]
+                        q_primitives.get(block=False) for _ in range(number_of_primitives)
+                    ][::-1]
                     composed_function = topology(*primitives)
                     if not q_topologies.empty():
                         q_primitives.put(composed_function)
@@ -1104,8 +932,8 @@ class CoreGraphGrammar(Graph):
                         and issubclass(self.terminal_to_op_names[sym], AbstractTopology)
                         or isinstance(self.terminal_to_op_names[sym], partial)
                         and issubclass(
-                        self.terminal_to_op_names[sym].func, AbstractTopology
-                    )
+                            self.terminal_to_op_names[sym].func, AbstractTopology
+                        )
                     ):
                         is_topology = True
 
@@ -1144,87 +972,6 @@ class CoreGraphGrammar(Graph):
             self.edges[u, v].update(data)  # type: ignore[union-attr]
         for n, data in graph.nodes(data=True):
             self.nodes[n].update(**data)
-
-    def _unparse_tree(
-        self,
-        identifier: str,
-        grammar: Grammar,
-        as_composition: bool = True,
-    ):
-        descriptor = self.id_to_string_tree(identifier)
-
-        symbols = grammar.nonterminals + grammar.terminals
-        max_match = max(map(len, symbols))
-        find_longest_match_func = partial(
-            find_longest_match,
-            descriptor=descriptor,
-            symbols=symbols,
-            max_match=max_match,
-        )
-
-        q_nonterminals: queue.LifoQueue = queue.LifoQueue()
-        q_topologies: queue.LifoQueue = queue.LifoQueue()
-        q_primitives: queue.LifoQueue = queue.LifoQueue()
-        i = 0
-        while i < len(descriptor):
-            char = descriptor[i]
-            if skip_char(char, descriptor, i):
-                pass
-            elif char == ")" and descriptor[i - 1] != " ":
-                # closing symbol of production
-                if q_nonterminals.qsize() == q_topologies.qsize():
-                    topology, number_of_primitives = q_topologies.get(block=False)
-                    primitives = [
-                                     q_primitives.get(block=False) for _ in
-                                     range(number_of_primitives)
-                                 ][::-1]
-                    if as_composition:
-                        if topology == "Linear1":
-                            composed_function = primitives[0]
-                        else:
-                            composed_function = (
-                                topology + "(" + ", ".join(primitives) + ")"
-                            )
-                        # composed_function = topology + "(" + ", ".join(primitives) + ")"
-                    else:
-                        composed_function = " ".join([topology, *primitives])
-                    if not q_topologies.empty():
-                        q_primitives.put(composed_function)
-                        q_topologies.queue[-1][1] += 1
-                _ = q_nonterminals.get(block=False)
-            else:
-                j = find_longest_match_func(i)
-                sym = descriptor[i:j]
-                i = j - 1
-
-                if sym in grammar.terminals:
-                    is_topology = False
-                    if (
-                        inspect.isclass(self.terminal_to_op_names[sym])
-                        and issubclass(self.terminal_to_op_names[sym], AbstractTopology)
-                        or isinstance(self.terminal_to_op_names[sym], partial)
-                        and issubclass(
-                        self.terminal_to_op_names[sym].func, AbstractTopology
-                    )
-                    ):
-                        is_topology = True
-
-                    if is_topology:
-                        q_topologies.put([sym, 0])
-                    else:  # is primitive operation
-                        q_primitives.put(sym)
-                        q_topologies.queue[-1][1] += 1  # count number of primitives
-                elif sym in grammar.nonterminals:
-                    q_nonterminals.put(sym)
-                else:
-                    raise Exception(f"Unknown symbol {sym}")
-
-            i += 1
-
-        if not q_topologies.empty():
-            raise Exception("Invalid descriptor")
-
-        return composed_function
 
 
 def skip_char(char: str, descriptor: str, i: int) -> bool:

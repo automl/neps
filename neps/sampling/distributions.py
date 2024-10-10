@@ -16,7 +16,7 @@ from torch.distributions.utils import broadcast_all
 from neps.search_spaces.domain import Domain
 
 if TYPE_CHECKING:
-    from neps.search_spaces.architecture.cfg_variants.constrained_cfg import Constraint
+    from torch.distributions.constraints import Constraint
 
 CONST_SQRT_2 = torch.tensor(math.sqrt(2), dtype=torch.float64)
 CONST_INV_SQRT_2PI = torch.tensor(1 / math.sqrt(2 * math.pi), dtype=torch.float64)

@@ -7,12 +7,66 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from neps.state.trial import Report, Trial
-from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
     from neps.utils.types import ERROR, ResultDict
+
+
+def _get_loss(
+    result: ERROR | ResultDict | float,
+    loss_value_on_error: float | None = None,
+    *,
+    ignore_errors: bool = False,
+) -> ERROR | float:
+    if result == "error":
+        if ignore_errors:
+            return "error"
+
+        if loss_value_on_error is not None:
+            return loss_value_on_error
+
+        raise ValueError(
+            "An error happened during the execution of your run_pipeline function."
+            " You have three options: 1. If the error is expected and corresponds to"
+            " a loss value in your application (e.g., 0% accuracy), you can set"
+            " loss_value_on_error to some float. 2. If sometimes your pipeline"
+            " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
+        )
+
+    if isinstance(result, dict):
+        return float(result["loss"])
+
+    assert isinstance(result, float)
+    return float(result)
+
+
+def _get_cost(
+    result: ERROR | ResultDict | float,
+    cost_value_on_error: float | None = None,
+    *,
+    ignore_errors: bool = False,
+) -> float | Any:
+    if result == "error":
+        if ignore_errors:
+            return "error"
+
+        if cost_value_on_error is None:
+            raise ValueError(
+                "An error happened during the execution of your run_pipeline function."
+                " You have three options: 1. If the error is expected and corresponds to"
+                " a cost value in your application, you can set"
+                " cost_value_on_error to some float. 2. If sometimes your pipeline"
+                " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
+            )
+
+        return cost_value_on_error
+
+    if isinstance(result, Mapping):
+        return float(result["cost"])
+
+    return float(result)
 
 
 @dataclass
@@ -43,7 +97,6 @@ class BaseOptimizer:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.used_budget: float = 0.0
         self.budget = budget
         self.pipeline_space = pipeline_space
         self.patience = patience
@@ -101,24 +154,6 @@ class BaseOptimizer:
         return _get_cost(
             result,
             cost_value_on_error=self.cost_value_on_error,
-            ignore_errors=self.ignore_errors,
-        )
-
-    def get_learning_curve(
-        self, result: str | dict | float | Report
-    ) -> list[float] | Any:
-        """Calls result.utils.get_loss() and passes the error handling through.
-        Please use self.get_loss() instead of get_loss() in all optimizer classes.
-        """
-        # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do
-        # this `_get_loss` at every call
-        if isinstance(result, Report):
-            return result.learning_curve
-
-        return _get_learning_curve(
-            result,
-            learning_curve_on_error=self.learning_curve_on_error,
             ignore_errors=self.ignore_errors,
         )
 

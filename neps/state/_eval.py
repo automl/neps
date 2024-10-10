@@ -8,8 +8,6 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
-from neps.exceptions import NePSError
-
 if TYPE_CHECKING:
     from neps.state.settings import DefaultReportValues
     from neps.state.trial import Trial
@@ -18,36 +16,6 @@ logger = logging.getLogger(__name__)
 
 Loc = TypeVar("Loc")
 _notset = object()
-
-
-class GotNonePendingTrialForEvalautionError(NePSError):
-    """Raised when trying to evaluate a trial that is not in a pending state."""
-
-    def __init__(
-        self,
-        trial_id: str,
-        state: Trial.State,
-        worker_id: str,
-        *args: Any,
-    ):
-        """Initialize the error.
-
-        Args:
-            trial_id: The ID of the trial that was not in a pending state.
-            state: The state of the trial.
-            worker_id: The ID of the worker that picked up this trial.
-            *args: Additional arguments to pass to the parent class.
-        """
-        super().__init__(trial_id, state, worker_id, *args)
-        self.trial_id = trial_id
-        self.state = state
-        self.worker_id = worker_id
-
-    def __str__(self) -> str:
-        return (
-            f"Trial '{self.trial_id}' is not in a pending state but in '{self.state}'."
-            f"This trial was picked up for evaluation by worker '{self.worker_id}'."
-        )
 
 
 def _check_float(value: Any, name: str) -> float:

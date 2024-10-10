@@ -12,12 +12,7 @@ if TYPE_CHECKING:
 # TODO: Chop this the hell out, it's pretty bad
 # We have much better and efficient ways to generate acquisition samples now
 class RandomSampler(AcquisitionSampler):
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        patience: int = 100,
-        budget: int | None = None,  # TODO: Remove
-    ):
+    def __init__(self, pipeline_space: SearchSpace, patience: int = 100):
         super().__init__(pipeline_space=pipeline_space, patience=patience)
 
     def sample(self, acquisition_function: Callable | None = None) -> SearchSpace:

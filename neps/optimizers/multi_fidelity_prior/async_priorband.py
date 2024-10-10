@@ -275,7 +275,6 @@ class PriorBandAshaHB(PriorBandAsha):
 
         # previous optimization run exists and needs to be loaded
         self._load_previous_observations(completed)
-        self.total_fevals = len(trials)
 
         # account for pending evaluations
         self._handle_pending_evaluations(pending)

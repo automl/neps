@@ -17,7 +17,6 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 # Copied from plot.py
 HERE = Path(__file__).parent.absolute()
-DEFAULT_RESULTS_PATH = HERE.parent / "results"
 
 
 @dataclass

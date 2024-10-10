@@ -70,6 +70,8 @@ def ArchitectureParameter(**kwargs):
             | dict
             | list[dict],
             primitives: dict,
+            # TODO: Follow this rabbit hole for `constraint_kwargs`,
+            # it can all be deleted my friend
             constraint_kwargs: dict | None = None,
             name: str = "ArchitectureParameter",
             set_recursive_attribute: Callable | None = None,
@@ -151,10 +153,6 @@ def ArchitectureParameter(**kwargs):
                 self.compile()
                 self.update_op_names()
             return super().to_pytorch()  # create PyTorch model
-
-        def to_tensorflow(self, inputs):
-            composed_function = self.compose_functions(flatten_graph=False)
-            return composed_function(inputs)
 
         def create_new_instance_from_id(self, identifier: str):
             g = ArchitectureParameter(**self.input_kwargs)  # type: ignore[arg-type]
