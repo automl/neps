@@ -231,9 +231,9 @@ def encode_trials_for_gp(
     pending_configs: list[Mapping[str, Any]] = []
 
     if encoder is None:
-        encoder = ConfigEncoder.default(
-            {**space.numerical, **space.categoricals},
-            constants=space.constants,
+        encoder = ConfigEncoder.from_space(
+            space=space,
+            include_constants_when_decoding=True,
         )
 
     for trial in trials.values():

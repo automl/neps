@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Any
 import torch
 from ifbo import FTPFN
 
-from neps.sampling.samplers import Sampler
+from neps.sampling.priors import Prior
 
 if TYPE_CHECKING:
+    from neps.sampling.samplers import Sampler
     from neps.search_spaces.domain import Domain
     from neps.search_spaces.encoding import ConfigEncoder
     from neps.search_spaces.search_space import SearchSpace
@@ -272,7 +273,7 @@ def acquire_next_from_ftpfn(
 
         # 2. Sample around best point from above samples and eval acq.
         _mode = sample_best_row[2:]
-        local_sampler = Sampler.centered(
+        local_sampler = Prior.from_domains_and_centers(
             centers=list(zip(_mode.tolist(), local_sample_confidence, strict=False)),
             domains=encoder.domains,
         )

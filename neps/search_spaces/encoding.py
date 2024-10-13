@@ -1,7 +1,7 @@
 """Encoding of hyperparameter configurations into tensors.
 
 For the most part, you can just use
-[`ConfigEncoder.default()`][neps.search_spaces.encoding.ConfigEncoder.default]
+[`ConfigEncoder.from_space()`][neps.search_spaces.encoding.ConfigEncoder.from_space]
 to create an encoder over a list of hyperparameters, along with any constants you
 want to include when decoding configurations.
 """
@@ -22,6 +22,7 @@ from neps.search_spaces.hyperparameters.integer import IntegerParameter
 
 if TYPE_CHECKING:
     from neps.search_spaces.parameter import Parameter
+    from neps.search_spaces.search_space import SearchSpace
 
 V = TypeVar("V", int, float)
 
@@ -218,9 +219,9 @@ class ConfigEncoder:
     tensors.
 
     The primary methods/properties to be aware of are:
-    * [`default()`](neps.search_spaces.encoding.ConfigEncoder.default]: Create a default
-        encoder over a list of hyperparameters. Please see the method docs for more
-        details on how it encodes different types of hyperparameters.
+    * [`from_space()`](neps.search_spaces.encoding.ConfigEncoder.default]: Create a
+        default encoder over a list of hyperparameters. Please see the method docs for
+        more details on how it encodes different types of hyperparameters.
     * [`encode()`]]neps.search_spaces.encoding.ConfigEncoder.encode]: Encode a list of
         configurations into a single tensor using the transforms of the encoder.
     * [`decode()`][neps.search_spaces.encoding.ConfigEncoder.decode]: Decode a 2d tensor
@@ -455,7 +456,49 @@ class ConfigEncoder:
         ]
 
     @classmethod
-    def default(
+    def from_space(
+        cls,
+        space: SearchSpace,
+        *,
+        include_fidelity: bool = False,
+        include_constants_when_decoding: bool = True,
+        custom_transformers: dict[str, TensorTransformer] | None = None,
+    ) -> ConfigEncoder:
+        """Create a default encoder over a list of hyperparameters.
+
+        This method creates a default encoder over a list of hyperparameters. It
+        automatically creates transformers for each hyperparameter based on its type.
+        The transformers are as follows:
+
+        * `FloatParameter` and `IntegerParameter` are normalized to the unit interval.
+        * `CategoricalParameter` is transformed into an integer.
+
+        Args:
+            space: The search space to build an encoder for
+            include_constants_when_decoding: Whether to include constants in the encoder.
+                These will not be present in the encoded tensors obtained in
+                [`encode()`][neps.search_spaces.encoding.ConfigEncoder.encode]
+                but will present when using
+                [`decode()`][neps.search_spaces.encoding.ConfigEncoder.decode].
+            include_fidelity: Whether to include fidelities in the encoding
+            custom_transformers: A mapping of hyperparameter names
+                to custom transformers to use
+
+        Returns:
+            A `ConfigEncoder` instance
+        """
+        parameters = {**space.numerical, **space.categoricals}
+        if include_fidelity:
+            parameters.update(space.fidelities)
+
+        return ConfigEncoder.from_parameters(
+            parameters=parameters,
+            constants=space.constants if include_constants_when_decoding else None,
+            custom_transformers=custom_transformers,
+        )
+
+    @classmethod
+    def from_parameters(
         cls,
         parameters: Mapping[str, Parameter],
         constants: Mapping[str, Any] | None = None,

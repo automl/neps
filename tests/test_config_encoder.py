@@ -20,7 +20,7 @@ def test_config_encoder_default() -> None:
         "c": FloatParameter(5, 6),
     }
 
-    encoder = ConfigEncoder.default(parameters)
+    encoder = ConfigEncoder.from_parameters(parameters)
 
     # Numericals first, alphabetic
     # Categoricals last, alphabetic
@@ -77,7 +77,7 @@ def test_config_encoder_pdist_calculation() -> None:
         "b": IntegerParameter(1, 10),
         "c": FloatParameter(1, 10),
     }
-    encoder = ConfigEncoder.default(parameters)
+    encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
     config2 = {"a": "mouse", "b": 10, "c": 10.0}
 
@@ -113,7 +113,7 @@ def test_config_encoder_pdist_squareform() -> None:
         "b": IntegerParameter(1, 10),
         "c": FloatParameter(1, 10),
     }
-    encoder = ConfigEncoder.default(parameters)
+    encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
     config2 = {"a": "dog", "b": 5, "c": 5}
     config3 = {"a": "mouse", "b": 10, "c": 10.0}
@@ -147,7 +147,7 @@ def test_config_encoder_accepts_custom_transformers() -> None:
         "a": FloatParameter(5, 6),
         "c": CategoricalParameter(["cat", "mouse", "dog"]),
     }
-    encoder = ConfigEncoder.default(
+    encoder = ConfigEncoder.from_parameters(
         parameters,
         custom_transformers={
             "c": CategoricalToIntegerTransformer(parameters["c"].choices)
@@ -167,7 +167,7 @@ def test_config_encoder_removes_constants_in_encoding_and_includes_in_decoding()
 
     x = "raspberry"
 
-    encoder = ConfigEncoder.default(parameters, constants={"x": x})
+    encoder = ConfigEncoder.from_parameters(parameters, constants={"x": x})
     assert encoder.constants == {"x": x}
 
     enc_x = encoder.encode([{"a": 5.5, "b": 5, "c": "cat", "x": x}])
@@ -189,7 +189,7 @@ def test_config_encoder_complains_if_missing_entry_in_config() -> None:
         "c": CategoricalParameter(["cat", "mouse", "dog"]),
     }
 
-    encoder = ConfigEncoder.default(parameters)
+    encoder = ConfigEncoder.from_parameters(parameters)
 
     with pytest.raises(KeyError):
         encoder.encode([{"a": 5.5, "b": 5}])
@@ -204,8 +204,8 @@ def test_config_encoder_sorts_parameters_by_name_for_consistent_ordering() -> No
     p1 = dict(sorted(parameters.items()))
     p2 = dict(sorted(parameters.items(), reverse=True))
 
-    encoder_1 = ConfigEncoder.default(p1)
-    encoder_2 = ConfigEncoder.default(p2)
+    encoder_1 = ConfigEncoder.from_parameters(p1)
+    encoder_2 = ConfigEncoder.from_parameters(p2)
 
     assert encoder_1.index_of["a"] == 2
     assert encoder_1.index_of["b"] == 0

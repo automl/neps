@@ -5,15 +5,12 @@ which is a container for hyperparameters that can be sampled, mutated, and cross
 from __future__ import annotations
 
 import logging
-import operator
 import pprint
 from collections.abc import Iterator, Mapping
-from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import ConfigSpace as CS
-import numpy as np
 import yaml
 
 from neps.search_spaces.architecture.graph_grammar import GraphParameter
@@ -33,10 +30,6 @@ from neps.search_spaces.yaml_search_space_utils import (
     formatting_float,
     formatting_int,
 )
-from neps.utils.types import NotSet, _NotSet
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +143,7 @@ def pipeline_space_from_yaml(  # noqa: C901
                 pipeline_space[name] = CategoricalParameter(**formatted_details)
             elif param_type == "const":
                 const_details = formatting_const(details)
-                pipeline_space[name] = ConstantParameter(const_details)
+                pipeline_space[name] = ConstantParameter(const_details)  # type: ignore
             else:
                 # Handle unknown parameter type
                 raise TypeError(
@@ -225,13 +218,6 @@ class SearchSpace(Mapping[str, Any]):
         self.fidelity_name: str | None = _fidelity_name
         self.has_prior: bool = _has_prior
 
-        # TODO(eddiebergman): This should be a seperate thing most likely and not
-        # in a `SearchSpace`.
-        # Variables for tabular bookkeeping
-        self.custom_grid_table: pd.Series | pd.DataFrame | None = None
-        self.raw_tabular_space: SearchSpace | None = None
-        self.has_tabular: bool = False
-
         self.categoricals: Mapping[str, CategoricalParameter] = {
             k: hp for k, hp in _hyperparameters if isinstance(hp, CategoricalParameter)
         }
@@ -251,78 +237,6 @@ class SearchSpace(Mapping[str, Any]):
         if _fidelity_param is not None and _fidelity_name is not None:
             assert isinstance(_fidelity_param, IntegerParameter | FloatParameter)
             self.fidelities = {_fidelity_name: _fidelity_param}
-
-    def set_custom_grid_space(
-        self,
-        grid_table: pd.Series | pd.DataFrame,
-        raw_space: SearchSpace | CS.ConfigurationSpace,
-    ) -> None:
-        """Set a custom grid space for the search space.
-
-        This function is used to set a custom grid space for the pipeline space.
-
-        !!! warning
-
-            The type check and the table format requirement is loose and
-            can break certain components.
-
-        Note:
-            Only to be used if a custom set of hyperparameters from the search space
-            is to be sampled or used for acquisition functions.
-        """
-        if grid_table is None or raw_space is None:
-            raise ValueError(
-                "Both grid_table and raw_space must be set!\n"
-                "A table or list of fixed configs must be supported with a "
-                "continuous space representing the type and bounds of each "
-                "hyperparameter for accurate modeling."
-            )
-
-        self.custom_grid_table = grid_table
-        self.raw_tabular_space = (
-            SearchSpace(**raw_space)
-            if not isinstance(raw_space, SearchSpace)
-            else raw_space
-        )
-        self.has_tabular = True
-
-    @property
-    def has_fidelity(self) -> bool:
-        """Check if the search space has a fidelity parameter."""
-        return self.fidelity is not None
-
-    def compute_prior(self, *, log: bool = False, ignore_fidelity: bool = False) -> float:
-        """Compute the prior probability of the search space.
-
-        This is better know as the `pdf` of the configuraiton in the search space, or a
-        relative measure of how likely this configuration is under the search space.
-
-        Args:
-            log: Whether to compute the log of the prior.
-            ignore_fidelity: Whether to ignore the fidelity parameter when
-                computing the prior.
-
-
-        Returns:
-            The likelihood of the configuration in the search space.
-        """
-        density_value = 0.0 if log else 1.0
-        op = operator.add if log else operator.mul
-
-        prior_hps = (
-            hp
-            for hp in self.hyperparameters.values()
-            if isinstance(hp, ParameterWithPrior) and hp.has_prior
-        )
-
-        for hyperparameter in prior_hps:
-            if ignore_fidelity and hyperparameter.is_fidelity:
-                continue
-
-            hp_prior = hyperparameter.compute_prior(log=log)
-            density_value = op(density_value, hp_prior)
-
-        return density_value
 
     def sample(
         self,
@@ -379,95 +293,6 @@ class SearchSpace(Mapping[str, Any]):
             for hp_name, hp in self.hyperparameters.items()
         }
 
-    def set_to_max_fidelity(self) -> None:
-        """Set the configuration to the maximum fidelity."""
-        if self.fidelity is None:
-            raise ValueError("No fidelity parameter in the search space!")
-
-        self.fidelity.set_value(self.fidelity.upper)
-
-    def get_search_space_grid(
-        self,
-        *,
-        size_per_numerical_hp: int = 10,
-        include_endpoints: bool = True,
-    ) -> list[SearchSpace]:
-        """Get a grid of configurations from the search space.
-
-        For [`NumericalParameter`][neps.search_spaces.NumericalParameter] hyperparameters,
-        the parameter `size_per_numerical_hp=` is used to determine a grid. If there are
-        any duplicates, e.g. for an
-        [`IntegerParameter`][neps.search_spaces.IntegerParameter], then we will
-        remove duplicates.
-
-        For [`CategoricalParameter`][neps.search_spaces.CategoricalParameter]
-        hyperparameters, we include all the choices in the grid.
-
-        For [`ConstantParameter`][neps.search_spaces.ConstantParameter] hyperparameters,
-        we include the constant value in the grid.
-
-        !!! note "TODO"
-
-            Does not support graph parameters currently.
-
-        !!! note "TODO"
-
-            Include default hyperparameters in the grid.
-            If all HPs have a `default` then add a single configuration.
-            If only partial HPs have defaults then add all combinations of defaults, but
-                only to the end of the list of configs.
-
-        Args:
-            size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
-            include_endpoints: Whether to include the endpoints of the grid.
-
-        Returns:
-            A list of configurations from the search space.
-        """
-        param_ranges = []
-        for hp in self.hyperparameters.values():
-            # NOTE(eddiebergman): This is a temporary fix to avoid graphs
-            # If this is resolved, please update the docstring!
-            if isinstance(hp, GraphParameter):
-                raise ValueError("Trying to create a grid for graphs!")
-
-            if isinstance(hp, CategoricalParameter):
-                param_ranges.append(hp.choices)
-                continue
-
-            if isinstance(hp, ConstantParameter):
-                param_ranges.append([hp.value])
-                continue
-
-            if isinstance(hp, NumericalParameter):
-                grid = hp.grid(
-                    size=size_per_numerical_hp,
-                    include_endpoint=include_endpoints,
-                )
-                _grid = np.clip(grid, hp.lower, hp.upper).astype(np.float64)
-                _grid = (
-                    _grid.astype(np.int64) if isinstance(hp, IntegerParameter) else _grid
-                )
-                _grid = np.unique(grid).tolist()
-                param_ranges.append(grid)
-                continue
-
-            raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
-
-        full_grid = product(*param_ranges)
-
-        return [
-            SearchSpace(
-                **{
-                    name: ConstantParameter(value=value)  # type: ignore
-                    for name, value in zip(
-                        self.hyperparameters.keys(), config_values, strict=False
-                    )
-                }
-            )
-            for config_values in full_grid
-        ]
-
     def from_dict(self, config: Mapping[str, Any | GraphParameter]) -> SearchSpace:
         """Create a new instance of this search space with parameters set from the config.
 
@@ -480,27 +305,15 @@ class SearchSpace(Mapping[str, Any]):
 
         return new
 
-    def clone(self, *, _with_tabular: bool = False) -> SearchSpace:
+    def clone(self) -> SearchSpace:
         """Create a copy of the search space."""
-        new_copy = self.__class__(
-            **{k: v.clone() for k, v in self.hyperparameters.items()}
-        )
-        if _with_tabular and self.has_tabular:
-            assert self.custom_grid_table is not None
-            assert self.raw_tabular_space is not None
-            new_copy.set_custom_grid_space(
-                grid_table=self.custom_grid_table,
-                raw_space=self.raw_tabular_space,
-            )
-
-        return new_copy
+        return self.__class__(**{k: v.clone() for k, v in self.hyperparameters.items()})
 
     def sample_default_configuration(
         self,
         *,
         patience: int = 1,
         ignore_fidelity: bool = True,
-        ignore_missing_defaults: bool = False,
     ) -> SearchSpace:
         """Sample the default configuration from the search space.
 
@@ -525,100 +338,12 @@ class SearchSpace(Mapping[str, Any]):
                 continue
 
             if hp.default is None:
-                if not ignore_missing_defaults:
-                    raise ValueError(f"No defaults specified for {hp} in the space.")
+                raise ValueError(f"No defaults specified for {hp} in the space.")
 
                 # Use the sampled value instead
-            else:
-                config[hp_name].set_value(hp.default)
+            config[hp_name].set_value(hp.default)
 
         return config
-
-    def set_defaults_to_current_values(self) -> None:
-        """Update the configuration/search space to use the current values as defaults."""
-        for hp in self.hyperparameters.values():
-            if isinstance(hp, NumericalParameter):
-                hp.set_default(hp.value)
-
-    def set_hyperparameters_from_dict(  # noqa: C901
-        self,
-        hyperparameters: Mapping[str, Any],
-        *,
-        defaults: bool = True,
-        values: bool = True,
-        # TODO(eddiebergman): The existence of this makes me think
-        # all hyperparameters that accept confidence should use the same keys
-        confidence: str = "low",
-        delete_previous_defaults: bool = False,
-        delete_previous_values: bool = False,
-        overwrite_constants: bool = False,
-    ) -> None:
-        """Set the hyperparameters from a dictionary of values.
-
-        !!! note "Constant Hyperparameters"
-
-            [`ConstantParameter`][neps.search_spaces.ConstantParameter] hyperparameters
-            have only a single possible value and hence only a single possible default.
-            If `overwrite_constants=` is `False`, then it will remain unchanged and
-            ignore the new value.
-
-            If `overwrite_constants=` is `True`, then the constant hyperparameter will
-            be updated, requiring both `defaults=True` and `values=True` to be set.
-
-            The arguments `delete_previous_defaults` and `delete_previous_values` are
-            ignored for [`ConstantParameter`][neps.search_spaces.ConstantParameter].
-
-        Args:
-            hyperparameters: The dictionary of hyperparameters to set with values.
-            defaults: Whether to set the defaults to these values.
-            values: Whether to set the value of the hyperparameters to these values.
-            confidence: The confidence score to use when setting the default.
-                Only applies if `defaults=True`.
-            delete_previous_defaults: Whether to delete the previous defaults.
-            delete_previous_values: Whether to delete the previous values.
-            overwrite_constants: Whether to overwrite constant hyperparameters.
-
-        Raises:
-            ValueError: If the value is invalid for the hyperparameter.
-        """
-        if values is False and defaults is False:
-            raise ValueError("At least one of `values` or `defaults` must be True.")
-
-        for hp_key, current_hp in self.hyperparameters.items():
-            new_hp_value = hyperparameters.get(hp_key, NotSet)
-            if isinstance(new_hp_value, _NotSet):
-                continue
-
-            # Handle constants specially as they have particular logic which
-            # is different from the other hyperparameters
-            if isinstance(current_hp, ConstantParameter):
-                if not overwrite_constants:
-                    continue
-
-                if not (defaults and values):
-                    raise ValueError(
-                        "Cannot have a constant parameter with a seperate default and"
-                        " and value. Please provide both `values=True` and"
-                        " `defaults=True` if passing `overwrite_constants=True`"
-                        f" with a new value for the constant '{hp_key}'."
-                    )
-
-                current_hp.set_constant_value(new_hp_value)
-                continue
-
-            if delete_previous_defaults:
-                current_hp.set_default(None)
-
-            if delete_previous_values:
-                current_hp.set_value(None)
-
-            if defaults:
-                current_hp.set_default(new_hp_value)
-                if isinstance(current_hp, ParameterWithPrior):
-                    current_hp.set_default_confidence_score(confidence)
-
-            if values:
-                current_hp.set_value(new_hp_value)
 
     def __getitem__(self, key: str) -> Parameter:
         return self.hyperparameters[key]

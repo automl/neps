@@ -95,57 +95,26 @@ class GraphParameter(  # noqa: D101
         self.create_from_id(value)
 
     @override
-    def set_default(self, default: str | None) -> None:
-        # TODO(eddiebergman): Could find no mention of the word 'default' in the
-        # GraphGrammers' hence... well this is all I got
-        self.default = default
-
-    @override
     def sample_value(self, *, user_priors: bool = False) -> nx.DiGraph:
         # TODO(eddiebergman): This could definitely be optimized
         # Right now it copies the entire object just to get a value out
         # of it.
         return self.sample(user_priors=user_priors).value
 
-    @classmethod
-    def serialize_value(cls, value: nx.DiGraph) -> str:
-        """Functionality relying on this for GraphParameters should
-        special case and use `self.id`.
-
-        !!! warning
-
-            Graph parameters don't directly support serialization.
-            Instead they rely on holding on to the original string value
-            from which they were created from.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def deserialize_value(cls, value: str) -> nx.DiGraph:
-        """Functionality relying on this for GraphParameters should
-        special case for whever this is needed...
-
-        !!! warning
-
-            Graph parameters don't directly support serialization.
-            Instead they rely on holding on to the original string value
-            from which they were created from.
-        """
-        raise NotImplementedError
-
     @override
-    def load_from(self, value: str | Self) -> None:
-        if isinstance(value, GraphParameter):
-            value = value.id
-        self.create_from_id(value)
+    def load_from(self, value: Any) -> None:
+        match value:
+            case GraphParameter():
+                value = value.id
+            case str():
+                self.create_from_id(value)
+            case _:
+                raise TypeError(f"Unrecognized type {type(value)}")
 
     @abstractmethod
     def mutate(  # noqa: D102
         self, parent: Self | None = None, *, mutation_strategy: str = "bananas"
     ) -> Self: ...
-
-    def _get_non_unique_neighbors(self, num_neighbours: int) -> list[Self]:
-        raise NotImplementedError
 
     def value_to_normalized(self, value: nx.DiGraph) -> float:  # noqa: D102
         raise NotImplementedError

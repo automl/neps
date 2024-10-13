@@ -45,10 +45,13 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
 import torch
 from torch import Tensor
+
+if TYPE_CHECKING:
+    from neps.search_spaces.encoding import ConfigEncoder
 
 Number = int | float
 V = TypeVar("V", int, float)
@@ -340,8 +343,8 @@ class Domain(Generic[V]):
     def translate(
         cls,
         x: Tensor,
-        frm: Domain | Iterable[Domain],
-        to: Domain | Iterable[Domain],
+        frm: Domain | Iterable[Domain] | ConfigEncoder,
+        to: Domain | Iterable[Domain] | ConfigEncoder,
         *,
         dtype: torch.dtype | None = None,
     ) -> Tensor:
@@ -374,8 +377,18 @@ class Domain(Generic[V]):
         if isinstance(frm, Domain) and isinstance(to, Domain):
             return to.cast(x, frm=frm, dtype=dtype)
 
-        frm = [frm] * ndims if isinstance(frm, Domain) else list(frm)
-        to = [to] * ndims if isinstance(to, Domain) else list(to)
+        from neps.search_spaces.encoding import ConfigEncoder
+
+        frm = (
+            [frm] * ndims
+            if isinstance(frm, Domain)
+            else (frm.domains if isinstance(frm, ConfigEncoder) else list(frm))
+        )
+        to = (
+            [to] * ndims
+            if isinstance(to, Domain)
+            else (to.domains if isinstance(to, ConfigEncoder) else list(to))
+        )
 
         if len(frm) != ndims:
             raise ValueError(

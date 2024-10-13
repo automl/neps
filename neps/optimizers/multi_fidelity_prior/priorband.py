@@ -381,11 +381,12 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
-        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
-        self.model_policy = model_policy(
-            pipeline_space=pipeline_space,
-            prior=Prior.from_parameters(parameters.values()),
-        )
+
+        # TODO: We also create a prior later inside of `compute_scores()`,
+        # in which we should really just pass in the prior dist as it does not move
+        # around in the space.
+        prior_dist = Prior.from_space(self.pipeline_space)
+        self.model_policy = model_policy(pipeline_space=pipeline_space, prior=prior_dist)
 
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy

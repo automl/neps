@@ -22,7 +22,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
-from typing_extensions import Self, override
+from typing_extensions import override
 
 import numpy as np
 import scipy
@@ -164,57 +164,6 @@ class NumericalParameter(ParameterWithPrior[T, T]):
             and self.default_confidence_score == other.default_confidence_score
         )
 
-    @override
-    def compute_prior(self, *, log: bool = False) -> float:
-        default = self.log_default if self.log else self.default
-
-        assert self.value is not None
-        assert default is not None
-
-        value = np.log(self.value) if self.log else self.value
-        value -= default
-        dist, std = self._get_truncnorm_prior_and_std()
-        value /= std
-        prior = np.log(dist.pdf(value) + 1e-12) if log else dist.pdf(value)
-        return float(prior)
-
-    def mutate(
-        self,
-        parent: Self | None = None,
-        mutation_strategy: str = "local_search",
-        **kwargs: Any,
-    ) -> Self:
-        """Mutate the numerical hyperparameter.
-
-        Args:
-            parent: The parent hyperparameter to mutate.
-            mutation_strategy: The mutation strategy to use.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            The mutated hyperparameter.
-        """
-        if self.is_fidelity:
-            raise ValueError("Trying to mutate fidelity param!")
-
-        if parent is None:
-            parent = self
-
-        if mutation_strategy == "simple":
-            child = self.clone()
-            child.sample()
-        elif mutation_strategy == "local_search" and "std" in kwargs:
-            child = self._get_non_unique_neighbors(std=kwargs["std"], num_neighbours=1)[0]
-        elif mutation_strategy == "local_search":
-            child = self._get_non_unique_neighbors(num_neighbours=1)[0]
-        else:
-            raise NotImplementedError
-
-        if parent.value == child.value:
-            raise ValueError("Parent is the same as child!")
-
-        return child
-
     def _get_truncnorm_prior_and_std(self) -> tuple[TruncNorm, float]:
         if self.log:
             assert self.log_bounds is not None
@@ -231,34 +180,3 @@ class NumericalParameter(ParameterWithPrior[T, T]):
             default=default,
             confidence_score=self.default_confidence_score,
         )
-
-    def grid(self, *, size: int, include_endpoint: bool = True) -> list[T]:
-        """Generate a grid of values for the numerical hyperparameter.
-
-        !!! note "Duplicates"
-
-            The grid may contain duplicates if the hyperparameter is an integer,
-            for example if the lower bound is `0` and the upper bound is `10`, but
-            `size=20`.
-
-        Args:
-            size: The number of values to generate.
-            include_endpoint: Whether to include the upper bound in the grid.
-
-        Returns:
-            A list of values for the numerical hyperparameter.
-        """
-        return [
-            self.normalized_to_value(x)
-            for x in np.linspace(0, 1, num=size, endpoint=include_endpoint)
-        ]
-
-    @override
-    @classmethod
-    def serialize_value(cls, value: T) -> T:
-        return value
-
-    @override
-    @classmethod
-    def deserialize_value(cls, value: T) -> T:
-        return value

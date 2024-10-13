@@ -60,13 +60,20 @@ def make_initial_design(  # noqa: PLR0912, C901
     configs: list[dict[str, Any]] = []
 
     # First, we establish what fidelity to apply to them.
+    # This block essentially is in charge of creating a fids() function that can
+    # be called to get the fidelities for each sample. Some are constant, some will
+    # sample per config.
     match sample_fidelity:
         case "min":
-            fids = {name: fid.lower for name, fid in space.fidelities.items()}
+            _fids = {name: fid.lower for name, fid in space.fidelities.items()}
+            fids = lambda: _fids
         case "max":
-            fids = {name: fid.upper for name, fid in space.fidelities.items()}
+            _fids = {name: fid.upper for name, fid in space.fidelities.items()}
+            fids = lambda: _fids
         case True:
-            fids = {name: hp.sample_value() for name, hp in space.fidelities.items()}
+            fids = lambda: {
+                name: hp.sample_value() for name, hp in space.fidelities.items()
+            }
         case int() | float():
             if len(space.fidelities) != 1:
                 raise ValueError(
@@ -77,7 +84,7 @@ def make_initial_design(  # noqa: PLR0912, C901
                     f"{list(space.fidelities.keys())}"
                 )
             name = next(iter(space.fidelities.keys()))
-            fids = {name: sample_fidelity}
+            fids = lambda: {name: sample_fidelity}
         case Mapping():
             missing_keys = set(space.fidelities.keys()) - set(sample_fidelity.keys())
             if any(missing_keys):
@@ -85,7 +92,7 @@ def make_initial_design(  # noqa: PLR0912, C901
                     f"Missing target fidelities for the following fidelities: "
                     f"{missing_keys}"
                 )
-            fids = sample_fidelity
+            fids = lambda: sample_fidelity
         case _:
             raise ValueError(
                 "Invalid value for `sample_default_at_target`. "
@@ -98,11 +105,9 @@ def make_initial_design(  # noqa: PLR0912, C901
             name: hp.default if hp.default is not None else hp.sample_value()
             for name, hp in space.hyperparameters.items()
         }
-        configs.append({**default, **fids})
+        configs.append({**default, **fids()})
 
-    params = {**space.numerical, **space.categoricals}
-    ndims = len(params)
-
+    ndims = len(space.numerical) + len(space.categoricals)
     if sample_size == "ndim":
         sample_size = ndims
     elif sample_size is not None and not sample_size > 0:
@@ -113,17 +118,17 @@ def make_initial_design(  # noqa: PLR0912, C901
     if sample_size is not None:
         match sampler:
             case "sobol":
-                sampler = Sampler.sobol(ndim=len(params))
+                sampler = Sampler.sobol(ndim=ndims)
             case "uniform":
-                sampler = Sampler.uniform(ndim=len(params))
+                sampler = Sampler.uniform(ndim=ndims)
             case "prior":
-                sampler = Prior.from_parameters(params.values())
+                sampler = Prior.from_space(space, include_fidelity=False)
             case _:
                 pass
 
         encoded_configs = sampler.sample(sample_size * 2, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)
         sample_configs = encoder.decode(uniq_x[:sample_size])
-        configs.extend([{**config, **fids} for config in sample_configs])
+        configs.extend([{**config, **fids()} for config in sample_configs])
 
     return configs

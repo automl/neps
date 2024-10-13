@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from typing_extensions import Self, override
 
 import numpy as np
@@ -111,20 +111,8 @@ class IntegerParameter(NumericalParameter[int]):
         return clone
 
     @override
-    def load_from(self, value: Number) -> None:
+    def load_from(self, value: Any) -> None:
         self._value = int(np.rint(value))
-
-    @override
-    def set_default(self, default: int | None) -> None:
-        if default is None:
-            self.default = None
-            self.has_prior = False
-            self.float_hp.set_default(None)
-        else:
-            _default = int(round(default))
-            self.default = _default
-            self.has_prior = True
-            self.float_hp.set_default(_default)
 
     @override
     def set_value(self, value: int | None) -> None:
@@ -161,36 +149,3 @@ class IntegerParameter(NumericalParameter[int]):
     def normalized_to_value(self, normalized_value: float) -> int:
         return int(np.rint(self.float_hp.normalized_to_value(normalized_value)))
 
-    @override
-    def set_default_confidence_score(self, default_confidence: str) -> None:
-        self.float_hp.set_default_confidence_score(default_confidence)
-        super().set_default_confidence_score(default_confidence)
-
-    @override
-    def _get_non_unique_neighbors(
-        self,
-        num_neighbours: int,
-        *,
-        std: float = 0.2,
-    ) -> list[Self]:
-        neighbours: list[Self] = []
-
-        assert self.value is not None
-        vectorized_val = self.value_to_normalized(self.value)
-
-        # TODO(eddiebergman): This whole thing can be vectorized, not sure
-        # if we ever have enough num_neighbours to make it worth it
-        while len(neighbours) < num_neighbours:
-            n_val = np.random.normal(vectorized_val, std)
-            if n_val < 0 or n_val > 1:
-                continue
-
-            sampled_value = self.normalized_to_value(n_val)
-            if sampled_value == self.value:
-                continue
-
-            neighbour = self.clone()
-            neighbour.set_value(sampled_value)
-            neighbours.append(neighbour)
-
-        return neighbours

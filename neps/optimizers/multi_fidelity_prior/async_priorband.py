@@ -116,11 +116,8 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
 
-        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
-        self.model_policy = model_policy(
-            pipeline_space=pipeline_space,
-            prior=Prior.from_parameters(parameters.values()),
-        )
+        prior_dist = Prior.from_space(self.pipeline_space)
+        self.model_policy = model_policy(pipeline_space=pipeline_space, prior=prior_dist)
 
     def get_config_and_ids(
         self,

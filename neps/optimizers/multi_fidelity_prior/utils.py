@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -10,11 +10,11 @@ from neps.search_spaces import (
     CategoricalParameter,
     ConstantParameter,
     GraphParameter,
-    NumericalParameter,
-    Parameter,
     SearchSpace,
 )
 from neps.search_spaces.encoding import ConfigEncoder
+from neps.search_spaces.hyperparameters.float import FloatParameter
+from neps.search_spaces.hyperparameters.integer import IntegerParameter
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -26,58 +26,65 @@ def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
     return config
 
 
-# TODO(eddiebergman): Previously this just ignored graphs,
-# now it will likely raise if it encounters one...
+# TODO(eddiebergman): This would be much faster
+# if done in a vectorized manner...
 def local_mutation(
     config: SearchSpace,
     std: float = 0.25,
     mutation_rate: float = 0.5,
     patience: int = 50,
-    mutate_categoricals: bool = True,
-    mutate_graphs: bool = True,
 ) -> SearchSpace:
     """Performs a local search by mutating randomly chosen hyperparameters."""
     # Used to check uniqueness later.
-    _existing = {
-        k: v for k, v in config.hp_values().items() if k not in config.fidelities
-    }
+    # TODO: Seeding
+    space = config
+    parameters_to_keep = {}
+    parameters_to_mutate = {}
 
-    for _ in range(patience):
-        new_config: dict[str, Parameter] = {}
+    for name, parameter in space.hyperparameters.items():
+        if (
+            parameter.is_fidelity
+            or isinstance(parameter, ConstantParameter)
+            or np.random.uniform() > mutation_rate
+        ):
+            parameters_to_keep[name] = parameter.value
+        else:
+            parameters_to_mutate[name] = parameter
 
-        for hp_name, hp in config.items():
-            if hp.is_fidelity or np.random.uniform() > mutation_rate:
-                new_config[hp_name] = hp.clone()
+    if len(parameters_to_mutate) == 0:
+        return space.from_dict(parameters_to_keep)
 
-            elif isinstance(hp, CategoricalParameter):
-                if mutate_categoricals:
-                    new_config[hp_name] = hp.mutate(mutation_strategy="local_search")
-                else:
-                    new_config[hp_name] = hp.clone()
+    new_config: dict[str, Any] = {}
 
-            elif isinstance(hp, GraphParameter):
-                if mutate_graphs:
-                    new_config[hp_name] = hp.mutate(mutation_strategy="bananas")
-                else:
-                    new_config[hp_name] = hp.clone()
-
-            elif isinstance(hp, NumericalParameter):
-                new_config[hp_name] = hp.mutate(
-                    mutation_strategy="local_search",
-                    std=std,
+    for hp_name, hp in parameters_to_mutate.items():
+        match hp:
+            case CategoricalParameter():
+                assert hp._value_index is not None
+                perm: list[int] = torch.randperm(len(hp.choices)).tolist()
+                ix = perm[0] if perm[0] != hp._value_index else perm[1]
+                new_config[hp_name] = hp.choices[ix]
+            case GraphParameter():
+                new_config[hp_name] = hp.mutate(mutation_strategy="bananas")
+            case IntegerParameter() | FloatParameter():
+                prior = Prior.from_parameters(
+                    {hp_name: hp},
+                    confidence_values={hp_name: (1 - std)},
                 )
-            elif isinstance(hp, ConstantParameter):
-                new_config[hp_name] = hp.clone()
 
-            else:
+                for _ in range(patience):
+                    sample = prior.sample(1, to=hp.domain).item()
+                    if sample != hp.value:
+                        new_config[hp_name] = hp.value
+                        break
+                else:
+                    raise ValueError(
+                        f"Exhausted patience trying to mutate parameter '{hp_name}'"
+                        f" with value {hp.value}"
+                    )
+            case _:
                 raise NotImplementedError(f"Unknown hp type for {hp_name}: {type(hp)}")
 
-        # if the new config doesn't differ from the original config then regenerate
-        _new = {k: v for k, v in new_config.items() if k not in config.fidelities}
-        if _existing != _new:
-            return SearchSpace(**new_config)
-
-    return config.clone()
+    return space.from_dict(new_config)
 
 
 def custom_crossover(
@@ -122,7 +129,7 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     Distance returned is the sum of the Euclidean distance of the continous subspace and
     the Hamming distance of the categorical subspace.
     """
-    encoder = ConfigEncoder.default({**config1.numerical, **config1.categoricals})
+    encoder = ConfigEncoder.from_parameters({**config1.numerical, **config1.categoricals})
     configs = encoder.encode([config1.hp_values(), config2.hp_values()])
     dist = encoder.pdist(configs, square_form=False)
     return float(dist.item())
@@ -132,20 +139,28 @@ def compute_scores(
     config: SearchSpace,
     prior: SearchSpace,
     inc: SearchSpace,
+    *,
+    include_fidelity: bool = False,
 ) -> tuple[float, float]:
     """Scores the config by a Gaussian around the prior and the incumbent."""
-    _prior = prior.clone()
-    _prior.set_hyperparameters_from_dict(config.hp_values(), defaults=False)
-    # compute the score of config if it was sampled from the prior (as the default)
-    prior_score = _prior.compute_prior()
+    # TODO: This could lifted up and just done in the class itself
+    # in a vectorized form.
+    encoder = ConfigEncoder.from_space(config, include_fidelity=include_fidelity)
+    encoded_config = encoder.encode([config.hp_values()])
 
-    _inc = inc.clone()
-    # setting the default to be the incumbent
-    _inc.set_defaults_to_current_values()
-    _inc.set_hyperparameters_from_dict(config.hp_values(), defaults=False)
-    # compute the score of config if it was sampled from the inc (as the default)
-    inc_score = _inc.compute_prior()
+    prior_dist = Prior.from_space(
+        prior,
+        center_values=prior.hp_values(),
+        include_fidelity=include_fidelity,
+    )
+    inc_dist = Prior.from_space(
+        inc,
+        center_values=inc.hp_values(),
+        include_fidelity=include_fidelity,
+    )
 
+    prior_score = prior_dist.pdf(encoded_config, frm=encoder).item()
+    inc_score = inc_dist.pdf(encoded_config, frm=encoder).item()
     return prior_score, inc_score
 
 

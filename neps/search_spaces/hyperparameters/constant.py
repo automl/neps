@@ -73,33 +73,6 @@ class ConstantParameter(Parameter[T, T]):
         return self.value
 
     @override
-    def set_default(self, default: T | None) -> None:
-        """Set the default of the constant parameter.
-
-        !!! note
-
-            This method is a no-op but will raise a `ValueError` if the default
-            is different from the current default.
-
-            Please see
-            [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
-            which can be used to set both the
-            [`.value`][neps.search_spaces.parameter.Parameter.value]
-            and the [`.default`][neps.search_spaces.parameter.Parameter.default] at once
-
-        Args:
-            default: value to set the default to.
-
-        Raises:
-            ValueError: if the default is different from the current default.
-        """
-        if default != self.default:
-            raise ValueError(
-                f"Constant does not allow changing the default value. "
-                f"Tried to set default to {default}, but it is already {self.default}"
-            )
-
-    @override
     def set_value(self, value: T | None) -> None:
         """Set the value of the constant parameter.
 
@@ -146,22 +119,3 @@ class ConstantParameter(Parameter[T, T]):
     @override
     def normalized_to_value(self, normalized_value: float) -> T:
         return self._value
-
-    @override
-    def _get_non_unique_neighbors(
-        self,
-        num_neighbours: int,
-        *,
-        std: float = 0.2,
-    ) -> list[Self]:
-        raise ValueError("ConstantParameter have no neighbours")
-
-    @override
-    @classmethod
-    def serialize_value(cls, value: T) -> T:
-        return value
-
-    @override
-    @classmethod
-    def deserialize_value(cls, value: T) -> T:
-        return value

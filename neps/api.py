@@ -341,11 +341,11 @@ def _run_args(
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
             if pipeline_space.has_prior:
-                searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
+                searcher = "priorband" if len(pipeline_space.fidelities) > 0 else "pibo"
             else:
                 searcher = (
                     "hyperband"
-                    if pipeline_space.has_fidelity
+                    if len(pipeline_space.fidelities) > 0
                     else "bayesian_optimization"
                 )
             searcher_info["searcher_selection"] = "neps-default"

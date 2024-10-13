@@ -6,7 +6,7 @@ do not necessarily have an easily definable pdf.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import reduce
 from typing import TYPE_CHECKING, Protocol
@@ -16,9 +16,10 @@ import torch
 from more_itertools import all_equal
 
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
+from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
-    from neps.sampling.priors import CenteredPrior, UniformPrior
+    from neps.sampling.priors import UniformPrior
 
 
 class Sampler(Protocol):
@@ -33,7 +34,7 @@ class Sampler(Protocol):
         self,
         n: int | torch.Size,
         *,
-        to: Domain | list[Domain],
+        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -96,19 +97,6 @@ class Sampler(Protocol):
         """
         return BorderSampler(ndim=ndim)
 
-    @classmethod
-    def centered(
-        cls,
-        domains: list[Domain],
-        centers: Iterable[None | tuple[int | float, float]],
-        *,
-        device: torch.device | None = None,
-    ) -> CenteredPrior:
-        """See [`Prior.make_centered`][neps.sampling.priors.Prior.make_centered]."""
-        from neps.sampling.priors import Prior
-
-        return Prior.make_centered(domains=domains, centers=centers, device=device)
-
 
 # Technically this could be a prior with a uniform distribution
 @dataclass
@@ -138,7 +126,7 @@ class Sobol(Sampler):
         self,
         n: int | torch.Size,
         *,
-        to: Domain | list[Domain],
+        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
@@ -217,20 +205,27 @@ class WeightedSampler(Sampler):
         self,
         n: int | torch.Size,
         *,
-        to: Domain | list[Domain],
+        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
         if dtype is None:
-            if isinstance(to, Domain):
-                dtype = to.preffered_dtype
-            else:
-                dtype = (
-                    torch.float64
-                    if any(d.preffered_dtype.is_floating_point for d in to)
-                    else torch.int64
-                )
+            match to:
+                case Domain():
+                    dtype = to.preffered_dtype
+                case ConfigEncoder():
+                    dtype = (
+                        torch.float64
+                        if any(d.preffered_dtype.is_floating_point for d in to.domains)
+                        else torch.int64
+                    )
+                case _:
+                    dtype = (
+                        torch.float64
+                        if any(d.preffered_dtype.is_floating_point for d in to)
+                        else torch.int64
+                    )
 
         if seed is not None:
             raise NotImplementedError("Seeding is not yet implemented.")
@@ -302,7 +297,7 @@ class BorderSampler(Sampler):
         self,
         n: int | torch.Size,
         *,
-        to: Domain | list[Domain],
+        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,

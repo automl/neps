@@ -548,11 +548,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         self.init_size = n_min + 1  # in BOHB: init_design >= N_min + 2
 
         if self.use_priors:
-            parameters = {
-                **self.pipeline_space.numerical,
-                **self.pipeline_space.categoricals,
-            }
-            prior = Prior.from_parameters(parameters.values())
+            prior = Prior.from_space(self.pipeline_space, include_fidelity=False)
         else:
             prior = None
 

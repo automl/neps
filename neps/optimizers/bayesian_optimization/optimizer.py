@@ -21,9 +21,6 @@ from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
-    from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
-    from neps.search_spaces.hyperparameters.float import FloatParameter
-    from neps.search_spaces.hyperparameters.integer import IntegerParameter
     from neps.state import BudgetInfo, Trial
 
 
@@ -120,16 +117,11 @@ class BayesianOptimization(BaseOptimizer):
 
         super().__init__(pipeline_space=pipeline_space)
 
-        params: dict[str, CategoricalParameter | FloatParameter | IntegerParameter] = {
-            **pipeline_space.numerical,
-            **pipeline_space.categoricals,
-        }
-        self.encoder = encoder or ConfigEncoder.default(
-            params, constants=pipeline_space.constants
+        self.encoder = encoder or ConfigEncoder.from_space(
+            space=pipeline_space,
+            include_constants_when_decoding=True,
         )
-        self.prior = (
-            Prior.from_parameters(params.values()) if use_priors is True else None
-        )
+        self.prior = Prior.from_space(pipeline_space) if use_priors is True else None
         self.use_cost = use_cost
         self.use_priors = use_priors
         self.cost_on_log_scale = cost_on_log_scale

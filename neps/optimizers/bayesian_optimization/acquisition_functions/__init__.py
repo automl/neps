@@ -7,9 +7,6 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisitio
 from neps.optimizers.bayesian_optimization.acquisition_functions.ei import (
     ComprehensiveExpectedImprovement,
 )
-from neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted import (
-    DecayingPriorWeightedAcquisition,
-)
 from neps.optimizers.bayesian_optimization.acquisition_functions.ucb import (
     UpperConfidenceBound,
 )
@@ -44,6 +41,5 @@ __all__ = [
     "AcquisitionMapping",
     "ComprehensiveExpectedImprovement",
     "UpperConfidenceBound",
-    "DecayingPriorWeightedAcquisition",
     "BaseAcquisition",
 ]

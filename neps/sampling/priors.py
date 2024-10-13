@@ -9,7 +9,7 @@ See the class doc description of [`Prior`][neps.priors.Prior] for more details.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 from typing_extensions import override
@@ -24,11 +24,13 @@ from neps.sampling.distributions import (
 from neps.sampling.samplers import Sampler
 from neps.search_spaces import CategoricalParameter
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
+from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
 
     from neps.search_spaces import FloatParameter, IntegerParameter
+    from neps.search_spaces.search_space import SearchSpace
 
 
 class Prior(Sampler, Protocol):
@@ -37,11 +39,11 @@ class Prior(Sampler, Protocol):
     Extends from the [`Sampler`][neps.samplers.Sampler] protocol.
 
     At it's core, the two methods that need to be implemented are
-    `log_prob` and `sample`. The `log_prob` method should return the
+    `log_pdf` and `sample`. The `log_pdf` method should return the
     log probability of a given tensor of samples under its distribution.
     The `sample` method should return a tensor of samples from distribution.
 
-    All values given to the `log_prob` and the ones returned from the
+    All values given to the `log_pdf` and the ones returned from the
     `sample` method are assumed to be in the value domain of the prior,
     i.e. the [`.domains`][neps.priors.Prior] attribute.
 
@@ -53,7 +55,7 @@ class Prior(Sampler, Protocol):
         distribution to sample from the unit interval before converting
         samples to the value domain.
 
-        **As a result, the `log_prob` and `prob` method may not give the same
+        **As a result, the `log_pdf` and `pdf` method may not give the same
         values as you might expect for a distribution over the value domain.**
 
         For example, consider a value domain `[0, 1e9]`. You might expect
@@ -62,21 +64,21 @@ class Prior(Sampler, Protocol):
         actually be `1` (1 / 1) for any value inside the domain.
     """
 
-    def log_prob(
+    def log_pdf(
         self,
         x: torch.Tensor,
         *,
-        frm: list[Domain] | Domain,
+        frm: ConfigEncoder | list[Domain] | Domain,
     ) -> torch.Tensor:
-        """Compute the log probability of values in `x` under a prior.
+        """Compute the log pdf of values in `x` under a prior.
 
         The last dimenion of `x` is assumed to be independent, such that the
-        log probability of the entire tensor is the sum of the log
-        probabilities of each element in that dimension.
+        log pdf of the entire tensor is the sum of the log
+        pdf of each element in that dimension.
 
         For example, if `x` is of shape `(n_samples, n_dims)`, then the
         you will be given back a tensor of shape `(n_samples,)` with the
-        each entry being the log probability of the corresponding sample.
+        each entry being the log pdf of the corresponding sample.
 
         Args:
             x: Tensor of shape (..., n_dims)
@@ -84,6 +86,8 @@ class Prior(Sampler, Protocol):
             frm: The domain of the values in `x`. If a single domain, then all the
                 values are assumed to be from that domain, otherwise each column
                 `n_dims` in (n_samples, n_dims) is from the corresponding domain.
+                If a `ConfigEncoder` is passed in, it will just take it's domains
+                for use.
 
         Returns:
             Tensor of shape (...,), with the last dimension reduced out. In the
@@ -92,12 +96,14 @@ class Prior(Sampler, Protocol):
         """
         ...
 
-    def prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
-        """Compute the probability of values in `x` under a prior.
+    def pdf(
+        self, x: torch.Tensor, *, frm: ConfigEncoder | Domain | list[Domain]
+    ) -> torch.Tensor:
+        """Compute the pdf of values in `x` under a prior.
 
-        See [`log_prob()`][neps.priors.Prior.log_prob] for details on shapes.
+        See [`log_pdf()`][neps.priors.Prior.log_pdf] for details on shapes.
         """
-        return torch.exp(self.log_prob(x, frm=frm))
+        return torch.exp(self.log_pdf(x, frm=frm))
 
     @classmethod
     def uniform(cls, ncols: int) -> UniformPrior:
@@ -111,10 +117,16 @@ class Prior(Sampler, Protocol):
     @classmethod
     def from_parameters(
         cls,
-        parameters: Iterable[CategoricalParameter | FloatParameter | IntegerParameter],
-    ) -> Prior:
-        """Please refer to [`make_centered()`][neps.priors.Prior.make_centered]
-        for more details. This is a shortcut method.
+        parameters: Mapping[
+            str,
+            CategoricalParameter | FloatParameter | IntegerParameter,
+        ],
+        *,
+        center_values: Mapping[str, Any] | None = None,
+        confidence_values: Mapping[str, float] | None = None,
+    ) -> CenteredPrior:
+        """Please refer to [`from_space()`][neps.priors.Prior.from_space]
+        for more details.
         """
         # TODO: This needs to be moved to the search space class, however
         # to not break the current prior based APIs used elsewhere, we can
@@ -124,28 +136,35 @@ class Prior(Sampler, Protocol):
         # accordingly in a `CenteredPrior`
         _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
 
+        center_values = center_values or {}
+        confidence_values = confidence_values or {}
         domains: list[Domain] = []
         centers: list[tuple[Any, float] | None] = []
-        for hp in parameters:
+        for name, hp in parameters.items():
             domains.append(hp.domain)
 
-            if hp.default is None:
+            default = center_values.get(name, hp.default)
+            if default is None:
                 centers.append(None)
                 continue
 
-            confidence_str = hp.default_confidence_choice
-            confidence_score = _mapping[confidence_str]
+            confidence_score = confidence_values.get(
+                name,
+                _mapping[hp.default_confidence_choice],
+            )
             center = (
-                hp._default_index if isinstance(hp, CategoricalParameter) else hp.default
+                hp.choices.index(default)
+                if isinstance(hp, CategoricalParameter)
+                else default
             )
             centers.append((center, confidence_score))
 
-        return Prior.make_centered(domains=domains, centers=centers)
+        return Prior.from_domains_and_centers(domains=domains, centers=centers)
 
     @classmethod
-    def make_centered(
+    def from_domains_and_centers(
         cls,
-        domains: Iterable[Domain],
+        domains: Iterable[Domain] | ConfigEncoder,
         centers: Iterable[None | tuple[int | float, float]],
         *,
         device: torch.device | None = None,
@@ -191,7 +210,11 @@ class Prior(Sampler, Protocol):
         Returns:
             A prior for the search space.
         """
-        domains = list(domains)
+        match domains:
+            case ConfigEncoder():
+                domains = domains.domains
+            case _:
+                domains = list(domains)
 
         distributions: list[TorchDistributionWithDomain] = []
         for domain, center_conf in zip(domains, centers, strict=True):
@@ -252,6 +275,48 @@ class Prior(Sampler, Protocol):
 
         return CenteredPrior(distributions=distributions)
 
+    @classmethod
+    def from_space(
+        cls,
+        space: SearchSpace,
+        *,
+        center_values: Mapping[str, Any] | None = None,
+        confidence_values: Mapping[str, float] | None = None,
+        include_fidelity: bool = False,
+    ) -> CenteredPrior:
+        """Create a prior distribution from a search space.
+
+        Takes care to insert things in the correct order.
+
+        Args:
+            space: The search space to createa a prior from. Will look
+                at the `.default` and `.default_confidence` of the parameters
+                to create a truncated normal.
+                Any parameters that do not have a `.default` will be covered by
+                a uniform distribution.
+            center_values: Any additional values that should be used
+                for centering the prior. Overwrites whatever is set by default
+                in the `space`
+            confidence_values: Any additional values that should be
+                used for determining the strength of the prior. Values should
+                be between 0 and 1. Overwrites whatever is set by default in
+                the `space`.
+            include_fidelity: Whether to include computing the prior over the
+                fidelity of te search space.
+
+        Returns:
+            The prior distribution
+        """
+        params = {**space.numerical, **space.categoricals}
+        if include_fidelity:
+            params.update(space.fidelities)
+
+        return Prior.from_parameters(
+            params,
+            center_values=center_values,
+            confidence_values=confidence_values,
+        )
+
 
 @dataclass
 class CenteredPrior(Prior):
@@ -272,7 +337,7 @@ class CenteredPrior(Prior):
 
     _distribution_domains: list[Domain] = field(init=False)
 
-    # OPTIM: These are used for an optimization in `log_prob`
+    # OPTIM: These are used for an optimization in `log_pdf`
     _meaningful_ixs: list[int] = field(init=False)
     _meaningful_doms: list[Domain] = field(init=False)
     _meaningful_dists: list[Distribution] = field(init=False)
@@ -301,12 +366,24 @@ class CenteredPrior(Prior):
         return len(self.distributions)
 
     @override
-    def log_prob(self, x: torch.Tensor, *, frm: list[Domain] | Domain) -> torch.Tensor:
+    def log_pdf(
+        self, x: torch.Tensor, *, frm: list[Domain] | Domain | ConfigEncoder
+    ) -> torch.Tensor:
         if x.ndim == 0:
             raise ValueError("Expected a tensor of shape (..., ncols).")
 
         if x.ndim == 1:
             x = x.unsqueeze(0)
+
+        if x.shape[-1] != len(self.distributions):
+            raise ValueError(
+                f"Got a tensor `x` whose last dimesion (the hyperparameter dimension)"
+                f" is of length {x.shape[-1]=} but"
+                f" the CenteredPrior called has {len(self.distributions)=}"
+                " distributions to use for calculating the `log_pdf`. Perhaps"
+                " the config or the prior have a mismatch as one includes a"
+                " fidelity?"
+            )
 
         # OPTIM: We can actually just skip elements that are distributed uniformly as
         # **assuming** they are all correctly in bounds, their log_pdf will be 0 and
@@ -315,7 +392,15 @@ class CenteredPrior(Prior):
         if len(self._meaningful_ixs) == 0:
             return torch.zeros(x.shape[:-1], dtype=torch.float64, device=x.device)
 
-        frm = frm if isinstance(frm, Domain) else [frm[i] for i in self._meaningful_ixs]
+        match frm:
+            case Domain():
+                pass
+            case ConfigEncoder():
+                frm = [frm.domains[i] for i in self._meaningful_ixs]
+            case Sequence():
+                frm = [frm[i] for i in self._meaningful_ixs]
+            case _:
+                raise TypeError(f"Unexpected type {type(frm)=}")
 
         # Cast all values from the value domains to the domain of the sampler.
         translated_x = Domain.translate(
@@ -326,16 +411,16 @@ class CenteredPrior(Prior):
 
         # Calculate the log probabilities of the sample domain tensors under their
         # respective distributions.
+        # NOTE: There's no gaurantee these are actually probabilities and so we
+        # treat them as unnormalized log pdfs
         itr = iter(zip(self._meaningful_ixs, self._meaningful_dists, strict=False))
         first_i, first_dist = next(itr)
-        log_probs = first_dist.log_prob(translated_x[..., first_i])
-
-        _weight = 1 / len(self.distributions)
+        log_pdfs = first_dist.log_prob(translated_x[..., first_i])
 
         for i, dist in itr:
-            log_probs = log_probs + _weight * dist.log_prob(translated_x[..., i])
+            log_pdfs = log_pdfs + dist.log_prob(translated_x[..., i])
 
-        return log_probs
+        return log_pdfs
 
     @override
     def sample(
@@ -380,7 +465,12 @@ class UniformPrior(Prior):
         return self.ndim
 
     @override
-    def log_prob(self, x: torch.Tensor, *, frm: Domain | list[Domain]) -> torch.Tensor:
+    def log_pdf(
+        self,
+        x: torch.Tensor,
+        *,
+        frm: Domain | list[Domain] | ConfigEncoder,
+    ) -> torch.Tensor:
         # NOTE: We just assume everything is in bounds...
         shape = x.shape[:-1]  # Select everything up to last dimension (configuration)
         return torch.zeros(shape, dtype=torch.float64, device=x.device)
@@ -390,7 +480,7 @@ class UniformPrior(Prior):
         self,
         n: int | torch.Size,
         *,
-        to: Domain | list[Domain],
+        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,

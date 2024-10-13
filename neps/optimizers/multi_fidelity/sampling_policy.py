@@ -19,12 +19,13 @@ from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
     pibo_acquisition,
 )
 from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
+from neps.sampling.priors import Prior
+from neps.sampling.samplers import Sampler
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     from botorch.acquisition.analytic import SingleTaskGP
 
-    from neps.sampling.priors import Prior
     from neps.search_spaces.search_space import SearchSpace
 
 TOLERANCE = 1e-2  # 1%
@@ -209,16 +210,23 @@ class EnsemblePolicy(SamplingPolicy):
                 distance = kwargs["distance"]
                 config = self.sample_neighbour(inc, distance)
             elif self.inc_type == "gaussian":
-                # use inc to set the defaults of the configuration
-                _inc = inc.clone()
-                _inc.set_defaults_to_current_values()
-                # then sample with prior=True from that configuration
-                # since the defaults are treated as the prior
-                config = _inc.sample(
-                    patience=self.patience,
-                    user_priors=user_priors,
-                    ignore_fidelity=True,
+                # TODO: These could be lifted higher, ideall we pass
+                # down the encoder we want, where we want it. Also passing
+                # around a `Prior` should be the evidence that we want to use
+                # a prior, not whether the searchspace has a flag active or not.
+                encoder = ConfigEncoder.from_space(inc)
+                sampler = (
+                    Prior.from_space(inc)
+                    if user_priors
+                    else Sampler.uniform(ndim=encoder.ncols)
                 )
+
+                config_tensor = sampler.sample(1, to=encoder.domains)
+                config_dict = encoder.decode(config_tensor)[0]
+                _fids = {fid_name: fid.value for fid_name, fid in inc.fidelities.items()}
+
+                config = inc.from_dict({**config_dict, **_fids})
+
             elif self.inc_type == "crossover":
                 # choosing the configuration for crossover with incumbent
                 # the weight distributed across prior adnd inc
@@ -232,12 +240,13 @@ class EnsemblePolicy(SamplingPolicy):
                 # if the score difference is small, crossover between incumbent and prior
                 # if the score difference is large, crossover between incumbent and random
                 probs = [1 - score_diff, score_diff]  # the order is [prior, random]
-                user_priors = np.random.choice([True, False], p=probs)
                 if (
                     hasattr(self.pipeline_space, "has_prior")
                     and not self.pipeline_space.has_prior
                 ):
                     user_priors = False
+                else:
+                    user_priors = np.random.choice([True, False], p=probs)
                 logger.info(
                     f"Crossing over with user_priors={user_priors} with p={probs}"
                 )
@@ -293,9 +302,9 @@ class ModelPolicy(SamplingPolicy):
         super().__init__(pipeline_space=pipeline_space)
         self.device = device
         self.prior = prior
-        self._encoder = ConfigEncoder.default(
-            {**pipeline_space.numerical, **pipeline_space.categoricals},
-            constants=pipeline_space.constants,
+        self._encoder = ConfigEncoder.from_space(
+            pipeline_space,
+            include_constants_when_decoding=True,
         )
         self._model: SingleTaskGP | None = None
         self._acq: AcquisitionFunction | None = None

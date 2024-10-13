@@ -2,7 +2,7 @@ from __future__ import annotations  # noqa: D100
 
 import inspect
 import queue
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from functools import partial
 from typing import Callable
 

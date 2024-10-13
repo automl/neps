@@ -65,10 +65,11 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         assert self.incumbent is not None, "EI function not fitted on model"
         assert self.surrogate_model is not None
 
-        if x[0].has_fidelity and self.optimize_on_max_fidelity:
-            _x = [e.clone() for e in x]
-            for e in _x:
-                e.set_to_max_fidelity()
+        space = x[0]
+        if len(space.fidelities) > 0 and self.optimize_on_max_fidelity:
+            assert len(space.fidelities) == 1
+            fid_name, fid = next(iter(space.fidelities.items()))
+            _x = [space.from_dict({**e.hp_values(), fid_name: fid.upper}) for e in x]
         else:
             _x = list(x)
 
