@@ -140,6 +140,7 @@ class IFBO(BaseOptimizer):
         self._fidelity_name: str = space.fidelity_name
         self._initial_design: list[dict[str, Any]] | None = None
 
+        self._prior: Prior | None
         if use_priors:
             self._prior = Prior.from_space(space, include_fidelity=False)
         else:

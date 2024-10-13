@@ -548,7 +548,7 @@ class ConfigEncoder:
 
             match hp:
                 case FloatParameter() | IntegerParameter():
-                    transformers[name] = MinMaxNormalizer(hp.domain)
+                    transformers[name] = MinMaxNormalizer(hp.domain)  # type: ignore
                 case CategoricalParameter():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:

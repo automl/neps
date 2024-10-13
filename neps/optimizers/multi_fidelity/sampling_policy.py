@@ -159,7 +159,7 @@ class EnsemblePolicy(SamplingPolicy):
         # end of while
         return config
 
-    def sample(  # noqa: PLR0912, C901
+    def sample(  # noqa: PLR0912, C901, PLR0915
         self,
         inc: SearchSpace | None = None,
         weights: dict[str, float] | None = None,

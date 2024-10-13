@@ -427,7 +427,7 @@ class CenteredPrior(Prior):
         self,
         n: int | torch.Size,
         *,
-        to: Domain | list[Domain],
+        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,

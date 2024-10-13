@@ -109,7 +109,7 @@ def custom_crossover(
                 child_config[key] = hyperparameter.value
 
         if _existing != child_config:
-            return SearchSpace(**child_config)
+            return config1.from_dict(child_config)
 
     # fail safe check to handle edge cases where config1=config2 or
     # config1 extremely local to config2 such that crossover fails to

@@ -82,7 +82,7 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
             return NotImplemented
 
         if self.value is not None and other.value is not None:
-            return self.serialize_value(self.value) == self.serialize_value(other.value)
+            return self.value == other.value
 
         return False
 

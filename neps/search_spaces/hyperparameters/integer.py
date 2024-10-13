@@ -148,4 +148,3 @@ class IntegerParameter(NumericalParameter[int]):
     @override
     def normalized_to_value(self, normalized_value: float) -> int:
         return int(np.rint(self.float_hp.normalized_to_value(normalized_value)))
-
