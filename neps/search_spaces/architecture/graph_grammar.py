@@ -10,11 +10,10 @@ from typing_extensions import Self, override
 
 import networkx as nx
 
-from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
+from neps.search_spaces.parameter import ParameterWithPrior
 from neps.utils.types import NotSet
 
 from .core_graph_grammar import CoreGraphGrammar
-from .crossover import simple_crossover
 from .mutations import bananas_mutate, simple_mutate
 
 if TYPE_CHECKING:
@@ -30,7 +29,7 @@ if TYPE_CHECKING:
 # and the `.value` to be the same type, which is not the case for
 # graph based parameters.
 class GraphParameter(  # noqa: D101
-    ParameterWithPrior[nx.DiGraph, str], MutatableParameter
+    ParameterWithPrior[nx.DiGraph, str]
 ):
     # NOTE(eddiebergman): What I've managed to learn so far is that
     # these hyperparameters work mostly with strings externally,
@@ -96,62 +95,26 @@ class GraphParameter(  # noqa: D101
         self.create_from_id(value)
 
     @override
-    def set_default(self, default: str | None) -> None:
-        # TODO(eddiebergman): Could find no mention of the word 'default' in the
-        # GraphGrammers' hence... well this is all I got
-        self.default = default
-
-    @override
     def sample_value(self, *, user_priors: bool = False) -> nx.DiGraph:
         # TODO(eddiebergman): This could definitely be optimized
         # Right now it copies the entire object just to get a value out
         # of it.
         return self.sample(user_priors=user_priors).value
 
-    @classmethod
-    def serialize_value(cls, value: nx.DiGraph) -> str:
-        """Functionality relying on this for GraphParameters should
-        special case and use `self.id`.
-
-        !!! warning
-
-            Graph parameters don't directly support serialization.
-            Instead they rely on holding on to the original string value
-            from which they were created from.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def deserialize_value(cls, value: str) -> nx.DiGraph:
-        """Functionality relying on this for GraphParameters should
-        special case for whever this is needed...
-
-        !!! warning
-
-            Graph parameters don't directly support serialization.
-            Instead they rely on holding on to the original string value
-            from which they were created from.
-        """
-        raise NotImplementedError
-
     @override
-    def load_from(self, value: str | Self) -> None:
-        if isinstance(value, GraphParameter):
-            value = value.id
-        self.create_from_id(value)
+    def load_from(self, value: Any) -> None:
+        match value:
+            case GraphParameter():
+                value = value.id
+            case str():
+                self.create_from_id(value)
+            case _:
+                raise TypeError(f"Unrecognized type {type(value)}")
 
     @abstractmethod
     def mutate(  # noqa: D102
         self, parent: Self | None = None, *, mutation_strategy: str = "bananas"
     ) -> Self: ...
-
-    @abstractmethod
-    def crossover(  # noqa: D102
-        self, parent1: Self, parent2: Self | None = None
-    ) -> tuple[Self, Self]: ...
-
-    def _get_non_unique_neighbors(self, num_neighbours: int) -> list[Self]:
-        raise NotImplementedError
 
     def value_to_normalized(self, value: nx.DiGraph) -> float:  # noqa: D102
         raise NotImplementedError
@@ -295,23 +258,6 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
 
         return parent.create_new_instance_from_id(
             self.string_tree_to_id(child_string_tree)
-        )
-
-    @override
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        if parent2 is None:
-            parent2 = self
-        parent1_string_tree = parent1.string_tree
-        parent2_string_tree = parent2.string_tree
-        children = simple_crossover(
-            parent1_string_tree, parent2_string_tree, self.grammars[0]
-        )
-        if all(not c for c in children):
-            raise Exception("Cannot create crossover")
-
-        return tuple(
-            parent2.create_new_instance_from_id(self.string_tree_to_id(child))
-            for child in children
         )
 
     @override

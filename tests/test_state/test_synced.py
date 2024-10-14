@@ -33,7 +33,7 @@ def case_trial_1(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         worker_id=0,
     )
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.set_submitted(time_submitted=1)
 
     x = Synced.new(
@@ -43,7 +43,7 @@ def case_trial_1(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -60,7 +60,7 @@ def case_trial_2(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     )
     trial.set_submitted(time_submitted=1)
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.set_evaluating(time_started=2, worker_id="1")
 
     x = Synced.new(
@@ -70,7 +70,7 @@ def case_trial_2(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -88,7 +88,7 @@ def case_trial_3(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     trial.set_submitted(time_submitted=1)
     trial.set_evaluating(time_started=2, worker_id="1")
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.set_complete(
             time_end=3,
             loss=1,
@@ -108,7 +108,7 @@ def case_trial_3(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -126,7 +126,7 @@ def case_trial_4(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     trial.set_submitted(time_submitted=1)
     trial.set_evaluating(time_started=2, worker_id="1")
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.set_complete(
             time_end=3,
             loss=np.nan,
@@ -146,7 +146,7 @@ def case_trial_4(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -164,7 +164,7 @@ def case_trial_5(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     trial.set_submitted(time_submitted=1)
     trial.set_evaluating(time_started=2, worker_id=1)
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.set_complete(
             time_end=3,
             loss=np.nan,
@@ -184,7 +184,7 @@ def case_trial_5(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -202,7 +202,7 @@ def case_trial_6(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     trial.set_submitted(time_submitted=1)
     trial.set_evaluating(time_started=2, worker_id=1)
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.set_corrupted()
 
     x = Synced.new(
@@ -212,7 +212,7 @@ def case_trial_6(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -241,7 +241,7 @@ def case_trial_7(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         tb="something something traceback",
     )
 
-    def _mutate(trial: Trial) -> None:
+    def _update(trial: Trial) -> None:
         trial.reset()
 
     x = Synced.new(
@@ -251,7 +251,7 @@ def case_trial_7(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
         versioner=FileVersioner(version_file=tmp_path / "1" / ".version"),
         reader_writer=ReaderWriterTrial(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -260,7 +260,7 @@ def case_seed_snapshot(
 ) -> tuple[Synced[SeedSnapshot, Path], Callable[[SeedSnapshot], None]]:
     seed = SeedSnapshot.new_capture()
 
-    def _mutate(seed: SeedSnapshot) -> None:
+    def _update(seed: SeedSnapshot) -> None:
         random.randint(0, 100)
         seed.recapture()
 
@@ -271,7 +271,7 @@ def case_seed_snapshot(
         versioner=FileVersioner(version_file=tmp_path / "seeds" / ".version"),
         reader_writer=ReaderWriterSeedSnapshot(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -294,7 +294,7 @@ def case_err_dump(
 ) -> tuple[Synced[ErrDump, Path], Callable[[ErrDump], None]]:
     err_dump = ErrDump() if err is None else ErrDump(errs=[err])
 
-    def _mutate(err_dump: ErrDump) -> None:
+    def _update(err_dump: ErrDump) -> None:
         new_err = SerializableTrialError(
             trial_id="2",
             worker_id="2",
@@ -313,7 +313,7 @@ def case_err_dump(
         versioner=FileVersioner(version_file=tmp_path / "err_dump" / ".version"),
         reader_writer=ReaderWriterErrDump("all"),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -322,7 +322,7 @@ def case_optimizer_info(
 ) -> tuple[Synced[OptimizerInfo, Path], Callable[[OptimizerInfo], None]]:
     optimizer_info = OptimizerInfo(info={"a": "b"})
 
-    def _mutate(optimizer_info: OptimizerInfo) -> None:
+    def _update(optimizer_info: OptimizerInfo) -> None:
         optimizer_info.info["b"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
 
     x = Synced.new(
@@ -334,7 +334,7 @@ def case_optimizer_info(
         versioner=FileVersioner(version_file=tmp_path / "optimizer_info" / ".version"),
         reader_writer=ReaderWriterOptimizerInfo(),
     )
-    return x, _mutate
+    return x, _update
 
 
 @case
@@ -349,7 +349,7 @@ def case_optimization_state(
 ) -> tuple[Synced[OptimizationState, Path], Callable[[OptimizationState], None]]:
     optimization_state = OptimizationState(budget=budget, shared_state=shared_state)
 
-    def _mutate(optimization_state: OptimizationState) -> None:
+    def _update(optimization_state: OptimizationState) -> None:
         optimization_state.shared_state["a"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
         optimization_state.budget = BudgetInfo(max_cost_budget=10, used_cost_budget=5)
 
@@ -362,24 +362,24 @@ def case_optimization_state(
         versioner=FileVersioner(version_file=tmp_path / "optimizer_info" / ".version"),
         reader_writer=ReaderWriterOptimizationState(),
     )
-    return x, _mutate
+    return x, _update
 
 
-@parametrize_with_cases("shared, mutate", cases=".")
-def test_initial_state(shared: Synced, mutate: Callable) -> None:
+@parametrize_with_cases("shared, update", cases=".")
+def test_initial_state(shared: Synced, update: Callable) -> None:
     assert shared._is_locked() == False
     assert shared._is_stale() == False
     assert shared._unsynced() == shared.synced()
 
 
-@parametrize_with_cases("shared, mutate", cases=".")
+@parametrize_with_cases("shared, update", cases=".")
 def test_put_updates_current_data_and_is_not_stale(
-    shared: Synced, mutate: Callable
+    shared: Synced, update: Callable
 ) -> None:
     current_data = shared._unsynced()
 
     new_data = copy.deepcopy(current_data)
-    mutate(new_data)
+    update(new_data)
     assert new_data != current_data
 
     shared.put(new_data)
@@ -388,8 +388,8 @@ def test_put_updates_current_data_and_is_not_stale(
     assert shared._is_locked() == False
 
 
-@parametrize_with_cases("shared1, mutate", cases=".")
-def test_share_synced_mutate_and_put(shared1: Synced, mutate: Callable) -> None:
+@parametrize_with_cases("shared1, update", cases=".")
+def test_share_synced_update_and_put(shared1: Synced, update: Callable) -> None:
     shared2 = shared1.deepcopy()
     assert shared1 == shared2
     assert not shared1._is_locked()
@@ -398,7 +398,7 @@ def test_share_synced_mutate_and_put(shared1: Synced, mutate: Callable) -> None:
     with shared2.acquire() as (data2, put2):
         assert shared1._is_locked()
         assert shared2._is_locked()
-        mutate(data2)
+        update(data2)
         put2(data2)
 
     assert not shared1._is_locked()
@@ -414,9 +414,9 @@ def test_share_synced_mutate_and_put(shared1: Synced, mutate: Callable) -> None:
     assert shared1._unsynced() == shared2._unsynced()
 
 
-@parametrize_with_cases("shared, mutate", cases=".")
+@parametrize_with_cases("shared, update", cases=".")
 def test_shared_new_fails_if_done_on_existing_resource(
-    shared: Synced, mutate: Callable
+    shared: Synced, update: Callable
 ) -> None:
     data, location, versioner, rw, lock = shared._components()
     with pytest.raises(Synced.VersionedResourceAlreadyExistsError):

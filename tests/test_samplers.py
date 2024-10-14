@@ -8,7 +8,7 @@ from neps.search_spaces.domain import Domain
 
 
 def _make_centered_prior(ndim: int) -> Prior:
-    return Prior.make_centered(
+    return Prior.from_domains_and_centers(
         domains=[Domain.unit_float() for _ in range(ndim)],
         centers=[(0.5, 0.5) for _ in range(ndim)],
     )
@@ -71,7 +71,7 @@ def test_priors_give_positive_pdfs(prior: Prior) -> None:
     assert (x >= 10).all()
     assert (x <= 100).all()
 
-    probs = prior.prob(x, frm=domain)
+    probs = prior.pdf(x, frm=domain)
     assert (probs >= 0).all()
     assert probs.shape == (5,)
 
@@ -80,6 +80,6 @@ def test_priors_give_positive_pdfs(prior: Prior) -> None:
     assert (x >= 10).all()
     assert (x <= 100).all()
 
-    probs = prior.prob(x, frm=domain)
+    probs = prior.pdf(x, frm=domain)
     assert (probs >= 0).all()
     assert probs.shape == (2, 1)

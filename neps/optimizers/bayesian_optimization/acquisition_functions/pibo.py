@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 
     from neps.sampling.priors import Prior
     from neps.search_spaces.domain import Domain
+    from neps.search_spaces.encoding import ConfigEncoder
 
 
 def apply_pibo_acquisition_weight(
@@ -36,14 +37,14 @@ def apply_pibo_acquisition_weight(
     acq: AcquisitionFunction,
     *,
     prior: Prior,
-    x_domain: Domain | list[Domain],
+    x_domain: Domain | list[Domain] | ConfigEncoder,
     prior_exponent: float,
 ) -> Tensor:
     if acq._log:
-        weighted_log_probs = prior.log_prob(X, frm=x_domain) + prior_exponent
+        weighted_log_probs = prior.log_pdf(X, frm=x_domain) + prior_exponent
         return acq_values + weighted_log_probs
 
-    weighted_probs = prior.prob(X, frm=x_domain).pow(prior_exponent)
+    weighted_probs = prior.pdf(X, frm=x_domain).pow(prior_exponent)
     return acq_values * weighted_probs
 
 
@@ -51,7 +52,7 @@ def pibo_acquisition(
     acq_fn: AcquisitionFunction,
     prior: Prior,
     prior_exponent: float,
-    x_domain: Domain | list[Domain],
+    x_domain: Domain | list[Domain] | ConfigEncoder,
 ) -> WeightedAcquisition:
     return WeightedAcquisition(
         acq=acq_fn,

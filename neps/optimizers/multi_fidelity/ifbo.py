@@ -140,11 +140,15 @@ class IFBO(BaseOptimizer):
         self._fidelity_name: str = space.fidelity_name
         self._initial_design: list[dict[str, Any]] | None = None
 
-        params = {**space.numerical, **space.categoricals}
-        self._prior = Prior.from_parameters(params.values()) if use_priors else None
-        self._config_encoder: ConfigEncoder = ConfigEncoder.default(
-            params,
-            constants=self.pipeline_space.constants,
+        self._prior: Prior | None
+        if use_priors:
+            self._prior = Prior.from_space(space, include_fidelity=False)
+        else:
+            self._prior = None
+
+        self._config_encoder: ConfigEncoder = ConfigEncoder.from_space(
+            space=space,
+            include_constants_when_decoding=True,
             # FTPFN doesn't support categoricals and we were recomended
             # to just evenly distribute in the unit norm
             custom_transformers={

@@ -11,7 +11,7 @@ import numpy.typing as npt
 from more_itertools import all_unique
 
 from neps.search_spaces.domain import Domain
-from neps.search_spaces.parameter import MutatableParameter, ParameterWithPrior
+from neps.search_spaces.parameter import ParameterWithPrior
 
 if TYPE_CHECKING:
     from neps.utils.types import f64
@@ -19,10 +19,7 @@ if TYPE_CHECKING:
 CategoricalTypes: TypeAlias = float | int | str
 
 
-class CategoricalParameter(
-    ParameterWithPrior[CategoricalTypes, CategoricalTypes],
-    MutatableParameter,
-):
+class CategoricalParameter(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
     """A list of **unordered** choices for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
@@ -42,7 +39,6 @@ class CategoricalParameter(
 
     Please see the [`Parameter`][neps.search_spaces.parameter],
     [`ParameterWithPrior`][neps.search_spaces.parameter.ParameterWithPrior],
-    [`MutatableParameter`][neps.search_spaces.parameter.MutatableParameter] classes
     for more details on the methods available for this class.
     """
 
@@ -143,17 +139,6 @@ class CategoricalParameter(
         return probabilities / np.sum(probabilities)
 
     @override
-    def compute_prior(self, log: bool = False) -> float:
-        assert self._value_index is not None
-
-        probabilities = self._compute_user_prior_probabilities()
-        return float(
-            np.log(probabilities[self._value_index] + 1e-12)
-            if log
-            else probabilities[self._value_index]
-        )
-
-    @override
     def sample_value(self, *, user_priors: bool = False) -> Any:
         indices = np.arange(len(self.choices))
         if user_priors and self.default is not None:
@@ -163,102 +148,12 @@ class CategoricalParameter(
         return self.choices[np.random.choice(indices)]
 
     @override
-    def mutate(
-        self,
-        parent: Self | None = None,
-        mutation_rate: float = 1.0,
-        mutation_strategy: str = "local_search",
-        **kwargs: Any,
-    ) -> Self:
-        if self.is_fidelity:
-            raise ValueError("Trying to mutate fidelity param!")
-
-        if parent is None:
-            parent = self
-
-        if mutation_strategy == "simple":
-            child = parent.sample()
-        elif mutation_strategy == "local_search":
-            child = self._get_non_unique_neighbors(num_neighbours=1)[0]
-        else:
-            raise NotImplementedError
-
-        if parent.value == child.value:
-            raise ValueError("Parent is the same as child!")
-
-        return child
-
-    @override
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        if self.is_fidelity:
-            raise ValueError("Trying to crossover fidelity param!")
-
-        if parent2 is None:
-            parent2 = self
-
-        assert parent1.value is not None
-        assert parent2.value is not None
-
-        child1 = parent1.clone()
-        child1.set_value(parent2.value)
-
-        child2 = parent2.clone()
-        child2.set_value(parent1.value)
-
-        return child1, child2
-
-    @override
-    def _get_non_unique_neighbors(
-        self,
-        num_neighbours: int,
-        *,
-        std: float = 0.2,
-    ) -> list[Self]:
-        assert self._value_index is not None
-
-        indices = np.arange(len(self.choices))
-        bot = indices[: self._value_index]
-        top = indices[self._value_index + 1 :]
-        available_neighbours = np.concatenate([bot, top])
-
-        selected_indices = np.random.choice(
-            available_neighbours,
-            size=num_neighbours,
-            replace=True,
-        )
-
-        new_neighbours: list[Self] = []
-        for value_index in selected_indices:
-            new_param = self.clone()
-            new_param.set_value(self.choices[value_index])
-            new_neighbours.append(new_param)
-
-        return new_neighbours
-
-    @override
     def value_to_normalized(self, value: Any) -> float:
         return float(self.choices.index(value))
 
     @override
     def normalized_to_value(self, normalized_value: float) -> Any:
         return self.choices[int(np.rint(normalized_value))]
-
-    @override
-    def set_default(self, default: Any | None) -> None:
-        if default is None:
-            self.default = None
-            self._default_index = None
-            self.has_prior = False
-            return
-
-        if default not in self.choices:
-            raise ValueError(
-                f"Default value {default} is not in the provided choices {self.choices}"
-            )
-
-        self.default = default
-        self._default_index = self.choices.index(default)
-        self.has_prior = True
 
     @override
     def set_value(self, value: Any | None) -> None:
@@ -271,13 +166,3 @@ class CategoricalParameter(
         self._value = value
         self._value_index = self.choices.index(value)
         self.normalized_value = float(self._value_index)
-
-    @override
-    @classmethod
-    def serialize_value(cls, value: CategoricalTypes) -> CategoricalTypes:
-        return value
-
-    @override
-    @classmethod
-    def deserialize_value(cls, value: CategoricalTypes) -> CategoricalTypes:
-        return value

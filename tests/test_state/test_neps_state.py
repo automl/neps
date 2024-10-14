@@ -129,11 +129,12 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].default is None:
         pytest.xfail(f"{key} requires a prior")
 
-    if search_space.has_fidelity and key in OPTIMIZER_FAILS_WITH_FIDELITY:
+    if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
         pytest.xfail(f"{key} crashed with a fidelity")
 
-    if key in OPTIMIZER_REQUIRES_FIDELITY and not search_space.has_fidelity:
+    if key in OPTIMIZER_REQUIRES_FIDELITY and not len(search_space.fidelities) > 0:
         pytest.xfail(f"{key} requires a fidelity parameter")
+
     kwargs: dict[str, Any] = {
         "pipeline_space": search_space,
     }

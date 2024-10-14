@@ -21,9 +21,6 @@ if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
         BaseAcquisition,
     )
-    from neps.optimizers.bayesian_optimization.acquisition_samplers import (
-        AcquisitionSampler,
-    )
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
@@ -62,13 +59,14 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         modelling_type: Literal["joint", "rung"] = "joint",
         initial_design_size: int | None = None,
         model_policy: Any = ModelPolicy,
+        # TODO: Remove these when fixing model policy
         surrogate_model: str | Any = "gp",
         domain_se_kernel: str | None = None,
         hp_kernels: list | None = None,
         surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
+        acquisition_sampler: str = "random",
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -118,11 +116,8 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         if self.modelling_type == "joint" and self.initial_design_size is not None:
             self.init_size = self.initial_design_size
 
-        parameters = {**self.pipeline_space.numerical, **self.pipeline_space.categoricals}
-        self.model_policy = model_policy(
-            pipeline_space=pipeline_space,
-            prior=Prior.from_parameters(parameters.values()),
-        )
+        prior_dist = Prior.from_space(self.pipeline_space)
+        self.model_policy = model_policy(pipeline_space=pipeline_space, prior=prior_dist)
 
     def get_config_and_ids(
         self,
@@ -172,13 +167,14 @@ class PriorBandAshaHB(PriorBandAsha):
         modelling_type: Literal["joint", "rung"] = "joint",
         initial_design_size: int | None = None,
         model_policy: Any = ModelPolicy,
+        # TODO: Remove these when fixing model policy
         surrogate_model: str | Any = "gp",
         domain_se_kernel: str | None = None,
         hp_kernels: list | None = None,
         surrogate_model_args: dict | None = None,
         acquisition: str | BaseAcquisition = "EI",
         log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
+        acquisition_sampler: str = "random",
     ):
         # collecting arguments required by ASHA
         args: dict[str, Any] = {
@@ -197,15 +193,6 @@ class PriorBandAshaHB(PriorBandAsha):
             "sample_default_first": sample_default_first,
             "sample_default_at_target": sample_default_at_target,
         }
-        bo_args: dict[str, Any] = {
-            "surrogate_model": surrogate_model,
-            "domain_se_kernel": domain_se_kernel,
-            "hp_kernels": hp_kernels,
-            "surrogate_model_args": surrogate_model_args,
-            "acquisition": acquisition,
-            "log_prior_weighted": log_prior_weighted,
-            "acquisition_sampler": acquisition_sampler,
-        }
         super().__init__(
             **args,
             prior_weight_type=prior_weight_type,
@@ -217,7 +204,6 @@ class PriorBandAshaHB(PriorBandAsha):
             modelling_type=modelling_type,
             initial_design_size=initial_design_size,
             model_policy=model_policy,
-            **bo_args,
         )
 
         # Creating the ASHA (SH) brackets that Hyperband iterates over

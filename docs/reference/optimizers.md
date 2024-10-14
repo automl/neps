@@ -66,7 +66,6 @@ initial_design_size: 7
 surrogate_model: gp
 acquisition: EI
 log_prior_weighted: false
-acquisition_sampler: random
 random_interleave_prob: 0.1
 disable_priors: false
 prior_confidence: high

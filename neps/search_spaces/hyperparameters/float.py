@@ -91,27 +91,6 @@ class FloatParameter(NumericalParameter[float]):
         return clone
 
     @override
-    def set_default(self, default: float | None) -> None:
-        if default is None:
-            self.default = None
-            self.has_prior = False
-            self.log_default = None
-            return
-
-        if not self.lower <= default <= self.upper:
-            cls_name = self.__class__.__name__
-            raise ValueError(
-                f"{cls_name} parameter: default bounds error. Expected lower <= default"
-                f" <= upper, but got lower={self.lower}, default={default},"
-                f" upper={self.upper}"
-            )
-
-        self.default = float(default)
-        self.has_prior = True
-        if self.log:
-            self.log_default = np.log(self.default)
-
-    @override
     def set_value(self, value: float | None) -> None:
         if value is None:
             self._value = None
@@ -172,33 +151,6 @@ class FloatParameter(NumericalParameter[float]):
         normalized_value = normalized_value * (high - low) + low
         _value = np.exp(normalized_value) if self.log else normalized_value
         return float(_value)
-
-    @override
-    def _get_non_unique_neighbors(
-        self,
-        num_neighbours: int,
-        *,
-        std: float = 0.2,
-    ) -> list[Self]:
-        neighbours: list[Self] = []
-
-        assert self.value is not None
-        vectorized_val = self.value_to_normalized(self.value)
-
-        # TODO(eddiebergman): This whole thing can be vectorized, not sure
-        # if we ever have enough num_neighbours to make it worth it
-        while len(neighbours) < num_neighbours:
-            n_val = np.random.normal(vectorized_val, std)
-            if n_val < 0 or n_val > 1:
-                continue
-
-            sampled_value = self.normalized_to_value(n_val)
-
-            neighbour = self.clone()
-            neighbour.set_value(sampled_value)
-            neighbours.append(neighbour)
-
-        return neighbours
 
     def __repr__(self) -> str:
         float_repr = f"{self.value:.07f}" if self.value is not None else "None"
