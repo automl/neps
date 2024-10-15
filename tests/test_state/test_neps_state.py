@@ -10,9 +10,9 @@ import pytest
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.hyperparameters import (
     Float,
-    IntegerParameter,
-    ConstantParameter,
-    CategoricalParameter,
+    Integer,
+    Constant,
+    Categorical,
 )
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.filebased import (
@@ -30,9 +30,9 @@ from neps.utils.common import MissingDependencyError
 def case_search_space_no_fid() -> SearchSpace:
     return SearchSpace(
         a=Float(0, 1),
-        b=CategoricalParameter(["a", "b", "c"]),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10),
+        b=Categorical(["a", "b", "c"]),
+        c=Constant("a"),
+        d=Integer(0, 10),
     )
 
 
@@ -40,10 +40,10 @@ def case_search_space_no_fid() -> SearchSpace:
 def case_search_space_with_fid() -> SearchSpace:
     return SearchSpace(
         a=Float(0, 1),
-        b=CategoricalParameter(["a", "b", "c"]),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10),
-        e=IntegerParameter(1, 10, is_fidelity=True),
+        b=Categorical(["a", "b", "c"]),
+        c=Constant("a"),
+        d=Integer(0, 10),
+        e=Integer(1, 10, is_fidelity=True),
     )
 
 
@@ -51,9 +51,9 @@ def case_search_space_with_fid() -> SearchSpace:
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
         a=Float(0, 1, default=0.5),
-        b=CategoricalParameter(["a", "b", "c"], default="a"),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10, default=5),
+        b=Categorical(["a", "b", "c"], default="a"),
+        c=Constant("a"),
+        d=Integer(0, 10, default=5),
     )
 
 
@@ -61,10 +61,10 @@ def case_search_space_no_fid_with_prior() -> SearchSpace:
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
         a=Float(0, 1, default=0.5),
-        b=CategoricalParameter(["a", "b", "c"], default="a"),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10, default=5),
-        e=IntegerParameter(1, 10, is_fidelity=True),
+        b=Categorical(["a", "b", "c"], default="a"),
+        c=Constant("a"),
+        d=Integer(0, 10, default=5),
+        e=Integer(1, 10, is_fidelity=True),
     )
 
 

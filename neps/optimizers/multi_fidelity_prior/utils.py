@@ -3,9 +3,9 @@ import pandas as pd
 import scipy
 
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    NumericalParameter,
+    Categorical,
+    Constant,
+    Numerical,
     Parameter,
     GraphParameter,
     SearchSpace,
@@ -36,7 +36,7 @@ def local_mutation(
             if hp.is_fidelity or np.random.uniform() > mutation_rate:
                 new_config[hp_name] = hp.clone()
 
-            elif isinstance(hp, CategoricalParameter):
+            elif isinstance(hp, Categorical):
                 if mutate_categoricals:
                     new_config[hp_name] = hp.mutate(mutation_strategy="local_search")
                 else:
@@ -48,12 +48,12 @@ def local_mutation(
                 else:
                     new_config[hp_name] = hp.clone()
 
-            elif isinstance(hp, NumericalParameter):
+            elif isinstance(hp, Numerical):
                 new_config[hp_name] = hp.mutate(
                     mutation_strategy="local_search",
                     std=std,
                 )
-            elif isinstance(hp, ConstantParameter):
+            elif isinstance(hp, Constant):
                 new_config[hp_name] = hp.clone()
 
             else:

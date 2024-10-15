@@ -12,10 +12,10 @@ from typing_extensions import override
 
 from neps.utils.types import ConfigResult, RawConfig
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
+    Categorical,
+    Constant,
     Float,
-    IntegerParameter,
+    Integer,
     SearchSpace,
 )
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -32,7 +32,7 @@ CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
+    Categorical.DEFAULT_CONFIDENCE_SCORES
 )
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
@@ -190,7 +190,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         for i in reversed(range(nrungs)):
             rung_map[i + s] = (
                 int(_max_budget)
-                if isinstance(self.pipeline_space.fidelity, IntegerParameter)
+                if isinstance(self.pipeline_space.fidelity, Integer)
                 else _max_budget
             )
             _max_budget /= self.eta
@@ -457,15 +457,15 @@ class SuccessiveHalvingBase(BaseOptimizer):
         if not self.use_priors and self.prior_confidence is None:
             return
         for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
+            if v.is_fidelity or isinstance(v, Constant):
                 continue
-            elif isinstance(v, (Float, IntegerParameter)):
+            elif isinstance(v, (Float, Integer)):
                 if confidence_score is None:
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
                     confidence = confidence_score["numeric"]
                 self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
+            elif isinstance(v, Categorical):
                 if confidence_score is None:
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
                         self.prior_confidence

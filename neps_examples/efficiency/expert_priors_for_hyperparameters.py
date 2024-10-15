@@ -26,10 +26,10 @@ pipeline_space = dict(
     some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
-    some_integer=neps.IntegerParameter(
+    some_integer=neps.Integer(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    some_cat=neps.CategoricalParameter(
+    some_cat=neps.Categorical(
         choices=["a", "b", "c"], default="a", default_confidence="high"
     ),
 )

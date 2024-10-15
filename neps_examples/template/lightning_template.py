@@ -54,8 +54,8 @@ def pipeline_space() -> dict:
             log=True,  # If True, the search space is sampled in log space
             default=1e-3,  # a non-None value here acts as the mode of the prior distribution
         ),
-        optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),
-        epochs=neps.IntegerParameter(
+        optimizer=neps.Categorical(choices=["Adam", "SGD"], default="Adam"),
+        epochs=neps.Integer(
             lower=1,
             upper=9,
             is_fidelity=True,  # IMPORTANT to set this to True for the fidelity parameter

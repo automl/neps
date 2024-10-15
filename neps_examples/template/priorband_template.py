@@ -54,7 +54,7 @@ def pipeline_space() -> dict:
             log=True,
             default=1e-3,
         ),
-        epoch=neps.IntegerParameter(
+        epoch=neps.Integer(
             lower=1,
             upper=10,
             is_fidelity=True,  # IMPORTANT to set this to True for the fidelity parameter

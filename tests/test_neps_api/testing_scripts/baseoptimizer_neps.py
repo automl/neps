@@ -7,12 +7,12 @@ from neps.search_spaces.search_space import SearchSpace
 
 pipeline_space_fidelity = dict(
     val1=neps.Float(lower=-10, upper=10),
-    val2=neps.IntegerParameter(lower=1, upper=5, is_fidelity=True),
+    val2=neps.Integer(lower=1, upper=5, is_fidelity=True),
 )
 
 pipeline_space = dict(
     val1=neps.Float(lower=-10, upper=10),
-    val2=neps.IntegerParameter(lower=1, upper=5),
+    val2=neps.Integer(lower=1, upper=5),
 )
 
 

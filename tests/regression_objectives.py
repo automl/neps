@@ -122,7 +122,7 @@ class JAHSObjective(RegressionObjectiveBase):
         # For Regularized evolution sampler ignores fidelity hyperparameters
         # by sampling None for them
 
-        self.pipeline_space["epoch"] = neps.IntegerParameter(
+        self.pipeline_space["epoch"] = neps.Integer(
             lower=1, upper=200, is_fidelity=self.has_fidelity
         )
         self.run_pipeline = self.evaluation_func()
@@ -284,7 +284,7 @@ class HartmannObjective(RegressionObjectiveBase):
         }
 
         if self.has_fidelity:
-            self.pipeline_space["z"] = neps.IntegerParameter(
+            self.pipeline_space["z"] = neps.Integer(
                 lower=self.z_min, upper=self.z_max, is_fidelity=self.has_fidelity
             )
 

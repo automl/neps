@@ -1,8 +1,8 @@
 from neps.utils.common import instance_from_map
 from ....search_spaces.architecture.core_graph_grammar import CoreGraphGrammar
-from ....search_spaces.hyperparameters.categorical import CategoricalParameter
+from ....search_spaces.hyperparameters.categorical import Categorical
 from ....search_spaces.hyperparameters.float import Float
-from ....search_spaces.hyperparameters.integer import IntegerParameter
+from ....search_spaces.hyperparameters.integer import Integer
 from ....utils.common import has_instance
 from . import GraphKernelMapping, StationaryKernelMapping
 
@@ -16,9 +16,9 @@ def get_kernels(
             graph_kernels.append("wl")
     if not hp_kernels:
         hp_kernels = []
-        if has_instance(pipeline_space.values(), Float, IntegerParameter):
+        if has_instance(pipeline_space.values(), Float, Integer):
             hp_kernels.append("m52")
-        if has_instance(pipeline_space.values(), CategoricalParameter):
+        if has_instance(pipeline_space.values(), Categorical):
             hp_kernels.append("hm")
     graph_kernels = [
         instance_from_map(GraphKernelMapping, kernel, "kernel", as_class=True)(

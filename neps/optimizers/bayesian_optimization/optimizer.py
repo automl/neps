@@ -8,10 +8,10 @@ from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
+    Categorical,
+    Constant,
     Float,
-    IntegerParameter,
+    Integer,
     SearchSpace,
 )
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -38,7 +38,7 @@ CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
+    Categorical.DEFAULT_CONFIDENCE_SCORES
 )
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
@@ -206,15 +206,15 @@ class BayesianOptimization(BaseOptimizer):
         ):
             return
         for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
+            if v.is_fidelity or isinstance(v, Constant):
                 continue
-            elif isinstance(v, (Float, IntegerParameter)):
+            elif isinstance(v, (Float, Integer)):
                 if confidence_score is None:
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
                     confidence = confidence_score["numeric"]
                 self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
+            elif isinstance(v, Categorical):
                 if confidence_score is None:
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
                         self.prior_confidence

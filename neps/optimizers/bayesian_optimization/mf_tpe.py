@@ -11,10 +11,10 @@ from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.utils.types import ConfigResult, RawConfig
 from neps.utils.common import instance_from_map
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
+    Categorical,
+    Constant,
     Float,
-    IntegerParameter,
+    Integer,
     SearchSpace,
 )
 from neps.optimizers.base_optimizer import BaseOptimizer
@@ -30,7 +30,7 @@ CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
+    Categorical.DEFAULT_CONFIDENCE_SCORES
 )
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
@@ -213,10 +213,10 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         for k in self.pipeline_space.keys():
             if self.pipeline_space[k].is_fidelity:
                 continue
-            elif isinstance(self.pipeline_space[k], (Float, IntegerParameter)):
+            elif isinstance(self.pipeline_space[k], (Float, Integer)):
                 confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(self.pipeline_space[k], CategoricalParameter):
+            elif isinstance(self.pipeline_space[k], Categorical):
                 confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[self.prior_confidence]
                 self.pipeline_space[k].default_confidence_score = confidence
 
@@ -235,7 +235,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
             # TODO: add +s to keys and TEST
             rung_value = (
                 int(_max_budget)
-                if isinstance(self.pipeline_space.fidelity, IntegerParameter)
+                if isinstance(self.pipeline_space.fidelity, Integer)
                 else _max_budget
             )
 
@@ -259,12 +259,12 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
         is_fidelity = []
         for _, hp in self.pipeline_space.items():
             is_fidelity.append(hp.is_fidelity)
-            if isinstance(hp, CategoricalParameter):
+            if isinstance(hp, Categorical):
                 # u as in unordered - used to play nice with the statsmodels KDE implementation
                 types.append("u")
                 logs.append(False)
                 num_values.append(len(hp.choices))
-            elif isinstance(hp, IntegerParameter):
+            elif isinstance(hp, Integer):
                 # o as in ordered
                 types.append("o")
                 logs.append(False)
@@ -274,7 +274,7 @@ class MultiFidelityPriorWeightedTreeParzenEstimator(BaseOptimizer):
                 types.append("f")
                 logs.append(hp.log)
                 num_values.append(np.inf)
-            elif isinstance(hp, ConstantParameter):
+            elif isinstance(hp, Constant):
                 # c as in continous
                 types.append("c")
                 logs.append(False)

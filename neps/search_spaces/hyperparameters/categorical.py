@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 CategoricalTypes: TypeAlias = float | int | str
 
 
-class CategoricalParameter(
+class Categorical(
     ParameterWithPrior[CategoricalTypes, CategoricalTypes],
     MutatableParameter,
 ):
@@ -27,13 +27,13 @@ class CategoricalParameter(
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
     to represent hyperparameters that can take on a discrete set of unordered
     values. For example, the `optimizer` hyperparameter in a neural network
-    search space can be a `CategoricalParameter` with choices like
+    search space can be a `Categorical` parameter with choices like
     `#!python ["adam", "sgd", "rmsprop"]`.
 
     ```python
     import neps
 
-    optimizer_choice = neps.CategoricalParameter(
+    optimizer_choice = neps.Categorical(
         ["adam", "sgd", "rmsprop"],
         default="adam"
     )
@@ -58,7 +58,7 @@ class CategoricalParameter(
         default: float | int | str | None = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
-        """Create a new `CategoricalParameter`.
+        """Create a new `Categorical` parameter.
 
         Args:
             choices: choices for the hyperparameter.
@@ -279,3 +279,53 @@ class CategoricalParameter(
     @classmethod
     def deserialize_value(cls, value: CategoricalTypes) -> CategoricalTypes:
         return value
+
+
+class CategoricalParameter(Categorical):
+    """Deprecated: Use `Categorical` instead of `CategoricalParameter`.
+
+    This class was previously used to represent categorical hyperparameters in
+    search spaces, but it has been replaced by the `Categorical` class. It is recommended
+    to update your code to use `Categorical`, which offers the same functionality with
+    a cleaner interface.
+
+    This class remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+
+    def __init__(
+        self,
+        choices: Iterable[float | int | str],
+        *,
+        default: float | int | str | None = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
+    ):
+        """Initialize a deprecated `CategoricalParameter`.
+
+        Args:
+            choices: choices for the hyperparameter.
+            default: default value for the hyperparameter, must be in `choices=`
+                if provided.
+            default_confidence: confidence score for the default value, used when
+                condsider prior based optimization.
+
+        Raises:
+            DeprecationWarning: A warning indicating that `CategoricalParameter` is
+            deprecated and the `Categorical` class should be used instead.
+        """
+        import warnings
+
+        warnings.warn(
+            (
+                "The usage of 'neps.CategoricalParameter' is deprecated and will be"
+                " removed in future releases. Please use 'neps.Categorical' instead."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        super().__init__(
+            choices=choices,
+            default=default,
+            default_confidence=default_confidence,
+        )

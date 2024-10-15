@@ -9,13 +9,13 @@ from typing_extensions import Self, override
 
 import numpy as np
 
-from neps.search_spaces.hyperparameters.numerical import NumericalParameter
+from neps.search_spaces.hyperparameters.numerical import Numerical
 
 if TYPE_CHECKING:
     from neps.utils.types import Number
 
 
-class Float(NumericalParameter[float]):
+class Float(Numerical[float]):
     """A float value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
@@ -23,7 +23,7 @@ class Float(NumericalParameter[float]):
     it exists
     on a log scale.
     For example, `l2_norm` could be a value in `(0.1)`, while the `learning_rate`
-    hyperparameter in a neural network search space can be a `Float`
+    hyperparameter in a neural network search space can be a `Float` parameter
     with a range of `(0.0001, 0.1)` but on a log scale.
 
     ```python
@@ -33,7 +33,7 @@ class Float(NumericalParameter[float]):
     learning_rate = neps.Float(1e-4, 1e-1, log=True)
     ```
 
-    Please see the [`NumericalParameter`][neps.search_spaces.numerical.NumericalParameter]
+    Please see the [`Numerical`][neps.search_spaces.numerical.Numerical]
     class for more details on the methods available for this class.
     """
 
@@ -247,8 +247,8 @@ class FloatParameter(Float):
 
         warnings.warn(
             (
-                "The 'FloatParameter' class is deprecated and will be removed in future"
-                " releases. Please use 'Float' instead."
+                "The usage of 'neps.FloatParameter' is deprecated and will be removed"
+                " in future releases. Please use 'neps.Float' instead."
             ),
             DeprecationWarning,
             stacklevel=2,

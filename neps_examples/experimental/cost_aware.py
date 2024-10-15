@@ -23,9 +23,9 @@ pipeline_space = dict(
     float2=neps.Float(
         lower=0, upper=10, log=False, default=10, default_confidence="medium"
     ),
-    categorical=neps.CategoricalParameter(choices=[0, 1]),
-    integer1=neps.IntegerParameter(lower=0, upper=1, log=False),
-    integer2=neps.IntegerParameter(lower=0, upper=1, log=False),
+    categorical=neps.Categorical(choices=[0, 1]),
+    integer1=neps.Integer(lower=0, upper=1, log=False),
+    integer2=neps.Integer(lower=0, upper=1, log=False),
 )
 
 logging.basicConfig(level=logging.INFO)

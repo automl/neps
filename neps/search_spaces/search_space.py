@@ -19,11 +19,11 @@ import yaml
 
 from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.hyperparameters import (
-    CategoricalParameter,
-    ConstantParameter,
+    Categorical,
+    Constant,
     Float,
-    IntegerParameter,
-    NumericalParameter,
+    Integer,
+    Numerical,
 )
 from neps.search_spaces.parameter import MutatableParameter, Parameter, ParameterWithPrior
 from neps.search_spaces.yaml_search_space_utils import (
@@ -64,19 +64,19 @@ def pipeline_space_from_configspace(
 
     for hyperparameter in configspace.get_hyperparameters():
         if isinstance(hyperparameter, CS.Constant):
-            parameter = ConstantParameter(value=hyperparameter.value)
+            parameter = Constant(value=hyperparameter.value)
         elif isinstance(hyperparameter, CS.CategoricalHyperparameter):
-            parameter = CategoricalParameter(
+            parameter = Categorical(
                 hyperparameter.choices,
                 default=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
-            parameter = CategoricalParameter(
+            parameter = Categorical(
                 hyperparameter.sequence,
                 default=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
-            parameter = IntegerParameter(
+            parameter = Integer(
                 lower=hyperparameter.lower,
                 upper=hyperparameter.upper,
                 log=hyperparameter.log,
@@ -142,16 +142,16 @@ def pipeline_space_from_yaml(  # noqa: C901
 
             if param_type in ("int", "integer"):
                 formatted_details = formatting_int(name, details)
-                pipeline_space[name] = IntegerParameter(**formatted_details)
+                pipeline_space[name] = Integer(**formatted_details)
             elif param_type == "float":
                 formatted_details = formatting_float(name, details)
                 pipeline_space[name] = Float(**formatted_details)
             elif param_type in ("cat", "categorical"):
                 formatted_details = formatting_cat(name, details)
-                pipeline_space[name] = CategoricalParameter(**formatted_details)
+                pipeline_space[name] = Categorical(**formatted_details)
             elif param_type == "const":
                 const_details = formatting_const(details)
-                pipeline_space[name] = ConstantParameter(const_details)
+                pipeline_space[name] = Constant(const_details)
             else:
                 # Handle unknown parameter type
                 raise TypeError(
@@ -197,7 +197,7 @@ class SearchSpace(Mapping[str, Any]):
         """
         # Ensure a consistent ordering for uses throughout the lib
         _hyperparameters = sorted(hyperparameters.items(), key=lambda x: x[0])
-        _fidelity_param: NumericalParameter | None = None
+        _fidelity_param: Numerical | None = None
         _fidelity_name: str | None = None
         _has_prior: bool = False
 
@@ -210,7 +210,7 @@ class SearchSpace(Mapping[str, Any]):
                         "multiple is_fidelity=True)"
                     )
 
-                if not isinstance(hp, NumericalParameter):
+                if not isinstance(hp, Numerical):
                     raise ValueError(
                         "neps only suport float and integer fidelity parameters"
                     )
@@ -222,7 +222,7 @@ class SearchSpace(Mapping[str, Any]):
                 _has_prior = True
 
         self.hyperparameters: dict[str, Parameter] = dict(_hyperparameters)
-        self.fidelity: NumericalParameter | None = _fidelity_param
+        self.fidelity: Numerical | None = _fidelity_param
         self.fidelity_name: str | None = _fidelity_name
         self.has_prior: bool = _has_prior
 
@@ -506,7 +506,7 @@ class SearchSpace(Mapping[str, Any]):
             if ignore_fidelity and hp.is_fidelity:
                 continue
 
-            if isinstance(hp, ConstantParameter):
+            if isinstance(hp, Constant):
                 continue
 
             # TODO(eddiebergman): Not sure this covers all graph parameters but a search
@@ -515,13 +515,13 @@ class SearchSpace(Mapping[str, Any]):
             if isinstance(hp, GraphParameter):
                 hps["graphs"].append(hp.value)
 
-            elif isinstance(hp, CategoricalParameter):
+            elif isinstance(hp, Categorical):
                 assert hp.value is not None
                 hp_value = hp.value_to_normalized(hp.value)
                 hps["categorical"].append(hp_value)
 
             # TODO(eddiebergman): Technically integer is not continuous
-            elif isinstance(hp, NumericalParameter):
+            elif isinstance(hp, Numerical):
                 assert hp.value is not None
                 hp_value = hp.value_to_normalized(hp.value)
                 hps["continuous"].append(hp_value)
@@ -552,9 +552,9 @@ class SearchSpace(Mapping[str, Any]):
     def get_vectorial_dim(self) -> dict[Literal["continuous", "categorical"], int] | None:
         """Get the vectorial dimension of the search space.
 
-        The count of [`NumericalParameter`][neps.search_spaces.NumericalParameter]
+        The count of [`Numerical`][neps.search_spaces.Numerical]
         are put under the key `#!python "continuous"` and the count of
-        [`CategoricalParameter`][neps.search_spaces.CategoricalParameter] are put under
+        [`Categorical`][neps.search_spaces.Categorical] are put under
         the key `#!python "categorical"` in the return dict.
 
         If there are no numerical or categorical hyperparameters **or constant**
@@ -564,8 +564,7 @@ class SearchSpace(Mapping[str, Any]):
             The vectorial dimension
         """
         if not any(
-            isinstance(hp, NumericalParameter | CategoricalParameter | ConstantParameter)
-            for hp in self.values()
+            isinstance(hp, Numerical | Categorical | Constant) for hp in self.values()
         ):
             return None
 
@@ -574,14 +573,14 @@ class SearchSpace(Mapping[str, Any]):
             "categorical": 0,
         }
         for hp in self.values():
-            if isinstance(hp, ConstantParameter):
+            if isinstance(hp, Constant):
                 pass
             elif isinstance(hp, GraphParameter):
                 # TODO(eddiebergman): This was what the old behaviour would do...
                 pass
-            elif isinstance(hp, CategoricalParameter):
+            elif isinstance(hp, Categorical):
                 features["categorical"] += 1
-            elif isinstance(hp, NumericalParameter):
+            elif isinstance(hp, Numerical):
                 features["continuous"] += 1
             else:
                 raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
@@ -603,16 +602,16 @@ class SearchSpace(Mapping[str, Any]):
     ) -> list[SearchSpace]:
         """Get a grid of configurations from the search space.
 
-        For [`NumericalParameter`][neps.search_spaces.NumericalParameter] hyperparameters,
+        For [`Numerical`][neps.search_spaces.Numerical] hyperparameters,
         the parameter `size_per_numerical_hp=` is used to determine a grid. If there are
         any duplicates, e.g. for an
-        [`IntegerParameter`][neps.search_spaces.IntegerParameter], then we will
+        [`Integer`][neps.search_spaces.Integer], then we will
         remove duplicates.
 
-        For [`CategoricalParameter`][neps.search_spaces.CategoricalParameter]
+        For [`Categorical`][neps.search_spaces.Categorical]
         hyperparameters, we include all the choices in the grid.
 
-        For [`ConstantParameter`][neps.search_spaces.ConstantParameter] hyperparameters,
+        For [`Constant`][neps.search_spaces.Constant] hyperparameters,
         we include the constant value in the grid.
 
         !!! note "TODO"
@@ -640,23 +639,21 @@ class SearchSpace(Mapping[str, Any]):
             if isinstance(hp, GraphParameter):
                 raise ValueError("Trying to create a grid for graphs!")
 
-            if isinstance(hp, CategoricalParameter):
+            if isinstance(hp, Categorical):
                 param_ranges.append(hp.choices)
                 continue
 
-            if isinstance(hp, ConstantParameter):
+            if isinstance(hp, Constant):
                 param_ranges.append([hp.value])
                 continue
 
-            if isinstance(hp, NumericalParameter):
+            if isinstance(hp, Numerical):
                 grid = hp.grid(
                     size=size_per_numerical_hp,
                     include_endpoint=include_endpoints,
                 )
                 _grid = np.clip(grid, hp.lower, hp.upper).astype(np.float64)
-                _grid = (
-                    _grid.astype(np.int64) if isinstance(hp, IntegerParameter) else _grid
-                )
+                _grid = _grid.astype(np.int64) if isinstance(hp, Integer) else _grid
                 _grid = np.unique(grid).tolist()
                 param_ranges.append(grid)
                 continue
@@ -668,7 +665,7 @@ class SearchSpace(Mapping[str, Any]):
         return [
             SearchSpace(
                 **{
-                    name: ConstantParameter(value=value)  # type: ignore
+                    name: Constant(value=value)  # type: ignore
                     for name, value in zip(
                         self.hyperparameters.keys(), config_values, strict=False
                     )
@@ -757,7 +754,7 @@ class SearchSpace(Mapping[str, Any]):
     def set_defaults_to_current_values(self) -> None:
         """Update the configuration/search space to use the current values as defaults."""
         for hp in self.hyperparameters.values():
-            if isinstance(hp, NumericalParameter):
+            if isinstance(hp, Numerical):
                 hp.set_default(hp.value)
 
     def set_hyperparameters_from_dict(  # noqa: C901
@@ -777,7 +774,7 @@ class SearchSpace(Mapping[str, Any]):
 
         !!! note "Constant Hyperparameters"
 
-            [`ConstantParameter`][neps.search_spaces.ConstantParameter] hyperparameters
+            [`Constant`][neps.search_spaces.Constant] hyperparameters
             have only a single possible value and hence only a single possible default.
             If `overwrite_constants=` is `False`, then it will remain unchanged and
             ignore the new value.
@@ -786,7 +783,7 @@ class SearchSpace(Mapping[str, Any]):
             be updated, requiring both `defaults=True` and `values=True` to be set.
 
             The arguments `delete_previous_defaults` and `delete_previous_values` are
-            ignored for [`ConstantParameter`][neps.search_spaces.ConstantParameter].
+            ignored for [`Constant`][neps.search_spaces.Constant].
 
         Args:
             hyperparameters: The dictionary of hyperparameters to set with values.
@@ -811,7 +808,7 @@ class SearchSpace(Mapping[str, Any]):
 
             # Handle constants specially as they have particular logic which
             # is different from the other hyperparameters
-            if isinstance(current_hp, ConstantParameter):
+            if isinstance(current_hp, Constant):
                 if not overwrite_constants:
                     continue
 

@@ -233,7 +233,7 @@ def training(
 def pipeline_space() -> dict:
     pipeline = dict(
         lr=neps.Float(lower=1e-5, upper=1e-1, log=True),
-        optim=neps.CategoricalParameter(choices=["Adam", "SGD"]),
+        optim=neps.Categorical(choices=["Adam", "SGD"]),
         weight_decay=neps.Float(lower=1e-4, upper=1e-1, log=True),
     )
 

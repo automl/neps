@@ -8,7 +8,7 @@ import warnings
 from neps.state.optimizer import BudgetInfo
 from neps.utils.types import ConfigResult
 from neps.utils.common import instance_from_map
-from neps.search_spaces.search_space import Float, IntegerParameter, SearchSpace
+from neps.search_spaces.search_space import Float, Integer, SearchSpace
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.optimizers.bayesian_optimization.acquisition_functions import AcquisitionMapping
 from neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition import (
@@ -217,7 +217,7 @@ class IFBO(BaseOptimizer):
         )
 
     def get_budget_value(self, budget_level: int | float) -> int | float:
-        if isinstance(self.pipeline_space.fidelity, IntegerParameter):
+        if isinstance(self.pipeline_space.fidelity, Integer):
             budget_val = int(
                 self.step_size * budget_level + self.pipeline_space.fidelity.lower
             )
@@ -229,7 +229,7 @@ class IFBO(BaseOptimizer):
             raise NotImplementedError(
                 f"Fidelity parameter: {self.pipeline_space.fidelity}"
                 f"must be one of the types: "
-                f"[IntegerParameter, Float], but is type:"
+                f"[Integer, Float], but is type:"
                 f"{type(self.pipeline_space.fidelity)}"
             )
         self._budget_list.append(budget_val)

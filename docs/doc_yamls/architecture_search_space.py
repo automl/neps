@@ -86,12 +86,12 @@ def set_recursive_attribute(op_name, predecessor_values):
 
 
 pipeline_space = dict(
-    architecture=neps.ArchitectureParameter(
+    architecture=neps.Architecture(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
     ),
-    optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
+    optimizer=neps.Categorical(choices=["sgd", "adam"]),
     learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
 )
 

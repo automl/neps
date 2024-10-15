@@ -14,10 +14,10 @@ pipeline_space = dict(
     some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
-    some_integer=neps.IntegerParameter(
+    some_integer=neps.Integer(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    some_cat=neps.CategoricalParameter(
+    some_cat=neps.Categorical(
         choices=["a", "b", "c"], default="a", default_confidence="high"
     )
 )
@@ -38,8 +38,8 @@ neps.run(
 
 pipeline_space = dict(
     some_float=neps.Float(lower=1, upper=1000, log=True),
-    some_integer=neps.IntegerParameter(lower=0, upper=50),
-    some_cat=neps.CategoricalParameter(choices=["a", "b", "c"])
+    some_integer=neps.Integer(lower=0, upper=50),
+    some_cat=neps.Categorical(choices=["a", "b", "c"])
 )
 
 # 1) A (non-factorized) density function that returns the likelihood of a given parameter configuration
@@ -96,8 +96,8 @@ def prior_01(some_float, some_integer, some_cat):
 
 pipeline_space_01 = dict(
     some_float=neps.Float(lower=1, upper=1000, log=True),
-    some_integer=neps.IntegerParameter(lower=0, upper=50),
-    some_cat=neps.CategoricalParameter(choices=["a", "b", "c"]),
+    some_integer=neps.Integer(lower=0, upper=50),
+    some_cat=neps.Categorical(choices=["a", "b", "c"]),
     _prior=prior_01
 )
 
@@ -107,12 +107,12 @@ pipeline_space_02 = dict(
         lower=1, upper=1000, log=True,
         prior_fun=lambda x: 1/400 if 800 < x < 1000 else 1/1600
     ),
-    some_integer=neps.IntegerParameter(lower=0, upper=50,
-        prior_fun=lambda k: 30**k/np.math.factorial(k) * np.exp(-k)
-),
-    some_cat=neps.CategoricalParameter(choices=["a", "b", "c"],
-        prior_fun=lambda x: 1/2*(x=="b") + 1/3*(x=="c") + 1/6*(x=="a")
-    )
+    some_integer=neps.Integer(lower=0, upper=50,
+                              prior_fun=lambda k: 30**k/np.math.factorial(k) * np.exp(-k)
+                              ),
+    some_cat=neps.Categorical(choices=["a", "b", "c"],
+                              prior_fun=lambda x: 1/2*(x=="b") + 1/3*(x=="c") + 1/6*(x=="a")
+                              )
 )
 
 # 3) A dictionary of default values and confidence levels for each parameter. Then a gaussian prior is used.
@@ -121,10 +121,10 @@ pipeline_space_03 = dict(
     some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
-    some_integer=neps.IntegerParameter(
+    some_integer=neps.Integer(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    some_cat=neps.CategoricalParameter(
+    some_cat=neps.Categorical(
         choices=["a", "b", "c"], default="a", default_confidence="high"
     )
 )
@@ -134,11 +134,11 @@ pipeline_space_04 = dict(
     some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium",
     ),
-    some_integer=neps.IntegerParameter(
+    some_integer=neps.Integer(
         lower=0, upper=50,
         prior_fun=lambda k: 30**k/np.math.factorial(k) * np.exp(-k)
     ),
-    some_cat=neps.CategoricalParameter(
+    some_cat=neps.Categorical(
         choices=["a", "b", "c"], default="a", default_confidence="high")
 )
 

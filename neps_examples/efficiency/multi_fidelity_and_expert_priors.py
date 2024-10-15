@@ -17,10 +17,10 @@ pipeline_space = dict(
     float2=neps.Float(
         lower=-10, upper=10, default=0, default_confidence="medium"
     ),
-    integer1=neps.IntegerParameter(
+    integer1=neps.Integer(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    fidelity=neps.IntegerParameter(lower=1, upper=10, is_fidelity=True),
+    fidelity=neps.Integer(lower=1, upper=10, is_fidelity=True),
 )
 
 logging.basicConfig(level=logging.INFO)
