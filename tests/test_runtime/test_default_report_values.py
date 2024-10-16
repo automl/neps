@@ -8,7 +8,7 @@ from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.search_spaces import FloatParameter
+from neps.search_spaces import Float
 from neps.state.trial import Trial
 
 
@@ -24,7 +24,7 @@ def neps_state(tmp_path: Path) -> NePSState[Path]:
 def test_default_values_on_error(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -75,7 +75,7 @@ def test_default_values_on_error(
 def test_default_values_on_not_specified(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -124,7 +124,7 @@ def test_default_values_on_not_specified(
 def test_default_value_loss_curve_take_loss_value(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(learning_curve_if_not_provided="loss"),

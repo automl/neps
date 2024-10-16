@@ -1,15 +1,15 @@
-"""The [`NumericalParameter`][neps.search_spaces.NumericalParameter] is
+"""The [`Numerical`][neps.search_spaces.Numerical] is
 a [`Parameter`][neps.search_spaces.Parameter] that represents a numerical
 range.
 
 The two primary numerical hyperparameters are:
 
-* [`FloatParameter`][neps.search_spaces.FloatParameter] for continuous
+* [`Float`][neps.search_spaces.Float] for continuous
     float values.
-* [`IntegerParameter`][neps.search_spaces.IntegerParameter] for discrete
+* [`Integer`][neps.search_spaces.Integer] for discrete
     integer values.
 
-The [`NumericalParameter`][neps.search_spaces.NumericalParameter] is a
+The [`Numerical`][neps.search_spaces.Numerical] is a
 base class for both of these hyperparameters, and includes methods from
 both [`ParameterWithPrior`][neps.search_spaces.ParameterWithPrior],
 allowing you to set a confidence along with a
@@ -52,7 +52,7 @@ def _get_truncnorm_prior_and_std(
     return scipy.stats.truncnorm(a, b), float(std)
 
 
-class NumericalParameter(ParameterWithPrior[T, T]):
+class Numerical(ParameterWithPrior[T, T]):
     """A numerical hyperparameter is bounded by a lower and upper value.
 
     Attributes:
@@ -179,4 +179,58 @@ class NumericalParameter(ParameterWithPrior[T, T]):
             high=high,
             default=default,
             confidence_score=self.default_confidence_score,
+        )
+
+
+class NumericalParameter(Numerical):
+    """Deprecated: Use `Numerical` instead of `NumericalParameter`.
+
+    This class remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+
+    def __init__(
+        self,
+        lower: T,
+        upper: T,
+        *,
+        log: bool = False,
+        default: T | None,
+        is_fidelity: bool,
+        domain: Domain[T],
+        default_confidence: Literal["low", "medium", "high"] = "low",
+    ):
+        """Initialize a deprecated `NumericalParameter`.
+
+        Args:
+            lower: The lower bound of the numerical hyperparameter.
+            upper: The upper bound of the numerical hyperparameter.
+            log: Whether the hyperparameter is in log space.
+            default: The default value of the hyperparameter.
+            is_fidelity: Whether the hyperparameter is a fidelity parameter.
+            domain: The domain of the hyperparameter.
+            default_confidence: The default confidence choice.
+
+        Raises:
+            DeprecationWarning: A warning indicating that `neps.NumericalParameter` is
+            deprecated and `neps.Numerical` should be used instead.
+        """
+        import warnings
+
+        warnings.warn(
+            (
+                "Usage of 'neps.NumericalParameter' is deprecated and will be removed in"
+                " future releases. Please use 'neps.Numerical' instead."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(
+            lower=lower,
+            upper=upper,
+            log=log,
+            default=default,
+            is_fidelity=is_fidelity,
+            domain=domain,
+            default_confidence=default_confidence,
         )

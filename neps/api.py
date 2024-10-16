@@ -115,7 +115,7 @@ def run(
         >>>    validation_error = -some_parameter
         >>>    return validation_error
 
-        >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
+        >>> pipeline_space = dict(some_parameter=neps.Float(lower=0, upper=1))
 
         >>> logging.basicConfig(level=logging.INFO)
         >>> neps.run(

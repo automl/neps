@@ -2,21 +2,21 @@ from neps.api import run
 from neps.plot.plot import plot
 from neps.plot.tensorboard_eval import tblogger
 from neps.search_spaces import (
+    Architecture,
     ArchitectureParameter,
+    Categorical,
     CategoricalParameter,
+    Constant,
     ConstantParameter,
+    Float,
     FloatParameter,
+    Function,
     FunctionParameter,
     GraphGrammar,
+    Integer,
     IntegerParameter,
 )
 from neps.status.status import get_summary_dict, status
-
-Integer = IntegerParameter
-Float = FloatParameter
-Categorical = CategoricalParameter
-Constant = ConstantParameter
-Architecture = ArchitectureParameter
 
 __all__ = [
     "Architecture",
@@ -24,6 +24,7 @@ __all__ = [
     "Float",
     "Categorical",
     "Constant",
+    "Function",
     "ArchitectureParameter",
     "CategoricalParameter",
     "ConstantParameter",

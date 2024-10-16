@@ -60,7 +60,7 @@ import logging
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
 def run_pipeline(
-    hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
+        hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
 ) -> dict:
     # Create your model
     model = MyModel(architecture_parameter)
@@ -74,13 +74,12 @@ def run_pipeline(
 
 # 2. Define a search space of parameters; use the same parameter names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(
+    hyperparameter_a=neps.Float(
         lower=0.001, upper=0.1, log=True  # The search space is sampled in log space
     ),
-    hyperparameter_b=neps.IntegerParameter(lower=1, upper=42),
-    architecture_parameter=neps.CategoricalParameter(["option_a", "option_b"]),
+    hyperparameter_b=neps.Integer(lower=1, upper=42),
+    architecture_parameter=neps.Categorical(["option_a", "option_b"]),
 )
-
 
 # 3. Run the NePS optimization
 logging.basicConfig(level=logging.INFO)

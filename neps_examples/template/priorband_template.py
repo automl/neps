@@ -41,19 +41,19 @@ def pipeline_space() -> dict:
     # Create the search space based on NEPS parameters and return the dictionary.
     # IMPORTANT:
     space = dict(
-        lr=neps.FloatParameter(
+        lr=neps.Float(
             lower=1e-5,
             upper=1e-2,
             log=True,  # If True, the search space is sampled in log space
             default=1e-3,  # a non-None value here acts as the mode of the prior distribution
         ),
-        wd=neps.FloatParameter(
+        wd=neps.Float(
             lower=0,
             upper=1e-1,
             log=True,
             default=1e-3,
         ),
-        epoch=neps.IntegerParameter(
+        epoch=neps.Integer(
             lower=1,
             upper=10,
             is_fidelity=True,  # IMPORTANT to set this to True for the fidelity parameter

@@ -51,7 +51,7 @@ def _build(graph, set_recursive_attribute):
             graph.edges[e].update(set_recursive_attribute(op_name, predecessor_values))
 
 
-def ArchitectureParameter(**kwargs):
+def Architecture(**kwargs):
     """Factory function."""
     if "structure" not in kwargs:
         raise ValueError("Factory function requires structure")
@@ -155,11 +155,51 @@ def ArchitectureParameter(**kwargs):
             return super().to_pytorch()  # create PyTorch model
 
         def create_new_instance_from_id(self, identifier: str):
-            g = ArchitectureParameter(**self.input_kwargs)  # type: ignore[arg-type]
+            g = Architecture(**self.input_kwargs)  # type: ignore[arg-type]
             g.load_from(identifier)
             return g
 
     return _FunctionParameter(**kwargs)
 
 
-FunctionParameter = ArchitectureParameter
+def ArchitectureParameter(**kwargs):
+    """Deprecated: Use `Architecture` instead of `ArchitectureParameter`.
+
+    This function remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+    import warnings
+
+    warnings.warn(
+        (
+            "Usage of 'neps.ArchitectureParameter' is deprecated and will be removed in"
+            " future releases. Please use 'neps.Architecture' instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    return Architecture(**kwargs)
+
+
+Function = Architecture
+
+
+def FunctionParameter(**kwargs):
+    """Deprecated: Use `Function` instead of `FunctionParameter`.
+
+    This function remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+    import warnings
+
+    warnings.warn(
+        (
+            "Usage of 'neps.FunctionParameter' is deprecated and will be removed in"
+            " future releases. Please use 'neps.Function' instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    return Function(**kwargs)

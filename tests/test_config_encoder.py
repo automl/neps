@@ -7,17 +7,17 @@ from neps.search_spaces.encoding import (
     MinMaxNormalizer,
 )
 from neps.search_spaces.hyperparameters import (
-    CategoricalParameter,
-    FloatParameter,
-    IntegerParameter,
+    Categorical,
+    Float,
+    Integer,
 )
 
 
 def test_config_encoder_default() -> None:
     parameters = {
-        "a": CategoricalParameter(["cat", "mouse", "dog"]),
-        "b": IntegerParameter(5, 6),
-        "c": FloatParameter(5, 6),
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "c": Float(5, 6),
     }
 
     encoder = ConfigEncoder.from_parameters(parameters)
@@ -73,9 +73,9 @@ def test_config_encoder_default() -> None:
 
 def test_config_encoder_pdist_calculation() -> None:
     parameters = {
-        "a": CategoricalParameter(["cat", "mouse", "dog"]),
-        "b": IntegerParameter(1, 10),
-        "c": FloatParameter(1, 10),
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(1, 10),
+        "c": Float(1, 10),
     }
     encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
@@ -109,9 +109,9 @@ def test_config_encoder_pdist_calculation() -> None:
 
 def test_config_encoder_pdist_squareform() -> None:
     parameters = {
-        "a": CategoricalParameter(["cat", "mouse", "dog"]),
-        "b": IntegerParameter(1, 10),
-        "c": FloatParameter(1, 10),
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(1, 10),
+        "c": Float(1, 10),
     }
     encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
@@ -143,9 +143,9 @@ def test_config_encoder_pdist_squareform() -> None:
 
 def test_config_encoder_accepts_custom_transformers() -> None:
     parameters = {
-        "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "a": Float(5, 6),
+        "c": Categorical(["cat", "mouse", "dog"]),
     }
     encoder = ConfigEncoder.from_parameters(
         parameters,
@@ -160,9 +160,9 @@ def test_config_encoder_accepts_custom_transformers() -> None:
 
 def test_config_encoder_removes_constants_in_encoding_and_includes_in_decoding() -> None:
     parameters = {
-        "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "a": Float(5, 6),
+        "c": Categorical(["cat", "mouse", "dog"]),
     }
 
     x = "raspberry"
@@ -184,9 +184,9 @@ def test_config_encoder_removes_constants_in_encoding_and_includes_in_decoding()
 
 def test_config_encoder_complains_if_missing_entry_in_config() -> None:
     parameters = {
-        "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "a": Float(5, 6),
+        "c": Categorical(["cat", "mouse", "dog"]),
     }
 
     encoder = ConfigEncoder.from_parameters(parameters)
@@ -197,9 +197,9 @@ def test_config_encoder_complains_if_missing_entry_in_config() -> None:
 
 def test_config_encoder_sorts_parameters_by_name_for_consistent_ordering() -> None:
     parameters = {
-        "a": CategoricalParameter([0, 1]),
-        "b": IntegerParameter(0, 1),
-        "c": FloatParameter(0, 1),
+        "a": Categorical([0, 1]),
+        "b": Integer(0, 1),
+        "c": Float(0, 1),
     }
     p1 = dict(sorted(parameters.items()))
     p2 = dict(sorted(parameters.items(), reverse=True))

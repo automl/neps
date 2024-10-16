@@ -10,13 +10,13 @@ from typing_extensions import Self, override
 import numpy as np
 
 from neps.search_spaces.domain import Domain
-from neps.search_spaces.hyperparameters.numerical import NumericalParameter
+from neps.search_spaces.hyperparameters.numerical import Numerical
 
 if TYPE_CHECKING:
     from neps.utils.types import Number
 
 
-class FloatParameter(NumericalParameter[float]):
+class Float(Numerical[float]):
     """A float value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
@@ -24,17 +24,17 @@ class FloatParameter(NumericalParameter[float]):
     it exists
     on a log scale.
     For example, `l2_norm` could be a value in `(0.1)`, while the `learning_rate`
-    hyperparameter in a neural network search space can be a `FloatParameter`
+    hyperparameter in a neural network search space can be a `Float`
     with a range of `(0.0001, 0.1)` but on a log scale.
 
     ```python
     import neps
 
-    l2_norm = neps.FloatParameter(0, 1)
-    learning_rate = neps.FloatParameter(1e-4, 1e-1, log=True)
+    l2_norm = neps.Float(0, 1)
+    learning_rate = neps.Float(1e-4, 1e-1, log=True)
     ```
 
-    Please see the [`NumericalParameter`][neps.search_spaces.numerical.NumericalParameter]
+    Please see the [`Numerical`][neps.search_spaces.numerical.Numerical]
     class for more details on the methods available for this class.
     """
 
@@ -54,7 +54,7 @@ class FloatParameter(NumericalParameter[float]):
         default: Number | None = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
-        """Create a new `FloatParameter`.
+        """Create a new `Float`.
 
         Args:
             lower: lower bound for the hyperparameter.
@@ -155,3 +155,55 @@ class FloatParameter(NumericalParameter[float]):
     def __repr__(self) -> str:
         float_repr = f"{self.value:.07f}" if self.value is not None else "None"
         return f"<Float, range: [{self.lower}, {self.upper}], value: {float_repr}>"
+
+
+class FloatParameter(Float):
+    """Deprecated: Use `Float` instead of `FloatParameter`.
+
+    This class remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+
+    def __init__(
+        self,
+        lower: Number,
+        upper: Number,
+        *,
+        log: bool = False,
+        is_fidelity: bool = False,
+        default: Number | None = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
+    ):
+        """Initialize a deprecated `FloatParameter`.
+
+        Args:
+            lower: lower bound for the hyperparameter.
+            upper: upper bound for the hyperparameter.
+            log: whether the hyperparameter is on a log scale.
+            is_fidelity: whether the hyperparameter is fidelity.
+            default: default value for the hyperparameter.
+            default_confidence: confidence score for the default value, used when
+                condsidering prior based optimization..
+
+        Raises:
+            DeprecationWarning: A warning indicating that `neps.FloatParameter` is
+            deprecated and `neps.Float` should be used instead.
+        """
+        import warnings
+
+        warnings.warn(
+            (
+                "Usage of 'neps.FloatParameter' is deprecated and will be removed in"
+                " future releases. Please use 'neps.Float' instead."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(
+            lower=lower,
+            upper=upper,
+            log=log,
+            is_fidelity=is_fidelity,
+            default=default,
+            default_confidence=default_confidence,
+        )

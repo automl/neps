@@ -9,28 +9,28 @@ from typing_extensions import Self, override
 import numpy as np
 
 from neps.search_spaces.domain import Domain
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.numerical import NumericalParameter
+from neps.search_spaces.hyperparameters.float import Float
+from neps.search_spaces.hyperparameters.numerical import Numerical
 
 if TYPE_CHECKING:
     from neps.utils.types import Number
 
 
-class IntegerParameter(NumericalParameter[int]):
+class Integer(Numerical[int]):
     """An integer value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
     to represent hyperparameters with continuous integer values, optionally specifying
     f it exists on a log scale.
     For example, `batch_size` could be a value in `(32, 128)`, while the `num_layers`
-    hyperparameter in a neural network search space can be a `IntegerParameter`
+    hyperparameter in a neural network search space can be a `Integer`
     with a range of `(1, 1000)` but on a log scale.
 
     ```python
     import neps
 
-    batch_size = neps.IntegerParameter(32, 128)
-    num_layers = neps.IntegerParameter(1, 1000, log=True)
+    batch_size = neps.Integer(32, 128)
+    num_layers = neps.Integer(1, 1000, log=True)
     ```
     """
 
@@ -50,7 +50,7 @@ class IntegerParameter(NumericalParameter[int]):
         default: Number | None = None,
         default_confidence: Literal["low", "medium", "high"] = "low",
     ):
-        """Create a new `IntegerParameter`.
+        """Create a new `Integer`.
 
         Args:
             lower: lower bound for the hyperparameter.
@@ -66,7 +66,7 @@ class IntegerParameter(NumericalParameter[int]):
         _size = upper - lower + 1
         if _size <= 1:
             raise ValueError(
-                f"IntegerParameter: expected at least 2 possible values in the range,"
+                f"Integer: expected at least 2 possible values in the range,"
                 f" got upper={upper}, lower={lower}."
             )
 
@@ -83,7 +83,7 @@ class IntegerParameter(NumericalParameter[int]):
         # We subtract/add 0.499999 from lower/upper bounds respectively, such that
         # sampling in the float space gives equal probability for all integer values,
         # i.e. [x - 0.499999, x + 0.499999]
-        self.float_hp = FloatParameter(
+        self.float_hp = Float(
             lower=self.lower - 0.499999,
             upper=self.upper + 0.499999,
             log=self.log,
@@ -148,3 +148,55 @@ class IntegerParameter(NumericalParameter[int]):
     @override
     def normalized_to_value(self, normalized_value: float) -> int:
         return int(np.rint(self.float_hp.normalized_to_value(normalized_value)))
+
+
+class IntegerParameter(Integer):
+    """Deprecated: Use `Integer` instead of `IntegerParameter`.
+
+    This class remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+
+    def __init__(
+        self,
+        lower: Number,
+        upper: Number,
+        *,
+        log: bool = False,
+        is_fidelity: bool = False,
+        default: Number | None = None,
+        default_confidence: Literal["low", "medium", "high"] = "low",
+    ):
+        """Initialize a deprecated `IntegerParameter`.
+
+        Args:
+            lower: lower bound for the hyperparameter.
+            upper: upper bound for the hyperparameter.
+            log: whether the hyperparameter is on a log scale.
+            is_fidelity: whether the hyperparameter is fidelity.
+            default: default value for the hyperparameter.
+            default_confidence: confidence score for the default value, used when
+                condsider prior based optimization.
+
+        Raises:
+            DeprecationWarning: A warning indicating that `neps.IntegerParameter` is
+            deprecated and `neps.Integer` should be used instead.
+        """
+        import warnings
+
+        warnings.warn(
+            (
+                "Usage of 'neps.IntegerParameter' is deprecated and will be removed in"
+                " future releases. Please use 'neps.Integer' instead."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(
+            lower=lower,
+            upper=upper,
+            log=log,
+            is_fidelity=is_fidelity,
+            default=default,
+            default_confidence=default_confidence,
+        )
