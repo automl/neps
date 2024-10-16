@@ -16,9 +16,9 @@ from typing_extensions import Protocol, override
 import torch
 
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
+from neps.search_spaces.hyperparameters.categorical import Categorical
+from neps.search_spaces.hyperparameters.float import Float
+from neps.search_spaces.hyperparameters.integer import Integer
 
 if TYPE_CHECKING:
     from neps.search_spaces.parameter import Parameter
@@ -470,8 +470,8 @@ class ConfigEncoder:
         automatically creates transformers for each hyperparameter based on its type.
         The transformers are as follows:
 
-        * `FloatParameter` and `IntegerParameter` are normalized to the unit interval.
-        * `CategoricalParameter` is transformed into an integer.
+        * `Float` and `Integer` are normalized to the unit interval.
+        * `Categorical` is transformed into an integer.
 
         Args:
             space: The search space to build an encoder for
@@ -511,8 +511,8 @@ class ConfigEncoder:
         automatically creates transformers for each hyperparameter based on its type.
         The transformers are as follows:
 
-        * `FloatParameter` and `IntegerParameter` are normalized to the unit interval.
-        * `CategoricalParameter` is transformed into an integer.
+        * `Float` and `Integer` are normalized to the unit interval.
+        * `Categorical` is transformed into an integer.
 
         Args:
             parameters: A mapping of hyperparameter names to hyperparameters.
@@ -547,9 +547,9 @@ class ConfigEncoder:
                 continue
 
             match hp:
-                case FloatParameter() | IntegerParameter():
+                case Float() | Integer():
                     transformers[name] = MinMaxNormalizer(hp.domain)  # type: ignore
-                case CategoricalParameter():
+                case Categorical():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:
                     raise ValueError(

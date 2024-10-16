@@ -109,13 +109,13 @@ def run_pipeline(**config):
 
 
 pipeline_space = dict(
-    architecture=neps.ArchitectureParameter(
+    architecture=neps.Architecture(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
     ),
-    optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
-    learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+    optimizer=neps.Categorical(choices=["sgd", "adam"]),
+    learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
 )
 
 logging.basicConfig(level=logging.INFO)

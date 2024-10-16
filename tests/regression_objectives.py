@@ -117,7 +117,7 @@ class JAHSObjective(RegressionObjectiveBase):
 
         self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
 
-        self.pipeline_space["epoch"] = neps.IntegerParameter(
+        self.pipeline_space["epoch"] = neps.Integer(
             lower=1, upper=200, is_fidelity=self.has_fidelity
         )
         self.run_pipeline = self.evaluation_func()
@@ -275,11 +275,11 @@ class HartmannObjective(RegressionObjectiveBase):
             )
 
         self.pipeline_space: dict[str, Any] = {
-            f"X_{i}": neps.FloatParameter(lower=0.0, upper=1.0) for i in range(self.dim)
+            f"X_{i}": neps.Float(lower=0.0, upper=1.0) for i in range(self.dim)
         }
 
         if self.has_fidelity:
-            self.pipeline_space["z"] = neps.IntegerParameter(
+            self.pipeline_space["z"] = neps.Integer(
                 lower=self.z_min, upper=self.z_max, is_fidelity=self.has_fidelity
             )
 
