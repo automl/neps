@@ -7,14 +7,14 @@ import torch
 
 from neps.sampling.priors import Prior
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
+    Categorical,
+    Constant,
     GraphParameter,
     SearchSpace,
 )
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
+from neps.search_spaces.hyperparameters.float import Float
+from neps.search_spaces.hyperparameters.integer import Integer
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -44,7 +44,7 @@ def local_mutation(
     for name, parameter in space.hyperparameters.items():
         if (
             parameter.is_fidelity
-            or isinstance(parameter, ConstantParameter)
+            or isinstance(parameter, Constant)
             or np.random.uniform() > mutation_rate
         ):
             parameters_to_keep[name] = parameter.value
@@ -58,14 +58,14 @@ def local_mutation(
 
     for hp_name, hp in parameters_to_mutate.items():
         match hp:
-            case CategoricalParameter():
+            case Categorical():
                 assert hp._value_index is not None
                 perm: list[int] = torch.randperm(len(hp.choices)).tolist()
                 ix = perm[0] if perm[0] != hp._value_index else perm[1]
                 new_config[hp_name] = hp.choices[ix]
             case GraphParameter():
                 new_config[hp_name] = hp.mutate(mutation_strategy="bananas")
-            case IntegerParameter() | FloatParameter():
+            case Integer() | Float():
                 prior = Prior.from_parameters(
                     {hp_name: hp},
                     confidence_values={hp_name: (1 - std)},

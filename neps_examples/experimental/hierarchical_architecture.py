@@ -64,7 +64,7 @@ def set_recursive_attribute(op_name, predecessor_values):
     return dict(c_in=in_channels, c_out=out_channels)
 
 
-def run_pipeline(architecture: neps.FunctionParameter):
+def run_pipeline(architecture: neps.Function):
     in_channels = 3
     n_classes = 20
     base_channels = 64
@@ -86,7 +86,7 @@ def run_pipeline(architecture: neps.FunctionParameter):
 
 
 pipeline_space = dict(
-    architecture=neps.FunctionParameter(
+    architecture=neps.Function(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
