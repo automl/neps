@@ -84,7 +84,7 @@ def get_root_directory(args: argparse.Namespace) -> Optional[Path]:
             return None
 
     # Configuration file handling
-    config_path = Path("run_config.yaml")
+    config_path = Path("run_config.yaml").resolve()
     if config_path.exists():
         try:
             with config_path.open("r") as file:
@@ -118,7 +118,11 @@ def init_config(args: argparse.Namespace) -> None:
     """Creates a 'run_args' configuration YAML file template if it does not already
     exist.
     """
-    config_path = Path(args.config_path) if args.config_path else Path("run_config.yaml")
+    config_path = (
+        Path(args.config_path).resolve()
+        if args.config_path
+        else Path("run_config.yaml").resolve()
+    )
 
     if args.database:
         if config_path.exists():

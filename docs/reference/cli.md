@@ -169,7 +169,7 @@ as allocating different computational resources to different configurations.
 
 
 ```bash
-neps sample-config --worker_id worker_1 --number-of-configs 5
+neps sample-config --worker-id worker_1 --number-of-configs 5
 ```
 
 ---
@@ -199,7 +199,7 @@ The `report-config` command is the counterpart to `sample-config` and reports th
 
 
 ```bash
-neps report-config 42 success --worker_id worker_1 --loss 0.95 --duration 120
+neps report-config 42 success --worker-id worker_1 --loss 0.95 --duration 120
 ```
 
 ---
@@ -247,7 +247,7 @@ This command initializes the NePS database, preparing the necessary folders and 
 Generate new configurations based on the existing NePS state. This step allows you to create configurations that you can manually evaluate.
 
 ```bash
-neps sample-config --worker_id worker_1 --number-of-configs 5
+neps sample-config --worker-id worker_1 --number-of-configs 5
 ```
 
 - **`--worker_id worker_1`**: Identifies the worker responsible for sampling configurations.
@@ -258,7 +258,7 @@ neps sample-config --worker_id worker_1 --number-of-configs 5
 After evaluating each sampled configuration, report its outcome to update the NePS state.
 
 ```bash
-neps report-config 42 success --worker_id worker_1 --loss 0.95 --duration 120
+neps report-config 42 success --worker-id worker_1 --loss 0.95 --duration 120
 ```
 
 - **`42`**: The ID of the trial being reported.
