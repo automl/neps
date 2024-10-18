@@ -626,13 +626,17 @@ def results(args: argparse.Namespace) -> None:
     if neps_state is None:
         return
 
-    # Load and sort all trials
+    def sort_trial_id(trial_id: str) -> List[int]:
+        parts = trial_id.split("_")  # Split the ID by '_'
+        # Convert each part to an integer for proper numeric sorting
+        return [int(part) for part in parts]
+
     trials = neps_state.get_all_trials()
-    sorted_trials = sorted(trials.values(), key=lambda x: int(x.id))
+    sorted_trials = sorted(trials.values(), key=lambda x: sort_trial_id(x.id))
 
     # Compute incumbents
     incumbents = compute_incumbents(sorted_trials)
-    incumbents_ids = [int(trial.id) for trial in incumbents]
+    incumbents_ids = [trial.id for trial in incumbents]
 
     # Handle Dump Options
     if args.dump_all_configs or args.dump_incumbents:
@@ -725,7 +729,7 @@ def dump_incumbents(
     csv_config_data_path: Path,
     summary_csv_dir: Path,
     dump_format: str,
-    incumbents_ids: List[int],
+    incumbents_ids: List[str],
 ) -> None:
     """Dump incumbent trials to the specified format."""
     dump_format = dump_format.lower()
