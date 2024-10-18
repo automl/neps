@@ -12,6 +12,7 @@ from neps.search_spaces import (
     GraphParameter,
     SearchSpace,
 )
+from neps.search_spaces.functions import pairwise_dist
 from neps.search_spaces.encoding import ConfigEncoder
 from neps.search_spaces.hyperparameters.float import FloatParameter
 from neps.search_spaces.hyperparameters.integer import IntegerParameter
@@ -131,7 +132,7 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     """
     encoder = ConfigEncoder.from_parameters({**config1.numerical, **config1.categoricals})
     configs = encoder.encode([config1.hp_values(), config2.hp_values()])
-    dist = encoder.pdist(configs, square_form=False)
+    dist = pairwise_dist(configs, encoder, square_form=False)
     return float(dist.item())
 
 
