@@ -16,7 +16,6 @@ from neps.optimizers.multi_fidelity.promotion_policy import (
     SyncPromotionPolicy,
 )
 from neps.optimizers.multi_fidelity.sampling_policy import (
-    FixedPriorPolicy,
     ModelPolicy,
     RandomUniformPolicy,
 )
@@ -355,46 +354,6 @@ class AsynchronousHyperband(HyperbandBase):
             bracket_to_run
         ].get_config_and_ids()
         return config, config_id, previous_config_id
-
-
-class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
-    """Implements ASHA but as Hyperband."""
-
-    use_priors = True
-
-    def __init__(
-        self,
-        *,
-        pipeline_space: SearchSpace,
-        budget: int,
-        eta: int = 3,
-        initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: Any = FixedPriorPolicy,
-        promotion_policy: Any = AsyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
-        cost_value_on_error: None | float = None,
-        ignore_errors: bool = False,
-        prior_confidence: Literal["low", "medium", "high"] = "medium",
-        random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
-    ):
-        super().__init__(
-            pipeline_space=pipeline_space,
-            budget=budget,
-            eta=eta,
-            initial_design_type=initial_design_type,
-            use_priors=self.use_priors,  # key change to the base Async HB class
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-            prior_confidence=prior_confidence,
-            random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
-        )
 
 
 class MOBSTER(MFBOBase, AsynchronousHyperband):
