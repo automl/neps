@@ -42,9 +42,9 @@ def test_config_encoder_pdist_calculation() -> None:
 
 def test_config_encoder_pdist_squareform() -> None:
     parameters = {
-        "a": CategoricalParameter(["cat", "mouse", "dog"]),
-        "b": IntegerParameter(1, 10),
-        "c": FloatParameter(1, 10),
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(1, 10),
+        "c": Float(1, 10),
     }
     encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
