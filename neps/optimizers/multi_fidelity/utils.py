@@ -75,14 +75,6 @@ class MFObservedData:
     def pending_runs_index(self) -> pd.Index | pd.MultiIndex:
         return self.df.loc[self.pending_condition].index
 
-    @property
-    def completed_runs(self) -> pd.DataFrame:
-        return self.df[~(self.pending_condition | self.error_condition)]
-
-    @property
-    def completed_runs_index(self) -> pd.Index | pd.MultiIndex:
-        return self.completed_runs.index
-
     def next_config_id(self) -> int:
         if len(self.seen_config_ids):
             return max(self.seen_config_ids) + 1

@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import override
 
 import numpy as np
-import pandas as pd
 
 from neps.optimizers.base_optimizer import SampledConfig
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
@@ -22,6 +21,7 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
 from neps.optimizers.multi_fidelity.successive_halving import (
     SuccessiveHalving,
     SuccessiveHalvingBase,
+    tmp_load_results,
 )
 from neps.sampling.priors import Prior
 
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
-    from neps.utils.types import ConfigResult, RawConfig
+    from neps.utils.types import RawConfig
 
 
 class HyperbandBase(SuccessiveHalvingBase):
@@ -124,29 +124,13 @@ class HyperbandBase(SuccessiveHalvingBase):
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
     ) -> SampledConfig:
-        completed: dict[str, ConfigResult] = {
-            trial_id: trial.into_config_result(self.pipeline_space.from_dict)
-            for trial_id, trial in trials.items()
-            if trial.report is not None
-        }
-        pending: dict[str, SearchSpace] = {
-            trial_id: self.pipeline_space.from_dict(trial.config)
-            for trial_id, trial in trials.items()
-            if trial.report is None
-        }
-
-        self.rung_histories = {
-            rung: {"config": [], "perf": []}
-            for rung in range(self.min_rung, self.max_rung + 1)
-        }
-
-        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
-
-        # previous optimization run exists and needs to be loaded
-        self._load_previous_observations(completed)
-
-        # account for pending evaluations
-        self._handle_pending_evaluations(pending)
+        observed_configs, rung_histories = tmp_load_results(
+            trials=trials,
+            space=self.pipeline_space,
+            rung_range=(self.min_rung, self.max_rung),
+        )
+        self.observed_configs = observed_configs
+        self.rung_histories = rung_histories
 
         # process optimization state and bucket observations per rung
         self._get_rungs_state()
