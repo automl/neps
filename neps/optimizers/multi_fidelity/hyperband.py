@@ -22,7 +22,6 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     RandomUniformPolicy,
 )
 from neps.optimizers.multi_fidelity.successive_halving import (
-    AsynchronousSuccessiveHalving,
     SuccessiveHalving,
     SuccessiveHalvingBase,
 )
@@ -396,8 +395,7 @@ class AsynchronousHyperband(HyperbandBase):
         self.sh_brackets: dict[int, SuccessiveHalvingBase] = {}
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
-            # key difference from vanilla HB where it runs synchronous SH brackets
-            self.sh_brackets[s] = AsynchronousSuccessiveHalving(**args)
+            self.sh_brackets[s] = SuccessiveHalvingBase(**args)
 
     def _update_sh_bracket_state(self) -> None:
         # `load_results()` for each of the SH bracket objects are not called as they are

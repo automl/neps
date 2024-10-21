@@ -12,7 +12,6 @@ from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import (
     EnsemblePolicy,
-    FixedPriorPolicy,
     ModelPolicy,
 )
 from neps.optimizers.multi_fidelity.successive_halving import (

@@ -7,14 +7,17 @@ from neps.optimizers.grid_search.optimizer import GridSearch
 from neps.optimizers.multi_fidelity import (
     IFBO,
     MOBSTER,
-    AsynchronousSuccessiveHalving,
     Hyperband,
     HyperbandCustomDefault,
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
 from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
-from neps.optimizers.multi_fidelity.sampling_policy import FixedPriorPolicy
+from neps.optimizers.multi_fidelity.sampling_policy import (
+    FixedPriorPolicy,
+    RandomUniformPolicy,
+)
+from neps.optimizers.multi_fidelity.successive_halving import SuccessiveHalvingBase
 from neps.optimizers.multi_fidelity_prior import (
     PriorBand,
     PriorBandAsha,
@@ -30,14 +33,20 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "grid_search": GridSearch,
     "successive_halving": SuccessiveHalving,
     "successive_halving_prior": SuccessiveHalvingWithPriors,
-    "asha": AsynchronousSuccessiveHalving,
     "hyperband": Hyperband,
-    "asha_prior": partial(
-        AsynchronousSuccessiveHalving,
-        prior_confidence="medium",
+    "asha": partial(
+        SuccessiveHalvingBase,
+        sampling_policy=RandomUniformPolicy,
         promotion_policy=AsyncPromotionPolicy,
+        use_priors=False,
+        prior_confidence=None,
+    ),
+    "asha_prior": partial(
+        SuccessiveHalvingBase,
         sampling_policy=FixedPriorPolicy,
+        promotion_policy=AsyncPromotionPolicy,
         use_priors=True,
+        prior_confidence="medium",
     ),
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
