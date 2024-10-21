@@ -91,7 +91,7 @@ class PriorBandBase:
         else:
             # THIS block should not ever execute, but for runtime anomalies, if no
             # incumbent can be extracted, the prior is treated as the incumbent
-            inc = self.pipeline_space.sample_default_configuration()
+            inc = self.pipeline_space.from_dict(self.pipeline_space.default_config)
             logger.warning(
                 "Treating the prior as the incumbent. "
                 "Please check if this should not happen."
@@ -259,7 +259,7 @@ class PriorBandBase:
         # requires at least eta completed configurations to begin computing scores
         if len(self.rung_histories[rung]["config"]) >= self.eta:
             # retrieve the prior
-            prior = self.pipeline_space.sample_default_configuration()
+            prior = self.pipeline_space.from_dict(self.pipeline_space.default_config)
             # retrieve the global incumbent
             inc = self.find_incumbent()
             # subsetting the top 1/eta configs from the rung

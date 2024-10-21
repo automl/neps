@@ -6,10 +6,11 @@ do not necessarily have an easily definable pdf.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 from typing_extensions import override
 
 import torch
@@ -22,14 +23,16 @@ if TYPE_CHECKING:
     from neps.sampling.priors import UniformPrior
 
 
-class Sampler(Protocol):
+class Sampler(ABC):
     """A protocol for sampling tensors and vonerting them to a given domain."""
 
     @property
+    @abstractmethod
     def ncols(self) -> int:
         """The number of columns in the samples produced by this sampler."""
         ...
 
+    @abstractmethod
     def sample(
         self,
         n: int | torch.Size,
@@ -56,7 +59,23 @@ class Sampler(Protocol):
         Returns:
             A tensor of (n, ndim) points sampled cast to the given domain.
         """
-        ...
+
+    def sample_one(
+        self,
+        *,
+        to: Domain | list[Domain] | ConfigEncoder,
+        seed: torch.Generator | None = None,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> torch.Tensor:
+        """Sample a single point and convert it to the given domain.
+
+        The configuration will be a single dimensional tensor of shape
+        `(ncols,)`.
+
+        Please see [`sample`][neps.samplers.Sampler.sample] for more details.
+        """
+        return self.sample(1, to=to, seed=seed, device=device, dtype=dtype).squeeze(0)
 
     @classmethod
     def sobol(cls, ndim: int, *, scramble: bool = True) -> Sobol:

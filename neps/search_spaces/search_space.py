@@ -14,6 +14,7 @@ import ConfigSpace as CS
 import yaml
 
 from neps.search_spaces.architecture.graph_grammar import GraphParameter
+from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
 from neps.search_spaces.hyperparameters import (
     CategoricalParameter,
     ConstantParameter,
@@ -181,7 +182,7 @@ class SearchSpace(Mapping[str, Any]):
         know better what to document.
     """
 
-    def __init__(self, **hyperparameters: Parameter):
+    def __init__(self, **hyperparameters: Parameter):  # noqa: C901, PLR0912
         """Initialize the SearchSpace with hyperparameters.
 
         Args:
@@ -218,6 +219,30 @@ class SearchSpace(Mapping[str, Any]):
         self.fidelity_name: str | None = _fidelity_name
         self.has_prior: bool = _has_prior
 
+        self.default_config = {}
+        for name, hp in _hyperparameters:
+            if hp.default is not None:
+                self.default_config[name] = hp.default
+                continue
+
+            match hp:
+                case CategoricalParameter():
+                    first_choice = hp.choices[0]
+                    self.default_config[name] = first_choice
+                case IntegerParameter() | FloatParameter():
+                    if hp.is_fidelity:
+                        self.default_config[name] = hp.upper
+                        continue
+
+                    midpoint = hp.domain.cast_one(0.5, frm=UNIT_FLOAT_DOMAIN)
+                    self.default_config[name] = midpoint
+                case ConstantParameter():
+                    self.default_config[name] = hp.value
+                case GraphParameter():
+                    self.default_config[name] = hp.default
+                case _:
+                    raise TypeError(f"Unknown hyperparameter type {hp}")
+
         self.categoricals: Mapping[str, CategoricalParameter] = {
             k: hp for k, hp in _hyperparameters if isinstance(hp, CategoricalParameter)
         }
@@ -238,53 +263,12 @@ class SearchSpace(Mapping[str, Any]):
             assert isinstance(_fidelity_param, IntegerParameter | FloatParameter)
             self.fidelities = {_fidelity_name: _fidelity_param}
 
-    def sample(
-        self,
-        *,
-        user_priors: bool = False,
-        patience: int = 1,
-        ignore_fidelity: bool = True,
-    ) -> SearchSpace:
-        """Sample a configuration from the search space.
-
-        Args:
-            user_priors: Whether to use user priors when sampling.
-            patience: The number of times to try to sample a valid value for a
-                hyperparameter.
-            ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
-
-        Returns:
-            A sampled configuration from the search space.
-        """
-        sampled_hps: dict[str, Parameter] = {}
-
-        for name, hp in self.hyperparameters.items():
-            if hp.is_fidelity and ignore_fidelity:
-                sampled_hps[name] = hp.clone()
-                continue
-
-            for attempt in range(patience):
-                try:
-                    if user_priors and isinstance(hp, ParameterWithPrior):
-                        sampled_hps[name] = hp.sample(user_priors=user_priors)
-                    else:
-                        sampled_hps[name] = hp.sample()
-                    break
-                except Exception as e:  # noqa: BLE001
-                    logger.warning(
-                        f"Attempt {attempt + 1}/{patience} failed for"
-                        f" sampling {name}: {e!s}"
-                    )
-            else:
-                logger.error(
-                    f"Failed to sample valid value for {name} after {patience} attempts"
-                )
-                raise ValueError(
-                    f"Could not sample valid value for hyperparameter {name}"
-                    f" in {patience} tries!"
-                )
-
-        return SearchSpace(**sampled_hps)
+        # TODO: Deprecate out, ideally configs are just dictionaries,
+        # not attached to this space object
+        self._values = {
+            hp_name: hp if isinstance(hp, GraphParameter) else hp.value
+            for hp_name, hp in self.hyperparameters.items()
+        }
 
     def hp_values(self) -> dict[str, Any]:
         """Get the values for each hyperparameter in this configuration."""
@@ -293,6 +277,7 @@ class SearchSpace(Mapping[str, Any]):
             for hp_name, hp in self.hyperparameters.items()
         }
 
+    # TODO: Deprecate and remove
     def from_dict(self, config: Mapping[str, Any | GraphParameter]) -> SearchSpace:
         """Create a new instance of this search space with parameters set from the config.
 
@@ -302,48 +287,13 @@ class SearchSpace(Mapping[str, Any]):
         new = self.clone()
         for name, val in config.items():
             new.hyperparameters[name].load_from(val)
+            new._values[name] = new.hyperparameters[name].value
 
         return new
 
     def clone(self) -> SearchSpace:
         """Create a copy of the search space."""
         return self.__class__(**{k: v.clone() for k, v in self.hyperparameters.items()})
-
-    def sample_default_configuration(
-        self,
-        *,
-        patience: int = 1,
-        ignore_fidelity: bool = True,
-    ) -> SearchSpace:
-        """Sample the default configuration from the search space.
-
-        By default, if there is no default set for a hyperparameter, an error will be
-        raised. If `ignore_missing_defaults=True`, then a sampled value will be used
-        instead.
-
-        Args:
-            patience: The number of times to try to sample a valid value for a
-                hyperparameter.
-            ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
-            ignore_missing_defaults: Whether to ignore missing defaults when setting
-                the default configuration.
-
-        Returns:
-            The default configuration.
-        """
-        # Sample a random config and then set the defaults if there are any
-        config = self.sample(patience=patience, ignore_fidelity=ignore_fidelity)
-        for hp_name, hp in self.hyperparameters.items():
-            if hp.is_fidelity and ignore_fidelity:
-                continue
-
-            if hp.default is None:
-                raise ValueError(f"No defaults specified for {hp} in the space.")
-
-                # Use the sampled value instead
-            config[hp_name].set_value(hp.default)
-
-        return config
 
     def __getitem__(self, key: str) -> Parameter:
         return self.hyperparameters[key]

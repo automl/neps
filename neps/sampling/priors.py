@@ -9,9 +9,10 @@ See the class doc description of [`Prior`][neps.priors.Prior] for more details.
 
 from __future__ import annotations
 
+from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 import torch
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
 
 
-class Prior(Sampler, Protocol):
+class Prior(Sampler):
     """A protocol for priors over search spaces.
 
     Extends from the [`Sampler`][neps.samplers.Sampler] protocol.
@@ -64,6 +65,7 @@ class Prior(Sampler, Protocol):
         actually be `1` (1 / 1) for any value inside the domain.
     """
 
+    @abstractmethod
     def log_pdf(
         self,
         x: torch.Tensor,
@@ -94,7 +96,6 @@ class Prior(Sampler, Protocol):
             case that only single dimensional tensor is passed, the returns value
             is a scalar.
         """
-        ...
 
     def pdf(
         self, x: torch.Tensor, *, frm: ConfigEncoder | Domain | list[Domain]

@@ -69,7 +69,7 @@ class ComprehensiveExpectedImprovement(BaseAcquisition):
         if len(space.fidelities) > 0 and self.optimize_on_max_fidelity:
             assert len(space.fidelities) == 1
             fid_name, fid = next(iter(space.fidelities.items()))
-            _x = [space.from_dict({**e.hp_values(), fid_name: fid.upper}) for e in x]
+            _x = [space.from_dict({**e._values, fid_name: fid.upper}) for e in x]
         else:
             _x = list(x)
 
