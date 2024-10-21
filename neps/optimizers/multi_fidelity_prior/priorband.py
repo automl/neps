@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from neps.optimizers.multi_fidelity.hyperband import HyperbandCustomDefault
+from neps.optimizers.multi_fidelity.hyperband import (
+    HyperbandWithPriors
+)
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
@@ -297,7 +299,7 @@ class PriorBandBase:
 
 
 # order of inheritance (method resolution order) extremely essential for correct behaviour
-class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
+class PriorBand(MFBOBase, HyperbandWithPriors, PriorBandBase):
     """PriorBand optimizer for multi-fidelity optimization."""
 
     def __init__(
@@ -359,14 +361,6 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         )
         # determines the kind of trade-off between incumbent and prior weightage
         self.inc_style = inc_style  # used by PriorBandBase
-        self.sampling_args: dict[str, Any] = {
-            "inc": None,
-            "weights": {
-                "prior": 1,  # begin with only prior sampling
-                "inc": 0,
-                "random": 0,
-            },
-        }
 
         self.model_based = model_based
         self.modelling_type = modelling_type
@@ -388,6 +382,14 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         prior_dist = Prior.from_space(self.pipeline_space)
         self.model_policy = model_policy(pipeline_space=pipeline_space, prior=prior_dist)
 
+        self.sampling_args: dict[str, Any] = {
+            "inc": None,
+            "weights": {
+                "prior": 1,  # begin with only prior sampling
+                "inc": 0,
+                "random": 0,
+            },
+        }
         for _, sh in self.sh_brackets.items():
             sh.sampling_policy = self.sampling_policy
             sh.sampling_args = self.sampling_args

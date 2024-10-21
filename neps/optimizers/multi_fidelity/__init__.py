@@ -3,7 +3,6 @@ from neps.optimizers.multi_fidelity.hyperband import (
     AsynchronousHyperband,
     AsynchronousHyperbandWithPriors,
     Hyperband,
-    HyperbandCustomDefault,
     HyperbandWithPriors,
 )
 from neps.optimizers.multi_fidelity.ifbo import IFBO
@@ -15,7 +14,6 @@ __all__ = [
     "SuccessiveHalving",
     "Hyperband",
     "HyperbandWithPriors",
-    "HyperbandCustomDefault",
     "AsynchronousHyperband",
     "AsynchronousHyperbandWithPriors",
     "MOBSTER",

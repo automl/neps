@@ -8,7 +8,6 @@ from neps.optimizers.multi_fidelity import (
     IFBO,
     MOBSTER,
     Hyperband,
-    HyperbandCustomDefault,
     SuccessiveHalving,
 )
 from neps.optimizers.multi_fidelity.promotion_policy import (
@@ -56,7 +55,6 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
         use_priors=True,
         prior_confidence="medium",
     ),
-    "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
     "priorband_bo": partial(PriorBand, model_based=True),
     "priorband_asha": PriorBandAsha,

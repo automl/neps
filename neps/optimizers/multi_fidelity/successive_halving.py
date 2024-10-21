@@ -147,7 +147,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.rung_promotions: dict = {}  # records a promotable config per rung
 
         # setup SH state counter
-        self.full_rung_trace = SuccessiveHalving._get_rung_trace(
+        self.full_rung_trace = SuccessiveHalvingBase._get_rung_trace(
             self.rung_map, self.config_map
         )
 
