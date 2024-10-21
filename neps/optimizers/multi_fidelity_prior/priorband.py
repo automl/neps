@@ -5,9 +5,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from neps.optimizers.multi_fidelity.hyperband import (
-    HyperbandWithPriors
-)
+from neps.optimizers.multi_fidelity.hyperband import Hyperband
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
@@ -299,7 +297,7 @@ class PriorBandBase:
 
 
 # order of inheritance (method resolution order) extremely essential for correct behaviour
-class PriorBand(MFBOBase, HyperbandWithPriors, PriorBandBase):
+class PriorBand(MFBOBase, Hyperband, PriorBandBase):
     """PriorBand optimizer for multi-fidelity optimization."""
 
     def __init__(
@@ -338,12 +336,15 @@ class PriorBand(MFBOBase, HyperbandWithPriors, PriorBandBase):
         acquisition_sampler: str = "random",  # TODO: Remove
     ):
         super().__init__(
+            # Key forced change
+            use_priors=True,
+            sampling_policy=sampling_policy,
+            promotion_policy=promotion_policy,
+            # Kwargs
             pipeline_space=pipeline_space,
             budget=budget,
             eta=eta,
             initial_design_type=initial_design_type,
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
