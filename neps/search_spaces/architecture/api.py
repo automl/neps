@@ -61,14 +61,8 @@ def Architecture(**kwargs):
     class _FunctionParameter(base):
         def __init__(
             self,
-            structure: Grammar
-            | list[Grammar]
-            | ConstrainedGrammar
-            | list[ConstrainedGrammar]
-            | str
-            | list[str]
-            | dict
-            | list[dict],
+            structure: Grammar | ConstrainedGrammar | str | dict
+            | list[Grammar | ConstrainedGrammar | str | dict],
             primitives: dict,
             # TODO: Follow this rabbit hole for `constraint_kwargs`,
             # it can all be deleted my friend
@@ -162,44 +156,3 @@ def Architecture(**kwargs):
     return _FunctionParameter(**kwargs)
 
 
-def ArchitectureParameter(**kwargs):
-    """Deprecated: Use `Architecture` instead of `ArchitectureParameter`.
-
-    This function remains for backward compatibility and will raise a deprecation
-    warning if used.
-    """
-    import warnings
-
-    warnings.warn(
-        (
-            "Usage of 'neps.ArchitectureParameter' is deprecated and will be removed in"
-            " future releases. Please use 'neps.Architecture' instead."
-        ),
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return Architecture(**kwargs)
-
-
-Function = Architecture
-
-
-def FunctionParameter(**kwargs):
-    """Deprecated: Use `Function` instead of `FunctionParameter`.
-
-    This function remains for backward compatibility and will raise a deprecation
-    warning if used.
-    """
-    import warnings
-
-    warnings.warn(
-        (
-            "Usage of 'neps.FunctionParameter' is deprecated and will be removed in"
-            " future releases. Please use 'neps.Function' instead."
-        ),
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    return Function(**kwargs)
