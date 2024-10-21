@@ -1,18 +1,14 @@
 import torch
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.hyperparameters import (
-    CategoricalParameter,
-    FloatParameter,
-    IntegerParameter,
-)
+from neps.search_spaces.hyperparameters import Categorical, Float, Integer
 from neps.search_spaces.functions import pairwise_dist
 
 
 def test_config_encoder_pdist_calculation() -> None:
     parameters = {
-        "a": CategoricalParameter(["cat", "mouse", "dog"]),
-        "b": IntegerParameter(1, 10),
-        "c": FloatParameter(1, 10),
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(1, 10),
+        "c": Float(1, 10),
     }
     encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}

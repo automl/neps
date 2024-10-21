@@ -1,24 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 import torch
 
 from neps.sampling.priors import Prior
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
+    Categorical,
+    Constant,
     GraphParameter,
+    Float,
+    Integer,
     SearchSpace,
 )
-from neps.search_spaces.functions import pairwise_dist, sample_one_old
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
-
-if TYPE_CHECKING:
-    import pandas as pd
+from neps.search_spaces.functions import sample_one_old, pairwise_dist
 
 
 def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
@@ -45,7 +42,7 @@ def local_mutation(
     for name, parameter in space.hyperparameters.items():
         if (
             parameter.is_fidelity
-            or isinstance(parameter, ConstantParameter)
+            or isinstance(parameter, Constant)
             or np.random.uniform() > mutation_rate
         ):
             parameters_to_keep[name] = parameter.value
@@ -57,17 +54,16 @@ def local_mutation(
 
     new_config: dict[str, Any] = {}
 
-    # TODO: Can likely batch this somewhere
     for hp_name, hp in parameters_to_mutate.items():
         match hp:
-            case CategoricalParameter():
+            case Categorical():
                 assert hp._value_index is not None
                 perm: list[int] = torch.randperm(len(hp.choices)).tolist()
                 ix = perm[0] if perm[0] != hp._value_index else perm[1]
                 new_config[hp_name] = hp.choices[ix]
             case GraphParameter():
                 new_config[hp_name] = hp.mutate(mutation_strategy="bananas")
-            case IntegerParameter() | FloatParameter():
+            case Integer() | Float():
                 prior = Prior.from_parameters(
                     {hp_name: hp},
                     confidence_values={hp_name: (1 - std)},

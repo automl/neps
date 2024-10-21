@@ -16,9 +16,9 @@ from typing_extensions import Protocol, override
 import torch
 
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
+from neps.search_spaces.hyperparameters.categorical import Categorical
+from neps.search_spaces.hyperparameters.float import Float
+from neps.search_spaces.hyperparameters.integer import Integer
 
 if TYPE_CHECKING:
     from neps.search_spaces.parameter import Parameter
@@ -311,6 +311,69 @@ class ConfigEncoder:
 
         return x[:, self.numerical_slice]
 
+    def pdist(
+        self,
+        x: torch.Tensor,
+        *,
+        numerical_ord: int = 2,
+        categorical_ord: int = 0,
+        dtype: torch.dtype = torch.float64,
+        square_form: bool = False,
+    ) -> torch.Tensor:
+        """Compute the pairwise distance between rows of a tensor.
+
+        Will sum the results of the numerical and categorical distances.
+        The encoding will be normalized such that all numericals lie within the unit
+        cube, and categoricals will by default, have a `p=0` norm, which is equivalent
+        to the Hamming distance.
+
+        Args:
+            x: A tensor of shape `(N, ncols)`.
+            numerical_ord: The order of the norm to use for the numerical columns.
+            categorical_ord: The order of the norm to use for the categorical columns.
+            dtype: The dtype of the output tensor.
+            square_form: If `True`, the output will be a square matrix of shape
+                `(N, N)`. If `False`, the output will be a single dim tensor of shape
+                `1/2 * N * (N - 1)`.
+
+        Returns:
+            The distances, shaped according to `square_form`.
+        """
+        categoricals = self.select_categorical(x)
+        numericals = self.select_numerical(x)
+
+        dists: torch.Tensor | None = None
+        if numericals is not None:
+            # Ensure they are all within the unit cube
+            numericals = Domain.translate(
+                numericals,
+                frm=self.numerical_domains,
+                to=UNIT_FLOAT_DOMAIN,
+            )
+
+            dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
+
+        if categoricals is not None:
+            cat_dists = torch.nn.functional.pdist(categoricals, p=categorical_ord)
+            if dists is None:
+                dists = cat_dists
+            else:
+                dists += cat_dists
+
+        if dists is None:
+            raise ValueError("No columns to compute distances on.")
+
+        if not square_form:
+            return dists
+
+        # Turn the single dimensional vector into a square matrix
+        N = len(x)
+        sq = torch.zeros((N, N), dtype=dtype)
+        row_ix, col_ix = torch.triu_indices(N, N, offset=1)
+        sq[row_ix, col_ix] = dists
+        sq[col_ix, row_ix] = dists
+        return sq
+
     @property
     def ncols(self) -> int:
         """The number of columns in the encoded tensor."""
@@ -413,8 +476,8 @@ class ConfigEncoder:
         automatically creates transformers for each hyperparameter based on its type.
         The transformers are as follows:
 
-        * `FloatParameter` and `IntegerParameter` are normalized to the unit interval.
-        * `CategoricalParameter` is transformed into an integer.
+        * `Float` and `Integer` are normalized to the unit interval.
+        * `Categorical` is transformed into an integer.
 
         Args:
             space: The search space to build an encoder for
@@ -454,8 +517,8 @@ class ConfigEncoder:
         automatically creates transformers for each hyperparameter based on its type.
         The transformers are as follows:
 
-        * `FloatParameter` and `IntegerParameter` are normalized to the unit interval.
-        * `CategoricalParameter` is transformed into an integer.
+        * `Float` and `Integer` are normalized to the unit interval.
+        * `Categorical` is transformed into an integer.
 
         Args:
             parameters: A mapping of hyperparameter names to hyperparameters.
@@ -490,9 +553,9 @@ class ConfigEncoder:
                 continue
 
             match hp:
-                case FloatParameter() | IntegerParameter():
+                case Float() | Integer():
                     transformers[name] = MinMaxNormalizer(hp.domain)  # type: ignore
-                case CategoricalParameter():
+                case Categorical():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:
                     raise ValueError(
@@ -500,4 +563,4 @@ class ConfigEncoder:
                         " please provide it as `constants=`."
                     )
 
-        return ConfigEncoder(transformers, constants=constants)
+        return cls(transformers, constants=constants)

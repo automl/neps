@@ -9,12 +9,9 @@ from typing_extensions import override
 import torch
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
+from neps.search_spaces import Categorical, Constant, Float, Integer
 from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
-from neps.search_spaces.hyperparameters.categorical import CategoricalParameter
-from neps.search_spaces.hyperparameters.constant import ConstantParameter
-from neps.search_spaces.hyperparameters.float import FloatParameter
-from neps.search_spaces.hyperparameters.integer import IntegerParameter
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -29,16 +26,16 @@ def _make_grid(
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
 
-    For [`NumericalParameter`][neps.search_spaces.NumericalParameter] hyperparameters,
+    For [`Numerical`][neps.search_spaces.Numerical] hyperparameters,
     the parameter `size_per_numerical_hp=` is used to determine a grid. If there are
     any duplicates, e.g. for an
-    [`IntegerParameter`][neps.search_spaces.IntegerParameter], then we will
+    [`Integer`][neps.search_spaces.Integer], then we will
     remove duplicates.
 
-    For [`CategoricalParameter`][neps.search_spaces.CategoricalParameter]
+    For [`Categorical`][neps.search_spaces.Categorical]
     hyperparameters, we include all the choices in the grid.
 
-    For [`ConstantParameter`][neps.search_spaces.ConstantParameter] hyperparameters,
+    For [`Constant`][neps.search_spaces.Constant] hyperparameters,
     we include the constant value in the grid.
 
     !!! note "TODO"
@@ -65,11 +62,11 @@ def _make_grid(
             # If this is resolved, please update the docstring!
             case GraphParameter():
                 raise ValueError("Trying to create a grid for graphs!")
-            case CategoricalParameter():
+            case Categorical():
                 param_ranges[name] = list(hp.choices)
-            case ConstantParameter():
+            case Constant():
                 param_ranges[name] = [hp.value]
-            case IntegerParameter() | FloatParameter():
+            case Integer() | Float():
                 if hp.is_fidelity:
                     param_ranges[name] = [hp.upper]
                     continue

@@ -129,10 +129,10 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         but roughly refers to numeric values.
 
         * `(0, 1)` scaling in the case of
-            a [`NumericalParameter`][neps.search_spaces.NumericalParameter],
-        * `{0.0, 1.0}` for a [`ConstantParameter`][neps.search_spaces.ConstantParameter],
+            a [`Numerical`][neps.search_spaces.Numerical],
+        * `{0.0, 1.0}` for a [`Constant`][neps.search_spaces.Constant],
         * `[0, 1, ..., n]` for a
-            [`Categorical`][neps.search_spaces.CategoricalParameter].
+            [`Categorical`][neps.search_spaces.Categorical].
 
         Args:
             value: value to convert.

@@ -249,14 +249,14 @@ class LitMNIST(L.LightningModule):
 def search_space() -> dict:
     # Define a dictionary to represent the hyperparameter search space
     space = dict(
-        data_dir=neps.ConstantParameter("./data"),
-        batch_size=neps.ConstantParameter(64),
-        lr=neps.FloatParameter(lower=1e-5, upper=1e-2, log=True, default=1e-3),
-        weight_decay=neps.FloatParameter(
+        data_dir=neps.Constant("./data"),
+        batch_size=neps.Constant(64),
+        lr=neps.Float(lower=1e-5, upper=1e-2, log=True, default=1e-3),
+        weight_decay=neps.Float(
             lower=1e-5, upper=1e-3, log=True, default=5e-4
         ),
-        optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),
-        epochs=neps.IntegerParameter(lower=1, upper=9, log=False, is_fidelity=True),
+        optimizer=neps.Categorical(choices=["Adam", "SGD"], default="Adam"),
+        epochs=neps.Integer(lower=1, upper=9, log=False, is_fidelity=True),
     )
     return space
 

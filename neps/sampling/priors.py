@@ -23,15 +23,14 @@ from neps.sampling.distributions import (
     TruncatedNormal,
 )
 from neps.sampling.samplers import Sampler
-from neps.search_spaces import CategoricalParameter
+from neps.search_spaces import Categorical
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
 
-    from neps.search_spaces import FloatParameter, IntegerParameter
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.search_spaces import Float, Integer, SearchSpace
 
 
 class Prior(Sampler):
@@ -118,10 +117,7 @@ class Prior(Sampler):
     @classmethod
     def from_parameters(
         cls,
-        parameters: Mapping[
-            str,
-            CategoricalParameter | FloatParameter | IntegerParameter,
-        ],
+        parameters: Mapping[str, Categorical | Float | Integer],
         *,
         center_values: Mapping[str, Any] | None = None,
         confidence_values: Mapping[str, float] | None = None,
@@ -153,11 +149,7 @@ class Prior(Sampler):
                 name,
                 _mapping[hp.default_confidence_choice],
             )
-            center = (
-                hp.choices.index(default)
-                if isinstance(hp, CategoricalParameter)
-                else default
-            )
+            center = hp.choices.index(default) if isinstance(hp, Categorical) else default
             centers.append((center, confidence_score))
 
         return Prior.from_domains_and_centers(domains=domains, centers=centers)

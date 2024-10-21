@@ -19,7 +19,7 @@ from neps.sampling.priors import Prior
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.domain import Domain
 from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
-from neps.search_spaces.search_space import FloatParameter, IntegerParameter, SearchSpace
+from neps.search_spaces.search_space import Float, Integer, SearchSpace
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
@@ -48,7 +48,7 @@ def _adjust_pipeline_space_to_match_stepsize(
     fidelity = pipeline_space.fidelity
     fidelity_name = pipeline_space.fidelity_name
     assert fidelity_name is not None
-    assert isinstance(fidelity, FloatParameter | IntegerParameter)
+    assert isinstance(fidelity, Float | Integer)
     if fidelity.log:
         raise NotImplementedError("Log fidelity not yet supported")
 

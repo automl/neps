@@ -106,20 +106,20 @@ def run_pipeline(some_architecture, some_float, some_integer, some_cat):
 
 
 pipeline_space = dict(
-    some_architecture=neps.FunctionParameter(
+    some_architecture=neps.Function(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
         name="pibo",
         prior=prior_distr,
     ),
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
-    some_integer=neps.IntegerParameter(
+    some_integer=neps.Integer(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    some_cat=neps.CategoricalParameter(
+    some_cat=neps.Categorical(
         choices=["a", "b", "c"], default="a", default_confidence="high"
     ),
 )

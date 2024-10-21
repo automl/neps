@@ -6,18 +6,14 @@ from neps.search_spaces.encoding import (
     ConfigEncoder,
     MinMaxNormalizer,
 )
-from neps.search_spaces.hyperparameters import (
-    CategoricalParameter,
-    FloatParameter,
-    IntegerParameter,
-)
+from neps.search_spaces.hyperparameters import Categorical, Float, Integer
 
 
 def test_config_encoder_default() -> None:
     parameters = {
-        "a": CategoricalParameter(["cat", "mouse", "dog"]),
-        "b": IntegerParameter(5, 6),
-        "c": FloatParameter(5, 6),
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "c": Float(5, 6),
     }
 
     encoder = ConfigEncoder.from_parameters(parameters)
@@ -71,11 +67,81 @@ def test_config_encoder_default() -> None:
     assert decoded == configs
 
 
+def test_config_encoder_pdist_calculation() -> None:
+    parameters = {
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(1, 10),
+        "c": Float(1, 10),
+    }
+    encoder = ConfigEncoder.from_parameters(parameters)
+    config1 = {"a": "cat", "b": 1, "c": 1.0}
+    config2 = {"a": "mouse", "b": 10, "c": 10.0}
+
+    # Same config, no distance
+    x = encoder.encode([config1, config1])
+    dist = encoder.pdist(x, square_form=False)
+    assert dist.item() == 0.0
+
+    # Opposite configs, max distance
+    x = encoder.encode([config1, config2])
+    dist = encoder.pdist(x, square_form=False)
+
+    # The first config should have it's p2 euclidean distance as the norm
+    # of the distances between these two configs, i.e. the distance along the
+    # diagonal of a unit-square they belong to
+    _first_config_numerical_encoding = torch.tensor([[0.0, 0.0]], dtype=torch.float64)
+    _second_config_numerical_encoding = torch.tensor([[1.0, 1.0]], dtype=torch.float64)
+    _expected_numerical_dist = torch.linalg.norm(
+        _first_config_numerical_encoding - _second_config_numerical_encoding,
+        ord=2,
+    )
+
+    # The categorical distance should just be one, as they are different
+    _expected_categorical_dist = 1.0
+
+    _expected_dist = _expected_numerical_dist + _expected_categorical_dist
+    assert torch.isclose(dist, _expected_dist)
+
+
+def test_config_encoder_pdist_squareform() -> None:
+    parameters = {
+        "a": Categorical(["cat", "mouse", "dog"]),
+        "b": Integer(1, 10),
+        "c": Float(1, 10),
+    }
+    encoder = ConfigEncoder.from_parameters(parameters)
+    config1 = {"a": "cat", "b": 1, "c": 1.0}
+    config2 = {"a": "dog", "b": 5, "c": 5}
+    config3 = {"a": "mouse", "b": 10, "c": 10.0}
+
+    # Same config, no distance
+    x = encoder.encode([config1, config2, config3])
+    dist = encoder.pdist(x, square_form=False)
+
+    # 3 possible distances
+    assert dist.shape == (3,)
+    torch.testing.assert_close(
+        dist,
+        torch.tensor([1.6285, 2.4142, 1.7857], dtype=torch.float64),
+        atol=1e-4,
+        rtol=1e-4,
+    )
+
+    dist_sq = encoder.pdist(x, square_form=True)
+    assert dist_sq.shape == (3, 3)
+
+    # Distance to self along diagonal should be 0
+    torch.testing.assert_close(dist_sq.diagonal(), torch.zeros(3, dtype=torch.float64))
+
+    # Should be symmetric
+    torch.testing.assert_close(dist_sq, dist_sq.T)
+
+
 def test_config_encoder_accepts_custom_transformers() -> None:
     parameters = {
-        "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "a": Float(5, 6),
+        "c": Categorical(["cat", "mouse", "dog"]),
     }
     encoder = ConfigEncoder.from_parameters(
         parameters,
@@ -90,9 +156,9 @@ def test_config_encoder_accepts_custom_transformers() -> None:
 
 def test_config_encoder_removes_constants_in_encoding_and_includes_in_decoding() -> None:
     parameters = {
-        "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "a": Float(5, 6),
+        "c": Categorical(["cat", "mouse", "dog"]),
     }
 
     x = "raspberry"
@@ -114,9 +180,9 @@ def test_config_encoder_removes_constants_in_encoding_and_includes_in_decoding()
 
 def test_config_encoder_complains_if_missing_entry_in_config() -> None:
     parameters = {
-        "b": IntegerParameter(5, 6),
-        "a": FloatParameter(5, 6),
-        "c": CategoricalParameter(["cat", "mouse", "dog"]),
+        "b": Integer(5, 6),
+        "a": Float(5, 6),
+        "c": Categorical(["cat", "mouse", "dog"]),
     }
 
     encoder = ConfigEncoder.from_parameters(parameters)
@@ -127,9 +193,9 @@ def test_config_encoder_complains_if_missing_entry_in_config() -> None:
 
 def test_config_encoder_sorts_parameters_by_name_for_consistent_ordering() -> None:
     parameters = {
-        "a": CategoricalParameter([0, 1]),
-        "b": IntegerParameter(0, 1),
-        "c": FloatParameter(0, 1),
+        "a": Categorical([0, 1]),
+        "b": Integer(0, 1),
+        "c": Float(0, 1),
     }
     p1 = dict(sorted(parameters.items()))
     p2 = dict(sorted(parameters.items(), reverse=True))

@@ -20,10 +20,10 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     RandomUniformPolicy,
 )
 from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
+    Categorical,
+    Constant,
+    Float,
+    Integer,
     SearchSpace,
 )
 from neps.search_spaces.functions import sample_one_old
@@ -35,12 +35,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
-)
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -188,7 +186,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         for i in reversed(range(nrungs)):
             rung_map[i + s] = (
                 int(_max_budget)
-                if isinstance(self.pipeline_space.fidelity, IntegerParameter)
+                if isinstance(self.pipeline_space.fidelity, Integer)
                 else _max_budget
             )
             _max_budget /= self.eta
@@ -471,15 +469,15 @@ class SuccessiveHalvingBase(BaseOptimizer):
             return
 
         for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
+            if v.is_fidelity or isinstance(v, Constant):
                 continue
-            if isinstance(v, FloatParameter | IntegerParameter):
+            if isinstance(v, Float | Integer):
                 if confidence_score is None:
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
                     confidence = confidence_score["numeric"]
                 self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
+            elif isinstance(v, Categorical):
                 if confidence_score is None:
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
                         self.prior_confidence
