@@ -21,7 +21,7 @@ pipeline_space = dict(
 )
 
 logging.basicConfig(level=logging.INFO)
-neps.ru0335n(
+neps.run(
     run_pipeline=run_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
