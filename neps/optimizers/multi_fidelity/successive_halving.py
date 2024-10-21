@@ -12,11 +12,9 @@ import pandas as pd
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.multi_fidelity.promotion_policy import (
-    AsyncPromotionPolicy,
     SyncPromotionPolicy,
 )
 from neps.optimizers.multi_fidelity.sampling_policy import (
-    FixedPriorPolicy,
     RandomUniformPolicy,
 )
 from neps.search_spaces import (
@@ -548,46 +546,3 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         self._get_rungs_state(self.observed_configs.iloc[start:end])
         # _handle_promotion() need not be called as it is called by load_results()
         return
-
-
-class SuccessiveHalvingWithPriors(SuccessiveHalving):
-    """Implements a SuccessiveHalving procedure with a sampling and promotion policy."""
-
-    use_priors = True
-
-    def __init__(
-        self,
-        *,
-        pipeline_space: SearchSpace,
-        budget: int,
-        eta: int = 3,
-        early_stopping_rate: int = 0,
-        initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: Any = FixedPriorPolicy,
-        promotion_policy: Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
-        cost_value_on_error: None | float = None,
-        ignore_errors: bool = False,
-        prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
-        random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
-    ):
-        super().__init__(
-            pipeline_space=pipeline_space,
-            budget=budget,
-            eta=eta,
-            early_stopping_rate=early_stopping_rate,
-            initial_design_type=initial_design_type,
-            use_priors=self.use_priors,
-            sampling_policy=sampling_policy,
-            promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            ignore_errors=ignore_errors,
-            prior_confidence=prior_confidence,
-            random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
-        )
-

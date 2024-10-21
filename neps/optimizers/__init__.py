@@ -10,9 +10,11 @@ from neps.optimizers.multi_fidelity import (
     Hyperband,
     HyperbandCustomDefault,
     SuccessiveHalving,
-    SuccessiveHalvingWithPriors,
 )
-from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
+from neps.optimizers.multi_fidelity.promotion_policy import (
+    AsyncPromotionPolicy,
+    SyncPromotionPolicy,
+)
 from neps.optimizers.multi_fidelity.sampling_policy import (
     FixedPriorPolicy,
     RandomUniformPolicy,
@@ -32,7 +34,13 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "random_search": RandomSearch,
     "grid_search": GridSearch,
     "successive_halving": SuccessiveHalving,
-    "successive_halving_prior": SuccessiveHalvingWithPriors,
+    "successive_halving_prior": partial(
+        SuccessiveHalving,
+        sampling_policy=FixedPriorPolicy,
+        promotion_policy=SyncPromotionPolicy,
+        use_priors=True,
+        prior_confidence="medium",
+    ),
     "hyperband": Hyperband,
     "asha": partial(
         SuccessiveHalvingBase,
