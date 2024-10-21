@@ -8,12 +8,13 @@ from neps.optimizers.multi_fidelity import (
     IFBO,
     MOBSTER,
     AsynchronousSuccessiveHalving,
-    AsynchronousSuccessiveHalvingWithPriors,
     Hyperband,
     HyperbandCustomDefault,
     SuccessiveHalving,
     SuccessiveHalvingWithPriors,
 )
+from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
+from neps.optimizers.multi_fidelity.sampling_policy import FixedPriorPolicy
 from neps.optimizers.multi_fidelity_prior import (
     PriorBand,
     PriorBandAsha,
@@ -31,7 +32,13 @@ SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
     "successive_halving_prior": SuccessiveHalvingWithPriors,
     "asha": AsynchronousSuccessiveHalving,
     "hyperband": Hyperband,
-    "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
+    "asha_prior": partial(
+        AsynchronousSuccessiveHalving,
+        prior_confidence="medium",
+        promotion_policy=AsyncPromotionPolicy,
+        sampling_policy=FixedPriorPolicy,
+        use_priors=True,
+    ),
     "hyperband_custom_default": HyperbandCustomDefault,
     "priorband": PriorBand,
     "priorband_bo": partial(PriorBand, model_based=True),

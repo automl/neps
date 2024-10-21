@@ -10,9 +10,13 @@ import pandas as pd
 from neps.optimizers.base_optimizer import SampledConfig
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
-from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
+from neps.optimizers.multi_fidelity.sampling_policy import (
+    EnsemblePolicy,
+    FixedPriorPolicy,
+    ModelPolicy,
+)
 from neps.optimizers.multi_fidelity.successive_halving import (
-    AsynchronousSuccessiveHalvingWithPriors,
+    SuccessiveHalvingBase,
 )
 from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
 from neps.sampling.priors import Prior
@@ -27,7 +31,7 @@ if TYPE_CHECKING:
     from neps.utils.types import ConfigResult, RawConfig
 
 
-class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPriors):
+class PriorBandAsha(MFBOBase, PriorBandBase, SuccessiveHalvingBase):
     """Implements a PriorBand on top of ASHA."""
 
     def __init__(
@@ -83,6 +87,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
             random_interleave_prob=random_interleave_prob,
             sample_default_first=sample_default_first,
             sample_default_at_target=sample_default_at_target,
+            use_priors=True,
         )
         self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
@@ -211,7 +216,7 @@ class PriorBandAshaHB(PriorBandAsha):
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             # key difference from vanilla HB where it runs synchronous SH brackets
-            self.sh_brackets[s] = AsynchronousSuccessiveHalvingWithPriors(**args)
+            self.sh_brackets[s] = SuccessiveHalvingBase(use_priors=True, **args)
             self.sh_brackets[s].sampling_policy = self.sampling_policy
             self.sh_brackets[s].sampling_args = self.sampling_args
             self.sh_brackets[s].model_policy = self.model_policy  # type: ignore
