@@ -26,6 +26,7 @@ from neps.search_spaces import (
     Integer,
     SearchSpace,
 )
+from neps.search_spaces.functions import sample_one_old
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
@@ -371,14 +372,14 @@ class SuccessiveHalvingBase(BaseOptimizer):
     ) -> SearchSpace:
         # Samples configuration from policy or random
         if self.sampling_policy is None:
-            config = self.pipeline_space.sample(
+            return sample_one_old(
+                self.pipeline_space,
                 patience=self.patience,
                 user_priors=self.use_priors,
                 ignore_fidelity=True,
             )
-        else:
-            config = self.sampling_policy.sample(**self.sampling_args)
-        return config
+
+        return self.sampling_policy.sample(**self.sampling_args)
 
     def _generate_new_config_id(self) -> int:
         if len(self.observed_configs) == 0:
@@ -405,6 +406,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         Returns:
             [type]: [description]
         """
+        fidelity_name = self.pipeline_space.fidelity_name
+        assert fidelity_name is not None
+
         rung_to_promote = self.is_promotable()
         if rung_to_promote is not None:
             # promotes the first recorded promotable config in the argsort-ed rung
@@ -412,7 +416,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
             config = row["config"].clone()
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
-            config.fidelity.set_value(self.rung_map[rung])
+
+            config_values = config._values
+            config_values[fidelity_name] = self.rung_map[rung]
+
             # updating config IDs
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
@@ -420,7 +427,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
             rung_id = self.min_rung
             # using random instead of np.random to be consistent with NePS BO
             rng = random.Random(None)  # TODO: Seeding
-
             if (
                 self.use_priors
                 and self.sample_default_first
@@ -431,10 +437,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     rung_id = self.max_rung
                     logger.info("Next config will be evaluated at target fidelity.")
                 logger.info("Sampling the default configuration...")
-                config = self.pipeline_space.sample_default_configuration()
-
+                config = self.pipeline_space.from_dict(self.pipeline_space.default_config)
             elif rng.random() < self.random_interleave_prob:
-                config = self.pipeline_space.sample(
+                config = sample_one_old(
+                    self.pipeline_space,
                     patience=self.patience,
                     user_priors=False,  # sample uniformly random
                     ignore_fidelity=True,
@@ -443,13 +449,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 config = self.sample_new_config(rung=rung_id)
 
             fidelity_value = self.rung_map[rung_id]
-            assert config.fidelity is not None
-            config.fidelity.set_value(fidelity_value)
+            config_values = config._values
+            config_values[fidelity_name] = fidelity_value
 
             previous_config_id = None
             config_id = f"{self._generate_new_config_id()}_{rung_id}"
 
-        return config.hp_values(), config_id, previous_config_id
+        return config_values, config_id, previous_config_id
 
     def _enhance_priors(self, confidence_score: dict[str, float] | None = None) -> None:
         """Only applicable when priors are given along with a confidence.

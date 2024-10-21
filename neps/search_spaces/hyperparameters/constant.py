@@ -37,7 +37,6 @@ class Constant(Parameter[T, T]):
         Please use
         [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.Constant.set_constant_value]
         if you need to change the value of the constant parameter.
-
     """
 
     def __init__(self, value: T):
@@ -98,19 +97,6 @@ class Constant(Parameter[T, T]):
                 f"Constant does not allow chaning the set value. "
                 f"Tried to set value to {value}, but it is already {self.value}"
             )
-
-    def set_constant_value(self, value: T) -> None:
-        """Set the value of the constant parameter.
-
-        !!! note
-
-            This method is used to set the
-            [`.value`][neps.search_spaces.parameter.Parameter.value]
-            including the [`.default`][neps.search_spaces.parameter.Parameter.default]
-            It is used internally and should not be used by the user.
-        """
-        self._value = value
-        self.default = value
 
     @override
     def value_to_normalized(self, value: T) -> float:

@@ -4,10 +4,16 @@ import logging
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Literal
 
+from neps.search_spaces.functions import sample_one_old
+
 
 def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
     assert config.fidelity is not None
     config.fidelity.set_value(fidelity)
+    # TODO: Place holder until we can get rid of passing around search spaces
+    # as configurations
+    assert config.fidelity_name is not None
+    config._values[config.fidelity_name] = fidelity
     return config
 
 
@@ -93,7 +99,7 @@ class MFBOBase:
             train_y = deepcopy(self.rung_histories[rung]["perf"])
             # extract only the pending configurations that are at `rung`
             pending_df = pending_df[pending_df.rung == rung]
-            pending_x = deepcopy(pending_df.config.values.tolist())
+            pending_x = deepcopy(pending_df["config"].values.tolist())
             # update fidelity
             fidelities = [self.rung_map[rung]] * len(pending_x)
             pending_x = list(map(update_fidelity, pending_x, fidelities))
@@ -196,7 +202,8 @@ class MFBOBase:
         elif self.sampling_policy is not None:
             config = self.sampling_policy.sample(**self.sampling_args)
         else:
-            config = self.pipeline_space.sample(
+            config = sample_one_old(
+                self.pipeline_space,
                 patience=self.patience,
                 user_priors=self.use_priors,
                 ignore_fidelity=True,

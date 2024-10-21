@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 import torch
@@ -10,14 +10,12 @@ from neps.search_spaces import (
     Categorical,
     Constant,
     GraphParameter,
+    Float,
+    Integer,
     SearchSpace,
 )
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.hyperparameters.float import Float
-from neps.search_spaces.hyperparameters.integer import Integer
-
-if TYPE_CHECKING:
-    import pandas as pd
+from neps.search_spaces.functions import sample_one_old, pairwise_dist
 
 
 def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
@@ -98,7 +96,7 @@ def custom_crossover(
     Returns a configuration where each HP in config1 has `crossover_prob`% chance of
     getting config2's value of the corresponding HP. By default, crossover rate is 50%.
     """
-    _existing = config1.hp_values()
+    _existing = config1._values
 
     for _ in range(patience):
         child_config = {}
@@ -114,7 +112,8 @@ def custom_crossover(
     # fail safe check to handle edge cases where config1=config2 or
     # config1 extremely local to config2 such that crossover fails to
     # generate new config in a discrete (sub-)space
-    return config1.sample(
+    return sample_one_old(
+        config1,
         patience=patience,
         user_priors=False,
         ignore_fidelity=True,
@@ -130,8 +129,8 @@ def compute_config_dist(config1: SearchSpace, config2: SearchSpace) -> float:
     the Hamming distance of the categorical subspace.
     """
     encoder = ConfigEncoder.from_parameters({**config1.numerical, **config1.categoricals})
-    configs = encoder.encode([config1.hp_values(), config2.hp_values()])
-    dist = encoder.pdist(configs, square_form=False)
+    configs = encoder.encode([config1._values, config2._values])
+    dist = pairwise_dist(configs, encoder, square_form=False)
     return float(dist.item())
 
 
@@ -146,16 +145,16 @@ def compute_scores(
     # TODO: This could lifted up and just done in the class itself
     # in a vectorized form.
     encoder = ConfigEncoder.from_space(config, include_fidelity=include_fidelity)
-    encoded_config = encoder.encode([config.hp_values()])
+    encoded_config = encoder.encode([config._values])
 
     prior_dist = Prior.from_space(
         prior,
-        center_values=prior.hp_values(),
+        center_values=prior._values,
         include_fidelity=include_fidelity,
     )
     inc_dist = Prior.from_space(
         inc,
-        center_values=inc.hp_values(),
+        center_values=inc._values,
         include_fidelity=include_fidelity,
     )
 

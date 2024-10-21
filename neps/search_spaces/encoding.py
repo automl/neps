@@ -429,6 +429,12 @@ class ConfigEncoder:
 
         return buffer
 
+    def decode_one(self, x: torch.Tensor) -> dict[str, Any]:
+        """Decode a tensor representing one configuration into a dict."""
+        if x.ndim == 1:
+            x = x.unsqueeze(0)
+        return self.decode(x)[0]
+
     def decode(self, x: torch.Tensor) -> list[dict[str, Any]]:
         """Decode a tensor of hyperparameter configurations into a list of configurations.
 
@@ -557,4 +563,4 @@ class ConfigEncoder:
                         " please provide it as `constants=`."
                     )
 
-        return ConfigEncoder(transformers, constants=constants)
+        return cls(transformers, constants=constants)

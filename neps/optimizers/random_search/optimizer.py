@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
+from neps.sampling.priors import UniformPrior
+from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
@@ -42,6 +44,12 @@ class RandomSearch(BaseOptimizer):
             raise NotImplementedError("Seed is not implemented yet for RandomSearch")
 
         self.seed = seed
+        self.encoder = ConfigEncoder.from_space(
+            pipeline_space,
+            include_fidelity=False,
+            include_constants_when_decoding=True,
+        )
+        self.sampler = UniformPrior(ndim=self.encoder.ncols)
 
     @override
     def ask(
@@ -49,14 +57,8 @@ class RandomSearch(BaseOptimizer):
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
     ) -> SampledConfig:
-        # TODO: Replace with sampler objects and not `pipeline_space.sample`
         n_trials = len(trials)
-        config = self.pipeline_space.sample(
-            patience=self.patience,
-            user_priors=self.use_priors,
-            ignore_fidelity=self.ignore_fidelity,
-        )
+        config = self.sampler.sample_one(to=self.encoder.domains)
+        config_dict = self.encoder.decode_one(config)
         config_id = str(n_trials + 1)
-        return SampledConfig(
-            config=config.hp_values(), id=config_id, previous_config_id=None
-        )
+        return SampledConfig(config=config_dict, id=config_id, previous_config_id=None)

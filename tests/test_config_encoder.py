@@ -6,11 +6,7 @@ from neps.search_spaces.encoding import (
     ConfigEncoder,
     MinMaxNormalizer,
 )
-from neps.search_spaces.hyperparameters import (
-    Categorical,
-    Float,
-    Integer,
-)
+from neps.search_spaces.hyperparameters import Categorical, Float, Integer
 
 
 def test_config_encoder_default() -> None:

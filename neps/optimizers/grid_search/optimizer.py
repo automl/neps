@@ -9,12 +9,9 @@ from typing_extensions import override
 import torch
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
+from neps.search_spaces import Categorical, Constant, Float, Integer
 from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
-from neps.search_spaces.hyperparameters.categorical import Categorical
-from neps.search_spaces.hyperparameters.constant import Constant
-from neps.search_spaces.hyperparameters.float import Float
-from neps.search_spaces.hyperparameters.integer import Integer
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace

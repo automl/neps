@@ -22,6 +22,7 @@ from neps.optimizers.bayesian_optimization.models.gp import make_default_single_
 from neps.sampling.priors import Prior
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.encoding import ConfigEncoder
+from neps.search_spaces.functions import sample_one_old
 
 if TYPE_CHECKING:
     from botorch.acquisition.analytic import SingleTaskGP
@@ -64,8 +65,11 @@ class RandomUniformPolicy(SamplingPolicy):
         super().__init__(pipeline_space=pipeline_space)
 
     def sample(self, *args: Any, **kwargs: Any) -> SearchSpace:
-        return self.pipeline_space.sample(
-            patience=self.patience, user_priors=False, ignore_fidelity=True
+        return sample_one_old(
+            self.pipeline_space,
+            patience=self.patience,
+            user_priors=False,
+            ignore_fidelity=True,
         )
 
 
@@ -88,8 +92,12 @@ class FixedPriorPolicy(SamplingPolicy):
         user_priors = False
         if np.random.uniform() < self.fraction_from_prior:
             user_priors = True
-        return self.pipeline_space.sample(
-            patience=self.patience, user_priors=user_priors, ignore_fidelity=True
+
+        return sample_one_old(
+            self.pipeline_space,
+            patience=self.patience,
+            user_priors=user_priors,
+            ignore_fidelity=True,
         )
 
 
@@ -140,9 +148,11 @@ class EnsemblePolicy(SamplingPolicy):
         )
 
         while True:
-            # sampling a config
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=False
+            config = sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=False,
+                ignore_fidelity=False,
             )
             # computing distance from incumbent
             d = compute_config_dist(config, incumbent)
@@ -188,8 +198,11 @@ class EnsemblePolicy(SamplingPolicy):
         logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
 
         if policy == "prior":
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=True
+            config = sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=True,
+                ignore_fidelity=True,
             )
         elif policy == "inc":
             if (
@@ -201,7 +214,7 @@ class EnsemblePolicy(SamplingPolicy):
                 user_priors = False
 
             if inc is None:
-                inc = self.pipeline_space.sample_default_configuration().clone()
+                inc = self.pipeline_space.from_dict(self.pipeline_space.default_config)
                 logger.warning(
                     "No incumbent config found, using default as the incumbent."
                 )
@@ -251,7 +264,8 @@ class EnsemblePolicy(SamplingPolicy):
                     f"Crossing over with user_priors={user_priors} with p={probs}"
                 )
                 # sampling a configuration either randomly or from a prior
-                _config = self.pipeline_space.sample(
+                _config = sample_one_old(
+                    self.pipeline_space,
                     patience=self.patience,
                     user_priors=user_priors,
                     ignore_fidelity=True,
@@ -274,9 +288,11 @@ class EnsemblePolicy(SamplingPolicy):
                     f"{{'mutation', 'crossover', 'hypersphere', 'gaussian'}}"
                 )
         else:
-            # random
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=True
+            config = sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=False,
+                ignore_fidelity=True,
             )
         return config
 
@@ -316,8 +332,8 @@ class ModelPolicy(SamplingPolicy):
         pending_x: list[SearchSpace],
         decay_t: float | None = None,
     ) -> None:
-        x_train = self._encoder.encode([config.hp_values() for config in train_x])
-        x_pending = self._encoder.encode([config.hp_values() for config in pending_x])
+        x_train = self._encoder.encode([config._values for config in train_x])
+        x_pending = self._encoder.encode([config._values for config in pending_x])
         y_train = torch.tensor(train_y, dtype=torch.float64, device=self.device)
 
         # TODO: Most of this just copies BO and the duplication can be replaced
@@ -377,7 +393,7 @@ class ModelPolicy(SamplingPolicy):
         """
         # sampling random configurations
         samples = [
-            self.pipeline_space.sample(user_priors=False, ignore_fidelity=True)
+            sample_one_old(self.pipeline_space, user_priors=False, ignore_fidelity=True)
             for _ in range(SAMPLE_THRESHOLD)
         ]
 
