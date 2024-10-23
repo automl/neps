@@ -210,6 +210,7 @@ ignore = [
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
   "N803",    # Arguments should start with a lower case letter.
   "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
+  "E741",    # `l` is an ambiguous variable name
 ]
 
 

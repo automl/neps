@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping
-from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Literal
 from typing_extensions import override
 
 import numpy as np
+import pandas as pd
 
-from neps.optimizers.base_optimizer import SampledConfig
+from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
@@ -20,10 +20,11 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
 )
 from neps.optimizers.multi_fidelity.successive_halving import (
     SuccessiveHalving,
-    SuccessiveHalvingBase,
-    tmp_load_results,
+    trials_to_table,
 )
 from neps.sampling.priors import Prior
+from neps.search_spaces import Categorical, Constant, Float, Integer
+from neps.search_spaces.functions import sample_one_old
 
 if TYPE_CHECKING:
     from neps.optimizers.bayesian_optimization.acquisition_functions import (
@@ -34,11 +35,27 @@ if TYPE_CHECKING:
     from neps.state.trial import Trial
     from neps.utils.types import RawConfig
 
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-class HyperbandBase(SuccessiveHalvingBase):
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
+
+
+def sample_bracket_to_run(max_rung: int, eta: int) -> int:
+    # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
+    # Adapting the distribution based on the current optimization state
+    # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
+    # and thus K \in [1, ..., max_rung, ...]
+    # Since in this version, we see the full SH rung, we fix the K to max_rung
+    K = max_rung
+    bracket_probs = [eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(max_rung + 1)]
+    bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
+    return int(np.random.choice(range(max_rung + 1), p=bracket_probs))
+
+
+class HyperbandBase(BaseOptimizer):
     """Implements a Hyperband procedure with a sampling and promotion policy."""
-
-    early_stopping_rate = 0
 
     def __init__(
         self,
@@ -57,12 +74,116 @@ class HyperbandBase(SuccessiveHalvingBase):
         random_interleave_prob: float = 0.0,
         sample_default_first: bool = False,
         sample_default_at_target: bool = False,
+        bracket_type: Literal["sync", "async"] = "sync",
     ):
-        args = {
+        super().__init__(
+            pipeline_space=pipeline_space,
+            budget=budget,
+            loss_value_on_error=loss_value_on_error,
+            cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
+        )
+        if random_interleave_prob < 0 or random_interleave_prob > 1:
+            raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
+
+        if bracket_type not in ["sync", "async"]:
+            raise ValueError(
+                "bracket_type should be either 'sync' or 'async'"
+                f"but got {bracket_type}"
+            )
+
+        self.random_interleave_prob = random_interleave_prob
+        self.sample_default_first = sample_default_first
+        self.sample_default_at_target = sample_default_at_target
+
+        assert self.pipeline_space.fidelity is not None
+        self.min_budget = self.pipeline_space.fidelity.lower
+        self.max_budget = self.pipeline_space.fidelity.upper
+        self.eta = eta
+        self.sampling_policy = sampling_policy(pipeline_space=self.pipeline_space)
+        self.promotion_policy = promotion_policy(self.eta)
+        self.bracket_type = bracket_type
+
+        # `max_budget_init` checks for the number of configurations that have been
+        # evaluated at the target budget
+        self.initial_design_type = initial_design_type
+        self.use_priors = use_priors
+
+        # check to ensure no rung ID is negative
+        # equivalent to s_max in https://arxiv.org/pdf/1603.06560.pdf
+        stopping_rate_limit = np.floor(
+            np.log(self.max_budget / self.min_budget) / np.log(self.eta)
+        ).astype(int)
+        assert stopping_rate_limit >= 0
+
+        self.rung_map = {}
+        nrungs = (
+            int(np.floor(np.log(self.max_budget / self.min_budget) / np.log(self.eta)))
+            + 1
+        )
+        _max_budget = self.max_budget
+        for i in reversed(range(nrungs)):
+            self.rung_map[i] = (
+                int(_max_budget)
+                if isinstance(self.pipeline_space.fidelity, Integer)
+                else _max_budget
+            )
+            _max_budget /= self.eta
+
+        self.config_map: dict[int, int] = {}
+
+        s_max = stopping_rate_limit + 1
+        _s = stopping_rate_limit
+        # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
+        _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
+        for i in range(nrungs):
+            self.config_map[i] = int(_n_config)
+            _n_config //= self.eta
+
+        self.min_rung = min(self.rung_map)
+        self.max_rung = max(self.rung_map)
+
+        # placeholder args for varying promotion and sampling policies
+        self.sampling_args: dict = {}
+
+        self.fidelities = list(self.rung_map.values())
+        # stores the observations made and the corresponding fidelity explored
+        # crucial data structure used for determining promotion candidates
+        self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
+        # stores which configs occupy each rung at any time
+        self.rung_members: dict = {}  # stores config IDs per rung
+        self.rung_members_performance: dict = {}  # performances recorded per rung
+        self.rung_promotions: dict = {}  # records a promotable config per rung
+
+        # setup SH state counter
+        self.full_rung_trace = []
+        for rung in sorted(self.rung_map.keys()):
+            self.full_rung_trace.extend([rung] * self.config_map[rung])
+
+        #############################
+        # Setting prior confidences #
+        #############################
+        # the std. dev or peakiness of distribution
+        self.prior_confidence = prior_confidence
+        if self.use_priors and self.prior_confidence is not None:
+            for k, v in self.pipeline_space.items():
+                if v.is_fidelity or isinstance(v, Constant):
+                    continue
+                if isinstance(v, Float | Integer):
+                    confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
+                    self.pipeline_space[k].default_confidence_score = confidence
+                elif isinstance(v, Categorical):
+                    confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
+                        self.prior_confidence
+                    ]
+                    self.pipeline_space[k].default_confidence_score = confidence
+
+        self.rung_histories = {}
+
+        sh_args = {
             "pipeline_space": pipeline_space,
             "budget": budget,
             "eta": eta,
-            "early_stopping_rate": self.early_stopping_rate,  # HB subsumes this from SH
             "initial_design_type": initial_design_type,
             "use_priors": use_priors,
             "sampling_policy": sampling_policy,
@@ -74,31 +195,20 @@ class HyperbandBase(SuccessiveHalvingBase):
             "random_interleave_prob": random_interleave_prob,
             "sample_default_first": sample_default_first,
             "sample_default_at_target": sample_default_at_target,
+            "bracket_type": bracket_type,
         }
-        super().__init__(**args)
+
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
         # for (n,r) pairing, i.e., (num. configs, fidelity)
         self.full_rung_trace = []
-        self.sh_brackets: dict[int, SuccessiveHalvingBase] = {}
+        self.sh_brackets: dict[int, SuccessiveHalving] = {}
         for s in range(self.max_rung + 1):
-            args.update({"early_stopping_rate": s})
-            self.sh_brackets[s] = SuccessiveHalving(**args)
+            self.sh_brackets[s] = SuccessiveHalving(early_stopping_rate=s, **sh_args)
             # `full_rung_trace` contains the index of SH bracket to run sequentially
             self.full_rung_trace.extend([s] * len(self.sh_brackets[s].full_rung_trace))
+
         # book-keeping variables
         self.current_sh_bracket: int = 0
-
-    def _update_sh_bracket_state(self) -> None:
-        # `load_results()` for each of the SH bracket objects are not called as they are
-        # not part of the main Hyperband loop. For correct promotions and sharing of
-        # optimization history, the promotion handler of the current SH bracket needs the
-        # optimization state. Calling `load_results()` is an option but leads to
-        # redundant data processing.
-        # `clean_active_brackets` takes care of setting rung information and promotion
-        # for the current SH bracket in HB
-        # TODO: can we avoid copying full observation history
-        bracket = self.sh_brackets[self.current_sh_bracket]
-        bracket.observed_configs = self.observed_configs.copy()
 
     def clear_old_brackets(self) -> None:
         """Enforces reset at each new bracket."""
@@ -107,16 +217,10 @@ class HyperbandBase(SuccessiveHalvingBase):
         # base class allows for retaining the whole optimization state
         return
 
-    def _handle_promotions(self) -> None:
-        self.promotion_policy.set_state(
-            max_rung=self.max_rung,
-            members=self.rung_members,
-            performances=self.rung_members_performance,
-            **self.promotion_policy_kwargs,
-        )
-        # promotions are handled by the individual SH brackets which are explicitly
-        # called in the _update_sh_bracket_state() function
-        # overloaded function disables the need for retrieving promotions for HB overall
+    def _fit_models(self) -> None:
+        # define any model or surrogate training and acquisition function state setting
+        # if adding model-based search to the basic multi-fidelity algorithm
+        return
 
     @override
     def ask(
@@ -124,28 +228,43 @@ class HyperbandBase(SuccessiveHalvingBase):
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
     ) -> SampledConfig:
-        observed_configs, rung_histories = tmp_load_results(
+        observed_configs, rung_histories = trials_to_table(
             trials=trials,
             space=self.pipeline_space,
             rung_range=(self.min_rung, self.max_rung),
+            drop_config_id_0=self.sample_default_first and self.sample_default_at_target,
         )
+        indices_of_highest_rung_per_config = observed_configs.groupby("id")[
+            "rung"
+        ].idxmax()
+        observed_configs = observed_configs.loc[indices_of_highest_rung_per_config]
+        print("---------")  # noqa: T201
+        print(observed_configs, indices_of_highest_rung_per_config)  # noqa: T201
         self.observed_configs = observed_configs
         self.rung_histories = rung_histories
 
         # process optimization state and bucket observations per rung
-        self._get_rungs_state()
+        self.rung_members = {k: [] for k in self.rung_map}
+        self.rung_members_performance = {k: [] for k in self.rung_map}
+        self.rung_promotions = {k: [] for k in self.rung_map}
+        obs_tmp = self.observed_configs.dropna(inplace=False)
+
+        # iterates over the list of explored configs and buckets them to respective
+        # rungs depending on the highest fidelity it was evaluated at
+        for _rung in obs_tmp["rung"].unique():
+            idxs = obs_tmp["rung"] == _rung
+            self.rung_members[_rung] = obs_tmp.index[idxs].values
+            self.rung_members_performance[_rung] = obs_tmp.perf[idxs].values
 
         # filter/reset old SH brackets
         self.clear_old_brackets()
-
-        # identifying promotion list per rung
-        self._handle_promotions()
 
         # fit any model/surrogates
         self._fit_models()
 
         # important for the global HB to run the right SH
-        self._update_sh_bracket_state()
+        bracket = self.sh_brackets[self.current_sh_bracket]
+        bracket.observed_configs = self.observed_configs
 
         config, _id, previous_id = self.get_config_and_ids()
         return SampledConfig(id=_id, config=config, previous_config_id=previous_id)
@@ -158,6 +277,22 @@ class HyperbandBase(SuccessiveHalvingBase):
             [type]: [description]
         """
         raise NotImplementedError
+
+    def sample_new_config(
+        self,
+        rung: int | None = None,
+        **kwargs: Any,
+    ) -> SearchSpace:
+        # Samples configuration from policy or random
+        if self.sampling_policy is None:
+            return sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=self.use_priors,
+                ignore_fidelity=True,
+            )
+
+        return self.sampling_policy.sample(**self.sampling_args)
 
 
 class Hyperband(HyperbandBase):
@@ -178,37 +313,60 @@ class Hyperband(HyperbandBase):
         self.current_sh_bracket = 0  # indexing from range(0, n_sh_brackets)
         start = 0
         _min_rung = self.sh_brackets[self.current_sh_bracket].min_rung
-        end = self.sh_brackets[self.current_sh_bracket].config_map[_min_rung]
-
-        if self.sample_default_first and self.sample_default_at_target:
-            start += 1
-            end += 1
+        end = self.sh_brackets[self.current_sh_bracket].rung_capacitires[_min_rung]
 
         # stores the base rung size for each SH bracket in HB
         base_rung_sizes = []  # sorted(self.config_map.values(), reverse=True)
         for bracket in self.sh_brackets.values():
-            base_rung_sizes.append(sorted(bracket.config_map.values(), reverse=True)[0])
+            base_rung_sizes.append(
+                sorted(bracket.rung_capacitires.values(), reverse=True)[0]
+            )
+
         while end <= len(self.observed_configs):
             # subsetting only this SH bracket from the history
             sh_bracket = self.sh_brackets[self.current_sh_bracket]
-            sh_bracket.clean_rung_information()
+
+            # > clean_rung_information()
+            sh_bracket.rung_members = {k: [] for k in self.rung_map}
+            sh_bracket.rung_members_performance = {k: [] for k in self.rung_map}
+            sh_bracket.rung_promotions = {k: [] for k in self.rung_map}
+
             # for the SH bracket in start-end, calculate total SH budget used, from the
             # correct SH bracket object to make the right budget calculations
 
             assert isinstance(sh_bracket, SuccessiveHalving)
-            bracket_budget_used = sh_bracket._calc_budget_used_in_bracket(
-                deepcopy(self.observed_configs.rung.values[start:end])
+            bracket_budget_used = tmp_calc_budget_used_in_bracket(
+                rungs=sh_bracket.rung_capacitires.keys(),
+                min_rung=sh_bracket.min_rung,
+                config_history=self.observed_configs["rung"].to_numpy()[start:end],
             )
             # if budget used is less than the total SH budget then still an active bracket
             current_bracket_full_budget = sum(sh_bracket.full_rung_trace)
             if bracket_budget_used < current_bracket_full_budget:
                 # updating rung information of the current bracket
+                sh_bracket.rung_members = {k: [] for k in self.rung_map}
+                sh_bracket.rung_members_performance = {k: [] for k in self.rung_map}
+                sh_bracket.rung_promotions = {k: [] for k in self.rung_map}
+                sh_obs_configs = self.observed_configs.iloc[start:end]
+                for _rung in sh_obs_configs["rung"].unique():
+                    idxs = sh_obs_configs["rung"] == _rung
+                    sh_bracket.rung_members[_rung] = sh_obs_configs.index[idxs].values
+                    sh_bracket.rung_members_performance[_rung] = sh_obs_configs.perf[
+                        idxs
+                    ].values
 
-                sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
                 # extra call to use the updated rung member info to find promotions
                 # SyncPromotion signals a wait if a rung is full but with
                 # incomplete/pending evaluations, signals to starts a new SH bracket
-                sh_bracket._handle_promotions()
+                sh_bracket.rung_promotions = (
+                    sh_bracket.promotion_policy.retrieve_promotions(
+                        max_rung=sh_bracket.max_rung,
+                        rung_members=sh_bracket.rung_members,
+                        rung_members_performance=sh_bracket.rung_members_performance,
+                        config_map=sh_bracket.rung_capacitires,
+                    )
+                )
+
                 promotion_count = 0
                 for _, promotions in sh_bracket.rung_promotions.items():
                     promotion_count += len(promotions)
@@ -219,7 +377,11 @@ class Hyperband(HyperbandBase):
                     # current SH bracket at this scope
                     return
                 # if no promotions, ensure an empty state explicitly to disable bracket
-                sh_bracket.clean_rung_information()
+                # > clean_rung_information()
+                sh_bracket.rung_members = {k: [] for k in self.rung_map}
+                sh_bracket.rung_members_performance = {k: [] for k in self.rung_map}
+                sh_bracket.rung_promotions = {k: [] for k in self.rung_map}
+
             start = end
             # updating pointer to the next SH bracket in HB
             self.current_sh_bracket = (self.current_sh_bracket + 1) % n_sh_brackets
@@ -228,10 +390,20 @@ class Hyperband(HyperbandBase):
 
         # updates rung info with the latest active, incomplete bracket
         sh_bracket = self.sh_brackets[self.current_sh_bracket]
-
-        sh_bracket._get_rungs_state(self.observed_configs.iloc[start:end])
-        sh_bracket._handle_promotions()
-        # self._handle_promotion() need not be called as it is called by load_results()
+        sh_bracket.rung_members = {k: [] for k in self.rung_map}
+        sh_bracket.rung_members_performance = {k: [] for k in self.rung_map}
+        sh_bracket.rung_promotions = {k: [] for k in self.rung_map}
+        sh_obs_configs = self.observed_configs.iloc[start:end]
+        for _rung in sh_obs_configs["rung"].unique():
+            idxs = sh_obs_configs["rung"] == _rung
+            sh_bracket.rung_members[_rung] = sh_obs_configs.index[idxs].values
+            sh_bracket.rung_members_performance[_rung] = sh_obs_configs.perf[idxs].values
+        sh_bracket.rung_promotions = sh_bracket.promotion_policy.retrieve_promotions(
+            max_rung=sh_bracket.max_rung,
+            rung_members=sh_bracket.rung_members,
+            rung_members_performance=sh_bracket.rung_members_performance,
+            config_map=sh_bracket.rung_capacitires,
+        )
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -287,44 +459,9 @@ class AsynchronousHyperband(HyperbandBase):
         }
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
-        self.sh_brackets: dict[int, SuccessiveHalvingBase] = {}
+        self.sh_brackets: dict[int, SuccessiveHalving] = {}
         for s in range(self.max_rung + 1):
-            args.update({"early_stopping_rate": s})
-            self.sh_brackets[s] = SuccessiveHalvingBase(**args)
-
-    def _update_sh_bracket_state(self) -> None:
-        # `load_results()` for each of the SH bracket objects are not called as they are
-        # not part of the main Hyperband loop. For correct promotions and sharing of
-        # optimization history, the promotion handler of the SH brackets need the
-        # optimization state. Calling `load_results()` is an option but leads to
-        # redundant data processing.
-        for _, bracket in self.sh_brackets.items():
-            bracket.promotion_policy.set_state(
-                max_rung=self.max_rung,
-                members=self.rung_members,
-                performances=self.rung_members_performance,
-                config_map=bracket.config_map,
-            )
-            bracket.rung_promotions = bracket.promotion_policy.retrieve_promotions()
-            bracket.observed_configs = self.observed_configs.copy()
-
-    def _get_bracket_to_run(self) -> int:
-        """Samples the ASHA bracket to run.
-
-        The selected bracket always samples at its minimum rung. Thus, selecting a bracket
-        effectively selects the rung that a new sample will be evaluated at.
-        """
-        # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
-        # Adapting the distribution based on the current optimization state
-        # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
-        # and thus K \in [1, ..., max_rung, ...]
-        # Since in this version, we see the full SH rung, we fix the K to max_rung
-        K = self.max_rung
-        bracket_probs = [
-            self.eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(self.max_rung + 1)
-        ]
-        bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-        return int(np.random.choice(range(self.max_rung + 1), p=bracket_probs))
+            self.sh_brackets[s] = SuccessiveHalving(early_stopping_rate=s, **args)
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.
@@ -333,7 +470,7 @@ class AsynchronousHyperband(HyperbandBase):
             [type]: [description]
         """
         # the rung to sample at
-        bracket_to_run = self._get_bracket_to_run()
+        bracket_to_run = sample_bracket_to_run(max_rung=self.max_rung, eta=self.eta)
         config, config_id, previous_config_id = self.sh_brackets[
             bracket_to_run
         ].get_config_and_ids()

@@ -8,7 +8,7 @@ from typing_extensions import override
 import numpy as np
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.multi_fidelity.brackets import SyncBracket
+from neps.optimizers.multi_fidelity.brackets import AsyncBracket
 from neps.optimizers.multi_fidelity.utils import trials_to_table
 from neps.sampling.priors import Prior, Uniform
 from neps.sampling.samplers import WeightedSampler
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class SuccessiveHalving(BaseOptimizer):
-    """Implements a SuccessiveHalving procedure."""
+class ASHA(BaseOptimizer):
+    """Implements a ASHA procedure."""
 
     def __init__(
         self,
@@ -101,7 +101,9 @@ class SuccessiveHalving(BaseOptimizer):
         self.encoder = ConfigEncoder.from_space(pipeline_space, include_fidelity=False)
 
         self.eta = eta
-        self.sample_default_first = sample_default_first
+        self.sample_default_first: bool | Literal["highest_fidelity"] = (
+            sample_default_first
+        )
 
         _fid_name = pipeline_space.fidelity_name
         assert _fid_name is not None
@@ -126,14 +128,7 @@ class SuccessiveHalving(BaseOptimizer):
             for i, j in enumerate(reversed(range(nrungs)))
         }
         self.min_rung = min(self.rung_to_fidelity)
-
-        # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
-        s_max = stop_rate_limit + 1
-        _s = stop_rate_limit - esr
-        _n_config = int(np.floor(s_max / (_s + 1)) * eta**_s)
-        self.rung_sizes: dict[int, int] = {
-            i + esr: _n_config // (eta**i) for i in range(nrungs)
-        }
+        self.max_rung = max(self.rung_to_fidelity)
 
     @override
     def ask(
@@ -149,13 +144,16 @@ class SuccessiveHalving(BaseOptimizer):
             match self.sample_default_first:
                 case "highest_fidelity":
                     config = {**space.default_config, self._fid_name: self._fid_max}
-                    rung = max(self.rung_sizes)
+                    rung = self.max_rung
                 case True:
                     config = {**space.default_config, **_min_fid}
                     rung = self.min_rung
                 case False:
                     config = self.sampler.sample_config(to=self.encoder, extra=_min_fid)
                     rung = self.min_rung
+                case _:
+                    raise RuntimeError("This is a bug!")
+
             return SampledConfig(id=f"0_{rung}", config=config)
 
         table = trials_to_table(trials=trials)
@@ -166,35 +164,23 @@ class SuccessiveHalving(BaseOptimizer):
         else:
             table_for_brackets = table
 
-        brackets = SyncBracket.create_repeating_brackets(
-            table=table_for_brackets,
-            rung_sizes=self.rung_sizes,
+        bracket = AsyncBracket.make_asha_bracket(
+            table=table_for_brackets, rungs=list(self.rung_to_fidelity), eta=self.eta
         )
 
-        for bracket in brackets:
-            match bracket.next():
-                case "done" | "pending":
-                    continue
-                case ("new", rung):
-                    config = self.sampler.sample_config(to=self.encoder, extra=_min_fid)
-                    _id = int(table.index.get_level_values("id").max()) + 1  # type: ignore
-                    return SampledConfig(id=f"{_id}_{rung}", config=config)
+        match bracket.next():
+            case ("new", rung):
+                config = self.sampler.sample_config(to=self.encoder, extra=_min_fid)
+                _id = int(table.index.get_level_values("id").max()) + 1  # type: ignore
+                return SampledConfig(id=f"{_id}_{rung}", config=config)
 
-                case ("promote", config, _id, new_rung):
-                    config = {**config, **_min_fid}
-                    return SampledConfig(
-                        id=f"{_id}_{new_rung}",
-                        config=config,
-                        previous_config_id=f"{_id}_{new_rung - 1}",
-                    )
+            case ("promote", config, _id, new_rung):
+                config = {**config, **_min_fid}
+                return SampledConfig(
+                    id=f"{_id}_{new_rung}",
+                    config=config,
+                    previous_config_id=f"{_id}_{new_rung - 1}",
+                )
 
-                case _:
-                    raise RuntimeError("This is a bug!")
-
-        # We exhausted all our brackets, just sample a new config at the lowest rung
-        # which creates a new bracket
-        config = self.sampler.sample_config(to=self.encoder, extra=_min_fid)
-        nxt_id = int(table.index.get_level_values("id").max()) + 1  # type: ignore
-
-        id_str = f"{nxt_id}_{self.min_rung}"
-        return SampledConfig(id_str, config)
+            case _:
+                raise RuntimeError("This is a bug!")

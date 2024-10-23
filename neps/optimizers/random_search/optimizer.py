@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.sampling.priors import UniformPrior
+from neps.sampling.priors import Uniform
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ class RandomSearch(BaseOptimizer):
             include_fidelity=False,
             include_constants_when_decoding=True,
         )
-        self.sampler = UniformPrior(ndim=self.encoder.ncols)
+        self.sampler = Uniform(ndim=self.encoder.ncols)
 
     @override
     def ask(

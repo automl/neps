@@ -10,26 +10,16 @@ class PromotionPolicy(ABC):
     """Base class for implementing a sampling straregy for SH and its subclasses."""
 
     def __init__(self, eta: int):
-        self.rung_members: dict = {}
-        self.rung_members_performance: dict = {}
-        self.rung_promotions: dict = {}
         self.eta: int = eta
-        self.max_rung: int | None = None
-
-    def set_state(
-        self,
-        *,
-        max_rung: int,
-        members: dict,
-        performances: dict,
-        **kwargs: Any,
-    ) -> None:
-        self.max_rung = max_rung
-        self.rung_members = members
-        self.rung_members_performance = performances
 
     @abstractmethod
-    def retrieve_promotions(self) -> dict:
+    def retrieve_promotions(
+        self,
+        config_map: dict[int, int],
+        rung_members: dict[int, list[Any]],
+        rung_members_performance: dict[int, np.ndarray],
+        max_rung: int,
+    ) -> dict[int, list]:
         raise NotImplementedError
 
 
@@ -39,51 +29,45 @@ class SyncPromotionPolicy(PromotionPolicy):
     Promotes only when all predefined number of config slots are full.
     """
 
-    def __init__(self, eta: int, **kwargs: Any):
-        super().__init__(eta, **kwargs)
-        self.config_map: dict | None = None
-        self.rung_promotions: dict | None = None
+    def __init__(self, eta: int):
+        super().__init__(eta)
 
-    def set_state(
+    def retrieve_promotions(
         self,
-        *,
+        config_map: dict[int, int],
+        rung_members: dict[int, list[Any]],
+        rung_members_performance: dict[int, np.ndarray],
         max_rung: int,
-        members: dict,
-        performances: dict,
-        config_map: dict,
-        **kwargs: Any,
-    ) -> None:
-        super().set_state(max_rung=max_rung, members=members, performances=performances)
-        self.config_map = config_map
-
-    def retrieve_promotions(self) -> dict:
+    ) -> dict[int, list]:
         """Returns the top 1/eta configurations per rung if enough configurations seen."""
-        assert self.config_map is not None
-
-        self.rung_promotions = {rung: [] for rung in self.config_map}
+        rung_promotions = {rung: [] for rung in config_map}
         total_rung_evals = 0
-        for rung in sorted(self.config_map.keys(), reverse=True):
-            total_rung_evals += len(self.rung_members[rung])
+        for rung in sorted(config_map.keys(), reverse=True):
+            total_rung_evals += len(rung_members[rung])
+
+            # if rung is full but incomplete evaluations, pause on promotions, wait
             if (
-                total_rung_evals >= self.config_map[rung]
-                and np.isnan(self.rung_members_performance[rung]).sum()
+                total_rung_evals >= config_map[rung]
+                and np.isnan(rung_members_performance[rung]).sum()
             ):
-                # if rung is full but incomplete evaluations, pause on promotions, wait
-                return self.rung_promotions
-            if rung == self.max_rung:
-                # cease promotions for the highest rung (configs at max budget)
+                return rung_promotions
+
+            # cease promotions for the highest rung (configs at max budget)
+            if rung == max_rung:
                 continue
+
             if (
-                total_rung_evals >= self.config_map[rung]
-                and np.isnan(self.rung_members_performance[rung]).sum() == 0
+                total_rung_evals >= config_map[rung]
+                and np.isnan(rung_members_performance[rung]).sum() == 0
             ):
                 # if rung is full and no incomplete evaluations, find promotions
-                top_k = (self.config_map[rung] // self.eta) - (
-                    self.config_map[rung] - len(self.rung_members[rung])
+                top_k = (config_map[rung] // self.eta) - (
+                    config_map[rung] - len(rung_members[rung])
                 )
-                selected_idx = np.argsort(self.rung_members_performance[rung])[:top_k]
-                self.rung_promotions[rung] = self.rung_members[rung][selected_idx]
-        return self.rung_promotions
+                selected_idx = np.argsort(rung_members_performance[rung])[:top_k]
+                rung_promotions[rung] = rung_members[rung][selected_idx]
+
+        return rung_promotions
 
 
 class AsyncPromotionPolicy(PromotionPolicy):
@@ -92,20 +76,25 @@ class AsyncPromotionPolicy(PromotionPolicy):
     Promotes whenever a higher fidelity has at least eta configurations.
     """
 
-    def __init__(self, eta: int, **kwargs: Any):
-        super().__init__(eta, **kwargs)
-
-    def retrieve_promotions(self) -> dict:
+    def retrieve_promotions(
+        self,
+        config_map: dict[int, int],
+        rung_members: dict[int, list[Any]],
+        rung_members_performance: dict[int, np.ndarray],
+        max_rung: int,
+    ) -> dict[int, list]:
         """Returns the top 1/eta configurations per rung if enough configurations seen."""
-        assert self.max_rung is not None
-        for rung in range(self.max_rung + 1):
-            if rung == self.max_rung:
-                # cease promotions for the highest rung (configs at max budget)
+        rung_promotions = {rung: [] for rung in config_map}
+
+        for rung in range(max_rung + 1):
+            # cease promotions for the highest rung (configs at max budget)
+            if rung == max_rung:
                 continue
+
             # if less than eta configurations seen, no promotions occur as top_k=0
-            top_k = len(self.rung_members_performance[rung]) // self.eta
-            _ordered_idx = np.argsort(self.rung_members_performance[rung])
-            self.rung_promotions[rung] = np.array(self.rung_members[rung])[_ordered_idx][
+            top_k = len(rung_members_performance[rung]) // self.eta
+            _ordered_idx = np.argsort(rung_members_performance[rung])
+            rung_promotions[rung] = np.array(rung_members[rung])[_ordered_idx][
                 :top_k
             ].tolist()
-        return self.rung_promotions
+        return rung_promotions

@@ -9,7 +9,7 @@ from neps.optimizers.multi_fidelity.hyperband import Hyperband
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
-from neps.optimizers.multi_fidelity.successive_halving import SuccessiveHalvingBase
+from neps.optimizers.multi_fidelity.successive_halving import SuccessiveHalving
 from neps.optimizers.multi_fidelity_prior.utils import (
     compute_config_dist,
     compute_scores,
@@ -78,7 +78,7 @@ class PriorBandBase:
             idxs = self.observed_configs.rung.values == rung
             # checking width of current rung
             if len(idxs) < self.eta:
-                logger.warn(
+                logger.warning(
                     f"Selecting incumbent from a rung with width less than {self.eta}"
                 )
         # extracting the incumbent configuration
@@ -139,17 +139,19 @@ class PriorBandBase:
             # for SH or ASHA which do not invoke multiple SH brackets
             bracket = self
 
-        assert isinstance(bracket, SuccessiveHalvingBase)
+        assert isinstance(bracket, SuccessiveHalving)
 
         # calculating the total resources spent in the first SH bracket, taking into
         # account the continuations, that is, the resources spent on a promoted config is
         # not fidelity[rung] but (fidelity[rung] - fidelity[rung - 1])
-        continuation_resources = bracket.rung_map[bracket.min_rung]
-        resources = bracket.config_map[bracket.min_rung] * continuation_resources
-        for r in range(1, len(bracket.rung_map)):
-            rung = sorted(bracket.rung_map.keys(), reverse=False)[r]
-            continuation_resources = bracket.rung_map[rung] - bracket.rung_map[rung - 1]
-            resources += bracket.config_map[rung] * continuation_resources
+        continuation_resources = bracket.rung_to_fidelity[bracket.min_rung]
+        resources = bracket.rung_capacitires[bracket.min_rung] * continuation_resources
+        for r in range(1, len(bracket.rung_to_fidelity)):
+            rung = sorted(bracket.rung_to_fidelity.keys(), reverse=False)[r]
+            continuation_resources = (
+                bracket.rung_to_fidelity[rung] - bracket.rung_to_fidelity[rung - 1]
+            )
+            resources += bracket.rung_capacitires[rung] * continuation_resources
 
         # find resources spent so far for all finished evaluations
         valid_perf_mask = self.observed_configs["perf"].notna()

@@ -467,7 +467,6 @@ class ConfigEncoder:
         space: SearchSpace,
         *,
         include_fidelity: bool = False,
-        include_constants_when_decoding: bool = True,
         custom_transformers: dict[str, TensorTransformer] | None = None,
     ) -> ConfigEncoder:
         """Create a default encoder over a list of hyperparameters.
@@ -481,11 +480,6 @@ class ConfigEncoder:
 
         Args:
             space: The search space to build an encoder for
-            include_constants_when_decoding: Whether to include constants in the encoder.
-                These will not be present in the encoded tensors obtained in
-                [`encode()`][neps.search_spaces.encoding.ConfigEncoder.encode]
-                but will present when using
-                [`decode()`][neps.search_spaces.encoding.ConfigEncoder.decode].
             include_fidelity: Whether to include fidelities in the encoding
             custom_transformers: A mapping of hyperparameter names
                 to custom transformers to use
@@ -499,7 +493,7 @@ class ConfigEncoder:
 
         return ConfigEncoder.from_parameters(
             parameters=parameters,
-            constants=space.constants if include_constants_when_decoding else None,
+            constants=space.constants,
             custom_transformers=custom_transformers,
         )
 

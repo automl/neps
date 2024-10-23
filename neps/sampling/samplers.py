@@ -7,10 +7,10 @@ do not necessarily have an easily definable pdf.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 import torch
@@ -20,7 +20,7 @@ from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
 from neps.search_spaces.encoding import ConfigEncoder
 
 if TYPE_CHECKING:
-    from neps.sampling.priors import UniformPrior
+    from neps.sampling.priors import Uniform
 
 
 class Sampler(ABC):
@@ -60,22 +60,40 @@ class Sampler(ABC):
             A tensor of (n, ndim) points sampled cast to the given domain.
         """
 
-    def sample_one(
+    def sample_config(
         self,
+        to: ConfigEncoder,
         *,
-        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ) -> torch.Tensor:
-        """Sample a single point and convert it to the given domain.
+        extra: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """See [`sample_configs()`][neps.samplers.Sampler.sample_configs]."""
+        return self.sample_configs(1, to, seed=seed, extra=extra)[0]
 
-        The configuration will be a single dimensional tensor of shape
-        `(ncols,)`.
+    def sample_configs(
+        self,
+        n: int,
+        to: ConfigEncoder,
+        *,
+        seed: torch.Generator | None = None,
+        extra: Mapping[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Sample configurations directly into a search space.
 
-        Please see [`sample`][neps.samplers.Sampler.sample] for more details.
+        Args:
+            n: The number of configurations to sample.
+            to: The encoding to sample into.
+            seed: The seed generator.
+            extra: Additional values to include in the configuration.
+
+        Returns:
+            A list of configurations.
         """
-        return self.sample(1, to=to, seed=seed, device=device, dtype=dtype).squeeze(0)
+        tensors = self.sample(n, to=to, seed=seed)
+        configs = to.decode(tensors)
+        if extra is None:
+            return configs
+        return [{**config, **extra} for config in configs]
 
     @classmethod
     def sobol(cls, ndim: int, *, scramble: bool = True) -> Sobol:
@@ -91,7 +109,7 @@ class Sampler(ABC):
         return Sobol(ndim=ndim, scramble=scramble)
 
     @classmethod
-    def uniform(cls, ndim: int) -> UniformPrior:
+    def uniform(cls, ndim: int) -> Uniform:
         """Create a uniform sampler.
 
         Args:
@@ -100,9 +118,9 @@ class Sampler(ABC):
         Returns:
             A uniform sampler.
         """
-        from neps.sampling.priors import UniformPrior
+        from neps.sampling.priors import Uniform
 
-        return UniformPrior(ndim=ndim)
+        return Uniform(ndim=ndim)
 
     @classmethod
     def borders(cls, ndim: int) -> BorderSampler:
@@ -187,7 +205,7 @@ class WeightedSampler(Sampler):
     samplers: Sequence[Sampler]
     """The samplers to sample from."""
 
-    weights: torch.Tensor
+    weights: Sequence[float]
     """The weights for each sampler."""
 
     sampler_probabilities: torch.Tensor = field(init=False, repr=False)
@@ -199,20 +217,21 @@ class WeightedSampler(Sampler):
                 f"At least two samplers must be given. Got {len(self.samplers)}"
             )
 
-        if self.weights.ndim != 1:
-            raise ValueError("Weights must be a 1D tensor.")
+        probs = torch.as_tensor(self.weights, dtype=torch.float64)
+        if probs.ndim != 1:
+            raise ValueError("Weights must be a 1D.")
 
-        if len(self.samplers) != len(self.weights):
+        if len(self.samplers) != len(probs):
             raise ValueError("The number of samplers and weights must be the same.")
 
         ncols = [sampler.ncols for sampler in self.samplers]
         if not all_equal(ncols):
             raise ValueError(
-                "All samplers must have the same number of columns." f" Got {ncols}."
+                f"All samplers must have the same number of columns. Got {ncols}."
             )
 
         self._ncols = ncols[0]
-        self.sampler_probabilities = self.weights / self.weights.sum()
+        self.sampler_probabilities = probs / probs.sum()
 
     @property
     @override
