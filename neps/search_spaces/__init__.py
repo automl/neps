@@ -23,7 +23,6 @@ from neps.search_spaces.search_space import SearchSpace
 
 __all__ = [
     "Architecture",
-    "ArchitectureParameter",
     "Categorical",
     "CategoricalParameter",
     "Constant",
