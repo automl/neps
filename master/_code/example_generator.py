@@ -2,7 +2,6 @@
 
 # https://mkdocstrings.github.io/recipes/
 """
-from __future__ import annotations
 
 import logging
 from pathlib import Path
@@ -15,7 +14,6 @@ SRCDIR = Path("neps").absolute().resolve()
 ROOT = SRCDIR.parent
 EXAMPLE_FOLDER = ROOT / "neps_examples"
 TAB = "    "
-
 
 if not SRCDIR.exists():
     raise FileNotFoundError(
