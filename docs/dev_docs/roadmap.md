@@ -5,10 +5,10 @@
 ### Features
 
 - Improve large scale experience
-  - Result saving function (Samir)
-  - Priorband default sampling / pass evaluated configs to neps.run (Samir)
-  - Document large scale
-  - Evaluate and maybe improve ease-of-use of NePS for DDP (Gopalji)
+    - Result saving function (Samir)
+    - Priorband default sampling / pass evaluated configs to neps.run (Samir)
+    - Document large scale
+    - Evaluate and maybe improve ease-of-use of NePS for DDP (Gopalji)
 - Optimize dependencies (Anton)
 - Tensorboard st no one has to Touch it anymore (Tarek)
 
@@ -20,6 +20,7 @@
 ### Refactoring
 
 (Anton)
+
 - Rename: run_pipeline = evaluate_pipeline
 - Rename: loss = objective_to_minimize
 - Rename: default = prior, default_confidence = prior_confidence
@@ -29,14 +30,14 @@
 
 - Update citations (also docs) (Danny)
 - Notebooks add (Danny)
-- Remove templates (Danny)e
+- Remove templates (Danny)
 - Rework readme (remove declarative API) (Danny)
 - Improved examples
-  - New Lightning example (Gopalji)
-  - DDP examples (Gopalji)
-  - Larger examples (Gopalji)
-  - Tensorboard into new lightning example (Tarek)
-  - Example spawning cloud instances via run pipeline
+    - New Lightning example (Gopalji)
+    - DDP examples (Gopalji)
+    - Larger examples (Gopalji)
+    - Tensorboard into new lightning example (Tarek)
+    - Example spawning cloud instances via run pipeline
 
 ### Tests
 
@@ -58,12 +59,4 @@
 
 - NAS documentation
 - Optimizer pages (Anton, Neeratyoy)
-
-### Tests
-
-
-## Later
-
-### Documentation
-
 - Keep a changelog, add to it before each release
