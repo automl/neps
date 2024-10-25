@@ -36,5 +36,5 @@ jobs:
       - name: Activate venv
         run: source .venv/bin/activate
       - name: Run tests
-        run: python -m pytest -m ""  # Run all markers
+        run: uv run python -m pytest -m ""  # Run all markers
 
