@@ -22,7 +22,6 @@ __all__ = [
     "Categorical",
     "Constant",
     "Function",
-    "ArchitectureParameter",
     "CategoricalParameter",
     "ConstantParameter",
     "FloatParameter",
