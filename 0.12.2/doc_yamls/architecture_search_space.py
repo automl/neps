@@ -1,4 +1,4 @@
-from __future__ import annotations
+
 from torch import nn
 import neps
 from neps.search_spaces.architecture import primitives as ops
@@ -86,12 +86,12 @@ def set_recursive_attribute(op_name, predecessor_values):
 
 
 pipeline_space = dict(
-    architecture=neps.ArchitectureParameter(
+    architecture=neps.Architecture(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
     ),
-    optimizer=neps.CategoricalParameter(choices=["sgd", "adam"]),
-    learning_rate=neps.FloatParameter(lower=10e-7, upper=10e-3, log=True),
+    optimizer=neps.Categorical(choices=["sgd", "adam"]),
+    learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
 )
 
