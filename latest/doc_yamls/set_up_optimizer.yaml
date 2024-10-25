@@ -1,0 +1,5 @@
+strategy: bayesian_optimization
+# Specific arguments depending on the searcher
+initial_design_size: 7
+use_priors: true
+sample_default_first: false

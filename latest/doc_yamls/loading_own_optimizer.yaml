@@ -1,0 +1,21 @@
+# Loading Optimizer Class
+run_pipeline:
+  path: path/to/your/run_pipeline.py  # Path to the function file
+  name: example_pipeline              # Function name within the file
+
+pipeline_space:
+  learning_rate:
+    lower: 1e-5
+    upper: 1e-1
+    log: true  # Log scale for learning rate
+  optimizer:
+    choices: [adam, sgd, adamw]
+  epochs: 50
+
+root_directory: path/to/results       # Directory for result storage
+max_evaluations_total: 20             # Budget
+searcher:
+  path: path/to/your/searcher.py      # Path to the class
+  name: CustomOptimizer               # class name within the file
+  # Specific arguments depending on your searcher
+  initial_design_size: 7
