@@ -1,4 +1,7 @@
-#False Python
+# build files
+*.egg-info
+
+# False Python
 __pycache__
 dist
 
