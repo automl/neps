@@ -4120,39 +4120,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#tests_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      Tests
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#later" class="md-nav__link">
-    <span class="md-ellipsis">
-      Later
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Later">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#documentation_2" class="md-nav__link">
-    <span class="md-ellipsis">
-      Documentation
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -4213,11 +4180,13 @@
 <h2 id="next-up">Next up<a class="headerlink" href="#next-up" title="Permanent link">#</a></h2>
 <h3 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h3>
 <ul>
-<li>Improve large scale experience</li>
+<li>Improve large scale experience<ul>
 <li>Result saving function (Samir)</li>
 <li>Priorband default sampling / pass evaluated configs to neps.run (Samir)</li>
 <li>Document large scale</li>
 <li>Evaluate and maybe improve ease-of-use of NePS for DDP (Gopalji)</li>
+</ul>
+</li>
 <li>Optimize dependencies (Anton)</li>
 <li>Tensorboard st no one has to Touch it anymore (Tarek)</li>
 </ul>
@@ -4227,23 +4196,27 @@
 <li>Install all dependencies to run core examples always (Anton)</li>
 </ul>
 <h3 id="refactoring">Refactoring<a class="headerlink" href="#refactoring" title="Permanent link">#</a></h3>
-<p>(Anton)
-- Rename: run_pipeline = evaluate_pipeline
-- Rename: loss = objective_to_minimize
-- Rename: default = prior, default_confidence = prior_confidence
-- Rename: budget = max_cost_total</p>
+<p>(Anton)</p>
+<ul>
+<li>Rename: run_pipeline = evaluate_pipeline</li>
+<li>Rename: loss = objective_to_minimize</li>
+<li>Rename: default = prior, default_confidence = prior_confidence</li>
+<li>Rename: budget = max_cost_total</li>
+</ul>
 <h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">#</a></h3>
 <ul>
 <li>Update citations (also docs) (Danny)</li>
 <li>Notebooks add (Danny)</li>
 <li>Remove templates (Danny)e</li>
 <li>Rework readme (remove declarative API) (Danny)</li>
-<li>Improved examples</li>
+<li>Improved examples<ul>
 <li>New Lightning example (Gopalji)</li>
 <li>DDP examples (Gopalji)</li>
 <li>Larger examples (Gopalji)</li>
 <li>Tensorboard into new lightning example (Tarek)</li>
 <li>Example spawning cloud instances via run pipeline</li>
+</ul>
+</li>
 </ul>
 <h3 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">#</a></h3>
 <ul>
@@ -4264,11 +4237,6 @@
 <ul>
 <li>NAS documentation</li>
 <li>Optimizer pages (Anton, Neeratyoy)</li>
-</ul>
-<h3 id="tests_1">Tests<a class="headerlink" href="#tests_1" title="Permanent link">#</a></h3>
-<h2 id="later">Later<a class="headerlink" href="#later" title="Permanent link">#</a></h2>
-<h3 id="documentation_2">Documentation<a class="headerlink" href="#documentation_2" title="Permanent link">#</a></h3>
-<ul>
 <li>Keep a changelog, add to it before each release</li>
 </ul>
 
