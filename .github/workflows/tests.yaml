@@ -33,6 +33,8 @@ jobs:
         run: uv venv --python ${{ matrix.python-version }}
       - name: Install
         run: uv pip install ".[dev]"
+      - name: Activate venv
+        run: source .venv/bin/activate
       - name: Run tests
-        run: uv run pytest -m ""  # Run all markers
+        run: python -m pytest -m ""  # Run all markers
 
