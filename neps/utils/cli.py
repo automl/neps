@@ -1029,9 +1029,6 @@ def handle_report_config(args: argparse.Namespace) -> None:
     if neps_state is None:
         return
 
-    optimizer, _ = load_optimizer(run_args)
-    if optimizer is None:
-        return
 
     # Load the existing trial by ID
     try:
@@ -1059,8 +1056,7 @@ def handle_report_config(args: argparse.Namespace) -> None:
     # Update NePS state
     try:
         neps_state.report_trial_evaluation(
-            trial=trial, report=report, worker_id=args.worker_id, optimizer=optimizer
-        )
+            trial=trial, report=report, worker_id=args.worker_id)
     except Exception as e:
         print(f"Error updating the report for trial {args.trial_id}: {e}")
         return None
