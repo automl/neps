@@ -161,7 +161,6 @@ class GraphDataset:
         """Convert NetworkX graphs ensuring proper node labeling."""
         processed_graphs = []
         for g in graphs:
-            g = g.copy()
             # Ensure nodes are numbered from 0 to n-1
             g = nx.convert_node_labels_to_integers(g)
             # Add default labels if not present
