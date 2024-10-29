@@ -55,7 +55,10 @@ class TorchWLKernel(nn.Module):
         # Get node labels and convert to indices
         labels = []
         for node in range(graph.number_of_nodes()):
-            label = graph.nodes[node].get("label", str(node))
+            if "label" in graph.nodes[node]:
+                label = graph.nodes[node]["label"]
+            else:
+                label = str(node)
             if label not in self.label_dict:
                 self.label_dict[label] = self.label_counter
                 self.label_counter += 1
@@ -72,17 +75,27 @@ class TorchWLKernel(nn.Module):
             node_label = labels[node].item()
             neighbors = adj.coalesce().indices()[1][adj.coalesce().indices()[0] == node]
             neighbor_label_list = sorted([labels[n].item() for n in neighbors])
-            combined = f"{node_label}_{neighbor_label_list}"
 
-            if combined not in self.label_dict:
-                self.label_dict[combined] = self.label_counter
-                self.label_counter += 1
-            new_labels.append(self.label_dict[combined])
+            # Check if all neighbors have the same label as the current node
+            if all(labels[n] == labels[node] for n in neighbors):
+                new_labels.append(node_label)
+            else:
+                combined = f"{node_label}_{neighbor_label_list}"
+                if combined not in self.label_dict:
+                    self.label_dict[combined] = self.label_counter
+                    self.label_counter += 1
+                new_labels.append(self.label_dict[combined])
 
         return torch.tensor(new_labels, dtype=torch.long, device=self.device)
 
     def _compute_feature_vector(self, labels: torch.Tensor, size: int) -> torch.Tensor:
         """Compute histogram feature vector from labels with fixed size."""
+        # Handle the case where all node labels are the same
+        if len(set(labels.cpu().numpy())) == 1:
+            feature = torch.zeros(size, device=self.device)
+            feature[labels[0].item()] = len(labels)
+            return feature
+
         counts = Counter(labels.cpu().numpy())
         feature = torch.zeros(size, device=self.device)
         for label, count in counts.items():
@@ -124,7 +137,7 @@ class TorchWLKernel(nn.Module):
         for _ in range(self.n_iter):
             new_label_tensors = [
                 self._wl_iteration(adj, labels)
-                for adj, labels in zip(adj_matrices, all_label_tensors[-1])
+                for adj, labels in zip(adj_matrices, all_label_tensors[-1], strict=False)
             ]
             all_label_tensors.append(new_label_tensors)
 
@@ -161,8 +174,7 @@ class GraphDataset:
         """Convert NetworkX graphs ensuring proper node labeling."""
         processed_graphs = []
         for g in graphs:
-            # Ensure nodes are numbered from 0 to n-1
-            g = nx.convert_node_labels_to_integers(g)
+            g = g.copy()
             # Add default labels if not present
             for node in g.nodes():
                 if node_labels_tag not in g.nodes[node]:
