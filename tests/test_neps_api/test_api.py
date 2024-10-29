@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 import os
 import runpy
@@ -28,105 +26,32 @@ def no_logs_gte_error(caplog):
     assert not errors
 
 
-testing_scripts = [
-    "default_neps",
-    "baseoptimizer_neps",
-    "user_yaml_neps",
-]
+HERE = Path(__file__).resolve().parent
 
-examples_folder = Path(__file__, "..", "testing_scripts").resolve()
-solution_folder = Path(__file__, "..", "solution_yamls").resolve()
+testing_scripts = ["default_neps", "baseoptimizer_neps", "user_yaml_neps"]
+EXAMPLES_FOLDER = HERE / "testing_scripts"
+SOLUTION_FOLDER = HERE / "solution_yamls"
 neps_api_example_script = [
-    examples_folder / f"{example}.py" for example in testing_scripts
+    EXAMPLES_FOLDER / f"{example}.py" for example in testing_scripts
 ]
 
 
 @pytest.mark.neps_api
-def test_default_examples(tmp_path):
+@pytest.mark.parametrize("example_script", neps_api_example_script)
+def test_default_examples(tmp_path: Path, example_script: Path) -> None:
     # Running the example files holding multiple neps.run commands.
-
-    runpy.run_path(
-        neps_api_example_script[0],
-        run_name="__main__",
-    )
+    runpy.run_path(str(example_script), run_name="__main__")
 
     # Testing each folder with its corresponding expected dictionary
-    for folder_name in os.listdir(tmp_path):
-        folder_path = os.path.join(tmp_path, folder_name)
+    for folder in tmp_path.iterdir():
+        info_yaml_path = folder / ".optimizer_info" / "info.yaml"
 
-        assert os.path.exists(folder_path), f"Directory does not exist: {folder_path}"
+        assert info_yaml_path.exists()
+        loaded_data = yaml.safe_load(info_yaml_path.read_text())
 
-        info_yaml_path = os.path.join(folder_path, ".optimizer_info", "info.yaml")
+        solution_yaml_path = SOLUTION_FOLDER / (folder.name + ".yaml")
+        solution_data = yaml.safe_load(solution_yaml_path.read_text())
 
-        assert os.path.exists(
-            str(info_yaml_path)
-        ), f"File does not exist: {info_yaml_path}\n{os.listdir(folder_path)}"
-
-        # Load the YAML file
-        with open(str(info_yaml_path)) as yaml_config:
-            loaded_data = yaml.safe_load(yaml_config)
-
-        with open(str(solution_folder / (folder_name + ".yaml"))) as solution_yaml:
-            expected_data = yaml.safe_load(solution_yaml)
-
-        assert loaded_data == expected_data
-
-
-@pytest.mark.neps_api
-def test_baseoptimizer_examples(tmp_path):
-    # Running the example files holding multiple neps.run commands.
-
-    runpy.run_path(
-        neps_api_example_script[1],
-        run_name="__main__",
-    )
-
-    # Testing each folder with its corresponding expected dictionary
-    for folder_name in os.listdir(tmp_path):
-        folder_path = os.path.join(tmp_path, folder_name)
-
-        assert os.path.exists(folder_path), f"Directory does not exist: {folder_path}"
-
-        info_yaml_path = os.path.join(folder_path, ".optimizer_info", "info.yaml")
-
-        assert os.path.exists(
-            str(info_yaml_path)
-        ), f"File does not exist: {info_yaml_path}"
-
-        # Load the YAML file
-        with open(str(info_yaml_path)) as yaml_config:
-            loaded_data = yaml.safe_load(yaml_config)
-
-        with open(str(solution_folder / (folder_name + ".yaml"))) as solution_yaml:
-            expected_data = yaml.safe_load(solution_yaml)
-
-        assert loaded_data == expected_data
-
-
-@pytest.mark.neps_api
-def test_user_created_yaml_examples(tmp_path):
-    runpy.run_path(
-        neps_api_example_script[2],
-        run_name="__main__",
-    )
-
-    # Testing each folder with its corresponding expected dictionary
-    for folder_name in os.listdir(tmp_path):
-        folder_path = os.path.join(tmp_path, folder_name)
-
-        assert os.path.exists(folder_path), f"Directory does not exist: {folder_path}"
-
-        info_yaml_path = os.path.join(folder_path, ".optimizer_info", "info.yaml")
-
-        assert os.path.exists(
-            str(info_yaml_path)
-        ), f"File does not exist: {info_yaml_path}"
-
-        # Load the YAML file
-        with open(str(info_yaml_path)) as yaml_config:
-            loaded_data = yaml.safe_load(yaml_config)
-
-        with open(str(solution_folder / (folder_name + ".yaml"))) as solution_yaml:
-            expected_data = yaml.safe_load(solution_yaml)
-
-        assert loaded_data == expected_data
+        assert (
+            loaded_data == solution_data
+        ), f"Solution Path: {solution_yaml_path}\nLoaded Path: {info_yaml_path}\n"

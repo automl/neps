@@ -1,72 +1,75 @@
-# mypy: disable-error-code = assignment
 from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
 import torch
+from botorch.acquisition import (
+    AcquisitionFunction,
+    LinearMCObjective,
+    qLogNoisyExpectedImprovement,
+)
+from botorch.fit import fit_gpytorch_mll
+from gpytorch import ExactMarginalLogLikelihood
 
-from neps.utils.common import instance_from_map
-from ...search_spaces.search_space import SearchSpace
-from ..bayesian_optimization.acquisition_functions import AcquisitionMapping
-from ..bayesian_optimization.acquisition_functions.base_acquisition import (
-    BaseAcquisition,
+from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
+    pibo_acquisition,
 )
-from ..bayesian_optimization.acquisition_functions.prior_weighted import (
-    DecayingPriorWeightedAcquisition,
-)
-from ..bayesian_optimization.acquisition_samplers import AcquisitionSamplerMapping
-from ..bayesian_optimization.acquisition_samplers.base_acq_sampler import (
-    AcquisitionSampler,
-)
-from ..bayesian_optimization.kernels.get_kernels import get_kernels
-from ..bayesian_optimization.models import SurrogateModelMapping
-from ..multi_fidelity_prior.utils import (
-    compute_config_dist,
-    custom_crossover,
-    local_mutation,
-    update_fidelity,
-)
+from neps.optimizers.bayesian_optimization.models.gp import make_default_single_obj_gp
+from neps.sampling.priors import Prior
+from neps.sampling.samplers import Sampler
+from neps.search_spaces.encoding import ConfigEncoder
+from neps.search_spaces.functions import sample_one_old
+
+if TYPE_CHECKING:
+    from botorch.acquisition.analytic import SingleTaskGP
+
+    from neps.search_spaces.search_space import SearchSpace
 
 TOLERANCE = 1e-2  # 1%
 SAMPLE_THRESHOLD = 1000  # num samples to be rejected for increasing hypersphere radius
 DELTA_THRESHOLD = 1e-2  # 1%
 TOP_EI_SAMPLE_COUNT = 10
 
+logger = logging.getLogger(__name__)
+
+
+def update_fidelity(config: SearchSpace, fidelity: int | float) -> SearchSpace:
+    assert config.fidelity is not None
+    config.fidelity.set_value(fidelity)
+    return config
+
 
 class SamplingPolicy(ABC):
-    """Base class for implementing a sampling strategy for SH and its subclasses"""
+    """Base class for implementing a sampling strategy for SH and its subclasses."""
 
-    def __init__(self, pipeline_space: SearchSpace, patience: int = 100, logger=None):
+    def __init__(self, pipeline_space: SearchSpace, patience: int = 100):
         self.pipeline_space = pipeline_space
         self.patience = patience
-        self.logger = logger or logging.getLogger("neps")
 
     @abstractmethod
-    def sample(self, *args, **kwargs) -> SearchSpace:
-        pass
+    def sample(self, *args: Any, **kwargs: Any) -> SearchSpace: ...
 
 
 class RandomUniformPolicy(SamplingPolicy):
-    """A random policy for sampling configuration, i.e. the default for SH / hyperband
+    """A random policy for sampling configuration, i.e. the default for SH / hyperband.
 
     Args:
         SamplingPolicy ([type]): [description]
     """
 
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        logger=None,
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+    def __init__(self, pipeline_space: SearchSpace):
+        super().__init__(pipeline_space=pipeline_space)
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
-        return self.pipeline_space.sample(
-            patience=self.patience, user_priors=False, ignore_fidelity=True
+    def sample(self, *args: Any, **kwargs: Any) -> SearchSpace:
+        return sample_one_old(
+            self.pipeline_space,
+            patience=self.patience,
+            user_priors=False,
+            ignore_fidelity=True,
         )
 
 
@@ -75,15 +78,13 @@ class FixedPriorPolicy(SamplingPolicy):
     a fixed fraction from the prior.
     """
 
-    def __init__(
-        self, pipeline_space: SearchSpace, fraction_from_prior: float = 1, logger=None
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+    def __init__(self, pipeline_space: SearchSpace, fraction_from_prior: float = 1):
+        super().__init__(pipeline_space=pipeline_space)
         assert 0 <= fraction_from_prior <= 1
         self.fraction_from_prior = fraction_from_prior
 
-    def sample(self, *args, **kwargs) -> SearchSpace:
-        """Samples from the prior with a certain probabiliyu
+    def sample(self, *args: Any, **kwargs: Any) -> SearchSpace:
+        """Samples from the prior with a certain probabiliyu.
 
         Returns:
             SearchSpace: [description]
@@ -91,10 +92,13 @@ class FixedPriorPolicy(SamplingPolicy):
         user_priors = False
         if np.random.uniform() < self.fraction_from_prior:
             user_priors = True
-        config = self.pipeline_space.sample(
-            patience=self.patience, user_priors=user_priors, ignore_fidelity=True
+
+        return sample_one_old(
+            self.pipeline_space,
+            patience=self.patience,
+            user_priors=user_priors,
+            ignore_fidelity=True,
         )
-        return config
 
 
 class EnsemblePolicy(SamplingPolicy):
@@ -107,8 +111,9 @@ class EnsemblePolicy(SamplingPolicy):
     def __init__(
         self,
         pipeline_space: SearchSpace,
-        inc_type: str = "mutation",
-        logger=None,
+        inc_type: Literal[
+            "hypersphere", "gaussian", "crossover", "mutation"
+        ] = "mutation",
     ):
         """Samples a policy as per its weights and performs the selected sampling.
 
@@ -124,19 +129,30 @@ class EnsemblePolicy(SamplingPolicy):
                     50% (mutation_rate=0.5) probability of selecting each hyperparmeter
                     for perturbation, sampling a deviation N(value, mutation_std=0.5))
         """
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        super().__init__(pipeline_space=pipeline_space)
         self.inc_type = inc_type
         # setting all probabilities uniformly
         self.policy_map = {"random": 0.33, "prior": 0.34, "inc": 0.33}
 
-    def sample_neighbour(self, incumbent, distance, tolerance=TOLERANCE):
+    def sample_neighbour(
+        self,
+        incumbent: SearchSpace,
+        distance: float,
+        tolerance: float = TOLERANCE,
+    ) -> SearchSpace:
         """Samples a config from around the `incumbent` within radius as `distance`."""
         # TODO: how does tolerance affect optimization on landscapes of different scale
         sample_counter = 0
+        from neps.optimizers.multi_fidelity_prior.utils import (
+            compute_config_dist,
+        )
+
         while True:
-            # sampling a config
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=False
+            config = sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=False,
+                ignore_fidelity=False,
             )
             # computing distance from incumbent
             d = compute_config_dist(config, incumbent)
@@ -153,33 +169,42 @@ class EnsemblePolicy(SamplingPolicy):
         # end of while
         return config
 
-    def sample(
-        self, inc: SearchSpace = None, weights: dict[str, float] = None, *args, **kwargs
+    def sample(  # noqa: PLR0912, C901, PLR0915
+        self,
+        inc: SearchSpace | None = None,
+        weights: dict[str, float] | None = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> SearchSpace:
-        """Samples from the prior with a certain probability
+        """Samples from the prior with a certain probability.
 
         Returns:
             SearchSpace: [description]
         """
+        from neps.optimizers.multi_fidelity_prior.utils import (
+            custom_crossover,
+            local_mutation,
+        )
+
         if weights is not None:
             for key, value in sorted(weights.items()):
                 self.policy_map[key] = value
         else:
-            self.logger.info(f"Using default policy weights: {self.policy_map}")
+            logger.info(f"Using default policy weights: {self.policy_map}")
         prob_weights = [v for _, v in sorted(self.policy_map.items())]
         policy_idx = np.random.choice(range(len(prob_weights)), p=prob_weights)
         policy = sorted(self.policy_map.keys())[policy_idx]
 
-        self.logger.info(
-            f"Sampling from {policy} with weights (i, p, r)={prob_weights}"
-        )
+        logger.info(f"Sampling from {policy} with weights (i, p, r)={prob_weights}")
 
         if policy == "prior":
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=True, ignore_fidelity=True
+            config = sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=True,
+                ignore_fidelity=True,
             )
         elif policy == "inc":
-
             if (
                 hasattr(self.pipeline_space, "has_prior")
                 and self.pipeline_space.has_prior
@@ -189,8 +214,8 @@ class EnsemblePolicy(SamplingPolicy):
                 user_priors = False
 
             if inc is None:
-                inc = self.pipeline_space.sample_default_configuration().clone()
-                self.logger.warning(
+                inc = self.pipeline_space.from_dict(self.pipeline_space.default_config)
+                logger.warning(
                     "No incumbent config found, using default as the incumbent."
                 )
 
@@ -198,24 +223,29 @@ class EnsemblePolicy(SamplingPolicy):
                 distance = kwargs["distance"]
                 config = self.sample_neighbour(inc, distance)
             elif self.inc_type == "gaussian":
-                # use inc to set the defaults of the configuration
-                _inc = inc.clone()
-                _inc.set_defaults_to_current_values()
-                # then sample with prior=True from that configuration
-                # since the defaults are treated as the prior
-                config = _inc.sample(
-                    patience=self.patience,
-                    user_priors=user_priors,
-                    ignore_fidelity=True,
+                # TODO: These could be lifted higher, ideall we pass
+                # down the encoder we want, where we want it. Also passing
+                # around a `Prior` should be the evidence that we want to use
+                # a prior, not whether the searchspace has a flag active or not.
+                encoder = ConfigEncoder.from_space(inc)
+                sampler = (
+                    Prior.from_space(inc)
+                    if user_priors
+                    else Sampler.uniform(ndim=encoder.ncols)
                 )
+
+                config_tensor = sampler.sample(1, to=encoder.domains)
+                config_dict = encoder.decode(config_tensor)[0]
+                _fids = {fid_name: fid.value for fid_name, fid in inc.fidelities.items()}
+
+                config = inc.from_dict({**config_dict, **_fids})
+
             elif self.inc_type == "crossover":
                 # choosing the configuration for crossover with incumbent
                 # the weight distributed across prior adnd inc
                 _w_priors = 1 - self.policy_map["random"]
                 # re-calculate normalized score ratio for prior-inc
-                w_prior = np.clip(
-                    self.policy_map["prior"] / _w_priors, a_min=0, a_max=1
-                )
+                w_prior = np.clip(self.policy_map["prior"] / _w_priors, a_min=0, a_max=1)
                 w_inc = np.clip(self.policy_map["inc"] / _w_priors, a_min=0, a_max=1)
                 # calculating difference of prior and inc score
                 score_diff = np.abs(w_prior - w_inc)
@@ -223,17 +253,19 @@ class EnsemblePolicy(SamplingPolicy):
                 # if the score difference is small, crossover between incumbent and prior
                 # if the score difference is large, crossover between incumbent and random
                 probs = [1 - score_diff, score_diff]  # the order is [prior, random]
-                user_priors = np.random.choice([True, False], p=probs)
                 if (
                     hasattr(self.pipeline_space, "has_prior")
                     and not self.pipeline_space.has_prior
                 ):
                     user_priors = False
-                self.logger.info(
+                else:
+                    user_priors = np.random.choice([True, False], p=probs)
+                logger.info(
                     f"Crossing over with user_priors={user_priors} with p={probs}"
                 )
                 # sampling a configuration either randomly or from a prior
-                _config = self.pipeline_space.sample(
+                _config = sample_one_old(
+                    self.pipeline_space,
                     patience=self.patience,
                     user_priors=user_priors,
                     ignore_fidelity=True,
@@ -256,15 +288,17 @@ class EnsemblePolicy(SamplingPolicy):
                     f"{{'mutation', 'crossover', 'hypersphere', 'gaussian'}}"
                 )
         else:
-            # random
-            config = self.pipeline_space.sample(
-                patience=self.patience, user_priors=False, ignore_fidelity=True
+            config = sample_one_old(
+                self.pipeline_space,
+                patience=self.patience,
+                user_priors=False,
+                ignore_fidelity=True,
             )
         return config
 
 
 class ModelPolicy(SamplingPolicy):
-    """A policy for sampling configuration, i.e. the default for SH / hyperband
+    """A policy for sampling configuration, i.e. the default for SH / hyperband.
 
     Args:
         SamplingPolicy ([type]): [description]
@@ -272,93 +306,77 @@ class ModelPolicy(SamplingPolicy):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
-        surrogate_model: str | Any = "gp",
-        domain_se_kernel: str = None,
-        graph_kernels: list = None,
-        hp_kernels: list = None,
-        surrogate_model_args: dict = None,
-        acquisition: str | BaseAcquisition = "EI",
-        log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
-        patience: int = 100,
-        logger=None,
+        prior: Prior | None = None,
+        use_cost: bool = False,
+        device: torch.device | None = None,
     ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
+        if use_cost:
+            raise NotImplementedError("Cost is not implemented yet.")
 
-        surrogate_model_args = surrogate_model_args or {}
-
-        graph_kernels, hp_kernels = get_kernels(
-            pipeline_space=pipeline_space,
-            domain_se_kernel=domain_se_kernel,
-            graph_kernels=graph_kernels,
-            hp_kernels=hp_kernels,
-            optimal_assignment=False,
+        super().__init__(pipeline_space=pipeline_space)
+        self.device = device
+        self.prior = prior
+        self._encoder = ConfigEncoder.from_space(
+            pipeline_space,
+            include_constants_when_decoding=True,
         )
-        if "graph_kernels" not in surrogate_model_args:
-            surrogate_model_args["graph_kernels"] = None
-        if "hp_kernels" not in surrogate_model_args:
-            surrogate_model_args["hp_kernels"] = hp_kernels
-        if not surrogate_model_args["hp_kernels"]:
-            raise ValueError("No kernels are provided!")
-        if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
+        self._model: SingleTaskGP | None = None
+        self._acq: AcquisitionFunction | None = None
 
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            surrogate_model,
-            name="surrogate model",
-            kwargs=surrogate_model_args,
+    def update_model(
+        self,
+        train_x: list[SearchSpace],
+        train_y: list[float],
+        pending_x: list[SearchSpace],
+        decay_t: float | None = None,
+    ) -> None:
+        x_train = self._encoder.encode([config._values for config in train_x])
+        x_pending = self._encoder.encode([config._values for config in pending_x])
+        y_train = torch.tensor(train_y, dtype=torch.float64, device=self.device)
+
+        # TODO: Most of this just copies BO and the duplication can be replaced
+        # once we don't have the two stage `update_model()` and `sample()`
+        y_model = make_default_single_obj_gp(x_train, y_train, encoder=self._encoder)
+
+        fit_gpytorch_mll(
+            ExactMarginalLogLikelihood(likelihood=y_model.likelihood, model=y_model),
         )
-
-        self.acquisition = instance_from_map(
-            AcquisitionMapping,
-            acquisition,
-            name="acquisition function",
-        )
-
-        # TODO: Enable only when a flag exists to toggle prior-based decaying of AF
-        # if pipeline_space.has_prior:
-        #     self.acquisition = DecayingPriorWeightedAcquisition(
-        #         self.acquisition, log=log_prior_weighted
-        #     )
-
-        self.acquisition_sampler = instance_from_map(
-            AcquisitionSamplerMapping,
-            acquisition_sampler,
-            name="acquisition sampler function",
-            kwargs={"patience": patience, "pipeline_space": pipeline_space},
+        acq = qLogNoisyExpectedImprovement(
+            y_model,
+            X_baseline=x_train,
+            X_pending=x_pending,
+            # Unfortunatly, there's no option to indicate that we minimize
+            # the AcqFunction so we need to do some kind of transformation.
+            # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+            objective=LinearMCObjective(weights=torch.tensor([-1.0])),
         )
 
-        self.sampling_args: dict = {}
+        # If we have a prior, wrap the above acquisitionm with a prior weighting
+        if self.prior is not None:
+            assert decay_t is not None
+            # TODO: Ideally we have something based on budget and dimensions, not an
+            # arbitrary term. This 10 is extracted from the old DecayingWeightedPrior
+            pibo_exp_term = 10 / decay_t
+            significant_lower_bound = 1e-4  # No significant impact beyond this point
+            if pibo_exp_term < significant_lower_bound:
+                acq = pibo_acquisition(
+                    acq,
+                    prior=self.prior,
+                    prior_exponent=pibo_exp_term,
+                    x_domain=self._encoder.domains,
+                )
 
-    def _fantasize_pending(self, train_x, train_y, pending_x):
-        if len(pending_x) == 0:
-            return train_x, train_y
-        # fit model on finished evaluations
-        self.surrogate_model.fit(train_x, train_y)
-        # hallucinating: predict for the pending evaluations
-        _y, _ = self.surrogate_model.predict(pending_x)
-        _y = _y.detach().numpy().tolist()
-        # appending to training data
-        train_x.extend(pending_x)
-        train_y.extend(_y)
-        return train_x, train_y
+        self._y_model = y_model
+        self._acq = acq
 
-    def update_model(self, train_x, train_y, pending_x, decay_t=None):
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
-        self.surrogate_model.fit(train_x, train_y)
-        self.acquisition.set_state(self.surrogate_model, decay_t=decay_t)
-        # TODO: set_state should generalize to all options
-        #  no needed to set state of sampler when using `random`
-        # self.acquisition_sampler.set_state(x=train_x, y=train_y)
-
+    # TODO: rework with MFBO
     def sample(
-        self, active_max_fidelity: int = None, fidelity: int = None, **kwargs
+        self,
+        active_max_fidelity: int | None = None,
+        fidelity: int | None = None,
+        **kwargs: Any,
     ) -> SearchSpace:
         """Performs the equivalent of optimizing the acquisition function.
 
@@ -373,11 +391,9 @@ class ModelPolicy(SamplingPolicy):
               variable set to the same value. This value is same as that of the fidelity
               value of the configs in the training data.
         """
-        self.logger.info("Acquiring...")
-
         # sampling random configurations
         samples = [
-            self.pipeline_space.sample(user_priors=False, ignore_fidelity=True)
+            sample_one_old(self.pipeline_space, user_priors=False, ignore_fidelity=True)
             for _ in range(SAMPLE_THRESHOLD)
         ]
 
@@ -411,173 +427,4 @@ class ModelPolicy(SamplingPolicy):
         # computes the EI for all `samples`
         eis = self.acquisition.eval(x=samples, asscalar=True)
         # extracting the highest scored sample
-        config = samples[np.argmax(eis)]
-        # TODO: can generalize s.t. sampler works for all types, currently,
-        #  random sampler in NePS does not do what is required here
-        # return self.acquisition_sampler.sample(self.acquisition)
-        return config
-
-
-class BaseDynamicModelPolicy(SamplingPolicy):
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        observed_configs: Any = None,
-        surrogate_model: str | Any = "gp",
-        domain_se_kernel: str = None,
-        hp_kernels: list = None,
-        graph_kernels: list = None,
-        surrogate_model_args: dict = None,
-        acquisition: str | BaseAcquisition = "EI",
-        use_priors: bool = False,
-        log_prior_weighted: bool = False,
-        acquisition_sampler: str | AcquisitionSampler = "random",
-        patience: int = 100,
-        logger=None,
-    ):
-        super().__init__(pipeline_space=pipeline_space, logger=logger)
-
-        surrogate_model_args = surrogate_model_args or {}
-
-        graph_kernels, hp_kernels = get_kernels(
-            pipeline_space=pipeline_space,
-            domain_se_kernel=domain_se_kernel,
-            graph_kernels=graph_kernels,
-            hp_kernels=hp_kernels,
-            optimal_assignment=False,
-        )
-        if "graph_kernels" not in surrogate_model_args:
-            surrogate_model_args["graph_kernels"] = graph_kernels
-        if "hp_kernels" not in surrogate_model_args:
-            surrogate_model_args["hp_kernels"] = hp_kernels
-        if not surrogate_model_args["hp_kernels"]:
-            raise ValueError("No kernels are provided!")
-        if "vectorial_features" not in surrogate_model_args:
-            surrogate_model_args[
-                "vectorial_features"
-            ] = pipeline_space.get_vectorial_dim()
-
-        self.surrogate_model = instance_from_map(
-            SurrogateModelMapping,
-            surrogate_model,
-            name="surrogate model",
-            kwargs=surrogate_model_args,
-        )
-
-        self.acquisition = instance_from_map(
-            AcquisitionMapping,
-            acquisition,
-            name="acquisition function",
-        )
-
-        if use_priors and pipeline_space.has_prior:
-            self.acquisition = DecayingPriorWeightedAcquisition(
-                self.acquisition, log=log_prior_weighted
-            )
-
-        self.acquisition_sampler = instance_from_map(
-            AcquisitionSamplerMapping,
-            acquisition_sampler,
-            name="acquisition sampler function",
-            kwargs={"patience": patience, "pipeline_space": pipeline_space},
-        )
-
-        self.sampling_args: dict = {}
-
-        self.observed_configs = observed_configs
-
-    def _fantasize_pending(self, train_x, train_y, pending_x):
-        if len(pending_x) == 0:
-            return train_x, train_y
-        # fit model on finished evaluations
-        self.surrogate_model.fit(train_x, train_y)
-        # hallucinating: predict for the pending evaluations
-        _y, _ = self.surrogate_model.predict(pending_x)
-        _y = _y.detach().numpy().tolist()
-        # appending to training data
-        train_x.extend(pending_x)
-        train_y.extend(_y)
-        return train_x, train_y
-
-    def update_model(self, train_x=None, train_y=None, pending_x=None, decay_t=None):
-        if train_x is None:
-            train_x = []
-        if train_y is None:
-            train_y = []
-        if pending_x is None:
-            pending_x = []
-
-        if decay_t is None:
-            decay_t = len(train_x)
-        train_x, train_y = self._fantasize_pending(train_x, train_y, pending_x)
-        self.surrogate_model.fit(train_x, train_y)
-        self.acquisition.set_state(self.surrogate_model, decay_t=decay_t)
-        self.acquisition_sampler.set_state(x=train_x, y=train_y)
-
-    @abstractmethod
-    def sample(self, *args, **kwargs) -> tuple[int, SearchSpace]:
-        pass
-
-
-class RandomPromotionDynamicPolicy(BaseDynamicModelPolicy):
-    def __init__(self, *args, **kwargs):
-        self.num_train_configs = 0
-
-        super().__init__(*args, **kwargs)
-
-    def _fantasize_pending(self, *args, **kwargs):
-        pending_configs = []
-
-        # Select configs that are neither pending nor resulted in error
-        completed_configs = self.observed_configs.completed_runs.copy(deep=True)
-
-        # Get the config, performance values for the maximum budget runs that are completed
-        max_budget_samples = completed_configs.sort_index().groupby(level=0).last()
-        max_budget_configs = max_budget_samples[
-            self.observed_configs.config_col
-        ].to_list()
-        max_budget_perf = max_budget_samples[self.observed_configs.perf_col].to_list()
-
-        pending_condition = self.observed_configs.pending_condition
-        if pending_condition.any():
-            pending_configs = (
-                self.observed_configs.df[pending_condition]
-                .loc[(), self.observed_configs.config_col]
-                .unique()
-                .to_list()
-            )
-        return super()._fantasize_pending(
-            max_budget_configs, max_budget_perf, pending_configs
-        )
-
-    def sample(self, rand_promotion_prob=0.5, seed=777, is_promotion=False, **kwargs):
-        promoted = False
-        # np.random.seed(seed)
-        if np.random.random_sample() < rand_promotion_prob:
-            config_id = (
-                self.observed_configs.df[~self.observed_configs.error_condition]
-                .sample(1)
-                .index[0][0]
-            )
-            max_budget_id = self.observed_configs.df.loc[(config_id,)].index[-1]
-            config = self.observed_configs.df.loc[
-                (config_id, max_budget_id), self.observed_configs.config_col
-            ]
-            promoted = True
-
-        else:
-            config_id = len(self.observed_configs.df.index.levels[0])
-            config = self.acquisition_sampler.sample(self.acquisition)
-
-        if is_promotion and promoted:
-            return config_id
-        elif is_promotion:
-            return None
-        else:
-            return config
-
-    # def sample(self, **kwargs):
-    #     return self._sample(is_promotion=False, **kwargs)
-    #
-    # def retrieve_promotions(self, **kwargs):
-    #     return self._sample(is_promotion=True, **kwargs)
+        return samples[np.argmax(eis)]

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from neps.exceptions import WorkerRaiseError
 import pytest
 from dataclasses import dataclass
@@ -15,7 +13,7 @@ from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.search_spaces import FloatParameter
+from neps.search_spaces import Float
 from neps.state.trial import Trial
 
 
@@ -36,7 +34,7 @@ def test_worker_raises_when_error_in_self(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -75,7 +73,7 @@ def test_worker_raises_when_error_in_self(
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -135,7 +133,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_WORKER_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),

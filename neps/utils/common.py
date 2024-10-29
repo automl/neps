@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Mapping, Sequence
 from functools import partial
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import torch
 import yaml
@@ -47,7 +48,7 @@ def load_checkpoint(
     if not checkpoint_path.exists():
         return None
 
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=True)
 
     if model is not None and "model_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -135,8 +136,11 @@ def load_lightning_checkpoint(
 
     assert len(ckpt_files) == 1
     checkpoint_path = ckpt_files[0]
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, weights_only=True)
     return checkpoint_path, checkpoint
+
+
+_INTIAL_DIRECTORY_CACHE: dict[str, Path] = {}
 
 
 # TODO: We should have a better way to have a shared folder between trials.
@@ -154,12 +158,14 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     """
     neps_state = get_workers_neps_state()
     if pipeline_directory is not None:
-        pipeline_directory = Path(pipeline_directory)
         # TODO: Hard coded assumption
-        config_id = pipeline_directory.name.split("_", maxsplit=1)[-1]
+        config_id = Path(pipeline_directory).name.split("_", maxsplit=1)[-1]
         trial = neps_state.get_trial_by_id(config_id)
     else:
         trial = get_in_progress_trial()
+
+    if trial.metadata.id in _INTIAL_DIRECTORY_CACHE:
+        return _INTIAL_DIRECTORY_CACHE[trial.metadata.id]
 
     # Recursively find the initial directory
     while (prev_trial_id := trial.metadata.previous_trial_id) is not None:
@@ -169,7 +175,10 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
     # TODO: Hard coded assumption that we are operating in a filebased neps
     assert isinstance(initial_dir, str)
-    return Path(initial_dir)
+    path = Path(initial_dir)
+
+    _INTIAL_DIRECTORY_CACHE[trial.metadata.id] = path
+    return path
 
 
 def get_searcher_data(
@@ -236,7 +245,7 @@ def get_value(obj: Any) -> Any:
     """Honestly, don't know why you would use this. Please try not to."""
     if obj is None:
         return None
-    if isinstance(obj, (str, int, float, bool)):
+    if isinstance(obj, str | int | float | bool):
         return obj
     if isinstance(obj, dict):
         return {key: get_value(value) for key, value in obj.items()}
@@ -246,34 +255,6 @@ def get_value(obj: Any) -> Any:
     return obj.__name__
 
 
-def has_instance(itr: Iterable[Any], *types: type) -> bool:
-    """Check if any instance in the collection is of the given types."""
-    return any(isinstance(el, types) for el in itr)
-
-
-def filter_instances(itr: Iterable[Any], *types: type) -> list[Any]:
-    """Filter instances of a collection by the given types."""
-    return [el for el in itr if isinstance(el, types)]
-
-
-class MissingDependencyError(ImportError):
-    """Raise when a dependency is missing for an optional feature."""
-
-    def __init__(self, dep: str, cause: Exception, *args: Any):
-        """Initialize the error with the missing dependency and the original error."""
-        super().__init__(dep, cause, *args)
-        self.dep = dep
-        self.__cause__ = cause  # This is what `raise a from b` does
-
-    def __str__(self) -> str:
-        return (
-            f"Some required dependency-({self.dep}) to use this optional feature is "
-            f"missing. Please, include neps[experimental] dependency group in your "
-            f"installation of neps to be able to use all the optional features."
-            f" Otherwise, just install ({self.dep})"
-        )
-
-
 def is_partial_class(obj: Any) -> bool:
     """Check if the object is a (partial) class, or an instance."""
     if isinstance(obj, partial):
@@ -281,7 +262,7 @@ def is_partial_class(obj: Any) -> bool:
     return inspect.isclass(obj)
 
 
-def instance_from_map(  # noqa: C901, PLR0912
+def instance_from_map(  # noqa: C901
     mapping: dict[str, Any],
     request: str | list | tuple | type,
     name: str = "mapping",
@@ -331,9 +312,6 @@ def instance_from_map(  # noqa: C901, PLR0912
         instance = request
     else:
         raise ValueError(f"Object {request} invalid key for {name}")
-
-    if isinstance(instance, MissingDependencyError):
-        raise instance
 
     # Check if the request is a class if it is mandatory
     if (args_dict or as_class) and not is_partial_class(instance):

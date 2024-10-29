@@ -7,8 +7,9 @@ from __future__ import annotations
 import importlib.util
 import logging
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 
@@ -273,7 +274,7 @@ def process_searcher(key: str, special_configs: dict, settings: dict) -> None:
                 settings[SEARCHER_KWARGS] = searcher
                 searcher = load_and_return_object(path, name, key)
 
-        elif isinstance(searcher, (str, Path)):
+        elif isinstance(searcher, str | Path):
             pass
         else:
             raise TypeError(
@@ -428,7 +429,7 @@ def check_run_args(settings: dict) -> None:
             if not all(callable(item) for item in value):
                 raise TypeError("All items in 'pre_load_hooks' must be callable.")
         elif param == SEARCHER:
-            if not (isinstance(value, (str, dict)) or issubclass(value, BaseOptimizer)):
+            if not (isinstance(value, str | dict) or issubclass(value, BaseOptimizer)):
                 raise TypeError(
                     "Parameter 'searcher' must be a string or a class that is a subclass "
                     "of BaseOptimizer."
@@ -450,13 +451,13 @@ def check_essential_arguments(
     root_directory: str | None,
     pipeline_space: dict | None,
     max_cost_total: int | None,
-    max_evaluation_total: int | None,
+    max_evaluations_total: int | None,
     searcher: BaseOptimizer | dict | str | None,
 ) -> None:
     """Validates essential NePS configuration arguments.
 
     Ensures 'run_pipeline', 'root_directory', 'pipeline_space', and either
-    'max_cost_total' or 'max_evaluation_total' are provided for NePS execution.
+    'max_cost_total' or 'max_evaluations_total' are provided for NePS execution.
     Raises ValueError with missing argument details. Additionally, checks 'searcher'
     is a BaseOptimizer if 'pipeline_space' is absent.
 
@@ -465,7 +466,7 @@ def check_essential_arguments(
         root_directory (str): Directory path for data storage.
         pipeline_space: search space for this run.
         max_cost_total: Max allowed total cost for experiments.
-        max_evaluation_total: Max allowed evaluations.
+        max_evaluations_total: Max allowed evaluations.
         searcher: Optimizer for the configuration space.
 
     Raises:
@@ -480,9 +481,9 @@ def check_essential_arguments(
         # provide the search_space because it's the argument of the searcher.
         raise ValueError("'pipeline_space' is required but was not provided.")
 
-    if not max_evaluation_total and not max_cost_total:
+    if not max_evaluations_total and not max_cost_total:
         raise ValueError(
-            "'max_evaluation_total' or 'max_cost_total' is required but "
+            "'max_evaluations_total' or 'max_cost_total' is required but "
             "both were not provided."
         )
 
@@ -505,7 +506,7 @@ class Settings:
     arguments (run_args (yaml) and neps func_args).
     """
 
-    def __init__(self, func_args: dict, yaml_args: str | Default | None = None):
+    def __init__(self, func_args: dict, yaml_args: Path | str | Default | None = None):
         """Initializes the Settings object by merging function arguments with YAML
         configuration settings and assigning them to class attributes. It checks for
         necessary configurations and handles default values where specified.

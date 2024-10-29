@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 V = TypeVar("V")
@@ -34,17 +35,6 @@ TRIAL_FILELOCK_POLL = get_env(
 )
 TRIAL_FILELOCK_TIMEOUT = get_env(
     "NEPS_TRIAL_FILELOCK_TIMEOUT",
-    parse=lambda e: None if is_nullable(e) else float(e),
-    default=120,
-)
-
-JOBQUEUE_FILELOCK_POLL = get_env(
-    "NEPS_JOBQUEUE_FILELOCK_POLL",
-    parse=float,
-    default=0.05,
-)
-JOBQUEUE_FILELOCK_TIMEOUT = get_env(
-    "NEPS_JOBQUEUE_FILELOCK_TIMEOUT",
     parse=lambda e: None if is_nullable(e) else float(e),
     default=120,
 )

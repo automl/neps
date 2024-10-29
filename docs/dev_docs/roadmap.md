@@ -4,66 +4,59 @@
 
 ### Features
 
-- Improve handling of multi-fidelity for large scale (slurm script modification)
-- Evaluate and maybe improve ease-of-use of NePS and DDP etc.
-- Optimize dependencies
-- Improved examples
+- Improve large scale experience
+    - Result saving function (Samir)
+    - Priorband default sampling / pass evaluated configs to neps.run (Samir)
+    - Document large scale
+    - Evaluate and maybe improve ease-of-use of NePS for DDP (Gopalji)
+- Optimize dependencies (Anton)
+- Tensorboard st no one has to Touch it anymore (Tarek)
 
 ### Fixes
 
-- Acq search mutation for HPs potentially only mutates 1 parameter
-- `ignore_errors` should work seamlessly with all optimizers
+- ignore_errors should work seamlessly with all optimizers, also check different error handling Flags (Gopalji)
+- Install all dependencies to run core examples always (Anton)
 
 ### Refactoring
 
-- Rename: run_pipeline = evaluate_pipeline | evaluate_pipeline_error | compute_pipeline_error | train_and_evaluate
-- Rename: loss = validation_error | error | pipeline_error
-- Rename: XParameter = XSpace or just X?
-- Rename: default-x to prior-x
-- Rename: Use max_cost_total everywhere instead of budget
+(Anton)
+
+- Rename: run_pipeline = evaluate_pipeline
+- Rename: loss = objective_to_minimize
+- Rename: default = prior, default_confidence = prior_confidence
+- Rename: budget = max_cost_total
 
 ### Documentation
 
-- Keep citations doc up to date
+- Update citations (also docs) (Danny)
+- Notebooks add (Danny)
+- Remove templates (Danny)
+- Rework readme (remove declarative API) (Danny)
+- Improved examples
+    - New Lightning example (Gopalji)
+    - DDP examples (Gopalji)
+    - Larger examples (Gopalji)
+    - Tensorboard into new lightning example (Tarek)
+    - Example spawning cloud instances via run pipeline
 
 ### Tests
 
-- Regression tests to run on each push
-
+- Pytest needs to work on a fresh install (Anton)
+- Regression tests to run on cluster on each version release
 
 ## Before 1.0.0 version
 
 ### Features
 
+- Utility neps.clean to manage existing run results
 - Generate pdf plot after each evaluation
 - Finegrained control over user prior
 - Print search space upon run
 - Utility to generate code for best architecture
 - Core algorithmic feature set (research)
 
-### Fixes
-
-- Contact https://pypi.org/project/neps/ to free up `pip install neps`
-
-### Refactoring
-
-- Improve neps.optimizers:
-    - Maintained vs unmaintained optimizers
-    - Remove unnecessary / broken optimizers
-    - Merge GP and hierarchical GP
-- Break up search space and config aspect
-
 ### Documentation
 
 - NAS documentation
-
-## After 1.0.0
-
-### Features
-
-- Utility neps.clean to manage existing run results
-- Collect data optionally via phone-home to webserver
-
-### Documentation
-
-- Keep a changelog
+- Optimizer pages (Anton, Neeratyoy)
+- Keep a changelog, add to it before each release

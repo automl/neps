@@ -18,7 +18,5 @@ searcher:
   name: BayesianOptimization
   # Specific arguments depending on your searcher
   initial_design_size: 7
-  surrogate_model: gp
-  acquisition: EI
 
 overwrite_working_directory: True

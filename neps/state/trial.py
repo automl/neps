@@ -3,20 +3,19 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal, Mapping
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from typing_extensions import Self
 
 import numpy as np
 
 from neps.exceptions import NePSError
-from neps.utils.types import ConfigResult
 
 if TYPE_CHECKING:
     from neps.search_spaces import SearchSpace
-    from neps.utils.types import ERROR, RawConfig
-
+    from neps.utils.types import ERROR, ConfigResult, RawConfig
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +36,10 @@ class State(Enum):
     CORRUPTED = "corrupted"
     UNKNOWN = "unknown"
 
+    def pending(self) -> bool:
+        """Return True if the trial is pending."""
+        return self in (State.PENDING, State.SUBMITTED, State.EVALUATING)
+
 
 @dataclass
 class MetaData:
@@ -44,7 +47,7 @@ class MetaData:
 
     id: str
     location: str
-    previous_trial_id: Trial.ID | None
+    previous_trial_id: str | None
     previous_trial_location: str | None
     sampling_worker_id: str
     time_sampled: float
@@ -61,7 +64,7 @@ class MetaData:
 class Report:
     """A failed report of the evaluation of a configuration."""
 
-    trial_id: Trial.ID
+    trial_id: str
     loss: float | None
     cost: float | None
     learning_curve: list[float] | None  # TODO: Serializing a large list into yaml sucks!
@@ -123,7 +126,6 @@ class Report:
 class Trial:
     """A trial is a configuration and it's associated data."""
 
-    ID: ClassVar = str
     State: ClassVar = State
     Report: ClassVar = Report
     MetaData: ClassVar = MetaData
@@ -138,10 +140,10 @@ class Trial:
     def new(
         cls,
         *,
-        trial_id: Trial.ID,
+        trial_id: str,
         config: Mapping[str, Any],
         location: str,
-        previous_trial: Trial.ID | None,
+        previous_trial: str | None,
         previous_trial_location: str | None,
         time_sampled: float,
         worker_id: int | str,
@@ -163,7 +165,7 @@ class Trial:
         )
 
     @property
-    def id(self) -> Trial.ID:
+    def id(self) -> str:
         """Return the id of the trial."""
         return self.metadata.id
 
@@ -174,6 +176,7 @@ class Trial:
         """Convert the trial and report to a `ConfigResult` object."""
         if self.report is None:
             raise self.NotReportedYetError("The trial has not been reported yet.")
+        from neps.utils.types import ConfigResult
 
         result: dict[str, Any] | ERROR
         if self.report.reported_as == "success":
@@ -263,27 +266,3 @@ class Trial:
             time_sampled=self.metadata.time_sampled,
             sampling_worker_id=self.metadata.sampling_worker_id,
         )
-
-
-def to_config_result(
-    trial: Trial,
-    report: Report,
-    config_to_search_space: Callable[[RawConfig], SearchSpace],
-) -> ConfigResult:
-    """Convert the trial and report to a `ConfigResult` object."""
-    result: dict[str, Any] | ERROR
-    if report.reported_as == "success":
-        result = {
-            **report.extra,
-            "loss": report.loss,
-            "cost": report.cost,
-        }
-    else:
-        result = "error"
-
-    return ConfigResult(
-        trial.id,
-        config=config_to_search_space(trial.config),
-        result=result,
-        metadata=asdict(trial.metadata),
-    )

@@ -1,7 +1,5 @@
 """API for the neps package."""
 
-from __future__ import annotations
-
 import inspect
 import logging
 import warnings
@@ -31,11 +29,7 @@ def run(
     run_pipeline: Callable | None = Default(None),
     root_directory: str | Path | None = Default(None),
     pipeline_space: (
-        dict[str, Parameter | CS.ConfigurationSpace]
-        | str
-        | Path
-        | CS.ConfigurationSpace
-        | None
+        dict[str, Parameter] | str | Path | CS.ConfigurationSpace | None
     ) = Default(None),
     run_args: str | Path | None = Default(None),
     overwrite_working_directory: bool = Default(False),
@@ -59,7 +53,6 @@ def run(
             "priorband",
             "mobster",
             "asha",
-            "regularized_evolution",
         ]
         | BaseOptimizer
         | Path
@@ -80,7 +73,7 @@ def run(
         root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         run_args: An option for providing the optimization settings e.g.
-            max_evaluation_total in a YAML file.
+            max_evaluations_total in a YAML file.
         overwrite_working_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a run_pipeline function.
         post_run_summary: If True, creates a csv file after each worker is done,
@@ -122,7 +115,7 @@ def run(
         >>>    validation_error = -some_parameter
         >>>    return validation_error
 
-        >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
+        >>> pipeline_space = dict(some_parameter=neps.Float(lower=0, upper=1))
 
         >>> logging.basicConfig(level=logging.INFO)
         >>> neps.run(
@@ -284,7 +277,6 @@ def _run_args(
             "priorband",
             "mobster",
             "asha",
-            "regularized_evolution",
         ]
         | BaseOptimizer | dict
     ) = "default",
@@ -349,11 +341,11 @@ def _run_args(
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
             if pipeline_space.has_prior:
-                searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
+                searcher = "priorband" if len(pipeline_space.fidelities) > 0 else "pibo"
             else:
                 searcher = (
                     "hyperband"
-                    if pipeline_space.has_fidelity
+                    if len(pipeline_space.fidelities) > 0
                     else "bayesian_optimization"
                 )
             searcher_info["searcher_selection"] = "neps-default"

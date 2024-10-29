@@ -1,4 +1,7 @@
-from __future__ import annotations
+raise NotImplementedError(
+    "Support for graphs was temporarily removed, if you'd like to use a version"
+    " of NePS that supports graphs, please use version v0.12.2"
+)
 
 import logging
 
@@ -111,7 +114,7 @@ def run_pipeline(architecture):
 
 
 pipeline_space = dict(
-    architecture=neps.ArchitectureParameter(
+    architecture=neps.Architecture(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,

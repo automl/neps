@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Iterable, Mapping
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 import yaml
 
@@ -57,7 +58,7 @@ def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
 def deserialize(path: Path | str) -> dict[str, Any]:
     """Deserialize data from a yaml file."""
     with Path(path).open("r") as file_stream:
-        data = yaml.full_load(file_stream)  # type: ignore
+        data = yaml.full_load(file_stream)
 
     if not isinstance(data, dict):
         raise TypeError(
@@ -66,8 +67,3 @@ def deserialize(path: Path | str) -> dict[str, Any]:
         )
 
     return data
-
-
-def empty_file(file_path: Path) -> bool:
-    """Check if a file does not exist, or if it does, if it is empty."""
-    return not file_path.exists() or file_path.stat().st_size <= 0

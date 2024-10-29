@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Generic, TypeVar, overload
+from typing import TYPE_CHECKING, Generic, TypeVar, overload
 
 from more_itertools import take
 
@@ -64,13 +65,6 @@ class NePSState(Generic[Loc]):
         """Get a trial by its id."""
         return self._trials.get_by_id(trial_id).synced()
 
-    def get_trials_by_ids(self, trial_ids: list[str], /) -> dict[str, Trial | None]:
-        """Get trials by their ids."""
-        return {
-            _id: shared_trial.synced()
-            for _id, shared_trial in self._trials.get_by_ids(trial_ids).items()
-        }
-
     def sample_trial(
         self,
         optimizer: BaseOptimizer,
@@ -88,11 +82,14 @@ class NePSState(Generic[Loc]):
         Returns:
             The new trial.
         """
-        with self._optimizer_state.acquire() as (
-            opt_state,
-            put_opt,
-        ), self._seed_state.acquire() as (seed_state, put_seed_state):
-            trials: dict[Trial.ID, Trial] = {}
+        with (
+            self._optimizer_state.acquire() as (
+                opt_state,
+                put_opt,
+            ),
+            self._seed_state.acquire() as (seed_state, put_seed_state),
+        ):
+            trials: dict[str, Trial] = {}
             for trial_id, shared_trial in self._trials.all().items():
                 trial = shared_trial.synced()
                 trials[trial_id] = trial
@@ -107,11 +104,16 @@ class NePSState(Generic[Loc]):
 
             # NOTE: We don't want optimizers mutating this before serialization
             budget = opt_state.budget.clone() if opt_state.budget is not None else None
-            sampled_config, new_opt_state = optimizer.ask(
+            sampled_config_maybe_new_opt_state = optimizer.ask(
                 trials=trials,
                 budget_info=budget,
-                optimizer_state=opt_state.shared_state,
             )
+
+            if isinstance(sampled_config_maybe_new_opt_state, tuple):
+                sampled_config, new_opt_state = sampled_config_maybe_new_opt_state
+            else:
+                sampled_config = sampled_config_maybe_new_opt_state
+                new_opt_state = opt_state.shared_state
 
             if sampled_config.previous_config_id is not None:
                 previous_trial = trials.get(sampled_config.previous_config_id)
@@ -145,7 +147,6 @@ class NePSState(Generic[Loc]):
         self,
         trial: Trial,
         report: Trial.Report,
-        optimizer: BaseOptimizer,
         *,
         worker_id: str,
     ) -> None:
@@ -166,8 +167,6 @@ class NePSState(Generic[Loc]):
         shared_trial.put(trial)
         logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
         with self._optimizer_state.acquire() as (opt_state, put_opt_state):
-            optimizer.update_state_post_evaluation(opt_state.shared_state, report)
-
             # TODO: If an optimizer doesn't use the state, this is a waste of time.
             # Update the budget if we have one.
             if opt_state.budget is not None:
@@ -195,6 +194,7 @@ class NePSState(Generic[Loc]):
 
     @overload
     def get_next_pending_trial(self) -> Trial | None: ...
+
     @overload
     def get_next_pending_trial(self, n: int | None = None) -> list[Trial]: ...
 
@@ -214,11 +214,11 @@ class NePSState(Generic[Loc]):
             return take(n, _pending_itr)
         return next(_pending_itr, None)
 
-    def all_trial_ids(self) -> set[Trial.ID]:
+    def all_trial_ids(self) -> set[str]:
         """Get all the trial ids that are known about."""
         return self._trials.all_trial_ids()
 
-    def get_all_trials(self) -> dict[Trial.ID, Trial]:
+    def get_all_trials(self) -> dict[str, Trial]:
         """Get all the trials that are known about."""
         return {_id: trial.synced() for _id, trial in self._trials.all().items()}
 

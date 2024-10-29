@@ -10,23 +10,23 @@ from neps.search_spaces.parameter import Parameter
 T = TypeVar("T", int, float, str)
 
 
-class ConstantParameter(Parameter[T, T]):
+class Constant(Parameter[T, T]):
     """A constant value for a parameter.
 
     This kind of [`Parameter`][neps.search_spaces.parameter] is used
     to represent hyperparameters with values that should not change during
     optimization. For example, the `batch_size` hyperparameter in a neural
-    network search space can be a `ConstantParameter` with a value of `32`.
+    network search space can be a `Constant` with a value of `32`.
 
     ```python
     import neps
 
-    batch_size = neps.ConstantParameter(32)
+    batch_size = neps.Constant(32)
     ```
 
     !!! note
 
-        As the name suggests, the value of a `ConstantParameter` only have one
+        As the name suggests, the value of a `Constant` only have one
         value and so its [`.default`][neps.search_spaces.parameter.Parameter.default]
         and [`.value`][neps.search_spaces.parameter.Parameter.value] should always be
         the same.
@@ -35,13 +35,12 @@ class ConstantParameter(Parameter[T, T]):
         [`.default`][neps.search_spaces.parameter.Parameter.default] can never be `None`.
 
         Please use
-        [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
+        [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.Constant.set_constant_value]
         if you need to change the value of the constant parameter.
-
     """
 
     def __init__(self, value: T):
-        """Create a new `ConstantParameter`.
+        """Create a new `Constant`.
 
         Args:
             value: value for the hyperparameter.
@@ -73,33 +72,6 @@ class ConstantParameter(Parameter[T, T]):
         return self.value
 
     @override
-    def set_default(self, default: T | None) -> None:
-        """Set the default of the constant parameter.
-
-        !!! note
-
-            This method is a no-op but will raise a `ValueError` if the default
-            is different from the current default.
-
-            Please see
-            [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
-            which can be used to set both the
-            [`.value`][neps.search_spaces.parameter.Parameter.value]
-            and the [`.default`][neps.search_spaces.parameter.Parameter.default] at once
-
-        Args:
-            default: value to set the default to.
-
-        Raises:
-            ValueError: if the default is different from the current default.
-        """
-        if default != self.default:
-            raise ValueError(
-                f"Constant does not allow changing the default value. "
-                f"Tried to set default to {default}, but it is already {self.default}"
-            )
-
-    @override
     def set_value(self, value: T | None) -> None:
         """Set the value of the constant parameter.
 
@@ -109,7 +81,7 @@ class ConstantParameter(Parameter[T, T]):
             is different from the current value.
 
             Please see
-            [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.ConstantParameter.set_constant_value]
+            [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.Constant.set_constant_value]
             which can be used to set both the
             [`.value`][neps.search_spaces.parameter.Parameter.value]
             and the [`.default`][neps.search_spaces.parameter.Parameter.default] at once
@@ -126,19 +98,6 @@ class ConstantParameter(Parameter[T, T]):
                 f"Tried to set value to {value}, but it is already {self.value}"
             )
 
-    def set_constant_value(self, value: T) -> None:
-        """Set the value of the constant parameter.
-
-        !!! note
-
-            This method is used to set the
-            [`.value`][neps.search_spaces.parameter.Parameter.value]
-            including the [`.default`][neps.search_spaces.parameter.Parameter.default]
-            It is used internally and should not be used by the user.
-        """
-        self._value = value
-        self.default = value
-
     @override
     def value_to_normalized(self, value: T) -> float:
         return 1.0 if value == self._value else 0.0
@@ -147,21 +106,32 @@ class ConstantParameter(Parameter[T, T]):
     def normalized_to_value(self, normalized_value: float) -> T:
         return self._value
 
-    @override
-    def _get_non_unique_neighbors(
-        self,
-        num_neighbours: int,
-        *,
-        std: float = 0.2,
-    ) -> list[Self]:
-        raise ValueError("ConstantParameter have no neighbours")
 
-    @override
-    @classmethod
-    def serialize_value(cls, value: T) -> T:
-        return value
+class ConstantParameter(Constant):
+    """Deprecated: Use `Constant` instead of `ConstantParameter`.
 
-    @override
-    @classmethod
-    def deserialize_value(cls, value: T) -> T:
-        return value
+    This class remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+
+    def __init__(self, value: T):
+        """Initialize a deprecated `ConstantParameter`.
+
+        Args:
+            value: value for the hyperparameter.
+
+        Raises:
+            DeprecationWarning: A warning indicating that `neps.ConstantParameter` is
+            deprecated and `neps.Constant` should be used instead.
+        """
+        import warnings
+
+        warnings.warn(
+            (
+                "Usage of 'neps.ConstantParameter' is deprecated and will be removed in"
+                " future releases. Please use 'neps.Constant' instead."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(value=value)

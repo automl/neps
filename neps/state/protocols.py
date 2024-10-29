@@ -6,11 +6,12 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, ClassVar, Generic, Iterable, Iterator, TypeVar
-from typing_extensions import Protocol, Self
+from typing import TYPE_CHECKING, ClassVar, Generic, Protocol, TypeVar
+from typing_extensions import Self
 
 from neps.exceptions import (
     LockFailedError,
@@ -112,27 +113,23 @@ class TrialRepo(Protocol[K]):
     TrialAlreadyExistsError: ClassVar = TrialAlreadyExistsError
     TrialNotFoundError: ClassVar = TrialNotFoundError
 
-    def all_trial_ids(self) -> set[Trial.ID]:
+    def all_trial_ids(self) -> set[str]:
         """List all the trial ids in this trial Repo."""
         ...
 
-    def get_by_id(self, trial_id: Trial.ID) -> Synced[Trial, K]:
+    def get_by_id(self, trial_id: str) -> Synced[Trial, K]:
         """Get a trial by its id."""
-        ...
-
-    def get_by_ids(self, trial_ids: list[Trial.ID]) -> dict[str, Synced[Trial, K]]:
-        """Get trials by their ids."""
         ...
 
     def put_new(self, trial: Trial) -> Synced[Trial, K]:
         """Put a new trial in the repo."""
         ...
 
-    def all(self) -> dict[Trial.ID, Synced[Trial, K]]:
+    def all(self) -> dict[str, Synced[Trial, K]]:
         """Get all trials in the repo."""
         ...
 
-    def pending(self) -> Iterable[tuple[Trial.ID, Synced[Trial, K]]]:
+    def pending(self) -> Iterable[tuple[str, Synced[Trial, K]]]:
         """Get all pending trials in the repo.
 
         !!! note

@@ -5,11 +5,12 @@ from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from typing import Union, Callable, Dict, List, Type
 
 BASE_PATH = "tests/test_yaml_run_args/"
-pipeline_space = dict(lr=neps.FloatParameter(lower=1e-3, upper=0.1),
-                      optimizer=neps.CategoricalParameter(choices=["adam", "sgd",
-                                                                   "adamw"]),
-                      epochs=neps.IntegerParameter(lower=1, upper=10),
-                      batch_size=neps.ConstantParameter(value=64))
+pipeline_space = dict(
+    lr=neps.Float(lower=1e-3, upper=0.1),
+    optimizer=neps.Categorical(choices=["adam", "sgd", "adamw"]),
+    epochs=neps.Integer(lower=1, upper=10),
+    batch_size=neps.Constant(value=64),
+)
 
 
 def run_pipeline():
@@ -44,8 +45,9 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
     """
     output = get_run_args_from_yaml(BASE_PATH + yaml_path_run_args)
 
-    def are_functions_equivalent(f1: Union[Callable, List[Callable]],
-                                 f2: Union[Callable, List[Callable]]) -> bool:
+    def are_functions_equivalent(
+        f1: Union[Callable, List[Callable]], f2: Union[Callable, List[Callable]]
+    ) -> bool:
         """
         Compares functions or lists of functions for equivalence by their bytecode,
         useful when identical functions have different memory addresses. This method
@@ -111,8 +113,10 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "loss_value_on_error": 4.2,
                 "cost_value_on_error": 3.7,
                 "ignore_errors": True,
-                "searcher": {"strategy": "bayesian_optimization",
-                             "initial_design_size": 5, "surrogate_model": "gp"},
+                "searcher": {
+                    "strategy": "bayesian_optimization",
+                    "initial_design_size": 5,
+                },
                 "pre_load_hooks": [hook1, hook2],
             },
         ),
@@ -133,8 +137,10 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "loss_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
-                "searcher": {"strategy": "bayesian_optimization",
-                             "initial_design_size": 5, "surrogate_model": "gp"},
+                "searcher": {
+                    "strategy": "bayesian_optimization",
+                    "initial_design_size": 5,
+                },
                 "pre_load_hooks": [hook1],
             },
         ),
@@ -147,8 +153,10 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "overwrite_working_directory": True,
                 "post_run_summary": False,
                 "continue_until_max_evaluation_completed": False,
-                "searcher": {"strategy": "bayesian_optimization",
-                             "initial_design_size": 5, "surrogate_model": "gp"},
+                "searcher": {
+                    "strategy": "bayesian_optimization",
+                    "initial_design_size": 5,
+                },
             },
         ),
         (
@@ -164,26 +172,27 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
             },
         ),
         ("run_args_empty.yaml", {}),
-        ("run_args_optional_loading_format.yaml", {
-            "run_pipeline": run_pipeline,
-            "pipeline_space": pipeline_space,
-            "root_directory": "test_yaml",
-            "max_evaluations_total": 20,
-            "max_cost_total": 4.2,
-            "overwrite_working_directory": True,
-            "post_run_summary": False,
-            "development_stage_id": 9,
-            "max_evaluations_per_run": 5,
-            "continue_until_max_evaluation_completed": True,
-            "loss_value_on_error": 2.4,
-            "cost_value_on_error": 2.1,
-            "ignore_errors": False,
-            "searcher": BayesianOptimization,
-            "searcher_kwargs": {'initial_design_size': 5,
-                                             'surrogate_model': 'gp'},
-            "pre_load_hooks": [hook1]
-
-        })
+        (
+            "run_args_optional_loading_format.yaml",
+            {
+                "run_pipeline": run_pipeline,
+                "pipeline_space": pipeline_space,
+                "root_directory": "test_yaml",
+                "max_evaluations_total": 20,
+                "max_cost_total": 4.2,
+                "overwrite_working_directory": True,
+                "post_run_summary": False,
+                "development_stage_id": 9,
+                "max_evaluations_per_run": 5,
+                "continue_until_max_evaluation_completed": True,
+                "loss_value_on_error": 2.4,
+                "cost_value_on_error": 2.1,
+                "ignore_errors": False,
+                "searcher": BayesianOptimization,
+                "searcher_kwargs": {"initial_design_size": 5},
+                "pre_load_hooks": [hook1],
+            },
+        ),
     ],
 )
 def test_yaml_config(yaml_path: str, expected_output: Dict) -> None:

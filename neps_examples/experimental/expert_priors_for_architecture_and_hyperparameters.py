@@ -64,9 +64,9 @@ prior_distr = {
 
 
 def set_recursive_attribute(op_name, predecessor_values):
-    in_channels = 64 if predecessor_values is None else predecessor_values["C_out"]
+    in_channels = 64 if predecessor_values is None else predecessor_values["c_out"]
     out_channels = in_channels * 2 if op_name == "ResNetBasicblock" else in_channels
-    return dict(C_in=in_channels, C_out=out_channels)
+    return dict(c_in=in_channels, c_out=out_channels)
 
 
 def run_pipeline(some_architecture, some_float, some_integer, some_cat):
@@ -79,7 +79,7 @@ def run_pipeline(some_architecture, some_float, some_integer, some_cat):
 
     model = some_architecture.to_pytorch()
     model = nn.Sequential(
-        ops.Stem(base_channels, C_in=in_channels),
+        ops.Stem(base_channels, c_in=in_channels),
         model,
         nn.AdaptiveAvgPool2d(1),
         nn.Flatten(),
@@ -106,20 +106,20 @@ def run_pipeline(some_architecture, some_float, some_integer, some_cat):
 
 
 pipeline_space = dict(
-    some_architecture=neps.FunctionParameter(
+    some_architecture=neps.Function(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,
         name="pibo",
         prior=prior_distr,
     ),
-    some_float=neps.FloatParameter(
+    some_float=neps.Float(
         lower=1, upper=1000, log=True, default=900, default_confidence="medium"
     ),
-    some_integer=neps.IntegerParameter(
+    some_integer=neps.Integer(
         lower=0, upper=50, default=35, default_confidence="low"
     ),
-    some_cat=neps.CategoricalParameter(
+    some_cat=neps.Categorical(
         choices=["a", "b", "c"], default="a", default_confidence="high"
     ),
 )
@@ -130,5 +130,5 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/user_priors_with_graphs",
     max_evaluations_total=15,
-    log_prior_weighted=True,
+    use_priors=True,
 )

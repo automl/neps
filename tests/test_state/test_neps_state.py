@@ -2,8 +2,6 @@
 This could be generalized if we end up with a server based implementation but
 for now we're just testing the filebased implementation."""
 
-from __future__ import annotations
-
 import time
 from pathlib import Path
 from typing import Any
@@ -11,10 +9,10 @@ from typing import Any
 import pytest
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.hyperparameters import (
-    FloatParameter,
-    IntegerParameter,
-    ConstantParameter,
-    CategoricalParameter,
+    Float,
+    Integer,
+    Constant,
+    Categorical,
 )
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.filebased import (
@@ -25,53 +23,49 @@ from pytest_cases import fixture, parametrize, parametrize_with_cases, case
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.optimizers import SearcherMapping
-from neps.utils.common import MissingDependencyError
 
 
 @case
 def case_search_space_no_fid() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1),
-        b=CategoricalParameter(["a", "b", "c"]),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10),
+        a=Float(0, 1),
+        b=Categorical(["a", "b", "c"]),
+        c=Constant("a"),
+        d=Integer(0, 10),
     )
 
 
 @case
 def case_search_space_with_fid() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1),
-        b=CategoricalParameter(["a", "b", "c"]),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10),
-        e=IntegerParameter(1, 10, is_fidelity=True),
+        a=Float(0, 1),
+        b=Categorical(["a", "b", "c"]),
+        c=Constant("a"),
+        d=Integer(0, 10),
+        e=Integer(1, 10, is_fidelity=True),
     )
 
 
 @case
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1, default=0.5),
-        b=CategoricalParameter(["a", "b", "c"], default="a"),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10, default=5),
+        a=Float(0, 1, default=0.5),
+        b=Categorical(["a", "b", "c"], default="a"),
+        c=Constant("a"),
+        d=Integer(0, 10, default=5),
     )
 
 
 @case
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=FloatParameter(0, 1, default=0.5),
-        b=CategoricalParameter(["a", "b", "c"], default="a"),
-        c=ConstantParameter("a"),
-        d=IntegerParameter(0, 10, default=5),
-        e=IntegerParameter(1, 10, is_fidelity=True),
+        a=Float(0, 1, default=0.5),
+        b=Categorical(["a", "b", "c"], default="a"),
+        c=Constant("a"),
+        d=Integer(0, 10, default=5),
+        e=Integer(1, 10, is_fidelity=True),
     )
 
-
-# See issue #118
-NON_INSTANTIABLE_SEARCH_SPACES_WITHOUT_SPECIFIC_KWARGS = "assisted_regularized_evolution"
 
 # See issue #121
 JUST_SKIP = [
@@ -81,6 +75,10 @@ JUST_SKIP = [
 #
 OPTIMIZER_FAILS_WITH_FIDELITY = [
     "random_search",
+    "bayesian_optimization",
+    "pibo",
+    "cost_cooling_bayesian_optimization",
+    "cost_cooling",
 ]
 
 # There's no programattic way to check if a class requires a fidelity.
@@ -93,33 +91,36 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "hyperband",
     "hyperband_custom_default",
     "priorband",
+    "priorband_bo",
     "mobster",
     "mf_ei_bo",
+    "priorband_asha",
+    "ifbo",
+    "priorband_asha_hyperband",
 ]
 OPTIMIZER_REQUIRES_BUDGET = [
     "successive_halving_prior",
     "hyperband_custom_default",
     "asha",
     "priorband",
+    "priorband_bo",
+    "priorband_asha",
+    "priorband_asha_hyperband",
     "hyperband",
     "asha_prior",
     "mobster",
 ]
 REQUIRES_PRIOR = {
     "priorband",
+    "priorband_bo",
+    "priorband_asha",
+    "priorband_asha_hyperband",
 }
 REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
 
 @fixture
-@parametrize(
-    "key",
-    [
-        k
-        for k in SearcherMapping.keys()
-        if k not in NON_INSTANTIABLE_SEARCH_SPACES_WITHOUT_SPECIFIC_KWARGS
-    ],
-)
+@parametrize("key", [k for k in SearcherMapping.keys()])
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
 def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimizer, str]:
     if key in JUST_SKIP:
@@ -128,11 +129,12 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].default is None:
         pytest.xfail(f"{key} requires a prior")
 
-    if search_space.has_fidelity and key in OPTIMIZER_FAILS_WITH_FIDELITY:
+    if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
         pytest.xfail(f"{key} crashed with a fidelity")
 
-    if key in OPTIMIZER_REQUIRES_FIDELITY and not search_space.has_fidelity:
+    if key in OPTIMIZER_REQUIRES_FIDELITY and not len(search_space.fidelities) > 0:
         pytest.xfail(f"{key} requires a fidelity parameter")
+
     kwargs: dict[str, Any] = {
         "pipeline_space": search_space,
     }
@@ -141,10 +143,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
 
     optimizer_cls = SearcherMapping[key]
 
-    try:
-        return optimizer_cls(**kwargs), key
-    except MissingDependencyError as e:
-        pytest.xfail(f"{key} requires {e.dep} to run.")
+    return optimizer_cls(**kwargs), key
 
 
 @parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])

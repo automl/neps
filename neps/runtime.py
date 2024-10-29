@@ -7,18 +7,15 @@ import logging
 import os
 import shutil
 import time
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
-    Iterable,
-    Iterator,
     Literal,
-    Mapping,
     TypeVar,
 )
 
@@ -46,11 +43,10 @@ def _default_worker_name() -> str:
     return f"{os.getpid()}-{isoformat}"
 
 
-N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 10
+N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 0
 N_FAILED_TO_SET_TRIAL_STATE = 10
 
 Loc = TypeVar("Loc")
-
 
 # NOTE: As each NEPS process is only ever evaluating a single trial, this global can
 # be retrieved in NePS and refers to what this process is currently evaluating.
@@ -93,6 +89,14 @@ def get_in_progress_trial() -> Trial:
     return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
 
 
+_TRIAL_END_CALLBACKS: dict[str, Callable[[Trial], None]] = {}
+
+
+def register_notify_trial_end(key: str, callback: Callable[[Trial], None]) -> None:
+    """Register a callback to be called when a trial ends."""
+    _TRIAL_END_CALLBACKS[key] = callback
+
+
 @contextmanager
 def _set_global_trial(trial: Trial) -> Iterator[None]:
     global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
@@ -107,6 +111,8 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
     yield
+    for _key, callback in _TRIAL_END_CALLBACKS.items():
+        callback(trial)
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
 
 
@@ -388,7 +394,7 @@ class DefaultWorker(Generic[Loc]):
                 _repeated_fail_get_next_trial_count = 0
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
-                logger.error(
+                logger.debug(
                     "Error while trying to get the next trial to evaluate.", exc_info=True
                 )
 
@@ -469,7 +475,6 @@ class DefaultWorker(Generic[Loc]):
                 _error_from_evaluation = report.err
 
             self.state.report_trial_evaluation(
-                optimizer=self.optimizer,
                 trial=evaluated_trial,
                 report=report,
                 worker_id=self.worker_id,
@@ -513,9 +518,12 @@ def _launch_runtime(  # noqa: PLR0913
         optimizer_info=OptimizerInfo(optimizer_info),
         optimizer_state=OptimizationState(
             budget=(
-                BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
-                if max_cost_total is not None
-                else None
+                BudgetInfo(
+                    max_cost_budget=max_cost_total,
+                    used_cost_budget=0,
+                    max_evaluations=max_evaluations_total,
+                    used_evaluations=0,
+                )
             ),
             shared_state={},  # TODO: Unused for the time being...
         ),

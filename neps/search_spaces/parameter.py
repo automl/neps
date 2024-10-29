@@ -6,11 +6,6 @@ set or empty, in which case it is `None`.
 
 !!! tip
 
-    A `Parameter` which allows for mutations and crossovers should implement
-    the [`MutatableParameter`][neps.search_spaces.MutatableParameter] protocol.
-
-!!! tip
-
     A `Parameter` which allows for defining a
     [`.default`][neps.search_spaces.Parameter.default] and some prior,
     i.e. some default value along with a confidence that this is a good setting,
@@ -23,8 +18,9 @@ set or empty, in which case it is `None`.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Generic, Mapping, TypeVar, runtime_checkable
-from typing_extensions import Protocol, Self
+from collections.abc import Mapping
+from typing import Any, ClassVar, Generic, TypeVar
+from typing_extensions import Self
 
 ValueT = TypeVar("ValueT")
 SerializedT = TypeVar("SerializedT")
@@ -72,6 +68,9 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
             self.value_to_normalized(value) if value is not None else None
         )
 
+        # TODO: Pass in through subclasses
+        self.default_confidence_score: float
+
     # TODO(eddiebergman): All this does is just check values which highly unlikely
     # what we want. However this needs to be tackled in a seperate PR.
     #
@@ -83,7 +82,7 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
             return NotImplemented
 
         if self.value is not None and other.value is not None:
-            return self.serialize_value(self.value) == self.serialize_value(other.value)
+            return self.value == other.value
 
         return False
 
@@ -115,17 +114,6 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         """Sample a new value."""
 
     @abstractmethod
-    def set_default(self, default: ValueT | None) -> None:
-        """Set the default value for the hyperparameter.
-
-        The `default=` is used as a prior and used to inform
-        algorithms about a decent default value for the hyperparameter.
-
-        Args:
-            default: default value for the hyperparameter.
-        """
-
-    @abstractmethod
     def set_value(self, value: ValueT | None) -> None:
         """Set the value for the hyperparameter.
 
@@ -141,10 +129,10 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         but roughly refers to numeric values.
 
         * `(0, 1)` scaling in the case of
-            a [`NumericalParameter`][neps.search_spaces.NumericalParameter],
-        * `{0.0, 1.0}` for a [`ConstantParameter`][neps.search_spaces.ConstantParameter],
+            a [`Numerical`][neps.search_spaces.Numerical],
+        * `{0.0, 1.0}` for a [`Constant`][neps.search_spaces.Constant],
         * `[0, 1, ..., n]` for a
-            [`Categorical`][neps.search_spaces.CategoricalParameter].
+            [`Categorical`][neps.search_spaces.Categorical].
 
         Args:
             value: value to convert.
@@ -164,45 +152,13 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
             The value.
         """
 
-    @abstractmethod
-    def _get_non_unique_neighbors(
-        self,
-        num_neighbours: int,
-        *,
-        std: float = 0.2,
-    ) -> list[Self]: ...
-
-    def _get_single_neighbor(self, *, std: float = 0.2) -> Self:
-        """Override this if a faster implementation is possible."""
-        return self._get_non_unique_neighbors(num_neighbours=1, std=std)[0]
-
-    @classmethod
-    @abstractmethod
-    def serialize_value(cls, value: ValueT) -> SerializedT:
-        """Ensure the hyperparameter value is in a serializable format.
-
-
-        Returns:
-            A serializable version of the hyperparameter value
-        """
-
-    @classmethod
-    @abstractmethod
-    def deserialize_value(cls, value: SerializedT) -> ValueT:
-        """Deserialize a serialized value into the hyperparameter's value.
-
-        Args:
-            value: value to deserialize.
-        """
-
-    def load_from(self, value: SerializedT) -> None:
+    def load_from(self, value: Any) -> None:
         """Load a serialized value into the hyperparameter's value.
 
         Args:
             value: value to load.
         """
-        deserialized_value = self.deserialize_value(value)
-        self.set_value(deserialized_value)
+        self.set_value(value)
 
 
 class ParameterWithPrior(Parameter[ValueT, SerializedT]):
@@ -221,15 +177,6 @@ class ParameterWithPrior(Parameter[ValueT, SerializedT]):
     default_confidence_score: float
     has_prior: bool
 
-    @abstractmethod
-    def compute_prior(self, *, log: bool = True) -> float:
-        """Compute the likelihood of the currently set value from
-        the sampling distribution of the hyperparameter.
-
-        Args:
-            log: whether to return the log likelihood.
-        """
-
     # NOTE(eddiebergman): Like the normal `Parameter.sample` but with `user_priors`.
     @abstractmethod
     def sample_value(self, *, user_priors: bool = False) -> ValueT:
@@ -247,26 +194,6 @@ class ParameterWithPrior(Parameter[ValueT, SerializedT]):
         Returns:
             The sampled value.
         """
-
-    def set_default_confidence_score(self, default_confidence: str) -> None:
-        """Set the default confidence score for the hyperparameter.
-
-        Args:
-            default_confidence: the choice of how confident any algorithm should
-                be in the default value being a good value.
-
-        Raises:
-            ValueError: if the confidence score is not a valid choice.
-        """
-        if default_confidence not in self.DEFAULT_CONFIDENCE_SCORES:
-            cls_name = self.__class__.__name__
-            raise ValueError(
-                f"Invalid default confidence score: {default_confidence}"
-                f" for {cls_name}. Expected one of:"
-                f" {list(self.DEFAULT_CONFIDENCE_SCORES.keys())}"
-            )
-
-        self.default_confidence_score = self.DEFAULT_CONFIDENCE_SCORES[default_confidence]
 
     def sample(self, *, user_priors: bool = False) -> Self:
         """Sample a new version of this `Parameter` with a random value.
@@ -287,39 +214,3 @@ class ParameterWithPrior(Parameter[ValueT, SerializedT]):
         copy_self = self.clone()
         copy_self.set_value(value)
         return copy_self
-
-
-@runtime_checkable
-class MutatableParameter(Protocol):
-    """A protocol for hyperparameters that can be mutated.
-
-    Particpating parameters must implement the
-    [`mutate()`][neps.search_spaces.MutatableParameter.mutate] method
-    and the [`crossover()`][neps.search_spaces.MutatableParameter.crossover]
-    method.
-    """
-
-    def mutate(self, parent: Self | None = None) -> Self:
-        """Mutate the hyperparameter.
-
-        Args:
-            parent: the parent hyperparameter to mutate from.
-
-        Returns:
-            The mutated hyperparameter.
-        """
-        ...
-
-    def crossover(self, parent1: Self, parent2: Self | None = None) -> tuple[Self, Self]:
-        """Crossover the hyperparameter with another hyperparameter.
-
-        Args:
-            parent1: the first parent hyperparameter.
-            parent2: the second parent hyperparameter.
-                If left as `None`, this hyperparameter will be used as the second parent
-                to crossover with.
-
-        Returns:
-            A tuple of the two crossovered hyperparameters.
-        """
-        ...

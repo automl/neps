@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import inspect
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import networkx as nx
-from torch import nn
 
 from .cfg import Grammar
 from .cfg_variants.constrained_cfg import ConstrainedGrammar
-from .graph_grammar import GraphGrammar, GraphGrammarMultipleRepetitive
+from .graph_grammar import GraphGrammar
+
+if TYPE_CHECKING:
+    from torch import nn
 
 
 def _dict_structure_to_str(
-    structure: dict, primitives: dict, repetitive_mapping: dict = None
+    structure: dict, primitives: dict, repetitive_mapping: dict | None = None
 ) -> str:
     def _save_replace(string: str, __old: str, __new: str):
         while string.count(__old) > 0:
@@ -25,18 +27,18 @@ def _dict_structure_to_str(
     grammar = grammar.replace("(", " ")
     grammar = grammar.replace(")", "")
     grammar = grammar.replace(",", "")
-    for primitive in primitives.keys():
+    for primitive in primitives:
         grammar = _save_replace(grammar, f" {primitive} ", f' "{primitive}" ')
         grammar = _save_replace(grammar, f" {primitive}\n", f' "{primitive}"\n')
     if repetitive_mapping is not None:
-        for placeholder in repetitive_mapping.keys():
+        for placeholder in repetitive_mapping:
             grammar = _save_replace(grammar, f" {placeholder} ", f' "{placeholder}" ')
             grammar = _save_replace(grammar, f" {placeholder}\n", f' "{placeholder}"\n')
     return grammar
 
 
 def _build(graph, set_recursive_attribute):
-    in_node = [n for n in graph.nodes if graph.in_degree(n) == 0][0]
+    in_node = next(n for n in graph.nodes if graph.in_degree(n) == 0)
     for n in nx.topological_sort(graph):
         for pred in graph.predecessors(n):
             e = (pred, n)
@@ -44,20 +46,17 @@ def _build(graph, set_recursive_attribute):
             if pred == in_node:
                 predecessor_values = None
             else:
-                pred_pred = list(graph.predecessors(pred))[0]
+                pred_pred = next(iter(graph.predecessors(pred)))
                 predecessor_values = graph.edges[(pred_pred, pred)]
             graph.edges[e].update(set_recursive_attribute(op_name, predecessor_values))
 
 
-def ArchitectureParameter(**kwargs):
-    """Factory function"""
-
+def Architecture(**kwargs):
+    """Factory function."""
     if "structure" not in kwargs:
         raise ValueError("Factory function requires structure")
     if not isinstance(kwargs["structure"], list) or len(kwargs["structure"]) == 1:
         base = GraphGrammar
-    else:
-        base = GraphGrammarMultipleRepetitive
 
     class _FunctionParameter(base):
         def __init__(
@@ -71,6 +70,8 @@ def ArchitectureParameter(**kwargs):
             | dict
             | list[dict],
             primitives: dict,
+            # TODO: Follow this rabbit hole for `constraint_kwargs`,
+            # it can all be deleted my friend
             constraint_kwargs: dict | None = None,
             name: str = "ArchitectureParameter",
             set_recursive_attribute: Callable | None = None,
@@ -89,9 +90,9 @@ def ArchitectureParameter(**kwargs):
                     _dict_structure_to_str(
                         st,
                         primitives,
-                        repetitive_mapping=kwargs["terminal_to_sublanguage_map"]
-                        if "terminal_to_sublanguage_map" in kwargs
-                        else None,
+                        repetitive_mapping=kwargs.get(
+                            "terminal_to_sublanguage_map", None
+                        ),
                     )
                     if isinstance(st, dict)
                     else st
@@ -144,9 +145,7 @@ def ArchitectureParameter(**kwargs):
                 self.prune_graph()
 
                 if self._set_recursive_attribute:
-                    m = _build(
-                        self, self._set_recursive_attribute
-                    )
+                    m = _build(self, self._set_recursive_attribute)
 
                 if m is not None:
                     return m
@@ -155,16 +154,52 @@ def ArchitectureParameter(**kwargs):
                 self.update_op_names()
             return super().to_pytorch()  # create PyTorch model
 
-        def to_tensorflow(self, inputs):
-            composed_function = self.compose_functions(flatten_graph=False)
-            return composed_function(inputs)
-
         def create_new_instance_from_id(self, identifier: str):
-            g = ArchitectureParameter(**self.input_kwargs)  # type: ignore[arg-type]
+            g = Architecture(**self.input_kwargs)  # type: ignore[arg-type]
             g.load_from(identifier)
             return g
 
     return _FunctionParameter(**kwargs)
 
 
-FunctionParameter = ArchitectureParameter
+def ArchitectureParameter(**kwargs):
+    """Deprecated: Use `Architecture` instead of `ArchitectureParameter`.
+
+    This function remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+    import warnings
+
+    warnings.warn(
+        (
+            "Usage of 'neps.ArchitectureParameter' is deprecated and will be removed in"
+            " future releases. Please use 'neps.Architecture' instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    return Architecture(**kwargs)
+
+
+Function = Architecture
+
+
+def FunctionParameter(**kwargs):
+    """Deprecated: Use `Function` instead of `FunctionParameter`.
+
+    This function remains for backward compatibility and will raise a deprecation
+    warning if used.
+    """
+    import warnings
+
+    warnings.warn(
+        (
+            "Usage of 'neps.FunctionParameter' is deprecated and will be removed in"
+            " future releases. Please use 'neps.Function' instead."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    return Function(**kwargs)

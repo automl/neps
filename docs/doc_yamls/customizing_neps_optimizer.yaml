@@ -19,8 +19,3 @@ searcher:
   name: "my_bayesian"                 # optional; changing the searcher_name for better recognition
   # Specific arguments depending on the searcher
   initial_design_size: 7
-  surrogate_model: gp
-  acquisition: EI
-  acquisition_sampler: random
-  random_interleave_prob: 0.1
-

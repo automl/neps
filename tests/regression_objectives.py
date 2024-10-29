@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 import warnings
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 import numpy as np
-from typing_extensions import Literal
 
 import neps
 from neps.search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
@@ -21,9 +18,7 @@ class RegressionObjectiveBase:
     def __init__(self, optimizer: str, task: str):
         self.optimizer = optimizer
         self.task = task
-        self.has_fidelity = (self.optimizer != "regularized_evolution") and (
-            self.optimizer != "random_search"
-        )
+        self.has_fidelity = self.optimizer != "random_search"
         self._run_pipeline: Callable | None = None
         self._pipeline_space: SearchSpace | dict[str, Any] = {}
 
@@ -122,10 +117,7 @@ class JAHSObjective(RegressionObjectiveBase):
 
         self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
 
-        # For Regularized evolution sampler ignores fidelity hyperparameters
-        # by sampling None for them
-
-        self.pipeline_space["epoch"] = neps.IntegerParameter(
+        self.pipeline_space["epoch"] = neps.Integer(
             lower=1, upper=200, is_fidelity=self.has_fidelity
         )
         self.run_pipeline = self.evaluation_func()
@@ -283,11 +275,11 @@ class HartmannObjective(RegressionObjectiveBase):
             )
 
         self.pipeline_space: dict[str, Any] = {
-            f"X_{i}": neps.FloatParameter(lower=0.0, upper=1.0) for i in range(self.dim)
+            f"X_{i}": neps.Float(lower=0.0, upper=1.0) for i in range(self.dim)
         }
 
         if self.has_fidelity:
-            self.pipeline_space["z"] = neps.IntegerParameter(
+            self.pipeline_space["z"] = neps.Integer(
                 lower=self.z_min, upper=self.z_max, is_fidelity=self.has_fidelity
             )
 
