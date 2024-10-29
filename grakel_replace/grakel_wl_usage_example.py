@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import networkx as nx
-
-from weisfeiler_lehman import WeisfeilerLehman
-from utils import graph_from_networkx
+from grakel import graph_from_networkx, WeisfeilerLehman
 
 
 def visualize_graph(G):
