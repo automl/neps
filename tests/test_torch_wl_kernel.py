@@ -49,7 +49,7 @@ def test_wl_kernel_against_grakel(n_iter, normalize):
     assert torch.allclose(
         torch.tensor(torch_kernel_matrix, dtype=torch.float64),
         torch.tensor(grakel_kernel_matrix, dtype=torch.float64),
-        atol=1e-5
+        atol=1e-100
     ), f"Mismatch found in kernel matrices with n_iter={n_iter} and normalize={normalize}"
 
 
@@ -66,7 +66,7 @@ def test_kernel_symmetry():
     K = wl_kernel(graphs)
 
     # Check if the kernel matrix is symmetric
-    assert torch.allclose(K, K.T, atol=1e-5), "Kernel matrix is not symmetric"
+    assert torch.allclose(K, K.T, atol=1e-100), "Kernel matrix is not symmetric"
 
 
 def test_empty_graph():
@@ -108,4 +108,4 @@ def test_kernel_on_single_node_graph():
     # Check if a kernel matrix for identical single-node graphs is valid and symmetric
     assert K.shape == (2, 2), "Kernel matrix shape for single-node graphs is incorrect"
     assert K[0, 0] == K[1, 1], "Self-similarity for single-node graph should be the same"
-    assert torch.allclose(K, K.T, atol=1e-5), "Kernel matrix is not symmetric for single-node graph"
+    assert torch.allclose(K, K.T, atol=1e-100), "Kernel matrix is not symmetric for single-node graph"
