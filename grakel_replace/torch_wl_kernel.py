@@ -106,8 +106,9 @@ class TorchWLKernel(nn.Module):
         indices = adj.coalesce().indices()
 
         for node in range(adj.size(0)):
+            # Step 1. Get current node's label
             node_label = labels[node].item()
-            # Get indices of neighbors for current node
+            # Step 2. Get neighbor labels for current node
             neighbors = indices[1][indices[0] == node]
             neighbor_labels = sorted([labels[n].item() for n in neighbors])
 
@@ -115,8 +116,9 @@ class TorchWLKernel(nn.Module):
             if all(labels[n] == labels[node] for n in neighbors):
                 new_labels.append(node_label)
             else:
-                # Create new label from node and neighbor information
+                # Step 3. Create a new label combining node and neighbor information
                 combined_label = f"{node_label}_{neighbor_labels}"
+                # Step 4. Assign a numerical index to this new label
                 if combined_label not in self.label_dict:
                     self.label_dict[combined_label] = self.label_counter
                     self.label_counter += 1
@@ -145,11 +147,14 @@ class TorchWLKernel(nn.Module):
             feature[labels[0].item()] = len(labels)
             return feature
 
+        # Count the frequency of each label
         label_counts = Counter(labels.cpu().numpy())
+        # In the feature vector, each position represents a label
         feature = torch.zeros(size, device=self.device)
 
         for label, count in label_counts.items():
             if label < size:  # Safety check
+                # The value represents how many times that label appears in the graph
                 feature[label] = count
 
         return feature
@@ -182,6 +187,7 @@ class TorchWLKernel(nn.Module):
 
         # Convert graphs to sparse adjacency matrices and initialize labels
         adj_matrices = [self._get_sparse_adj(g) for g in graphs]
+        # Initialize node labels - either use provided labels or default to node indices
         label_tensors = [self._init_node_labels(g) for g in graphs]
 
         # Collect label tensors from all iterations
@@ -205,7 +211,7 @@ class TorchWLKernel(nn.Module):
         # Combine features from all iterations
         final_features = torch.stack(feature_matrices).sum(dim=0)
 
-        # Compute kernel matrix
+        # Compute kernel matrix (similarity matrix)
         kernel_matrix = torch.mm(final_features, final_features.t())
 
         # Apply normalization if requested
