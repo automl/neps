@@ -1,4 +1,5 @@
 import logging
+from warnings import warn
 
 import neps
 
@@ -24,6 +25,10 @@ pipeline_space_not_fidelity = dict(
 
 
 def run_pipeline(val1, val2):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(val1, val2)
+
+def evaluate_pipeline(val1, val2):
     loss = val1 * val2
     return loss
 
@@ -36,7 +41,7 @@ logging.basicConfig(level=logging.INFO)
 # Case 1: Choosing priorband
 
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space_fidelity_priors,
     root_directory="priorband_bo_user_decided",
     max_evaluations_total=1,
@@ -50,7 +55,7 @@ neps.run(
 
 # Case 1: Choosing priorband
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space_fidelity_priors,
     root_directory="priorband_neps_decided",
     max_evaluations_total=1,
@@ -60,7 +65,7 @@ neps.run(
 
 # Case 2: Choosing bayesian_optimization
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space_not_fidelity,
     root_directory="bo_neps_decided",
     max_evaluations_total=1,
@@ -68,7 +73,7 @@ neps.run(
 
 # Case 3: Choosing pibo
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space_not_fidelity_priors,
     root_directory="pibo_neps_decided",
     max_evaluations_total=1,
@@ -77,7 +82,7 @@ neps.run(
 
 # Case 4: Choosing hyperband
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space_fidelity,
     root_directory="hyperband_neps_decided",
     max_evaluations_total=1,

@@ -1,3 +1,4 @@
+from warnings import warn
 import pytest
 import neps
 from neps.utils.run_args import get_run_args_from_yaml
@@ -15,6 +16,11 @@ pipeline_space = dict(
 
 def run_pipeline():
     """func to test loading of run_pipeline"""
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline()
+
+def evaluate_pipeline():
+    """func to test loading of evaluate_pipeline"""
     return
 
 
@@ -99,7 +105,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -123,7 +129,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full_same_level.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -175,7 +181,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_optional_loading_format.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,

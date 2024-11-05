@@ -51,6 +51,7 @@ import logging
 import random
 import time
 from typing import Tuple
+from warnings import warn
 
 import numpy as np
 import torch
@@ -243,8 +244,13 @@ def pipeline_space() -> dict:
 #############################################################
 # Implement the pipeline run search.
 
-
 def run_pipeline(lr, optim, weight_decay):
+    # Deprecated function, use evaluate_pipeline instead
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(lr, optim, weight_decay)
+
+
+def evaluate_pipeline(lr, optim, weight_decay):
     # Create the network model.
     model = MLP()
 
@@ -351,7 +357,7 @@ if __name__ == "__main__":
     # tblogger.get_status()
 
     run_args = dict(
-        run_pipeline=run_pipeline,
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space(),
         root_directory="results/neps_tblogger_example",
         searcher="random_search",

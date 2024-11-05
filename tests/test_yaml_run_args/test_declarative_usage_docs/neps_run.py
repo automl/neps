@@ -1,10 +1,15 @@
 import argparse
+from warnings import warn
 import neps
 import numpy as np
 
 
 def run_pipeline_constant(learning_rate, optimizer, epochs, batch_size):
-    """func for test loading of run_pipeline"""
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline_constant(learning_rate, optimizer, epochs, batch_size)
+
+def evaluate_pipeline_constant(learning_rate, optimizer, epochs, batch_size):
+    """func for test loading of evaluate_pipeline"""
     if optimizer == "a":
         eval_score = np.random.choice([learning_rate, epochs], 1)
     else:
@@ -22,6 +27,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.run_pipeline:
-        neps.run(run_args=args.run_args, run_pipeline=run_pipeline_constant)
+        neps.run(run_args=args.run_args, evaluate_pipeline=run_pipeline_constant)
     else:
         neps.run(run_args=args.run_args)

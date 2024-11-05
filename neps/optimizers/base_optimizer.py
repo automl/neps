@@ -28,7 +28,7 @@ def _get_loss(
             return loss_value_on_error
 
         raise ValueError(
-            "An error happened during the execution of your run_pipeline function."
+            "An error happened during the execution of your evaluate_pipeline function."
             " You have three options: 1. If the error is expected and corresponds to"
             " a loss value in your application (e.g., 0% accuracy), you can set"
             " loss_value_on_error to some float. 2. If sometimes your pipeline"
@@ -54,9 +54,9 @@ def _get_cost(
 
         if cost_value_on_error is None:
             raise ValueError(
-                "An error happened during the execution of your run_pipeline function."
-                " You have three options: 1. If the error is expected and corresponds to"
-                " a cost value in your application, you can set"
+                "An error happened during the execution of your evaluate_pipeline"
+                " function. You have three options: 1. If the error is expected and"
+                " corresponds to a cost value in your application, you can set"
                 " cost_value_on_error to some float. 2. If sometimes your pipeline"
                 " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
             )

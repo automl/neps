@@ -4,7 +4,7 @@ from neps.utils.run_args import Settings, Default
 import pytest
 from pathlib import Path
 from tests.test_yaml_run_args.test_yaml_run_args import (
-    run_pipeline,
+    evaluate_pipeline,
     hook1,
     hook2,
     pipeline_space,
@@ -12,7 +12,7 @@ from tests.test_yaml_run_args.test_yaml_run_args import (
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
 BASE_PATH = Path("tests") / "test_settings"
-run_pipeline = run_pipeline
+evaluate_pipeline = evaluate_pipeline
 hook1 = hook1
 hook2 = hook2
 pipeline_space = pipeline_space
@@ -25,7 +25,7 @@ my_bayesian = BayesianOptimization
     [
         (
             {  # only essential arguments provided by func_args, no yaml
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": Default(None),
@@ -46,7 +46,7 @@ my_bayesian = BayesianOptimization
             },
             Default(None),
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -88,7 +88,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_required.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -109,7 +109,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # required via func_args, optional via yaml
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": "tests/path/to/run_args",  # will be ignored by Settings
@@ -130,7 +130,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_optional.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": True,
@@ -151,7 +151,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # overwrite all yaml values
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": "test",
@@ -172,7 +172,7 @@ my_bayesian = BayesianOptimization
             },
             "overwrite_run_args.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -193,7 +193,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # optimizer args special case
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": "test",
@@ -220,7 +220,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_optimizer_settings.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -278,7 +278,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_optimizer_outside.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "run_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": True,

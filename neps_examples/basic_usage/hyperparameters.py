@@ -1,12 +1,16 @@
 import logging
+import time
+from warnings import warn
 
 import numpy as np
 
 import neps
 
+def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(float1, float2, categorical, integer1, integer2)
 
-def run_pipeline(float1, float2, categorical, integer1, integer2):
-    # In this example we maximize an arbitrary sum for demonstration purposes
+def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
     loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     return loss
 
@@ -21,7 +25,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     post_run_summary=True,

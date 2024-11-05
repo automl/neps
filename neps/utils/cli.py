@@ -20,7 +20,7 @@ from neps.status.status import post_run_csv
 import pandas as pd
 from neps.utils.run_args import (
     RUN_ARGS,
-    RUN_PIPELINE,
+    EVALUATE_PIPELINE,
     ROOT_DIRECTORY,
     POST_RUN_SUMMARY,
     MAX_EVALUATIONS_PER_RUN,
@@ -172,8 +172,8 @@ def init_config(args: argparse.Namespace) -> None:
                 file.write(
                     """# Add your NEPS configuration settings here
 
-run_pipeline:
-  path: "path/to/your/run_pipeline.py"
+evaluate_pipeline:
+  path: "path/to/your/evaluate_pipeline.py"
   name: name_of_your_pipeline_function
 
 pipeline_space:
@@ -199,8 +199,8 @@ overwrite_working_directory:
                 file.write(
                     """# Full Configuration Template for NePS
 
-run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
+evaluate_pipeline:
+  path: path/to/your/evaluate_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
 
 pipeline_space:
@@ -288,10 +288,12 @@ def run_optimization(args: argparse.Namespace) -> None:
         run_args = args.run_args
     if not isinstance(args.run_pipeline, Default):
         module_path, function_name = args.run_pipeline.split(":")
-        run_pipeline = load_and_return_object(module_path, function_name, RUN_PIPELINE)
+        evaluate_pipeline = load_and_return_object(
+            module_path, function_name, EVALUATE_PIPELINE
+        )
 
     else:
-        run_pipeline = args.run_pipeline
+        evaluate_pipeline = args.run_pipeline
 
     kwargs = {}
     if args.searcher_kwargs:
@@ -300,7 +302,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     # Collect arguments from args and prepare them for neps.run
     options = {
         RUN_ARGS: run_args,
-        RUN_PIPELINE: run_pipeline,
+        EVALUATE_PIPELINE: evaluate_pipeline,
         PIPELINE_SPACE: args.pipeline_space,
         ROOT_DIRECTORY: args.root_directory,
         OVERWRITE_WORKING_DIRECTORY: args.overwrite_working_directory,
@@ -1185,7 +1187,7 @@ def main() -> None:
         type=str,
         help="Optional: Provide the path to a Python file and a function name separated "
         "by a colon, e.g., 'path/to/module.py:function_name'. "
-        "If provided, it overrides the run_pipeline setting from the YAML "
+        "If provided, it overrides the evaluate_pipeline setting from the YAML "
         "configuration.",
         default=Default(None),
     )
@@ -1210,7 +1212,7 @@ def main() -> None:
         action="store_true",
         default=Default(False),  # noqa: FBT003
         help="If set, deletes the working directory at the start of the run. "
-        "This is useful, for example, when debugging a run_pipeline function. "
+        "This is useful, for example, when debugging a evaluate_pipeline function. "
         "(default: %(default)s)",
     )
     parser_run.add_argument(
@@ -1266,7 +1268,7 @@ def main() -> None:
         type=float,
         default=Default(None),
         help="No new evaluations will start when this cost is exceeded. Requires "
-        "returning a cost in the run_pipeline function, e.g., `return dict("
+        "returning a cost in the evaluate_pipeline function, e.g., `return dict("
         "loss=loss, cost=cost)`. (default: %(default)s)",
     )
     parser_run.add_argument(
