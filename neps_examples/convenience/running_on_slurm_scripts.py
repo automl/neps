@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from pathlib import Path
+from warnings import warn
 
 import neps
 
@@ -27,8 +28,13 @@ def _get_validation_error(pipeline_directory: Path):
         return float(validation_error_file.read_text())
     return None
 
-
 def run_pipeline_via_slurm(
+    pipeline_directory: Path, optimizer: str, learning_rate: float
+):
+    warn("run_pipeline_via_slurm is deprecated, use evaluate_pipeline_via_slurm instead", DeprecationWarning)
+    return evaluate_pipeline_via_slurm(pipeline_directory, optimizer, learning_rate)
+
+def evaluate_pipeline_via_slurm(
     pipeline_directory: Path, optimizer: str, learning_rate: float
 ):
     script = f"""#!/bin/bash
@@ -58,7 +64,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline_via_slurm,
+    evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=pipeline_space,
     root_directory="results/slurm_script_example",
     max_evaluations_total=5,

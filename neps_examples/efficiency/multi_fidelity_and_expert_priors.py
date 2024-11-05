@@ -1,4 +1,5 @@
 import logging
+from warnings import warn
 
 import numpy as np
 
@@ -6,6 +7,10 @@ import neps
 
 
 def run_pipeline(float1, float2, integer1, fidelity):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(float1, float2, integer1, fidelity)
+
+def evaluate_pipeline(float1, float2, integer1, fidelity):
     loss = -float(np.sum([float1, float2, integer1])) / fidelity
     return loss
 
@@ -25,7 +30,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multifidelity_priors",
     max_evaluations_total=25,  # For an alternate stopping method see multi_fidelity.py

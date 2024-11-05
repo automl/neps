@@ -1,5 +1,6 @@
 import logging
 import time
+from warnings import warn
 
 from torch import nn
 
@@ -70,6 +71,10 @@ def set_recursive_attribute(op_name, predecessor_values):
 
 
 def run_pipeline(some_architecture, some_float, some_integer, some_cat):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(some_architecture, some_float, some_integer, some_cat)
+
+def evaluate_pipeline(some_architecture, some_float, some_integer, some_cat):
     start = time.time()
 
     in_channels = 3
@@ -126,7 +131,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/user_priors_with_graphs",
     max_evaluations_total=15,

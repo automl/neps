@@ -1,10 +1,14 @@
 import logging
 import time
+from warnings import warn
 
 import neps
 
-
 def run_pipeline(some_float, some_integer, some_cat):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(some_float, some_integer, some_cat)
+
+def evaluate_pipeline(some_float, some_integer, some_cat):
     start = time.time()
     if some_cat != "a":
         y = some_float + some_integer
@@ -36,7 +40,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/user_priors_example",
     max_evaluations_total=15,

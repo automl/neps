@@ -65,9 +65,9 @@ def get_workers_neps_state() -> NePSState[Path]:
     if _WORKER_NEPS_STATE is None:
         raise RuntimeError(
             "The worker's NePS state has not been set! This should only be called"
-            " from within a `run_pipeline` context. If you are not running a pipeline"
-            " and you did not call this function (`get_workers_neps_state`) yourself,"
-            " this is a bug and should be reported to NePS."
+            " from within a `evaluate_pipeline` context. If you are not running a"
+            " pipeline and you did not call this function (`get_workers_neps_state`)"
+            " yourself, this is a bug and should be reported to NePS."
         )
     return _WORKER_NEPS_STATE
 
@@ -82,9 +82,9 @@ def get_in_progress_trial() -> Trial:
     if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is None:
         raise RuntimeError(
             "The worker's NePS state has not been set! This should only be called"
-            " from within a `run_pipeline` context. If you are not running a pipeline"
-            " and you did not call this function (`get_workers_neps_state`) yourself,"
-            " this is a bug and should be reported to NePS."
+            " from within a `evaluate_pipeline` context. If you are not running a"
+            " pipeline and you did not call this function (`get_workers_neps_state`)"
+            " yourself, this is a bug and should be reported to NePS."
         )
     return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
 

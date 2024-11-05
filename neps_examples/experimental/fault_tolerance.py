@@ -2,6 +2,7 @@
 """
 
 import logging
+from warnings import warn
 
 import torch
 import torch.nn.functional as F
@@ -40,6 +41,10 @@ def get_model_and_optimizer(learning_rate):
 
 
 def run_pipeline(pipeline_directory, learning_rate):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(pipeline_directory, learning_rate)
+
+def evaluate_pipeline(pipeline_directory, learning_rate):
     model, optimizer = get_model_and_optimizer(learning_rate)
     checkpoint_path = pipeline_directory / "checkpoint.pth"
 
@@ -83,7 +88,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/fault_tolerance_example",
     max_evaluations_total=15,

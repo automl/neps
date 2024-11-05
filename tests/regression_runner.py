@@ -131,7 +131,7 @@ class RegressionRunner:
 
     def neps_run(self, working_directory: Path):
         neps.run(
-            run_pipeline=self.objective,
+            evaluate_pipeline=self.objective,
             pipeline_space=self.pipeline_space,
             searcher=self.optimizer,
             max_cost_total=self.budget,

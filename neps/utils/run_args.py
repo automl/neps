@@ -20,7 +20,7 @@ logger = logging.getLogger("neps")
 
 # Define the name of the arguments as variables for easier code maintenance
 RUN_ARGS = "run_args"
-RUN_PIPELINE = "run_pipeline"
+EVALUATE_PIPELINE = "run_pipeline"
 PIPELINE_SPACE = "pipeline_space"
 ROOT_DIRECTORY = "root_directory"
 MAX_EVALUATIONS_TOTAL = "max_evaluations_total"
@@ -159,7 +159,7 @@ def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, 
     """
     if special_keys is None:
         special_keys = {
-            RUN_PIPELINE: None,
+            EVALUATE_PIPELINE: None,
             PRE_LOAD_HOOKS: None,
             SEARCHER: None,
             PIPELINE_SPACE: None,
@@ -194,7 +194,7 @@ def handle_special_argument_cases(settings: dict, special_configs: dict) -> None
 
     """
     # process special configs
-    process_run_pipeline(RUN_PIPELINE, special_configs, settings)
+    process_evaluate_pipeline(EVALUATE_PIPELINE, special_configs, settings)
     process_pipeline_space(PIPELINE_SPACE, special_configs, settings)
     process_searcher(SEARCHER, special_configs, settings)
 
@@ -284,7 +284,7 @@ def process_searcher(key: str, special_configs: dict, settings: dict) -> None:
         settings[key] = searcher
 
 
-def process_run_pipeline(key: str, special_configs: dict, settings: dict) -> None:
+def process_evaluate_pipeline(key: str, special_configs: dict, settings: dict) -> None:
     """Processes the run pipeline configuration and updates the settings dictionary.
 
     Args:
@@ -405,7 +405,7 @@ def check_run_args(settings: dict) -> None:
     # [task_id, development_stage_id, pre_load_hooks] require special handling of type,
     # that's why they are not listed
     expected_types = {
-        RUN_PIPELINE: Callable,
+        EVALUATE_PIPELINE: Callable,
         ROOT_DIRECTORY: str,
         # TODO: Support CS.ConfigurationSpace for pipeline_space
         PIPELINE_SPACE: (str, dict),
@@ -447,7 +447,7 @@ def check_run_args(settings: dict) -> None:
 
 
 def check_essential_arguments(
-    run_pipeline: Callable | None,
+    evaluate_pipeline: Callable | None,
     root_directory: str | None,
     pipeline_space: dict | None,
     max_cost_total: int | None,
@@ -456,13 +456,13 @@ def check_essential_arguments(
 ) -> None:
     """Validates essential NePS configuration arguments.
 
-    Ensures 'run_pipeline', 'root_directory', 'pipeline_space', and either
+    Ensures 'evaluate_pipeline', 'root_directory', 'pipeline_space', and either
     'max_cost_total' or 'max_evaluations_total' are provided for NePS execution.
     Raises ValueError with missing argument details. Additionally, checks 'searcher'
     is a BaseOptimizer if 'pipeline_space' is absent.
 
     Args:
-        run_pipeline: Function for the pipeline execution.
+        evaluate_pipeline: Function for the pipeline execution.
         root_directory (str): Directory path for data storage.
         pipeline_space: search space for this run.
         max_cost_total: Max allowed total cost for experiments.
@@ -472,8 +472,8 @@ def check_essential_arguments(
     Raises:
         ValueError: Missing or invalid essential arguments.
     """
-    if not run_pipeline:
-        raise ValueError("'run_pipeline' is required but was not provided.")
+    if not evaluate_pipeline:
+        raise ValueError("'evaluate_pipeline' is required but was not provided.")
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
     if not pipeline_space and not isinstance(searcher, BaseOptimizer):
@@ -515,7 +515,7 @@ class Settings:
         func_args (dict): The function arguments directly passed to NePS.
         yaml_args (dict | None): Optional. YAML file arguments provided via run_args.
         """
-        self.run_pipeline = UNSET
+        self.evaluate_pipeline = UNSET
         self.root_directory = UNSET
         self.pipeline_space = UNSET
         self.overwrite_working_directory = UNSET
@@ -598,7 +598,7 @@ class Settings:
                 f"{', '.join(unassigned_attributes)}"
             )
         check_essential_arguments(
-            self.run_pipeline,  # type: ignore
+            self.evaluate_pipeline,  # type: ignore
             self.root_directory,  # type: ignore
             self.pipeline_space,  # type: ignore
             self.max_cost_total,  # type: ignore

@@ -44,6 +44,7 @@ import random
 import time
 from pathlib import Path
 from typing import Tuple
+from warnings import warn
 
 import lightning as L
 import numpy as np
@@ -264,8 +265,17 @@ def search_space() -> dict:
 #############################################################
 # Define the run pipeline function
 
+def run_pipeline(pipeline_directory, previous_pipeline_directory, **config):
+    # Deprecated function, use evaluate_pipeline instead
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(
+        pipeline_directory,
+        previous_pipeline_directory,
+        **config,
+    )
 
-def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
+
+def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
     # Initialize the first directory to store the event and checkpoints files
     init_dir = get_initial_directory(pipeline_directory)
     checkpoint_dir = init_dir / "checkpoints"
@@ -348,7 +358,7 @@ if __name__ == "__main__":
 
     # Run NePS with specified parameters
     neps.run(
-        run_pipeline=run_pipeline,
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=search_space(),
         root_directory="results/hyperband",
         max_evaluations_total=args.max_evaluations_total,

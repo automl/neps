@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def run(
-    run_pipeline: Callable | None = Default(None),
+    evaluate_pipeline: Callable | None = Default(None),
     root_directory: str | Path | None = Default(None),
     pipeline_space: (
         dict[str, Parameter] | str | Path | CS.ConfigurationSpace | None
@@ -68,14 +68,14 @@ def run(
         the multiple calls to run(.) will be independent.
 
     Args:
-        run_pipeline: The objective function to minimize.
+        evaluate_pipeline: The objective function to minimize.
         pipeline_space: The search space to minimize over.
         root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         run_args: An option for providing the optimization settings e.g.
             max_evaluations_total in a YAML file.
         overwrite_working_directory: If true, delete the working directory at the start of
-            the run. This is, e.g., useful when debugging a run_pipeline function.
+            the run. This is, e.g., useful when debugging a evaluate_pipeline function.
         post_run_summary: If True, creates a csv file after each worker is done,
             holding summary information about the configs and results.
         development_stage_id: ID for the current development stage. Only needed if
@@ -89,7 +89,7 @@ def run(
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
         max_cost_total: No new evaluations will start when this cost is exceeded. Requires
-            returning a cost in the run_pipeline function, e.g.,
+            returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards max_evaluations_total.
@@ -111,7 +111,7 @@ def run(
     Example:
         >>> import neps
 
-        >>> def run_pipeline(some_parameter: float):
+        >>> def evaluate_pipeline(some_parameter: float):
         >>>    validation_error = -some_parameter
         >>>    return validation_error
 
@@ -119,7 +119,7 @@ def run(
 
         >>> logging.basicConfig(level=logging.INFO)
         >>> neps.run(
-        >>>    run_pipeline=run_pipeline,
+        >>>    evaluate_pipeline=evaluate_pipeline,
         >>>    pipeline_space=pipeline_space,
         >>>    root_directory="usage_example",
         >>>    max_evaluations_total=5,
@@ -223,7 +223,7 @@ def run(
         )
 
     _launch_runtime(
-        evaluation_fn=settings.run_pipeline,
+        evaluation_fn=settings.evaluate_pipeline,
         optimizer=searcher_instance,
         optimizer_info=searcher_info,
         max_cost_total=settings.max_cost_total,

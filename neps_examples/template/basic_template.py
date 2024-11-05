@@ -10,7 +10,7 @@ The 2 crucial components are:
 * The search space, called the `pipeline_space` in NePS
   * This defines the set of hyperparameters that the optimizer will search over
   * This declaration also allows injecting priors in the form of defaults per hyperparameter
-* The `run_pipeline` function
+* The `evaluate_pipeline` function
   * This function is called by the optimizer and is responsible for running the pipeline
   * The function should at the minimum expect the hyperparameters as keyword arguments
   * The function should return the loss of the pipeline as a float
@@ -20,11 +20,12 @@ The 2 crucial components are:
 Overall, running an optimizer from NePS involves 4 clear steps:
 1. Importing neccessary packages including neps.
 2. Designing the search space as a dictionary.
-3. Creating the run_pipeline and returning the loss and other wanted metrics.
+3. Creating the evaluate_pipeline and returning the loss and other wanted metrics.
 4. Using neps run with the optimizer of choice.
 """
 
 import logging
+from warnings import warn
 
 import neps
 
@@ -45,8 +46,11 @@ def pipeline_space() -> dict:
     )
     return space
 
-
 def run_pipeline(**config) -> dict | float:
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(**config)
+
+def evaluate_pipeline(**config) -> dict | float:
     # Run pipeline should include the following steps:
 
     # 1. Defining the model.
@@ -74,7 +78,7 @@ if __name__ == "__main__":
     # https://github.com/automl/neps/tree/master/neps/optimizers/README.md
 
     neps.run(
-        run_pipeline=run_pipeline,        # User TODO (defined above)
+        evaluate_pipeline=evaluate_pipeline,        # User TODO (defined above)
         pipeline_space=pipeline_space(),  # User TODO (defined above)
         root_directory="results",
         max_evaluations_total=10,

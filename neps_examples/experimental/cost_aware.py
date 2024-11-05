@@ -1,13 +1,18 @@
 import logging
 import time
+from warnings import warn
 
 import numpy as np
 
 import neps
 
 
-def run_pipeline(
-    pipeline_directory, float1, float2, categorical, integer1, integer2
+def run_pipeline(float1, float2, categorical, integer1, integer2):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(float1, float2, categorical, integer1, integer2)
+
+def evaluate_pipeline(
+    float1, float2, categorical, integer1, integer2
 ):
     start = time.time()
     y = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
@@ -30,7 +35,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/cost_aware_example",
     searcher="cost_cooling",

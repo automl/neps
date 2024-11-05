@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from warnings import warn
 
 import numpy as np
 
@@ -7,6 +8,10 @@ import neps
 
 
 def run_pipeline(pipeline_directory: Path, float1, categorical, integer1):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(pipeline_directory, float1, categorical, integer1)
+
+def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
     # When adding pipeline_directory to run_pipeline, neps detects its presence and
     # passes a directory unique for each pipeline configuration. You can then use this
     # pipeline_directory to create / save files pertaining to a specific pipeline, e.g.:
@@ -25,7 +30,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/working_directory_per_pipeline",
     max_evaluations_total=5,

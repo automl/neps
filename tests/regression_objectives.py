@@ -39,6 +39,7 @@ class RegressionObjectiveBase:
 
     @property
     def run_pipeline(self) -> Callable:
+        warnings.warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
         if self._run_pipeline is None:
             raise NotImplementedError(
                 f"run_pipeline can not be None, "
@@ -48,8 +49,24 @@ class RegressionObjectiveBase:
         else:
             return self._run_pipeline
 
+    @property
+    def evaluate_pipeline(self) -> Callable:
+        if self._run_pipeline is None:
+            raise NotImplementedError(
+                f"evaluate_pipeline can not be None, "
+                f"the subclass {type(self)} must "
+                f"implement a evaluate_pipeline Callable"
+            )
+        else:
+            return self._run_pipeline
+
     @run_pipeline.setter
     def run_pipeline(self, value):
+        warnings.warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+        self._run_pipeline = value
+
+    @evaluate_pipeline.setter
+    def evaluate_pipeline(self, value):
         self._run_pipeline = value
 
     def __call__(self, *args, **kwargs) -> dict[str, Any]:

@@ -1,3 +1,4 @@
+from warnings import warn
 import argparse
 import numpy as np
 import neps
@@ -5,6 +6,11 @@ import neps
 
 def run_pipeline(learning_rate, epochs, optimizer, batch_size):
     """func for test loading of run_pipeline"""
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(learning_rate, epochs, optimizer, batch_size)
+
+def evaluate_pipeline(learning_rate, epochs, optimizer, batch_size):
+    """func for test loading of evaluate_pipeline"""
     if optimizer == "a":
         eval_score = np.random.choice([learning_rate, epochs], 1)
     else:

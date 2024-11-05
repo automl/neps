@@ -1,4 +1,5 @@
 import logging
+from warnings import warn
 
 import numpy as np
 import torch
@@ -43,6 +44,10 @@ def get_model_and_optimizer(learning_rate):
 
 
 def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch)
+
+def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch):
     model, optimizer = get_model_and_optimizer(learning_rate)
     checkpoint_name = "checkpoint.pth"
 
@@ -79,7 +84,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multi_fidelity_example",
     # Optional: Do not start another evaluation after <=50 epochs, corresponds to cost

@@ -157,7 +157,7 @@ if __name__ == "__main__":
 
     neps.run(
         pipeline_space=pipeline_space,
-        run_pipeline=training_pipeline,
+        evaluate_pipeline=training_pipeline,
         searcher="ifbo",
         max_evaluations_total=50,
         root_directory="./debug/ifbo-mnist/",
