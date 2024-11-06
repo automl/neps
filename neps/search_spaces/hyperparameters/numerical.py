@@ -119,6 +119,12 @@ class Numerical(ParameterWithPrior[T, T]):
                 f"{default_confidence}"
             )
 
+        if is_fidelity and (lower <= 0 or upper <= 0):
+            raise ValueError(
+                f"{_cls_name} parameter: fidelity parameter bounds error (log scale "
+                f"can't have bounds <= 0). Actual values: lower={lower}, upper={upper}"
+            )
+
         # Validate 'log' and 'is_fidelity' types to prevent configuration errors
         # from the YAML input
         for param, value in {"log": log, "is_fidelity": is_fidelity}.items():

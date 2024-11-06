@@ -105,7 +105,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.sample_default_first = sample_default_first
         self.sample_default_at_target = sample_default_at_target
 
-        assert self.pipeline_space.fidelity is not None
+        assert self.pipeline_space.fidelity is not None, "Fidelity parameter not set."
         self.min_budget = self.pipeline_space.fidelity.lower
         self.max_budget = self.pipeline_space.fidelity.upper
         self.eta = eta
