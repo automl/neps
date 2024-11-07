@@ -43,7 +43,7 @@ class GraphParameter(  # noqa: D101
     # Essentially on the outside, we need to ensure we don't pass ih the graph object
     # itself
     DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {"not_in_use": 1.0}
-    default_confidence_choice = "not_in_use"
+    prior_confidence_choice = "not_in_use"
     has_prior: bool
     input_kwargs: dict[str, Any]
 
@@ -186,7 +186,7 @@ class GraphGrammar(GraphParameter, CoreGraphGrammar):
             scope=scope,
             **kwargs,
         )
-        GraphParameter.__init__(self, value=None, default=None, is_fidelity=False)
+        GraphParameter.__init__(self, value=None, prior=None, is_fidelity=False)
 
         self.string_tree: str = ""
         self._function_id: str = ""

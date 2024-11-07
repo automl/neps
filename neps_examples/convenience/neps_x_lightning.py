@@ -252,11 +252,11 @@ def search_space() -> dict:
     space = dict(
         data_dir=neps.Constant("./data"),
         batch_size=neps.Constant(64),
-        lr=neps.Float(lower=1e-5, upper=1e-2, log=True, default=1e-3),
+        lr=neps.Float(lower=1e-5, upper=1e-2, log=True, prior=1e-3),
         weight_decay=neps.Float(
-            lower=1e-5, upper=1e-3, log=True, default=5e-4
+            lower=1e-5, upper=1e-3, log=True, prior=5e-4
         ),
-        optimizer=neps.Categorical(choices=["Adam", "SGD"], default="Adam"),
+        optimizer=neps.Categorical(choices=["Adam", "SGD"], prior="Adam"),
         epochs=neps.Integer(lower=1, upper=9, log=False, is_fidelity=True),
     )
     return space

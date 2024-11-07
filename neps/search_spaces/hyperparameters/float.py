@@ -51,8 +51,8 @@ class Float(Numerical[float]):
         *,
         log: bool = False,
         is_fidelity: bool = False,
-        default: Number | None = None,
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior: Number | None = None,
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Create a new `Float`.
 
@@ -61,16 +61,16 @@ class Float(Numerical[float]):
             upper: upper bound for the hyperparameter.
             log: whether the hyperparameter is on a log scale.
             is_fidelity: whether the hyperparameter is fidelity.
-            default: default value for the hyperparameter.
-            default_confidence: confidence score for the default value, used when
+            prior: prior value for the hyperparameter.
+            prior_confidence: confidence score for the prior value, used when
                 condsidering prior based optimization..
         """
         super().__init__(
             lower=float(lower),
             upper=float(upper),
             log=log,
-            default=float(default) if default is not None else None,
-            default_confidence=default_confidence,
+            prior=float(prior) if prior is not None else None,
+            prior_confidence=prior_confidence,
             is_fidelity=is_fidelity,
             domain=Domain.floating(lower, upper, log=log),
         )
@@ -82,8 +82,8 @@ class Float(Numerical[float]):
             upper=self.upper,
             log=self.log,
             is_fidelity=self.is_fidelity,
-            default=self.default,
-            default_confidence=self.default_confidence_choice,
+            prior=self.prior,
+            prior_confidence=self.prior_confidence_choice,
         )
         if self.value is not None:
             clone.set_value(self.value)
@@ -100,7 +100,7 @@ class Float(Numerical[float]):
         if not self.lower <= value <= self.upper:
             cls_name = self.__class__.__name__
             raise ValueError(
-                f"{cls_name} parameter: default bounds error. Expected lower <= default"
+                f"{cls_name} parameter: prior bounds error. Expected lower <= prior"
                 f" <= upper, but got lower={self.lower}, value={value},"
                 f" upper={self.upper}"
             )
@@ -114,13 +114,13 @@ class Float(Numerical[float]):
         if self.log:
             assert self.log_bounds is not None
             low, high = self.log_bounds
-            default = self.log_default
+            prior = self.log_prior
         else:
-            low, high, default = self.lower, self.upper, self.default
+            low, high, prior = self.lower, self.upper, self.prior
 
         if user_priors and self.has_prior:
             dist, std = self._get_truncnorm_prior_and_std()
-            value = dist.rvs() * std + default
+            value = dist.rvs() * std + prior
         else:
             value = np.random.uniform(low=low, high=high)
 
@@ -171,8 +171,8 @@ class FloatParameter(Float):
         *,
         log: bool = False,
         is_fidelity: bool = False,
-        default: Number | None = None,
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior: Number | None = None,
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize a deprecated `FloatParameter`.
 
@@ -181,8 +181,8 @@ class FloatParameter(Float):
             upper: upper bound for the hyperparameter.
             log: whether the hyperparameter is on a log scale.
             is_fidelity: whether the hyperparameter is fidelity.
-            default: default value for the hyperparameter.
-            default_confidence: confidence score for the default value, used when
+            prior: prior value for the hyperparameter.
+            prior_confidence: confidence score for the prior value, used when
                 condsidering prior based optimization..
 
         Raises:
@@ -204,6 +204,6 @@ class FloatParameter(Float):
             upper=upper,
             log=log,
             is_fidelity=is_fidelity,
-            default=default,
-            default_confidence=default_confidence,
+            prior=prior,
+            prior_confidence=prior_confidence,
         )

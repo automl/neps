@@ -47,8 +47,8 @@ class Integer(Numerical[int]):
         *,
         log: bool = False,
         is_fidelity: bool = False,
-        default: Number | None = None,
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior: Number | None = None,
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Create a new `Integer`.
 
@@ -57,8 +57,8 @@ class Integer(Numerical[int]):
             upper: upper bound for the hyperparameter.
             log: whether the hyperparameter is on a log scale.
             is_fidelity: whether the hyperparameter is fidelity.
-            default: default value for the hyperparameter.
-            default_confidence: confidence score for the default value, used when
+            prior: prior value for the hyperparameter.
+            prior_confidence: confidence score for the prior value, used when
                 condsider prior based optimization.
         """
         lower = int(np.rint(lower))
@@ -75,8 +75,8 @@ class Integer(Numerical[int]):
             upper=int(np.rint(upper)),
             log=log,
             is_fidelity=is_fidelity,
-            default=int(np.rint(default)) if default is not None else None,
-            default_confidence=default_confidence,
+            prior=int(np.rint(prior)) if prior is not None else None,
+            prior_confidence=prior_confidence,
             domain=Domain.integer(lower, upper, log=log),
         )
 
@@ -88,8 +88,8 @@ class Integer(Numerical[int]):
             upper=self.upper + 0.499999,
             log=self.log,
             is_fidelity=is_fidelity,
-            default=default,
-            default_confidence=default_confidence,
+            prior=prior,
+            prior_confidence=prior_confidence,
         )
 
     def __repr__(self) -> str:
@@ -102,8 +102,8 @@ class Integer(Numerical[int]):
             upper=self.upper,
             log=self.log,
             is_fidelity=self.is_fidelity,
-            default=self.default,
-            default_confidence=self.default_confidence_choice,
+            prior=self.prior,
+            prior_confidence=self.prior_confidence_choice,
         )
         if self.value is not None:
             clone.set_value(self.value)
@@ -125,7 +125,7 @@ class Integer(Numerical[int]):
         if not self.lower <= value <= self.upper:
             cls_name = self.__class__.__name__
             raise ValueError(
-                f"{cls_name} parameter: default bounds error. Expected lower <= default"
+                f"{cls_name} parameter: prior bounds error. Expected lower <= prior"
                 f" <= upper, but got lower={self.lower}, value={value},"
                 f" upper={self.upper}"
             )
@@ -164,8 +164,8 @@ class IntegerParameter(Integer):
         *,
         log: bool = False,
         is_fidelity: bool = False,
-        default: Number | None = None,
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior: Number | None = None,
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize a deprecated `IntegerParameter`.
 
@@ -174,8 +174,8 @@ class IntegerParameter(Integer):
             upper: upper bound for the hyperparameter.
             log: whether the hyperparameter is on a log scale.
             is_fidelity: whether the hyperparameter is fidelity.
-            default: default value for the hyperparameter.
-            default_confidence: confidence score for the default value, used when
+            prior: prior value for the hyperparameter.
+            prior_confidence: confidence score for the prior value, used when
                 condsider prior based optimization.
 
         Raises:
@@ -197,6 +197,6 @@ class IntegerParameter(Integer):
             upper=upper,
             log=log,
             is_fidelity=is_fidelity,
-            default=default,
-            default_confidence=default_confidence,
+            prior=prior,
+            prior_confidence=prior_confidence,
         )

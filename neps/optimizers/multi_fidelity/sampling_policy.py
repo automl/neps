@@ -214,7 +214,7 @@ class EnsemblePolicy(SamplingPolicy):
                 user_priors = False
 
             if inc is None:
-                inc = self.pipeline_space.from_dict(self.pipeline_space.default_config)
+                inc = self.pipeline_space.from_dict(self.pipeline_space.prior_config)
                 logger.warning(
                     "No incumbent config found, using default as the incumbent."
                 )

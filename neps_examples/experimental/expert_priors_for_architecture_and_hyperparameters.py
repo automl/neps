@@ -119,13 +119,13 @@ pipeline_space = dict(
         prior=prior_distr,
     ),
     some_float=neps.Float(
-        lower=1, upper=1000, log=True, default=900, default_confidence="medium"
+        lower=1, upper=1000, log=True, prior=900, prior_confidence="medium"
     ),
     some_integer=neps.Integer(
-        lower=0, upper=50, default=35, default_confidence="low"
+        lower=0, upper=50, prior=35, prior_confidence="low"
     ),
     some_cat=neps.Categorical(
-        choices=["a", "b", "c"], default="a", default_confidence="high"
+        choices=["a", "b", "c"], prior="a", prior_confidence="high"
     ),
 )
 
