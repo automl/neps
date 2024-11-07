@@ -188,7 +188,7 @@ class MFObservedData:
         # For the first epoch we have no learning curve available
         if budget_id == 0:
             return []
-        # reduce budget_id to discount the current validation loss
+        # reduce budget_id to discount the current validation objective_to_minimize
         # both during training and prediction phase
         budget_id = max(0, budget_id - 1)
         if self.lc_col_name in self.df.columns:

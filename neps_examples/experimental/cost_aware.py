@@ -18,7 +18,7 @@ def evaluate_pipeline(
     y = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     end = time.time()
     return {
-        "loss": y,
+        "objective_to_minimize": y,
         "cost": (end - start) + float1,
     }
 

@@ -71,7 +71,7 @@ class BayesianOptimization(BaseOptimizer):
         seed: int | None = None,
         budget: Any | None = None,  # TODO: remove
         surrogate_model: Any | None = None,  # TODO: remove
-        loss_value_on_error: Any | None = None,  # TODO: remove
+        objective_to_minimize_value_on_error: Any | None = None,  # TODO: remove
         cost_value_on_error: Any | None = None,  # TODO: remove
         ignore_errors: Any | None = None,  # TODO: remove
     ):

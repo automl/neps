@@ -22,8 +22,8 @@ def run_pipeline(val1, val2):
     return evaluate_pipeline(val1, val2)
 
 def evaluate_pipeline(val1, val2):
-    loss = val1 * val2
-    return loss
+    objective_to_minimize = val1 * val2
+    return objective_to_minimize
 
 
 def run_pipeline_fidelity(val1, val2):
@@ -31,8 +31,8 @@ def run_pipeline_fidelity(val1, val2):
     return evaluate_pipeline_fidelity(val1, val2)
 
 def evaluate_pipeline_fidelity(val1, val2):
-    loss = val1 * val2
-    return {"loss": loss, "cost": 1}
+    objective_to_minimize = val1 * val2
+    return {"objective_to_minimize": objective_to_minimize, "cost": 1}
 
 
 logging.basicConfig(level=logging.INFO)

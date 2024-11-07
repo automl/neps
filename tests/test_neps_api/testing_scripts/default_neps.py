@@ -29,8 +29,8 @@ def run_pipeline(val1, val2):
     return evaluate_pipeline(val1, val2)
 
 def evaluate_pipeline(val1, val2):
-    loss = val1 * val2
-    return loss
+    objective_to_minimize = val1 * val2
+    return objective_to_minimize
 
 
 logging.basicConfig(level=logging.INFO)

@@ -90,11 +90,11 @@ class JAHSObjective(RegressionObjectiveBase):
 
             results = self.benchmark(joint_configuration, nepochs=epoch)
             return {
-                "loss": 100 - results[epoch]["valid-acc"],
+                "objective_to_minimize": 100 - results[epoch]["valid-acc"],
                 "cost": results[epoch]["runtime"],
             }
 
-        def loss_evaluation(**joint_configuration):
+        def objective_to_minimize_evaluation(**joint_configuration):
             epoch = joint_configuration.pop("epoch")
             joint_configuration.update({"N": 5, "W": 16, "Resolution": 1.0})
 
@@ -104,7 +104,7 @@ class JAHSObjective(RegressionObjectiveBase):
         if "cost" in self.optimizer:
             return cost_evaluation
         else:
-            return loss_evaluation
+            return objective_to_minimize_evaluation
 
     def __init__(
         self,
@@ -188,10 +188,10 @@ class HartmannObjective(RegressionObjectiveBase):
 
             noise = np.abs(rng.normal(size=H.size)) * self.noise * (1 - log_z_scaled)
 
-            loss = float((H + noise)[0])
+            objective_to_minimize = float((H + noise)[0])
             cost = 0.05 + (1 - 0.05) * (z / self.z_max) ** 2
 
-            result = {"loss": loss}
+            result = {"objective_to_minimize": objective_to_minimize}
             if "cost" in self.optimizer:
                 result.update({"cost": cost})
 
@@ -247,10 +247,10 @@ class HartmannObjective(RegressionObjectiveBase):
 
             noise = np.abs(rng.normal(size=H.size)) * self.noise * (1 - log_z_scaled)
 
-            loss = float((H + noise)[0])
+            objective_to_minimize = float((H + noise)[0])
             cost = 0.05 + (1 - 0.05) * (z / self.z_max) ** 2
 
-            result = {"loss": loss}
+            result = {"objective_to_minimize": objective_to_minimize}
             if "cost" in self.optimizer:
                 result.update({"cost": cost})
 

@@ -48,7 +48,7 @@ def training_pipeline(
         optimizer (str): Name of the optimizer to use ('adam' or 'sgd').
 
     Returns:
-        float: The average loss over the validation set after training.
+        float: The average objective_to_minimize over the validation set after training.
 
     Raises:
         KeyError: If the specified optimizer is not supported.
@@ -92,19 +92,19 @@ def training_pipeline(
         for batch_idx, (data, target) in enumerate(train_loader):
             optimizer.zero_grad()
             output = model(data)
-            loss = criterion(output, target)
-            loss.backward()
+            objective_to_minimize = criterion(output, target)
+            objective_to_minimize.backward()
             optimizer.step()
 
     # Validation loop
     model.eval()
-    val_loss = 0
+    val_objective_to_minimize = 0
     val_correct = 0
     val_total = 0
     with torch.no_grad():
         for data, target in val_loader:
             output = model(data)
-            val_loss += criterion(output, target).item()
+            val_objective_to_minimize += criterion(output, target).item()
 
             # Get the predicted class
             _, predicted = torch.max(output.data, 1)
@@ -113,7 +113,7 @@ def training_pipeline(
             val_total += target.size(0)
             val_correct += (predicted == target).sum().item()
 
-    val_loss /= len(val_loader.dataset)
+    val_objective_to_minimize /= len(val_loader.dataset)
     val_err = 1 - val_correct / val_total
 
     # Saving checkpoint
@@ -126,17 +126,17 @@ def training_pipeline(
 
     # Logging
     tblogger.log(
-        loss=val_loss,
+        objective_to_minimize=val_objective_to_minimize,
         current_epoch=epochs,
         # Set to `True` for a live incumbent trajectory.
         write_summary_incumbent=True,
-        # Set to `True` for a live loss trajectory for each config.
+        # Set to `True` for a live objective_to_minimize trajectory for each config.
         writer_config_scalar=True,
         # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
         writer_config_hparam=True,
         # Appending extra data
         extra_data={
-            "train_loss": tblogger.scalar_logging(loss.item()),
+            "train_objective_to_minimize": tblogger.scalar_logging(objective_to_minimize.item()),
             "val_err": tblogger.scalar_logging(val_err),
         },
     )

@@ -16,7 +16,7 @@ def evaluate_pipeline(some_float, some_integer, some_cat):
         y = -some_float - some_integer
     end = time.time()
     return {
-        "loss": y,
+        "objective_to_minimize": y,
         "info_dict": {
             "test_score": y,
             "train_time": end - start,

@@ -33,15 +33,15 @@ def evaluate_pipeline(
     integer_name2,
 ):
     # neps optimize to find values that maximizes sum, for demonstration only
-    loss = -float(
+    objective_to_minimize = -float(
         np.sum(
             [float_name1, float_name2, categorical_name1, integer_name1, integer_name2]
         )
     )
     if categorical_name2 == "a":
-        loss += 1
+        objective_to_minimize += 1
 
-    return loss
+    return objective_to_minimize
 
 
 logging.basicConfig(level=logging.INFO)

@@ -116,7 +116,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "task_id": 4,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 4.2,
+                "objective_to_minimize_value_on_error": 4.2,
                 "cost_value_on_error": 3.7,
                 "ignore_errors": True,
                 "searcher": {
@@ -140,7 +140,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "task_id": 2.0,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 2.4,
+                "objective_to_minimize_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": {
@@ -191,7 +191,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "development_stage_id": 9,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 2.4,
+                "objective_to_minimize_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": BayesianOptimization,

@@ -53,7 +53,7 @@ class Graph(torch.nn.Module, nx.DiGraph):
     >>> graph = getFancySearchSpace()
     >>> graph.parse()
     >>> logits = graph(data)
-    >>> optimizer.min(loss(logits, target))
+    >>> optimizer.min(objective_to_minimize(logits, target))
 
     To update the pytorch module representation (e.g. after removing or adding
     some new edges), you have to unparse. Beware that this is not fast, so it should

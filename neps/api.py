@@ -41,7 +41,7 @@ def run(
     continue_until_max_evaluation_completed: bool = Default(False),
     max_cost_total: int | float | None = Default(None),
     ignore_errors: bool = Default(False),
-    loss_value_on_error: None | float = Default(None),
+    objective_to_minimize_value_on_error: None | float = Default(None),
     cost_value_on_error: None | float = Default(None),
     pre_load_hooks: Iterable | None = Default(None),
     searcher: (
@@ -93,9 +93,9 @@ def run(
             `return dict(loss=loss, cost=cost)`.
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards max_evaluations_total.
-        loss_value_on_error: Setting this and cost_value_on_error to any float will
-            supress any error and will use given loss value instead. default: None
-        cost_value_on_error: Setting this and loss_value_on_error to any float will
+        objective_to_minimize_value_on_error: Setting this and cost_value_on_error to any float will
+            supress any error and will use given objective_to_minimize value instead. default: None
+        cost_value_on_error: Setting this and objective_to_minimize_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
         pre_load_hooks: List of functions that will be called before load_results().
         searcher: Which optimizer to use. Can be a string identifier, an
@@ -193,7 +193,7 @@ def run(
             pipeline_space=settings.pipeline_space,
             max_cost_total=settings.max_cost_total,
             ignore_errors=settings.ignore_errors,
-            loss_value_on_error=settings.loss_value_on_error,
+            objective_to_minimize_value_on_error=settings.objective_to_minimize_value_on_error,
             cost_value_on_error=settings.cost_value_on_error,
             searcher=settings.searcher,
             **settings.searcher_kwargs,
@@ -231,7 +231,7 @@ def run(
         max_evaluations_total=settings.max_evaluations_total,
         max_evaluations_for_worker=settings.max_evaluations_per_run,
         continue_until_max_evaluation_completed=settings.continue_until_max_evaluation_completed,
-        loss_value_on_error=settings.loss_value_on_error,
+        objective_to_minimize_value_on_error=settings.objective_to_minimize_value_on_error,
         cost_value_on_error=settings.cost_value_on_error,
         ignore_errors=settings.ignore_errors,
         overwrite_optimization_dir=settings.overwrite_working_directory,
@@ -266,7 +266,7 @@ def _run_args(
     ) = None,
     max_cost_total: int | float | None = None,
     ignore_errors: bool = False,
-    loss_value_on_error: None | float = None,
+    objective_to_minimize_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
     searcher: (
         Literal[
@@ -406,7 +406,7 @@ def _run_args(
 
     searcher_config.update(
         {
-            "loss_value_on_error": loss_value_on_error,
+            "objective_to_minimize_value_on_error": objective_to_minimize_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
         }

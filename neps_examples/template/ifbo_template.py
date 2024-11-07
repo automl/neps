@@ -28,9 +28,9 @@ def ifbo_evaluate_pipeline(
         previous_pipeline_directory=previous_pipeline_directory,
         **config,
     )
-    # NOTE: Normalize the loss to be between 0 and 1
+    # NOTE: Normalize the objective_to_minimize to be between 0 and 1
     ## crucial for ifBO's FT-PFN surrogate to work as expected
-    result_dict["loss"] = np.clip(result_dict["loss"], 0, ASSUMED_MAX_LOSS) / ASSUMED_MAX_LOSS
+    result_dict["objective_to_minimize"] = np.clip(result_dict["objective_to_minimize"], 0, ASSUMED_MAX_LOSS) / ASSUMED_MAX_LOSS
     return result_dict
 
 

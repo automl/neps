@@ -99,7 +99,7 @@ class IFBO(BaseOptimizer):
         n_acquisition_new_configs: int = 1_000,
         device: torch.device | None = None,
         budget: int | float | None = None,  # TODO: Remove
-        loss_value_on_error: float | None = None,  # TODO: Remove
+        objective_to_minimize_value_on_error: float | None = None,  # TODO: Remove
         cost_value_on_error: float | None = None,  # TODO: Remove
         ignore_errors: bool = False,  # TODO: Remove
     ):
@@ -222,7 +222,8 @@ class IFBO(BaseOptimizer):
             not_pending_X = X
 
         # NOTE: Can't really abstract this, requires knowledge that:
-        # 1. The encoding is such that the loss is 1 - loss
+        # 1. The encoding is such that the objective_to_minimize is 1 -
+        # objective_to_minimize
         # 2. The budget is the second column
         # 3. The budget is encoded between 1/max_fid and 1
         rng = np.random.RandomState(len(trials))

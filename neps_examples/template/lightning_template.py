@@ -18,14 +18,14 @@ The 3 crucial components are:
 * The `evaluate_pipeline` function
   * This function is called by the optimizer and is responsible for running the pipeline
   * The function should at the minimum expect the hyperparameters as keyword arguments
-  * The function should return the loss of the pipeline as a float
-    * If the return value is a dictionary, it should have a key called "loss" with the loss as a float
+  * The function should return the objective_to_minimize of the pipeline as a float
+    * If the return value is a dictionary, it should have a key called "objective_to_minimize" with the objective_to_minimize as a float
 
 Overall, running an optimizer from NePS with Lightning involves 5 clear steps:
 1. Importing neccessary packages including NePS and Lightning.
 2. Designing the search space as a dictionary.
 3. Creating the LightningModule with the required parameters
-4. Creating the evaluate_pipeline and returning the loss and other wanted metrics.
+4. Creating the evaluate_pipeline and returning the objective_to_minimize and other wanted metrics.
 5. Using neps run with the optimizer of choice.
 
 For a more detailed guide, please refer to:
@@ -154,16 +154,16 @@ def evaluate_pipeline(
         trainer.fit(model, ckpt_path=checkpoint_path)
     else:
         trainer.fit(model)
-    val_loss = trainer.logged_metrics.get("val_loss", None)
+    val_objective_to_minimize = trainer.logged_metrics.get("val_objective_to_minimize", None)
 
     trainer.test(model)
-    test_loss = trainer.logged_metrics.get("test_loss", None)
+    test_objective_to_minimize = trainer.logged_metrics.get("test_objective_to_minimize", None)
 
-    # Return a dictionary with the results, or a single float value (loss)
+    # Return a dictionary with the results, or a single float value (objective_to_minimize)
     return {
-        "loss": val_loss,
+        "objective_to_minimize": val_objective_to_minimize,
         "info_dict": {
-            "test_loss": test_loss,
+            "test_objective_to_minimize": test_objective_to_minimize,
         },
     }
 
