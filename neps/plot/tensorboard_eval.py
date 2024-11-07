@@ -35,7 +35,7 @@ class SummaryWriter_(SummaryWriter):  # noqa: N801
     - Ensures all logs are stored in the same 'tfevent' directory for
       better organization.
     - Updates metric keys to have a consistent 'Summary/' prefix for clarity.
-    - Improves the display of 'Loss' or 'Accuracy' on the Summary file.
+    - Improves the display of 'objective_to_minimize' or 'Accuracy' on the Summary file.
 
     Methods:
     - add_hparams: Overrides the base method to log hyperparameters and
@@ -74,7 +74,7 @@ class tblogger:  # noqa: N801
 
     disable_logging: ClassVar[bool] = False
 
-    loss: ClassVar[float | None] = None
+    objective_to_minimize: ClassVar[float | None] = None
     current_epoch: ClassVar[int | None] = None
 
     write_incumbent: ClassVar[bool | None] = None
@@ -377,20 +377,20 @@ class tblogger:  # noqa: N801
             TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
-                - tblogger.loss (float)
+                - tblogger.objective_to_minimize (float)
                 - tblogger.config_writer (SummaryWriter_)
                 - tblogger.config (dict)
                 - tblogger.current_epoch (int)
 
             The function will log hyperparameter configurations along
-            with a metric value (either accuracy or loss) to TensorBoard
+            with a metric value (either accuracy or objective_to_minimize) to TensorBoard
             based on the given configurations.
         """
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
 
-        str_name = "Loss"
-        str_value = tblogger.loss
+        str_name = "Objective to minimize"
+        str_value = tblogger.objective_to_minimize
 
         values = {str_name: str_value}
         # Just an extra safety measure
@@ -411,7 +411,8 @@ class tblogger:  # noqa: N801
 
     @staticmethod
     def _tracking_incumbent_api() -> None:
-        """Track the incumbent (best) loss and log it in the TensorBoard summary.
+        """Track the incumbent (best) objective_to_minimize and log it in the TensorBoard
+            summary.
 
         Note:
             The function relies on the following global variables:
@@ -424,7 +425,7 @@ class tblogger:  # noqa: N801
         summary_dict = get_summary_dict(tblogger.optimizer_dir, add_details=True)
 
         incum_tracker = summary_dict["num_evaluated_configs"]
-        incum_val = summary_dict["best_loss"]
+        incum_val = summary_dict["best_objective_to_minimize"]
 
         if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
             tblogger.summary_writer = SummaryWriter_(tblogger.optimizer_dir / "summary")
@@ -478,7 +479,7 @@ class tblogger:  # noqa: N801
 
     @staticmethod
     def log(
-        loss: float,
+        objective_to_minimize: float,
         current_epoch: int,
         *,
         writer_config_scalar: bool = True,
@@ -490,9 +491,9 @@ class tblogger:  # noqa: N801
         hyperparameters, and images.
 
         Args:
-            loss: Current loss value.
+            objective_to_minimize: Current objective_to_minimize value.
             current_epoch: Current epoch of the experiment (used as the global step).
-            writer_config_scalar: Displaying the loss or accuracy
+            writer_config_scalar: Displaying the objective_to_minimize or accuracy
                 curve on tensorboard (default: True)
             writer_config_hparam: Write hyperparameters logging of the configs.
             write_summary_incumbent: Set to `True` for a live incumbent trajectory.
@@ -502,13 +503,15 @@ class tblogger:  # noqa: N801
             return
 
         tblogger.current_epoch = current_epoch
-        tblogger.loss = loss
+        tblogger.objective_to_minimize = objective_to_minimize
         tblogger.write_incumbent = write_summary_incumbent
 
         tblogger._initiate_internal_configurations()
 
         if writer_config_scalar:
-            tblogger._write_scalar_config(tag="Loss", value=loss)
+            tblogger._write_scalar_config(
+                tag="objective_to_minimize", value=objective_to_minimize
+            )
 
         if writer_config_hparam:
             tblogger._write_hparam_config()

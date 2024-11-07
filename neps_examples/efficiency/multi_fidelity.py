@@ -72,9 +72,9 @@ def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, learning_
         pipeline_directory / checkpoint_name,
     )
 
-    loss = np.log(learning_rate / epoch)  # Replace with actual error
+    objective_to_minimize = np.log(learning_rate / epoch)  # Replace with actual error
     epochs_spent_in_this_call = epoch - epochs_previously_spent  # Optional for stopping
-    return dict(loss=loss, cost=epochs_spent_in_this_call)
+    return dict(objective_to_minimize=objective_to_minimize, cost=epochs_spent_in_this_call)
 
 
 pipeline_space = dict(

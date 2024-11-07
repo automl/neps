@@ -11,8 +11,9 @@ def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
     return evaluate_pipeline(float1, float2, categorical, integer1, integer2)
 
 def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
-    loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
-    return loss
+    objective_to_minimize = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
+    # time.sleep(0.7)  # For demonstration purposes
+    return objective_to_minimize
 
 
 pipeline_space = dict(

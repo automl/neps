@@ -243,8 +243,10 @@ def encode_trials_for_gp(
 
         train_configs.append(trial.config)
 
-        loss = trial.report.loss
-        train_losses.append(torch.nan if loss is None else loss)
+        objective_to_minimize = trial.report.objective_to_minimize
+        train_losses.append(
+            torch.nan if objective_to_minimize is None else objective_to_minimize
+        )
 
         cost = trial.report.cost
         train_costs.append(torch.nan if cost is None else cost)

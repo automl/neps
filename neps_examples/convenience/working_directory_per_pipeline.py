@@ -18,8 +18,8 @@ def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
     weight_file = pipeline_directory / "weight_file.txt"
     weight_file.write_text("0")
 
-    loss = -float(np.sum([float1, int(categorical), integer1]))
-    return loss
+    objective_to_minimize = -float(np.sum([float1, int(categorical), integer1]))
+    return objective_to_minimize
 
 
 pipeline_space = dict(

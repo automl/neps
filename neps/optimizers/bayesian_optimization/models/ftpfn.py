@@ -174,7 +174,11 @@ def encode_ftpfn(
         [
             pending_value
             if trial.report is None
-            else (error_value if trial.report.loss is None else trial.report.loss)
+            else (
+                error_value
+                if trial.report.objective_to_minimize is None
+                else trial.report.objective_to_minimize
+            )
             for trial in trials.values()
         ],
         device=device,

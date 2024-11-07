@@ -112,17 +112,17 @@ class RegressionRunner:
 
     @property
     def final_losses_path(self):
-        return Path(self.root_directory, self.loss_file_name)
+        return Path(self.root_directory, self.objective_to_minimize_file_name)
 
     @property
-    def loss_file_name(self):
+    def objective_to_minimize_file_name(self):
         return f"final_losses_{self.max_evaluations}_.txt"
 
     def save_losses(self):
         if not self.final_losses_path.parent.exists():
             Path(self.root_directory).mkdir()
         with self.final_losses_path.open(mode="w+", encoding="utf-8") as f:
-            f.writelines([str(loss) + "\n" for loss in self.final_losses])
+            f.writelines([str(objective_to_minimize) + "\n" for objective_to_minimize in self.final_losses])
         logging.info(
             f"Saved the results of {len(self.final_losses)} "
             f"runs of {self.max_evaluations} "
@@ -171,8 +171,8 @@ class RegressionRunner:
         elif self.final_losses_path.exists():
             # Read from final_losses_path for each regression run
             self.final_losses = [
-                float(loss)
-                for loss in self.final_losses_path.read_text(
+                float(objective_to_minimize)
+                for objective_to_minimize in self.final_losses_path.read_text(
                     encoding="utf-8"
                 ).splitlines()[: self.iterations]
             ]
@@ -189,8 +189,8 @@ class RegressionRunner:
                 # Try reading from the LOSS_FILE in the worst case
                 if LOSS_FILE.exists():
                     with LOSS_FILE.open(mode="r", encoding="utf-8") as f:
-                        loss_dict = json.load(f)
-                    self.final_losses = loss_dict[self.optimizer][self.task]
+                        objective_to_minimize_dict = json.load(f)
+                    self.final_losses = objective_to_minimize_dict[self.optimizer][self.task]
                 else:
                     raise FileNotFoundError(
                         f"Results from the previous runs are not "

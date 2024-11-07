@@ -11,8 +11,8 @@ def run_pipeline(float1, float2, integer1, fidelity):
     return evaluate_pipeline(float1, float2, integer1, fidelity)
 
 def evaluate_pipeline(float1, float2, integer1, fidelity):
-    loss = -float(np.sum([float1, float2, integer1])) / fidelity
-    return loss
+    objective_to_minimize = -float(np.sum([float1, float2, integer1])) / fidelity
+    return objective_to_minimize
 
 
 pipeline_space = dict(

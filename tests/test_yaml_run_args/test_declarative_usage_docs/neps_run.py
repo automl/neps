@@ -15,7 +15,7 @@ def evaluate_pipeline_constant(learning_rate, optimizer, epochs, batch_size):
     else:
         eval_score = 5.0
     eval_score += batch_size
-    return {"loss": eval_score}
+    return {"objective_to_minimize": eval_score}
 
 
 if __name__ == "__main__":

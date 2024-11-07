@@ -56,7 +56,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         use_priors: bool = False,
         sampling_policy: Any = RandomUniformPolicy,
         promotion_policy: Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
@@ -78,12 +78,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 Samples generated from a Gaussian centered around the default value
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
-            loss_value_on_error: Setting this and cost_value_on_error to any float will
-                supress any error during bayesian optimization and will use given loss
-                value instead. default: None
-            cost_value_on_error: Setting this and loss_value_on_error to any float will
-                supress any error during bayesian optimization and will use given cost
-                value instead. default: None
+            objective_to_minimize_value_on_error: Setting this and cost_value_on_error to
+                any float will supress any error during bayesian optimization and will
+                use given objective_to_minimize value instead. default: None
+            cost_value_on_error: Setting this and objective_to_minimize_value_on_error to
+                any float will supress any error during bayesian optimization and will
+                use given cost value instead. default: None
             prior_confidence: The range of confidence to have on the prior
                 The higher the confidence, the smaller is the standard deviation of the
                 prior distribution centered around the default
@@ -95,7 +95,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         super().__init__(
             pipeline_space=pipeline_space,
             budget=budget,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
         )
@@ -224,7 +224,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     ) -> None:
         for config_id, config_val in previous_results.items():
             _config, _rung = self._get_config_id_split(config_id)
-            perf = self.get_loss(config_val.result)
+            perf = self.get_objective_to_minimize(config_val.result)
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
                 rung_recorded = self.observed_configs.at[int(_config), "rung"]
@@ -565,7 +565,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = FixedPriorPolicy,
         promotion_policy: Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
@@ -582,7 +582,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
@@ -606,7 +606,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         use_priors: bool = False,
         sampling_policy: Any = RandomUniformPolicy,
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
@@ -623,7 +623,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
             use_priors=use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
@@ -648,7 +648,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = FixedPriorPolicy,
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
@@ -665,7 +665,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,

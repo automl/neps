@@ -16,7 +16,7 @@ def evaluate_pipeline(learning_rate, epochs, optimizer, batch_size):
     else:
         eval_score = 5.0
     eval_score += batch_size
-    return {"loss": eval_score}
+    return {"objective_to_minimize": eval_score}
 
 
 # For testing the functionality of loading a dictionary from a YAML configuration.

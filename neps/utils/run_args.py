@@ -30,7 +30,7 @@ POST_RUN_SUMMARY = "post_run_summary"
 DEVELOPMENT_STAGE_ID = "development_stage_id"
 TASK_ID = "task_id"
 CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED = "continue_until_max_evaluation_completed"
-LOSS_VALUE_ON_ERROR = "loss_value_on_error"
+OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR = "objective_to_minimize_value_on_error"
 COST_VALUE_ON_ERROR = "cost_value_on_error"
 IGNORE_ERROR = "ignore_errors"
 SEARCHER = "searcher"
@@ -79,7 +79,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
         TASK_ID,
         MAX_EVALUATIONS_PER_RUN,
         CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED,
-        LOSS_VALUE_ON_ERROR,
+        OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR,
         COST_VALUE_ON_ERROR,
         IGNORE_ERROR,
     ]
@@ -415,7 +415,7 @@ def check_run_args(settings: dict) -> None:
         MAX_COST_TOTAL: (int, float),
         MAX_EVALUATIONS_PER_RUN: int,
         CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED: bool,
-        LOSS_VALUE_ON_ERROR: float,
+        OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR: float,
         COST_VALUE_ON_ERROR: float,
         IGNORE_ERROR: bool,
         SEARCHER_KWARGS: dict,
@@ -527,7 +527,7 @@ class Settings:
         self.continue_until_max_evaluation_completed = UNSET
         self.max_cost_total = UNSET
         self.ignore_errors = UNSET
-        self.loss_value_on_error = UNSET
+        self.objective_to_minimize_value_on_error = UNSET
         self.cost_value_on_error = UNSET
         self.pre_load_hooks = UNSET
         self.searcher = UNSET

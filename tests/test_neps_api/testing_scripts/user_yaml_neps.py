@@ -12,8 +12,8 @@ pipeline_space = dict(
 
 def run_pipeline(val1, val2):
     warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    loss = val1 * val2
-    return loss
+    objective_to_minimize = val1 * val2
+    return objective_to_minimize
 
 
 logging.basicConfig(level=logging.INFO)

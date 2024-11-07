@@ -40,7 +40,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
@@ -76,7 +76,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
             initial_design_type=initial_design_type,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
@@ -148,7 +148,7 @@ class PriorBandAshaHB(PriorBandAsha):
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from PB
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
@@ -185,7 +185,7 @@ class PriorBandAshaHB(PriorBandAsha):
             "initial_design_type": initial_design_type,
             "sampling_policy": sampling_policy,
             "promotion_policy": promotion_policy,
-            "loss_value_on_error": loss_value_on_error,
+            "objective_to_minimize_value_on_error": objective_to_minimize_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
             "prior_confidence": prior_confidence,
