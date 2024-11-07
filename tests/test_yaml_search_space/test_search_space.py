@@ -19,7 +19,7 @@ def test_correct_yaml_files():
         assert isinstance(pipeline_space, dict)
         float1 = Float(0.00001, 0.1, log=True, is_fidelity=False)
         assert float1.__eq__(pipeline_space["param_float1"]) is True
-        int1 = Integer(-3, 30, log=False, is_fidelity=True)
+        int1 = Integer(3, 30, log=False, is_fidelity=True)
         assert int1.__eq__(pipeline_space["param_int1"]) is True
         int2 = Integer(100, 30000, log=True, is_fidelity=False)
         assert int2.__eq__(pipeline_space["param_int2"]) is True
@@ -142,4 +142,12 @@ def test_categorical_default_value_not_in_choices():
     for a Categorical."""
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "default_value_not_in_choices_config.yaml")
+    assert excinfo.value.exception_type == "ValueError"
+
+@pytest.mark.neps_api
+def test_incorrect_fidelity_parameter_bounds():
+    """Test if a ValueError is raised when the bounds of a fidelity parameter are
+    not correctly specified."""
+    with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
+        pipeline_space_from_yaml(BASE_PATH + "incorrect_fidelity_bounds_config.yaml")
     assert excinfo.value.exception_type == "ValueError"

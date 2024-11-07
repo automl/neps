@@ -6,7 +6,7 @@ param_float1:
 
 param_int1:
   type: integer
-  lower: -3
+  lower: 3
   upper: 30
   is_fidelity: True
 

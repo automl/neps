@@ -5,10 +5,11 @@ param_float1:
   is_fidelity: off
 
 param_int1:
-  lower: 3
+  lower: -3 # negative fidelity range
   upper: 30
   log: false
   is_fidelity: on
+
 param_int2:
   type: int
   lower: 1E2
@@ -19,10 +20,3 @@ param_int2:
 param_float2:
   lower: 3.3e-5
   upper: 1.5E-1
-
-param_cat:
-  choices: [2, "sgd", 10e-3]
-
-param_const1: 0.5
-
-param_const2: 1e3
