@@ -42,7 +42,7 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
     for more details on the methods available for this class.
     """
 
-    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, Any]] = {
+    PRIOR_CONFIDENCE_SCORES: ClassVar[Mapping[str, Any]] = {
         "low": 2,
         "medium": 4,
         "high": 6,
@@ -52,23 +52,23 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
         self,
         choices: Iterable[float | int | str],
         *,
-        default: float | int | str | None = None,
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior: float | int | str | None = None,
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Create a new `Categorical`.
 
         Args:
             choices: choices for the hyperparameter.
-            default: default value for the hyperparameter, must be in `choices=`
+            prior: prior value for the hyperparameter, must be in `choices=`
                 if provided.
-            default_confidence: confidence score for the default value, used when
+            prior_confidence: confidence score for the prior value, used when
                 condsider prior based optimization.
         """
         choices = list(choices)
         if len(choices) <= 1:
             raise ValueError("Categorical choices must have more than one value.")
 
-        super().__init__(value=None, is_fidelity=False, default=default)
+        super().__init__(value=None, is_fidelity=False, prior=prior)
 
         for choice in choices:
             if not isinstance(choice, float | int | str):
@@ -79,9 +79,9 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
         if not all_unique(choices):
             raise ValueError(f"Choices must be unique but got duplicates.\n{choices}")
 
-        if default is not None and default not in choices:
+        if prior is not None and prior not in choices:
             raise ValueError(
-                f"Default value {default} is not in the provided choices {choices}"
+                f"Default value {prior} is not in the provided choices {choices}"
             )
 
         self.choices = list(choices)
@@ -91,14 +91,14 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
         # currently we do a list.index() operation which is O(n).
         # However for small sized categoricals this is likely faster than
         # a lookup table.
-        # For now we can just cache the index of the value and default.
+        # For now we can just cache the index of the value and prior.
         self._value_index: int | None = None
 
-        self.default_confidence_choice = default_confidence
-        self.default_confidence_score = self.DEFAULT_CONFIDENCE_SCORES[default_confidence]
-        self.has_prior = self.default is not None
-        self._default_index: int | None = (
-            self.choices.index(default) if default is not None else None
+        self.prior_confidence_choice = prior_confidence
+        self.prior_confidence_score = self.PRIOR_CONFIDENCE_SCORES[prior_confidence]
+        self.has_prior = self.prior is not None
+        self._prior_index: int | None = (
+            self.choices.index(prior) if prior is not None else None
         )
         self.domain = Domain.indices(len(self.choices))
 
@@ -106,8 +106,8 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
     def clone(self) -> Self:
         clone = self.__class__(
             choices=self.choices,
-            default=self.default,
-            default_confidence=self.default_confidence_choice,  # type: ignore
+            prior=self.prior,
+            prior_confidence=self.prior_confidence_choice,  # type: ignore
         )
         if self.value is not None:
             clone.set_value(self.value)
@@ -122,26 +122,26 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
             self.choices == other.choices
             and self.value == other.value
             and self.is_fidelity == other.is_fidelity
-            and self.default == other.default
+            and self.prior == other.prior
             and self.has_prior == other.has_prior
-            and self.default_confidence_score == other.default_confidence_score
+            and self.prior_confidence_score == other.prior_confidence_score
         )
 
     def __repr__(self) -> str:
         return f"<Categorical, choices: {self.choices}, value: {self.value}>"
 
     def _compute_user_prior_probabilities(self) -> npt.NDArray[f64]:
-        # The default value should have "default_confidence_score" more probability
+        # The prior value should have "prior_confidence_score" more probability
         # than all the other values.
-        assert self._default_index is not None
+        assert self._prior_index is not None
         probabilities = np.ones(len(self.choices))
-        probabilities[self._default_index] = self.default_confidence_score
+        probabilities[self._prior_index] = self.prior_confidence_score
         return probabilities / np.sum(probabilities)
 
     @override
     def sample_value(self, *, user_priors: bool = False) -> Any:
         indices = np.arange(len(self.choices))
-        if user_priors and self.default is not None:
+        if user_priors and self.prior is not None:
             probabilities = self._compute_user_prior_probabilities()
             return self.choices[np.random.choice(indices, p=probabilities)]
 
@@ -179,16 +179,16 @@ class CategoricalParameter(Categorical):
         self,
         choices: Iterable[float | int | str],
         *,
-        default: float | int | str | None = None,
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior: float | int | str | None = None,
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize a deprecated `CategoricalParameter`.
 
         Args:
             choices: choices for the hyperparameter.
-            default: default value for the hyperparameter, must be in `choices=`
+            prior: prior value for the hyperparameter, must be in `choices=`
                 if provided.
-            default_confidence: confidence score for the default value, used when
+            prior_confidence: confidence score for the prior value, used when
                 condsider prior based optimization.
 
         Raises:
@@ -207,6 +207,6 @@ class CategoricalParameter(Categorical):
         )
         super().__init__(
             choices=choices,
-            default=default,
-            default_confidence=default_confidence,
+            prior=prior,
+            prior_confidence=prior_confidence,
         )

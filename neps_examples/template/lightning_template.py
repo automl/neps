@@ -10,7 +10,7 @@ in order to interface with Lightning.
 The 3 crucial components are:
 * The search space, called the `pipeline_space` in NePS
   * This defines the set of hyperparameters that the optimizer will search over
-  * This declaration also allows injecting priors in the form of defaults per hyperparameter
+  * This declaration also allows injecting priors per hyperparameter
 * The `lightning module`
   * This defines the training, validation, and testing of the model
   * This distributes the hyperparameters
@@ -53,9 +53,9 @@ def pipeline_space() -> dict:
             lower=1e-5,
             upper=1e-2,
             log=True,  # If True, the search space is sampled in log space
-            default=1e-3,  # a non-None value here acts as the mode of the prior distribution
+            prior=1e-3,  # a non-None value here acts as the mode of the prior distribution
         ),
-        optimizer=neps.Categorical(choices=["Adam", "SGD"], default="Adam"),
+        optimizer=neps.Categorical(choices=["Adam", "SGD"], prior="Adam"),
         epochs=neps.Integer(
             lower=1,
             upper=9,

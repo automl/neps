@@ -46,13 +46,13 @@ def pipeline_space() -> dict:
             lower=1e-5,
             upper=1e-2,
             log=True,  # If True, the search space is sampled in log space
-            default=1e-3,  # a non-None value here acts as the mode of the prior distribution
+            prior=1e-3,  # a non-None value here acts as the mode of the prior distribution
         ),
         wd=neps.Float(
             lower=0,
             upper=1e-1,
             log=True,
-            default=1e-3,
+            prior=1e-3,
         ),
         epoch=neps.Integer(
             lower=1,

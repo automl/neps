@@ -26,7 +26,7 @@ def evaluate_pipeline(
 pipeline_space = dict(
     float1=neps.Float(lower=0, upper=1, log=False),
     float2=neps.Float(
-        lower=0, upper=10, log=False, default=10, default_confidence="medium"
+        lower=0, upper=10, log=False, prior=10, prior_confidence="medium"
     ),
     categorical=neps.Categorical(choices=[0, 1]),
     integer1=neps.Integer(lower=0, upper=1, log=False),

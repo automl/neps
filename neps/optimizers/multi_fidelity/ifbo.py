@@ -73,9 +73,9 @@ def _adjust_pipeline_space_to_match_stepsize(
         lower=new_lower,
         upper=fidelity.upper,
         log=fidelity.log,
-        default=fidelity.default,
+        prior=fidelity.prior,
         is_fidelity=True,
-        default_confidence=fidelity.default_confidence_choice,
+        prior_confidence=fidelity.prior_confidence_choice,
     )
     return (
         SearchSpace(**{**pipeline_space.hyperparameters, fidelity_name: new_fid}),

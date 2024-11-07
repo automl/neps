@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.PRIOR_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -437,7 +437,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     rung_id = self.max_rung
                     logger.info("Next config will be evaluated at target fidelity.")
                 logger.info("Sampling the default configuration...")
-                config = self.pipeline_space.from_dict(self.pipeline_space.default_config)
+                config = self.pipeline_space.from_dict(self.pipeline_space.prior_config)
             elif rng.random() < self.random_interleave_prob:
                 config = sample_one_old(
                     self.pipeline_space,
@@ -476,7 +476,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
                     confidence = confidence_score["numeric"]
-                self.pipeline_space[k].default_confidence_score = confidence
+                self.pipeline_space[k].prior_confidence_score = confidence
             elif isinstance(v, Categorical):
                 if confidence_score is None:
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
@@ -484,7 +484,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     ]
                 else:
                     confidence = confidence_score["categorical"]
-                self.pipeline_space[k].default_confidence_score = confidence
+                self.pipeline_space[k].prior_confidence_score = confidence
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):

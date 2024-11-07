@@ -61,26 +61,26 @@ def pipeline_space_from_configspace(
         elif isinstance(hyperparameter, CS.CategoricalHyperparameter):
             parameter = Categorical(
                 hyperparameter.choices,
-                default=hyperparameter.default_value,
+                prior=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
             parameter = Categorical(
                 hyperparameter.sequence,
-                default=hyperparameter.default_value,
+                prior=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
             parameter = Integer(
                 lower=hyperparameter.lower,
                 upper=hyperparameter.upper,
                 log=hyperparameter.log,
-                default=hyperparameter.default_value,
+                prior=hyperparameter.default_value,
             )
         elif isinstance(hyperparameter, CS.UniformFloatHyperparameter):
             parameter = Float(
                 lower=hyperparameter.lower,
                 upper=hyperparameter.upper,
                 log=hyperparameter.log,
-                default=hyperparameter.default_value,
+                prior=hyperparameter.default_value,
             )
         else:
             raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
@@ -219,27 +219,27 @@ class SearchSpace(Mapping[str, Any]):
         self.fidelity_name: str | None = _fidelity_name
         self.has_prior: bool = _has_prior
 
-        self.default_config = {}
+        self.prior_config = {}
         for name, hp in _hyperparameters:
-            if hp.default is not None:
-                self.default_config[name] = hp.default
+            if hp.prior is not None:
+                self.prior_config[name] = hp.prior
                 continue
 
             match hp:
                 case Categorical():
                     first_choice = hp.choices[0]
-                    self.default_config[name] = first_choice
+                    self.prior_config[name] = first_choice
                 case Integer() | Float():
                     if hp.is_fidelity:
-                        self.default_config[name] = hp.upper
+                        self.prior_config[name] = hp.upper
                         continue
 
                     midpoint = hp.domain.cast_one(0.5, frm=UNIT_FLOAT_DOMAIN)
-                    self.default_config[name] = midpoint
+                    self.prior_config[name] = midpoint
                 case Constant():
-                    self.default_config[name] = hp.value
+                    self.prior_config[name] = hp.value
                 case GraphParameter():
-                    self.default_config[name] = hp.default
+                    self.prior_config[name] = hp.prior
                 case _:
                     raise TypeError(f"Unknown hyperparameter type {hp}")
 

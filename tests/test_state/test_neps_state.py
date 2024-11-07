@@ -49,20 +49,20 @@ def case_search_space_with_fid() -> SearchSpace:
 @case
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, default=0.5),
-        b=Categorical(["a", "b", "c"], default="a"),
+        a=Float(0, 1, prior=0.5),
+        b=Categorical(["a", "b", "c"], prior="a"),
         c=Constant("a"),
-        d=Integer(0, 10, default=5),
+        d=Integer(0, 10, prior=5),
     )
 
 
 @case
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, default=0.5),
-        b=Categorical(["a", "b", "c"], default="a"),
+        a=Float(0, 1, prior=0.5),
+        b=Categorical(["a", "b", "c"], prior="a"),
         c=Constant("a"),
-        d=Integer(0, 10, default=5),
+        d=Integer(0, 10, prior=5),
         e=Integer(1, 10, is_fidelity=True),
     )
 
@@ -126,7 +126,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].default is None:
+    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].prior is None:
         pytest.xfail(f"{key} requires a prior")
 
     if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:

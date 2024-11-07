@@ -17,13 +17,13 @@ def evaluate_pipeline(float1, float2, integer1, fidelity):
 
 pipeline_space = dict(
     float1=neps.Float(
-        lower=1, upper=1000, log=False, default=600, default_confidence="medium"
+        lower=1, upper=1000, log=False, prior=600, prior_confidence="medium"
     ),
     float2=neps.Float(
-        lower=-10, upper=10, default=0, default_confidence="medium"
+        lower=-10, upper=10, prior=0, prior_confidence="medium"
     ),
     integer1=neps.Integer(
-        lower=0, upper=50, default=35, default_confidence="low"
+        lower=0, upper=50, prior=35, prior_confidence="low"
     ),
     fidelity=neps.Integer(lower=1, upper=10, is_fidelity=True),
 )
