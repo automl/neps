@@ -20,7 +20,7 @@ logger = logging.getLogger("neps")
 
 # Define the name of the arguments as variables for easier code maintenance
 RUN_ARGS = "run_args"
-EVALUATE_PIPELINE = "run_pipeline"
+EVALUATE_PIPELINE = "evaluate_pipeline"
 PIPELINE_SPACE = "pipeline_space"
 ROOT_DIRECTORY = "root_directory"
 MAX_EVALUATIONS_TOTAL = "max_evaluations_total"
@@ -98,7 +98,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
                 f"provided via run_args."
                 f"See here all valid arguments:"
                 f" {', '.join(expected_parameters)}, "
-                f"'run_pipeline', 'preload_hooks', 'pipeline_space'"
+                f"'evaluate_pipeline', 'preload_hooks', 'pipeline_space'"
             )
 
     # Process complex configurations (e.g., 'pipeline_space', 'searcher') and integrate

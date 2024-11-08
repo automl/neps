@@ -103,10 +103,14 @@ class NePSState(Generic[Loc]):
                     optimizer = hook(optimizer)
 
             # NOTE: We don't want optimizers mutating this before serialization
-            budget = opt_state.budget.clone() if opt_state.budget is not None else None
+            max_cost_total = (
+                opt_state.max_cost_total_info.clone()
+                if opt_state.max_cost_total_info is not None
+                else None
+            )
             sampled_config_maybe_new_opt_state = optimizer.ask(
                 trials=trials,
-                budget_info=budget,
+                max_cost_total_info=max_cost_total,
             )
 
             if isinstance(sampled_config_maybe_new_opt_state, tuple):
@@ -138,7 +142,10 @@ class NePSState(Generic[Loc]):
             seed_state.recapture()
             put_seed_state(seed_state)
             put_opt(
-                OptimizationState(budget=opt_state.budget, shared_state=new_opt_state)
+                OptimizationState(
+                    max_cost_total_info=opt_state.max_cost_total_info,
+                    shared_state=new_opt_state,
+                )
             )
 
         return trial
@@ -169,11 +176,11 @@ class NePSState(Generic[Loc]):
         with self._optimizer_state.acquire() as (opt_state, put_opt_state):
             # TODO: If an optimizer doesn't use the state, this is a waste of time.
             # Update the budget if we have one.
-            if opt_state.budget is not None:
-                budget_info = opt_state.budget
+            if opt_state.max_cost_total_info is not None:
+                max_cost_total_info = opt_state.max_cost_total_info
 
                 if report.cost is not None:
-                    budget_info.used_cost_budget += report.cost
+                    max_cost_total_info.used_cost_budget += report.cost
             put_opt_state(opt_state)
 
         if report.err is not None:

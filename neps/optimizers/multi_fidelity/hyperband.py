@@ -47,7 +47,7 @@ class HyperbandBase(SuccessiveHalvingBase):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
@@ -63,7 +63,7 @@ class HyperbandBase(SuccessiveHalvingBase):
     ):
         args = {
             "pipeline_space": pipeline_space,
-            "budget": budget,
+            "max_cost_total": max_cost_total,
             "eta": eta,
             "early_stopping_rate": self.early_stopping_rate,  # HB subsumes this from SH
             "initial_design_type": initial_design_type,
@@ -125,7 +125,7 @@ class HyperbandBase(SuccessiveHalvingBase):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         completed: dict[str, ConfigResult] = {
             trial_id: trial.into_config_result(self.pipeline_space.from_dict)
@@ -273,7 +273,7 @@ class HyperbandWithPriors(Hyperband):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = FixedPriorPolicy,
@@ -288,7 +288,7 @@ class HyperbandWithPriors(Hyperband):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             initial_design_type=initial_design_type,
             use_priors=self.use_priors,  # key change to the base HB class
@@ -311,7 +311,7 @@ class HyperbandCustomDefault(HyperbandWithPriors):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,
@@ -326,7 +326,7 @@ class HyperbandCustomDefault(HyperbandWithPriors):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             initial_design_type=initial_design_type,
             sampling_policy=sampling_policy,
@@ -361,7 +361,7 @@ class AsynchronousHyperband(HyperbandBase):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
@@ -377,7 +377,7 @@ class AsynchronousHyperband(HyperbandBase):
     ):
         args = {
             "pipeline_space": pipeline_space,
-            "budget": budget,
+            "max_cost_total": max_cost_total,
             "eta": eta,
             "initial_design_type": initial_design_type,
             "use_priors": use_priors,
@@ -456,7 +456,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = FixedPriorPolicy,
@@ -471,7 +471,7 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             initial_design_type=initial_design_type,
             use_priors=self.use_priors,  # key change to the base Async HB class
@@ -495,7 +495,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
@@ -520,7 +520,7 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
     ):
         hb_args = {
             "pipeline_space": pipeline_space,
-            "budget": budget,
+            "max_cost_total": max_cost_total,
             "eta": eta,
             "initial_design_type": initial_design_type,
             "use_priors": use_priors,

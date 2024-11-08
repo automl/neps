@@ -89,7 +89,7 @@ class BaseOptimizer:
         pipeline_space: SearchSpace,
         patience: int = 50,
         logger: logging.Logger | None = None,
-        budget: int | float | None = None,
+        max_cost_total: int | float | None = None,
         objective_to_minimize_value_on_error: float | None = None,
         cost_value_on_error: float | None = None,
         learning_curve_on_error: float | list[float] | None = None,
@@ -98,7 +98,7 @@ class BaseOptimizer:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.budget = budget
+        self.max_cost_total = max_cost_total
         self.pipeline_space = pipeline_space
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
@@ -111,13 +111,13 @@ class BaseOptimizer:
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         """Sample a new configuration.
 
         Args:
             trials: All of the trials that are known about.
-            budget_info: information about the budget
+            max_cost_total_info: information about the max_cost_total
 
         Returns:
             SampledConfig: a sampled configuration

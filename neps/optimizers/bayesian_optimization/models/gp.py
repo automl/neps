@@ -401,7 +401,7 @@ def fit_and_acquire_from_gp(
         acquisition = cost_cooled_acq(
             acq_fn=acquisition,
             model=cost_gp,
-            used_budget_percentage=cost_percentage_used,
+            used_max_cost_total_percentage=cost_percentage_used,
         )
 
     _n = n_candidates_required if n_candidates_required is not None else 1

@@ -51,7 +51,7 @@ class RegressionRunner:
         objective: RegressionObjectiveBase | Callable,
         iterations: int = 100,
         max_evaluations: int = 150,
-        budget: int = 10000,
+        max_cost_total: int = 10000,
         experiment_name: str = "",
         **kwargs,
     ):
@@ -62,7 +62,7 @@ class RegressionRunner:
             objective: callable that takes a configuration as input and evaluates it
             iterations: number of times to record the whole optimization process
             max_evaluations: maximum number of total evaluations for each optimization process
-            budget: budget for cost aware optimizers
+            max_cost_total: budget for cost aware optimizers
             experiment_name: string to identify different experiments
         """
         self.objective = objective
@@ -98,7 +98,7 @@ class RegressionRunner:
         self.benchmark = None
 
         # Cost cooling optimizer expects budget but none of the others does
-        self.budget = budget if "cost" in self.optimizer else None
+        self.max_cost_total = max_cost_total if "cost" in self.optimizer else None
         self.max_evaluations = max_evaluations
 
         self.final_losses: list[float] = []
@@ -134,7 +134,7 @@ class RegressionRunner:
             evaluate_pipeline=self.objective,
             pipeline_space=self.pipeline_space,
             searcher=self.optimizer,
-            max_cost_total=self.budget,
+            max_cost_total=self.max_cost_total,
             root_directory=working_directory,
             max_evaluations_total=self.max_evaluations,
         )

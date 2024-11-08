@@ -144,8 +144,8 @@ def init_config(args: argparse.Namespace) -> None:
                     directory=directory,
                     optimizer_info=OptimizerInfo(optimizer_info),
                     optimizer_state=OptimizationState(
-                        budget=(
-                            BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
+                        max_cost_total_info=(
+                            BudgetInfo(max_cost_total=max_cost_total, used_cost_budget=0)
                             if max_cost_total is not None
                             else None
                         ),

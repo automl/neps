@@ -98,7 +98,7 @@ class IFBO(BaseOptimizer):
         initial_design_size: int | Literal["ndim"] = "ndim",
         n_acquisition_new_configs: int = 1_000,
         device: torch.device | None = None,
-        budget: int | float | None = None,  # TODO: Remove
+        max_cost_total: int | float | None = None,  # TODO: Remove
         objective_to_minimize_value_on_error: float | None = None,  # TODO: Remove
         cost_value_on_error: float | None = None,  # TODO: Remove
         ignore_errors: bool = False,  # TODO: Remove
@@ -171,7 +171,7 @@ class IFBO(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None = None,
+        max_cost_total_info: BudgetInfo | None = None,
     ) -> SampledConfig:
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
