@@ -68,7 +68,7 @@ class _ConfigResultForStats:
     metadata: dict
 
     @property
-    def loss(self) -> float | ERROR:
+    def objective_to_minimize(self) -> float | ERROR:
         if isinstance(self.result, dict):
-            return float(self.result["loss"])
+            return float(self.result["objective_to_minimize"])
         return "error"

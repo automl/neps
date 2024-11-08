@@ -1,3 +1,4 @@
+from warnings import warn
 import argparse
 import numpy as np
 import neps
@@ -5,12 +6,17 @@ import neps
 
 def run_pipeline(learning_rate, epochs, optimizer, batch_size):
     """func for test loading of run_pipeline"""
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(learning_rate, epochs, optimizer, batch_size)
+
+def evaluate_pipeline(learning_rate, epochs, optimizer, batch_size):
+    """func for test loading of evaluate_pipeline"""
     if optimizer == "a":
         eval_score = np.random.choice([learning_rate, epochs], 1)
     else:
         eval_score = 5.0
     eval_score += batch_size
-    return {"loss": eval_score}
+    return {"objective_to_minimize": eval_score}
 
 
 # For testing the functionality of loading a dictionary from a YAML configuration.

@@ -243,8 +243,10 @@ def encode_trials_for_gp(
 
         train_configs.append(trial.config)
 
-        loss = trial.report.loss
-        train_losses.append(torch.nan if loss is None else loss)
+        objective_to_minimize = trial.report.objective_to_minimize
+        train_losses.append(
+            torch.nan if objective_to_minimize is None else objective_to_minimize
+        )
 
         cost = trial.report.cost
         train_costs.append(torch.nan if cost is None else cost)
@@ -399,7 +401,7 @@ def fit_and_acquire_from_gp(
         acquisition = cost_cooled_acq(
             acq_fn=acquisition,
             model=cost_gp,
-            used_budget_percentage=cost_percentage_used,
+            used_max_cost_total_percentage=cost_percentage_used,
         )
 
     _n = n_candidates_required if n_candidates_required is not None else 1

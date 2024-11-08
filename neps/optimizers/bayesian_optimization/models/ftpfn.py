@@ -164,7 +164,7 @@ def encode_ftpfn(
         device=device,
         dtype=dtype,
     )
-    train_budgets = budget_domain.cast(
+    train_max_cost_total = budget_domain.cast(
         train_fidelities, frm=space.fidelity.domain, dtype=dtype
     )
 
@@ -174,7 +174,11 @@ def encode_ftpfn(
         [
             pending_value
             if trial.report is None
-            else (error_value if trial.report.loss is None else trial.report.loss)
+            else (
+                error_value
+                if trial.report.objective_to_minimize is None
+                else trial.report.objective_to_minimize
+            )
             for trial in trials.values()
         ],
         device=device,
@@ -188,7 +192,7 @@ def encode_ftpfn(
         )
     maximize_ys = 1 - minimize_ys
     x_train = torch.cat(
-        [ids.unsqueeze(1), train_budgets.unsqueeze(1), train_configs], dim=1
+        [ids.unsqueeze(1), train_max_cost_total.unsqueeze(1), train_configs], dim=1
     )
     return x_train, maximize_ys
 

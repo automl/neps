@@ -60,7 +60,7 @@ def training_pipeline(num_layers, num_neurons, epochs, learning_rate, optimizer)
         optimizer (str): Name of the optimizer to use ('adam' or 'sgd').
 
     Returns:
-        float: The average loss over the validation set after training.
+        float: The average objective_to_minimize over the validation set after training.
 
     Raises:
         KeyError: If the specified optimizer is not supported.
@@ -101,20 +101,20 @@ def training_pipeline(num_layers, num_neurons, epochs, learning_rate, optimizer)
         for batch_idx, (data, target) in enumerate(train_loader):
             optimizer.zero_grad()
             output = model(data)
-            loss = criterion(output, target)
-            loss.backward()
+            objective_to_minimize = criterion(output, target)
+            objective_to_minimize.backward()
             optimizer.step()
 
     # Validation loop
     model.eval()
-    val_loss = 0
+    val_objective_to_minimize = 0
     with torch.no_grad():
         for data, target in val_loader:
             output = model(data)
-            val_loss += criterion(output, target).item()
+            val_objective_to_minimize += criterion(output, target).item()
 
-    val_loss /= len(val_loader.dataset)
-    return val_loss
+    val_objective_to_minimize /= len(val_loader.dataset)
+    return val_objective_to_minimize
 
 
 if __name__ == "__main__":

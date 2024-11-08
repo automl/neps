@@ -11,21 +11,22 @@ The 2 crucial components are:
 * The search space, called the `pipeline_space` in NePS
   * This defines the set of hyperparameters that the optimizer will search over
   * This declaration also allows injecting priors in the form of defaults per hyperparameter
-* The `run_pipeline` function
+* The `evaluate_pipeline` function
   * This function is called by the optimizer and is responsible for running the pipeline
   * The function should at the minimum expect the hyperparameters as keyword arguments
-  * The function should return the loss of the pipeline as a float
-    * If the return value is a dictionary, it should have a key called "loss" with the loss as a float
+  * The function should return the objective_to_minimize of the pipeline as a float
+    * If the return value is a dictionary, it should have a key called "objective_to_minimize" with the objective_to_minimize as a float
 
 
 Overall, running an optimizer from NePS involves 4 clear steps:
 1. Importing neccessary packages including neps.
 2. Designing the search space as a dictionary.
-3. Creating the run_pipeline and returning the loss and other wanted metrics.
+3. Creating the evaluate_pipeline and returning the objective_to_minimize and other wanted metrics.
 4. Using neps run with the optimizer of choice.
 """
 
 import logging
+from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -45,13 +46,13 @@ def pipeline_space() -> dict:
             lower=1e-5,
             upper=1e-2,
             log=True,  # If True, the search space is sampled in log space
-            default=1e-3,  # a non-None value here acts as the mode of the prior distribution
+            prior=1e-3,  # a non-None value here acts as the mode of the prior distribution
         ),
         wd=neps.Float(
             lower=0,
             upper=1e-1,
             log=True,
-            default=1e-3,
+            prior=1e-3,
         ),
         epoch=neps.Integer(
             lower=1,
@@ -61,8 +62,12 @@ def pipeline_space() -> dict:
     )
     return space
 
+def run_pipeline(**config) -> dict | float:
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(**config)
 
-def run_pipeline(
+
+def evaluate_pipeline(
     pipeline_directory,  # The directory where the config is saved
     previous_pipeline_directory,  # The directory of the config's immediate lower fidelity
     **config,  # The hyperparameters to be used in the pipeline
@@ -129,9 +134,9 @@ def run_pipeline(
         optimizer=optimizer,
     )
 
-    # Return a dictionary with the results, or a single float value (loss)
+    # Return a dictionary with the results, or a single float value (objective_to_minimize)
     return {
-        "loss": ...,
+        "objective_to_minimize": ...,
         "info_dict": {
             "train_accuracy": ...,
             "test_accuracy": ...,
@@ -139,14 +144,14 @@ def run_pipeline(
     }
 
 
-# end of run_pipeline
+# end of evaluate_pipeline
 
 
 if __name__ == "__main__":
     neps.run(
-        run_pipeline=run_pipeline,  # User TODO (defined above)
+        evaluate_pipeline=evaluate_pipeline,  # User TODO (defined above)
         pipeline_space=pipeline_space(),  # User TODO (defined above)
         root_directory="results",
-        max_evaluations_total=25,  # total number of times `run_pipeline` is called
+        max_evaluations_total=25,  # total number of times `evaluate_pipeline` is called
         searcher="priorband",  # "priorband_bo" for longer budgets, and set `initial_design_size``
     )

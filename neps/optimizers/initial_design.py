@@ -102,7 +102,7 @@ def make_initial_design(  # noqa: PLR0912, C901
     if sample_default_first:
         # TODO: No way to pass a seed to the sampler
         default = {
-            name: hp.default if hp.default is not None else hp.sample_value()
+            name: hp.prior if hp.prior is not None else hp.sample_value()
             for name, hp in space.hyperparameters.items()
         }
         configs.append({**default, **fids()})

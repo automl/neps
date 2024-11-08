@@ -51,7 +51,7 @@ class RegressionRunner:
         objective: RegressionObjectiveBase | Callable,
         iterations: int = 100,
         max_evaluations: int = 150,
-        budget: int = 10000,
+        max_cost_total: int = 10000,
         experiment_name: str = "",
         **kwargs,
     ):
@@ -62,7 +62,7 @@ class RegressionRunner:
             objective: callable that takes a configuration as input and evaluates it
             iterations: number of times to record the whole optimization process
             max_evaluations: maximum number of total evaluations for each optimization process
-            budget: budget for cost aware optimizers
+            max_cost_total: budget for cost aware optimizers
             experiment_name: string to identify different experiments
         """
         self.objective = objective
@@ -98,7 +98,7 @@ class RegressionRunner:
         self.benchmark = None
 
         # Cost cooling optimizer expects budget but none of the others does
-        self.budget = budget if "cost" in self.optimizer else None
+        self.max_cost_total = max_cost_total if "cost" in self.optimizer else None
         self.max_evaluations = max_evaluations
 
         self.final_losses: list[float] = []
@@ -112,17 +112,17 @@ class RegressionRunner:
 
     @property
     def final_losses_path(self):
-        return Path(self.root_directory, self.loss_file_name)
+        return Path(self.root_directory, self.objective_to_minimize_file_name)
 
     @property
-    def loss_file_name(self):
+    def objective_to_minimize_file_name(self):
         return f"final_losses_{self.max_evaluations}_.txt"
 
     def save_losses(self):
         if not self.final_losses_path.parent.exists():
             Path(self.root_directory).mkdir()
         with self.final_losses_path.open(mode="w+", encoding="utf-8") as f:
-            f.writelines([str(loss) + "\n" for loss in self.final_losses])
+            f.writelines([str(objective_to_minimize) + "\n" for objective_to_minimize in self.final_losses])
         logging.info(
             f"Saved the results of {len(self.final_losses)} "
             f"runs of {self.max_evaluations} "
@@ -131,10 +131,10 @@ class RegressionRunner:
 
     def neps_run(self, working_directory: Path):
         neps.run(
-            run_pipeline=self.objective,
+            evaluate_pipeline=self.objective,
             pipeline_space=self.pipeline_space,
             searcher=self.optimizer,
-            max_cost_total=self.budget,
+            max_cost_total=self.max_cost_total,
             root_directory=working_directory,
             max_evaluations_total=self.max_evaluations,
         )
@@ -171,8 +171,8 @@ class RegressionRunner:
         elif self.final_losses_path.exists():
             # Read from final_losses_path for each regression run
             self.final_losses = [
-                float(loss)
-                for loss in self.final_losses_path.read_text(
+                float(objective_to_minimize)
+                for objective_to_minimize in self.final_losses_path.read_text(
                     encoding="utf-8"
                 ).splitlines()[: self.iterations]
             ]
@@ -189,8 +189,8 @@ class RegressionRunner:
                 # Try reading from the LOSS_FILE in the worst case
                 if LOSS_FILE.exists():
                     with LOSS_FILE.open(mode="r", encoding="utf-8") as f:
-                        loss_dict = json.load(f)
-                    self.final_losses = loss_dict[self.optimizer][self.task]
+                        objective_to_minimize_dict = json.load(f)
+                    self.final_losses = objective_to_minimize_dict[self.optimizer][self.task]
                 else:
                     raise FileNotFoundError(
                         f"Results from the previous runs are not "

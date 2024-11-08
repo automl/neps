@@ -1,5 +1,6 @@
 import logging
 import time
+from warnings import warn
 
 from torch import nn
 
@@ -70,6 +71,10 @@ def set_recursive_attribute(op_name, predecessor_values):
 
 
 def run_pipeline(some_architecture, some_float, some_integer, some_cat):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(some_architecture, some_float, some_integer, some_cat)
+
+def evaluate_pipeline(some_architecture, some_float, some_integer, some_cat):
     start = time.time()
 
     in_channels = 3
@@ -97,7 +102,7 @@ def run_pipeline(some_architecture, some_float, some_integer, some_cat):
     end = time.time()
 
     return {
-        "loss": y,
+        "objective_to_minimize": y,
         "info_dict": {
             "test_score": y,
             "train_time": end - start,
@@ -114,19 +119,19 @@ pipeline_space = dict(
         prior=prior_distr,
     ),
     some_float=neps.Float(
-        lower=1, upper=1000, log=True, default=900, default_confidence="medium"
+        lower=1, upper=1000, log=True, prior=900, prior_confidence="medium"
     ),
     some_integer=neps.Integer(
-        lower=0, upper=50, default=35, default_confidence="low"
+        lower=0, upper=50, prior=35, prior_confidence="low"
     ),
     some_cat=neps.Categorical(
-        choices=["a", "b", "c"], default="a", default_confidence="high"
+        choices=["a", "b", "c"], prior="a", prior_confidence="high"
     ),
 )
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/user_priors_with_graphs",
     max_evaluations_total=15,

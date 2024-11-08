@@ -55,7 +55,7 @@ class RandomSearch(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         n_trials = len(trials)
         config = self.sampler.sample_one(to=self.encoder.domains)

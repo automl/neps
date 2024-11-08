@@ -12,7 +12,7 @@ Positional arguments:
 Optional arguments:
     -h, --help                  Show this help message and exit
     --scientific_mode           If true, plot from a tree-structured root_directory: benchmark={}/algorithm={}/seed={}
-    --key_to_extract            The metric to be used on the x-axis (if active, make sure run_pipeline returns the metric in the info_dict)
+    --key_to_extract            The metric to be used on the x-axis (if active, make sure evaluate_pipeline returns the metric in the info_dict)
     --benchmarks                List of benchmarks to plot
     --algorithms                List of algorithms to plot
     --consider_continuations    If true, toggle calculation of continuation costs
@@ -57,7 +57,7 @@ parser.add_argument(
 parser.add_argument(
     "--key_to_extract",
     help="The metric to be used on the x-axis (if "
-         "active, make sure run_pipeline returns "
+         "active, make sure evaluate_pipeline returns "
          "the metric in the info_dict)")
 parser.add_argument(
     "--benchmarks",

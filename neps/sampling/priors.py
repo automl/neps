@@ -140,14 +140,14 @@ class Prior(Sampler):
         for name, hp in parameters.items():
             domains.append(hp.domain)
 
-            default = center_values.get(name, hp.default)
+            default = center_values.get(name, hp.prior)
             if default is None:
                 centers.append(None)
                 continue
 
             confidence_score = confidence_values.get(
                 name,
-                _mapping[hp.default_confidence_choice],
+                _mapping[hp.prior_confidence_choice],
             )
             center = hp.choices.index(default) if isinstance(hp, Categorical) else default
             centers.append((center, confidence_score))
@@ -283,7 +283,7 @@ class Prior(Sampler):
 
         Args:
             space: The search space to createa a prior from. Will look
-                at the `.default` and `.default_confidence` of the parameters
+                at the `.default` and `.prior_confidence` of the parameters
                 to create a truncated normal.
                 Any parameters that do not have a `.default` will be covered by
                 a uniform distribution.

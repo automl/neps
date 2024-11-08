@@ -11,7 +11,7 @@ from typing import Any
 class BudgetInfo:
     """Information about the budget of an optimizer."""
 
-    max_cost_budget: float | None = None
+    max_cost_total: float | None = None
     used_cost_budget: float = 0.0
     max_evaluations: int | None = None
     used_evaluations: int = 0
@@ -25,7 +25,7 @@ class BudgetInfo:
 class OptimizationState:
     """The current state of an optimizer."""
 
-    budget: BudgetInfo | None
+    max_cost_total_info: BudgetInfo | None
     """Information regarind the budget used by the optimization trajectory."""
 
     shared_state: dict[str, Any]

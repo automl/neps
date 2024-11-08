@@ -73,9 +73,9 @@ def _adjust_pipeline_space_to_match_stepsize(
         lower=new_lower,
         upper=fidelity.upper,
         log=fidelity.log,
-        default=fidelity.default,
+        prior=fidelity.prior,
         is_fidelity=True,
-        default_confidence=fidelity.default_confidence_choice,
+        prior_confidence=fidelity.prior_confidence_choice,
     )
     return (
         SearchSpace(**{**pipeline_space.hyperparameters, fidelity_name: new_fid}),
@@ -98,8 +98,8 @@ class IFBO(BaseOptimizer):
         initial_design_size: int | Literal["ndim"] = "ndim",
         n_acquisition_new_configs: int = 1_000,
         device: torch.device | None = None,
-        budget: int | float | None = None,  # TODO: Remove
-        loss_value_on_error: float | None = None,  # TODO: Remove
+        max_cost_total: int | float | None = None,  # TODO: Remove
+        objective_to_minimize_value_on_error: float | None = None,  # TODO: Remove
         cost_value_on_error: float | None = None,  # TODO: Remove
         ignore_errors: bool = False,  # TODO: Remove
     ):
@@ -171,7 +171,7 @@ class IFBO(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None = None,
+        max_cost_total_info: BudgetInfo | None = None,
     ) -> SampledConfig:
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
@@ -222,7 +222,8 @@ class IFBO(BaseOptimizer):
             not_pending_X = X
 
         # NOTE: Can't really abstract this, requires knowledge that:
-        # 1. The encoding is such that the loss is 1 - loss
+        # 1. The encoding is such that the objective_to_minimize is 1 -
+        # objective_to_minimize
         # 2. The budget is the second column
         # 3. The budget is encoded between 1/max_fid and 1
         rng = np.random.RandomState(len(trials))

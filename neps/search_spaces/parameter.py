@@ -30,7 +30,7 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
     """A base class for hyperparameters.
 
     Attributes:
-        default: default value for the hyperparameter. This value
+        prior: default value for the hyperparameter. This value
             is used as a prior to inform algorithms about a decent
             default value for the hyperparameter, as well as use
             attributes from [`ParameterWithPrior`][neps.search_spaces.ParameterWithPrior],
@@ -44,17 +44,17 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         self,
         *,
         value: ValueT | None,
-        default: ValueT | None,
+        prior: ValueT | None,
         is_fidelity: bool,
     ):
         """Create a new `Parameter`.
 
         Args:
             value: value for the hyperparameter.
-            default: default value for the hyperparameter.
+            prior: default value for the hyperparameter.
             is_fidelity: whether the hyperparameter is fidelity.
         """
-        self.default = default
+        self.prior = prior
         self.is_fidelity = is_fidelity
 
         # TODO(eddiebergman): The reason to have this not as a straight alone
@@ -69,7 +69,7 @@ class Parameter(ABC, Generic[ValueT, SerializedT]):
         )
 
         # TODO: Pass in through subclasses
-        self.default_confidence_score: float
+        self.prior_confidence_score: float
 
     # TODO(eddiebergman): All this does is just check values which highly unlikely
     # what we want. However this needs to be tackled in a seperate PR.
@@ -165,16 +165,16 @@ class ParameterWithPrior(Parameter[ValueT, SerializedT]):
     """A base class for hyperparameters with priors.
 
     Attributes:
-        default_confidence_choice: The choice of how confident any algorithm should
-            be in the default value being a good value.
-        default_confidence_score: A score used by algorithms to utilize the default value.
+        prior_confidence_choice: The choice of how confident any algorithm should
+            be in the prior value being a good value.
+        prior_confidence_score: A score used by algorithms to utilize the prior value.
         has_prior: whether the hyperparameter has a prior that can be used by an
-            algorithm. In many cases, this refers to having a default value.
+            algorithm. In many cases, this refers to having a prior value.
     """
 
     DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]]
-    default_confidence_choice: str
-    default_confidence_score: float
+    prior_confidence_choice: str
+    prior_confidence_score: float
     has_prior: bool
 
     # NOTE(eddiebergman): Like the normal `Parameter.sample` but with `user_priors`.
