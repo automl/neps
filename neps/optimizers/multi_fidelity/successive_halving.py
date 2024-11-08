@@ -49,7 +49,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int | None = None,
+        max_cost_total: int | None = None,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
@@ -68,7 +68,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
         Args:
             pipeline_space: Space in which to search
-            budget: Maximum budget
+            max_cost_total: Maximum budget
             eta: The reduction factor used by SH
             early_stopping_rate: Determines the number of rungs in an SH bracket
                 Choosing 0 creates maximal rungs given the fidelity bounds
@@ -94,7 +94,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         """
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
@@ -320,7 +320,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         """This is basically the fit method."""
         completed: dict[str, ConfigResult] = {
@@ -489,13 +489,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
 class SuccessiveHalving(SuccessiveHalvingBase):
     def _calc_budget_used_in_bracket(self, config_history: list[int]) -> int:
-        budget = 0
+        max_cost_total = 0
         for rung in self.config_map:
             count = sum(config_history == rung)
             # `range(min_rung, rung+1)` counts the black-box cost of promotions since
             # SH budgets assume each promotion involves evaluation from scratch
-            budget += count * sum(np.arange(self.min_rung, rung + 1))
-        return budget
+            max_cost_total += count * sum(np.arange(self.min_rung, rung + 1))
+        return max_cost_total
 
     def clear_old_brackets(self) -> None:
         """Enforces reset at each new bracket.
@@ -559,7 +559,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
@@ -575,7 +575,7 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
@@ -599,7 +599,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
@@ -616,7 +616,7 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
@@ -642,7 +642,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
@@ -658,7 +658,7 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,

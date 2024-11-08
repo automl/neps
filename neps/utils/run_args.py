@@ -98,7 +98,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
                 f"provided via run_args."
                 f"See here all valid arguments:"
                 f" {', '.join(expected_parameters)}, "
-                f"'run_pipeline', 'preload_hooks', 'pipeline_space'"
+                f"'evaluate_pipeline', 'preload_hooks', 'pipeline_space'"
             )
 
     # Process complex configurations (e.g., 'pipeline_space', 'searcher') and integrate

@@ -69,7 +69,7 @@ class BayesianOptimization(BaseOptimizer):
         device: torch.device | None = None,
         encoder: ConfigEncoder | None = None,
         seed: int | None = None,
-        budget: Any | None = None,  # TODO: remove
+        max_cost_total: Any | None = None,  # TODO: remove
         surrogate_model: Any | None = None,  # TODO: remove
         objective_to_minimize_value_on_error: Any | None = None,  # TODO: remove
         cost_value_on_error: Any | None = None,  # TODO: remove
@@ -134,7 +134,7 @@ class BayesianOptimization(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None = None,
+        max_cost_total_info: BudgetInfo | None = None,
     ) -> SampledConfig:
         n_sampled = len(trials)
         config_id = str(n_sampled + 1)
@@ -164,14 +164,16 @@ class BayesianOptimization(BaseOptimizer):
 
         cost_percent = None
         if self.use_cost:
-            if budget_info is None:
+            if max_cost_total_info is None:
                 raise ValueError(
                     "Must provide a 'cost' to configurations if using cost"
                     " with BayesianOptimization."
                 )
-            if budget_info.max_cost_budget is None:
+            if max_cost_total_info.max_cost_total is None:
                 raise ValueError("Cost budget must be set if using cost")
-            cost_percent = budget_info.used_cost_budget / budget_info.max_cost_budget
+            cost_percent = (
+                max_cost_total_info.used_cost_budget / max_cost_total_info.max_cost_total
+            )
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.

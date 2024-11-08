@@ -51,7 +51,7 @@ neps.run(
 
 # Case 2: Testing BaseOptimizer as searcher with Hyperband
 search_space_fidelity = SearchSpace(**pipeline_space_fidelity)
-my_custom_searcher_2 = Hyperband(pipeline_space=search_space_fidelity, budget=1)
+my_custom_searcher_2 = Hyperband(pipeline_space=search_space_fidelity, max_cost_total=1)
 neps.run(
     evaluate_pipeline=evaluate_pipeline_fidelity,
     root_directory="hyperband_custom_created",

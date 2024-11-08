@@ -517,9 +517,9 @@ def _launch_runtime(  # noqa: PLR0913
         directory=optimization_dir,
         optimizer_info=OptimizerInfo(optimizer_info),
         optimizer_state=OptimizationState(
-            budget=(
+            max_cost_total_info=(
                 BudgetInfo(
-                    max_cost_budget=max_cost_total,
+                    max_cost_total=max_cost_total,
                     used_cost_budget=0,
                     max_evaluations=max_evaluations_total,
                     used_evaluations=0,
