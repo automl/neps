@@ -286,14 +286,14 @@ def run_optimization(args: argparse.Namespace) -> None:
         run_args = Path("run_config.yaml")
     else:
         run_args = args.run_args
-    if not isinstance(args.run_pipeline, Default):
-        module_path, function_name = args.run_pipeline.split(":")
+    if not isinstance(args.evaluate_pipeline, Default):
+        module_path, function_name = args.evaluate_pipeline.split(":")
         evaluate_pipeline = load_and_return_object(
             module_path, function_name, EVALUATE_PIPELINE
         )
 
     else:
-        evaluate_pipeline = args.run_pipeline
+        evaluate_pipeline = args.evaluate_pipeline
 
     kwargs = {}
     if args.searcher_kwargs:

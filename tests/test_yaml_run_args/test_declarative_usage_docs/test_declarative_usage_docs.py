@@ -48,7 +48,7 @@ def test_run_with_yaml_and_run_pipeline() -> None:
 
     try:
         subprocess.check_call(
-            [sys.executable, BASE_PATH / "neps_run.py", yaml_path, "--run_pipeline"]
+            [sys.executable, BASE_PATH / "neps_run.py", yaml_path, "--evaluate_pipeline"]
         )
     except subprocess.CalledProcessError as e:
         pytest.fail(

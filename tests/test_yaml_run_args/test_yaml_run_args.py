@@ -80,7 +80,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
     # Compare keys with a function/list of functions as their values
     # Special because they include a module loading procedure by a path and the name of
     # the function
-    for special_key in ["run_pipeline", "pre_load_hooks"]:
+    for special_key in ["evaluate_pipeline", "pre_load_hooks"]:
         if special_key in expected_output:
             func_expected = expected_output.pop(special_key)
             func_output = output.pop(special_key)
@@ -105,7 +105,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full.yaml",
             {
-                "run_pipeline": evaluate_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -129,7 +129,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full_same_level.yaml",
             {
-                "run_pipeline": evaluate_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -181,7 +181,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_optional_loading_format.yaml",
             {
-                "run_pipeline": evaluate_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,

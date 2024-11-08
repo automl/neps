@@ -23,10 +23,10 @@ if __name__ == "__main__":
         description="Run NEPS optimization with run_args.yml."
     )
     parser.add_argument("run_args", type=str, help="Path to the YAML configuration file.")
-    parser.add_argument("--run_pipeline", action="store_true")
+    parser.add_argument("--evaluate_pipeline", action="store_true")
     args = parser.parse_args()
 
-    if args.run_pipeline:
-        neps.run(run_args=args.run_args, evaluate_pipeline=run_pipeline_constant)
+    if args.evaluate_pipeline:
+        neps.run(run_args=args.run_args, evaluate_pipeline=evaluate_pipeline_constant)
     else:
         neps.run(run_args=args.run_args)
