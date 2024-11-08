@@ -49,7 +49,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
     validates these arguments, and then returns them in a dictionary. It checks for the
     presence and validity of expected parameters, and distinctively handles more complex
     configurations, specifically those that are dictionaries(e.g. pipeline_space) or
-    objects(e.g. run_pipeline) requiring loading.
+    objects(e.g. evaluate_pipeline) requiring loading.
 
     Args:
         path (str): The file path to the YAML configuration file.
@@ -67,7 +67,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
     settings = {}
 
     # List allowed NePS run arguments with simple types (e.g., string, int). Parameters
-    # like 'run_pipeline', 'preload_hooks', 'pipeline_space',
+    # like 'evaluate_pipeline', 'preload_hooks', 'pipeline_space',
     # and 'searcher' are excluded due to needing specialized processing.
     expected_parameters = [
         ROOT_DIRECTORY,
@@ -146,7 +146,7 @@ def config_loader(path: str | Path) -> dict:
 
 def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, dict]:
     """Recursive function to extract leaf keys and their values from a nested dictionary.
-    Special keys (e.g.'run_pipeline') are also extracted if present
+    Special keys (e.g.'evaluate_pipeline') are also extracted if present
     and their corresponding values (dict) at any level in the nested structure.
 
     Args:
