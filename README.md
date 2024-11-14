@@ -15,12 +15,12 @@ To learn about NePS, check-out [the documentation](https://automl.github.io/neps
 
 In addition to the features offered by traditional HPO and NAS libraries, NePS stands out with:
 
-1. **Hyperparameter Optimization (HPO) Efficient Enough For Deep Learning:** <br />
+1. **Hyperparameter Optimization (HPO) Efficient Enough for Deep Learning:** <br />
     NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge, while also using many other efficiency boosters.
      - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning (NeurIPS 2023)](https://arxiv.org/abs/2306.12370)
      - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization (ICLR 2022)](https://arxiv.org/abs/2204.11051) <br /> <br />
 1. **Neural Architecture Search (NAS) with Expressive Search Spaces:** <br />
-    NePS provides capabilities for designing and optimizing architectures in an expressive and natural fashion.
+    NePS provides capabilities for optimizing DL architectures in an expressive and natural fashion.
      - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars (NeurIPS 2023)](https://arxiv.org/abs/2211.01842) <br /> <br />
 1. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
      NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
