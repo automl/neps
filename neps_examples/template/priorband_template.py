@@ -48,7 +48,7 @@ def pipeline_space() -> dict:
             default=1e-3,  # a non-None value here acts as the mode of the prior distribution
         ),
         wd=neps.Float(
-            lower=0,
+            lower=1e-5,
             upper=1e-1,
             log=True,
             default=1e-3,
