@@ -7,19 +7,19 @@ For citing NePS, please refer to the following:
 ### APA Style
 
 ```apa
-Stoll, D., Mallik, N., Schrodi, S., Janowski, M., Garibov, S., Abou Chakra, T., Rogalla, D., Bergman, E., Hvarfner, C., Binxin, R., Kober, N., Vallaeys, T., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.11.0) [Computer software]. https://github.com/automl/neps
+Stoll, D., Mallik, N., Schrodi, S., Bergman, E., Janowski, M., Garibov, S., Abou Chakra, T., Rogalla, D., Bergman, E., Hvarfner, C., Binxin, R., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.12.2) [Computer software]. https://github.com/automl/neps
 ```
 
 ### BibTex Style
 
 ```bibtex
 @software{Stoll_Neural_Pipeline_Search_2023,
-author = {Stoll, Danny and Mallik, Neeratyoy and Schrodi, Simon and Janowski, Maciej and Garibov, Samir and Abou Chakra, Tarek and Rogalla, Daniel and Bergman, Eddie and Hvarfner, Carl and Binxin, Ru and Kober, Nils and Vallaeys, Théophane and Hutter, Frank},
+author = {Stoll, Danny and Mallik, Neeratyoy and Schrodi, Simon and Bergmann, Eddie and Janowski, Maciej and Garibov, Samir and Abou Chakra, Tarek and Rogalla, Daniel and Bergman, Eddie and Hvarfner, Carl and Binxin, Ru and Hutter, Frank},
 month = oct,
 title = {{Neural Pipeline Search (NePS)}},
 url = {https://github.com/automl/neps},
-version = {0.11.0},
-year = {2023}
+version = {0.12.2},
+year = {2024}
 }
 ```
 

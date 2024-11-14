@@ -13,8 +13,6 @@ authors = [
     "Daniel Rogalla",
     "Carl Hvarfner",
     "Binxin Ru",
-    "Nils Kober",
-    "Théophane Vallaeys",
     "Frank Hutter",
 ]
 readme = "README.md"
@@ -128,7 +126,7 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-# Extend what ruff is allowed to fix, even it it may break
+# Extend what ruff is allowed to fix, even if it may break
 # This is okay given we use it all the time and it ensures
 # better practices. Would be dangerous if using for first
 # time on established project.

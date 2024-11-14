@@ -250,7 +250,7 @@ We follow the [semantic versioning](https://semver.org) scheme.
 poetry version v0.9.0
 ```
 
-and manually change the version specified in `CITATION.cff`.
+and manually change the version specified in `CITATION.cff` and `docs/citations.md`
 
 ### 2. Commit with a Version Tag
 
