@@ -48,7 +48,8 @@ class TestTorchWLKernel:
             torch.tensor(torch_kernel_matrix, dtype=torch.float64),
             torch.tensor(grakel_kernel_matrix, dtype=torch.float64),
             atol=1e-100
-        ), f"Mismatch found in kernel matrices with n_iter={n_iter} and normalize={normalize}"
+        ), (f"Mismatch found in kernel matrices with n_iter={n_iter} and "
+            f"normalize={normalize}")
 
     def test_kernel_symmetry(self, example_graphs):
         """Test if the kernel matrix is symmetric."""
@@ -152,7 +153,8 @@ class TestTorchWLKernel:
             torch.tensor(torch_kernel_matrix, dtype=torch.float64),
             torch.tensor(grakel_kernel_matrix, dtype=torch.float64),
             atol=1e-100
-        ), f"Mismatch found in kernel matrices with n_iter={n_iter} and normalize={normalize} for graphs with different node labels"
+        ), (f"Mismatch found in kernel matrices with n_iter={n_iter} and "
+            f"normalize={normalize} for graphs with different node labels")
 
     def test_wl_kernel_with_same_node_labels(self, example_graphs):
         """Test the TorchWLKernel with graphs having the same node labels."""
@@ -176,4 +178,5 @@ class TestTorchWLKernel:
         # Check if the kernel matrix is valid and the values are the same for the graphs with the same node labels
         assert K.shape == (3, 3), "Kernel matrix shape is incorrect"
         assert torch.allclose(K, K.T, atol=1e-100), "Kernel matrix is not symmetric"
-        assert torch.all(K == K[0, 0]), "Kernel values should be the same for graphs with the same node labels"
+        assert torch.all(K == K[0, 0]), ("Kernel values should be the same for "
+                                         "graphs with the same node labels")
