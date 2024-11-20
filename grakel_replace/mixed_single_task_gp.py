@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import networkx as nx
 from botorch.models import SingleTaskGP
 from gpytorch.distributions.multivariate_normal import MultivariateNormal
 from gpytorch.kernels import AdditiveKernel, Kernel
 from grakel_replace.torch_wl_kernel import GraphDataset, TorchWLKernel
 
 if TYPE_CHECKING:
-    import networkx as nx
     from gpytorch.module import Module
     from torch import Tensor
 
@@ -103,6 +103,9 @@ class MixedSingleTaskGP(SingleTaskGP):
                 (optional).
             **kwargs: Additional arguments for SingleTaskGP initialization.
         """
+        if train_X.size(0) == 0 or len(train_graphs) == 0:
+            raise ValueError("Training inputs (features and graphs) cannot be empty.")
+
         # Initialize the base SingleTaskGP with a num/cat kernel (if provided)
         super().__init__(
             train_X=train_X,
@@ -150,6 +153,8 @@ class MixedSingleTaskGP(SingleTaskGP):
                 f"Number of feature vectors ({len(X)}) must match "
                 f"number of graphs ({len(graphs)})"
             )
+        if not all(isinstance(g, nx.Graph) for g in graphs):
+            raise TypeError("Expected input type is a list of NetworkX graphs.")
 
         # Process the new graph inputs into a compatible dataset
         proc_graphs = GraphDataset.from_networkx(graphs)

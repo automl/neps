@@ -228,6 +228,10 @@ class GraphDataset:
     @staticmethod
     def from_networkx(graphs: list[nx.Graph], node_labels_tag: str = "label") -> list[
         nx.Graph]:
+
+        if not all(isinstance(g, nx.Graph) for g in graphs):
+            raise TypeError("Expected input type is a list of NetworkX graphs.")
+
         """Convert NetworkX graphs ensuring proper node labeling."""
         processed_graphs = []
         for g in graphs:
