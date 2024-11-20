@@ -4,141 +4,146 @@ from typing import TYPE_CHECKING
 
 from botorch.models import SingleTaskGP
 from gpytorch.distributions.multivariate_normal import MultivariateNormal
-from gpytorch.kernels import AdditiveKernel
-from gpytorch.module import Module
+from gpytorch.kernels import AdditiveKernel, Kernel
 from grakel_replace.torch_wl_kernel import GraphDataset, TorchWLKernel
 
 if TYPE_CHECKING:
     import networkx as nx
+    from gpytorch.module import Module
     from torch import Tensor
 
 
+class WLKernel(Kernel):
+    """Weisfeiler-Lehman Kernel for graph similarity
+    integrated into the GPyTorch framework.
+
+    This kernel encapsulates the precomputed Weisfeiler-Lehman graph kernel matrix
+    and provides it in a GPyTorch-compatible format.
+    It computes either the training kernel
+    or the cross-kernel between training and test graphs as needed.
+
+    Args:
+        parent (MixedSingleTaskGP):
+        The parent MixedSingleTaskGP instance that holds
+            the training data and precomputed kernel matrix.
+    """
+
+    def __init__(self, parent: MixedSingleTaskGP) -> None:
+        super().__init__()
+        self.parent = parent
+
+    def forward(
+        self,
+        x1: Tensor,
+        x2: Tensor | None = None,
+        diag: bool = False,
+        last_dim_is_batch: bool = False,
+    ) -> Tensor:
+        """Forward method to compute the kernel matrix for the graph inputs.
+
+        Args:
+            x1 (Tensor): First input tensor
+                (unused, required for interface compatibility).
+            x2 (Tensor | None): Second input tensor.
+                If None, computes the training kernel matrix.
+            diag (bool): Whether to return only the diagonal of the kernel matrix.
+            last_dim_is_batch (bool): Whether the last dimension is a batch dimension.
+
+        Returns:
+            Tensor: The computed kernel matrix.
+        """
+        if x2 is None:
+            # Return the precomputed training kernel matrix
+            return self.parent._K_train
+
+        # Compute cross-kernel between training graphs and new test graphs
+        test_dataset = GraphDataset.from_networkx(self.parent._test_graphs)
+        return self.parent._wl_kernel(
+            self.parent._train_graph_dataset, test_dataset
+        )
+
+
 class MixedSingleTaskGP(SingleTaskGP):
-    """A Gaussian Process model that handles numerical, categorical, and graph inputs.
+    """A Gaussian Process model for mixed input spaces containing numerical, categorical,
+    and graph features.
 
-    This class extends BoTorch's SingleTaskGP to work with hybrid input spaces containing:
-    - Numerical features
-    - Categorical features
-    - Graph structures
+    This class extends BoTorch's SingleTaskGP to support hybrid inputs by combining:
+    - Standard kernels for numerical and categorical features.
+    - Weisfeiler-Lehman kernel for graph structures.
 
-    It uses the Weisfeiler-Lehman (WL) kernel for graph inputs and combines it with
-    standard kernels for numerical/categorical features using an additive kernel structure
+    The kernels are combined using an additive kernel structure.
 
     Attributes:
-        _wl_kernel (TorchWLKernel): The Weisfeiler-Lehman kernel for graph similarity
-        _train_graphs (List[nx.Graph]): Training set graph instances
-        _K_graph (Tensor): Pre-computed graph kernel matrix for training data
-        num_cat_kernel (Optional[Module]): Kernel for numerical/categorical features
+        _wl_kernel (TorchWLKernel): Instance of the Weisfeiler-Lehman kernel.
+        _train_graphs (list[nx.Graph]): Training graph instances.
+        _K_train (Tensor): Precomputed graph kernel matrix for training graphs.
+        num_cat_kernel (Module | None): Kernel for numerical/categorical features.
     """
 
     def __init__(
         self,
-        train_X: Tensor,  # Shape: (n_samples, n_numerical_categorical_features)
-        train_graphs: list[nx.Graph],  # List of n_samples graph instances
-        train_Y: Tensor,  # Shape: (n_samples, n_outputs)
-        train_Yvar: Tensor | None = None,  # Shape: (n_samples, n_outputs) or None
+        train_X: Tensor,
+        train_graphs: list[nx.Graph],
+        train_Y: Tensor,
+        train_Yvar: Tensor | None = None,
         num_cat_kernel: Module | None = None,
         wl_kernel: TorchWLKernel | None = None,
-        **kwargs  # Additional arguments passed to SingleTaskGP
+        **kwargs,
     ) -> None:
-        """Initialize the mixed input Gaussian Process model.
+        """Initialize the mixed-input Gaussian Process model.
 
         Args:
-            train_X: Training data tensor for numerical and categorical features
-            train_graphs: List of training graphs
-            train_Y: Target values
-            train_Yvar: Observation noise variance (optional)
-            num_cat_kernel: Kernel for numerical/categorical features (optional)
-            wl_kernel: Custom Weisfeiler-Lehman kernel instance (optional)
-            **kwargs: Additional arguments for SingleTaskGP initialization
+            train_X (Tensor): Training tensor for numerical and categorical features.
+            train_graphs (list[nx.Graph]): List of training graph instances.
+            train_Y (Tensor): Target values for training data.
+            train_Yvar (Tensor | None): Observation noise variance (optional).
+            num_cat_kernel (Module | None): Kernel for numerical/categorical features
+                (optional).
+            wl_kernel (TorchWLKernel | None): Weisfeiler-Lehman kernel instance
+                (optional).
+            **kwargs: Additional arguments for SingleTaskGP initialization.
         """
-        # Initialize parent class with initial covar_module
+        # Initialize the base SingleTaskGP with a num/cat kernel (if provided)
         super().__init__(
             train_X=train_X,
             train_Y=train_Y,
             train_Yvar=train_Yvar,
-            covar_module=num_cat_kernel or self._graph_kernel_wrapper(),
-            **kwargs
+            covar_module=num_cat_kernel,
+            **kwargs,
         )
 
-        # Initialize WL kernel with default parameters if not provided
+        # Initialize the Weisfeiler-Lehman kernel or use a default one
         self._wl_kernel = wl_kernel or TorchWLKernel(n_iter=5, normalize=True)
         self._train_graphs = train_graphs
 
-        # Convert graphs to required format and compute kernel matrix
+        # Preprocess the training graphs into a compatible format and compute the graph
+        # kernel matrix
         self._train_graph_dataset = GraphDataset.from_networkx(train_graphs)
         self._K_train = self._wl_kernel(self._train_graph_dataset)
 
+        # If a kernel for numerical/categorical features is provided, combine it with
+        # the WL kernel
         if num_cat_kernel is not None:
-            # Create additive kernel combining numerical/categorical and graph kernels
             combined_kernel = AdditiveKernel(
                 num_cat_kernel,
-                self._graph_kernel_wrapper()
+                WLKernel(self),
             )
             self.covar_module = combined_kernel
 
         self.num_cat_kernel = num_cat_kernel
 
-    def _graph_kernel_wrapper(self) -> Module:
-        """Creates a GPyTorch-compatible kernel module wrapping the WL kernel.
-
-        This wrapper allows the WL kernel to be used within the GPyTorch framework
-        by providing a forward method that returns the pre-computed kernel matrix.
-
-        Returns:
-            Module: A GPyTorch kernel module wrapping the WL kernel computation
-        """
-
-        class WLKernelWrapper(Module):
-            def __init__(self, parent: MixedSingleTaskGP):
-                super().__init__()
-                self.parent = parent
-
-            def forward(
-                self,
-                x1: Tensor,
-                x2: Tensor | None = None,
-                diag: bool = False,
-                last_dim_is_batch: bool = False
-            ) -> Tensor:
-                """Compute the kernel matrix for the graph inputs.
-
-                Args:
-                    x1: First input tensor (unused, required for interface compatibility)
-                    x2: Second input tensor (must be None)
-                    diag: Whether to return only diagonal elements
-                    last_dim_is_batch: Whether the last dimension is a batch dimension
-
-                Returns:
-                    Tensor: Pre-computed graph kernel matrix
-
-                Raises:
-                    NotImplementedError: If x2 is not None (cross-covariance not implemented)
-                """
-                if x2 is None:
-                    return self.parent._K_train
-
-                # Compute cross-covariance between train and test graphs
-                test_dataset = GraphDataset.from_networkx(self.parent._test_graphs)
-                return self.parent._wl_kernel(
-                    self.parent._train_graph_dataset,
-                    test_dataset
-                )
-
-        return WLKernelWrapper(self)
-
     def forward(self, X: Tensor, graphs: list[nx.Graph]) -> MultivariateNormal:
-        """Forward pass computing the GP distribution for given inputs.
+        """Forward pass to compute the Gaussian Process distribution for given inputs.
 
-        Computes the kernel matrix for both numerical/categorical features and graphs,
-        combines them if both are present, and returns the resulting GP distribution.
+        This combines the numerical/categorical kernel with the graph kernel
+        to compute the joint covariance matrix.
 
         Args:
-            X: Input tensor for numerical and categorical features
-            graphs: List of input graphs
+            X (Tensor): Input tensor for numerical and categorical features.
+            graphs (list[nx.Graph]): List of input graphs.
 
         Returns:
-            MultivariateNormal: GP distribution for the given inputs
+            MultivariateNormal: The Gaussian Process distribution for the inputs.
         """
         if len(X) != len(graphs):
             raise ValueError(
@@ -146,20 +151,19 @@ class MixedSingleTaskGP(SingleTaskGP):
                 f"number of graphs ({len(graphs)})"
             )
 
-        # Process new graphs and compute kernel matrix
+        # Process the new graph inputs into a compatible dataset
         proc_graphs = GraphDataset.from_networkx(graphs)
+
+        # Compute the kernel matrix for the new graphs
         K_new = self._wl_kernel(proc_graphs)  # Shape: (n_samples, n_samples)
 
-        # If we have both numerical/categorical and graph features
+        # Combine the graph kernel with the numerical/categorical kernel (if present)
         if self.num_cat_kernel is not None:
-            # Compute kernel for numerical/categorical features
-            K_num_cat = self.num_cat_kernel(X)
-            # Add the kernels (element-wise addition)
-            K_combined = K_num_cat + K_new
+            K_num_cat = self.num_cat_kernel(X)  # Compute kernel for num/cat features
+            K_combined = K_num_cat + K_new  # Combine the two kernels
         else:
             K_combined = K_new
 
-        # Compute mean using the mean module
+        # Compute the mean using the mean module and construct the GP distribution
         mean_x = self.mean_module(X)
-
         return MultivariateNormal(mean_x, K_combined)
