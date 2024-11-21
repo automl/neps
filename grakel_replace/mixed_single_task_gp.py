@@ -21,23 +21,24 @@ class WLKernel(Kernel):
     and provides it in a GPyTorch-compatible format.
     It computes either the training kernel
     or the cross-kernel between training and test graphs as needed.
-
-    Args:
-        parent (MixedSingleTaskGP):
-        The parent MixedSingleTaskGP instance that holds
-            the training data and precomputed kernel matrix.
     """
 
-    def __init__(self, parent: MixedSingleTaskGP) -> None:
+    def __init__(
+        self,
+        K_train: Tensor,
+        wl_kernel: TorchWLKernel,
+        train_graph_dataset: GraphDataset
+    ) -> None:
         super().__init__()
-        self.parent = parent
+        self._K_train = K_train
+        self._wl_kernel = wl_kernel
+        self._train_graph_dataset = train_graph_dataset
 
     def forward(
-        self,
-        x1: Tensor,
+        self, x1: Tensor,
         x2: Tensor | None = None,
         diag: bool = False,
-        last_dim_is_batch: bool = False,
+        last_dim_is_batch: bool = False
     ) -> Tensor:
         """Forward method to compute the kernel matrix for the graph inputs.
 
@@ -54,13 +55,11 @@ class WLKernel(Kernel):
         """
         if x2 is None:
             # Return the precomputed training kernel matrix
-            return self.parent._K_train
+            return self._K_train
 
         # Compute cross-kernel between training graphs and new test graphs
-        test_dataset = GraphDataset.from_networkx(self.parent._test_graphs)
-        return self.parent._wl_kernel(
-            self.parent._train_graph_dataset, test_dataset
-        )
+        test_dataset = GraphDataset.from_networkx(x2)  # x2 should be test graphs
+        return self._wl_kernel(self._train_graph_dataset, test_dataset)
 
 
 class MixedSingleTaskGP(SingleTaskGP):
@@ -127,11 +126,10 @@ class MixedSingleTaskGP(SingleTaskGP):
         # If a kernel for numerical/categorical features is provided, combine it with
         # the WL kernel
         if num_cat_kernel is not None:
-            combined_kernel = AdditiveKernel(
+            self.covar_module = AdditiveKernel(
                 num_cat_kernel,
-                WLKernel(self),
+                WLKernel(self._K_train, self._wl_kernel, self._train_graph_dataset),
             )
-            self.covar_module = combined_kernel
 
         self.num_cat_kernel = num_cat_kernel
 
