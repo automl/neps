@@ -1,9 +1,16 @@
+from itertools import product
+
 import networkx as nx
 import torch
+from botorch.acquisition import LinearMCObjective, qLogNoisyExpectedImprovement
+from botorch.fit import fit_gpytorch_mll
 from botorch.models.gp_regression_mixed import CategoricalKernel, ScaleKernel
+from botorch.optim import optimize_acqf, optimize_acqf_mixed
+from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.distributions.multivariate_normal import MultivariateNormal
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 from grakel_replace.mixed_single_task_gp import MixedSingleTaskGP
+from grakel_replace.optimize import optimize_acqf_graph
 from grakel_replace.torch_wl_kernel import TorchWLKernel
 
 TRAIN_CONFIGS = 10
@@ -100,3 +107,55 @@ with torch.no_grad():
 print("\nMean:", predictions)
 print("Variance:", uncertainties)
 print("Covariance matrix:", covar)
+
+# =============== Fitting the GP using botorch ===============
+
+mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
+fit_gpytorch_mll(mll)
+
+# Define the acquisition function
+acq_function = qLogNoisyExpectedImprovement(
+    model=gp,
+    X_baseline=X,
+    objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+    prune_baseline=True,
+)
+
+# Define bounds
+bounds = torch.tensor(
+    [
+        [0.0, 1.0] * N_NUMERICAL
+        + [0.0, N_CATEGORICAL_VALUES_PER_CATEGORY - 1] * N_CATEGORICAL
+    ]
+).view(2, -1)
+
+cats_per_column: dict[int, list[float]] = {
+    column_ix: [float(i) for i in range(N_CATEGORICAL_VALUES_PER_CATEGORY)]
+    for column_ix in range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL)
+}
+
+# Generate fixed categorical features
+fixed_cats: list[dict[int, float]]
+if len(cats_per_column) == 1:
+    col, choice_indices = next(iter(cats_per_column.items()))
+    fixed_cats = [{col: i} for i in choice_indices]
+else:
+    fixed_cats = [
+        dict(zip(cats_per_column.keys(), combo))
+        for combo in product(*cats_per_column.values())
+    ]
+
+# Use the graph-optimized acquisition function
+best_candidate, best_score = optimize_acqf_graph(
+    acq_function=acq_function,
+    bounds=bounds,
+    fixed_features_list=fixed_cats,
+    train_graphs=graphs,
+    num_graph_samples=10,  # Number of graphs to sample
+    num_restarts=3,
+    raw_samples=250,
+    q=1,
+)
+
+print("Best candidate:", best_candidate)
+print("Acquisition score:", best_score)
