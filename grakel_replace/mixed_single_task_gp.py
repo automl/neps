@@ -76,6 +76,7 @@ class MixedSingleTaskGP(SingleTaskGP):
         _wl_kernel (TorchWLKernel): Instance of the Weisfeiler-Lehman kernel.
         _train_graphs (list[nx.Graph]): Training graph instances.
         _K_train (Tensor): Precomputed graph kernel matrix for training graphs.
+        train_inputs (tuple[Tensor, list[nx.Graph]]): Tuple of training inputs.
         num_cat_kernel (Module | None): Kernel for numerical/categorical features.
     """
 
@@ -118,6 +119,9 @@ class MixedSingleTaskGP(SingleTaskGP):
         self._wl_kernel = wl_kernel or TorchWLKernel(n_iter=5, normalize=True)
         self._train_graphs = train_graphs
 
+        # Store graphs as part of train_inputs for using them in the __call__ method
+        self.train_inputs = (train_X, train_graphs)
+
         # Preprocess the training graphs into a compatible format and compute the graph
         # kernel matrix
         self._train_graph_dataset = GraphDataset.from_networkx(train_graphs)
@@ -132,6 +136,12 @@ class MixedSingleTaskGP(SingleTaskGP):
             )
 
         self.num_cat_kernel = num_cat_kernel
+
+    def __call__(self, X: Tensor, graphs: list[nx.Graph] = None, **kwargs):
+        """Custom __call__ method that retrieves graphs if not explicitly passed."""
+        if graphs is None:  # Use stored graphs from train_inputs if not provided
+            graphs = self.train_inputs[1]
+        return super().__call__(X, graphs=graphs, **kwargs)
 
     def forward(self, X: Tensor, graphs: list[nx.Graph]) -> MultivariateNormal:
         """Forward pass to compute the Gaussian Process distribution for given inputs.
