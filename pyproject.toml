@@ -52,9 +52,10 @@ tensorboard = "^2"
 torchvision = ">=0.8.0"
 ifbo = ">=0.3.10"
 botorch = ">=0.12"
-seaborn = "^0.13"
 networkx = ">=2.6.3"        # upgraded from ^2.6.3, as versions 3.x are now available
 portalocker = "^2"          # upgradable, but not neccessary since 3.x are just now available
+matplotlib = "^3"           # included in seaborn, but seaborn is now removed
+# seaborn = "^0.13"         # removed any seaborn appearance, therefore not needed anymore
 
 
 # Neps dependencies resulting from others but not explicitly subsumed
@@ -65,7 +66,6 @@ portalocker = "^2"          # upgradable, but not neccessary since 3.x are just 
 # Neps dependencies subsumed in others
 # numpy = "^1"              # included in tensorboard (>=1.12.0), botorch (>1.7), ifbo (<2)
 # torch = ">=2.0.1"         # included in ifbo (>=1.9.0), botorch (>=2.0.1), torchvision (2.5.1)
-# matplotlib = "^3"         # included in seaborn
 # more-itertools = "*"      # included in configspace
 # typing-extensions = "*"   # included in many, e.g. botorch, configspace
 # gpytorch = "1.13.0"       # included in botorch (1.13.0)

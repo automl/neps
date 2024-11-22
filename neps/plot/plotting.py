@@ -10,7 +10,6 @@ import matplotlib.figure
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from scipy import stats
 
 _map_axs = (
@@ -64,7 +63,9 @@ def _get_fig_and_axs(
     )
 
     fig.tight_layout(pad=2.0, h_pad=2.5)  # type: ignore
-    sns.despine(fig)
+    for ax in axs.flat:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
     return fig, axs  # type: ignore
 
