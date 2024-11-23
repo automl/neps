@@ -44,13 +44,14 @@ packages = [{ include = "neps" }, { include = "neps_examples" }]
 
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.12"
+python = ">=3.10,<3.13"
 ConfigSpace = "^0.7"
 grakel = "^0.1"
 nltk = "^3.6.4"
 tensorboard = "^2"
 torchvision = ">=0.8.0"
-ifbo = ">=0.3.10"
+# ifbo = ">=0.3.10"         # omitted to test Python >=3.12
+numpy = "^1"                  # added in to keep binary compatibility
 botorch = ">=0.12"
 networkx = ">=2.6.3"        # upgraded from ^2.6.3, as versions 3.x are now available
 portalocker = "^2"          # upgradable, but not neccessary since 3.x are just now available
@@ -60,7 +61,7 @@ matplotlib = "^3"           # included in seaborn, but seaborn is now removed
 
 # Neps dependencies resulting from others but not explicitly subsumed
 # scipy = ">=1.13.1"        # included in configspace (*), botorch,grakel (>= 1.6.0), results in (1.14.1)
-# pandas = "^2"             # included in seabon (>=1.2),                             results in (2.2.3)
+pandas = "^2"             # included in seaborn (>=1.2),                             results in (2.2.3)
 # pyyaml = "^6"             # included in pre-commit, mike, mkdocs (>=5.1),           results in (6.0.2)
 
 # Neps dependencies subsumed in others
