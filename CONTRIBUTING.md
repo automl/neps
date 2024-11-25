@@ -270,7 +270,13 @@ There are four steps to releasing a new version of neps:
 
 We follow the [semantic versioning](https://semver.org) scheme.
 
-## 1. Update the Package Version and CITATION.cff
+## 1. Run tests
+
+```bash
+uv run pytest
+```
+
+## 2. Update the Package Version and CITATION.cff
 
 ```bash
 bump-my-version bump <major | minor | patch>
