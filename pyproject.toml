@@ -334,3 +334,9 @@ module = [
     "requests.*",
 ]
 ignore_errors = true
+
+[tool.bumpversion]
+current_version = "0.12.2"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
