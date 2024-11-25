@@ -27,24 +27,30 @@ For instructions see below.
 First, install uv, e.g., via
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
-# or directly into your virtual env using `pip install poetry`
+# On macOS and Linux.
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-
-## 2. Create a virtual environment
 
 ```bash
-uv venv --python 3.11
-source .venv/bin/activate
+# On Windows.
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-## 3. Install the neps Package Using uv
+
+## 2. Install the neps Package Using uv
 
 Clone the repository, e.g.,
 
 ```bash
 git clone https://github.com/automl/neps.git
 cd neps
+```
+
+## 3. Create a virtual environment
+
+```bash
+uv venv --python 3.11
+source .venv/bin/activate
 ```
 
 Then, inside the main directory of neps run
@@ -326,7 +332,7 @@ To publish to PyPI:
 3. Run
 
 ```bash
-poetry publish
+uv publish
 ```
 
 This will ask for your PyPI credentials.
