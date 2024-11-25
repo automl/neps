@@ -337,5 +337,9 @@ ignore_errors = true
 
 [tool.bumpversion]
 current_version = "0.12.2"
-version_files = ["pyproject.toml:^version"]
+version_files = [
+    "pyproject.toml:^version", 
+    "pyproject.toml:[project]\nversion",
+    "CITATION.cff:^version"
+    ]
 
