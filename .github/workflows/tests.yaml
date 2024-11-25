@@ -28,14 +28,10 @@ jobs:
       - name: install the latest version uv
         uses: astral-sh/setup-uv@v3
         with:
+          enable-cache: true
           version: latest
       - name: create venv
         run: uv venv --python ${{ matrix.python-version }}
-      - name: Activate venv
-        run: |
-          source .venv/bin/activate
-          echo "Python version: $(python --version)"
-          echo "which python: $(which python)"
       - name: Install
         run: uv pip install ".[dev]"
       - name: Run tests
