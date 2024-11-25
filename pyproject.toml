@@ -340,7 +340,5 @@ current_version = "0.12.2"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
-parse = "(?P<version>\\d+\\.\\d+\\.\\d+)"
-serialize = "{version}"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
