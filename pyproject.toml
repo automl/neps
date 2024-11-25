@@ -62,7 +62,7 @@ pyyaml = "^6"
 tensorboard = "^2"
 typing-extensions = "*"
 torchvision = ">=0.8.0"
-ifbo = ">=0.3.10"
+ifbo = ">=0.3.11"
 botorch = ">=0.12"
 gpytorch = "1.13.0"
 
