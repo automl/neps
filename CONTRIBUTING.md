@@ -37,16 +37,14 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```
 
 
-## 2. Install the neps Package Using uv
-
-Clone the repository, e.g.,
+## 2. Clone the neps repository
 
 ```bash
 git clone https://github.com/automl/neps.git
 cd neps
 ```
 
-## 3. Create a virtual environment
+## 3. Create a virtual environment and install the neps package
 
 ```bash
 uv venv --python 3.11
