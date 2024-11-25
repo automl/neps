@@ -278,7 +278,7 @@ def _run_args(
             "mobster",
             "asha",
         ]
-        | BaseOptimizer
+        | BaseOptimizer | dict
     ) = "default",
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:

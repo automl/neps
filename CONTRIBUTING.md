@@ -36,7 +36,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-
 ## 2. Clone the neps repository
 
 ```bash
@@ -59,7 +58,7 @@ uv pip install -e ".[dev]"
 
 This will installthe neps package but also additional dev dependencies.
 
-## 4. Activate pre-commit for the repository
+### 4. Activate pre-commit for the repository
 
 With the python environment used to install the neps package run in the main directory of neps
 
@@ -76,9 +75,6 @@ your choice, e.g.
 [VSCode](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff),
 [PyCharm](https://plugins.jetbrains.com/plugin/20574-ruff).
 
-
-# Checks and Tests
-
 We have setup checks and tests at several points in the development flow:
 
 - At every commit we automatically run a suite of [pre-commit](https://pre-commit.com/) hooks that perform static code analysis, autoformating, and sanity checks.
@@ -87,7 +83,9 @@ This is setup during our [installation process](https://automl.github.io/neps/co
 The tests correspond directly to examples in [neps_examples](https://github.com/automl/neps/tree/master/neps_examples) and only check for crash-causing errors.
 - At every push all integration tests and regression tests are run automatically using [github actions](https://github.com/automl/neps/actions).
 
-## Linting (Ruff)
+## Checks and tests
+
+### Linting (Ruff)
 For linting we use `ruff` for checking code quality. You can install it locally and use it as so:
 
 ```bash
@@ -110,7 +108,7 @@ The configuration of `ruff` is in the `pyproject.toml` file and we refer you to 
 
 There you can find the documentation for all of the rules employed.
 
-## Type Checking (Mypy)
+### Type Checking (Mypy)
 For type checking we use `mypy`. You can install it locally and use it as so:
 
 ```bash
@@ -142,15 +140,15 @@ or types defined from NePS, there is probably a good reason for a mypy error.
 If you have issues regarding typing, please feel free to reach out for help `@eddiebergman`.
 
 
-## Examples and Integration Tests
+### Examples and Integration Tests
 
-We use examples in [neps_examples](https://github.com/automl/neps/tree/master/neps_examples) as integration tests, which we run from the main directory via
+We use some examples in [neps_examples](https://github.com/automl/neps/tree/master/neps_examples) as integration tests, which we run from the main directory via
 
 ```bash
 pytest
 ```
 
-If tests fail for you on the master, please raise an issue on github, preferabbly with some informationon the error,
+If tests fail for you on the master, please raise an issue on github, preferably with some information on the error,
 traceback and the environment in which you are running, i.e. python version, OS, etc.
 
 ## Regression Tests
@@ -200,6 +198,7 @@ uv run pytest -m regression_all
 
 ## Disabling and Skipping Checks etc.
 
+
 ### Pre-commit: How to not run hooks?
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.
@@ -214,11 +213,11 @@ There are two options:
   code = "foo"  # type: ignore
   ```
 
-## Managing Dependencies
+### Managing Dependencies
 
 To manage dependencies we use [uv](https://docs.astral.sh/uv/getting-started/) (replaces pip).
 
-## Add dependencies
+#### Add dependencies
 
 To install a dependency use
 
@@ -230,7 +229,7 @@ and commit the updated `pyproject.toml` to git.
 
 For more advanced dependency management see examples in `pyproject.toml` or have a look at the [uv documentation](https://docs.astral.sh/uv/getting-started/).
 
-## Install dependencies added by others
+#### Install dependencies added by others
 
 When other contributors added dependencies to `pyproject.toml`, you can install them via
 
@@ -238,7 +237,7 @@ When other contributors added dependencies to `pyproject.toml`, you can install 
 uv pip install -e ".[dev]"
 ```
 
-# Documentation
+## Documentation
 
 We use [MkDocs](https://www.mkdocs.org/getting-started/), more specifically [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) for documentation.
 To support documentation for multiple versions, we use the plugin [mike](https://github.com/jimporter/mike).
@@ -260,7 +259,7 @@ To publish the documentation run
 mike deploy 0.5.1 latest -p
 ```
 
-# Releasing a New Version
+## Releasing a New Version
 
 There are four steps to releasing a new version of neps:
 
@@ -270,7 +269,7 @@ There are four steps to releasing a new version of neps:
 3. Update Documentation
 4. Publish on PyPI
 
-## 0. Understand Semantic Versioning
+### 0. Understand Semantic Versioning
 
 We follow the [semantic versioning](https://semver.org) scheme.
 
@@ -286,30 +285,12 @@ uv run pytest
 bump-my-version bump <major | minor | patch>
 ```
 
-## 2. Commit with a Version Tag
-
-First commit and test
-
-```bash
-git add pyproject.toml
-git commit -m "Bump version from v0.8.4 to v0.9.0"
-uv run pytest
-```
-
-Then tag and push
-
-```bash
-git tag v0.9.0
-git push --tags
-git push
-```
-
-## 3. Update Documentation
+### 3. Update Documentation
 
 First check if the documentation has any issues via
 
 ```bash
-mike deploy 0.9.0 latest -u
+mike deploy <current version> latest -u
 mike serve
 ```
 
@@ -318,14 +299,14 @@ and then looking at it.
 Afterwards, publish it via
 
 ```bash
-mike deploy 0.9.0 latest -up
+mike deploy <current version> latest -up
 ```
 
-## 4. Publish on PyPI
+### 4. Publish on PyPI
 
 To publish to PyPI:
 
-1. Get publishing rights, e.g., asking Danny or Maciej or Neeratyoy.
+1. Get publishing rights, e.g., asking Danny or Neeratyoy.
 2. Be careful, once on PyPI we can not change things.
 3. Run
 

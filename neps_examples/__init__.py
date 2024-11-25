@@ -3,7 +3,6 @@ all_main_examples = {  # Used for printing in python -m neps_examples
         "analyse",
         "architecture",
         "architecture_and_hyperparameters",
-        "hpo_usage_example",
         "hyperparameters",
     ],
     "convenience": [
@@ -11,6 +10,7 @@ all_main_examples = {  # Used for printing in python -m neps_examples
         "neps_tblogger_tutorial",
         "running_on_slurm_scripts",
         "neps_x_lightning",
+        "running_on_slurm_scripts",
         "working_directory_per_pipeline",
     ],
     "efficiency": [

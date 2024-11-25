@@ -21,13 +21,9 @@ authors:
     given-names: Carl
   - family-names: Binxin
     given-names: Ru
-  - family-names: Kober
-    given-names: Nils
-  - family-names: Vallaeys
-    given-names: Théophane
   - family-names: Hutter
     given-names: Frank
 title: "Neural Pipeline Search (NePS)"
 version: 0.12.2
-date-released: 2024-07-03
+date-released: 2024-07-09
 url: "https://github.com/automl/neps"
