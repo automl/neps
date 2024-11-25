@@ -334,6 +334,3 @@ module = [
     "requests.*",
 ]
 ignore_errors = true
-
-[tool.poetry.scripts]
-neps = "neps.utils.cli:main"

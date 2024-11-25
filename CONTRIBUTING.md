@@ -16,50 +16,29 @@ Automatic checks are run on every pull request and on every commit to `master`.
 
 There are three required steps and one optional:
 
-1. Optional: Install miniconda and create an environment
-1. Install poetry
-1. Install the neps package using poetry
+1. Install uv
+1. Install the neps package using uv
 1. Activate pre-commit for the repository
 
 For instructions see below.
 
-## 1. Optional: Install miniconda and create a virtual environment
+## 1. Install uv
 
-To manage python versions install e.g., miniconda with
-
-```bash
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O install_miniconda.sh
-bash install_miniconda.sh -b -p $HOME/.conda  # Change to place of preference
-rm install_miniconda.sh
-```
-
-Consider running `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` .
-
-Then finally create the environment and activate it
-
-```bash
-conda create -n neps python=3.10
-conda activate neps
-```
-
-## 2. Install poetry
-
-First, install poetry, e.g., via
+First, install uv, e.g., via
 
 ```bash
 curl -sSL https://install.python-poetry.org | python3 -
 # or directly into your virtual env using `pip install poetry`
 ```
 
-Then consider appending
+## 2. Create a virtual environment
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+uv venv --python 3.11
+source .venv/bin/activate
 ```
 
-to your `.zshrc` / `.bashrc` or alternatively simply running the export manually.
-
-## 3. Install the neps Package Using poetry
+## 3. Install the neps Package Using uv
 
 Clone the repository, e.g.,
 
@@ -71,7 +50,7 @@ cd neps
 Then, inside the main directory of neps run
 
 ```bash
-poetry install
+uv pip install -e ".[dev]"
 ```
 
 This will installthe neps package but also additional dev dependencies.
@@ -108,7 +87,7 @@ The tests correspond directly to examples in [neps_examples](https://github.com/
 For linting we use `ruff` for checking code quality. You can install it locally and use it as so:
 
 ```bash
-pip install ruff
+uv pip install ruff
 ruff check --fix neps  # the --fix flag will try to fix issues it can automatically
 ```
 
@@ -131,7 +110,7 @@ There you can find the documentation for all of the rules employed.
 For type checking we use `mypy`. You can install it locally and use it as so:
 
 ```bash
-pip install mypy
+uv pip install mypy
 mypy neps
 ```
 
@@ -212,7 +191,7 @@ In the case of regression test failure, try running it again first, if the probl
 You can also run tests locally by running:
 
 ```
-poetry run pytest -m regression_all
+uv run pytest -m regression_all
 ```
 
 ## Disabling and Skipping Checks etc.
@@ -233,27 +212,26 @@ There are two options:
 
 ## Managing Dependencies
 
-To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
+To manage dependencies we use [uv](https://docs.astral.sh/uv/getting-started/) (replaces pip).
 
 ## Add dependencies
 
 To install a dependency use
 
 ```bash
-poetry add dependency
+uv add dependency
 ```
 
 and commit the updated `pyproject.toml` to git.
 
-For more advanced dependency management see examples in `pyproject.toml` or have a look at the [poetry documentation](https://python-poetry.org/).
+For more advanced dependency management see examples in `pyproject.toml` or have a look at the [uv documentation](https://docs.astral.sh/uv/getting-started/).
 
 ## Install dependencies added by others
 
 When other contributors added dependencies to `pyproject.toml`, you can install them via
 
 ```bash
-poetry lock
-poetry install
+uv pip install -e ".[dev]"
 ```
 
 # Documentation
@@ -295,7 +273,7 @@ We follow the [semantic versioning](https://semver.org) scheme.
 ## 1. Update the Package Version and CITATION.cff
 
 ```bash
-poetry version v0.9.0
+uv bump 0.9.0
 ```
 
 and manually change the version specified in `CITATION.cff`.
@@ -307,7 +285,7 @@ First commit and test
 ```bash
 git add pyproject.toml
 git commit -m "Bump version from v0.8.4 to v0.9.0"
-pytest
+uv run pytest
 ```
 
 Then tag and push
@@ -344,7 +322,7 @@ To publish to PyPI:
 3. Run
 
 ```bash
-poetry publish --build
+poetry publish
 ```
 
 This will ask for your PyPI credentials.
