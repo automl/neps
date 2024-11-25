@@ -1,6 +1,6 @@
 [project]
 name = "neural-pipeline-search"
-version = "0.12.2"
+version = "0.13.0"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
@@ -336,9 +336,14 @@ module = [
 ignore_errors = true
 
 [tool.bumpversion]
-current_version = "0.12.2"
+current_version = "0.13.0"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
