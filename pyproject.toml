@@ -345,5 +345,5 @@ replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
 filename = "CITATION.cff"
-search = "version = \"{current_version}\""
-replace = "version = \"{new_version}\""
+search = "version: \"{current_version}\""
+replace = "version: \"{new_version}\""
