@@ -34,5 +34,5 @@ jobs:
       - name: Install
         run: uv pip install ".[dev]"
       - name: Run tests
-        run: uv run pytest -m ""  # Run all markers
+        run: .venv/bin/python -m pytest -m ""  # Run all markers
 
