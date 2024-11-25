@@ -337,9 +337,10 @@ ignore_errors = true
 
 [tool.bumpversion]
 current_version = "0.12.2"
-version_files = [
-    "pyproject.toml:^version", 
-    "pyproject.toml:[project]\nversion",
-    "CITATION.cff:^version"
-    ]
 
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+parse = "(?P<version>\\d+\\.\\d+\\.\\d+)"
+serialize = "{version}"
+search = "version = \"{current_version}\""
+replace = "version = \"{new_version}\""
