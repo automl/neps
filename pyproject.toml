@@ -1,6 +1,6 @@
 [project]
 name = "neural-pipeline-search"
-version = "v0.12.2"
+version = "0.12.2"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
