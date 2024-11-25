@@ -20,9 +20,6 @@ site/*
 .vscode/
 .idea/
 
-# Poetry
-poetry.lock
-
 # Misc
 *.sh
 *.model
