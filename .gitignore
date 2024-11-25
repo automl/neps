@@ -1,9 +1,7 @@
-# build files
-*.egg-info
-
 # False Python
 __pycache__
 dist
+**/*.egg-info
 
 # Log files
 *.out
