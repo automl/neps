@@ -285,6 +285,8 @@ uv run pytest
 bump-my-version bump <major | minor | patch>
 ```
 
+This will automatically update the version in `pyproject.toml` and `CITATION.cff`, tag the commit and push it to the remote repository.
+
 ### 3. Update Documentation
 
 First check if the documentation has any issues via
@@ -311,6 +313,7 @@ To publish to PyPI:
 3. Run
 
 ```bash
+uv build
 uv publish
 ```
 
