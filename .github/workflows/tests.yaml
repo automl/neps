@@ -39,5 +39,5 @@ jobs:
       - name: Install
         run: uv pip install ".[dev]"
       - name: Run tests
-        run: python -m pytest -m ""  # Run all markers
+        run: uv run pytest -m ""  # Run all markers
 
