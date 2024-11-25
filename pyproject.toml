@@ -337,6 +337,7 @@ ignore_errors = true
 
 [tool.bumpversion]
 current_version = "0.12.2"
+commit = true
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"

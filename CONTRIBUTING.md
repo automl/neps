@@ -273,10 +273,8 @@ We follow the [semantic versioning](https://semver.org) scheme.
 ## 1. Update the Package Version and CITATION.cff
 
 ```bash
-uv bump 0.9.0
+bump-my-version bump <major | minor | patch>
 ```
-
-and manually change the version specified in `CITATION.cff`.
 
 ## 2. Commit with a Version Tag
 
