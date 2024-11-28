@@ -45,6 +45,7 @@ def _default_worker_name() -> str:
 
 N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 0
 N_FAILED_TO_SET_TRIAL_STATE = 10
+N_FAILED_CREATE_LOAD_STATE_ATTEMPTS = 10
 
 Loc = TypeVar("Loc")
 
@@ -514,21 +515,37 @@ def _launch_runtime(  # noqa: PLR0913
         )
         shutil.rmtree(optimization_dir)
 
-    neps_state = create_or_load_filebased_neps_state(
-        directory=optimization_dir,
-        optimizer_info=OptimizerInfo(optimizer_info),
-        optimizer_state=OptimizationState(
-            budget=(
-                BudgetInfo(
-                    max_cost_budget=max_cost_total,
-                    used_cost_budget=0,
-                    max_evaluations=max_evaluations_total,
-                    used_evaluations=0,
-                )
-            ),
-            shared_state={},  # TODO: Unused for the time being...
-        ),
-    )
+    retry_count = 0
+    for retry_count in range(N_FAILED_CREATE_LOAD_STATE_ATTEMPTS):
+        try:
+            neps_state = create_or_load_filebased_neps_state(
+                directory=optimization_dir,
+                optimizer_info=OptimizerInfo(optimizer_info),
+                optimizer_state=OptimizationState(
+                    budget=(
+                        BudgetInfo(
+                            max_cost_budget=max_cost_total,
+                            used_cost_budget=0,
+                            max_evaluations=max_evaluations_total,
+                            used_evaluations=0,
+                        )
+                    ),
+                    shared_state={},  # TODO: Unused for the time being...
+                ),
+            )
+            break
+        except Exception as e:
+            time.sleep(0.5)
+            logger.debug(
+                "Error while trying to create or load the NePS state. Retrying...",
+                exc_info=True,
+            )
+    else:
+        raise RuntimeError(
+            "Failed to create or load the NePS state after"
+            f" {retry_count} attempts. Bailing!"
+            " Please enable debug logging to see the errors that occured."
+        )
 
     settings = WorkerSettings(
         on_error=(
