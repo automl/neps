@@ -169,8 +169,29 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         """
         config_path = self.directory.absolute().resolve() / f"config_{trial.metadata.id}"
         if config_path.exists():
+            # This shouldn't exist, we load in the trial to see the current state of it
+            # to try determine wtf is going on for logging purposes.
+            try:
+                shared_trial = Synced.load(
+                    location=config_path,
+                    locker=FileLocker(
+                        lock_path=config_path / ".lock",
+                        poll=lock_poll,
+                        timeout=lock_timeout,
+                    ),
+                    versioner=FileVersioner(version_file=config_path / ".version"),
+                    reader_writer=ReaderWriterTrial(),
+                )
+                already_existing_trial = shared_trial._unsynced()
+                extra_msg = (
+                    f"The existing trial is the following: {already_existing_trial}"
+                )
+            except Exception:  # noqa: BLE001
+                extra_msg = "Failed to load the existing trial to provide more info."
+
             raise TrialRepo.TrialAlreadyExistsError(
                 f"Trial '{trial.metadata.id}' already exists as '{config_path}'."
+                f"\n{extra_msg}"
             )
 
         # HACK: We do this here as there is no way to know where a Trial will
@@ -290,18 +311,19 @@ class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
         np_rng_state = np.fromfile(np_rng_path, dtype=np.uint32)
         seed_info = deserialize(seedinfo_path)
 
-        torch_exists = torch_rng_path.exists() or torch_cuda_rng_path.exists()
+        torch_rng_path_exists = torch_rng_path.exists()
+        torch_cuda_rng_path_exists = torch_cuda_rng_path.exists()
 
         # By specifying `weights_only=True`, it disables arbitrary object loading
         torch_rng_state = None
         torch_cuda_rng = None
-        if torch_exists:
+        if torch_rng_path_exists or torch_cuda_rng_path_exists:
             import torch
 
-            if torch_rng_path.exists():
+            if torch_rng_path_exists:
                 torch_rng_state = torch.load(torch_rng_path, weights_only=True)
 
-            if torch_cuda_rng_path.exists():
+            if torch_cuda_rng_path_exists:
                 # By specifying `weights_only=True`, it disables arbitrary object loading
                 torch_cuda_rng = torch.load(torch_cuda_rng_path, weights_only=True)
 
