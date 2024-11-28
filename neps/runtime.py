@@ -476,6 +476,9 @@ class DefaultWorker(Generic[Loc]):
                 logger.exception(report.err)
                 _error_from_evaluation = report.err
 
+            # We do not retry this, as if some other worker has
+            # managed to manipulate this trial in the meantime,
+            # then something has gone wrong
             self.state.report_trial_evaluation(
                 trial=evaluated_trial,
                 report=report,
