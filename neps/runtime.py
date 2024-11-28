@@ -515,8 +515,7 @@ def _launch_runtime(  # noqa: PLR0913
         )
         shutil.rmtree(optimization_dir)
 
-    retry_count = 0
-    for retry_count in range(N_FAILED_CREATE_LOAD_STATE_ATTEMPTS):
+    for _retry_count in range(N_FAILED_CREATE_LOAD_STATE_ATTEMPTS):
         try:
             neps_state = create_or_load_filebased_neps_state(
                 directory=optimization_dir,
@@ -534,7 +533,7 @@ def _launch_runtime(  # noqa: PLR0913
                 ),
             )
             break
-        except Exception as e:
+        except Exception:  # noqa: BLE001
             time.sleep(0.5)
             logger.debug(
                 "Error while trying to create or load the NePS state. Retrying...",
@@ -543,7 +542,7 @@ def _launch_runtime(  # noqa: PLR0913
     else:
         raise RuntimeError(
             "Failed to create or load the NePS state after"
-            f" {retry_count} attempts. Bailing!"
+            f" {N_FAILED_CREATE_LOAD_STATE_ATTEMPTS} attempts. Bailing!"
             " Please enable debug logging to see the errors that occured."
         )
 

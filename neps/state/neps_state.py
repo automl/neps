@@ -102,7 +102,8 @@ class NePSState(Generic[Loc]):
                 for hook in _sample_hooks:
                     optimizer = hook(optimizer)
 
-            # NOTE: Re-work this, as the part's that are recomputed do not need to be serialized
+            # NOTE: Re-work this, as the part's that are recomputed
+            # do not need to be serialized
             budget = opt_state.budget
             if budget is not None:
                 budget = budget.clone()
