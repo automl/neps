@@ -211,9 +211,7 @@ class NePSState(Generic[Loc]):
         Returns:
             The next trial or a list of trials if `n` is not `None`.
         """
-        _pending_itr = (
-            shared_trial.synced() for _, shared_trial in self._trials.pending()
-        )
+        _pending_itr = (shared_trial for _, shared_trial in self._trials.pending())
         if n is not None:
             return take(n, _pending_itr)
         return next(_pending_itr, None)

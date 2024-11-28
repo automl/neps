@@ -137,7 +137,7 @@ class TrialRepo(Protocol[K]):
         """Get all trials in the repo."""
         ...
 
-    def pending(self) -> Iterable[tuple[str, Synced[Trial, K]]]:
+    def pending(self) -> Iterable[tuple[str, Trial]]:
         """Get all pending trials in the repo.
 
         !!! note

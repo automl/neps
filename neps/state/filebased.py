@@ -201,9 +201,9 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         return {trial_id: self.get_by_id(trial_id) for trial_id in self.all_trial_ids()}
 
     @override
-    def pending(self) -> Iterable[tuple[str, Synced[Trial, Path]]]:
+    def pending(self) -> Iterable[tuple[str, Trial]]:
         pending = [
-            (_id, t, trial.metadata.time_sampled)
+            (_id, trial, trial.metadata.time_sampled)
             for (_id, t) in self.all().items()
             if (trial := t.synced()).state == Trial.State.PENDING
         ]
