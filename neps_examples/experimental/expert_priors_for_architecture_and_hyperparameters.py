@@ -106,7 +106,7 @@ def run_pipeline(some_architecture, some_float, some_integer, some_cat):
 
 
 pipeline_space = dict(
-    some_architecture=neps.Function(
+    some_architecture=neps.Architecture(
         set_recursive_attribute=set_recursive_attribute,
         structure=structure,
         primitives=primitives,

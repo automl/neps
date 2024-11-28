@@ -3,15 +3,12 @@ from neps.plot.plot import plot
 from neps.plot.tensorboard_eval import tblogger
 from neps.search_spaces import (
     Architecture,
-    ArchitectureParameter,
     Categorical,
     CategoricalParameter,
     Constant,
     ConstantParameter,
     Float,
     FloatParameter,
-    Function,
-    FunctionParameter,
     GraphGrammar,
     Integer,
     IntegerParameter,
@@ -25,7 +22,6 @@ __all__ = [
     "Categorical",
     "Constant",
     "Function",
-    "ArchitectureParameter",
     "CategoricalParameter",
     "ConstantParameter",
     "FloatParameter",
