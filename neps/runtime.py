@@ -440,8 +440,8 @@ class DefaultWorker(Generic[Loc]):
             if n_failed_set_trial_state != 0:
                 if n_failed_set_trial_state >= N_FAILED_TO_SET_TRIAL_STATE:
                     raise WorkerFailedToGetPendingTrialsError(
-                        "Worker '%s' failed to set trial to evaluating %d times in a row."
-                        " Bailing!"
+                        f"Worker {self.worker_id} failed to set trial to evaluating"
+                        f" {N_FAILED_TO_SET_TRIAL_STATE} times in a row. Bailing!"
                     )
                 continue
 
