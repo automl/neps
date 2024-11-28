@@ -202,7 +202,7 @@ class VersionedResource(Generic[T, K]):
         current_version = versioner.current()
         if current_version is not None:
             raise VersionedResourceAlreadyExistsError(
-                f"A versioend resource already already exists at '{location}'"
+                f"A versioned resource already already exists at '{location}'"
                 f" with version '{current_version}'"
             )
 
