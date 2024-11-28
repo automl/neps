@@ -102,8 +102,21 @@ class NePSState(Generic[Loc]):
                 for hook in _sample_hooks:
                     optimizer = hook(optimizer)
 
-            # NOTE: We don't want optimizers mutating this before serialization
-            budget = opt_state.budget.clone() if opt_state.budget is not None else None
+            # NOTE: Re-work this, as the part's that are recomputed do not need to be serialized
+            budget = opt_state.budget
+            if budget is not None:
+                budget = budget.clone()
+
+                # NOTE: All other values of budget are ones that should remain
+                # constant, there are currently only these two which are dynamic as
+                # optimization unfold
+                budget.used_cost_budget = sum(
+                    trial.report.cost
+                    for trial in trials.values()
+                    if trial.report is not None and trial.report.cost is not None
+                )
+                budget.used_evaluations = len(trials)
+
             sampled_config_maybe_new_opt_state = optimizer.ask(
                 trials=trials,
                 budget_info=budget,
@@ -166,16 +179,6 @@ class NePSState(Generic[Loc]):
         trial.report = report
         shared_trial.put(trial)
         logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
-        with self._optimizer_state.acquire() as (opt_state, put_opt_state):
-            # TODO: If an optimizer doesn't use the state, this is a waste of time.
-            # Update the budget if we have one.
-            if opt_state.budget is not None:
-                budget_info = opt_state.budget
-
-                if report.cost is not None:
-                    budget_info.used_cost_budget += report.cost
-            put_opt_state(opt_state)
-
         if report.err is not None:
             with self._shared_errors.acquire() as (errs, put_errs):
                 trial_err = ErrDump.SerializableTrialError(
