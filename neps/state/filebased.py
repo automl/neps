@@ -214,6 +214,8 @@ class TrialRepoInDirectory(TrialRepo[Path]):
 class ReaderWriterTrial(ReaderWriter[Trial, Path]):
     """ReaderWriter for Trial objects."""
 
+    CHEAP_LOCKLESS_READ: ClassVar = True
+
     CONFIG_FILENAME = "config.yaml"
     METADATA_FILENAME = "metadata.yaml"
     STATE_FILENAME = "state.txt"
@@ -260,6 +262,8 @@ class ReaderWriterTrial(ReaderWriter[Trial, Path]):
 @dataclass
 class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
     """ReaderWriter for SeedSnapshot objects."""
+
+    CHEAP_LOCKLESS_READ: ClassVar = True
 
     # It seems like they're all uint32 but I can't be sure.
     PY_RNG_STATE_DTYPE: ClassVar = np.int64
@@ -358,6 +362,8 @@ class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
 class ReaderWriterOptimizerInfo(ReaderWriter[OptimizerInfo, Path]):
     """ReaderWriter for OptimizerInfo objects."""
 
+    CHEAP_LOCKLESS_READ: ClassVar = True
+
     INFO_FILENAME: ClassVar = "info.yaml"
 
     @override
@@ -380,6 +386,8 @@ class ReaderWriterOptimizerInfo(ReaderWriter[OptimizerInfo, Path]):
 @dataclass
 class ReaderWriterOptimizationState(ReaderWriter[OptimizationState, Path]):
     """ReaderWriter for OptimizationState objects."""
+
+    CHEAP_LOCKLESS_READ: ClassVar = True
 
     STATE_FILE_NAME: ClassVar = "state.yaml"
 
@@ -405,6 +413,8 @@ class ReaderWriterOptimizationState(ReaderWriter[OptimizationState, Path]):
 @dataclass
 class ReaderWriterErrDump(ReaderWriter[ErrDump, Path]):
     """ReaderWriter for shared error lists."""
+
+    CHEAP_LOCKLESS_READ: ClassVar = True
 
     name: str
 

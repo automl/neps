@@ -94,6 +94,14 @@ class ReaderWriter(Protocol[T, Loc_contra]):
     trials, given some `Path`.
     """
 
+    CHEAP_LOCKLESS_READ: ClassVar[bool]
+    """Whether reading the contents of the resource is cheap, cheap enough to be
+    most likely safe without a lock if outdated information is acceptable.
+
+    This is currently used to help debugging instances of a VersionMismatchError
+    to see what the current state is and what was attempted to be written.
+    """
+
     def read(self, loc: Loc_contra, /) -> T:
         """Read the resource at the given location."""
         ...
@@ -278,6 +286,17 @@ class VersionedResource(Generic[T, K]):
         """
         current_version = self._versioner.current()
         if self._version != current_version:
+            # We will attempt to do a lockless read on the contents of the items, as this
+            # would allow us to better debug in the error raised below.
+            if self._reader_writer.CHEAP_LOCKLESS_READ:
+                current_contents = self._reader_writer.read(self._location)
+                extra_msg = (
+                    f"\nThe attempted write was: {data}\n"
+                    f"The current contents are: {current_contents}"
+                )
+            else:
+                extra_msg = ""
+
             raise self.VersionMismatchError(
                 f"Version mismatch - ours: '{self._version}', remote: '{current_version}'"
                 f" Tried to put data at '{self._location}'. Doing so would overwrite"
@@ -285,6 +304,7 @@ class VersionedResource(Generic[T, K]):
                 " version of the resource and try again."
                 " The most possible reasons for this error is that a lock was not"
                 " utilized when getting this resource before putting it back."
+                f"{extra_msg}"
             )
 
         self._reader_writer.write(data, self._location)
