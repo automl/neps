@@ -379,6 +379,7 @@ class DefaultWorker(Generic[Loc]):
         _error_from_evaluation: Exception | None = None
 
         _repeated_fail_get_next_trial_count = 0
+        n_failed_set_trial_state = 0
         while True:
             # NOTE: We rely on this function to do logging and raising errors if it should
             should_stop = self._check_if_should_stop(
