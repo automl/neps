@@ -397,7 +397,9 @@ class DefaultWorker(Generic[Loc]):
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
                 logger.debug(
-                    "Error while trying to get the next trial to evaluate.", exc_info=True
+                    "Worker '%s': Error while trying to get the next trial to evaluate.",
+                    self.worker_id,
+                    exc_info=True,
                 )
 
                 # NOTE: This is to prevent any infinite loops if we can't get a trial
@@ -406,8 +408,9 @@ class DefaultWorker(Generic[Loc]):
                     >= N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR
                 ):
                     raise WorkerFailedToGetPendingTrialsError(
-                        "Worker '%s' failed to get pending trials %d times in a row."
-                        " Bailing!"
+                        f"Worker {self.worker_id} failed to get pending trials"
+                        f" {N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR} times in"
+                        " a row. Bailing!"
                     ) from e
 
                 continue
@@ -423,15 +426,21 @@ class DefaultWorker(Generic[Loc]):
             except VersionMismatchError:
                 n_failed_set_trial_state += 1
                 logger.debug(
-                    f"Another worker has managed to change trial '{trial_to_eval.id}'"
-                    " to evaluate and put back into state. This is fine and likely means"
-                    " the other worker is evaluating it.",
+                    "Another worker has managed to change trial '%s'"
+                    " while this worker '%s' was trying to set it to"
+                    " evaluating. This is fine and likely means the other worker is"
+                    " evaluating it, this worker will attempt to sample new trial.",
+                    trial_to_eval.id,
+                    self.worker_id,
                     exc_info=True,
                 )
             except Exception:
                 n_failed_set_trial_state += 1
                 logger.error(
-                    f"Error trying to set trial '{trial_to_eval.id}' to evaluating.",
+                    "Unexpected error from worker '%s' trying to set trial"
+                    " '%' to evaluating.",
+                    self.worker_id,
+                    trial_to_eval.id,
                     exc_info=True,
                 )
 
