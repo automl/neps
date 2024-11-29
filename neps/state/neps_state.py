@@ -89,6 +89,12 @@ class NePSState(Generic[Loc]):
             ),
             self._seed_state.acquire() as (seed_state, put_seed_state),
         ):
+            # NOTE: We make the assumption that as we have acquired the optimizer
+            # state, there is not possibility of another trial being created between
+            # the time we read in the trials below and `ask()`ing for the next trials
+            # from the optimizer. If so, that means there is another source of trial
+            # generation that occurs outside of this function and outside the scope
+            # of acquiring the optimizer_state lock.
             trials: dict[str, Trial] = {}
             for trial_id, shared_trial in self._trials.all().items():
                 trial = shared_trial.synced()
