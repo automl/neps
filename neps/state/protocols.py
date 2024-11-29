@@ -18,7 +18,7 @@ from neps.exceptions import (
     TrialAlreadyExistsError,
     TrialNotFoundError,
     VersionedResourceAlreadyExistsError,
-    VersionedResourceDoesNotExistsError,
+    VersionedResourceDoesNotExistError,
     VersionedResourceRemovedError,
     VersionMismatchError,
 )
@@ -160,7 +160,7 @@ class VersionedResource(Generic[T, K]):
     """
 
     VersionMismatchError: ClassVar = VersionMismatchError
-    VersionedResourceDoesNotExistsError: ClassVar = VersionedResourceDoesNotExistsError
+    VersionedResourceDoesNotExistsError: ClassVar = VersionedResourceDoesNotExistError
     VersionedResourceAlreadyExistsError: ClassVar = VersionedResourceAlreadyExistsError
     VersionedResourceRemovedError: ClassVar = VersionedResourceRemovedError
 

@@ -46,7 +46,7 @@ from neps.state.filebased import (
 )
 from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
-from neps.exceptions import VersionedResourceDoesNotExistsError, TrialNotFoundError
+from neps.exceptions import VersionedResourceDoesNotExistError, TrialNotFoundError
 from neps.status.status import get_summary_dict
 from neps.api import _run_args
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
@@ -666,7 +666,7 @@ def load_neps_state(directory_path: Path) -> Optional[NePSState[Path]]:
     """Load the NePS state with error handling."""
     try:
         return load_filebased_neps_state(directory_path)
-    except VersionedResourceDoesNotExistsError:
+    except VersionedResourceDoesNotExistError:
         print(f"Error: No NePS state found in the directory '{directory_path}'.")
         print("Ensure that the NePS run has been initialized correctly.")
     except Exception as e:

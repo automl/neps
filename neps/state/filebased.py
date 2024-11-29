@@ -191,6 +191,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
 
             raise TrialRepo.TrialAlreadyExistsError(
                 f"Trial '{trial.metadata.id}' already exists as '{config_path}'."
+                f" Tried to put in the trial: {trial}."
                 f"\n{extra_msg}"
             )
 
