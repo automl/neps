@@ -19,6 +19,11 @@ from typing import (
     TypeVar,
 )
 
+from neps.env import (
+    MAX_RETRIES_CREATE_LOAD_STATE,
+    MAX_RETRIES_GET_NEXT_TRIAL,
+    MAX_RETRIES_SET_EVALUATING,
+)
 from neps.exceptions import (
     NePSError,
     VersionMismatchError,
@@ -42,10 +47,6 @@ def _default_worker_name() -> str:
     isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return f"{os.getpid()}-{isoformat}"
 
-
-N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 10
-N_FAILED_TO_SET_TRIAL_STATE = 10
-N_FAILED_CREATE_LOAD_STATE_ATTEMPTS = 10
 
 Loc = TypeVar("Loc")
 
@@ -415,13 +416,10 @@ class DefaultWorker(Generic[Loc]):
                 time.sleep(1)  # Help stagger retries
 
                 # NOTE: This is to prevent any infinite loops if we can't get a trial
-                if (
-                    _repeated_fail_get_next_trial_count
-                    >= N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR
-                ):
+                if _repeated_fail_get_next_trial_count >= MAX_RETRIES_GET_NEXT_TRIAL:
                     raise WorkerFailedToGetPendingTrialsError(
                         f"Worker {self.worker_id} failed to get pending trials"
-                        f" {N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR} times in"
+                        f" {MAX_RETRIES_GET_NEXT_TRIAL} times in"
                         " a row. Bailing!"
                     ) from e
 
@@ -461,10 +459,10 @@ class DefaultWorker(Generic[Loc]):
             # NOTE: This is to prevent infinite looping if it somehow keeps getting
             # the same trial and can't set it to evaluating.
             if n_failed_set_trial_state != 0:
-                if n_failed_set_trial_state >= N_FAILED_TO_SET_TRIAL_STATE:
+                if n_failed_set_trial_state >= MAX_RETRIES_SET_EVALUATING:
                     raise WorkerFailedToGetPendingTrialsError(
                         f"Worker {self.worker_id} failed to set trial to evaluating"
-                        f" {N_FAILED_TO_SET_TRIAL_STATE} times in a row. Bailing!"
+                        f" {MAX_RETRIES_SET_EVALUATING} times in a row. Bailing!"
                     )
                 continue
 
@@ -541,7 +539,7 @@ def _launch_runtime(  # noqa: PLR0913
         )
         shutil.rmtree(optimization_dir)
 
-    for _retry_count in range(N_FAILED_CREATE_LOAD_STATE_ATTEMPTS):
+    for _retry_count in range(MAX_RETRIES_CREATE_LOAD_STATE):
         try:
             neps_state = create_or_load_filebased_neps_state(
                 directory=optimization_dir,
@@ -568,7 +566,7 @@ def _launch_runtime(  # noqa: PLR0913
     else:
         raise RuntimeError(
             "Failed to create or load the NePS state after"
-            f" {N_FAILED_CREATE_LOAD_STATE_ATTEMPTS} attempts. Bailing!"
+            f" {MAX_RETRIES_CREATE_LOAD_STATE} attempts. Bailing!"
             " Please enable debug logging to see the errors that occured."
         )
 

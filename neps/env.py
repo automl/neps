@@ -28,6 +28,21 @@ def is_nullable(e: str) -> bool:
     return e.lower() in ("none", "n", "null")
 
 
+MAX_RETRIES_GET_NEXT_TRIAL = get_env(
+    "NEPS_MAX_RETRIES_GET_NEXT_TRIAL",
+    parse=int,
+    default=10,
+)
+MAX_RETRIES_SET_EVALUATING = get_env(
+    "NEPS_MAX_RETRIES_SET_EVALUATING",
+    parse=int,
+    default=10,
+)
+MAX_RETRIES_CREATE_LOAD_STATE = get_env(
+    "NEPS_MAX_RETRIES_CREATE_LOAD_STATE",
+    parse=int,
+    default=10,
+)
 TRIAL_FILELOCK_POLL = get_env(
     "NEPS_TRIAL_FILELOCK_POLL",
     parse=float,
