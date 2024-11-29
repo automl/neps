@@ -401,6 +401,7 @@ class DefaultWorker(Generic[Loc]):
                     self.worker_id,
                     exc_info=True,
                 )
+                time.sleep(1)  # Help stagger retries
 
                 # NOTE: This is to prevent any infinite loops if we can't get a trial
                 if (
@@ -434,6 +435,7 @@ class DefaultWorker(Generic[Loc]):
                     self.worker_id,
                     exc_info=True,
                 )
+                time.sleep(1)  # Help stagger retries
             except Exception:
                 n_failed_set_trial_state += 1
                 logger.error(
@@ -443,6 +445,7 @@ class DefaultWorker(Generic[Loc]):
                     trial_to_eval.id,
                     exc_info=True,
                 )
+                time.sleep(1)  # Help stagger retries
 
             # NOTE: This is to prevent infinite looping if it somehow keeps getting
             # the same trial and can't set it to evaluating.
