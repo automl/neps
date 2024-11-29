@@ -121,7 +121,7 @@ class TrialRepo(Protocol[K]):
     TrialAlreadyExistsError: ClassVar = TrialAlreadyExistsError
     TrialNotFoundError: ClassVar = TrialNotFoundError
 
-    def all_trial_ids(self) -> set[str]:
+    def all_trial_ids(self) -> list[str]:
         """List all the trial ids in this trial Repo."""
         ...
 

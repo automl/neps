@@ -83,10 +83,7 @@ class NePSState(Generic[Loc]):
             The new trial.
         """
         with (
-            self._optimizer_state.acquire() as (
-                opt_state,
-                put_opt,
-            ),
+            self._optimizer_state.acquire() as (opt_state, put_opt),
             self._seed_state.acquire() as (seed_state, put_seed_state),
         ):
             # NOTE: We make the assumption that as we have acquired the optimizer
@@ -95,10 +92,10 @@ class NePSState(Generic[Loc]):
             # from the optimizer. If so, that means there is another source of trial
             # generation that occurs outside of this function and outside the scope
             # of acquiring the optimizer_state lock.
-            trials: dict[str, Trial] = {}
-            for trial_id, shared_trial in self._trials.all().items():
-                trial = shared_trial.synced()
-                trials[trial_id] = trial
+            trials: dict[str, Trial] = {
+                trial_id: shared_trial.synced()
+                for trial_id, shared_trial in list(self._trials.all().items())
+            }
 
             seed_state.set_as_global_seed_state()
 
@@ -147,14 +144,14 @@ class NePSState(Generic[Loc]):
 
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location="",  # HACK: This will be set by the `TrialRepo`
+                location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,
                 time_sampled=time.time(),
                 worker_id=worker_id,
             )
-            shared_trial = self._trials.put_new(trial)
+            self._trials.put_new(trial)
             seed_state.recapture()
             put_seed_state(seed_state)
             put_opt(
@@ -222,7 +219,7 @@ class NePSState(Generic[Loc]):
             return take(n, _pending_itr)
         return next(_pending_itr, None)
 
-    def all_trial_ids(self) -> set[str]:
+    def all_trial_ids(self) -> list[str]:
         """Get all the trial ids that are known about."""
         return self._trials.all_trial_ids()
 

@@ -134,6 +134,8 @@ class ReaderWriterTrial(ReaderWriter[Trial, Path]):
 
 _StaticReaderWriterTrial: Final = ReaderWriterTrial()
 
+CONFIG_PREFIX_LEN: Final = len("config_")
+
 
 @dataclass
 class TrialRepoInDirectory(TrialRepo[Path]):
@@ -143,13 +145,13 @@ class TrialRepoInDirectory(TrialRepo[Path]):
     _cache: dict[str, Synced[Trial, Path]] = field(default_factory=dict)
 
     @override
-    def all_trial_ids(self) -> set[str]:
+    def all_trial_ids(self) -> list[str]:
         """List all the trial ids in this trial Repo."""
-        return {
-            config_path.name.replace("config_", "")
+        return [
+            config_path.name[CONFIG_PREFIX_LEN:]
             for config_path in self.directory.iterdir()
             if config_path.name.startswith("config_") and config_path.is_dir()
-        }
+        ]
 
     @override
     def get_by_id(
