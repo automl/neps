@@ -23,6 +23,7 @@ from neps.env import (
     MAX_RETRIES_CREATE_LOAD_STATE,
     MAX_RETRIES_GET_NEXT_TRIAL,
     MAX_RETRIES_SET_EVALUATING,
+    MAX_RETRIES_WORKER_CHECK_SHOULD_STOP,
 )
 from neps.exceptions import (
     NePSError,
@@ -367,7 +368,7 @@ class DefaultWorker(Generic[Loc]):
 
         return False
 
-    def run(self) -> None:  # noqa: C901, PLR0915
+    def run(self) -> None:  # noqa: C901, PLR0915, PLR0912
         """Run the worker.
 
         Will keep running until one of the criterion defined by the `WorkerSettings`
@@ -382,6 +383,7 @@ class DefaultWorker(Generic[Loc]):
 
         _repeated_fail_get_next_trial_count = 0
         n_failed_set_trial_state = 0
+        n_repeated_failed_check_should_stop = 0
         while True:
             # NOTE: We rely on this function to do logging and raising errors if it should
             try:
@@ -394,7 +396,17 @@ class DefaultWorker(Generic[Loc]):
                     break
             except WorkerRaiseError as e:
                 raise e
-            except Exception:
+            except Exception as e:
+                n_repeated_failed_check_should_stop += 1
+                if (
+                    n_repeated_failed_check_should_stop
+                    >= MAX_RETRIES_WORKER_CHECK_SHOULD_STOP
+                ):
+                    raise WorkerRaiseError(
+                        f"Worker {self.worker_id} failed to check if it should stop"
+                        f" {MAX_RETRIES_WORKER_CHECK_SHOULD_STOP} times in a row. Bailing"
+                    ) from e
+
                 logger.error(
                     "Unexpected error from worker '%s' while checking if it should stop.",
                     self.worker_id,

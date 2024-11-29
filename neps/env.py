@@ -43,6 +43,11 @@ MAX_RETRIES_CREATE_LOAD_STATE = get_env(
     parse=int,
     default=10,
 )
+MAX_RETRIES_WORKER_CHECK_SHOULD_STOP = get_env(
+    "NEPS_MAX_RETRIES_WORKER_CHECK_SHOULD_STOP",
+    parse=int,
+    default=3,
+)
 TRIAL_FILELOCK_POLL = get_env(
     "NEPS_TRIAL_FILELOCK_POLL",
     parse=float,
