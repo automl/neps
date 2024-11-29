@@ -35,11 +35,11 @@ from neps.state._eval import evaluate_trial
 from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
     from neps.state.neps_state import NePSState
+    from neps.state.trial import Trial
 
 logger = logging.getLogger(__name__)
 
@@ -321,13 +321,12 @@ class DefaultWorker(Generic[Loc]):
         trials = self.state.get_all_trials()
         if self.settings.max_evaluations_total is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                count = sum(
-                    1
-                    for _, trial in trials.items()
-                    if trial.report is not None
-                    or trial.state in (Trial.State.EVALUATING, Trial.State.SUBMITTED)
-                )
+                # NOTE: We can just use the sum of trials in this case as they
+                # either have a report, are pending or being evaluated. There
+                # are also crashed and unknown states which we include into this.
+                count = len(trials)
             else:
+                # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
 
             if count >= self.settings.max_evaluations_total:
