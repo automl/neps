@@ -25,7 +25,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import ClassVar, TypeVar
+from typing import ClassVar, Final, TypeVar
 from typing_extensions import override
 from uuid import uuid4
 
@@ -81,6 +81,58 @@ class FileVersioner(Versioner):
         sha = make_sha()
         self.version_file.write_text(sha)
         return sha
+
+
+@dataclass
+class ReaderWriterTrial(ReaderWriter[Trial, Path]):
+    """ReaderWriter for Trial objects."""
+
+    CHEAP_LOCKLESS_READ: ClassVar = True
+
+    CONFIG_FILENAME = "config.yaml"
+    METADATA_FILENAME = "metadata.yaml"
+    STATE_FILENAME = "state.txt"
+    REPORT_FILENAME = "report.yaml"
+    PREVIOUS_TRIAL_ID_FILENAME = "previous_trial_id.txt"
+
+    @override
+    @classmethod
+    def read(cls, directory: Path) -> Trial:
+        config_path = directory / cls.CONFIG_FILENAME
+        metadata_path = directory / cls.METADATA_FILENAME
+        state_path = directory / cls.STATE_FILENAME
+        report_path = directory / cls.REPORT_FILENAME
+
+        return Trial(
+            config=deserialize(config_path),
+            metadata=Trial.MetaData(**deserialize(metadata_path)),
+            state=Trial.State(state_path.read_text(encoding="utf-8").strip()),
+            report=(
+                Trial.Report(**deserialize(report_path)) if report_path.exists() else None
+            ),
+        )
+
+    @override
+    @classmethod
+    def write(cls, trial: Trial, directory: Path) -> None:
+        config_path = directory / cls.CONFIG_FILENAME
+        metadata_path = directory / cls.METADATA_FILENAME
+        state_path = directory / cls.STATE_FILENAME
+
+        serialize(trial.config, config_path)
+        serialize(asdict(trial.metadata), metadata_path)
+        state_path.write_text(trial.state.value, encoding="utf-8")
+
+        if trial.metadata.previous_trial_id is not None:
+            previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
+            previous_trial_path.write_text(trial.metadata.previous_trial_id)
+
+        if trial.report is not None:
+            report_path = directory / cls.REPORT_FILENAME
+            serialize(asdict(trial.report), report_path)
+
+
+_StaticReaderWriterTrial: Final = ReaderWriterTrial()
 
 
 @dataclass
@@ -140,7 +192,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
                 timeout=lock_timeout,
             ),
             versioner=FileVersioner(version_file=config_path / ".version"),
-            reader_writer=ReaderWriterTrial(),
+            reader_writer=_StaticReaderWriterTrial,
         )
         self._cache[trial_id] = trial
         return trial
@@ -180,7 +232,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
                         timeout=lock_timeout,
                     ),
                     versioner=FileVersioner(version_file=config_path / ".version"),
-                    reader_writer=ReaderWriterTrial(),
+                    reader_writer=_StaticReaderWriterTrial,
                 )
                 already_existing_trial = shared_trial._unsynced()
                 extra_msg = (
@@ -207,7 +259,7 @@ class TrialRepoInDirectory(TrialRepo[Path]):
                 timeout=lock_timeout,
             ),
             versioner=FileVersioner(version_file=config_path / ".version"),
-            reader_writer=ReaderWriterTrial(),
+            reader_writer=_StaticReaderWriterTrial,
         )
         self._cache[trial.metadata.id] = shared_trial
         return shared_trial
@@ -230,55 +282,6 @@ class TrialRepoInDirectory(TrialRepo[Path]):
             if (trial := t.synced()).state == Trial.State.PENDING
         ]
         return iter((_id, t) for _id, t, _ in sorted(pending, key=lambda x: x[2]))
-
-
-@dataclass
-class ReaderWriterTrial(ReaderWriter[Trial, Path]):
-    """ReaderWriter for Trial objects."""
-
-    CHEAP_LOCKLESS_READ: ClassVar = True
-
-    CONFIG_FILENAME = "config.yaml"
-    METADATA_FILENAME = "metadata.yaml"
-    STATE_FILENAME = "state.txt"
-    REPORT_FILENAME = "report.yaml"
-    PREVIOUS_TRIAL_ID_FILENAME = "previous_trial_id.txt"
-
-    @override
-    @classmethod
-    def read(cls, directory: Path) -> Trial:
-        config_path = directory / cls.CONFIG_FILENAME
-        metadata_path = directory / cls.METADATA_FILENAME
-        state_path = directory / cls.STATE_FILENAME
-        report_path = directory / cls.REPORT_FILENAME
-
-        return Trial(
-            config=deserialize(config_path),
-            metadata=Trial.MetaData(**deserialize(metadata_path)),
-            state=Trial.State(state_path.read_text(encoding="utf-8").strip()),
-            report=(
-                Trial.Report(**deserialize(report_path)) if report_path.exists() else None
-            ),
-        )
-
-    @override
-    @classmethod
-    def write(cls, trial: Trial, directory: Path) -> None:
-        config_path = directory / cls.CONFIG_FILENAME
-        metadata_path = directory / cls.METADATA_FILENAME
-        state_path = directory / cls.STATE_FILENAME
-
-        serialize(trial.config, config_path)
-        serialize(asdict(trial.metadata), metadata_path)
-        state_path.write_text(trial.state.value, encoding="utf-8")
-
-        if trial.metadata.previous_trial_id is not None:
-            previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
-            previous_trial_path.write_text(trial.metadata.previous_trial_id)
-
-        if trial.report is not None:
-            report_path = directory / cls.REPORT_FILENAME
-            serialize(asdict(trial.report), report_path)
 
 
 @dataclass
