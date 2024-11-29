@@ -175,7 +175,7 @@ def test_sample_trial(
     assert neps_state.get_all_trials() == {}
     assert neps_state.get_next_pending_trial() is None
     assert neps_state.get_next_pending_trial(n=10) == []
-    assert neps_state.all_trial_ids() == set()
+    assert neps_state.all_trial_ids() == []
 
     trial1 = neps_state.sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
@@ -189,7 +189,7 @@ def test_sample_trial(
     assert neps_state.get_all_trials() == {trial1.id: trial1}
     assert neps_state.get_next_pending_trial() == trial1
     assert neps_state.get_next_pending_trial(n=10) == [trial1]
-    assert neps_state.all_trial_ids() == {trial1.id}
+    assert neps_state.all_trial_ids() == [trial1.id]
 
     trial2 = neps_state.sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
@@ -201,4 +201,4 @@ def test_sample_trial(
     assert neps_state.get_all_trials() == {trial1.id: trial1, trial2.id: trial2}
     assert neps_state.get_next_pending_trial() == trial1
     assert neps_state.get_next_pending_trial(n=10) == [trial1, trial2]
-    assert neps_state.all_trial_ids() == {trial1.id, trial2.id}
+    assert sorted(neps_state.all_trial_ids()) == [trial1.id, trial2.id]
