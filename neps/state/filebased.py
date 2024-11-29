@@ -502,7 +502,6 @@ class FileLocker(Locker):
     ) -> Iterator[None]:
         self.lock_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock_path.touch(exist_ok=True)
-        logger.debug("Acquiring lock on %s", self.lock_path)
         try:
             with pl.Lock(
                 self.lock_path,
@@ -522,7 +521,6 @@ class FileLocker(Locker):
                 " environment variables to increase the timeout:"
                 f"\n\n{pprint.pformat(ENV_VARS_USED)}"
             ) from e
-        logger.debug("Released lock on %s", self.lock_path)
 
 
 def load_filebased_neps_state(directory: Path) -> NePSState[Path]:
