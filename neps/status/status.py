@@ -299,7 +299,7 @@ def _save_data_to_csv(
         config_data_df: The DataFrame containing configuration data.
         run_data_df: The DataFrame containing additional run data.
     """
-    with locker(poll=2, timeout=120):
+    with locker(poll=2, timeout=600):
         try:
             pending_configs = run_data_df.loc["num_pending_configs", "value"]
             pending_configs_with_worker = run_data_df.loc[
