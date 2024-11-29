@@ -383,13 +383,24 @@ class DefaultWorker(Generic[Loc]):
         n_failed_set_trial_state = 0
         while True:
             # NOTE: We rely on this function to do logging and raising errors if it should
-            should_stop = self._check_if_should_stop(
-                time_monotonic_start=_time_monotonic_start,
-                error_from_this_worker=_error_from_evaluation,
-            )
-            if should_stop is not False:
-                logger.info(should_stop)
-                break
+            try:
+                should_stop = self._check_if_should_stop(
+                    time_monotonic_start=_time_monotonic_start,
+                    error_from_this_worker=_error_from_evaluation,
+                )
+                if should_stop is not False:
+                    logger.info(should_stop)
+                    break
+            except WorkerRaiseError as e:
+                raise e
+            except Exception:
+                logger.error(
+                    "Unexpected error from worker '%s' while checking if it should stop.",
+                    self.worker_id,
+                    exc_info=True,
+                )
+                time.sleep(1)  # Help stagger retries
+                continue
 
             try:
                 trial_to_eval = self._get_next_trial_from_state()
