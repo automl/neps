@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar, overload
 
 from more_itertools import take
 
+from neps.exceptions import TrialAlreadyExistsError
 from neps.state.err_dump import ErrDump
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.trial import Trial
@@ -151,7 +152,29 @@ class NePSState(Generic[Loc]):
                 time_sampled=time.time(),
                 worker_id=worker_id,
             )
-            self._trials.put_new(trial)
+            try:
+                self._trials.put_new(trial)
+            except TrialAlreadyExistsError as e:
+                if sampled_config.id in trials:
+                    logger.warning(
+                        "The new sampled trial was given an id of '%s', yet this already"
+                        " exists in the loaded in trials given to the optimizer. This"
+                        " indicates a bug with the optimizers allocation of ids.",
+                        sampled_config.id,
+                    )
+                else:
+                    logger.warning(
+                        "The new sampled trial was given an id of '%s', which is not one"
+                        " that was loaded in by the optimizer. This indicates that"
+                        " configuration '%s' was put on disk during the time that this"
+                        " worker had the optimizer state lock OR that after obtaining the"
+                        " optimizer state lock, somehow this configuration failed to be"
+                        " loaded in and passed to the optimizer.",
+                        sampled_config.id,
+                        sampled_config.id,
+                    )
+                raise e
+
             seed_state.recapture()
             put_seed_state(seed_state)
             put_opt(
