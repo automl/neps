@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from neps.runtime import get_workers_neps_state
 from neps.state.filebased import FileLocker
 from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
@@ -37,7 +38,11 @@ def get_summary_dict(
 
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
-    shared_state = NePSState.create_or_load(root_directory, load_only=True)
+    try:
+        shared_state = get_workers_neps_state()
+    except RuntimeError:
+        shared_state = NePSState.create_or_load(root_directory)
+
     trials = shared_state.lock_and_read_trials()
 
     evaluated: dict[ConfigID, _ConfigResultForStats] = {}

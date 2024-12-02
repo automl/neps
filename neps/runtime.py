@@ -23,12 +23,11 @@ from neps.env import (
     LINUX_FILELOCK_FUNCTION,
     MAX_RETRIES_CREATE_LOAD_STATE,
     MAX_RETRIES_GET_NEXT_TRIAL,
-    MAX_RETRIES_SET_EVALUATING,
     MAX_RETRIES_WORKER_CHECK_SHOULD_STOP,
 )
 from neps.exceptions import (
     NePSError,
-    VersionMismatchError,
+    TrialAlreadyExistsError,
     WorkerFailedToGetPendingTrialsError,
     WorkerRaiseError,
 )
@@ -340,9 +339,84 @@ class DefaultWorker(Generic[Loc]):
 
         return False
 
+    @property
+    def _requires_global_stopping_criterion(self) -> bool:
+        return (
+            self.settings.max_evaluations_total is not None
+            or self.settings.max_cost_total is not None
+            or self.settings.max_evaluation_time_total_seconds is not None
+        )
+
+    def _get_next_trial(self) -> Trial | Literal["break"]:
+        # If there are no global stopping criterion, we can no just return early.
+        with self.state._state_lock.lock():
+            # With the trial lock, we'll load everything in, if we have a pending
+            # config, use that and return.
+            with self.state._trial_lock.lock():
+                trials = self.state._trials.latest()
+
+                if self._requires_global_stopping_criterion:
+                    should_stop = self._check_global_stopping_criterion(trials)
+                    if should_stop is not False:
+                        logger.info(should_stop)
+                        return "break"
+
+                pending_trials = [
+                    trial
+                    for trial in trials.values()
+                    if trial.state == Trial.State.PENDING
+                ]
+
+                if len(pending_trials) > 0:
+                    earliest_pending = sorted(
+                        pending_trials,
+                        key=lambda t: t.metadata.time_sampled,
+                    )[0]
+                    earliest_pending.set_evaluating(
+                        time_started=time.time(),
+                        worker_id=self.worker_id,
+                    )
+                    self.state._trials.update_trial(
+                        earliest_pending,
+                        hints=["metadata", "state"],
+                    )
+                    return earliest_pending
+
+            # Otherwise, we release the trial lock while sampling
+            sampled_trial = self.state._sample_trial(
+                optimizer=self.optimizer,
+                worker_id=self.worker_id,
+                trials=trials,
+            )
+
+            with self.state._trial_lock.lock():
+                try:
+                    self.state._trials.new_trial(sampled_trial)
+                    return sampled_trial
+                except TrialAlreadyExistsError as e:
+                    if sampled_trial.id in trials:
+                        logger.warning(
+                            "The new sampled trial was given an id of '%s', yet this already"
+                            " exists in the loaded in trials given to the optimizer. This"
+                            " indicates a bug with the optimizers allocation of ids.",
+                            sampled_trial.id,
+                        )
+                    else:
+                        logger.warning(
+                            "The new sampled trial was given an id of '%s', which is not one"
+                            " that was loaded in by the optimizer. This indicates that"
+                            " configuration '%s' was put on disk during the time that this"
+                            " worker had the optimizer state lock OR that after obtaining the"
+                            " optimizer state lock, somehow this configuration failed to be"
+                            " loaded in and passed to the optimizer.",
+                            sampled_trial.id,
+                            sampled_trial.id,
+                        )
+                    raise e
+
     # Forgive me lord, for I have sinned, this function is atrocious but complicated
     # due to locking.
-    def run(self) -> None:  # noqa: C901, PLR0915, PLR0912
+    def run(self) -> None:  # noqa: C901, PLR0915
         """Run the worker.
 
         Will keep running until one of the criterion defined by the `WorkerSettings`
@@ -356,7 +430,6 @@ class DefaultWorker(Generic[Loc]):
         _error_from_evaluation: Exception | None = None
 
         _repeated_fail_get_next_trial_count = 0
-        n_failed_set_trial_state = 0
         n_repeated_failed_check_should_stop = 0
         while True:
             try:
@@ -400,50 +473,13 @@ class DefaultWorker(Generic[Loc]):
 
             # From here, we now begin sampling or getting the next pending trial.
             # As the global stopping criterion requires us to check all trials, and
-            # needs to be in locked in-step with sampling
+            # needs to be in locked in-step with sampling and is done inside
+            # _get_next_trial
             try:
-                # If there are no global stopping criterion, we can no just return early.
-                with self.state._state_lock.lock():
-                    with self.state._trial_lock.lock():
-                        trials = self.state._trials.latest()
-
-                    requires_checking_global_stopping_criterion = (
-                        self.settings.max_evaluations_total is not None
-                        or self.settings.max_cost_total is not None
-                        or self.settings.max_evaluation_time_total_seconds is not None
-                    )
-                    if requires_checking_global_stopping_criterion:
-                        should_stop = self._check_global_stopping_criterion(trials)
-                        if should_stop is not False:
-                            logger.info(should_stop)
-                            break
-
-                    pending_trials = [
-                        trial
-                        for trial in trials.values()
-                        if trial.state == Trial.State.PENDING
-                    ]
-                    if len(pending_trials) > 0:
-                        earliest_pending = sorted(
-                            pending_trials,
-                            key=lambda t: t.metadata.time_sampled,
-                        )[0]
-                        earliest_pending.set_evaluating(
-                            time_started=time.time(),
-                            worker_id=self.worker_id,
-                        )
-                        with self.state._trial_lock.lock():
-                            self.state._trials.update_trial(earliest_pending)
-                        trial_to_eval = earliest_pending
-                    else:
-                        sampled_trial = self.state._sample_trial(
-                            optimizer=self.optimizer,
-                            worker_id=self.worker_id,
-                            _trials=trials,
-                        )
-                        trial_to_eval = sampled_trial
-
-                    _repeated_fail_get_next_trial_count = 0
+                trial_to_eval = self._get_next_trial()
+                if trial_to_eval == "break":
+                    break
+                _repeated_fail_get_next_trial_count = 0
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
                 logger.debug(
@@ -452,7 +488,6 @@ class DefaultWorker(Generic[Loc]):
                     exc_info=True,
                 )
                 time.sleep(1)  # Help stagger retries
-
                 # NOTE: This is to prevent any infinite loops if we can't get a trial
                 if _repeated_fail_get_next_trial_count >= MAX_RETRIES_GET_NEXT_TRIAL:
                     raise WorkerFailedToGetPendingTrialsError(
@@ -461,42 +496,6 @@ class DefaultWorker(Generic[Loc]):
                         " a row. Bailing!"
                     ) from e
 
-                continue
-
-            # If we can't set this working to evaluating, then just retry the loop
-            try:
-                n_failed_set_trial_state = 0
-            except VersionMismatchError:
-                n_failed_set_trial_state += 1
-                logger.debug(
-                    "Another worker has managed to change trial '%s'"
-                    " while this worker '%s' was trying to set it to"
-                    " evaluating. This is fine and likely means the other worker is"
-                    " evaluating it, this worker will attempt to sample new trial.",
-                    trial_to_eval.id,
-                    self.worker_id,
-                    exc_info=True,
-                )
-                time.sleep(1)  # Help stagger retries
-            except Exception:
-                n_failed_set_trial_state += 1
-                logger.error(
-                    "Unexpected error from worker '%s' trying to set trial"
-                    " '%' to evaluating.",
-                    self.worker_id,
-                    trial_to_eval.id,
-                    exc_info=True,
-                )
-                time.sleep(1)  # Help stagger retries
-
-            # NOTE: This is to prevent infinite looping if it somehow keeps getting
-            # the same trial and can't set it to evaluating.
-            if n_failed_set_trial_state != 0:
-                if n_failed_set_trial_state >= MAX_RETRIES_SET_EVALUATING:
-                    raise WorkerFailedToGetPendingTrialsError(
-                        f"Worker {self.worker_id} failed to set trial to evaluating"
-                        f" {MAX_RETRIES_SET_EVALUATING} times in a row. Bailing!"
-                    )
                 continue
 
             # We (this worker) has managed to set it to evaluating, now we can evaluate it

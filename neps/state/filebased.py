@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import ClassVar, Final, TypeVar
+from typing import ClassVar, Final, Literal, TypeAlias, TypeVar
 
 import numpy as np
 import portalocker as pl
@@ -25,15 +25,23 @@ logger = logging.getLogger(__name__)
 K = TypeVar("K")
 T = TypeVar("T")
 
+TrialWriteHint: TypeAlias = Literal["metadata", "report", "state", "config"]
+
 
 @dataclass
 class ReaderWriterTrial:
     """ReaderWriter for Trial objects."""
 
+    # Report and config are kept as yaml since they are most likely to be
+    # read
     CONFIG_FILENAME = "config.yaml"
-    METADATA_FILENAME = "metadata.yaml"
-    STATE_FILENAME = "state.txt"
     REPORT_FILENAME = "report.yaml"
+
+    # Metadata is put as json as it's more likely to be machine read and
+    # is much faster.
+    METADATA_FILENAME = "metadata.json"
+
+    STATE_FILENAME = "state.txt"
     PREVIOUS_TRIAL_ID_FILENAME = "previous_trial_id.txt"
 
     @classmethod
@@ -43,9 +51,12 @@ class ReaderWriterTrial:
         state_path = directory / cls.STATE_FILENAME
         report_path = directory / cls.REPORT_FILENAME
 
+        with metadata_path.open("r") as f:
+            metadata = json.load(f)
+
         return Trial(
             config=deserialize(config_path),
-            metadata=Trial.MetaData(**deserialize(metadata_path)),
+            metadata=Trial.MetaData(**metadata),
             state=Trial.State(state_path.read_text(encoding="utf-8").strip()),
             report=(
                 Trial.Report(**deserialize(report_path)) if report_path.exists() else None
@@ -53,22 +64,58 @@ class ReaderWriterTrial:
         )
 
     @classmethod
-    def write(cls, trial: Trial, directory: Path) -> None:
+    def write(
+        cls,
+        trial: Trial,
+        directory: Path,
+        *,
+        hints: list[TrialWriteHint] | TrialWriteHint | None = None,
+    ) -> None:
         config_path = directory / cls.CONFIG_FILENAME
         metadata_path = directory / cls.METADATA_FILENAME
         state_path = directory / cls.STATE_FILENAME
 
-        serialize(trial.config, config_path)
-        serialize(asdict(trial.metadata), metadata_path)
-        state_path.write_text(trial.state.value, encoding="utf-8")
+        if isinstance(hints, str):
+            match hints:
+                case "config":
+                    serialize(trial.config, config_path)
+                case "metadata":
+                    with metadata_path.open("w") as f:
+                        json.dump(asdict(trial.metadata), f)
 
-        if trial.metadata.previous_trial_id is not None:
-            previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
-            previous_trial_path.write_text(trial.metadata.previous_trial_id)
+                    if trial.metadata.previous_trial_id is not None:
+                        previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
+                        previous_trial_path.write_text(trial.metadata.previous_trial_id)
+                case "report":
+                    if trial.report is None:
+                        raise ValueError(
+                            "Cannot write report 'hint' when report is None."
+                        )
 
-        if trial.report is not None:
-            report_path = directory / cls.REPORT_FILENAME
-            serialize(asdict(trial.report), report_path)
+                    report_path = directory / cls.REPORT_FILENAME
+                    serialize(asdict(trial.report), report_path)
+                case "state":
+                    state_path.write_text(trial.state.value, encoding="utf-8")
+                case _:
+                    raise ValueError(f"Invalid hint: {hints}")
+        elif hints is None:
+            # We don't know, write everything
+            serialize(trial.config, config_path)
+            with metadata_path.open("w") as f:
+                json.dump(asdict(trial.metadata), f)
+
+            if trial.metadata.previous_trial_id is not None:
+                previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
+                previous_trial_path.write_text(trial.metadata.previous_trial_id)
+
+            state_path.write_text(trial.state.value, encoding="utf-8")
+
+            if trial.report is not None:
+                report_path = directory / cls.REPORT_FILENAME
+                serialize(asdict(trial.report), report_path)
+        else:
+            for hint in hints:
+                cls.write(trial, directory, hints=hint)
 
 
 TrialReaderWriter: Final = ReaderWriterTrial()
@@ -155,7 +202,9 @@ class ReaderWriterSeedSnapshot:
             "py_rng_version": py_rng_version,
             "py_guass_next": py_guass_next,
         }
-        serialize(seed_info, seedinfo_path)
+        with seedinfo_path.open("w") as f:
+            json.dump(seed_info, f)
+
         np_rng_state = snapshot.np_rng[1]
         np_rng_state.tofile(np_rng_path)
 
@@ -195,23 +244,24 @@ class ReaderWriterOptimizerInfo:
 class ReaderWriterOptimizationState:
     """ReaderWriter for OptimizationState objects."""
 
-    STATE_FILE_NAME: ClassVar = "state.yaml"
+    STATE_FILE_NAME: ClassVar = "state.json"
 
     @classmethod
     def read(cls, directory: Path) -> OptimizationState:
         state_path = directory / cls.STATE_FILE_NAME
-        state = deserialize(state_path)
+        with state_path.open("r") as f:
+            state = json.load(f)
+
+        shared_state = state.get("shared_state") or {}
         budget_info = state.get("budget")
         budget = BudgetInfo(**budget_info) if budget_info is not None else None
-        return OptimizationState(
-            shared_state=state.get("shared_state") or {},
-            budget=budget,
-        )
+        return OptimizationState(shared_state=shared_state, budget=budget)
 
     @classmethod
     def write(cls, info: OptimizationState, directory: Path) -> None:
         info_path = directory / cls.STATE_FILE_NAME
-        serialize(asdict(info), info_path)
+        with info_path.open("w") as f:
+            json.dump(asdict(info), f)
 
 
 @dataclass

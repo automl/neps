@@ -41,6 +41,7 @@ from neps.state.filebased import (
     ReaderWriterOptimizerInfo,
     ReaderWriterSeedSnapshot,
     TrialReaderWriter,
+    TrialWriteHint,
 )
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
@@ -76,7 +77,8 @@ CONFIG_PREFIX_LEN = len("config_")
 class TrialRepo:
     directory: Path
     version_file: Path
-    cache: dict[str, tuple[Trial, Version]] = field(default_factory=dict)
+    trial_cache: dict[str, Trial] = field(default_factory=dict)
+    versions: dict[str, Version] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -95,35 +97,40 @@ class TrialRepo:
         with self.version_file.open("rb") as f:
             versions_on_disk = pickle.load(f)  # noqa: S301
 
-        stale = {
+        stale: dict[str, Version] = {
             k: v
             for k, v in versions_on_disk.items()
-            if self.cache.get(k, (None, "__not_found__")) != v
+            if self.versions.get(k, "__not_found__") != v
         }
-        for trial_id, disk_version in stale.items():
+        for trial_id, loaded_version in stale.items():
             loaded_trial = self.load_trial_from_disk(trial_id)
-            self.cache[trial_id] = (loaded_trial, disk_version)
+            self.trial_cache[trial_id] = loaded_trial
+            self.versions[trial_id] = loaded_version
 
-        return {k: v[0] for k, v in self.cache.items()}
+        return self.trial_cache
 
     def new_trial(self, trial: Trial) -> None:
         config_path = self.directory / f"config_{trial.id}"
         if config_path.exists():
             raise TrialAlreadyExistsError(trial.id, config_path)
         config_path.mkdir(parents=True, exist_ok=True)
-        self.update_trial(trial)
+        self.update_trial(trial, hints=None)
 
-    def update_trial(self, trial: Trial) -> None:
+    def update_trial(
+        self, trial: Trial, *, hints: list[TrialWriteHint] | TrialWriteHint | None = None
+    ) -> None:
+        TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=hints)
+        self.trial_cache[trial.id] = trial
         new_version = make_sha()
-        TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}")
-        self.cache[trial.id] = (trial, new_version)
+        self.versions[trial.id] = new_version
+        self._write_version_file()
 
-    def write_version_file(self) -> None:
+    def _write_version_file(self) -> None:
         with self.version_file.open("wb") as f:
-            pickle.dump({k: v[1] for k, v in self.cache.items()}, f)
+            pickle.dump(self.versions, f)
 
     def trials_in_memory(self) -> dict[str, Trial]:
-        return {k: v[0] for k, v in self.cache.items()}
+        return self.trial_cache
 
     def load_trial_from_disk(self, trial_id: str) -> Trial:
         config_path = self.directory / f"config_{trial_id}"
@@ -231,8 +238,16 @@ class NePSState:
 
     def lock_and_sample_trial(self, optimizer: BaseOptimizer, *, worker_id: str) -> Trial:
         """Acquire the state lock and sample a trial."""
-        with self._state_lock.lock(), self._trial_lock.lock():
-            return self._sample_trial(optimizer, worker_id=worker_id)
+        with self._state_lock.lock():
+            with self._trial_lock.lock():
+                trials = self._trials.latest()
+
+            trial = self._sample_trial(optimizer, trials=trials, worker_id=worker_id)
+
+            with self._trial_lock.lock():
+                self._trials.new_trial(trial)
+
+            return trial
 
     def lock_and_report_trial_evaluation(
         self,
@@ -250,8 +265,8 @@ class NePSState:
         optimizer: BaseOptimizer,
         *,
         worker_id: str,
+        trials: dict[str, Trial],
         _sample_hooks: list[Callable] | None = None,
-        _trials: dict[str, Trial] | None = None,
     ) -> Trial:
         """Sample a new trial from the optimizer.
 
@@ -262,12 +277,12 @@ class NePSState:
         Args:
             optimizer: The optimizer to sample the trial from.
             worker_id: The worker that is sampling the trial.
+            trials: The current trials.
             _sample_hooks: A list of hooks to apply to the optimizer before sampling.
 
         Returns:
             The new trial.
         """
-        trials = self._trials.latest() if _trials is None else _trials
         seed_state = self._seed_snapshot.latest()
         opt_state = self._optimizer_state.latest()
 
@@ -325,30 +340,6 @@ class NePSState:
             time_sampled=time.time(),
             worker_id=worker_id,
         )
-        try:
-            self._trials.new_trial(trial)
-            self._trials.write_version_file()
-        except TrialAlreadyExistsError as e:
-            if sampled_config.id in trials:
-                logger.warning(
-                    "The new sampled trial was given an id of '%s', yet this already"
-                    " exists in the loaded in trials given to the optimizer. This"
-                    " indicates a bug with the optimizers allocation of ids.",
-                    sampled_config.id,
-                )
-            else:
-                logger.warning(
-                    "The new sampled trial was given an id of '%s', which is not one"
-                    " that was loaded in by the optimizer. This indicates that"
-                    " configuration '%s' was put on disk during the time that this"
-                    " worker had the optimizer state lock OR that after obtaining the"
-                    " optimizer state lock, somehow this configuration failed to be"
-                    " loaded in and passed to the optimizer.",
-                    sampled_config.id,
-                    sampled_config.id,
-                )
-            raise e
-
         seed_state.recapture()
         self._seed_snapshot.update(seed_state)
         self._optimizer_state.update(
@@ -375,8 +366,7 @@ class NePSState:
         """
         # IMPORTANT: We need to attach the report to the trial before updating the things.
         trial.report = report
-        self._trials.update_trial(trial)
-        self._trials.write_version_file()
+        self._trials.update_trial(trial, hints=["report", "metadata", "state"])
 
         logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
         if report.err is not None:
@@ -435,11 +425,22 @@ class NePSState:
             f"Failed to get trial '{trial_id}' after {N_UNSAFE_RETRIES} retries."
         )
 
-    def put_updated_trial(self, trial: Trial) -> None:
-        """Update the trial."""
+    def put_updated_trial(
+        self,
+        trial: Trial,
+        *,
+        hints: list[TrialWriteHint] | TrialWriteHint | None = None,
+    ) -> None:
+        """Update the trial.
+
+        Args:
+            trial: The trial to update.
+            hints: The hints to use when updating the trial. Defines what files need
+                to be updated.
+                If you don't know, leave `None`, this is a micro-optimization.
+        """
         with self._trial_lock.lock():
-            self._trials.update_trial(trial)
-            self._trials.write_version_file()
+            self._trials.update_trial(trial, hints=hints)
 
     @overload
     def lock_and_get_next_pending_trial(self) -> Trial | None: ...

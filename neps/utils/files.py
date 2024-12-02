@@ -10,6 +10,14 @@ from typing import Any
 
 import yaml
 
+try:
+    from yaml import (
+        CSafeDumper as SafeDumper,  # type: ignore
+        CSafeLoader as SafeLoader,  # type: ignore
+    )
+except ImportError:
+    from yaml import SafeDumper, SafeLoader  # type: ignore
+
 
 def serializable_format(data: Any) -> Any:  # noqa: PLR0911
     """Format data to be serializable."""
@@ -47,7 +55,7 @@ def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
     path = Path(path)
     with path.open("w") as file_stream:
         try:
-            return yaml.safe_dump(data, file_stream, sort_keys=sort_keys)
+            return yaml.dump(data, file_stream, SafeDumper, sort_keys=sort_keys)
         except yaml.representer.RepresenterError as e:
             raise TypeError(
                 "Could not serialize to yaml! The object "
@@ -58,7 +66,7 @@ def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
 def deserialize(path: Path | str) -> dict[str, Any]:
     """Deserialize data from a yaml file."""
     with Path(path).open("r") as file_stream:
-        data = yaml.full_load(file_stream)
+        data = yaml.load(file_stream, SafeLoader)
 
     if not isinstance(data, dict):
         raise TypeError(
