@@ -417,30 +417,30 @@ class DefaultWorker(Generic[Loc]):
                             logger.info(should_stop)
                             break
 
-                pending_trials = [
-                    trial
-                    for trial in trials.values()
-                    if trial.state == Trial.State.PENDING
-                ]
-                if len(pending_trials) > 0:
-                    earliest_pending = sorted(
-                        pending_trials,
-                        key=lambda t: t.metadata.time_sampled,
-                    )[0]
-                    earliest_pending.set_evaluating(
-                        time_started=time.time(),
-                        worker_id=self.worker_id,
-                    )
-                    self.state._trials.update_trial(earliest_pending)
-                    trial_to_eval = earliest_pending
-                else:
-                    sampled_trial = self.state._sample_trial(
-                        optimizer=self.optimizer,
-                        worker_id=self.worker_id,
-                    )
-                    trial_to_eval = sampled_trial
+                    pending_trials = [
+                        trial
+                        for trial in trials.values()
+                        if trial.state == Trial.State.PENDING
+                    ]
+                    if len(pending_trials) > 0:
+                        earliest_pending = sorted(
+                            pending_trials,
+                            key=lambda t: t.metadata.time_sampled,
+                        )[0]
+                        earliest_pending.set_evaluating(
+                            time_started=time.time(),
+                            worker_id=self.worker_id,
+                        )
+                        self.state._trials.update_trial(earliest_pending)
+                        trial_to_eval = earliest_pending
+                    else:
+                        sampled_trial = self.state._sample_trial(
+                            optimizer=self.optimizer,
+                            worker_id=self.worker_id,
+                        )
+                        trial_to_eval = sampled_trial
 
-                _repeated_fail_get_next_trial_count = 0
+                    _repeated_fail_get_next_trial_count = 0
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
                 logger.debug(
