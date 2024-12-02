@@ -98,6 +98,9 @@ class ReaderWriterTrial:
                     state_path.write_text(trial.state.value, encoding="utf-8")
                 case _:
                     raise ValueError(f"Invalid hint: {hints}")
+        elif isinstance(hints, list):
+            for hint in hints:
+                cls.write(trial, directory, hints=hint)
         elif hints is None:
             # We don't know, write everything
             serialize(trial.config, config_path)
@@ -114,8 +117,7 @@ class ReaderWriterTrial:
                 report_path = directory / cls.REPORT_FILENAME
                 serialize(asdict(trial.report), report_path)
         else:
-            for hint in hints:
-                cls.write(trial, directory, hints=hint)
+            raise ValueError(f"Invalid hint: {hints}")
 
 
 TrialReaderWriter: Final = ReaderWriterTrial()

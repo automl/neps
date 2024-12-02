@@ -382,7 +382,9 @@ class DefaultWorker(Generic[Loc]):
                     )
                     return earliest_pending
 
-            # Otherwise, we release the trial lock while sampling
+            # NOTE: It's important to release the trial lock before sampling
+            # as otherwise, any other service, such as reporting the result
+            # of a trial
             sampled_trial = self.state._sample_trial(
                 optimizer=self.optimizer,
                 worker_id=self.worker_id,
@@ -391,6 +393,10 @@ class DefaultWorker(Generic[Loc]):
 
             with self.state._trial_lock.lock():
                 try:
+                    sampled_trial.set_evaluating(
+                        time_started=time.time(),
+                        worker_id=self.worker_id,
+                    )
                     self.state._trials.new_trial(sampled_trial)
                     return sampled_trial
                 except TrialAlreadyExistsError as e:
