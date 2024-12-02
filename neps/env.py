@@ -28,6 +28,13 @@ def is_nullable(e: str) -> bool:
     return e.lower() in ("none", "n", "null")
 
 
+LINUX_FILELOCK_FUNCTION = get_env(
+    "NEPS_LINUX_FILELOCK_FUNCTION",
+    parse=str,
+    default="lockf",
+)
+assert LINUX_FILELOCK_FUNCTION in ("lockf", "flock")
+
 MAX_RETRIES_GET_NEXT_TRIAL = get_env(
     "NEPS_MAX_RETRIES_GET_NEXT_TRIAL",
     parse=int,

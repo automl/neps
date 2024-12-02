@@ -20,6 +20,7 @@ from typing import (
 )
 
 from neps.env import (
+    LINUX_FILELOCK_FUNCTION,
     MAX_RETRIES_CREATE_LOAD_STATE,
     MAX_RETRIES_GET_NEXT_TRIAL,
     MAX_RETRIES_SET_EVALUATING,
@@ -605,6 +606,14 @@ def _launch_runtime(  # noqa: PLR0913
         max_evaluation_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_cost_for_worker=None,  # TODO: User can't specify yet
     )
+
+    # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.
+    # Hence, we overwrite `portalockers` lock call to use `lockf()` instead.
+    # This is commeneted in their source code that this is an option to use, however
+    # it's not directly advertised as a parameter/env variable or otherwise.
+    import portalocker.portalocker as portalocker_lock_module
+
+    setattr(portalocker_lock_module, "LOCKER", LINUX_FILELOCK_FUNCTION)
 
     worker = DefaultWorker.new(
         state=neps_state,
