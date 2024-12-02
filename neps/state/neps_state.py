@@ -11,69 +11,266 @@ For an actual instantiation of this object, see
 from __future__ import annotations
 
 import logging
+import pickle
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Generic, TypeVar, overload
+from pathlib import Path
+from typing import (
+    TYPE_CHECKING,
+    Generic,
+    Literal,
+    TypeAlias,
+    TypeVar,
+    overload,
+)
+from uuid import uuid4
 
-from more_itertools import take
-
-from neps.exceptions import TrialAlreadyExistsError
+from neps.env import (
+    STATE_FILELOCK_POLL,
+    STATE_FILELOCK_TIMEOUT,
+    TRIAL_FILELOCK_POLL,
+    TRIAL_FILELOCK_TIMEOUT,
+)
+from neps.exceptions import NePSError, TrialAlreadyExistsError, TrialNotFoundError
 from neps.state.err_dump import ErrDump
+from neps.state.filebased import (
+    FileLocker,
+    ReaderWriterErrDump,
+    ReaderWriterOptimizationState,
+    ReaderWriterOptimizerInfo,
+    ReaderWriterSeedSnapshot,
+    TrialReaderWriter,
+)
 from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.trial import Trial
+from neps.state.seed_snapshot import SeedSnapshot
+from neps.state.trial import Report, Trial
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
-    from neps.state.protocols import Synced, TrialRepo
-    from neps.state.seed_snapshot import SeedSnapshot
 
 logger = logging.getLogger(__name__)
+N_UNSAFE_RETRIES = 10
 
 # TODO: Technically we don't need the same Location type for all shared objects.
 Loc = TypeVar("Loc")
 T = TypeVar("T")
 
+Version: TypeAlias = str
+
+Resource: TypeAlias = Literal[
+    "optimizer_info", "optimizer_state", "seed_state", "errors", "configs"
+]
+
+
+def make_sha() -> Version:
+    """Generate a str hex sha."""
+    return uuid4().hex
+
+
+CONFIG_PREFIX_LEN = len("config_")
+
+
+# TODO: Ergonomics of this class sucks
+@dataclass
+class TrialRepo:
+    directory: Path
+    version_file: Path
+    cache: dict[str, tuple[Trial, Version]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.directory.mkdir(parents=True, exist_ok=True)
+
+    def list_trial_ids(self) -> list[str]:
+        return [
+            config_path.name[CONFIG_PREFIX_LEN:]
+            for config_path in self.directory.iterdir()
+            if config_path.name.startswith("config_") and config_path.is_dir()
+        ]
+
+    def latest(self) -> dict[str, Trial]:
+        if not self.version_file.exists():
+            return {}
+
+        with self.version_file.open("rb") as f:
+            versions_on_disk = pickle.load(f)  # noqa: S301
+
+        stale = {
+            k: v
+            for k, v in versions_on_disk.items()
+            if self.cache.get(k, (None, "__not_found__")) != v
+        }
+        for trial_id, disk_version in stale.items():
+            loaded_trial = self.load_trial_from_disk(trial_id)
+            self.cache[trial_id] = (loaded_trial, disk_version)
+
+        return {k: v[0] for k, v in self.cache.items()}
+
+    def new_trial(self, trial: Trial) -> None:
+        config_path = self.directory / f"config_{trial.id}"
+        if config_path.exists():
+            raise TrialAlreadyExistsError(trial.id, config_path)
+        config_path.mkdir(parents=True, exist_ok=True)
+        self.update_trial(trial)
+
+    def update_trial(self, trial: Trial) -> None:
+        new_version = make_sha()
+        TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}")
+        self.cache[trial.id] = (trial, new_version)
+
+    def write_version_file(self) -> None:
+        with self.version_file.open("wb") as f:
+            pickle.dump({k: v[1] for k, v in self.cache.items()}, f)
+
+    def trials_in_memory(self) -> dict[str, Trial]:
+        return {k: v[0] for k, v in self.cache.items()}
+
+    def load_trial_from_disk(self, trial_id: str) -> Trial:
+        config_path = self.directory / f"config_{trial_id}"
+        if not config_path.exists():
+            raise TrialNotFoundError(trial_id, config_path)
+
+        return TrialReaderWriter.read(config_path)
+
 
 @dataclass
-class NePSState(Generic[Loc]):
+class VersionedResource(Generic[T]):
+    resource: T
+    path: Path
+    read: Callable[[Path], T]
+    write: Callable[[T, Path], None]
+    version_file: Path
+    version: Version = "__not_yet_written__"
+
+    def latest(self) -> T:
+        if not self.version_file.exists():
+            return self.resource
+
+        file_version = self.version_file.read_text()
+        if self.version == file_version:
+            return self.resource
+
+        self.resource = self.read(self.path)
+        self.version = file_version
+        return self.resource
+
+    def update(self, new_resource: T) -> Version:
+        self.resource = new_resource
+        self.version = make_sha()
+        self.version_file.write_text(self.version)
+        self.write(new_resource, self.path)
+        return self.version
+
+    @classmethod
+    def new(
+        cls,
+        resource: T,
+        path: Path,
+        read: Callable[[Path], T],
+        write: Callable[[T, Path], None],
+        version_file: Path,
+    ) -> VersionedResource[T]:
+        if version_file.exists():
+            raise FileExistsError(f"Version file already exists at '{version_file}'.")
+
+        write(resource, path)
+        version = make_sha()
+        version_file.write_text(version)
+        return cls(
+            resource=resource,
+            path=path,
+            read=read,
+            write=write,
+            version_file=version_file,
+            version=version,
+        )
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+        *,
+        read: Callable[[Path], T],
+        write: Callable[[T, Path], None],
+        version_file: Path,
+    ) -> VersionedResource[T]:
+        if not path.exists():
+            raise FileNotFoundError(f"Resource not found at '{path}'.")
+
+        return cls(
+            resource=read(path),
+            path=path,
+            read=read,
+            write=write,
+            version_file=version_file,
+            version=version_file.read_text(),
+        )
+
+
+@dataclass
+class NePSState:
     """The main state object that holds all the shared state objects."""
 
-    location: str
+    path: Path
 
-    _trials: TrialRepo[Loc] = field(repr=False)
-    _optimizer_info: Synced[OptimizerInfo, Loc]
-    _seed_state: Synced[SeedSnapshot, Loc] = field(repr=False)
-    _optimizer_state: Synced[OptimizationState, Loc]
-    _shared_errors: Synced[ErrDump, Loc] = field(repr=False)
+    _trial_lock: FileLocker = field(repr=False)
+    _trials: TrialRepo = field(repr=False)
 
-    def put_updated_trial(self, trial: Trial, /) -> None:
-        """Update the trial with the new information.
+    _state_lock: FileLocker = field(repr=False)
+    _optimizer_info: VersionedResource[OptimizerInfo] = field(repr=False)
+    _seed_snapshot: VersionedResource[SeedSnapshot] = field(repr=False)
+    _optimizer_state: VersionedResource[OptimizationState] = field(repr=False)
 
-        Args:
-            trial: The trial to update.
+    _err_lock: FileLocker = field(repr=False)
+    _shared_errors: VersionedResource[ErrDump] = field(repr=False)
 
-        Raises:
-            VersionMismatchError: If the trial has been updated since it was last
-                fetched by the worker using this state. This indicates that some other
-                worker has updated the trial in the meantime and the changes from
-                this worker are rejected.
-        """
-        shared_trial = self._trials.get_by_id(trial.id)
-        shared_trial.put(trial)
+    @contextmanager
+    def lock_for_sampling(self) -> Iterator[None]:
+        """Acquire the state lock and trials lock."""
+        with self._state_lock.lock(), self._trial_lock.lock():
+            yield
 
-    def get_trial_by_id(self, trial_id: str, /) -> Trial:
-        """Get a trial by its id."""
-        return self._trials.get_by_id(trial_id).synced()
+    @contextmanager
+    def lock_trials(self) -> Iterator[None]:
+        """Acquire the state lock."""
+        with self._trial_lock.lock():
+            yield
 
-    def sample_trial(
+    def lock_and_read_trials(self) -> dict[str, Trial]:
+        """Acquire the state lock and read the trials."""
+        with self._trial_lock.lock():
+            return self._trials.latest()
+
+    def lock_and_sample_trial(self, optimizer: BaseOptimizer, *, worker_id: str) -> Trial:
+        """Acquire the state lock and sample a trial."""
+        with self.lock_for_sampling():
+            return self._sample_trial(optimizer, worker_id=worker_id)
+
+    def lock_and_report_trial_evaluation(
+        self,
+        trial: Trial,
+        report: Report,
+        *,
+        worker_id: str,
+    ) -> None:
+        """Acquire the state lock and report the trial evaluation."""
+        with self._trial_lock.lock(), self._err_lock.lock():
+            self._report_trial_evaluation(trial, report, worker_id=worker_id)
+
+    def _sample_trial(
         self,
         optimizer: BaseOptimizer,
         *,
         worker_id: str,
         _sample_hooks: list[Callable] | None = None,
+        _trials: dict[str, Trial] | None = None,
     ) -> Trial:
         """Sample a new trial from the optimizer.
+
+        !!! warning
+
+            Responsibility of locking is on caller.
 
         Args:
             optimizer: The optimizer to sample the trial from.
@@ -83,110 +280,100 @@ class NePSState(Generic[Loc]):
         Returns:
             The new trial.
         """
-        with (
-            self._optimizer_state.acquire() as (opt_state, put_opt),
-            self._seed_state.acquire() as (seed_state, put_seed_state),
-        ):
-            # NOTE: We make the assumption that as we have acquired the optimizer
-            # state, there is not possibility of another trial being created between
-            # the time we read in the trials below and `ask()`ing for the next trials
-            # from the optimizer. If so, that means there is another source of trial
-            # generation that occurs outside of this function and outside the scope
-            # of acquiring the optimizer_state lock.
-            trials: dict[str, Trial] = {
-                trial_id: shared_trial.synced()
-                for trial_id, shared_trial in list(self._trials.all().items())
-            }
+        trials = self._trials.latest() if _trials is None else _trials
+        seed_state = self._seed_snapshot.latest()
+        opt_state = self._optimizer_state.latest()
 
-            seed_state.set_as_global_seed_state()
+        seed_state.set_as_global_seed_state()
 
-            # TODO: Not sure if any existing pre_load hooks required
-            # it to be done after `load_results`... I hope not.
-            if _sample_hooks is not None:
-                for hook in _sample_hooks:
-                    optimizer = hook(optimizer)
+        # TODO: Not sure if any existing pre_load hooks required
+        # it to be done after `load_results`... I hope not.
+        if _sample_hooks is not None:
+            for hook in _sample_hooks:
+                optimizer = hook(optimizer)
 
-            # NOTE: Re-work this, as the part's that are recomputed
-            # do not need to be serialized
-            budget = opt_state.budget
-            if budget is not None:
-                budget = budget.clone()
+        # NOTE: Re-work this, as the part's that are recomputed
+        # do not need to be serialized
+        budget = opt_state.budget
+        if budget is not None:
+            budget = budget.clone()
 
-                # NOTE: All other values of budget are ones that should remain
-                # constant, there are currently only these two which are dynamic as
-                # optimization unfold
-                budget.used_cost_budget = sum(
-                    trial.report.cost
-                    for trial in trials.values()
-                    if trial.report is not None and trial.report.cost is not None
+            # NOTE: All other values of budget are ones that should remain
+            # constant, there are currently only these two which are dynamic as
+            # optimization unfold
+            budget.used_cost_budget = sum(
+                trial.report.cost
+                for trial in trials.values()
+                if trial.report is not None and trial.report.cost is not None
+            )
+            budget.used_evaluations = len(trials)
+
+        sampled_config_maybe_new_opt_state = optimizer.ask(
+            trials=trials,
+            budget_info=budget,
+        )
+
+        if isinstance(sampled_config_maybe_new_opt_state, tuple):
+            sampled_config, new_opt_state = sampled_config_maybe_new_opt_state
+        else:
+            sampled_config = sampled_config_maybe_new_opt_state
+            new_opt_state = opt_state.shared_state
+
+        if sampled_config.previous_config_id is not None:
+            previous_trial = trials.get(sampled_config.previous_config_id)
+            if previous_trial is None:
+                raise ValueError(
+                    f"Previous trial '{sampled_config.previous_config_id}' not found."
                 )
-                budget.used_evaluations = len(trials)
+            previous_trial_location = previous_trial.metadata.location
+        else:
+            previous_trial_location = None
 
-            sampled_config_maybe_new_opt_state = optimizer.ask(
-                trials=trials,
-                budget_info=budget,
-            )
-
-            if isinstance(sampled_config_maybe_new_opt_state, tuple):
-                sampled_config, new_opt_state = sampled_config_maybe_new_opt_state
+        trial = Trial.new(
+            trial_id=sampled_config.id,
+            location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
+            config=sampled_config.config,
+            previous_trial=sampled_config.previous_config_id,
+            previous_trial_location=previous_trial_location,
+            time_sampled=time.time(),
+            worker_id=worker_id,
+        )
+        try:
+            self._trials.new_trial(trial)
+            self._trials.write_version_file()
+        except TrialAlreadyExistsError as e:
+            if sampled_config.id in trials:
+                logger.warning(
+                    "The new sampled trial was given an id of '%s', yet this already"
+                    " exists in the loaded in trials given to the optimizer. This"
+                    " indicates a bug with the optimizers allocation of ids.",
+                    sampled_config.id,
+                )
             else:
-                sampled_config = sampled_config_maybe_new_opt_state
-                new_opt_state = opt_state.shared_state
+                logger.warning(
+                    "The new sampled trial was given an id of '%s', which is not one"
+                    " that was loaded in by the optimizer. This indicates that"
+                    " configuration '%s' was put on disk during the time that this"
+                    " worker had the optimizer state lock OR that after obtaining the"
+                    " optimizer state lock, somehow this configuration failed to be"
+                    " loaded in and passed to the optimizer.",
+                    sampled_config.id,
+                    sampled_config.id,
+                )
+            raise e
 
-            if sampled_config.previous_config_id is not None:
-                previous_trial = trials.get(sampled_config.previous_config_id)
-                if previous_trial is None:
-                    raise ValueError(
-                        f"Previous trial '{sampled_config.previous_config_id}' not found."
-                    )
-                previous_trial_location = previous_trial.metadata.location
-            else:
-                previous_trial_location = None
-
-            trial = Trial.new(
-                trial_id=sampled_config.id,
-                location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
-                config=sampled_config.config,
-                previous_trial=sampled_config.previous_config_id,
-                previous_trial_location=previous_trial_location,
-                time_sampled=time.time(),
-                worker_id=worker_id,
-            )
-            try:
-                self._trials.put_new(trial)
-            except TrialAlreadyExistsError as e:
-                if sampled_config.id in trials:
-                    logger.warning(
-                        "The new sampled trial was given an id of '%s', yet this already"
-                        " exists in the loaded in trials given to the optimizer. This"
-                        " indicates a bug with the optimizers allocation of ids.",
-                        sampled_config.id,
-                    )
-                else:
-                    logger.warning(
-                        "The new sampled trial was given an id of '%s', which is not one"
-                        " that was loaded in by the optimizer. This indicates that"
-                        " configuration '%s' was put on disk during the time that this"
-                        " worker had the optimizer state lock OR that after obtaining the"
-                        " optimizer state lock, somehow this configuration failed to be"
-                        " loaded in and passed to the optimizer.",
-                        sampled_config.id,
-                        sampled_config.id,
-                    )
-                raise e
-
-            seed_state.recapture()
-            put_seed_state(seed_state)
-            put_opt(
-                OptimizationState(budget=opt_state.budget, shared_state=new_opt_state)
-            )
+        seed_state.recapture()
+        self._seed_snapshot.update(seed_state)
+        self._optimizer_state.update(
+            OptimizationState(budget=opt_state.budget, shared_state=new_opt_state)
+        )
 
         return trial
 
-    def report_trial_evaluation(
+    def _report_trial_evaluation(
         self,
         trial: Trial,
-        report: Trial.Report,
+        report: Report,
         *,
         worker_id: str,
     ) -> None:
@@ -199,61 +386,248 @@ class NePSState(Generic[Loc]):
             optimizer: The optimizer to update and get the state from
             worker_id: The worker that evaluated the trial.
         """
-        shared_trial = self._trials.get_by_id(trial.id)
-        # TODO: This would fail if some other worker has already updated the trial.
-
         # IMPORTANT: We need to attach the report to the trial before updating the things.
         trial.report = report
-        shared_trial.put(trial)
+        self._trials.update_trial(trial)
+        self._trials.write_version_file()
+
         logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
         if report.err is not None:
-            with self._shared_errors.acquire() as (errs, put_errs):
-                trial_err = ErrDump.SerializableTrialError(
-                    trial_id=trial.id,
-                    worker_id=worker_id,
-                    err_type=type(report.err).__name__,
-                    err=str(report.err),
-                    tb=report.tb,
+            with self._err_lock.lock():
+                err_dump = self._shared_errors.latest()
+                err_dump.errs.append(
+                    ErrDump.SerializableTrialError(
+                        trial_id=trial.id,
+                        worker_id=worker_id,
+                        err_type=type(report.err).__name__,
+                        err=str(report.err),
+                        tb=report.tb,
+                    )
                 )
-                errs.append(trial_err)
-                put_errs(errs)
-
-    def get_errors(self) -> ErrDump:
-        """Get all the errors that have occurred during the optimization."""
-        return self._shared_errors.synced()
-
-    @overload
-    def get_next_pending_trial(self) -> Trial | None: ...
-
-    @overload
-    def get_next_pending_trial(self, n: int | None = None) -> list[Trial]: ...
-
-    def get_next_pending_trial(self, n: int | None = None) -> Trial | list[Trial] | None:
-        """Get the next pending trial to evaluate.
-
-        Args:
-            n: The number of trials to get. If `None`, get the next trial.
-
-        Returns:
-            The next trial or a list of trials if `n` is not `None`.
-        """
-        _pending_itr = (shared_trial for _, shared_trial in self._trials.pending())
-        if n is not None:
-            return take(n, _pending_itr)
-        return next(_pending_itr, None)
+                self._shared_errors.update(err_dump)
 
     def all_trial_ids(self) -> list[str]:
-        """Get all the trial ids that are known about."""
-        return self._trials.all_trial_ids()
+        """Get all the trial ids."""
+        return self._trials.list_trial_ids()
 
-    def get_all_trials(self) -> dict[str, Trial]:
-        """Get all the trials that are known about."""
-        return {_id: trial.synced() for _id, trial in self._trials.all().items()}
+    def lock_and_get_errors(self) -> ErrDump:
+        """Get all the errors that have occurred during the optimization."""
+        with self._err_lock.lock():
+            return self._shared_errors.latest()
 
-    def optimizer_info(self) -> OptimizerInfo:
+    def lock_and_get_optimizer_info(self) -> OptimizerInfo:
         """Get the optimizer information."""
-        return self._optimizer_info.synced()
+        with self._state_lock.lock():
+            return self._optimizer_info.latest()
 
-    def optimizer_state(self) -> OptimizationState:
+    def lock_and_get_optimizer_state(self) -> OptimizationState:
         """Get the optimizer state."""
-        return self._optimizer_state.synced()
+        with self._state_lock.lock():
+            return self._optimizer_state.latest()
+
+    def lock_and_get_trial_by_id(self, trial_id: str) -> Trial:
+        """Get a trial by its id."""
+        with self._trial_lock.lock():
+            return self._trials.load_trial_from_disk(trial_id)
+
+    def unsafe_retry_get_trial_by_id(self, trial_id: str) -> Trial:
+        """Get a trial by id but use unsafe retries."""
+        for _ in range(N_UNSAFE_RETRIES):
+            try:
+                return self._trials.load_trial_from_disk(trial_id)
+            except TrialNotFoundError as e:
+                raise e
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "Failed to get trial '%s' due to an error: %s", trial_id, e
+                )
+                time.sleep(0.1)
+                continue
+
+        raise NePSError(
+            f"Failed to get trial '{trial_id}' after {N_UNSAFE_RETRIES} retries."
+        )
+
+    def put_updated_trial(self, trial: Trial) -> None:
+        """Update the trial."""
+        with self._trial_lock.lock():
+            self._trials.update_trial(trial)
+            self._trials.write_version_file()
+
+    @overload
+    def lock_and_get_next_pending_trial(self) -> Trial | None: ...
+
+    @overload
+    def lock_and_get_next_pending_trial(self, n: int | None = None) -> list[Trial]: ...
+
+    def lock_and_get_next_pending_trial(
+        self,
+        n: int | None = None,
+    ) -> Trial | list[Trial] | None:
+        """Get the next pending trial."""
+        with self._trial_lock.lock():
+            trials = self._trials.latest()
+            pendings = sorted(
+                [
+                    trial
+                    for trial in trials.values()
+                    if trial.state == Trial.State.PENDING
+                ],
+                key=lambda t: t.metadata.time_sampled,
+            )
+            if n is None:
+                return pendings[0] if pendings else None
+            return pendings[:n]
+
+    @classmethod
+    def create_or_load(
+        cls,
+        path: Path,
+        *,
+        load_only: bool = False,
+        optimizer_info: OptimizerInfo | None = None,
+        optimizer_state: OptimizationState | None = None,
+    ) -> NePSState:
+        """Create a new NePSState in a directory or load the existing one
+        if it already exists, depending on the argument.
+
+        !!! warning
+
+            We check that the optimizer info in the NePSState on disk matches
+            the one that is passed. However we do not lock this check so it
+            is possible that if two processes try to create a NePSState at the
+            same time, both with different optimizer infos, that one will fail
+            to create the NePSState. This is a limitation of the current design.
+
+            In principal, we could allow multiple optimizers to be run and share
+            the same set of trials.
+
+        Args:
+            path: The directory to create the state in.
+            load_only: If True, only load the state and do not create a new one.
+            optimizer_info: The optimizer info to use.
+            optimizer_state: The optimizer state to use.
+
+        Returns:
+            The NePSState.
+
+        Raises:
+            NePSError: If the optimizer info on disk does not match the one provided.
+        """
+        is_new = not path.exists()
+        if load_only:
+            if is_new:
+                raise FileNotFoundError(f"No NePSState found at '{path}'.")
+        else:
+            assert optimizer_info is not None
+            assert optimizer_state is not None
+
+        path.mkdir(parents=True, exist_ok=True)
+        config_dir = path / "configs"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        seed_dir = path / ".seed_state"
+        seed_dir.mkdir(parents=True, exist_ok=True)
+        error_dir = path / ".errors"
+        error_dir.mkdir(parents=True, exist_ok=True)
+        optimizer_state_dir = path / ".optimizer_state"
+        optimizer_state_dir.mkdir(parents=True, exist_ok=True)
+        optimizer_info_dir = path / ".optimizer_info"
+        optimizer_info_dir.mkdir(parents=True, exist_ok=True)
+
+        # We have to do one bit of sanity checking to ensure that the optimzier
+        # info on disk manages the one we have recieved, otherwise we are unsure which
+        # optimizer is being used.
+        # NOTE: We assume that we do not have to worry about a race condition
+        # here where we have two different NePSState objects with two different optimizer
+        # infos trying to be created at the same time. This avoids the need to lock to
+        # check the optimizer info. If this assumption changes, then we would have
+        # to first lock before we do this check
+        if not is_new:
+            _optimizer_info = VersionedResource.load(
+                optimizer_info_dir,
+                read=ReaderWriterOptimizerInfo.read,
+                write=ReaderWriterOptimizerInfo.write,
+                version_file=optimizer_info_dir / ".version",
+            )
+            _optimizer_state = VersionedResource.load(
+                optimizer_state_dir,
+                read=ReaderWriterOptimizationState.read,
+                write=ReaderWriterOptimizationState.write,
+                version_file=optimizer_state_dir / ".version",
+            )
+            _seed_snapshot = VersionedResource.load(
+                seed_dir,
+                read=ReaderWriterSeedSnapshot.read,
+                write=ReaderWriterSeedSnapshot.write,
+                version_file=seed_dir / ".version",
+            )
+            _shared_errors = VersionedResource.load(
+                error_dir,
+                read=ReaderWriterErrDump.read,
+                write=ReaderWriterErrDump.write,
+                version_file=error_dir / ".version",
+            )
+            existing_info = _optimizer_info.latest()
+            if not load_only and existing_info != optimizer_info:
+                raise NePSError(
+                    "The optimizer info on disk does not match the one provided."
+                    f"\nOn disk: {existing_info}\nProvided: {optimizer_info}"
+                    f"\n\nLoaded the one on disk from {optimizer_info_dir}."
+                )
+        else:
+            assert optimizer_info is not None
+            assert optimizer_state is not None
+            _optimizer_info = VersionedResource.new(
+                resource=optimizer_info,
+                path=optimizer_info_dir,
+                read=ReaderWriterOptimizerInfo.read,
+                write=ReaderWriterOptimizerInfo.write,
+                version_file=optimizer_info_dir / ".version",
+            )
+            _optimizer_state = VersionedResource.new(
+                resource=optimizer_state,
+                path=optimizer_state_dir,
+                read=ReaderWriterOptimizationState.read,
+                write=ReaderWriterOptimizationState.write,
+                version_file=optimizer_state_dir / ".version",
+            )
+            _seed_snapshot = VersionedResource.new(
+                resource=SeedSnapshot.new_capture(),
+                path=seed_dir,
+                read=ReaderWriterSeedSnapshot.read,
+                write=ReaderWriterSeedSnapshot.write,
+                version_file=seed_dir / ".version",
+            )
+            _shared_errors = VersionedResource.new(
+                resource=ErrDump(),
+                path=error_dir,
+                read=ReaderWriterErrDump.read,
+                write=ReaderWriterErrDump.write,
+                version_file=error_dir / ".version",
+            )
+
+        return cls(
+            path=path,
+            _trials=TrialRepo(config_dir, version_file=config_dir / ".versions"),
+            # Locks,
+            _trial_lock=FileLocker(
+                lock_path=path / ".configs.lock",
+                poll=TRIAL_FILELOCK_POLL,
+                timeout=TRIAL_FILELOCK_TIMEOUT,
+            ),
+            _state_lock=FileLocker(
+                lock_path=path / ".state.lock",
+                poll=STATE_FILELOCK_POLL,
+                timeout=STATE_FILELOCK_TIMEOUT,
+            ),
+            _err_lock=FileLocker(
+                lock_path=error_dir / "errors.lock",
+                poll=TRIAL_FILELOCK_POLL,
+                timeout=TRIAL_FILELOCK_TIMEOUT,
+            ),
+            # State
+            _optimizer_info=_optimizer_info,
+            _optimizer_state=_optimizer_state,
+            _seed_snapshot=_seed_snapshot,
+            _shared_errors=_shared_errors,
+        )

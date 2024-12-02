@@ -8,8 +8,6 @@ from pytest_cases import fixture, parametrize
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace
-from neps.state.err_dump import SerializedError
-from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
@@ -18,9 +16,9 @@ from neps.state.trial import Trial
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState[Path]:
-    return create_or_load_filebased_neps_state(
-        directory=tmp_path / "neps_state",
+def neps_state(tmp_path: Path) -> NePSState:
+    return NePSState.create_or_load(
+        path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
         optimizer_state=OptimizationState(budget=None, shared_state={}),
     )
@@ -61,15 +59,15 @@ def test_worker_raises_when_error_in_self(
     with pytest.raises(WorkerRaiseError):
         worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
         trial.state == Trial.State.CRASHED is not None for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
@@ -114,15 +112,15 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     with pytest.raises(WorkerRaiseError):
         worker2.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
         trial.state == Trial.State.CRASHED is not None for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1
 
 
 @pytest.mark.parametrize(
@@ -184,7 +182,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     worker2.run()
     assert worker2.worker_cumulative_eval_count == 1
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_success = sum(
         trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
     )
@@ -195,5 +193,5 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     assert n_crashed == 1
     assert len(trials) == 2
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1

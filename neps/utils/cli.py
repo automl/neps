@@ -40,10 +40,6 @@ from neps.utils.run_args import (
 )
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.utils.run_args import load_and_return_object
-from neps.state.filebased import (
-    create_or_load_filebased_neps_state,
-    load_filebased_neps_state,
-)
 from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
 from neps.exceptions import VersionedResourceDoesNotExistError, TrialNotFoundError
@@ -140,8 +136,8 @@ def init_config(args: argparse.Namespace) -> None:
                 else:
                     directory = Path(directory)
                 is_new = not directory.exists()
-                _ = create_or_load_filebased_neps_state(
-                    directory=directory,
+                _ = NePSState.create_or_load(
+                    path=directory,
                     optimizer_info=OptimizerInfo(optimizer_info),
                     optimizer_state=OptimizationState(
                         budget=(
@@ -335,7 +331,7 @@ def info_config(args: argparse.Namespace) -> None:
     if neps_state is None:
         return
     try:
-        trial = neps_state.get_trial_by_id(config_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(config_id)
     except TrialNotFoundError:
         print(f"No trial found with ID {config_id}.")
         return
@@ -381,7 +377,7 @@ def load_neps_errors(args: argparse.Namespace) -> None:
     neps_state = load_neps_state(directory_path)
     if neps_state is None:
         return
-    errors = neps_state.get_errors()
+    errors = neps_state.lock_and_get_errors()
 
     if not errors.errs:
         print("No errors found.")
@@ -441,7 +437,7 @@ def sample_config(args: argparse.Namespace) -> None:
     # Sample trials
     for _ in range(num_configs):
         try:
-            trial = neps_state.sample_trial(optimizer, worker_id=worker_id)
+            trial = neps_state.lock_and_sample_trial(optimizer, worker_id=worker_id)
         except Exception as e:
             print(f"Error during configuration sampling: {e}")
             continue  # Skip to the next iteration
@@ -491,10 +487,9 @@ def status(args: argparse.Namespace) -> None:
     summary = get_summary_dict(directory_path, add_details=True)
 
     # Calculate the number of trials in different states
+    trials = neps_state.lock_and_read_trials()
     evaluating_trials_count = sum(
-        1
-        for trial in neps_state.get_all_trials().values()
-        if trial.state.name == "EVALUATING"
+        1 for trial in trials.values() if trial.state == Trial.State.EVALUATING
     )
     pending_trials_count = summary["num_pending_configs"]
     succeeded_trials_count = summary["num_evaluated_configs"] - summary["num_error"]
@@ -503,7 +498,7 @@ def status(args: argparse.Namespace) -> None:
     # Print summary
     print("NePS Status:")
     print("-----------------------------")
-    print(f"Optimizer: {neps_state.optimizer_info().info['searcher_alg']}")
+    print(f"Optimizer: {neps_state.lock_and_get_optimizer_info().info['searcher_alg']}")
     print(f"Succeeded Trials: {succeeded_trials_count}")
     print(f"Failed Trials (Errors): {failed_trials_count}")
     print(f"Active Trials: {evaluating_trials_count}")
@@ -514,9 +509,8 @@ def status(args: argparse.Namespace) -> None:
     print("-----------------------------")
 
     # Retrieve and sort the trials by time_sampled
-    all_trials = neps_state.get_all_trials()
     sorted_trials = sorted(
-        all_trials.values(), key=lambda t: t.metadata.time_sampled, reverse=True
+        trials.values(), key=lambda t: t.metadata.time_sampled, reverse=True
     )
 
     # Filter trials based on state
@@ -589,7 +583,7 @@ def status(args: argparse.Namespace) -> None:
             print("\nNo successful trial found.")
 
         # Display optimizer information
-        optimizer_info = neps_state.optimizer_info().info
+        optimizer_info = neps_state.lock_and_get_optimizer_info().info
         searcher_name = optimizer_info.get("searcher_name", "N/A")
         searcher_alg = optimizer_info.get("searcher_alg", "N/A")
         searcher_args = optimizer_info.get("searcher_args", {})
@@ -631,7 +625,7 @@ def results(args: argparse.Namespace) -> None:
         # Convert each part to an integer for proper numeric sorting
         return [int(part) for part in parts]
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     sorted_trials = sorted(trials.values(), key=lambda x: sort_trial_id(x.id))
 
     # Compute incumbents
@@ -662,10 +656,10 @@ def results(args: argparse.Namespace) -> None:
         print(f"Plot saved to '{plot_path}'.")
 
 
-def load_neps_state(directory_path: Path) -> Optional[NePSState[Path]]:
+def load_neps_state(directory_path: Path) -> Optional[NePSState]:
     """Load the NePS state with error handling."""
     try:
-        return load_filebased_neps_state(directory_path)
+        return NePSState.create_or_load(directory_path, load_only=True)
     except VersionedResourceDoesNotExistError:
         print(f"Error: No NePS state found in the directory '{directory_path}'.")
         print("Ensure that the NePS run has been initialized correctly.")
@@ -679,7 +673,11 @@ def compute_incumbents(sorted_trials: List[Trial]) -> List[Trial]:
     best_loss = float("inf")
     incumbents = []
     for trial in sorted_trials:
-        if trial.report and trial.report.loss < best_loss:
+        if (
+            trial.report is not None
+            and trial.report.loss is not None
+            and trial.report.loss < best_loss
+        ):
             best_loss = trial.report.loss
             incumbents.append(trial)
     return incumbents[::-1]  # Reverse for most recent first
@@ -1031,7 +1029,7 @@ def handle_report_config(args: argparse.Namespace) -> None:
 
     # Load the existing trial by ID
     try:
-        trial = neps_state.get_trial_by_id(args.trial_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(args.trial_id)
         if not trial:
             print(f"No trial found with ID {args.trial_id}")
             return
@@ -1054,7 +1052,7 @@ def handle_report_config(args: argparse.Namespace) -> None:
 
     # Update NePS state
     try:
-        neps_state.report_trial_evaluation(
+        neps_state._report_trial_evaluation(
             trial=trial, report=report, worker_id=args.worker_id
         )
     except Exception as e:

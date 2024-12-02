@@ -15,9 +15,7 @@ from neps.search_spaces.hyperparameters import (
     Categorical,
 )
 from neps.search_spaces.search_space import SearchSpace
-from neps.state.filebased import (
-    create_or_load_filebased_neps_state,
-)
+from neps.state.neps_state import NePSState
 
 from pytest_cases import fixture, parametrize, parametrize_with_cases, case
 from neps.state.neps_state import NePSState
@@ -156,8 +154,8 @@ def case_neps_state_filebased(
     shared_state: dict[str, Any],
 ) -> NePSState:
     new_path = tmp_path / "neps_state"
-    return create_or_load_filebased_neps_state(
-        directory=new_path,
+    return NePSState.create_or_load(
+        path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(budget=budget, shared_state=shared_state),
     )
@@ -169,15 +167,15 @@ def test_sample_trial(
     optimizer_and_key: tuple[BaseOptimizer, str],
 ) -> None:
     optimizer, key = optimizer_and_key
-    if key in REQUIRES_COST and neps_state.optimizer_state().budget is None:
+    if key in REQUIRES_COST and neps_state.lock_and_get_optimizer_state().budget is None:
         pytest.xfail(f"{key} requires a cost budget")
 
-    assert neps_state.get_all_trials() == {}
-    assert neps_state.get_next_pending_trial() is None
-    assert neps_state.get_next_pending_trial(n=10) == []
+    assert neps_state.lock_and_read_trials() == {}
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert neps_state.lock_and_get_next_pending_trial(n=10) == []
     assert neps_state.all_trial_ids() == []
 
-    trial1 = neps_state.sample_trial(optimizer=optimizer, worker_id="1")
+    trial1 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
         assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
@@ -186,19 +184,19 @@ def test_sample_trial(
     # precise, we need to introduce a sleep -_-
     time.sleep(0.1)
 
-    assert neps_state.get_all_trials() == {trial1.id: trial1}
-    assert neps_state.get_next_pending_trial() == trial1
-    assert neps_state.get_next_pending_trial(n=10) == [trial1]
+    assert neps_state.lock_and_read_trials() == {trial1.id: trial1}
+    assert neps_state.lock_and_get_next_pending_trial() == trial1
+    assert neps_state.lock_and_get_next_pending_trial(n=10) == [trial1]
     assert neps_state.all_trial_ids() == [trial1.id]
 
-    trial2 = neps_state.sample_trial(optimizer=optimizer, worker_id="1")
+    trial2 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
         assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     assert trial1 != trial2
 
-    assert neps_state.get_all_trials() == {trial1.id: trial1, trial2.id: trial2}
-    assert neps_state.get_next_pending_trial() == trial1
-    assert neps_state.get_next_pending_trial(n=10) == [trial1, trial2]
+    assert neps_state.lock_and_read_trials() == {trial1.id: trial1, trial2.id: trial2}
+    assert neps_state.lock_and_get_next_pending_trial() == trial1
+    assert neps_state.lock_and_get_next_pending_trial(n=10) == [trial1, trial2]
     assert sorted(neps_state.all_trial_ids()) == [trial1.id, trial2.id]

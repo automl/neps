@@ -1,55 +1,22 @@
-"""This module houses the implementation of a NePSState that
-does everything on the filesystem, i.e. locking, versioning and
-storing/loading.
-
-The main components are:
-* [`FileVersioner`][neps.state.filebased.FileVersioner]: A versioner that
-    stores a version tag on disk, usually for a resource like a Trial.
-* [`FileLocker`][neps.state.filebased.FileLocker]: A locker that uses a file
-    to lock between processes.
-* [`TrialRepoInDirectory`][neps.state.filebased.TrialRepoInDirectory]: A
-    repository of Trials that are stored in a directory.
-* `ReaderWriterXXX`: Reader/writers for various resources NePSState needs
-* [`load_filebased_neps_state`][neps.state.filebased.load_filebased_neps_state]:
-    A function to load a NePSState from a directory.
-* [`create_filebased_neps_state`][neps.state.filebased.create_filebased_neps_state]:
-    A function to create a new NePSState in a directory.
-"""
-
 from __future__ import annotations
 
 import json
 import logging
 import pprint
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import ClassVar, Final, TypeVar
-from typing_extensions import override
-from uuid import uuid4
 
 import numpy as np
 import portalocker as pl
 
 from neps.env import (
     ENV_VARS_USED,
-    GLOBAL_ERR_FILELOCK_POLL,
-    GLOBAL_ERR_FILELOCK_TIMEOUT,
-    OPTIMIZER_INFO_FILELOCK_POLL,
-    OPTIMIZER_INFO_FILELOCK_TIMEOUT,
-    OPTIMIZER_STATE_FILELOCK_POLL,
-    OPTIMIZER_STATE_FILELOCK_TIMEOUT,
-    SEED_SNAPSHOT_FILELOCK_POLL,
-    SEED_SNAPSHOT_FILELOCK_TIMEOUT,
-    TRIAL_FILELOCK_POLL,
-    TRIAL_FILELOCK_TIMEOUT,
 )
-from neps.exceptions import NePSError
 from neps.state.err_dump import ErrDump
-from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.protocols import Locker, ReaderWriter, Synced, TrialRepo, Versioner
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Trial
 from neps.utils.files import deserialize, serialize
@@ -59,35 +26,9 @@ K = TypeVar("K")
 T = TypeVar("T")
 
 
-def make_sha() -> str:
-    """Generate a str hex sha."""
-    return uuid4().hex
-
-
 @dataclass
-class FileVersioner(Versioner):
-    """A versioner that stores a version tag on disk."""
-
-    version_file: Path
-
-    @override
-    def current(self) -> str | None:
-        if not self.version_file.exists():
-            return None
-        return self.version_file.read_text()
-
-    @override
-    def bump(self) -> str:
-        sha = make_sha()
-        self.version_file.write_text(sha)
-        return sha
-
-
-@dataclass
-class ReaderWriterTrial(ReaderWriter[Trial, Path]):
+class ReaderWriterTrial:
     """ReaderWriter for Trial objects."""
-
-    CHEAP_LOCKLESS_READ: ClassVar = True
 
     CONFIG_FILENAME = "config.yaml"
     METADATA_FILENAME = "metadata.yaml"
@@ -95,7 +36,6 @@ class ReaderWriterTrial(ReaderWriter[Trial, Path]):
     REPORT_FILENAME = "report.yaml"
     PREVIOUS_TRIAL_ID_FILENAME = "previous_trial_id.txt"
 
-    @override
     @classmethod
     def read(cls, directory: Path) -> Trial:
         config_path = directory / cls.CONFIG_FILENAME
@@ -112,7 +52,6 @@ class ReaderWriterTrial(ReaderWriter[Trial, Path]):
             ),
         )
 
-    @override
     @classmethod
     def write(cls, trial: Trial, directory: Path) -> None:
         config_path = directory / cls.CONFIG_FILENAME
@@ -132,165 +71,12 @@ class ReaderWriterTrial(ReaderWriter[Trial, Path]):
             serialize(asdict(trial.report), report_path)
 
 
-_StaticReaderWriterTrial: Final = ReaderWriterTrial()
-
-CONFIG_PREFIX_LEN: Final = len("config_")
+TrialReaderWriter: Final = ReaderWriterTrial()
 
 
 @dataclass
-class TrialRepoInDirectory(TrialRepo[Path]):
-    """A repository of Trials that are stored in a directory."""
-
-    directory: Path
-    _cache: dict[str, Synced[Trial, Path]] = field(default_factory=dict)
-
-    @override
-    def all_trial_ids(self) -> list[str]:
-        """List all the trial ids in this trial Repo."""
-        return [
-            config_path.name[CONFIG_PREFIX_LEN:]
-            for config_path in self.directory.iterdir()
-            if config_path.name.startswith("config_") and config_path.is_dir()
-        ]
-
-    @override
-    def get_by_id(
-        self,
-        trial_id: str,
-        *,
-        lock_poll: float = TRIAL_FILELOCK_POLL,
-        lock_timeout: float | None = TRIAL_FILELOCK_TIMEOUT,
-    ) -> Synced[Trial, Path]:
-        """Get a Trial by its ID.
-
-        !!! note
-
-            This will **not** explicitly sync the trial and it is up to the caller
-            to do so. Most of the time, the caller should be a NePSState
-            object which will do that for you. However if the trial is not in the
-            cache, then it will be loaded from disk which requires syncing.
-
-        Args:
-            trial_id: The ID of the trial to get.
-            lock_poll: The poll time for the file lock.
-            lock_timeout: The timeout for the file lock.
-
-        Returns:
-            The trial with the given ID.
-        """
-        trial = self._cache.get(trial_id)
-        if trial is not None:
-            return trial
-
-        config_path = self.directory / f"config_{trial_id}"
-        if not config_path.exists():
-            raise TrialRepo.TrialNotFoundError(trial_id, config_path)
-
-        trial = Synced.load(
-            location=config_path,
-            locker=FileLocker(
-                lock_path=config_path / ".lock",
-                poll=lock_poll,
-                timeout=lock_timeout,
-            ),
-            versioner=FileVersioner(version_file=config_path / ".version"),
-            reader_writer=_StaticReaderWriterTrial,
-        )
-        self._cache[trial_id] = trial
-        return trial
-
-    @override
-    def put_new(
-        self,
-        trial: Trial,
-        *,
-        lock_poll: float = TRIAL_FILELOCK_POLL,
-        lock_timeout: float | None = TRIAL_FILELOCK_TIMEOUT,
-    ) -> Synced[Trial, Path]:
-        """Put a new Trial into the repository.
-
-        Args:
-            trial: The trial to put.
-            lock_poll: The poll time for the file lock.
-            lock_timeout: The timeout for the file lock.
-
-        Returns:
-            The synced trial.
-
-        Raises:
-            TrialRepo.TrialAlreadyExistsError: If the trial already exists in the
-                repository.
-        """
-        config_path = self.directory.absolute().resolve() / f"config_{trial.metadata.id}"
-        if config_path.exists():
-            # This shouldn't exist, we load in the trial to see the current state of it
-            # to try determine wtf is going on for logging purposes.
-            try:
-                shared_trial = Synced.load(
-                    location=config_path,
-                    locker=FileLocker(
-                        lock_path=config_path / ".lock",
-                        poll=lock_poll,
-                        timeout=lock_timeout,
-                    ),
-                    versioner=FileVersioner(version_file=config_path / ".version"),
-                    reader_writer=_StaticReaderWriterTrial,
-                )
-                already_existing_trial = shared_trial._unsynced()
-                extra_msg = (
-                    f"The existing trial is the following: {already_existing_trial}"
-                )
-            except Exception:  # noqa: BLE001
-                extra_msg = "Failed to load the existing trial to provide more info."
-
-            raise TrialRepo.TrialAlreadyExistsError(
-                f"Trial '{trial.metadata.id}' already exists as '{config_path}'."
-                f" Tried to put in the trial: {trial}."
-                f"\n{extra_msg}"
-            )
-
-        # HACK: We do this here as there is no way to know where a Trial will
-        # be located when it's created...
-        trial.metadata.location = str(config_path)
-        shared_trial = Synced.new(
-            data=trial,
-            location=config_path,
-            locker=FileLocker(
-                lock_path=config_path / ".lock",
-                poll=lock_poll,
-                timeout=lock_timeout,
-            ),
-            versioner=FileVersioner(version_file=config_path / ".version"),
-            reader_writer=_StaticReaderWriterTrial,
-        )
-        self._cache[trial.metadata.id] = shared_trial
-        return shared_trial
-
-    @override
-    def all(self) -> dict[str, Synced[Trial, Path]]:
-        """Get a dictionary of all the Trials in the repository.
-
-        !!! note
-            See [`get_by_id()`][neps.state.filebased.TrialRepoInDirectory.get_by_id]
-            for notes on the trials syncing.
-        """
-        return {trial_id: self.get_by_id(trial_id) for trial_id in self.all_trial_ids()}
-
-    @override
-    def pending(self) -> Iterable[tuple[str, Trial]]:
-        pending = [
-            (_id, trial, trial.metadata.time_sampled)
-            for (_id, t) in self.all().items()
-            if (trial := t.synced()).state == Trial.State.PENDING
-        ]
-        return iter((_id, t) for _id, t, _ in sorted(pending, key=lambda x: x[2]))
-
-
-@dataclass
-class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
+class ReaderWriterSeedSnapshot:
     """ReaderWriter for SeedSnapshot objects."""
-
-    CHEAP_LOCKLESS_READ: ClassVar = True
 
     # It seems like they're all uint32 but I can't be sure.
     PY_RNG_STATE_DTYPE: ClassVar = np.int64
@@ -301,7 +87,6 @@ class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
     TORCH_CUDA_RNG_STATE_FILENAME: ClassVar = "torch_cuda_rng_state.pt"
     SEED_INFO_FILENAME: ClassVar = "seed_info.json"
 
-    @override
     @classmethod
     def read(cls, directory: Path) -> SeedSnapshot:
         seedinfo_path = directory / cls.SEED_INFO_FILENAME
@@ -350,7 +135,6 @@ class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
             torch_cuda_rng=torch_cuda_rng,
         )
 
-    @override
     @classmethod
     def write(cls, snapshot: SeedSnapshot, directory: Path) -> None:
         seedinfo_path = directory / cls.SEED_INFO_FILENAME
@@ -387,20 +171,16 @@ class ReaderWriterSeedSnapshot(ReaderWriter[SeedSnapshot, Path]):
 
 
 @dataclass
-class ReaderWriterOptimizerInfo(ReaderWriter[OptimizerInfo, Path]):
+class ReaderWriterOptimizerInfo:
     """ReaderWriter for OptimizerInfo objects."""
-
-    CHEAP_LOCKLESS_READ: ClassVar = True
 
     INFO_FILENAME: ClassVar = "info.yaml"
 
-    @override
     @classmethod
     def read(cls, directory: Path) -> OptimizerInfo:
         info_path = directory / cls.INFO_FILENAME
         return OptimizerInfo(info=deserialize(info_path))
 
-    @override
     @classmethod
     def write(cls, optimizer_info: OptimizerInfo, directory: Path) -> None:
         info_path = directory / cls.INFO_FILENAME
@@ -412,14 +192,11 @@ class ReaderWriterOptimizerInfo(ReaderWriter[OptimizerInfo, Path]):
 # handle this.
 # TODO(eddiebergman): May also want to consider serializing budget into a seperate entity
 @dataclass
-class ReaderWriterOptimizationState(ReaderWriter[OptimizationState, Path]):
+class ReaderWriterOptimizationState:
     """ReaderWriter for OptimizationState objects."""
-
-    CHEAP_LOCKLESS_READ: ClassVar = True
 
     STATE_FILE_NAME: ClassVar = "state.yaml"
 
-    @override
     @classmethod
     def read(cls, directory: Path) -> OptimizationState:
         state_path = directory / cls.STATE_FILE_NAME
@@ -431,7 +208,6 @@ class ReaderWriterOptimizationState(ReaderWriter[OptimizationState, Path]):
             budget=budget,
         )
 
-    @override
     @classmethod
     def write(cls, info: OptimizationState, directory: Path) -> None:
         info_path = directory / cls.STATE_FILE_NAME
@@ -439,24 +215,20 @@ class ReaderWriterOptimizationState(ReaderWriter[OptimizationState, Path]):
 
 
 @dataclass
-class ReaderWriterErrDump(ReaderWriter[ErrDump, Path]):
+class ReaderWriterErrDump:
     """ReaderWriter for shared error lists."""
 
-    CHEAP_LOCKLESS_READ: ClassVar = True
-
-    name: str
-
-    @override
-    def read(self, directory: Path) -> ErrDump:
-        errors_path = directory / f"{self.name}-errors.jsonl"
+    @classmethod
+    def read(cls, directory: Path) -> ErrDump:
+        errors_path = directory / "errors.jsonl"
         with errors_path.open("r") as f:
             data = [json.loads(line) for line in f]
 
         return ErrDump([ErrDump.SerializableTrialError(**d) for d in data])
 
-    @override
-    def write(self, err_dump: ErrDump, directory: Path) -> None:
-        errors_path = directory / f"{self.name}-errors.jsonl"
+    @classmethod
+    def write(cls, err_dump: ErrDump, directory: Path) -> None:
+        errors_path = directory / "errors.jsonl"
         with errors_path.open("w") as f:
             lines = [json.dumps(asdict(trial_err)) for trial_err in err_dump.errs]
             f.write("\n".join(lines))
@@ -466,7 +238,7 @@ FILELOCK_EXCLUSIVE_NONE_BLOCKING = pl.LOCK_EX | pl.LOCK_NB
 
 
 @dataclass
-class FileLocker(Locker):
+class FileLocker:
     """File-based locker using `portalocker`.
 
     [`FileLocker`][neps.state.locker.file.FileLocker] implements
@@ -482,18 +254,6 @@ class FileLocker(Locker):
     def __post_init__(self) -> None:
         self.lock_path = self.lock_path.resolve().absolute()
 
-    @override
-    def is_locked(self) -> bool:
-        if not self.lock_path.exists():
-            return False
-        try:
-            with self.lock(fail_if_locked=True):
-                pass
-            return False
-        except pl.exceptions.LockException:
-            return True
-
-    @override
     @contextmanager
     def lock(
         self,
@@ -521,187 +281,3 @@ class FileLocker(Locker):
                 " environment variables to increase the timeout:"
                 f"\n\n{pprint.pformat(ENV_VARS_USED)}"
             ) from e
-
-
-def load_filebased_neps_state(directory: Path) -> NePSState[Path]:
-    """Load a NePSState from a directory.
-
-    Args:
-        directory: The directory to load the state from.
-
-    Returns:
-        The loaded NePSState.
-
-    Raises:
-        FileNotFoundError: If no NePSState is found at the given directory.
-    """
-    if not directory.exists():
-        raise FileNotFoundError(f"No NePSState found at '{directory}'.")
-    directory.mkdir(parents=True, exist_ok=True)
-    config_dir = directory / "configs"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    seed_dir = directory / ".seed_state"
-    seed_dir.mkdir(parents=True, exist_ok=True)
-    error_dir = directory / ".errors"
-    error_dir.mkdir(parents=True, exist_ok=True)
-    optimizer_state_dir = directory / ".optimizer_state"
-    optimizer_state_dir.mkdir(parents=True, exist_ok=True)
-    optimizer_info_dir = directory / ".optimizer_info"
-    optimizer_info_dir.mkdir(parents=True, exist_ok=True)
-
-    return NePSState(
-        location=str(directory.absolute().resolve()),
-        _trials=TrialRepoInDirectory(config_dir),
-        _optimizer_info=Synced.load(
-            location=optimizer_info_dir,
-            versioner=FileVersioner(version_file=optimizer_info_dir / ".version"),
-            locker=FileLocker(
-                lock_path=optimizer_info_dir / ".lock",
-                poll=OPTIMIZER_INFO_FILELOCK_POLL,
-                timeout=OPTIMIZER_INFO_FILELOCK_TIMEOUT,
-            ),
-            reader_writer=ReaderWriterOptimizerInfo(),
-        ),
-        _seed_state=Synced.load(
-            location=seed_dir,
-            reader_writer=ReaderWriterSeedSnapshot(),
-            versioner=FileVersioner(version_file=seed_dir / ".version"),
-            locker=FileLocker(
-                lock_path=seed_dir / ".lock",
-                poll=SEED_SNAPSHOT_FILELOCK_POLL,
-                timeout=SEED_SNAPSHOT_FILELOCK_TIMEOUT,
-            ),
-        ),
-        _shared_errors=Synced.load(
-            location=error_dir,
-            reader_writer=ReaderWriterErrDump("all"),
-            versioner=FileVersioner(version_file=error_dir / ".all.version"),
-            locker=FileLocker(
-                lock_path=error_dir / ".all.lock",
-                poll=GLOBAL_ERR_FILELOCK_POLL,
-                timeout=GLOBAL_ERR_FILELOCK_TIMEOUT,
-            ),
-        ),
-        _optimizer_state=Synced.load(
-            location=optimizer_state_dir,
-            reader_writer=ReaderWriterOptimizationState(),
-            versioner=FileVersioner(version_file=optimizer_state_dir / ".version"),
-            locker=FileLocker(
-                lock_path=optimizer_state_dir / ".lock",
-                poll=OPTIMIZER_STATE_FILELOCK_POLL,
-                timeout=OPTIMIZER_STATE_FILELOCK_TIMEOUT,
-            ),
-        ),
-    )
-
-
-def create_or_load_filebased_neps_state(
-    directory: Path,
-    *,
-    optimizer_info: OptimizerInfo,
-    optimizer_state: OptimizationState,
-) -> NePSState[Path]:
-    """Create a new NePSState in a directory or load the existing one
-    if it already exists.
-
-    !!! warning
-
-        We check that the optimizer info in the NePSState on disk matches
-        the one that is passed. However we do not lock this check so it
-        is possible that if two processes try to create a NePSState at the
-        same time, both with different optimizer infos, that one will fail
-        to create the NePSState. This is a limitation of the current design.
-
-        In principal, we could allow multiple optimizers to be run and share
-        the same set of trials.
-
-    Args:
-        directory: The directory to create the state in.
-        optimizer_info: The optimizer info to use.
-        optimizer_state: The optimizer state to use.
-
-    Returns:
-        The NePSState.
-
-    Raises:
-        NePSError: If the optimizer info on disk does not match the one provided.
-    """
-    is_new = not directory.exists()
-    directory.mkdir(parents=True, exist_ok=True)
-    config_dir = directory / "configs"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    seed_dir = directory / ".seed_state"
-    seed_dir.mkdir(parents=True, exist_ok=True)
-    error_dir = directory / ".errors"
-    error_dir.mkdir(parents=True, exist_ok=True)
-    optimizer_state_dir = directory / ".optimizer_state"
-    optimizer_state_dir.mkdir(parents=True, exist_ok=True)
-    optimizer_info_dir = directory / ".optimizer_info"
-    optimizer_info_dir.mkdir(parents=True, exist_ok=True)
-
-    # We have to do one bit of sanity checking to ensure that the optimzier
-    # info on disk manages the one we have recieved, otherwise we are unsure which
-    # optimizer is being used.
-    # NOTE: We assume that we do not have to worry about a race condition
-    # here where we have two different NePSState objects with two different optimizer
-    # infos trying to be created at the same time. This avoids the need to lock to
-    # check the optimizer info. If this assumption changes, then we would have
-    # to first lock before we do this check
-    optimizer_info_reader_writer = ReaderWriterOptimizerInfo()
-    if not is_new:
-        existing_info = optimizer_info_reader_writer.read(optimizer_info_dir)
-        if existing_info != optimizer_info:
-            raise NePSError(
-                "The optimizer info on disk does not match the one provided."
-                f"\nOn disk: {existing_info}\nProvided: {optimizer_info}"
-                f"\n\nLoaded the one on disk from {optimizer_info_dir}."
-            )
-
-    return NePSState(
-        location=str(directory.absolute().resolve()),
-        _trials=TrialRepoInDirectory(config_dir),
-        _optimizer_info=Synced.new_or_load(
-            data=optimizer_info,  # type: ignore
-            location=optimizer_info_dir,
-            versioner=FileVersioner(version_file=optimizer_info_dir / ".version"),
-            locker=FileLocker(
-                lock_path=optimizer_info_dir / ".lock",
-                poll=OPTIMIZER_INFO_FILELOCK_POLL,
-                timeout=OPTIMIZER_INFO_FILELOCK_TIMEOUT,
-            ),
-            reader_writer=ReaderWriterOptimizerInfo(),
-        ),
-        _seed_state=Synced.new_or_load(
-            data=SeedSnapshot.new_capture(),
-            location=seed_dir,
-            reader_writer=ReaderWriterSeedSnapshot(),
-            versioner=FileVersioner(version_file=seed_dir / ".version"),
-            locker=FileLocker(
-                lock_path=seed_dir / ".lock",
-                poll=SEED_SNAPSHOT_FILELOCK_POLL,
-                timeout=SEED_SNAPSHOT_FILELOCK_TIMEOUT,
-            ),
-        ),
-        _shared_errors=Synced.new_or_load(
-            data=ErrDump(),
-            location=error_dir,
-            reader_writer=ReaderWriterErrDump("all"),
-            versioner=FileVersioner(version_file=error_dir / ".all.version"),
-            locker=FileLocker(
-                lock_path=error_dir / ".all.lock",
-                poll=GLOBAL_ERR_FILELOCK_POLL,
-                timeout=GLOBAL_ERR_FILELOCK_TIMEOUT,
-            ),
-        ),
-        _optimizer_state=Synced.new_or_load(
-            data=optimizer_state,
-            location=optimizer_state_dir,
-            reader_writer=ReaderWriterOptimizationState(),
-            versioner=FileVersioner(version_file=optimizer_state_dir / ".version"),
-            locker=FileLocker(
-                lock_path=optimizer_state_dir / ".lock",
-                poll=OPTIMIZER_STATE_FILELOCK_POLL,
-                timeout=OPTIMIZER_STATE_FILELOCK_TIMEOUT,
-            ),
-        ),
-    )

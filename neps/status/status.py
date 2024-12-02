@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.state.filebased import load_filebased_neps_state
+from neps.state.filebased import FileLocker
+from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
-from neps.utils._locker import Locker
 from neps.utils.types import ConfigID, _ConfigResultForStats
 
 if TYPE_CHECKING:
@@ -37,9 +37,8 @@ def get_summary_dict(
 
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
-    shared_state = load_filebased_neps_state(root_directory)
-
-    trials = shared_state.get_all_trials()
+    shared_state = NePSState.create_or_load(root_directory, load_only=True)
+    trials = shared_state.lock_and_read_trials()
 
     evaluated: dict[ConfigID, _ConfigResultForStats] = {}
 
@@ -160,7 +159,7 @@ def status(
     return summary["previous_results"], summary["pending_configs"]
 
 
-def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, Locker]:
+def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:
     """Initializes a summary CSV and an associated locker for file access control.
 
     Args:
@@ -181,7 +180,7 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, Locke
     csv_config_data = summary_csv_directory / "config_data.csv"
     csv_run_data = summary_csv_directory / "run_status.csv"
 
-    csv_locker = Locker(summary_csv_directory / ".csv_lock")
+    csv_locker = FileLocker(summary_csv_directory / ".csv_lock", poll=2, timeout=600)
 
     return (
         csv_config_data,
@@ -282,7 +281,7 @@ def _get_dataframes_from_summary(
 def _save_data_to_csv(
     config_data_file_path: Path,
     run_data_file_path: Path,
-    locker: Locker,
+    locker: FileLocker,
     config_data_df: pd.DataFrame,
     run_data_df: pd.DataFrame,
 ) -> None:
@@ -299,7 +298,7 @@ def _save_data_to_csv(
         config_data_df: The DataFrame containing configuration data.
         run_data_df: The DataFrame containing additional run data.
     """
-    with locker(poll=2, timeout=600):
+    with locker.lock():
         try:
             pending_configs = run_data_df.loc["num_pending_configs", "value"]
             pending_configs_with_worker = run_data_df.loc[
