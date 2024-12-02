@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import pprint
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -12,14 +14,12 @@ from typing import ClassVar, Final, Literal, TypeAlias, TypeVar
 import numpy as np
 import portalocker as pl
 
-from neps.env import (
-    ENV_VARS_USED,
-)
+from neps.env import ENV_VARS_USED, FS_SYNC_GRACE_BASE
 from neps.state.err_dump import ErrDump
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Trial
-from neps.utils.files import deserialize, serialize
+from neps.utils.files import atomic_write, deserialize, serialize
 
 logger = logging.getLogger(__name__)
 K = TypeVar("K")
@@ -80,7 +80,7 @@ class ReaderWriterTrial:
                 case "config":
                     serialize(trial.config, config_path)
                 case "metadata":
-                    with metadata_path.open("w") as f:
+                    with atomic_write(metadata_path, "w") as f:
                         json.dump(asdict(trial.metadata), f)
 
                     if trial.metadata.previous_trial_id is not None:
@@ -104,7 +104,7 @@ class ReaderWriterTrial:
         elif hints is None:
             # We don't know, write everything
             serialize(trial.config, config_path)
-            with metadata_path.open("w") as f:
+            with atomic_write(metadata_path, "w") as f:
                 json.dump(asdict(trial.metadata), f)
 
             if trial.metadata.previous_trial_id is not None:
@@ -206,22 +206,25 @@ class ReaderWriterSeedSnapshot:
             "py_rng_version": py_rng_version,
             "py_guass_next": py_guass_next,
         }
-        with seedinfo_path.open("w") as f:
+        with atomic_write(seedinfo_path, "w") as f:
             json.dump(seed_info, f)
 
         np_rng_state = snapshot.np_rng[1]
-        np_rng_state.tofile(np_rng_path)
+        with atomic_write(np_rng_path, "wb") as f:
+            np_rng_state.tofile(f)
 
         if snapshot.torch_rng is not None:
             import torch
 
             # OPTIM: This ends up being much faster to go to numpy
-            snapshot.torch_rng.numpy().tofile(torch_rng_path)
+            with atomic_write(torch_rng_path, "wb") as f:
+                snapshot.torch_rng.numpy().tofile(f)
 
         if snapshot.torch_cuda_rng is not None:
             import torch
 
-            torch.save(snapshot.torch_cuda_rng, torch_cuda_rng_path)
+            with atomic_write(torch_cuda_rng_path, "wb") as f:
+                torch.save(snapshot.torch_cuda_rng, f)
 
 
 @dataclass
@@ -265,7 +268,7 @@ class ReaderWriterOptimizationState:
     @classmethod
     def write(cls, info: OptimizationState, directory: Path) -> None:
         info_path = directory / cls.STATE_FILE_NAME
-        with info_path.open("w") as f:
+        with atomic_write(info_path, "w") as f:
             json.dump(asdict(info), f)
 
 
@@ -284,7 +287,7 @@ class ReaderWriterErrDump:
     @classmethod
     def write(cls, err_dump: ErrDump, directory: Path) -> None:
         errors_path = directory / "errors.jsonl"
-        with errors_path.open("w") as f:
+        with atomic_write(errors_path, "w") as f:
             lines = [json.dumps(asdict(trial_err)) for trial_err in err_dump.errs]
             f.write("\n".join(lines))
 
@@ -305,9 +308,14 @@ class FileLocker:
     lock_path: Path
     poll: float
     timeout: float | None
+    _GRACE: ClassVar = FS_SYNC_GRACE_BASE
 
     def __post_init__(self) -> None:
         self.lock_path = self.lock_path.resolve().absolute()
+
+    @classmethod
+    def _increse_grace(cls, grace: float) -> None:
+        cls._GRACE = grace + cls._GRACE
 
     @contextmanager
     def lock(
@@ -317,6 +325,7 @@ class FileLocker:
     ) -> Iterator[None]:
         self.lock_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock_path.touch(exist_ok=True)
+
         try:
             with pl.Lock(
                 self.lock_path,
@@ -324,8 +333,11 @@ class FileLocker:
                 timeout=self.timeout,
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
                 fail_when_locked=fail_if_locked,
-            ):
+            ) as fh:
+                time.sleep(self._GRACE)  # Give the lock some time to
                 yield
+                fh.flush()
+                os.fsync(fh)
         except pl.exceptions.LockException as e:
             raise pl.exceptions.LockException(
                 f"Failed to acquire lock after timeout of {self.timeout} seconds."

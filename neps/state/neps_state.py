@@ -46,6 +46,7 @@ from neps.state.filebased import (
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Report, Trial
+from neps.utils.files import atomic_write
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
@@ -126,7 +127,7 @@ class TrialRepo:
         self._write_version_file()
 
     def _write_version_file(self) -> None:
-        with self.version_file.open("wb") as f:
+        with atomic_write(self.version_file, "wb") as f:
             pickle.dump(self.versions, f)
 
     def trials_in_memory(self) -> dict[str, Trial]:
@@ -368,7 +369,6 @@ class NePSState:
         trial.report = report
         self._trials.update_trial(trial, hints=["report", "metadata", "state"])
 
-        logger.debug("Updated trial '%s' with status '%s'", trial.id, trial.state)
         if report.err is not None:
             with self._err_lock.lock():
                 err_dump = self._shared_errors.latest()

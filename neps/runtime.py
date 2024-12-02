@@ -20,6 +20,7 @@ from typing import (
 )
 
 from neps.env import (
+    FS_SYNC_GRACE_INC,
     LINUX_FILELOCK_FUNCTION,
     MAX_RETRIES_CREATE_LOAD_STATE,
     MAX_RETRIES_GET_NEXT_TRIAL,
@@ -32,6 +33,7 @@ from neps.exceptions import (
     WorkerRaiseError,
 )
 from neps.state._eval import evaluate_trial
+from neps.state.filebased import FileLocker
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
@@ -350,8 +352,6 @@ class DefaultWorker(Generic[Loc]):
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
         with self.state._state_lock.lock():
-            # With the trial lock, we'll load everything in, if we have a pending
-            # config, use that and return.
             with self.state._trial_lock.lock():
                 trials = self.state._trials.latest()
 
@@ -380,6 +380,11 @@ class DefaultWorker(Generic[Loc]):
                         earliest_pending,
                         hints=["metadata", "state"],
                     )
+                    logger.info(
+                        "Worker '%s' picked up pending trial: %s.",
+                        self.worker_id,
+                        earliest_pending.id,
+                    )
                     return earliest_pending
 
             # NOTE: It's important to release the trial lock before sampling
@@ -398,26 +403,38 @@ class DefaultWorker(Generic[Loc]):
                         worker_id=self.worker_id,
                     )
                     self.state._trials.new_trial(sampled_trial)
+                    logger.info(
+                        "Worker '%s' sampled new trial: %s.",
+                        self.worker_id,
+                        sampled_trial.id,
+                    )
                     return sampled_trial
                 except TrialAlreadyExistsError as e:
                     if sampled_trial.id in trials:
-                        logger.warning(
-                            "The new sampled trial was given an id of '%s', yet this already"
+                        logger.error(
+                            "The new sampled trial was given an id of '%s', yet this"
                             " exists in the loaded in trials given to the optimizer. This"
                             " indicates a bug with the optimizers allocation of ids.",
                             sampled_trial.id,
                         )
                     else:
+                        _grace = FileLocker._GRACE
+                        _inc = FS_SYNC_GRACE_INC
                         logger.warning(
-                            "The new sampled trial was given an id of '%s', which is not one"
-                            " that was loaded in by the optimizer. This indicates that"
-                            " configuration '%s' was put on disk during the time that this"
-                            " worker had the optimizer state lock OR that after obtaining the"
-                            " optimizer state lock, somehow this configuration failed to be"
-                            " loaded in and passed to the optimizer.",
+                            "The new sampled trial was given an id of '%s', which is not"
+                            " one that was loaded in by the optimizer. This is usually"
+                            " an indication that the file-system you are running on"
+                            " is not atmoic in synchoronizing file operations."
+                            " We have attempted to stabalize this but milage may vary."
+                            " We are incrementing a grace period for file-locks from"
+                            " '%s's to '%s's. You can control the initial"
+                            " grace with 'NEPS_FS_SYNC_GRACE_BASE' and the increment with"
+                            " 'NEPS_FS_SYNC_GRACE_INC'.",
                             sampled_trial.id,
-                            sampled_trial.id,
+                            _grace,
+                            _grace + _inc,
                         )
+                        FileLocker._increse_grace(_inc)
                     raise e
 
     # Forgive me lord, for I have sinned, this function is atrocious but complicated

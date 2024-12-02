@@ -64,6 +64,16 @@ TRIAL_FILELOCK_TIMEOUT = get_env(
     parse=lambda e: None if is_nullable(e) else float(e),
     default=120,
 )
+FS_SYNC_GRACE_BASE = get_env(
+    "NEPS_FS_SYNC_GRACE_BASE",
+    parse=float,
+    default=0.05,  # Keep it low initially to not punish synced os
+)
+FS_SYNC_GRACE_INC = get_env(
+    "NEPS_FS_SYNC_GRACE_INC",
+    parse=float,
+    default=0.1,
+)
 
 # NOTE: We want this to be greater than the trials filelock, so that
 # anything requesting to just update the trials is more likely to obtain it
