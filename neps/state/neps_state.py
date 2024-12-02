@@ -13,8 +13,7 @@ from __future__ import annotations
 import logging
 import pickle
 import time
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
