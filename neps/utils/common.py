@@ -160,7 +160,7 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     if pipeline_directory is not None:
         # TODO: Hard coded assumption
         config_id = Path(pipeline_directory).name.split("_", maxsplit=1)[-1]
-        trial = neps_state.get_trial_by_id(config_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(config_id)
     else:
         trial = get_in_progress_trial()
 
@@ -169,7 +169,7 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
     # Recursively find the initial directory
     while (prev_trial_id := trial.metadata.previous_trial_id) is not None:
-        trial = neps_state.get_trial_by_id(prev_trial_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(prev_trial_id)
 
     initial_dir = trial.metadata.location
 

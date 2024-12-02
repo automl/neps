@@ -3,12 +3,31 @@
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Iterable, Mapping
+import os
+from collections.abc import Iterable, Iterator, Mapping
+from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 import yaml
+
+try:
+    from yaml import (
+        CSafeDumper as SafeDumper,  # type: ignore
+        CSafeLoader as SafeLoader,  # type: ignore
+    )
+except ImportError:
+    from yaml import SafeDumper, SafeLoader  # type: ignore
+
+
+@contextmanager
+def atomic_write(file_path: Path | str, *args: Any, **kwargs: Any) -> Iterator[IO]:
+    with open(file_path, *args, **kwargs) as file_stream:  # noqa: PTH123
+        yield file_stream
+        file_stream.flush()
+        os.fsync(file_stream.fileno())
+        file_stream.close()
 
 
 def serializable_format(data: Any) -> Any:  # noqa: PLR0911
@@ -45,9 +64,9 @@ def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
     """Serialize data to a yaml file."""
     data = serializable_format(data)
     path = Path(path)
-    with path.open("w") as file_stream:
+    with atomic_write(path, "w") as file_stream:
         try:
-            return yaml.safe_dump(data, file_stream, sort_keys=sort_keys)
+            return yaml.dump(data, file_stream, SafeDumper, sort_keys=sort_keys)
         except yaml.representer.RepresenterError as e:
             raise TypeError(
                 "Could not serialize to yaml! The object "
@@ -58,7 +77,7 @@ def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
 def deserialize(path: Path | str) -> dict[str, Any]:
     """Deserialize data from a yaml file."""
     with Path(path).open("r") as file_stream:
-        data = yaml.full_load(file_stream)
+        data = yaml.load(file_stream, SafeLoader)
 
     if not isinstance(data, dict):
         raise TypeError(

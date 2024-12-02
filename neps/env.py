@@ -28,6 +28,32 @@ def is_nullable(e: str) -> bool:
     return e.lower() in ("none", "n", "null")
 
 
+LINUX_FILELOCK_FUNCTION = get_env(
+    "NEPS_LINUX_FILELOCK_FUNCTION",
+    parse=str,
+    default="lockf",
+)
+
+MAX_RETRIES_GET_NEXT_TRIAL = get_env(
+    "NEPS_MAX_RETRIES_GET_NEXT_TRIAL",
+    parse=int,
+    default=10,
+)
+MAX_RETRIES_SET_EVALUATING = get_env(
+    "NEPS_MAX_RETRIES_SET_EVALUATING",
+    parse=int,
+    default=10,
+)
+MAX_RETRIES_CREATE_LOAD_STATE = get_env(
+    "NEPS_MAX_RETRIES_CREATE_LOAD_STATE",
+    parse=int,
+    default=10,
+)
+MAX_RETRIES_WORKER_CHECK_SHOULD_STOP = get_env(
+    "NEPS_MAX_RETRIES_WORKER_CHECK_SHOULD_STOP",
+    parse=int,
+    default=3,
+)
 TRIAL_FILELOCK_POLL = get_env(
     "NEPS_TRIAL_FILELOCK_POLL",
     parse=float,
@@ -38,36 +64,28 @@ TRIAL_FILELOCK_TIMEOUT = get_env(
     parse=lambda e: None if is_nullable(e) else float(e),
     default=120,
 )
-
-SEED_SNAPSHOT_FILELOCK_POLL = get_env(
-    "NEPS_SEED_SNAPSHOT_FILELOCK_POLL",
+FS_SYNC_GRACE_BASE = get_env(
+    "NEPS_FS_SYNC_GRACE_BASE",
     parse=float,
-    default=0.05,
+    default=0.05,  # Keep it low initially to not punish synced os
 )
-SEED_SNAPSHOT_FILELOCK_TIMEOUT = get_env(
-    "NEPS_SEED_SNAPSHOT_FILELOCK_TIMEOUT",
-    parse=lambda e: None if is_nullable(e) else float(e),
-    default=120,
-)
-
-OPTIMIZER_INFO_FILELOCK_POLL = get_env(
-    "NEPS_OPTIMIZER_INFO_FILELOCK_POLL",
+FS_SYNC_GRACE_INC = get_env(
+    "NEPS_FS_SYNC_GRACE_INC",
     parse=float,
-    default=0.05,
-)
-OPTIMIZER_INFO_FILELOCK_TIMEOUT = get_env(
-    "NEPS_OPTIMIZER_INFO_FILELOCK_TIMEOUT",
-    parse=lambda e: None if is_nullable(e) else float(e),
-    default=120,
+    default=0.1,
 )
 
-OPTIMIZER_STATE_FILELOCK_POLL = get_env(
-    "NEPS_OPTIMIZER_STATE_FILELOCK_POLL",
+# NOTE: We want this to be greater than the trials filelock, so that
+# anything requesting to just update the trials is more likely to obtain it
+# as those operations tend to be faster than something that requires optimizer
+# state.
+STATE_FILELOCK_POLL = get_env(
+    "NEPS_STATE_FILELOCK_POLL",
     parse=float,
-    default=0.05,
+    default=0.20,
 )
-OPTIMIZER_STATE_FILELOCK_TIMEOUT = get_env(
-    "NEPS_OPTIMIZER_STATE_FILELOCK_TIMEOUT",
+STATE_FILELOCK_TIMEOUT = get_env(
+    "NEPS_STATE_FILELOCK_TIMEOUT",
     parse=lambda e: None if is_nullable(e) else float(e),
     default=120,
 )
