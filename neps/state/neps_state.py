@@ -225,18 +225,6 @@ class NePSState:
     _err_lock: FileLocker = field(repr=False)
     _shared_errors: VersionedResource[ErrDump] = field(repr=False)
 
-    @contextmanager
-    def lock_for_sampling(self) -> Iterator[None]:
-        """Acquire the state lock and trials lock."""
-        with self._state_lock.lock(), self._trial_lock.lock():
-            yield
-
-    @contextmanager
-    def lock_trials(self) -> Iterator[None]:
-        """Acquire the state lock."""
-        with self._trial_lock.lock():
-            yield
-
     def lock_and_read_trials(self) -> dict[str, Trial]:
         """Acquire the state lock and read the trials."""
         with self._trial_lock.lock():
@@ -244,7 +232,7 @@ class NePSState:
 
     def lock_and_sample_trial(self, optimizer: BaseOptimizer, *, worker_id: str) -> Trial:
         """Acquire the state lock and sample a trial."""
-        with self.lock_for_sampling():
+        with self._state_lock.lock(), self._trial_lock.lock():
             return self._sample_trial(optimizer, worker_id=worker_id)
 
     def lock_and_report_trial_evaluation(

@@ -403,8 +403,9 @@ class DefaultWorker(Generic[Loc]):
             # needs to be in locked in-step with sampling
             try:
                 # If there are no global stopping criterion, we can no just return early.
-                with self.state.lock_for_sampling():
-                    trials = self.state._trials.latest()
+                with self.state._state_lock.lock():
+                    with self.state._trial_lock.lock():
+                        trials = self.state._trials.latest()
 
                     requires_checking_global_stopping_criterion = (
                         self.settings.max_evaluations_total is not None
@@ -431,12 +432,14 @@ class DefaultWorker(Generic[Loc]):
                             time_started=time.time(),
                             worker_id=self.worker_id,
                         )
-                        self.state._trials.update_trial(earliest_pending)
+                        with self.state._trial_lock.lock():
+                            self.state._trials.update_trial(earliest_pending)
                         trial_to_eval = earliest_pending
                     else:
                         sampled_trial = self.state._sample_trial(
                             optimizer=self.optimizer,
                             worker_id=self.worker_id,
+                            _trials=trials,
                         )
                         trial_to_eval = sampled_trial
 
@@ -530,7 +533,7 @@ class DefaultWorker(Generic[Loc]):
             # We do not retry this, as if some other worker has
             # managed to manipulate this trial in the meantime,
             # then something has gone wrong
-            with self.state.lock_trials():
+            with self.state._trial_lock.lock():
                 self.state._report_trial_evaluation(
                     trial=evaluated_trial,
                     report=report,
