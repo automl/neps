@@ -105,9 +105,9 @@ with torch.no_grad():
 
 print("\nMean:", predictions)
 print("Variance:", uncertainties)
-print("Covariance matrix:", covar)
 
 # =============== Fitting the GP using botorch ===============
+
 print("\nFitting the GP model using botorch...")
 
 mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
@@ -152,7 +152,7 @@ best_candidate, best_score = optimize_acqf_graph(
     bounds=bounds,
     fixed_features_list=fixed_cats,
     train_graphs=train_graphs,
-    num_graph_samples=6,
+    num_graph_samples=20,
     num_restarts=10,
     raw_samples=10,
     q=1,

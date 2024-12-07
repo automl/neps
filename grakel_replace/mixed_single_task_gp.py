@@ -55,35 +55,12 @@ class WLKernel(Kernel):
             Tensor: The computed kernel matrix.
         """
         if x2 is None:
-            K = self._K_train
-            # Handle batch dimension if present in x1
-            if x1.dim() > 2:  # We have a batch dimension
-                batch_size = x1.size(0)
-                target_size = x1.size(1)  # This should be 11 in our case
-                # Resize K to match the expected dimensions
-                K = K.unsqueeze(0)  # Add batch dimension
-                # Pad or interpolate K to match target size
-                if K.size(1) != target_size:
-                    K_resized = torch.zeros(1, target_size, target_size, dtype=K.dtype,
-                                            device=K.device)
-                    K_resized[:, :K.size(1), :K.size(2)] = K
-                    K = K_resized
-                K = K.expand(batch_size, target_size, target_size)
-            return K.to(dtype=x1.dtype)
+            # Return the precomputed training kernel matrix
+            return self._K_train
 
-        # Similar logic for cross-kernel case
-        test_dataset = GraphDataset.from_networkx(x2)
-        K = self._wl_kernel(self._train_graph_dataset, test_dataset)
-        if x1.dim() > 2:
-            batch_size = x1.size(0)
-            target_size = x1.size(1)
-            if K.size(0) != target_size:
-                K_resized = torch.zeros(target_size, target_size, dtype=K.dtype,
-                                        device=K.device)
-                K_resized[:K.size(0), :K.size(1)] = K
-                K = K_resized
-            K = K.unsqueeze(0).expand(batch_size, target_size, target_size)
-        return K.to(dtype=x1.dtype)
+        # Compute cross-kernel between training graphs and new test graphs
+        test_dataset = GraphDataset.from_networkx(x2)  # x2 should be test graphs
+        return self._wl_kernel(self._train_graph_dataset, test_dataset)
 
 
 class MixedSingleTaskGP(SingleTaskGP):
@@ -185,7 +162,7 @@ class MixedSingleTaskGP(SingleTaskGP):
         if not all(isinstance(g, nx.Graph) for g in graphs):
             raise TypeError("Expected input type is a list of NetworkX graphs.")
 
-            # Process the new graph inputs into a compatible dataset
+        # Process the new graph inputs into a compatible dataset
         proc_graphs = GraphDataset.from_networkx(graphs)
 
         # Compute the kernel matrix for the new graphs
