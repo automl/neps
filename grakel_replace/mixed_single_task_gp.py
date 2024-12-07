@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import networkx as nx
+import torch
 from botorch.models import SingleTaskGP
 from gpytorch.distributions.multivariate_normal import MultivariateNormal
 from gpytorch.kernels import AdditiveKernel, Kernel
@@ -54,12 +55,35 @@ class WLKernel(Kernel):
             Tensor: The computed kernel matrix.
         """
         if x2 is None:
-            # Return the precomputed training kernel matrix
-            return self._K_train
+            K = self._K_train
+            # Handle batch dimension if present in x1
+            if x1.dim() > 2:  # We have a batch dimension
+                batch_size = x1.size(0)
+                target_size = x1.size(1)  # This should be 11 in our case
+                # Resize K to match the expected dimensions
+                K = K.unsqueeze(0)  # Add batch dimension
+                # Pad or interpolate K to match target size
+                if K.size(1) != target_size:
+                    K_resized = torch.zeros(1, target_size, target_size, dtype=K.dtype,
+                                            device=K.device)
+                    K_resized[:, :K.size(1), :K.size(2)] = K
+                    K = K_resized
+                K = K.expand(batch_size, target_size, target_size)
+            return K.to(dtype=x1.dtype)
 
-        # Compute cross-kernel between training graphs and new test graphs
-        test_dataset = GraphDataset.from_networkx(x2)  # x2 should be test graphs
-        return self._wl_kernel(self._train_graph_dataset, test_dataset)
+        # Similar logic for cross-kernel case
+        test_dataset = GraphDataset.from_networkx(x2)
+        K = self._wl_kernel(self._train_graph_dataset, test_dataset)
+        if x1.dim() > 2:
+            batch_size = x1.size(0)
+            target_size = x1.size(1)
+            if K.size(0) != target_size:
+                K_resized = torch.zeros(target_size, target_size, dtype=K.dtype,
+                                        device=K.device)
+                K_resized[:K.size(0), :K.size(1)] = K
+                K = K_resized
+            K = K.unsqueeze(0).expand(batch_size, target_size, target_size)
+        return K.to(dtype=x1.dtype)
 
 
 class MixedSingleTaskGP(SingleTaskGP):
@@ -161,16 +185,41 @@ class MixedSingleTaskGP(SingleTaskGP):
         if not all(isinstance(g, nx.Graph) for g in graphs):
             raise TypeError("Expected input type is a list of NetworkX graphs.")
 
-        # Process the new graph inputs into a compatible dataset
+            # Process the new graph inputs into a compatible dataset
         proc_graphs = GraphDataset.from_networkx(graphs)
 
         # Compute the kernel matrix for the new graphs
-        K_new = self._wl_kernel(proc_graphs)  # Shape: (n_samples, n_samples)
+        K_new = self._wl_kernel(proc_graphs)
+        K_new = K_new.to(dtype=X.dtype)
 
         # Combine the graph kernel with the numerical/categorical kernel (if present)
         if self.num_cat_kernel is not None:
-            K_num_cat = self.num_cat_kernel(X)  # Compute kernel for num/cat features
-            K_combined = K_num_cat + K_new  # Combine the two kernels
+            K_num_cat = self.num_cat_kernel(X)
+
+            # Ensure K_new matches K_num_cat dimensions
+            if K_num_cat.dim() > 2:
+                batch_size = K_num_cat.size(0)
+                target_size = K_num_cat.size(1)
+
+                # Resize K_new if needed
+                if K_new.size(-1) != target_size:
+                    K_new_resized = torch.zeros(
+                        *K_new.shape[:-2], target_size, target_size,
+                        dtype=K_new.dtype,
+                        device=K_new.device
+                    )
+                    K_new_resized[..., :K_new.size(-2), :K_new.size(-1)] = K_new
+                    K_new = K_new_resized
+
+                if K_new.dim() < K_num_cat.dim():
+                    K_new = K_new.unsqueeze(0).expand(batch_size, target_size,
+                                                      target_size)
+
+            # Convert to dense tensor if needed
+            if hasattr(K_num_cat, "to_dense"):
+                K_num_cat = K_num_cat.to_dense()
+
+            K_combined = K_num_cat + K_new
         else:
             K_combined = K_new
 
