@@ -5,7 +5,6 @@ import torch
 from botorch.acquisition import LinearMCObjective, qLogNoisyExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
 from botorch.models.gp_regression_mixed import CategoricalKernel, ScaleKernel
-from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.distributions.multivariate_normal import MultivariateNormal
 from gpytorch.kernels import AdditiveKernel, MaternKernel
@@ -109,6 +108,7 @@ print("Variance:", uncertainties)
 print("Covariance matrix:", covar)
 
 # =============== Fitting the GP using botorch ===============
+print("\nFitting the GP model using botorch...")
 
 mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
 fit_gpytorch_mll(mll)
@@ -116,7 +116,7 @@ fit_gpytorch_mll(mll)
 # Define the acquisition function
 acq_function = qLogNoisyExpectedImprovement(
     model=gp,
-    X_baseline=X,
+    X_baseline=train_x,
     objective=LinearMCObjective(weights=torch.tensor([-1.0])),
     prune_baseline=True,
 )
@@ -124,11 +124,12 @@ acq_function = qLogNoisyExpectedImprovement(
 # Define bounds
 bounds = torch.tensor(
     [
-        [0.0, 1.0] * N_NUMERICAL
-        + [0.0, N_CATEGORICAL_VALUES_PER_CATEGORY - 1] * N_CATEGORICAL
+        [0.0] * N_NUMERICAL + [0.0] * N_CATEGORICAL,
+        [1.0] * N_NUMERICAL + [float(N_CATEGORICAL_VALUES_PER_CATEGORY - 1)] * N_CATEGORICAL
     ]
-).view(2, -1)
+)
 
+# Setup categorical feature optimization
 cats_per_column: dict[int, list[float]] = {
     column_ix: [float(i) for i in range(N_CATEGORICAL_VALUES_PER_CATEGORY)]
     for column_ix in range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL)
@@ -150,10 +151,10 @@ best_candidate, best_score = optimize_acqf_graph(
     acq_function=acq_function,
     bounds=bounds,
     fixed_features_list=fixed_cats,
-    train_graphs=graphs,
-    num_graph_samples=10,  # Number of graphs to sample
+    train_graphs=train_graphs,
+    num_graph_samples=6,
     num_restarts=3,
-    raw_samples=250,
+    raw_samples=10,
     q=1,
 )
 
