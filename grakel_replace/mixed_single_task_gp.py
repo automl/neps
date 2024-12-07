@@ -76,7 +76,7 @@ class MixedSingleTaskGP(SingleTaskGP):
     Attributes:
         _wl_kernel (TorchWLKernel): Instance of the Weisfeiler-Lehman kernel.
         _K_train (Tensor): Precomputed graph kernel matrix for training graphs.
-        train_inputs (tuple[Tensor, list[nx.Graph]]): Tuple of training inputs.
+        _train_inputs (tuple[Tensor, list[nx.Graph]]): Tuple of training inputs.
         num_cat_kernel (Module | None): Kernel for numerical/categorical features.
     """
 
@@ -114,9 +114,6 @@ class MixedSingleTaskGP(SingleTaskGP):
             covar_module=num_cat_kernel,
             **kwargs,
         )
-        # Store graphs as part of train_inputs for using them in the __call__ method
-        self.train_inputs = (train_X, train_graphs)
-
         # Initialize the Weisfeiler-Lehman kernel or use a default one
         self._wl_kernel = wl_kernel or TorchWLKernel(n_iter=5, normalize=True)
 
@@ -124,6 +121,9 @@ class MixedSingleTaskGP(SingleTaskGP):
         # kernel matrix
         self._train_graph_dataset = GraphDataset.from_networkx(train_graphs)
         self._K_train = self._wl_kernel(self._train_graph_dataset)
+
+        # Store graphs as part of train_inputs for using them in the __call__ method
+        self._train_inputs = (train_X, train_graphs)
 
         # If a kernel for numerical/categorical features is provided, combine it with
         # the WL kernel
@@ -138,7 +138,7 @@ class MixedSingleTaskGP(SingleTaskGP):
     def __call__(self, X: Tensor, graphs: list[nx.Graph] | None = None, **kwargs):
         """Custom __call__ method that retrieves train graphs if not explicitly passed."""
         if graphs is None:  # Use stored graphs from train_inputs if not provided
-            graphs = self.train_inputs[1]
+            graphs = self._train_inputs[1]
         return self.forward(X, graphs)
 
     def forward(self, X: Tensor, graphs: list[nx.Graph]) -> MultivariateNormal:
