@@ -71,7 +71,6 @@ test_y = test_y.unsqueeze(-1)
 gp = SingleTaskGP(
     train_X=train_x,
     train_Y=train_y,
-    mean_module=None,  # We can leave it as the default it uses which is `ConstantMean`
     covar_module=combined_num_cat_kernel,
 )
 
