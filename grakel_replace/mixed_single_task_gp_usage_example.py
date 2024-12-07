@@ -153,7 +153,7 @@ best_candidate, best_score = optimize_acqf_graph(
     fixed_features_list=fixed_cats,
     train_graphs=train_graphs,
     num_graph_samples=6,
-    num_restarts=3,
+    num_restarts=10,
     raw_samples=10,
     q=1,
 )
