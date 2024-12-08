@@ -209,6 +209,15 @@ class TrialRepoInDirectory(TrialRepo[Path]):
         ]
         return iter((_id, t) for _id, t, _ in sorted(pending, key=lambda x: x[2]))
 
+    @override
+    def evaluating(self) -> Iterable[tuple[str, Synced[Trial, Path]]]:
+        evaluating = [
+            (_id, t, trial.metadata.time_sampled)
+            for (_id, t) in self.all().items()
+            if (trial := t.synced()).state == Trial.State.EVALUATING
+        ]
+        return iter((_id, t) for _id, t, _ in sorted(evaluating, key=lambda x: x[2]))
+
 
 @dataclass
 class ReaderWriterTrial(ReaderWriter[Trial, Path]):

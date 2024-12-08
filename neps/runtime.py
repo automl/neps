@@ -26,7 +26,10 @@ from neps.exceptions import (
     WorkerRaiseError,
 )
 from neps.state._eval import evaluate_trial
-from neps.state.filebased import create_or_load_filebased_neps_state
+from neps.state.filebased import (
+    create_or_load_filebased_neps_state,
+    load_filebased_neps_state,
+)
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.state.trial import Trial
@@ -41,6 +44,24 @@ logger = logging.getLogger(__name__)
 def _default_worker_name() -> str:
     isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return f"{os.getpid()}-{isoformat}"
+
+
+def _is_ddp_and_not_rank_zero() -> bool:
+    import torch.distributed as dist
+
+    # Check for environment variables typically set by DDP
+    ddp_env_vars = ["WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT"]
+    rank_env_vars = ["RANK", "LOCAL_RANK", "SLURM_PROCID", "JSM_NAMESPACE_RANK"]
+
+    # Check if PyTorch distributed is initialized
+    if (dist.is_available() and dist.is_initialized()) or all(
+        var in os.environ for var in ddp_env_vars
+    ):
+        for var in rank_env_vars:
+            rank = os.environ.get(var)
+            if rank is not None:
+                return int(rank) != 0
+    return False
 
 
 N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 0
@@ -488,6 +509,26 @@ class DefaultWorker(Generic[Loc]):
             )
 
 
+def _launch_ddp_runtime(
+    *,
+    evaluation_fn: Callable[..., float | Mapping[str, Any]],
+    optimization_dir: Path,
+) -> None:
+    neps_state = load_filebased_neps_state(directory=optimization_dir)
+
+    # TODO: This is a bit of a hack to get the current trial to evaluate. Sometimes
+    # the previous trial gets sampled when we don't want it to. This is a bit of a
+    # hack to get around that.
+    prev_trial = None
+    while True:
+        current_trial = neps_state.get_current_evaluating_trial()
+        if current_trial is not None and (
+            prev_trial is None or current_trial.id != prev_trial.id  # type: ignore[unreachable]
+        ):
+            evaluation_fn(**current_trial.config)
+            prev_trial = current_trial
+
+
 # TODO: This should be done directly in `api.run` at some point to make it clearer at an
 # entryy point how the woerer is set up to run if someone reads the entry point code.
 def _launch_runtime(  # noqa: PLR0913
@@ -506,6 +547,13 @@ def _launch_runtime(  # noqa: PLR0913
     max_evaluations_for_worker: int | None,
     pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None,
 ) -> None:
+    if _is_ddp_and_not_rank_zero():
+        # Do not launch a new worker if we are in a DDP setup and not rank 0
+        _launch_ddp_runtime(
+            evaluation_fn=evaluation_fn, optimization_dir=optimization_dir
+        )
+        return
+
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(
             f"Overwriting optimization directory '{optimization_dir}' as"
