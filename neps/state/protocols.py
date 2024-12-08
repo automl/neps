@@ -138,6 +138,10 @@ class TrialRepo(Protocol[K]):
         """
         ...
 
+    def evaluating(self) -> Iterable[tuple[str, Synced[Trial, K]]]:
+        """Get all evaluating trials in the repo."""
+        ...
+
 
 @dataclass
 class VersionedResource(Generic[T, K]):
