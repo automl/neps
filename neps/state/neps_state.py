@@ -93,6 +93,16 @@ class TrialRepo:
 
     def latest(self) -> dict[str, Trial]:
         if not self.cache_path.exists():
+            # If we end up with no cache but there are trials on disk, we need to
+            # read them in. However we will not save back the cache here in fear of
+            # overwriting
+            if any(path.name.startswith("config_") for path in self.directory.iterdir()):
+                trial_ids = self.list_trial_ids()
+                return {
+                    trial_id: self.load_trial_from_disk(trial_id)
+                    for trial_id in trial_ids
+                }
+
             return {}
 
         with self.cache_path.open("rb") as f:
