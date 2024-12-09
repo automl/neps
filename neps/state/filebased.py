@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -353,3 +354,12 @@ class FileLocker:
                 " environment variables to increase the timeout:"
                 f"\n\n{pprint.pformat(ENV_VARS_USED)}"
             ) from e
+        finally:
+            if worker_id is not None:
+                with contextlib.suppress(Exception):
+                    logger.debug(
+                        "Worker %s released lock on %s at %s",
+                        worker_id,
+                        self.lock_path,
+                        time.time(),
+                    )
