@@ -358,7 +358,6 @@ class DefaultWorker(Generic[Loc]):
             time.sleep(self._GRACE)  # Give the lock some time
             with self.state._trial_lock.lock():
                 time.sleep(self._GRACE)  # Give the lock some time
-                logger.info("I, MR WORKER %s obtained thel lock", self.worker_id)
                 DEBUG_COUNT_FILE = Path(self.state.path / "DEBUG_COUNT_FILE")
                 with DEBUG_COUNT_FILE.open("a") as f:
                     f.write(f"locked: {time.time()}\n")
@@ -395,7 +394,6 @@ class DefaultWorker(Generic[Loc]):
                         earliest_pending.id,
                     )
                     return earliest_pending
-                logger.info("I, MR WORKER %s released thel lock", self.worker_id)
             with DEBUG_COUNT_FILE.open("a") as f:
                 f.write(f"unlocked: {time.time()}\n")
 

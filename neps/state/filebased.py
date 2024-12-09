@@ -317,14 +317,13 @@ class FileLocker:
         self,
         *,
         fail_if_locked: bool = False,
+        worker_id: str | None = None,
     ) -> Iterator[None]:
         self.lock_path.parent.mkdir(parents=True, exist_ok=True)
-        self.lock_path.touch(exist_ok=True)
 
         try:
             with pl.Lock(
                 self.lock_path,
-                mode="wb",
                 check_interval=self.poll,
                 timeout=self.timeout,
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
@@ -332,7 +331,14 @@ class FileLocker:
             ) as fh:
                 import portalocker.portalocker as pl_module
 
-                logger.info(pl_module.LOCKER)
+                if worker_id is not None:
+                    logger.debug(
+                        "Worker %s acquired lock on %s using %s at %s",
+                        worker_id,
+                        self.lock_path,
+                        pl_module.LOCKER,
+                        time.time(),
+                    )
                 fh.write(f"{time.time()}".encode("utf-8"))  # noqa: UP012
                 os.fsync(fh)
                 yield
