@@ -46,7 +46,6 @@ from neps.state.filebased import (
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Report, Trial
-from neps.utils.files import atomic_write
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
@@ -76,13 +75,14 @@ CONFIG_PREFIX_LEN = len("config_")
 # TODO: Ergonomics of this class sucks
 @dataclass
 class TrialRepo:
+    CACHE_FILE_NAME = ".trial_cache.pkl"
+
     directory: Path
-    version_file: Path
-    trial_cache: dict[str, Trial] = field(default_factory=dict)
-    versions: dict[str, Version] = field(default_factory=dict)
+    cache_path: Path = field(init=False)
 
     def __post_init__(self) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
+        self.cache_path = self.directory / self.CACHE_FILE_NAME
 
     def list_trial_ids(self) -> list[str]:
         return [
@@ -92,23 +92,11 @@ class TrialRepo:
         ]
 
     def latest(self) -> dict[str, Trial]:
-        if not self.version_file.exists():
+        if not self.cache_path.exists():
             return {}
 
-        with self.version_file.open("rb") as f:
-            versions_on_disk = pickle.load(f)  # noqa: S301
-
-        stale: dict[str, Version] = {
-            k: v
-            for k, v in versions_on_disk.items()
-            if self.versions.get(k, "__not_found__") != v
-        }
-        for trial_id, loaded_version in stale.items():
-            loaded_trial = self.load_trial_from_disk(trial_id)
-            self.trial_cache[trial_id] = loaded_trial
-            self.versions[trial_id] = loaded_version
-
-        return self.trial_cache
+        with self.cache_path.open("rb") as f:
+            return pickle.load(f)  # noqa: S301
 
     def new_trial(self, trial: Trial) -> None:
         config_path = self.directory / f"config_{trial.id}"
@@ -118,20 +106,17 @@ class TrialRepo:
         self.update_trial(trial, hints=None)
 
     def update_trial(
-        self, trial: Trial, *, hints: list[TrialWriteHint] | TrialWriteHint | None = None
+        self,
+        trial: Trial,
+        *,
+        hints: list[TrialWriteHint] | TrialWriteHint | None = None,
     ) -> None:
+        trials = self.latest()
+        with self.cache_path.open("wb") as f:
+            trials[trial.id] = trial
+            pickle.dump(trials, f)
+
         TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=hints)
-        self.trial_cache[trial.id] = trial
-        new_version = make_sha()
-        self.versions[trial.id] = new_version
-        self._write_version_file()
-
-    def _write_version_file(self) -> None:
-        with atomic_write(self.version_file, "wb") as f:
-            pickle.dump(self.versions, f)
-
-    def trials_in_memory(self) -> dict[str, Trial]:
-        return self.trial_cache
 
     def load_trial_from_disk(self, trial_id: str) -> Trial:
         config_path = self.directory / f"config_{trial_id}"
@@ -596,14 +581,14 @@ class NePSState:
 
         return cls(
             path=path,
-            _trials=TrialRepo(config_dir, version_file=config_dir / ".versions"),
+            _trials=TrialRepo(config_dir),
             # Locks,
             _trial_lock=FileLocker(
                 lock_path=path / ".configs.lock",
                 poll=TRIAL_FILELOCK_POLL,
                 timeout=TRIAL_FILELOCK_TIMEOUT,
             ),
-            _state_lock=FileLocker(
+            _optimizer_lock=FileLocker(
                 lock_path=path / ".state.lock",
                 poll=STATE_FILELOCK_POLL,
                 timeout=STATE_FILELOCK_TIMEOUT,
