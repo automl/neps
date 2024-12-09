@@ -4,8 +4,8 @@ import json
 import logging
 import os
 import pprint
-from collections.abc import Iterator
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -330,6 +330,9 @@ class FileLocker:
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
                 fail_when_locked=fail_if_locked,
             ) as fh:
+                import portalocker.portalocker as pl_module
+
+                logger.info(pl_module.LOCKER)
                 fh.write(f"{time.time()}".encode("utf-8"))  # noqa: UP012
                 os.fsync(fh)
                 yield
