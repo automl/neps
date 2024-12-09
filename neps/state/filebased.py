@@ -330,17 +330,14 @@ class FileLocker:
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
                 fail_when_locked=fail_if_locked,
             ) as fh:
-                import portalocker.portalocker as pl_module
-
                 if worker_id is not None:
                     logger.debug(
-                        "Worker %s acquired lock on %s using %s at %s",
+                        "Worker %s acquired lock on %s at %s",
                         worker_id,
                         self.lock_path,
-                        pl_module.LOCKER,
                         time.time(),
                     )
-                os.fsync(fh)
+
                 yield
                 fh.flush()
                 os.fsync(fh)

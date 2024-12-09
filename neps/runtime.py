@@ -355,13 +355,8 @@ class DefaultWorker(Generic[Loc]):
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
         with self.state._optimizer_lock.lock(worker_id=self.worker_id):
-            time.sleep(self._GRACE)  # Give the lock some time
             with self.state._trial_lock.lock(worker_id=self.worker_id):
-                time.sleep(self._GRACE)  # Give the lock some time
-                DEBUG_COUNT_FILE = Path(self.state.path / "DEBUG_COUNT_FILE")
-                with DEBUG_COUNT_FILE.open("a") as f:
-                    f.write(f"locked: {time.time()}\n")
-
+                time.sleep(self._GRACE)  # Give the FS some time to sync
                 trials = self.state._trials.latest()
                 if self._requires_global_stopping_criterion:
                     should_stop = self._check_global_stopping_criterion(trials)
@@ -394,8 +389,6 @@ class DefaultWorker(Generic[Loc]):
                         earliest_pending.id,
                     )
                     return earliest_pending
-            with DEBUG_COUNT_FILE.open("a") as f:
-                f.write(f"unlocked: {time.time()}\n")
 
             # NOTE: It's important to release the trial lock before sampling
             # as otherwise, any other service, such as reporting the result
