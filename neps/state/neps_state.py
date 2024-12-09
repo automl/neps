@@ -224,7 +224,7 @@ class NePSState:
     _trial_lock: FileLocker = field(repr=False)
     _trials: TrialRepo = field(repr=False)
 
-    _state_lock: FileLocker = field(repr=False)
+    _optimizer_lock: FileLocker = field(repr=False)
     _optimizer_info: VersionedResource[OptimizerInfo] = field(repr=False)
     _seed_snapshot: VersionedResource[SeedSnapshot] = field(repr=False)
     _optimizer_state: VersionedResource[OptimizationState] = field(repr=False)
@@ -239,7 +239,7 @@ class NePSState:
 
     def lock_and_sample_trial(self, optimizer: BaseOptimizer, *, worker_id: str) -> Trial:
         """Acquire the state lock and sample a trial."""
-        with self._state_lock.lock():
+        with self._optimizer_lock.lock():
             with self._trial_lock.lock():
                 trials = self._trials.latest()
 
@@ -394,12 +394,12 @@ class NePSState:
 
     def lock_and_get_optimizer_info(self) -> OptimizerInfo:
         """Get the optimizer information."""
-        with self._state_lock.lock():
+        with self._optimizer_lock.lock():
             return self._optimizer_info.latest()
 
     def lock_and_get_optimizer_state(self) -> OptimizationState:
         """Get the optimizer state."""
-        with self._state_lock.lock():
+        with self._optimizer_lock.lock():
             return self._optimizer_state.latest()
 
     def lock_and_get_trial_by_id(self, trial_id: str) -> Trial:

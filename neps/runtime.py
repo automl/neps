@@ -351,7 +351,7 @@ class DefaultWorker(Generic[Loc]):
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
-        with self.state._state_lock.lock():
+        with self.state._optimizer_lock.lock():
             with self.state._trial_lock.lock():
                 trials = self.state._trials.latest()
 
