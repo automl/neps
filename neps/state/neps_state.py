@@ -112,8 +112,13 @@ class TrialRepo:
         config_path = self.directory / f"config_{trial.id}"
         if config_path.exists():
             raise TrialAlreadyExistsError(trial.id, config_path)
+        trials = self.latest()
+        with self.cache_path.open("wb") as f:
+            trials[trial.id] = trial
+            pickle.dump(trials, f)
+
         config_path.mkdir(parents=True, exist_ok=True)
-        self.update_trial(trial, hints=None)
+        TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=None)
 
     def update_trial(
         self,
