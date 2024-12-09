@@ -357,6 +357,11 @@ class DefaultWorker(Generic[Loc]):
         with self.state._optimizer_lock.lock():
             with self.state._trial_lock.lock():
                 time.sleep(self._GRACE)  # Give the lock some time to
+                logger.info("I, MR WORKER %s obtained thel lock", self.worker_id)
+                DEBUG_COUNT_FILE = Path(self.state.path / "DEBUG_COUNT_FILE")
+                with DEBUG_COUNT_FILE.open("a") as f:
+                    f.write(f"{self.worker_id}\n")
+
                 trials = self.state._trials.latest()
 
                 if self._requires_global_stopping_criterion:
@@ -407,6 +412,9 @@ class DefaultWorker(Generic[Loc]):
                         worker_id=self.worker_id,
                     )
                     self.state._trials.new_trial(sampled_trial)
+                    logger.info(
+                        "I, MR WORKER %s, SAMPLED %s", self.worker_id, sampled_trial.id
+                    )
                     logger.info(
                         "Worker '%s' sampled new trial: %s.",
                         self.worker_id,
