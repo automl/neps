@@ -339,7 +339,6 @@ class FileLocker:
                         pl_module.LOCKER,
                         time.time(),
                     )
-                fh.write(f"{time.time()}".encode("utf-8"))  # noqa: UP012
                 os.fsync(fh)
                 yield
                 fh.flush()
