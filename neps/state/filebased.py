@@ -5,6 +5,7 @@ import logging
 import os
 import pprint
 from collections.abc import Iterator
+import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -323,11 +324,14 @@ class FileLocker:
         try:
             with pl.Lock(
                 self.lock_path,
+                mode="wb",
                 check_interval=self.poll,
                 timeout=self.timeout,
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
                 fail_when_locked=fail_if_locked,
             ) as fh:
+                fh.write(f"{time.time()}".encode("utf-8"))  # noqa: UP012
+                os.fsync(fh)
                 yield
                 fh.flush()
                 os.fsync(fh)
