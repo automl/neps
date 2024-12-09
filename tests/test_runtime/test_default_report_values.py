@@ -4,7 +4,6 @@ from pytest_cases import fixture
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace
-from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
@@ -13,9 +12,9 @@ from neps.state.trial import Trial
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState[Path]:
-    return create_or_load_filebased_neps_state(
-        directory=tmp_path / "neps_state",
+def neps_state(tmp_path: Path) -> NePSState:
+    return NePSState.create_or_load(
+        path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
         optimizer_state=OptimizationState(budget=None, shared_state={}),
     )
@@ -54,15 +53,15 @@ def test_default_values_on_error(
     )
     worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
         trial.state == Trial.State.CRASHED is not None for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1
 
     trial = trials.popitem()[1]
     assert trial.state == Trial.State.CRASHED
@@ -104,15 +103,15 @@ def test_default_values_on_not_specified(
     )
     worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_sucess = sum(
         trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_sucess == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
     assert trial.state == Trial.State.SUCCESS
@@ -152,15 +151,15 @@ def test_default_value_loss_curve_take_loss_value(
     )
     worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_sucess = sum(
         trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_sucess == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
     assert trial.state == Trial.State.SUCCESS

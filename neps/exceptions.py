@@ -27,7 +27,7 @@ class VersionedResourceRemovedError(NePSError):
     """
 
 
-class VersionedResourceDoesNotExistsError(NePSError):
+class VersionedResourceDoesNotExistError(NePSError):
     """Raised when a versioned resource does not exist at a location."""
 
 
@@ -39,7 +39,7 @@ class TrialAlreadyExistsError(VersionedResourceAlreadyExistsError):
     """Raised when a trial already exists in the store."""
 
 
-class TrialNotFoundError(VersionedResourceDoesNotExistsError):
+class TrialNotFoundError(VersionedResourceDoesNotExistError):
     """Raised when a trial already exists in the store."""
 
 
