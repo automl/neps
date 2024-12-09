@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import dataclasses
+import gc
 import os
 from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import IO, Any
+from typing import IO, Any, Literal
 
 import yaml
 
@@ -60,24 +61,55 @@ def serializable_format(data: Any) -> Any:  # noqa: PLR0911
     return data
 
 
-def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
+def serialize(
+    data: Any,
+    path: Path | str,
+    *,
+    check_serialized: bool = True,
+    file_format: Literal["json", "yaml"] = "yaml",
+    sort_keys: bool = True,
+) -> None:
     """Serialize data to a yaml file."""
-    data = serializable_format(data)
+    if check_serialized:
+        data = serializable_format(data)
+
     path = Path(path)
-    with atomic_write(path, "w") as file_stream:
-        try:
-            return yaml.dump(data, file_stream, SafeDumper, sort_keys=sort_keys)
-        except yaml.representer.RepresenterError as e:
-            raise TypeError(
-                "Could not serialize to yaml! The object "
-                f"{e.args[1]} of type {type(e.args[1])} is not."
-            ) from e
+    try:
+        gc.disable()
+        with path.open("w") as file_stream:
+            if file_format == "yaml":
+                try:
+                    return yaml.dump(data, file_stream, SafeDumper, sort_keys=sort_keys)
+                except yaml.representer.RepresenterError as e:
+                    raise TypeError(
+                        "Could not serialize to yaml! The object "
+                        f"{e.args[1]} of type {type(e.args[1])} is not."
+                    ) from e
+            elif file_format == "json":
+                import json
+
+                return json.dump(data, file_stream, sort_keys=sort_keys)
+            else:
+                raise ValueError(f"Unknown format: {file_format}")
+    finally:
+        gc.enable()
 
 
-def deserialize(path: Path | str) -> dict[str, Any]:
+def deserialize(
+    path: Path | str,
+    *,
+    file_format: Literal["json", "yaml"] = "yaml",
+) -> dict[str, Any]:
     """Deserialize data from a yaml file."""
     with Path(path).open("r") as file_stream:
-        data = yaml.load(file_stream, SafeLoader)
+        if file_format == "json":
+            import json
+
+            data = json.load(file_stream)
+        elif file_format == "yaml":
+            data = yaml.load(file_stream, SafeLoader)
+        else:
+            raise ValueError(f"Unknown format: {file_format}")
 
     if not isinstance(data, dict):
         raise TypeError(

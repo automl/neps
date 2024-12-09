@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-import os
+import pickle
 import pprint
 import time
 from collections.abc import Iterator
@@ -15,12 +15,12 @@ from typing import ClassVar, Final, Literal, TypeAlias, TypeVar
 import numpy as np
 import portalocker as pl
 
-from neps.env import ENV_VARS_USED
+from neps.env import CONFIG_SERIALIZE_FORMAT, ENV_VARS_USED
 from neps.state.err_dump import ErrDump
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Trial
-from neps.utils.files import atomic_write, deserialize, serialize
+from neps.utils.files import deserialize, serialize
 
 logger = logging.getLogger(__name__)
 K = TypeVar("K")
@@ -35,8 +35,8 @@ class ReaderWriterTrial:
 
     # Report and config are kept as yaml since they are most likely to be
     # read
-    CONFIG_FILENAME = "config.yaml"
-    REPORT_FILENAME = "report.yaml"
+    CONFIG_FILENAME = f"config.{CONFIG_SERIALIZE_FORMAT}"
+    REPORT_FILENAME = f"report.{CONFIG_SERIALIZE_FORMAT}"
 
     # Metadata is put as json as it's more likely to be machine read and
     # is much faster.
@@ -56,11 +56,15 @@ class ReaderWriterTrial:
             metadata = json.load(f)
 
         return Trial(
-            config=deserialize(config_path),
+            config=deserialize(config_path, file_format=CONFIG_SERIALIZE_FORMAT),
             metadata=Trial.MetaData(**metadata),
             state=Trial.State(state_path.read_text(encoding="utf-8").strip()),
             report=(
-                Trial.Report(**deserialize(report_path)) if report_path.exists() else None
+                Trial.Report(
+                    **deserialize(report_path, file_format=CONFIG_SERIALIZE_FORMAT),
+                )
+                if report_path.exists()
+                else None
             ),
         )
 
@@ -79,10 +83,16 @@ class ReaderWriterTrial:
         if isinstance(hints, str):
             match hints:
                 case "config":
-                    serialize(trial.config, config_path)
+                    serialize(
+                        trial.config,
+                        config_path,
+                        check_serialized=False,
+                        file_format=CONFIG_SERIALIZE_FORMAT,
+                    )
                 case "metadata":
-                    with atomic_write(metadata_path, "w") as f:
-                        json.dump(asdict(trial.metadata), f)
+                    data = asdict(trial.metadata)
+                    with metadata_path.open("w") as f:
+                        json.dump(data, f)
 
                     if trial.metadata.previous_trial_id is not None:
                         previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
@@ -94,7 +104,16 @@ class ReaderWriterTrial:
                         )
 
                     report_path = directory / cls.REPORT_FILENAME
-                    serialize(asdict(trial.report), report_path)
+                    _report = asdict(trial.report)
+                    if (err := _report.get("err")) is not None:
+                        _report["err"] = str(err)
+
+                    serialize(
+                        _report,
+                        report_path,
+                        check_serialized=False,
+                        file_format=CONFIG_SERIALIZE_FORMAT,
+                    )
                 case "state":
                     state_path.write_text(trial.state.value, encoding="utf-8")
                 case _:
@@ -104,19 +123,10 @@ class ReaderWriterTrial:
                 cls.write(trial, directory, hints=hint)
         elif hints is None:
             # We don't know, write everything
-            serialize(trial.config, config_path)
-            with atomic_write(metadata_path, "w") as f:
-                json.dump(asdict(trial.metadata), f)
-
-            if trial.metadata.previous_trial_id is not None:
-                previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
-                previous_trial_path.write_text(trial.metadata.previous_trial_id)
-
-            state_path.write_text(trial.state.value, encoding="utf-8")
+            cls.write(trial, directory, hints=["config", "metadata", "state"])
 
             if trial.report is not None:
-                report_path = directory / cls.REPORT_FILENAME
-                serialize(asdict(trial.report), report_path)
+                cls.write(trial, directory, hints="report")
         else:
             raise ValueError(f"Invalid hint: {hints}")
 
@@ -130,75 +140,35 @@ class ReaderWriterSeedSnapshot:
 
     # It seems like they're all uint32 but I can't be sure.
     PY_RNG_STATE_DTYPE: ClassVar = np.int64
-
-    PY_RNG_TUPLE_FILENAME: ClassVar = "py_rng.npy"
-    NP_RNG_STATE_FILENAME: ClassVar = "np_rng_state.npy"
-    TORCH_RNG_STATE_FILENAME: ClassVar = "torch_rng_state.npy"
-    TORCH_CUDA_RNG_STATE_FILENAME: ClassVar = "torch_cuda_rng_state.npy"
-    SEED_INFO_FILENAME: ClassVar = "seed_info.json"
+    SEED_FILENAME: ClassVar = "seed.pickle"
 
     @classmethod
     def read(cls, directory: Path) -> SeedSnapshot:
-        seedinfo_path = directory / cls.SEED_INFO_FILENAME
-        py_rng_path = directory / cls.PY_RNG_TUPLE_FILENAME
-        np_rng_path = directory / cls.NP_RNG_STATE_FILENAME
-        torch_rng_path = directory / cls.TORCH_RNG_STATE_FILENAME
-        torch_cuda_rng_path = directory / cls.TORCH_CUDA_RNG_STATE_FILENAME
+        seedinfo_path = directory / cls.SEED_FILENAME
 
-        # Load and set pythons rng
-        py_rng_state = tuple(
-            int(x) for x in np.fromfile(py_rng_path, dtype=cls.PY_RNG_STATE_DTYPE)
-        )
-        np_rng_state = np.fromfile(np_rng_path, dtype=np.uint32)
-        seed_info = deserialize(seedinfo_path)
-
-        torch_rng_path_exists = torch_rng_path.exists()
-        torch_cuda_rng_path_exists = torch_cuda_rng_path.exists()
-
-        # By specifying `weights_only=True`, it disables arbitrary object loading
-        torch_rng_state = None
-        torch_cuda_rng = None
-        if torch_rng_path_exists or torch_cuda_rng_path_exists:
-            import torch
-
-            if torch_rng_path_exists:
-                # OPTIM: This ends up being much faster to go to numpy
-                _bytes = np.fromfile(torch_rng_path, dtype=np.uint8)
-                torch_rng_state = torch.tensor(_bytes, dtype=torch.uint8)
-
-            if torch_cuda_rng_path_exists:
-                # By specifying `weights_only=True`, it disables arbitrary object loading
-                torch_cuda_rng = torch.load(torch_cuda_rng_path, weights_only=True)
+        with seedinfo_path.open("rb") as f:
+            seed_info = pickle.load(f)
 
         return SeedSnapshot(
             np_rng=(
                 seed_info["np_rng_kind"],
-                np_rng_state,
+                seed_info["np_rng_state"],
                 seed_info["np_pos"],
                 seed_info["np_has_gauss"],
                 seed_info["np_cached_gauss"],
             ),
             py_rng=(
                 seed_info["py_rng_version"],
-                py_rng_state,
+                seed_info["py_rng_state"],
                 seed_info["py_guass_next"],
             ),
-            torch_rng=torch_rng_state,
-            torch_cuda_rng=torch_cuda_rng,
+            torch_rng=seed_info.get("torch_rng"),
+            torch_cuda_rng=seed_info.get("torch_cuda_rng"),
         )
 
     @classmethod
     def write(cls, snapshot: SeedSnapshot, directory: Path) -> None:
-        seedinfo_path = directory / cls.SEED_INFO_FILENAME
-        py_rng_path = directory / cls.PY_RNG_TUPLE_FILENAME
-        np_rng_path = directory / cls.NP_RNG_STATE_FILENAME
-        torch_rng_path = directory / cls.TORCH_RNG_STATE_FILENAME
-        torch_cuda_rng_path = directory / cls.TORCH_CUDA_RNG_STATE_FILENAME
-
         py_rng_version, py_rng_state, py_guass_next = snapshot.py_rng
-
-        np.array(py_rng_state, dtype=cls.PY_RNG_STATE_DTYPE).tofile(py_rng_path)
-
         seed_info = {
             "np_rng_kind": snapshot.np_rng[0],
             "np_pos": snapshot.np_rng[2],
@@ -206,26 +176,18 @@ class ReaderWriterSeedSnapshot:
             "np_cached_gauss": snapshot.np_rng[4],
             "py_rng_version": py_rng_version,
             "py_guass_next": py_guass_next,
+            "py_rng_state": np.array(py_rng_state, dtype=cls.PY_RNG_STATE_DTYPE),
+            "np_rng_state": snapshot.np_rng[1],
         }
-        with atomic_write(seedinfo_path, "w") as f:
-            json.dump(seed_info, f)
-
-        np_rng_state = snapshot.np_rng[1]
-        with atomic_write(np_rng_path, "wb") as f:
-            np_rng_state.tofile(f)
-
         if snapshot.torch_rng is not None:
-            import torch
-
-            # OPTIM: This ends up being much faster to go to numpy
-            with atomic_write(torch_rng_path, "wb") as f:
-                snapshot.torch_rng.numpy().tofile(f)
+            seed_info["torch_rng"] = snapshot.torch_rng.numpy()
 
         if snapshot.torch_cuda_rng is not None:
-            import torch
+            seed_info["torch_cuda_rng"] = snapshot.torch_cuda_rng
 
-            with atomic_write(torch_cuda_rng_path, "wb") as f:
-                torch.save(snapshot.torch_cuda_rng, f)
+        seedinfo_path = directory / cls.SEED_FILENAME
+        with seedinfo_path.open("wb") as f:
+            pickle.dump(seed_info, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 @dataclass
@@ -269,7 +231,7 @@ class ReaderWriterOptimizationState:
     @classmethod
     def write(cls, info: OptimizationState, directory: Path) -> None:
         info_path = directory / cls.STATE_FILE_NAME
-        with atomic_write(info_path, "w") as f:
+        with info_path.open("w") as f:
             json.dump(asdict(info), f)
 
 
@@ -288,7 +250,7 @@ class ReaderWriterErrDump:
     @classmethod
     def write(cls, err_dump: ErrDump, directory: Path) -> None:
         errors_path = directory / "errors.jsonl"
-        with atomic_write(errors_path, "w") as f:
+        with errors_path.open("w") as f:
             lines = [json.dumps(asdict(trial_err)) for trial_err in err_dump.errs]
             f.write("\n".join(lines))
 
@@ -329,7 +291,7 @@ class FileLocker:
                 timeout=self.timeout,
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
                 fail_when_locked=fail_if_locked,
-            ) as fh:
+            ):
                 if worker_id is not None:
                     logger.debug(
                         "Worker %s acquired lock on %s at %s",
@@ -339,8 +301,6 @@ class FileLocker:
                     )
 
                 yield
-                fh.flush()
-                os.fsync(fh)
         except pl.exceptions.LockException as e:
             raise pl.exceptions.LockException(
                 f"Failed to acquire lock after timeout of {self.timeout} seconds."

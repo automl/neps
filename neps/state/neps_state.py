@@ -10,6 +10,8 @@ For an actual instantiation of this object, see
 
 from __future__ import annotations
 
+import gc
+import io
 import logging
 import pickle
 import time
@@ -29,6 +31,7 @@ from uuid import uuid4
 from neps.env import (
     STATE_FILELOCK_POLL,
     STATE_FILELOCK_TIMEOUT,
+    TRIAL_CACHE_MAX_UPDATES_BEFORE_CONSOLIDATION,
     TRIAL_FILELOCK_POLL,
     TRIAL_FILELOCK_TIMEOUT,
 )
@@ -46,11 +49,14 @@ from neps.state.filebased import (
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Report, Trial
+from neps.utils.files import atomic_write
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
 
 logger = logging.getLogger(__name__)
+
+
 N_UNSAFE_RETRIES = 10
 
 # TODO: Technically we don't need the same Location type for all shared objects.
@@ -76,6 +82,7 @@ CONFIG_PREFIX_LEN = len("config_")
 @dataclass
 class TrialRepo:
     CACHE_FILE_NAME = ".trial_cache.pkl"
+    UPDATE_CONSOLIDATION_LIMIT = TRIAL_CACHE_MAX_UPDATES_BEFORE_CONSOLIDATION
 
     directory: Path
     cache_path: Path = field(init=False)
@@ -91,31 +98,70 @@ class TrialRepo:
             if config_path.name.startswith("config_") and config_path.is_dir()
         ]
 
+    def _read_pkl_and_maybe_consolidate(
+        self,
+        *,
+        consolidate: bool | None = None,
+    ) -> dict[str, Trial]:
+        with self.cache_path.open("rb") as f:
+            _bytes = f.read()
+
+        buffer = io.BytesIO(_bytes)
+        try:
+            gc.disable()
+            trials = {}
+            updates = []
+            while True:
+                try:
+                    datum = pickle.load(buffer)
+                    if isinstance(datum, dict):
+                        assert len(trials) == 0, "Multiple caches present."
+                        trials = datum
+                    else:
+                        assert isinstance(datum, Trial), "Not a trial."
+                        updates.append(datum)
+                except EOFError:
+                    break
+
+            trials.update({trial.id: trial for trial in updates})
+            if consolidate is True or (
+                len(updates) > self.UPDATE_CONSOLIDATION_LIMIT and consolidate is None
+            ):
+                logger.debug(
+                    "Consolidating trial cache with %d trials and %d updates.",
+                    len(trials),
+                    len(updates),
+                )
+                with atomic_write(self.cache_path, "wb") as f:
+                    pickle.dump(trials, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            return trials
+        finally:
+            gc.enable()
+
     def latest(self) -> dict[str, Trial]:
         if not self.cache_path.exists():
-            # If we end up with no cache but there are trials on disk, we need to
-            # read them in. However we will not save back the cache here in fear of
-            # overwriting
+            # If we end up with no cache but there are trials on disk, we need to read in.
             if any(path.name.startswith("config_") for path in self.directory.iterdir()):
                 trial_ids = self.list_trial_ids()
-                return {
+                trials = {
                     trial_id: self.load_trial_from_disk(trial_id)
                     for trial_id in trial_ids
                 }
+                with atomic_write(self.cache_path, "wb") as f:
+                    pickle.dump(trials, f, protocol=pickle.HIGHEST_PROTOCOL)
 
             return {}
 
-        with self.cache_path.open("rb") as f:
-            return pickle.load(f)  # noqa: S301
+        return self._read_pkl_and_maybe_consolidate()
 
     def new_trial(self, trial: Trial) -> None:
         config_path = self.directory / f"config_{trial.id}"
         if config_path.exists():
             raise TrialAlreadyExistsError(trial.id, config_path)
-        trials = self.latest()
-        with self.cache_path.open("wb") as f:
-            trials[trial.id] = trial
-            pickle.dump(trials, f)
+
+        with atomic_write(self.cache_path, "ab") as f:
+            pickle.dump(trial, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         config_path.mkdir(parents=True, exist_ok=True)
         TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=None)
@@ -126,10 +172,8 @@ class TrialRepo:
         *,
         hints: list[TrialWriteHint] | TrialWriteHint | None = None,
     ) -> None:
-        trials = self.latest()
-        with self.cache_path.open("wb") as f:
-            trials[trial.id] = trial
-            pickle.dump(trials, f)
+        with atomic_write(self.cache_path, "ab") as f:
+            pickle.dump(trial, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=hints)
 
