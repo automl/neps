@@ -354,9 +354,9 @@ class DefaultWorker(Generic[Loc]):
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
-        with self.state._optimizer_lock.lock():
+        with self.state._optimizer_lock.lock(worker_id=self.worker_id):
             time.sleep(self._GRACE)  # Give the lock some time
-            with self.state._trial_lock.lock():
+            with self.state._trial_lock.lock(worker_id=self.worker_id):
                 time.sleep(self._GRACE)  # Give the lock some time
                 DEBUG_COUNT_FILE = Path(self.state.path / "DEBUG_COUNT_FILE")
                 with DEBUG_COUNT_FILE.open("a") as f:
@@ -406,16 +406,13 @@ class DefaultWorker(Generic[Loc]):
                 trials=trials,
             )
 
-            with self.state._trial_lock.lock():
+            with self.state._trial_lock.lock(worker_id=self.worker_id):
                 try:
                     sampled_trial.set_evaluating(
                         time_started=time.time(),
                         worker_id=self.worker_id,
                     )
                     self.state._trials.new_trial(sampled_trial)
-                    logger.info(
-                        "I, MR WORKER %s, SAMPLED %s", self.worker_id, sampled_trial.id
-                    )
                     logger.info(
                         "Worker '%s' sampled new trial: %s.",
                         self.worker_id,
@@ -568,7 +565,7 @@ class DefaultWorker(Generic[Loc]):
             # We do not retry this, as if some other worker has
             # managed to manipulate this trial in the meantime,
             # then something has gone wrong
-            with self.state._trial_lock.lock():
+            with self.state._trial_lock.lock(worker_id=self.worker_id):
                 self.state._report_trial_evaluation(
                     trial=evaluated_trial,
                     report=report,
