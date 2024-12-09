@@ -395,6 +395,7 @@ class DefaultWorker(Generic[Loc]):
                         earliest_pending.id,
                     )
                     return earliest_pending
+                logger.info("I, MR WORKER %s released thel lock", self.worker_id)
 
             # NOTE: It's important to release the trial lock before sampling
             # as otherwise, any other service, such as reporting the result
