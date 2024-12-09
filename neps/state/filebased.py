@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import pprint
-import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
@@ -14,7 +13,7 @@ from typing import ClassVar, Final, Literal, TypeAlias, TypeVar
 import numpy as np
 import portalocker as pl
 
-from neps.env import ENV_VARS_USED, FS_SYNC_GRACE_BASE
+from neps.env import ENV_VARS_USED
 from neps.state.err_dump import ErrDump
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
@@ -308,14 +307,9 @@ class FileLocker:
     lock_path: Path
     poll: float
     timeout: float | None
-    _GRACE: ClassVar = FS_SYNC_GRACE_BASE
 
     def __post_init__(self) -> None:
         self.lock_path = self.lock_path.resolve().absolute()
-
-    @classmethod
-    def _increse_grace(cls, grace: float) -> None:
-        cls._GRACE = grace + cls._GRACE
 
     @contextmanager
     def lock(
@@ -334,7 +328,6 @@ class FileLocker:
                 flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
                 fail_when_locked=fail_if_locked,
             ) as fh:
-                time.sleep(self._GRACE)  # Give the lock some time to
                 yield
                 fh.flush()
                 os.fsync(fh)

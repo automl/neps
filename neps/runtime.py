@@ -14,12 +14,14 @@ from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
+    ClassVar,
     Generic,
     Literal,
     TypeVar,
 )
 
 from neps.env import (
+    FS_SYNC_GRACE_BASE,
     FS_SYNC_GRACE_INC,
     LINUX_FILELOCK_FUNCTION,
     MAX_RETRIES_CREATE_LOAD_STATE,
@@ -33,7 +35,6 @@ from neps.exceptions import (
     WorkerRaiseError,
 )
 from neps.state._eval import evaluate_trial
-from neps.state.filebased import FileLocker
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
@@ -155,6 +156,8 @@ class DefaultWorker(Generic[Loc]):
 
     worker_cumulative_evaluation_time_seconds: float = 0.0
     """The time spent evaluating configurations by this worker."""
+
+    _GRACE: ClassVar = FS_SYNC_GRACE_BASE
 
     @classmethod
     def new(
@@ -353,6 +356,7 @@ class DefaultWorker(Generic[Loc]):
         # If there are no global stopping criterion, we can no just return early.
         with self.state._optimizer_lock.lock():
             with self.state._trial_lock.lock():
+                time.sleep(self._GRACE)  # Give the lock some time to
                 trials = self.state._trials.latest()
 
                 if self._requires_global_stopping_criterion:
@@ -418,7 +422,7 @@ class DefaultWorker(Generic[Loc]):
                             sampled_trial.id,
                         )
                     else:
-                        _grace = FileLocker._GRACE
+                        _grace = DefaultWorker._GRACE
                         _inc = FS_SYNC_GRACE_INC
                         logger.warning(
                             "The new sampled trial was given an id of '%s', which is not"
@@ -434,7 +438,7 @@ class DefaultWorker(Generic[Loc]):
                             _grace,
                             _grace + _inc,
                         )
-                        FileLocker._increse_grace(_inc)
+                        DefaultWorker._GRACE = _grace + FS_SYNC_GRACE_INC
                     raise e
 
     # Forgive me lord, for I have sinned, this function is atrocious but complicated
