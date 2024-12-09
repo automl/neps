@@ -360,7 +360,7 @@ class DefaultWorker(Generic[Loc]):
                 logger.info("I, MR WORKER %s obtained thel lock", self.worker_id)
                 DEBUG_COUNT_FILE = Path(self.state.path / "DEBUG_COUNT_FILE")
                 with DEBUG_COUNT_FILE.open("a") as f:
-                    f.write(f"{self.worker_id}\n")
+                    f.write(f"locked: {time.time()}\n")
 
                 trials = self.state._trials.latest()
 
@@ -396,6 +396,8 @@ class DefaultWorker(Generic[Loc]):
                     )
                     return earliest_pending
                 logger.info("I, MR WORKER %s released thel lock", self.worker_id)
+            with DEBUG_COUNT_FILE.open("a") as f:
+                f.write(f"unlocked: {time.time()}\n")
 
             # NOTE: It's important to release the trial lock before sampling
             # as otherwise, any other service, such as reporting the result
