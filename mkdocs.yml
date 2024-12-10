@@ -139,6 +139,10 @@ nav:
     - The Run Function: 'reference/run_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
+  - Optimizers:
+    - Multi-Fidelity Optimziers: 'optimizers/multifidelity.md'
+    - Prior Optimziers: 'optimizers/prior.md'
+    - Multi-Fidelity & Prior Optimziers: 'optimizers/multifidelity_prior.md'
   - Examples: "examples/"  # auto-generated
   - API: 'api/' # auto-generated
   - Contributing:
