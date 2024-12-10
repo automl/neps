@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional, List
 import neps
 from neps.api import Default
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.status.status import post_run_csv
 import pandas as pd
 from neps.utils.run_args import (
@@ -140,12 +141,13 @@ def init_config(args: argparse.Namespace) -> None:
                     path=directory,
                     optimizer_info=OptimizerInfo(optimizer_info),
                     optimizer_state=OptimizationState(
+                        seed_snapshot=SeedSnapshot.new_capture(),
                         budget=(
                             BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
                             if max_cost_total is not None
                             else None
                         ),
-                        shared_state={},  # TODO: Unused for the time being...
+                        shared_state=None,  # TODO: Unused for the time being...
                     ),
                 )
                 if is_new:
@@ -338,7 +340,7 @@ def info_config(args: argparse.Namespace) -> None:
 
     print("Trial Information:")
     print(f"  Trial ID: {trial.metadata.id}")
-    print(f"  State: {trial.state}")
+    print(f"  State: {trial.metadata.state}")
     print(f"  Configurations:")
     for key, value in trial.config.items():
         print(f"    {key}: {value}")
@@ -489,7 +491,7 @@ def status(args: argparse.Namespace) -> None:
     # Calculate the number of trials in different states
     trials = neps_state.lock_and_read_trials()
     evaluating_trials_count = sum(
-        1 for trial in trials.values() if trial.state == Trial.State.EVALUATING
+        1 for trial in trials.values() if trial.metadata.state == Trial.State.EVALUATING
     )
     pending_trials_count = summary["num_pending_configs"]
     succeeded_trials_count = summary["num_evaluated_configs"] - summary["num_error"]
@@ -516,15 +518,15 @@ def status(args: argparse.Namespace) -> None:
     # Filter trials based on state
     if args.pending:
         filtered_trials = [
-            trial for trial in sorted_trials if trial.state.name == "PENDING"
+            trial for trial in sorted_trials if trial.metadata.state.name == "PENDING"
         ]
     elif args.evaluating:
         filtered_trials = [
-            trial for trial in sorted_trials if trial.state.name == "EVALUATING"
+            trial for trial in sorted_trials if trial.metadata.state.name == "EVALUATING"
         ]
     elif args.succeeded:
         filtered_trials = [
-            trial for trial in sorted_trials if trial.state.name == "SUCCESS"
+            trial for trial in sorted_trials if trial.metadata.state.name == "SUCCESS"
         ]
     else:
         filtered_trials = sorted_trials[:7]
@@ -543,7 +545,7 @@ def status(args: argparse.Namespace) -> None:
     # Print the details of the filtered trials
     for trial in filtered_trials:
         time_sampled = convert_timestamp(trial.metadata.time_sampled)
-        if trial.state.name in ["PENDING", "EVALUATING"]:
+        if trial.metadata.state.name in ["PENDING", "EVALUATING"]:
             duration = compute_duration(trial.metadata.time_sampled)
         else:
             duration = (
@@ -553,7 +555,7 @@ def status(args: argparse.Namespace) -> None:
             )
         trial_id = trial.id
         worker_id = trial.metadata.sampling_worker_id
-        state = trial.state.name
+        state = trial.metadata.state.name
         loss = (
             f"{trial.report.loss:.6f}"
             if (trial.report and trial.report.loss is not None)

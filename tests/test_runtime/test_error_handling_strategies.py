@@ -10,6 +10,7 @@ from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.search_spaces import Float
 from neps.state.trial import Trial
@@ -20,7 +21,11 @@ def neps_state(tmp_path: Path) -> NePSState:
     return NePSState.create_or_load(
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(budget=None, shared_state={}),
+        optimizer_state=OptimizationState(
+            budget=None,
+            seed_snapshot=SeedSnapshot.new_capture(),
+            shared_state=None,
+        ),
     )
 
 
@@ -61,7 +66,8 @@ def test_worker_raises_when_error_in_self(
 
     trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
@@ -114,7 +120,8 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
 
     trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
@@ -184,10 +191,12 @@ def test_worker_does_not_raise_when_error_in_other_worker(
 
     trials = neps_state.lock_and_read_trials()
     n_success = sum(
-        trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.SUCCESS is not None
+        for trial in trials.values()
     )
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert n_success == 1
     assert n_crashed == 1

@@ -8,6 +8,7 @@ from neps.search_spaces.search_space import SearchSpace
 from neps.state.neps_state import NePSState
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.search_spaces import Float
 from neps.state.trial import Trial
@@ -18,7 +19,11 @@ def neps_state(tmp_path: Path) -> NePSState:
     return NePSState.create_or_load(
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(budget=None, shared_state={}),
+        optimizer_state=OptimizationState(
+            budget=None,
+            seed_snapshot=SeedSnapshot.new_capture(),
+            shared_state=None,
+        ),
     )
 
 
@@ -57,7 +62,7 @@ def test_max_evaluations_total_stopping_criterion(
 
     trials = neps_state.lock_and_read_trials()
     for _, trial in trials.items():
-        assert trial.state == Trial.State.SUCCESS
+        assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
         assert trial.report.loss == 1.0
 
@@ -111,7 +116,7 @@ def test_worker_evaluations_total_stopping_criterion(
     trials = neps_state.lock_and_read_trials()
     assert len(trials) == 2
     for _, trial in trials.items():
-        assert trial.state == Trial.State.SUCCESS
+        assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
         assert trial.report.loss == 1.0
 
@@ -132,7 +137,7 @@ def test_worker_evaluations_total_stopping_criterion(
     trials = neps_state.lock_and_read_trials()
     assert len(trials) == 4  # Now we should have 4 of them
     for _, trial in trials.items():
-        assert trial.state == Trial.State.SUCCESS
+        assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
         assert trial.report.loss == 1.0
 
@@ -182,13 +187,13 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 
     the_pending_trial = trials[pending_trial.id]
     assert the_pending_trial == pending_trial
-    assert the_pending_trial.state == Trial.State.EVALUATING
+    assert the_pending_trial.metadata.state == Trial.State.EVALUATING
     assert the_pending_trial.report is None
 
     the_completed_trial_id = next(iter(trials.keys() - {pending_trial.id}))
     the_completed_trial = trials[the_completed_trial_id]
 
-    assert the_completed_trial.state == Trial.State.SUCCESS
+    assert the_completed_trial.metadata.state == Trial.State.SUCCESS
     assert the_completed_trial.report is not None
     assert the_completed_trial.report.loss == 1.0
 

@@ -40,7 +40,6 @@ LINUX_FILELOCK_FUNCTION = get_env(
     parse=str,
     default="lockf",
 )
-
 MAX_RETRIES_GET_NEXT_TRIAL = get_env(
     "NEPS_MAX_RETRIES_GET_NEXT_TRIAL",
     parse=int,
@@ -96,7 +95,6 @@ STATE_FILELOCK_TIMEOUT = get_env(
     parse=lambda e: None if is_nullable(e) else float(e),
     default=120,
 )
-
 GLOBAL_ERR_FILELOCK_POLL = get_env(
     "NEPS_GLOBAL_ERR_FILELOCK_POLL",
     parse=float,

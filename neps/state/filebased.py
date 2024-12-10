@@ -3,30 +3,27 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-import pickle
 import pprint
 import time
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import ClassVar, Final, Literal, TypeAlias, TypeVar
+from typing import Literal, TypeAlias, TypeVar
 
-import numpy as np
 import portalocker as pl
 
 from neps.env import CONFIG_SERIALIZE_FORMAT, ENV_VARS_USED
 from neps.state.err_dump import ErrDump
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Trial
+from neps.utils.common import gc_disabled
 from neps.utils.files import deserialize, serialize
 
 logger = logging.getLogger(__name__)
 K = TypeVar("K")
 T = TypeVar("T")
 
-TrialWriteHint: TypeAlias = Literal["metadata", "report", "state", "config"]
+TrialWriteHint: TypeAlias = Literal["metadata", "report", "config"]
 
 
 @dataclass
@@ -42,23 +39,22 @@ class ReaderWriterTrial:
     # is much faster.
     METADATA_FILENAME = "metadata.json"
 
-    STATE_FILENAME = "state.txt"
     PREVIOUS_TRIAL_ID_FILENAME = "previous_trial_id.txt"
 
     @classmethod
     def read(cls, directory: Path) -> Trial:
         config_path = directory / cls.CONFIG_FILENAME
         metadata_path = directory / cls.METADATA_FILENAME
-        state_path = directory / cls.STATE_FILENAME
         report_path = directory / cls.REPORT_FILENAME
 
         with metadata_path.open("r") as f:
             metadata = json.load(f)
 
+        metadata["state"] = Trial.State(metadata["state"])
+
         return Trial(
             config=deserialize(config_path, file_format=CONFIG_SERIALIZE_FORMAT),
             metadata=Trial.MetaData(**metadata),
-            state=Trial.State(state_path.read_text(encoding="utf-8").strip()),
             report=(
                 Trial.Report(
                     **deserialize(report_path, file_format=CONFIG_SERIALIZE_FORMAT),
@@ -74,165 +70,66 @@ class ReaderWriterTrial:
         trial: Trial,
         directory: Path,
         *,
-        hints: list[TrialWriteHint] | TrialWriteHint | None = None,
+        hints: Iterable[TrialWriteHint] | TrialWriteHint | None = None,
+        _recurse: bool = False,
     ) -> None:
         config_path = directory / cls.CONFIG_FILENAME
         metadata_path = directory / cls.METADATA_FILENAME
-        state_path = directory / cls.STATE_FILENAME
 
-        if isinstance(hints, str):
-            match hints:
-                case "config":
-                    serialize(
-                        trial.config,
-                        config_path,
-                        check_serialized=False,
-                        file_format=CONFIG_SERIALIZE_FORMAT,
-                    )
-                case "metadata":
-                    data = asdict(trial.metadata)
-                    with metadata_path.open("w") as f:
-                        json.dump(data, f)
-
-                    if trial.metadata.previous_trial_id is not None:
-                        previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
-                        previous_trial_path.write_text(trial.metadata.previous_trial_id)
-                case "report":
-                    if trial.report is None:
-                        raise ValueError(
-                            "Cannot write report 'hint' when report is None."
+        cm = contextlib.nullcontext if _recurse else gc_disabled
+        with cm():
+            if isinstance(hints, str):
+                match hints:
+                    case "config":
+                        serialize(
+                            trial.config,
+                            config_path,
+                            check_serialized=False,
+                            file_format=CONFIG_SERIALIZE_FORMAT,
                         )
+                    case "metadata":
+                        data = asdict(trial.metadata)
+                        data["state"] = data["state"].value
+                        with metadata_path.open("w") as f:
+                            json.dump(data, f)
 
-                    report_path = directory / cls.REPORT_FILENAME
-                    _report = asdict(trial.report)
-                    if (err := _report.get("err")) is not None:
-                        _report["err"] = str(err)
+                        if trial.metadata.previous_trial_id is not None:
+                            previous_trial_path = (
+                                directory / cls.PREVIOUS_TRIAL_ID_FILENAME
+                            )
+                            previous_trial_path.write_text(
+                                trial.metadata.previous_trial_id
+                            )
+                    case "report":
+                        if trial.report is None:
+                            raise ValueError(
+                                "Cannot write report 'hint' when report is None."
+                            )
 
-                    serialize(
-                        _report,
-                        report_path,
-                        check_serialized=False,
-                        file_format=CONFIG_SERIALIZE_FORMAT,
-                    )
-                case "state":
-                    state_path.write_text(trial.state.value, encoding="utf-8")
-                case _:
-                    raise ValueError(f"Invalid hint: {hints}")
-        elif isinstance(hints, list):
-            for hint in hints:
-                cls.write(trial, directory, hints=hint)
-        elif hints is None:
-            # We don't know, write everything
-            cls.write(trial, directory, hints=["config", "metadata", "state"])
+                        report_path = directory / cls.REPORT_FILENAME
+                        _report = asdict(trial.report)
+                        if (err := _report.get("err")) is not None:
+                            _report["err"] = str(err)
 
-            if trial.report is not None:
-                cls.write(trial, directory, hints="report")
-        else:
-            raise ValueError(f"Invalid hint: {hints}")
+                        serialize(
+                            _report,
+                            report_path,
+                            check_serialized=False,
+                            file_format=CONFIG_SERIALIZE_FORMAT,
+                        )
+                    case _:
+                        raise ValueError(f"Invalid hint: {hints}")
+            elif isinstance(hints, Iterable):
+                for hint in hints:
+                    cls.write(trial, directory, hints=hint, _recurse=True)
+            elif hints is None:
+                # We don't know, write everything
+                cls.write(trial, directory, hints=["config", "metadata"], _recurse=True)
 
-
-TrialReaderWriter: Final = ReaderWriterTrial()
-
-
-@dataclass
-class ReaderWriterSeedSnapshot:
-    """ReaderWriter for SeedSnapshot objects."""
-
-    # It seems like they're all uint32 but I can't be sure.
-    PY_RNG_STATE_DTYPE: ClassVar = np.int64
-    SEED_FILENAME: ClassVar = "seed.pickle"
-
-    @classmethod
-    def read(cls, directory: Path) -> SeedSnapshot:
-        seedinfo_path = directory / cls.SEED_FILENAME
-
-        with seedinfo_path.open("rb") as f:
-            seed_info = pickle.load(f)
-
-        return SeedSnapshot(
-            np_rng=(
-                seed_info["np_rng_kind"],
-                seed_info["np_rng_state"],
-                seed_info["np_pos"],
-                seed_info["np_has_gauss"],
-                seed_info["np_cached_gauss"],
-            ),
-            py_rng=(
-                seed_info["py_rng_version"],
-                seed_info["py_rng_state"],
-                seed_info["py_guass_next"],
-            ),
-            torch_rng=seed_info.get("torch_rng"),
-            torch_cuda_rng=seed_info.get("torch_cuda_rng"),
-        )
-
-    @classmethod
-    def write(cls, snapshot: SeedSnapshot, directory: Path) -> None:
-        py_rng_version, py_rng_state, py_guass_next = snapshot.py_rng
-        seed_info = {
-            "np_rng_kind": snapshot.np_rng[0],
-            "np_pos": snapshot.np_rng[2],
-            "np_has_gauss": snapshot.np_rng[3],
-            "np_cached_gauss": snapshot.np_rng[4],
-            "py_rng_version": py_rng_version,
-            "py_guass_next": py_guass_next,
-            "py_rng_state": np.array(py_rng_state, dtype=cls.PY_RNG_STATE_DTYPE),
-            "np_rng_state": snapshot.np_rng[1],
-        }
-        if snapshot.torch_rng is not None:
-            seed_info["torch_rng"] = snapshot.torch_rng.numpy()
-
-        if snapshot.torch_cuda_rng is not None:
-            seed_info["torch_cuda_rng"] = snapshot.torch_cuda_rng
-
-        seedinfo_path = directory / cls.SEED_FILENAME
-        with seedinfo_path.open("wb") as f:
-            pickle.dump(seed_info, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-@dataclass
-class ReaderWriterOptimizerInfo:
-    """ReaderWriter for OptimizerInfo objects."""
-
-    INFO_FILENAME: ClassVar = "info.yaml"
-
-    @classmethod
-    def read(cls, directory: Path) -> OptimizerInfo:
-        info_path = directory / cls.INFO_FILENAME
-        return OptimizerInfo(info=deserialize(info_path))
-
-    @classmethod
-    def write(cls, optimizer_info: OptimizerInfo, directory: Path) -> None:
-        info_path = directory / cls.INFO_FILENAME
-        serialize(optimizer_info.info, info_path)
-
-
-# TODO(eddiebergman): If an optimizer wants to store some hefty state, i.e. a numpy array
-# or something, this is horribly inefficient and we would need to adapt OptimizerState to
-# handle this.
-# TODO(eddiebergman): May also want to consider serializing budget into a seperate entity
-@dataclass
-class ReaderWriterOptimizationState:
-    """ReaderWriter for OptimizationState objects."""
-
-    STATE_FILE_NAME: ClassVar = "state.json"
-
-    @classmethod
-    def read(cls, directory: Path) -> OptimizationState:
-        state_path = directory / cls.STATE_FILE_NAME
-        with state_path.open("r") as f:
-            state = json.load(f)
-
-        shared_state = state.get("shared_state") or {}
-        budget_info = state.get("budget")
-        budget = BudgetInfo(**budget_info) if budget_info is not None else None
-        return OptimizationState(shared_state=shared_state, budget=budget)
-
-    @classmethod
-    def write(cls, info: OptimizationState, directory: Path) -> None:
-        info_path = directory / cls.STATE_FILE_NAME
-        with info_path.open("w") as f:
-            json.dump(asdict(info), f)
+                if trial.report is not None:
+                    cls.write(trial, directory, hints="report", _recurse=True)
+            else:
+                raise ValueError(f"Invalid hint: {hints}")
 
 
 @dataclass
@@ -240,17 +137,18 @@ class ReaderWriterErrDump:
     """ReaderWriter for shared error lists."""
 
     @classmethod
-    def read(cls, directory: Path) -> ErrDump:
-        errors_path = directory / "errors.jsonl"
-        with errors_path.open("r") as f:
+    def read(cls, path: Path) -> ErrDump:
+        if not path.exists():
+            return ErrDump([])
+
+        with path.open("r") as f:
             data = [json.loads(line) for line in f]
 
         return ErrDump([ErrDump.SerializableTrialError(**d) for d in data])
 
     @classmethod
-    def write(cls, err_dump: ErrDump, directory: Path) -> None:
-        errors_path = directory / "errors.jsonl"
-        with errors_path.open("w") as f:
+    def write(cls, err_dump: ErrDump, path: Path) -> None:
+        with path.open("w") as f:
             lines = [json.dumps(asdict(trial_err)) for trial_err in err_dump.errs]
             f.write("\n".join(lines))
 
@@ -274,24 +172,17 @@ class FileLocker:
 
     def __post_init__(self) -> None:
         self.lock_path = self.lock_path.resolve().absolute()
+        self._lock = pl.Lock(
+            self.lock_path,
+            check_interval=self.poll,
+            timeout=self.timeout,
+            flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
+        )
 
     @contextmanager
-    def lock(
-        self,
-        *,
-        fail_if_locked: bool = False,
-        worker_id: str | None = None,
-    ) -> Iterator[None]:
-        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
-
+    def lock(self, *, worker_id: str | None = None) -> Iterator[None]:
         try:
-            with pl.Lock(
-                self.lock_path,
-                check_interval=self.poll,
-                timeout=self.timeout,
-                flags=FILELOCK_EXCLUSIVE_NONE_BLOCKING,
-                fail_when_locked=fail_if_locked,
-            ):
+            with self._lock:
                 if worker_id is not None:
                     logger.debug(
                         "Worker %s acquired lock on %s at %s",

@@ -11,6 +11,7 @@ from neps.state.neps_state import NePSState
 import pytest
 from pytest_cases import fixture, parametrize
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 
 
 @fixture
@@ -20,7 +21,11 @@ def optimizer_state(
     budget: BudgetInfo | None,
     shared_state: dict[str, Any],
 ) -> OptimizationState:
-    return OptimizationState(budget=budget, shared_state=shared_state)
+    return OptimizationState(
+        budget=budget,
+        seed_snapshot=SeedSnapshot.new_capture(),
+        shared_state=shared_state,
+    )
 
 
 @fixture
@@ -69,6 +74,7 @@ def test_create_or_load_with_load_filebased_neps_state(
     # was passed in.
     different_state = OptimizationState(
         budget=BudgetInfo(max_cost_budget=20, used_cost_budget=10),
+        seed_snapshot=SeedSnapshot.new_capture(),
         shared_state={"c": "d"},
     )
     neps_state2 = NePSState.create_or_load(

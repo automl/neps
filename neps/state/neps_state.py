@@ -10,17 +10,15 @@ For an actual instantiation of this object, see
 
 from __future__ import annotations
 
-import gc
 import io
 import logging
 import pickle
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
-    Generic,
     Literal,
     TypeAlias,
     TypeVar,
@@ -29,6 +27,8 @@ from typing import (
 from uuid import uuid4
 
 from neps.env import (
+    GLOBAL_ERR_FILELOCK_POLL,
+    GLOBAL_ERR_FILELOCK_TIMEOUT,
     STATE_FILELOCK_POLL,
     STATE_FILELOCK_TIMEOUT,
     TRIAL_CACHE_MAX_UPDATES_BEFORE_CONSOLIDATION,
@@ -40,19 +40,16 @@ from neps.state.err_dump import ErrDump
 from neps.state.filebased import (
     FileLocker,
     ReaderWriterErrDump,
-    ReaderWriterOptimizationState,
-    ReaderWriterOptimizerInfo,
-    ReaderWriterSeedSnapshot,
-    TrialReaderWriter,
+    ReaderWriterTrial,
     TrialWriteHint,
 )
-from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
+from neps.state.optimizer import OptimizerInfo
 from neps.state.trial import Report, Trial
-from neps.utils.files import atomic_write
+from neps.utils.files import atomic_write, deserialize, serialize
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
+    from neps.state.optimizer import OptimizationState
 
 logger = logging.getLogger(__name__)
 
@@ -107,37 +104,34 @@ class TrialRepo:
             _bytes = f.read()
 
         buffer = io.BytesIO(_bytes)
-        try:
-            gc.disable()
-            trials = {}
-            updates = []
-            while True:
-                try:
-                    datum = pickle.load(buffer)
-                    if isinstance(datum, dict):
-                        assert len(trials) == 0, "Multiple caches present."
-                        trials = datum
-                    else:
-                        assert isinstance(datum, Trial), "Not a trial."
-                        updates.append(datum)
-                except EOFError:
-                    break
+        trials = {}
+        updates = []
+        while True:
+            try:
+                datum = pickle.load(buffer)  # noqa: S301
+                if isinstance(datum, dict):
+                    assert len(trials) == 0, "Multiple caches present."
+                    trials = datum
+                else:
+                    assert isinstance(datum, Trial), "Not a trial."
+                    updates.append(datum)
+            except EOFError:
+                break
 
-            trials.update({trial.id: trial for trial in updates})
-            if consolidate is True or (
-                len(updates) > self.UPDATE_CONSOLIDATION_LIMIT and consolidate is None
-            ):
-                logger.debug(
-                    "Consolidating trial cache with %d trials and %d updates.",
-                    len(trials),
-                    len(updates),
-                )
-                with atomic_write(self.cache_path, "wb") as f:
-                    pickle.dump(trials, f, protocol=pickle.HIGHEST_PROTOCOL)
+        trials.update({trial.id: trial for trial in updates})
+        if consolidate is True or (
+            len(updates) > self.UPDATE_CONSOLIDATION_LIMIT and consolidate is None
+        ):
+            logger.debug(
+                "Consolidating trial cache with %d trials and %d updates.",
+                len(trials),
+                len(updates),
+            )
+            pickle_bytes = pickle.dumps(trials, protocol=pickle.HIGHEST_PROTOCOL)
+            with atomic_write(self.cache_path, "wb") as f:
+                f.write(pickle_bytes)
 
-            return trials
-        finally:
-            gc.enable()
+        return trials
 
     def latest(self) -> dict[str, Trial]:
         if not self.cache_path.exists():
@@ -148,8 +142,9 @@ class TrialRepo:
                     trial_id: self.load_trial_from_disk(trial_id)
                     for trial_id in trial_ids
                 }
+                pickle_bytes = pickle.dumps(trials, protocol=pickle.HIGHEST_PROTOCOL)
                 with atomic_write(self.cache_path, "wb") as f:
-                    pickle.dump(trials, f, protocol=pickle.HIGHEST_PROTOCOL)
+                    f.write(pickle_bytes)
 
             return {}
 
@@ -160,103 +155,35 @@ class TrialRepo:
         if config_path.exists():
             raise TrialAlreadyExistsError(trial.id, config_path)
 
+        bytes_ = pickle.dumps(trial, protocol=pickle.HIGHEST_PROTOCOL)
         with atomic_write(self.cache_path, "ab") as f:
-            pickle.dump(trial, f, protocol=pickle.HIGHEST_PROTOCOL)
+            f.write(bytes_)
 
         config_path.mkdir(parents=True, exist_ok=True)
-        TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=None)
+        ReaderWriterTrial.write(
+            trial,
+            self.directory / f"config_{trial.id}",
+            hints=["config", "metadata"],
+        )
 
     def update_trial(
         self,
         trial: Trial,
         *,
-        hints: list[TrialWriteHint] | TrialWriteHint | None = None,
+        hints: Iterable[TrialWriteHint] | TrialWriteHint | None = ("report", "metadata"),
     ) -> None:
+        bytes_ = pickle.dumps(trial, protocol=pickle.HIGHEST_PROTOCOL)
         with atomic_write(self.cache_path, "ab") as f:
-            pickle.dump(trial, f, protocol=pickle.HIGHEST_PROTOCOL)
+            f.write(bytes_)
 
-        TrialReaderWriter.write(trial, self.directory / f"config_{trial.id}", hints=hints)
+        ReaderWriterTrial.write(trial, self.directory / f"config_{trial.id}", hints=hints)
 
     def load_trial_from_disk(self, trial_id: str) -> Trial:
         config_path = self.directory / f"config_{trial_id}"
         if not config_path.exists():
             raise TrialNotFoundError(trial_id, config_path)
 
-        return TrialReaderWriter.read(config_path)
-
-
-@dataclass
-class VersionedResource(Generic[T]):
-    resource: T
-    path: Path
-    read: Callable[[Path], T]
-    write: Callable[[T, Path], None]
-    version_file: Path
-    version: Version = "__not_yet_written__"
-
-    def latest(self) -> T:
-        if not self.version_file.exists():
-            return self.resource
-
-        file_version = self.version_file.read_text()
-        if self.version == file_version:
-            return self.resource
-
-        self.resource = self.read(self.path)
-        self.version = file_version
-        return self.resource
-
-    def update(self, new_resource: T) -> Version:
-        self.resource = new_resource
-        self.version = make_sha()
-        self.version_file.write_text(self.version)
-        self.write(new_resource, self.path)
-        return self.version
-
-    @classmethod
-    def new(
-        cls,
-        resource: T,
-        path: Path,
-        read: Callable[[Path], T],
-        write: Callable[[T, Path], None],
-        version_file: Path,
-    ) -> VersionedResource[T]:
-        if version_file.exists():
-            raise FileExistsError(f"Version file already exists at '{version_file}'.")
-
-        write(resource, path)
-        version = make_sha()
-        version_file.write_text(version)
-        return cls(
-            resource=resource,
-            path=path,
-            read=read,
-            write=write,
-            version_file=version_file,
-            version=version,
-        )
-
-    @classmethod
-    def load(
-        cls,
-        path: Path,
-        *,
-        read: Callable[[Path], T],
-        write: Callable[[T, Path], None],
-        version_file: Path,
-    ) -> VersionedResource[T]:
-        if not path.exists():
-            raise FileNotFoundError(f"Resource not found at '{path}'.")
-
-        return cls(
-            resource=read(path),
-            path=path,
-            read=read,
-            write=write,
-            version_file=version_file,
-            version=version_file.read_text(),
-        )
+        return ReaderWriterTrial.read(config_path)
 
 
 @dataclass
@@ -269,12 +196,16 @@ class NePSState:
     _trials: TrialRepo = field(repr=False)
 
     _optimizer_lock: FileLocker = field(repr=False)
-    _optimizer_info: VersionedResource[OptimizerInfo] = field(repr=False)
-    _seed_snapshot: VersionedResource[SeedSnapshot] = field(repr=False)
-    _optimizer_state: VersionedResource[OptimizationState] = field(repr=False)
+
+    _optimizer_info_path: Path = field(repr=False)
+    _optimizer_info: OptimizerInfo = field(repr=False)
+
+    _optimizer_state_path: Path = field(repr=False)
+    _optimizer_state: OptimizationState = field(repr=False)
 
     _err_lock: FileLocker = field(repr=False)
-    _shared_errors: VersionedResource[ErrDump] = field(repr=False)
+    _shared_errors_path: Path = field(repr=False)
+    _shared_errors: ErrDump = field(repr=False)
 
     def lock_and_read_trials(self) -> dict[str, Trial]:
         """Acquire the state lock and read the trials."""
@@ -328,10 +259,10 @@ class NePSState:
         Returns:
             The new trial.
         """
-        seed_state = self._seed_snapshot.latest()
-        opt_state = self._optimizer_state.latest()
+        with self._optimizer_state_path.open("rb") as f:
+            opt_state = pickle.load(f)  # noqa: S301
 
-        seed_state.set_as_global_seed_state()
+        opt_state.seed_snapshot.set_as_global_seed_state()
 
         # TODO: Not sure if any existing pre_load hooks required
         # it to be done after `load_results`... I hope not.
@@ -339,32 +270,27 @@ class NePSState:
             for hook in _sample_hooks:
                 optimizer = hook(optimizer)
 
-        # NOTE: Re-work this, as the part's that are recomputed
-        # do not need to be serialized
-        budget = opt_state.budget
-        if budget is not None:
-            budget = budget.clone()
-
+        if opt_state.budget is not None:
             # NOTE: All other values of budget are ones that should remain
             # constant, there are currently only these two which are dynamic as
             # optimization unfold
-            budget.used_cost_budget = sum(
+            opt_state.budget.used_cost_budget = sum(
                 trial.report.cost
                 for trial in trials.values()
                 if trial.report is not None and trial.report.cost is not None
             )
-            budget.used_evaluations = len(trials)
+            opt_state.budget.used_evaluations = len(trials)
 
         sampled_config_maybe_new_opt_state = optimizer.ask(
             trials=trials,
-            budget_info=budget,
+            budget_info=opt_state.budget.clone(),
         )
 
         if isinstance(sampled_config_maybe_new_opt_state, tuple):
-            sampled_config, new_opt_state = sampled_config_maybe_new_opt_state
+            sampled_config, shared_state = sampled_config_maybe_new_opt_state
         else:
             sampled_config = sampled_config_maybe_new_opt_state
-            new_opt_state = opt_state.shared_state
+            shared_state = opt_state.shared_state
 
         if sampled_config.previous_config_id is not None:
             previous_trial = trials.get(sampled_config.previous_config_id)
@@ -385,11 +311,11 @@ class NePSState:
             time_sampled=time.time(),
             worker_id=worker_id,
         )
-        seed_state.recapture()
-        self._seed_snapshot.update(seed_state)
-        self._optimizer_state.update(
-            OptimizationState(budget=opt_state.budget, shared_state=new_opt_state)
-        )
+
+        opt_state.shared_state = shared_state
+        opt_state.seed_snapshot.recapture()
+        with self._optimizer_state_path.open("wb") as f:
+            pickle.dump(opt_state, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         return trial
 
@@ -411,11 +337,11 @@ class NePSState:
         """
         # IMPORTANT: We need to attach the report to the trial before updating the things.
         trial.report = report
-        self._trials.update_trial(trial, hints=["report", "metadata", "state"])
+        self._trials.update_trial(trial, hints=["report", "metadata"])
 
         if report.err is not None:
             with self._err_lock.lock():
-                err_dump = self._shared_errors.latest()
+                err_dump = ReaderWriterErrDump.read(self._shared_errors_path)
                 err_dump.errs.append(
                     ErrDump.SerializableTrialError(
                         trial_id=trial.id,
@@ -425,7 +351,7 @@ class NePSState:
                         tb=report.tb,
                     )
                 )
-                self._shared_errors.update(err_dump)
+                ReaderWriterErrDump.write(err_dump, self._shared_errors_path)
 
     def all_trial_ids(self) -> list[str]:
         """Get all the trial ids."""
@@ -434,17 +360,18 @@ class NePSState:
     def lock_and_get_errors(self) -> ErrDump:
         """Get all the errors that have occurred during the optimization."""
         with self._err_lock.lock():
-            return self._shared_errors.latest()
+            return ReaderWriterErrDump.read(self._shared_errors_path)
 
     def lock_and_get_optimizer_info(self) -> OptimizerInfo:
         """Get the optimizer information."""
         with self._optimizer_lock.lock():
-            return self._optimizer_info.latest()
+            return OptimizerInfo(info=deserialize(self._optimizer_info_path))
 
     def lock_and_get_optimizer_state(self) -> OptimizationState:
         """Get the optimizer state."""
-        with self._optimizer_lock.lock():
-            return self._optimizer_state.latest()
+        with self._optimizer_lock.lock():  # noqa: SIM117
+            with self._optimizer_state_path.open("rb") as f:
+                return pickle.load(f)  # noqa: S301
 
     def lock_and_get_trial_by_id(self, trial_id: str) -> Trial:
         """Get a trial by its id."""
@@ -503,7 +430,7 @@ class NePSState:
                 [
                     trial
                     for trial in trials.values()
-                    if trial.state == Trial.State.PENDING
+                    if trial.metadata.state == Trial.State.PENDING
                 ],
                 key=lambda t: t.metadata.time_sampled,
             )
@@ -557,14 +484,10 @@ class NePSState:
         path.mkdir(parents=True, exist_ok=True)
         config_dir = path / "configs"
         config_dir.mkdir(parents=True, exist_ok=True)
-        seed_dir = path / ".seed_state"
-        seed_dir.mkdir(parents=True, exist_ok=True)
-        error_dir = path / ".errors"
-        error_dir.mkdir(parents=True, exist_ok=True)
-        optimizer_state_dir = path / ".optimizer_state"
-        optimizer_state_dir.mkdir(parents=True, exist_ok=True)
-        optimizer_info_dir = path / ".optimizer_info"
-        optimizer_info_dir.mkdir(parents=True, exist_ok=True)
+
+        optimizer_info_path = path / "optimizer_info.yaml"
+        optimizer_state_path = path / "optimizer_state.pkl"
+        shared_errors_path = path / "shared_errors.jsonl"
 
         # We have to do one bit of sanity checking to ensure that the optimzier
         # info on disk manages the one we have recieved, otherwise we are unsure which
@@ -575,70 +498,29 @@ class NePSState:
         # check the optimizer info. If this assumption changes, then we would have
         # to first lock before we do this check
         if not is_new:
-            _optimizer_info = VersionedResource.load(
-                optimizer_info_dir,
-                read=ReaderWriterOptimizerInfo.read,
-                write=ReaderWriterOptimizerInfo.write,
-                version_file=optimizer_info_dir / ".version",
-            )
-            _optimizer_state = VersionedResource.load(
-                optimizer_state_dir,
-                read=ReaderWriterOptimizationState.read,
-                write=ReaderWriterOptimizationState.write,
-                version_file=optimizer_state_dir / ".version",
-            )
-            _seed_snapshot = VersionedResource.load(
-                seed_dir,
-                read=ReaderWriterSeedSnapshot.read,
-                write=ReaderWriterSeedSnapshot.write,
-                version_file=seed_dir / ".version",
-            )
-            _shared_errors = VersionedResource.load(
-                error_dir,
-                read=ReaderWriterErrDump.read,
-                write=ReaderWriterErrDump.write,
-                version_file=error_dir / ".version",
-            )
-            existing_info = _optimizer_info.latest()
+            existing_info = OptimizerInfo(info=deserialize(optimizer_info_path))
             if not load_only and existing_info != optimizer_info:
                 raise NePSError(
                     "The optimizer info on disk does not match the one provided."
                     f"\nOn disk: {existing_info}\nProvided: {optimizer_info}"
-                    f"\n\nLoaded the one on disk from {optimizer_info_dir}."
+                    f"\n\nLoaded the one on disk from {path}."
                 )
+            with optimizer_state_path.open("rb") as f:
+                optimizer_state = pickle.load(f)  # noqa: S301
+
+            optimizer_info = existing_info
+            error_dump = ReaderWriterErrDump.read(shared_errors_path)
         else:
             assert optimizer_info is not None
             assert optimizer_state is not None
-            _optimizer_info = VersionedResource.new(
-                resource=optimizer_info,
-                path=optimizer_info_dir,
-                read=ReaderWriterOptimizerInfo.read,
-                write=ReaderWriterOptimizerInfo.write,
-                version_file=optimizer_info_dir / ".version",
-            )
-            _optimizer_state = VersionedResource.new(
-                resource=optimizer_state,
-                path=optimizer_state_dir,
-                read=ReaderWriterOptimizationState.read,
-                write=ReaderWriterOptimizationState.write,
-                version_file=optimizer_state_dir / ".version",
-            )
-            _seed_snapshot = VersionedResource.new(
-                resource=SeedSnapshot.new_capture(),
-                path=seed_dir,
-                read=ReaderWriterSeedSnapshot.read,
-                write=ReaderWriterSeedSnapshot.write,
-                version_file=seed_dir / ".version",
-            )
-            _shared_errors = VersionedResource.new(
-                resource=ErrDump(),
-                path=error_dir,
-                read=ReaderWriterErrDump.read,
-                write=ReaderWriterErrDump.write,
-                version_file=error_dir / ".version",
-            )
 
-        return cls(
+            serialize(optimizer_info.info, path=optimizer_info_path)
+            with optimizer_state_path.open("wb") as f:
+                pickle.dump(optimizer_state, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            error_dump = ErrDump([])
+
+        return NePSState(
             path=path,
             _trials=TrialRepo(config_dir),
             # Locks,
@@ -648,18 +530,20 @@ class NePSState:
                 timeout=TRIAL_FILELOCK_TIMEOUT,
             ),
             _optimizer_lock=FileLocker(
-                lock_path=path / ".state.lock",
+                lock_path=path / ".optimizer.lock",
                 poll=STATE_FILELOCK_POLL,
                 timeout=STATE_FILELOCK_TIMEOUT,
             ),
             _err_lock=FileLocker(
-                lock_path=error_dir / "errors.lock",
-                poll=TRIAL_FILELOCK_POLL,
-                timeout=TRIAL_FILELOCK_TIMEOUT,
+                lock_path=path / ".errors.lock",
+                poll=GLOBAL_ERR_FILELOCK_POLL,
+                timeout=GLOBAL_ERR_FILELOCK_TIMEOUT,
             ),
             # State
-            _optimizer_info=_optimizer_info,
-            _optimizer_state=_optimizer_state,
-            _seed_snapshot=_seed_snapshot,
-            _shared_errors=_shared_errors,
+            _optimizer_info_path=optimizer_info_path,
+            _optimizer_info=optimizer_info,
+            _optimizer_state_path=optimizer_state_path,
+            _optimizer_state=optimizer_state,  # type: ignore
+            _shared_errors_path=shared_errors_path,
+            _shared_errors=error_dump,
         )

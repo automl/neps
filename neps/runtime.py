@@ -37,8 +37,10 @@ from neps.exceptions import (
 from neps.state._eval import evaluate_trial
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.state.trial import Trial
+from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
     from neps.optimizers.base_optimizer import BaseOptimizer
@@ -358,7 +360,9 @@ class DefaultWorker(Generic[Loc]):
             # NOTE: It's important to release the trial lock before sampling
             # as otherwise, any other service, such as reporting the result
             # of a trial. Hence we do not lock these together with the above.
-            with self.state._trial_lock.lock(worker_id=self.worker_id):
+            # OPTIM: We try to prevent garbage collection from happening in here to
+            # minimize time spent holding on to the lock.
+            with self.state._trial_lock.lock(worker_id=self.worker_id), gc_disabled():
                 # Give the file-system some time to sync if we encountered out-of-order
                 # issues with this worker.
                 if self._GRACE > 0:
@@ -375,7 +379,7 @@ class DefaultWorker(Generic[Loc]):
                 pending_trials = [
                     trial
                     for trial in trials.values()
-                    if trial.state == Trial.State.PENDING
+                    if trial.metadata.state == Trial.State.PENDING
                 ]
 
                 if len(pending_trials) > 0:
@@ -387,10 +391,7 @@ class DefaultWorker(Generic[Loc]):
                         time_started=time.time(),
                         worker_id=self.worker_id,
                     )
-                    self.state._trials.update_trial(
-                        earliest_pending,
-                        hints=["metadata", "state"],
-                    )
+                    self.state._trials.update_trial(earliest_pending, hints="metadata")
                     logger.info(
                         "Worker '%s' picked up pending trial: %s.",
                         self.worker_id,
@@ -404,7 +405,7 @@ class DefaultWorker(Generic[Loc]):
                 trials=trials,
             )
 
-            with self.state._trial_lock.lock(worker_id=self.worker_id):
+            with self.state._trial_lock.lock(worker_id=self.worker_id), gc_disabled():
                 try:
                     sampled_trial.set_evaluating(
                         time_started=time.time(),
@@ -546,7 +547,7 @@ class DefaultWorker(Generic[Loc]):
                 "Worker '%s' evaluated trial: %s as %s.",
                 self.worker_id,
                 evaluated_trial.id,
-                evaluated_trial.state,
+                evaluated_trial.metadata.state,
             )
 
             if report.cost is not None:
@@ -610,6 +611,7 @@ def _launch_runtime(  # noqa: PLR0913
                 load_only=False,
                 optimizer_info=OptimizerInfo(optimizer_info),
                 optimizer_state=OptimizationState(
+                    seed_snapshot=SeedSnapshot.new_capture(),
                     budget=(
                         BudgetInfo(
                             max_cost_budget=max_cost_total,
@@ -618,7 +620,7 @@ def _launch_runtime(  # noqa: PLR0913
                             used_evaluations=0,
                         )
                     ),
-                    shared_state={},  # TODO: Unused for the time being...
+                    shared_state=None,  # TODO: Unused for the time being...
                 ),
             )
             break

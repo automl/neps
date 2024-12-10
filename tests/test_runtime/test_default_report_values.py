@@ -6,6 +6,7 @@ from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.search_spaces import Float
 from neps.state.trial import Trial
@@ -16,7 +17,9 @@ def neps_state(tmp_path: Path) -> NePSState:
     return NePSState.create_or_load(
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(budget=None, shared_state={}),
+        optimizer_state=OptimizationState(
+            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+        ),
     )
 
 
@@ -55,7 +58,8 @@ def test_default_values_on_error(
 
     trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
@@ -64,7 +68,7 @@ def test_default_values_on_error(
     assert len(neps_state.lock_and_get_errors()) == 1
 
     trial = trials.popitem()[1]
-    assert trial.state == Trial.State.CRASHED
+    assert trial.metadata.state == Trial.State.CRASHED
     assert trial.report is not None
     assert trial.report.loss == 2.4
     assert trial.report.cost == 2.4
@@ -105,7 +109,8 @@ def test_default_values_on_not_specified(
 
     trials = neps_state.lock_and_read_trials()
     n_sucess = sum(
-        trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.SUCCESS is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_sucess == 1
@@ -114,7 +119,7 @@ def test_default_values_on_not_specified(
     assert len(neps_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
-    assert trial.state == Trial.State.SUCCESS
+    assert trial.metadata.state == Trial.State.SUCCESS
     assert trial.report is not None
     assert trial.report.cost == 2.4
     assert trial.report.learning_curve == [2.4, 2.5]
@@ -153,7 +158,8 @@ def test_default_value_loss_curve_take_loss_value(
 
     trials = neps_state.lock_and_read_trials()
     n_sucess = sum(
-        trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.SUCCESS is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_sucess == 1
@@ -162,6 +168,6 @@ def test_default_value_loss_curve_take_loss_value(
     assert len(neps_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
-    assert trial.state == Trial.State.SUCCESS
+    assert trial.metadata.state == Trial.State.SUCCESS
     assert trial.report is not None
     assert trial.report.learning_curve == [LOSS]

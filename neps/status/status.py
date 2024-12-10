@@ -62,12 +62,12 @@ def get_summary_dict(
     in_progress = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.EVALUATING
+        if trial.metadata.state == Trial.State.EVALUATING
     }
     pending = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.PENDING
+        if trial.metadata.state == Trial.State.PENDING
     }
 
     summary: dict[str, Any] = {}

@@ -43,8 +43,10 @@ class MetaData:
 
     id: str
     location: str
+    state: State
     previous_trial_id: str | None
     previous_trial_location: str | None
+
     sampling_worker_id: str
     time_sampled: float
 
@@ -129,7 +131,6 @@ class Trial:
 
     config: Mapping[str, Any]
     metadata: MetaData
-    state: State
     report: Report | None
 
     @classmethod
@@ -147,10 +148,10 @@ class Trial:
         """Create a new trial object that was just sampled."""
         worker_id = str(worker_id)
         return cls(
-            state=State.PENDING,
             config=config,
             metadata=MetaData(
                 id=trial_id,
+                state=State.PENDING,
                 location=location,
                 time_sampled=time_sampled,
                 previous_trial_id=previous_trial,
@@ -194,13 +195,13 @@ class Trial:
     def set_submitted(self, *, time_submitted: float) -> None:
         """Set the trial as submitted."""
         self.metadata.time_submitted = time_submitted
-        self.state = State.SUBMITTED
+        self.metadata.state = State.SUBMITTED
 
     def set_evaluating(self, *, time_started: float, worker_id: int | str) -> None:
         """Set the trial as in progress."""
         self.metadata.time_started = time_started
         self.metadata.evaluating_worker_id = str(worker_id)
-        self.state = State.EVALUATING
+        self.metadata.state = State.EVALUATING
 
     def set_complete(
         self,
@@ -217,11 +218,11 @@ class Trial:
     ) -> Report:
         """Set the report for the trial."""
         if report_as == "success":
-            self.state = State.SUCCESS
+            self.metadata.state = State.SUCCESS
         elif report_as == "failed":
-            self.state = State.FAILED
+            self.metadata.state = State.FAILED
         elif report_as == "crashed":
-            self.state = State.CRASHED
+            self.metadata.state = State.CRASHED
         else:
             raise ValueError(f"Invalid report_as: '{report_as}'")
 
@@ -249,13 +250,13 @@ class Trial:
 
     def set_corrupted(self) -> None:
         """Set the trial as corrupted."""
-        self.state = State.CORRUPTED
+        self.metadata.state = State.CORRUPTED
 
     def reset(self) -> None:
         """Reset the trial to a pending state."""
-        self.state = State.PENDING
         self.metadata = MetaData(
             id=self.metadata.id,
+            state=State.PENDING,
             location=self.metadata.location,
             previous_trial_id=self.metadata.previous_trial_id,
             previous_trial_location=self.metadata.previous_trial_location,

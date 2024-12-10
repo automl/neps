@@ -21,6 +21,7 @@ from pytest_cases import fixture, parametrize, parametrize_with_cases, case
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.optimizers import SearcherMapping
+from neps.state.seed_snapshot import SeedSnapshot
 
 
 @case
@@ -157,7 +158,11 @@ def case_neps_state_filebased(
     return NePSState.create_or_load(
         path=new_path,
         optimizer_info=optimizer_info,
-        optimizer_state=OptimizationState(budget=budget, shared_state=shared_state),
+        optimizer_state=OptimizationState(
+            budget=budget,
+            seed_snapshot=SeedSnapshot.new_capture(),
+            shared_state=shared_state,
+        ),
     )
 
 
