@@ -18,7 +18,7 @@ try:
         CDumper as YamlDumper,  # type: ignore
         CSafeLoader as SafeLoader,  # type: ignore
     )
-except ImportError as e:
+except ImportError:
     from yaml import SafeLoader, YamlDumper  # type: ignore
 
 

@@ -108,7 +108,7 @@ GLOBAL_ERR_FILELOCK_TIMEOUT = get_env(
 TRIAL_CACHE_MAX_UPDATES_BEFORE_CONSOLIDATION = get_env(
     "NEPS_TRIAL_CACHE_MAX_UPDATES_BEFORE_CONSOLIDATION",
     parse=int,
-    default=30,
+    default=10,
 )
 CONFIG_SERIALIZE_FORMAT: Literal["yaml", "json"] = get_env(  # type: ignore
     "NEPS_CONFIG_SERIALIZE_FORMAT",
