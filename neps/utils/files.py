@@ -19,7 +19,6 @@ try:
         CSafeLoader as SafeLoader,  # type: ignore
     )
 except ImportError as e:
-    raise ImportError() from e
     from yaml import SafeLoader, YamlDumper  # type: ignore
 
 
