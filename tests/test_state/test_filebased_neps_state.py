@@ -6,14 +6,12 @@ from pathlib import Path
 from typing import Any
 from neps.exceptions import NePSError, TrialNotFoundError
 from neps.state.err_dump import ErrDump
-from neps.state.filebased import (
-    create_or_load_filebased_neps_state,
-    load_filebased_neps_state,
-)
+from neps.state.neps_state import NePSState
 
 import pytest
 from pytest_cases import fixture, parametrize
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 
 
 @fixture
@@ -23,7 +21,11 @@ def optimizer_state(
     budget: BudgetInfo | None,
     shared_state: dict[str, Any],
 ) -> OptimizationState:
-    return OptimizationState(budget=budget, shared_state=shared_state)
+    return OptimizationState(
+        budget=budget,
+        seed_snapshot=SeedSnapshot.new_capture(),
+        shared_state=shared_state,
+    )
 
 
 @fixture
@@ -38,21 +40,21 @@ def test_create_with_new_filebased_neps_state(
     optimizer_state: OptimizationState,
 ) -> None:
     new_path = tmp_path / "neps_state"
-    neps_state = create_or_load_filebased_neps_state(
-        directory=new_path,
+    neps_state = NePSState.create_or_load(
+        path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
     )
-    assert neps_state.optimizer_info() == optimizer_info
-    assert neps_state.optimizer_state() == optimizer_state
-    assert neps_state.all_trial_ids() == set()
-    assert neps_state.get_all_trials() == {}
-    assert neps_state.get_errors() == ErrDump(errs=[])
-    assert neps_state.get_next_pending_trial() is None
-    assert neps_state.get_next_pending_trial(n=10) == []
+    assert neps_state.lock_and_get_optimizer_info() == optimizer_info
+    assert neps_state.lock_and_get_optimizer_state() == optimizer_state
+    assert neps_state.all_trial_ids() == []
+    assert neps_state.lock_and_read_trials() == {}
+    assert neps_state.lock_and_get_errors() == ErrDump(errs=[])
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert neps_state.lock_and_get_next_pending_trial(n=10) == []
 
     with pytest.raises(TrialNotFoundError):
-        assert neps_state.get_trial_by_id("1")
+        assert neps_state.lock_and_get_trial_by_id("1")
 
 
 def test_create_or_load_with_load_filebased_neps_state(
@@ -61,8 +63,8 @@ def test_create_or_load_with_load_filebased_neps_state(
     optimizer_state: OptimizationState,
 ) -> None:
     new_path = tmp_path / "neps_state"
-    neps_state = create_or_load_filebased_neps_state(
-        directory=new_path,
+    neps_state = NePSState.create_or_load(
+        path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
     )
@@ -72,10 +74,11 @@ def test_create_or_load_with_load_filebased_neps_state(
     # was passed in.
     different_state = OptimizationState(
         budget=BudgetInfo(max_cost_budget=20, used_cost_budget=10),
+        seed_snapshot=SeedSnapshot.new_capture(),
         shared_state={"c": "d"},
     )
-    neps_state2 = create_or_load_filebased_neps_state(
-        directory=new_path,
+    neps_state2 = NePSState.create_or_load(
+        path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=different_state,
     )
@@ -88,13 +91,13 @@ def test_load_on_existing_neps_state(
     optimizer_state: OptimizationState,
 ) -> None:
     new_path = tmp_path / "neps_state"
-    neps_state = create_or_load_filebased_neps_state(
-        directory=new_path,
+    neps_state = NePSState.create_or_load(
+        path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
     )
 
-    neps_state2 = load_filebased_neps_state(directory=new_path)
+    neps_state2 = NePSState.create_or_load(path=new_path, load_only=True)
     assert neps_state == neps_state2
 
 
@@ -104,15 +107,15 @@ def test_new_or_load_on_existing_neps_state_with_different_optimizer_info(
     optimizer_state: OptimizationState,
 ) -> None:
     new_path = tmp_path / "neps_state"
-    create_or_load_filebased_neps_state(
-        directory=new_path,
+    NePSState.create_or_load(
+        path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
     )
 
     with pytest.raises(NePSError):
-        create_or_load_filebased_neps_state(
-            directory=new_path,
+        NePSState.create_or_load(
+            path=new_path,
             optimizer_info=OptimizerInfo({"e": "f"}),
             optimizer_state=optimizer_state,
         )

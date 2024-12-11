@@ -5,20 +5,25 @@ from pytest_cases import fixture
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
 from neps.search_spaces.search_space import SearchSpace
-from neps.state.filebased import create_or_load_filebased_neps_state
+from neps.state.neps_state import NePSState
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
 from neps.search_spaces import Float
 from neps.state.trial import Trial
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState[Path]:
-    return create_or_load_filebased_neps_state(
-        directory=tmp_path / "neps_state",
+def neps_state(tmp_path: Path) -> NePSState:
+    return NePSState.create_or_load(
+        path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(budget=None, shared_state={}),
+        optimizer_state=OptimizationState(
+            budget=None,
+            seed_snapshot=SeedSnapshot.new_capture(),
+            shared_state=None,
+        ),
     )
 
 
@@ -52,12 +57,12 @@ def test_max_evaluations_total_stopping_criterion(
     worker.run()
 
     assert worker.worker_cumulative_eval_count == 3
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     for _, trial in trials.items():
-        assert trial.state == Trial.State.SUCCESS
+        assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
         assert trial.report.loss == 1.0
 
@@ -71,8 +76,8 @@ def test_max_evaluations_total_stopping_criterion(
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 0
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
 
 def test_worker_evaluations_total_stopping_criterion(
@@ -105,13 +110,13 @@ def test_worker_evaluations_total_stopping_criterion(
     worker.run()
 
     assert worker.worker_cumulative_eval_count == 2
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 2
     for _, trial in trials.items():
-        assert trial.state == Trial.State.SUCCESS
+        assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
         assert trial.report.loss == 1.0
 
@@ -126,13 +131,13 @@ def test_worker_evaluations_total_stopping_criterion(
     new_worker.run()
 
     assert worker.worker_cumulative_eval_count == 2
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 4  # Now we should have 4 of them
     for _, trial in trials.items():
-        assert trial.state == Trial.State.SUCCESS
+        assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
         assert trial.report.loss == 1.0
 
@@ -155,7 +160,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     )
 
     # We put in one trial as being inprogress
-    pending_trial = neps_state.sample_trial(optimizer, worker_id="dummy")
+    pending_trial = neps_state.lock_and_sample_trial(optimizer, worker_id="dummy")
     pending_trial.set_evaluating(time_started=0.0, worker_id="dummy")
     neps_state.put_updated_trial(pending_trial)
 
@@ -173,22 +178,22 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 
     assert worker.worker_cumulative_eval_count == 1
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 2
 
     the_pending_trial = trials[pending_trial.id]
     assert the_pending_trial == pending_trial
-    assert the_pending_trial.state == Trial.State.EVALUATING
+    assert the_pending_trial.metadata.state == Trial.State.EVALUATING
     assert the_pending_trial.report is None
 
     the_completed_trial_id = next(iter(trials.keys() - {pending_trial.id}))
     the_completed_trial = trials[the_completed_trial_id]
 
-    assert the_completed_trial.state == Trial.State.SUCCESS
+    assert the_completed_trial.metadata.state == Trial.State.SUCCESS
     assert the_completed_trial.report is not None
     assert the_completed_trial.report.loss == 1.0
 
@@ -225,11 +230,11 @@ def test_max_cost_total(
     assert worker.worker_cumulative_eval_count == 2
     assert worker.worker_cumulative_eval_cost == 2.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 2
 
     # New worker should now not run anything as the total cost has been reached.
@@ -276,11 +281,11 @@ def test_worker_cost_total(
     assert worker.worker_cumulative_eval_count == 2
     assert worker.worker_cumulative_eval_cost == 2.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 2
 
     # New worker should also run 2 more trials
@@ -295,11 +300,11 @@ def test_worker_cost_total(
     assert new_worker.worker_cumulative_eval_count == 2
     assert new_worker.worker_cumulative_eval_cost == 2.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
+    assert len(neps_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 4  # 2 more trials were ran
 
 
@@ -336,10 +341,10 @@ def test_worker_wallclock_time(
     assert worker.worker_cumulative_eval_count > 0
     assert worker.worker_cumulative_evaluation_time_seconds <= 2.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
-    len_trials_on_first_worker = len(neps_state.get_all_trials())
+    assert len(neps_state.lock_and_get_errors()) == 0
+    len_trials_on_first_worker = len(neps_state.lock_and_read_trials())
 
     # New worker should also run some trials more trials
     new_worker = DefaultWorker.new(
@@ -354,10 +359,10 @@ def test_worker_wallclock_time(
     assert new_worker.worker_cumulative_eval_count > 0
     assert new_worker.worker_cumulative_evaluation_time_seconds <= 2.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
-    len_trials_on_second_worker = len(neps_state.get_all_trials())
+    assert len(neps_state.lock_and_get_errors()) == 0
+    len_trials_on_second_worker = len(neps_state.lock_and_read_trials())
     assert len_trials_on_second_worker > len_trials_on_first_worker
 
 
@@ -395,10 +400,10 @@ def test_max_worker_evaluation_time(
     assert worker.worker_cumulative_eval_count > 0
     assert worker.worker_cumulative_evaluation_time_seconds <= 1.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
-    len_trials_on_first_worker = len(neps_state.get_all_trials())
+    assert len(neps_state.lock_and_get_errors()) == 0
+    len_trials_on_first_worker = len(neps_state.lock_and_read_trials())
 
     # New worker should also run some trials more trials
     new_worker = DefaultWorker.new(
@@ -413,10 +418,10 @@ def test_max_worker_evaluation_time(
     assert new_worker.worker_cumulative_eval_count > 0
     assert new_worker.worker_cumulative_evaluation_time_seconds <= 1.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
-    len_trials_on_second_worker = len(neps_state.get_all_trials())
+    assert len(neps_state.lock_and_get_errors()) == 0
+    len_trials_on_second_worker = len(neps_state.lock_and_read_trials())
     assert len_trials_on_second_worker > len_trials_on_first_worker
 
 
@@ -454,10 +459,10 @@ def test_max_evaluation_time_global(
     assert worker.worker_cumulative_eval_count > 0
     assert worker.worker_cumulative_evaluation_time_seconds <= 1.0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
-    len_trials_on_first_worker = len(neps_state.get_all_trials())
+    assert len(neps_state.lock_and_get_errors()) == 0
+    len_trials_on_first_worker = len(neps_state.lock_and_read_trials())
 
     # New worker should also run some trials more trials
     new_worker = DefaultWorker.new(
@@ -472,8 +477,8 @@ def test_max_evaluation_time_global(
     assert new_worker.worker_cumulative_eval_count == 0
     assert new_worker.worker_cumulative_evaluation_time_seconds == 0
     assert (
-        neps_state.get_next_pending_trial() is None
+        neps_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.get_errors()) == 0
-    len_trials_on_second_worker = len(neps_state.get_all_trials())
+    assert len(neps_state.lock_and_get_errors()) == 0
+    len_trials_on_second_worker = len(neps_state.lock_and_read_trials())
     assert len_trials_on_second_worker == len_trials_on_first_worker

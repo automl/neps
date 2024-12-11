@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import gc
 import inspect
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
 from typing import Any
 
 import torch
 import yaml
-
-from neps.runtime import get_in_progress_trial, get_workers_neps_state
 
 
 # TODO(eddiebergman): I feel like this function should throw an error if it can't
@@ -35,6 +35,8 @@ def load_checkpoint(
         A dictionary containing the checkpoint values, or None if the checkpoint file
         does not exist hence no checkpointing was previously done.
     """
+    from neps.runtime import get_in_progress_trial
+
     if directory is None:
         trial = get_in_progress_trial()
         directory = trial.metadata.previous_trial_location
@@ -75,6 +77,8 @@ def save_checkpoint(
         optimizer: The optimizer to save.
         checkpoint_name: The name of the checkpoint file.
     """
+    from neps.runtime import get_in_progress_trial
+
     if directory is None:
         in_progress_trial = get_in_progress_trial()
         directory = in_progress_trial.metadata.location
@@ -113,6 +117,8 @@ def load_lightning_checkpoint(
         A tuple containing the checkpoint path (str) and the loaded checkpoint data (dict)
         or (None, None) if no checkpoint files are found in the directory.
     """
+    from neps.runtime import get_in_progress_trial
+
     if previous_pipeline_directory is None:
         trial = get_in_progress_trial()
         previous_pipeline_directory = trial.metadata.previous_trial_location
@@ -156,11 +162,13 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     Returns:
         The initial directory.
     """
+    from neps.runtime import get_in_progress_trial, get_workers_neps_state
+
     neps_state = get_workers_neps_state()
     if pipeline_directory is not None:
         # TODO: Hard coded assumption
         config_id = Path(pipeline_directory).name.split("_", maxsplit=1)[-1]
-        trial = neps_state.get_trial_by_id(config_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(config_id)
     else:
         trial = get_in_progress_trial()
 
@@ -169,7 +177,7 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
     # Recursively find the initial directory
     while (prev_trial_id := trial.metadata.previous_trial_id) is not None:
-        trial = neps_state.get_trial_by_id(prev_trial_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(prev_trial_id)
 
     initial_dir = trial.metadata.location
 
@@ -333,3 +341,17 @@ def instance_from_map(  # noqa: C901
             raise TypeError(f"{e} when calling {instance} with {args_dict}") from e
 
     return instance
+
+
+@contextmanager
+def gc_disabled() -> Iterator[None]:
+    """Context manager to disable garbage collection for a block.
+
+    We specifically put this around file I/O operations to minimize the time
+    spend garbage collecting while having the file handle open.
+    """
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.enable()

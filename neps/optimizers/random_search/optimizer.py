@@ -56,9 +56,22 @@ class RandomSearch(BaseOptimizer):
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-    ) -> SampledConfig:
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
         n_trials = len(trials)
-        config = self.sampler.sample_one(to=self.encoder.domains)
-        config_dict = self.encoder.decode_one(config)
-        config_id = str(n_trials + 1)
-        return SampledConfig(config=config_dict, id=config_id, previous_config_id=None)
+        _n = 1 if n is None else n
+        configs = self.sampler.sample(_n, to=self.encoder.domains)
+        config_dicts = self.encoder.decode(configs)
+        if n == 1:
+            config = config_dicts[0]
+            config_id = str(n_trials + 1)
+            return SampledConfig(config=config, id=config_id, previous_config_id=None)
+
+        return [
+            SampledConfig(
+                config=config,
+                id=str(n_trials + i + 1),
+                previous_config_id=None,
+            )
+            for i, config in enumerate(config_dicts)
+        ]
