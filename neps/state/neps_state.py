@@ -36,6 +36,7 @@ from neps.env import (
     TRIAL_FILELOCK_TIMEOUT,
 )
 from neps.exceptions import NePSError, TrialAlreadyExistsError, TrialNotFoundError
+from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.state.err_dump import ErrDump
 from neps.state.filebased import (
     FileLocker,
@@ -48,7 +49,6 @@ from neps.state.trial import Report, Trial
 from neps.utils.files import atomic_write, deserialize, serialize
 
 if TYPE_CHECKING:
-    from neps.optimizers.base_optimizer import BaseOptimizer
     from neps.state.optimizer import OptimizationState
 
 logger = logging.getLogger(__name__)
@@ -112,6 +112,8 @@ class TrialRepo:
                 if isinstance(datum, dict):
                     assert len(trials) == 0, "Multiple caches present."
                     trials = datum
+                elif isinstance(datum, list):
+                    updates.extend(datum)
                 else:
                     assert isinstance(datum, Trial), "Not a trial."
                     updates.append(datum)
@@ -150,21 +152,39 @@ class TrialRepo:
 
         return self._read_pkl_and_maybe_consolidate()
 
-    def new_trial(self, trial: Trial) -> None:
-        config_path = self.directory / f"config_{trial.id}"
-        if config_path.exists():
-            raise TrialAlreadyExistsError(trial.id, config_path)
+    def new_trial(self, trial: Trial | list[Trial]) -> None:
+        if isinstance(trial, Trial):
+            config_path = self.directory / f"config_{trial.id}"
+            if config_path.exists():
+                raise TrialAlreadyExistsError(trial.id, config_path)
 
-        bytes_ = pickle.dumps(trial, protocol=pickle.HIGHEST_PROTOCOL)
-        with atomic_write(self.cache_path, "ab") as f:
-            f.write(bytes_)
+            bytes_ = pickle.dumps(trial, protocol=pickle.HIGHEST_PROTOCOL)
+            with atomic_write(self.cache_path, "ab") as f:
+                f.write(bytes_)
 
-        config_path.mkdir(parents=True, exist_ok=True)
-        ReaderWriterTrial.write(
-            trial,
-            self.directory / f"config_{trial.id}",
-            hints=["config", "metadata"],
-        )
+            config_path.mkdir(parents=True, exist_ok=True)
+            ReaderWriterTrial.write(
+                trial,
+                self.directory / f"config_{trial.id}",
+                hints=["config", "metadata"],
+            )
+        else:
+            for child_trial in trial:
+                config_path = self.directory / f"config_{child_trial.id}"
+                if config_path.exists():
+                    raise TrialAlreadyExistsError(child_trial.id, config_path)
+                config_path.mkdir(parents=True, exist_ok=True)
+
+            bytes_ = pickle.dumps(trial, protocol=pickle.HIGHEST_PROTOCOL)
+            with atomic_write(self.cache_path, "ab") as f:
+                f.write(bytes_)
+
+            for child_trial in trial:
+                ReaderWriterTrial.write(
+                    child_trial,
+                    self.directory / f"config_{child_trial.id}",
+                    hints=["config", "metadata"],
+                )
 
     def update_trial(
         self,
@@ -181,7 +201,9 @@ class TrialRepo:
     def load_trial_from_disk(self, trial_id: str) -> Trial:
         config_path = self.directory / f"config_{trial_id}"
         if not config_path.exists():
-            raise TrialNotFoundError(trial_id, config_path)
+            raise TrialNotFoundError(
+                f"Trial {trial_id} not found at expected path of {config_path}."
+            )
 
         return ReaderWriterTrial.read(config_path)
 
@@ -212,18 +234,34 @@ class NePSState:
         with self._trial_lock.lock():
             return self._trials.latest()
 
-    def lock_and_sample_trial(self, optimizer: BaseOptimizer, *, worker_id: str) -> Trial:
+    @overload
+    def lock_and_sample_trial(
+        self, optimizer: BaseOptimizer, *, worker_id: str, n: None = None
+    ) -> Trial: ...
+    @overload
+    def lock_and_sample_trial(
+        self, optimizer: BaseOptimizer, *, worker_id: str, n: int
+    ) -> list[Trial]: ...
+
+    def lock_and_sample_trial(
+        self, optimizer: BaseOptimizer, *, worker_id: str, n: int | None = None
+    ) -> Trial | list[Trial]:
         """Acquire the state lock and sample a trial."""
         with self._optimizer_lock.lock():
             with self._trial_lock.lock():
                 trials = self._trials.latest()
 
-            trial = self._sample_trial(optimizer, trials=trials, worker_id=worker_id)
+            trials = self._sample_trial(
+                optimizer,
+                trials=trials,
+                worker_id=worker_id,
+                n=n,
+            )
 
             with self._trial_lock.lock():
-                self._trials.new_trial(trial)
+                self._trials.new_trial(trials)
 
-            return trial
+            return trials
 
     def lock_and_report_trial_evaluation(
         self,
@@ -236,14 +274,37 @@ class NePSState:
         with self._trial_lock.lock(), self._err_lock.lock():
             self._report_trial_evaluation(trial, report, worker_id=worker_id)
 
+    @overload
     def _sample_trial(
         self,
         optimizer: BaseOptimizer,
         *,
         worker_id: str,
         trials: dict[str, Trial],
+        n: int,
+        _sample_hooks: list[Callable] | None = ...,
+    ) -> list[Trial]: ...
+
+    @overload
+    def _sample_trial(
+        self,
+        optimizer: BaseOptimizer,
+        *,
+        worker_id: str,
+        trials: dict[str, Trial],
+        n: None,
+        _sample_hooks: list[Callable] | None = ...,
+    ) -> Trial: ...
+
+    def _sample_trial(
+        self,
+        optimizer: BaseOptimizer,
+        *,
+        worker_id: str,
+        trials: dict[str, Trial],
+        n: int | None,
         _sample_hooks: list[Callable] | None = None,
-    ) -> Trial:
+    ) -> Trial | list[Trial]:
         """Sample a new trial from the optimizer.
 
         !!! warning
@@ -253,6 +314,7 @@ class NePSState:
         Args:
             optimizer: The optimizer to sample the trial from.
             worker_id: The worker that is sampling the trial.
+            n: The number of trials to sample.
             trials: The current trials.
             _sample_hooks: A list of hooks to apply to the optimizer before sampling.
 
@@ -268,8 +330,9 @@ class NePSState:
         # it to be done after `load_results`... I hope not.
         if _sample_hooks is not None:
             for hook in _sample_hooks:
-                optimizer = hook(optimizer)
+                optimizer = hook(optimizer)  # type: ignore
 
+        assert isinstance(optimizer, BaseOptimizer)
         if opt_state.budget is not None:
             # NOTE: All other values of budget are ones that should remain
             # constant, there are currently only these two which are dynamic as
@@ -281,43 +344,51 @@ class NePSState:
             )
             opt_state.budget.used_evaluations = len(trials)
 
-        sampled_config_maybe_new_opt_state = optimizer.ask(
+        sampled_configs = optimizer.ask(
             trials=trials,
             budget_info=opt_state.budget.clone(),
+            n=n,
         )
 
-        if isinstance(sampled_config_maybe_new_opt_state, tuple):
-            sampled_config, shared_state = sampled_config_maybe_new_opt_state
-        else:
-            sampled_config = sampled_config_maybe_new_opt_state
-            shared_state = opt_state.shared_state
+        if not isinstance(sampled_configs, list):
+            sampled_configs = [sampled_configs]
 
-        if sampled_config.previous_config_id is not None:
-            previous_trial = trials.get(sampled_config.previous_config_id)
-            if previous_trial is None:
-                raise ValueError(
-                    f"Previous trial '{sampled_config.previous_config_id}' not found."
-                )
-            previous_trial_location = previous_trial.metadata.location
-        else:
-            previous_trial_location = None
+        # TODO: Not implemented yet.
+        shared_state = opt_state.shared_state
 
-        trial = Trial.new(
-            trial_id=sampled_config.id,
-            location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
-            config=sampled_config.config,
-            previous_trial=sampled_config.previous_config_id,
-            previous_trial_location=previous_trial_location,
-            time_sampled=time.time(),
-            worker_id=worker_id,
-        )
+        sampled_trials: list[Trial] = []
+        for sampled_config in sampled_configs:
+            if sampled_config.previous_config_id is not None:
+                previous_trial = trials.get(sampled_config.previous_config_id)
+                if previous_trial is None:
+                    raise ValueError(
+                        f"Previous trial '{sampled_config.previous_config_id}' not found."
+                    )
+                previous_trial_location = previous_trial.metadata.location
+            else:
+                previous_trial_location = None
+
+            trial = Trial.new(
+                trial_id=sampled_config.id,
+                location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
+                config=sampled_config.config,
+                previous_trial=sampled_config.previous_config_id,
+                previous_trial_location=previous_trial_location,
+                time_sampled=time.time(),
+                worker_id=worker_id,
+            )
+            sampled_trials.append(trial)
 
         opt_state.shared_state = shared_state
         opt_state.seed_snapshot.recapture()
         with self._optimizer_state_path.open("wb") as f:
             pickle.dump(opt_state, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        return trial
+        if n is None:
+            assert len(sampled_trials) == 1
+            return sampled_trials[0]
+
+        return sampled_trials
 
     def _report_trial_evaluation(
         self,

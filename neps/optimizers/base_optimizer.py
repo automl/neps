@@ -4,7 +4,7 @@ import logging
 from abc import abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 from neps.state.trial import Report, Trial
 
@@ -106,12 +106,29 @@ class BaseOptimizer:
         self.learning_curve_on_error = learning_curve_on_error
         self.ignore_errors = ignore_errors
 
+    @overload
+    def ask(
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None,
+        n: int,
+    ) -> list[SampledConfig]: ...
+
+    @overload
+    def ask(
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None,
+        n: None = None,
+    ) -> SampledConfig: ...
+
     @abstractmethod
     def ask(
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-    ) -> SampledConfig:
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
         """Sample a new configuration.
 
         Args:

@@ -127,35 +127,58 @@ class BayesianOptimization(BaseOptimizer):
         self.cost_on_log_scale = cost_on_log_scale
         self.device = device
         self.sample_default_first = sample_default_first
-        self.n_initial_design = initial_design_size
         self.init_design: list[dict[str, Any]] | None = None
+
+        if initial_design_size is not None:
+            self.n_initial_design = initial_design_size
+        else:
+            self.n_initial_design = len(pipeline_space.numerical) + len(
+                pipeline_space.categoricals
+            )
 
     @override
     def ask(
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None = None,
-    ) -> SampledConfig:
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
+        _n = 1 if n is None else n
         n_sampled = len(trials)
-        config_id = str(n_sampled + 1)
+        config_ids = iter(str(n_sampled + i) for i in range(_n + 1))
         space = self.pipeline_space
 
         # If we havn't passed the intial design phase
         if self.init_design is None:
+            if n is not None and self.n_initial_design < n:
+                init_design_size = n
+            else:
+                init_design_size = self.n_initial_design
             self.init_design = make_initial_design(
                 space=space,
                 encoder=self.encoder,
                 sample_default_first=self.sample_default_first,
                 sampler=self.prior if self.prior is not None else "sobol",
                 seed=None,  # TODO: Seeding
-                sample_size=(
-                    "ndim" if self.n_initial_design is None else self.n_initial_design
-                ),
+                sample_size=init_design_size,
                 sample_fidelity="max",
             )
 
-        if n_sampled < len(self.init_design):
-            return SampledConfig(id=config_id, config=self.init_design[n_sampled])
+        sampled_configs = [
+            SampledConfig(id=config_id, config=config)
+            for config_id, config in zip(
+                config_ids, self.init_design[n_sampled : n_sampled + _n], strict=False
+            )
+        ]
+        if len(sampled_configs) == _n:
+            if n is None:
+                return sampled_configs[0]
+
+            return sampled_configs
+
+        assert len(sampled_configs) < _n
+
+        _n = _n - len(sampled_configs)
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -185,7 +208,7 @@ class BayesianOptimization(BaseOptimizer):
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
-        candidate = fit_and_acquire_from_gp(
+        candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
             encoder=encoder,
@@ -200,11 +223,25 @@ class BayesianOptimization(BaseOptimizer):
                 prune_baseline=True,
             ),
             prior=prior,
+            n_candidates_required=_n,
             pibo_exp_term=pibo_exp_term,
             costs=data.cost if self.use_cost else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_on_log_scale,
         )
 
-        config = encoder.decode(candidate)[0]
-        return SampledConfig(id=config_id, config=config)
+        config_ids = list(config_ids)
+        print(_n, len(candidates), len(config_ids))  # noqa: T201
+
+        configs = encoder.decode(candidates)
+        sampled_configs.extend(
+            [
+                SampledConfig(id=config_id, config=config)
+                for config_id, config in zip(config_ids, configs, strict=True)
+            ]
+        )
+
+        if n is None:
+            return sampled_configs[0]
+
+        return sampled_configs

@@ -300,10 +300,12 @@ class DefaultWorker(Generic[Loc]):
     ) -> str | Literal[False]:
         if self.settings.max_evaluations_total is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                # NOTE: We can just use the sum of trials in this case as they
-                # either have a report, are pending or being evaluated. There
-                # are also crashed and unknown states which we include into this.
-                count = len(trials)
+                count = sum(
+                    1
+                    for _, trial in trials.items()
+                    if trial.metadata.state
+                    not in (Trial.State.PENDING, Trial.State.SUBMITTED)
+                )
             else:
                 # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
@@ -399,32 +401,45 @@ class DefaultWorker(Generic[Loc]):
                     )
                     return earliest_pending
 
-            sampled_trial = self.state._sample_trial(
+            sampled_trials = self.state._sample_trial(
                 optimizer=self.optimizer,
                 worker_id=self.worker_id,
                 trials=trials,
+                n=self.settings.batch_size,
             )
+            if isinstance(sampled_trials, Trial):
+                this_workers_trial = sampled_trials
+            else:
+                this_workers_trial = sampled_trials[0]
+                sampled_trials[1:]
 
             with self.state._trial_lock.lock(worker_id=self.worker_id), gc_disabled():
+                this_workers_trial.set_evaluating(
+                    time_started=time.time(),
+                    worker_id=self.worker_id,
+                )
                 try:
-                    sampled_trial.set_evaluating(
-                        time_started=time.time(),
-                        worker_id=self.worker_id,
-                    )
-                    self.state._trials.new_trial(sampled_trial)
-                    logger.info(
-                        "Worker '%s' sampled new trial: %s.",
-                        self.worker_id,
-                        sampled_trial.id,
-                    )
-                    return sampled_trial
+                    self.state._trials.new_trial(sampled_trials)
+                    if isinstance(sampled_trials, Trial):
+                        logger.info(
+                            "Worker '%s' sampled new trial: %s.",
+                            self.worker_id,
+                            this_workers_trial.id,
+                        )
+                    else:
+                        logger.info(
+                            "Worker '%s' sampled new trials: %s.",
+                            self.worker_id,
+                            ",".join(trial.id for trial in sampled_trials),
+                        )
+                    return this_workers_trial
                 except TrialAlreadyExistsError as e:
-                    if sampled_trial.id in trials:
+                    if e.trial_id in trials:
                         logger.error(
                             "The new sampled trial was given an id of '%s', yet this"
                             " exists in the loaded in trials given to the optimizer. This"
                             " indicates a bug with the optimizers allocation of ids.",
-                            sampled_trial.id,
+                            e.trial_id,
                         )
                     else:
                         _grace = DefaultWorker._GRACE
@@ -439,7 +454,7 @@ class DefaultWorker(Generic[Loc]):
                             " '%s's to '%s's. You can control the initial"
                             " grace with 'NEPS_FS_SYNC_GRACE_BASE' and the increment with"
                             " 'NEPS_FS_SYNC_GRACE_INC'.",
-                            sampled_trial.id,
+                            e.trial_id,
                             _grace,
                             _grace + _inc,
                         )
@@ -595,6 +610,7 @@ def _launch_runtime(  # noqa: PLR0913
     overwrite_optimization_dir: bool,
     max_evaluations_total: int | None,
     max_evaluations_for_worker: int | None,
+    sample_batch_size: int | None,
     pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None,
 ) -> None:
     if overwrite_optimization_dir and optimization_dir.exists():
@@ -643,6 +659,7 @@ def _launch_runtime(  # noqa: PLR0913
             if ignore_errors
             else OnErrorPossibilities.RAISE_ANY_ERROR
         ),
+        batch_size=sample_batch_size,
         default_report_values=DefaultReportValues(
             loss_value_on_error=loss_value_on_error,
             cost_value_on_error=cost_value_on_error,

@@ -531,6 +531,7 @@ class Settings:
         self.cost_value_on_error = UNSET
         self.pre_load_hooks = UNSET
         self.searcher = UNSET
+        self.sample_batch_size = UNSET
         self.searcher_kwargs = UNSET
 
         if not isinstance(yaml_args, Default) and yaml_args is not None:
