@@ -20,6 +20,8 @@ from typing import (
     TypeVar,
 )
 
+from portalocker import portalocker
+
 from neps.env import (
     FS_SYNC_GRACE_BASE,
     FS_SYNC_GRACE_INC,
@@ -529,12 +531,24 @@ class DefaultWorker(Generic[Loc]):
                 _repeated_fail_get_next_trial_count = 0
             except Exception as e:
                 _repeated_fail_get_next_trial_count += 1
-                logger.debug(
-                    "Worker '%s': Error while trying to get the next trial to evaluate.",
-                    self.worker_id,
-                    exc_info=True,
-                )
-                time.sleep(1)  # Help stagger retries
+                if isinstance(e, portalocker.exceptions.LockException):
+                    logger.debug(
+                        "Worker '%s': Timeout while trying to get the next trial to"
+                        " evaluate. If you are using a model based optimizer, such as"
+                        " Bayesian Optimization, this can occur as the number of"
+                        " configurations get large. There's not much to do here"
+                        " and we will retry to obtain the lock.",
+                        self.worker_id,
+                        exc_info=True,
+                    )
+                else:
+                    logger.debug(
+                        "Worker '%s': Error while trying to get the next trial to"
+                        " evaluate.",
+                        self.worker_id,
+                        exc_info=True,
+                    )
+                    time.sleep(1)  # Help stagger retries
                 # NOTE: This is to prevent any infinite loops if we can't get a trial
                 if _repeated_fail_get_next_trial_count >= MAX_RETRIES_GET_NEXT_TRIAL:
                     raise WorkerFailedToGetPendingTrialsError(
