@@ -145,40 +145,46 @@ class BayesianOptimization(BaseOptimizer):
     ) -> SampledConfig | list[SampledConfig]:
         _n = 1 if n is None else n
         n_sampled = len(trials)
-        config_ids = iter(str(n_sampled + i) for i in range(_n + 1))
+        config_ids = iter(str(i + 1) for i in range(n_sampled, n_sampled + _n))
         space = self.pipeline_space
 
-        # If we havn't passed the intial design phase
-        if self.init_design is None:
-            if n is not None and self.n_initial_design < n:
-                init_design_size = n
-            else:
-                init_design_size = self.n_initial_design
-            self.init_design = make_initial_design(
+        sampled_configs: list[SampledConfig] = []
+
+        # If the amount of configs evaluated is less than the initial design
+        # requirement, keep drawing from initial design
+        n_evaluated = sum(
+            1
+            for trial in trials.values()
+            if trial.report is not None and trial.report.loss is not None
+        )
+        if n_evaluated < self.n_initial_design:
+            design_samples = make_initial_design(
                 space=space,
                 encoder=self.encoder,
-                sample_default_first=self.sample_default_first,
-                sampler=self.prior if self.prior is not None else "sobol",
+                sample_default_first=(
+                    self.sample_default_first if n_sampled == 0 else False
+                ),
+                sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding
-                sample_size=init_design_size,
+                sample_size=_n,
                 sample_fidelity="max",
             )
 
-        sampled_configs = [
-            SampledConfig(id=config_id, config=config)
-            for config_id, config in zip(
-                config_ids, self.init_design[n_sampled : n_sampled + _n], strict=False
+            sampled_configs.extend(
+                [
+                    SampledConfig(id=config_id, config=config)
+                    for config_id, config in zip(
+                        config_ids,
+                        design_samples,
+                        strict=False,
+                    )
+                ]
             )
-        ]
-        if len(sampled_configs) == _n:
-            if n is None:
-                return sampled_configs[0]
+            if len(sampled_configs) == _n:
+                if n is None:
+                    return sampled_configs[0]
 
-            return sampled_configs
-
-        assert len(sampled_configs) < _n
-
-        _n = _n - len(sampled_configs)
+                return sampled_configs
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -202,7 +208,7 @@ class BayesianOptimization(BaseOptimizer):
         prior = None
         if self.prior:
             pibo_exp_term = _pibo_exp_term(
-                n_sampled, encoder.ncols, len(self.init_design)
+                n_sampled, encoder.ncols, self.n_initial_design
             )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
@@ -229,9 +235,6 @@ class BayesianOptimization(BaseOptimizer):
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_on_log_scale,
         )
-
-        config_ids = list(config_ids)
-        print(_n, len(candidates), len(config_ids))  # noqa: T201
 
         configs = encoder.decode(candidates)
         sampled_configs.extend(
