@@ -1,14 +1,49 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import networkx as nx
 import torch
 from botorch.optim import optimize_acqf_mixed
+from grakel_replace.torch_wl_kernel import TorchWLKernel
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
+    from botorch.models.gp_regression_mixed import Kernel
+
+
+# Making predictions on test data
+# No the wl_kernel needs to be aware of the test graphs
+@contextmanager
+def set_graph_lookup(
+    kernel: Kernel,
+    new_graphs: list[nx.Graph],
+    *,
+    append: bool = True,
+) -> Iterator[None]:
+    kernel_prev_graphs: list[tuple[Kernel, list[nx.Graph]]] = []
+    if isinstance(kernel, TorchWLKernel):
+        modules = [kernel]
+    else:
+        assert hasattr(
+            kernel, "sub_kernels"
+        ), "Kernel module must have sub_kernels method."
+        modules = [k for k in kernel.sub_kernels() if isinstance(k, TorchWLKernel)]
+
+    for kern in modules:
+        kernel_prev_graphs.append((kern, kern.graph_lookup))
+        if append:
+            kern.set_graph_lookup([*kern.graph_lookup, *new_graphs])
+        else:
+            kern.set_graph_lookup(new_graphs)
+
+    yield
+
+    for _kern, _prev_graphs in kernel_prev_graphs:
+        _kern.set_graph_lookup(_prev_graphs)
 
 
 def sample_graphs(graphs: list[nx.Graph], num_samples: int) -> list[nx.Graph]:
@@ -35,7 +70,7 @@ def sample_graphs(graphs: list[nx.Graph], num_samples: int) -> list[nx.Graph]:
                     u, v = random.sample(nodes, 2)
                     if not sampled_graph.has_edge(u, v):
                         sampled_graph.add_edge(u, v)
-            elif sampled_graph.edges: # 30% chance to remove edge
+            elif sampled_graph.edges:  # 30% chance to remove edge
                 u, v = random.choice(list(sampled_graph.edges))
                 sampled_graph.remove_edge(u, v)
 
@@ -81,21 +116,34 @@ def optimize_acqf_graph(
         raise ValueError("train_graphs cannot be None.")
 
     sampled_graphs = sample_graphs(train_graphs, num_samples=num_graph_samples)
+    gp = acq_function.model
+    covar_module = gp.covar_module
 
     best_candidates, best_scores = [], []
 
+    TODO_GRAPH_COLUMN_INDEX = bounds.shape[1] - 1
+
     for _graph in sampled_graphs:
-        for fixed_features in fixed_features_list or [{}]:
-            candidates, scores = optimize_acqf_mixed(
-                acq_function=acq_function,
-                bounds=bounds,
-                fixed_features_list=[fixed_features],
-                num_restarts=num_restarts,
-                raw_samples=raw_samples,
-                q=q,
-            )
-            best_candidates.append(candidates)
-            best_scores.append(scores)
+        # This is new, we essentially iterate through all the kernels and
+        # include the sampled graph.
+        with set_graph_lookup(covar_module, [_graph], append=True):
+            for fixed_features in fixed_features_list or [{}]:
+                # We then consider this graph as a fixed feature, i.e. in the X's
+                # generated during acquisition, the graph column will just be full
+                # of `-1` indicating to select the very last graph in the lookup
+                # they used.
+                _fixed_features = {**fixed_features, TODO_GRAPH_COLUMN_INDEX: -1.0}
+
+                candidates, scores = optimize_acqf_mixed(
+                    acq_function=acq_function,
+                    bounds=bounds,
+                    fixed_features_list=[_fixed_features],
+                    num_restarts=num_restarts,
+                    raw_samples=raw_samples,
+                    q=q,
+                )
+                best_candidates.append(candidates)
+                best_scores.append(scores)
 
     best_scores_tensor = torch.tensor(best_scores)
     best_idx = torch.argmax(best_scores_tensor)
