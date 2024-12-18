@@ -521,12 +521,30 @@ def _launch_ddp_runtime(
     # hack to get around that.
     prev_trial = None
     while True:
-        current_trial = neps_state.get_current_evaluating_trial()
-        if current_trial is not None and (
-            prev_trial is None or current_trial.id != prev_trial.id  # type: ignore[unreachable]
-        ):
-            evaluation_fn(**current_trial.config)
-            prev_trial = current_trial
+        current_eval_trials = neps_state.get_current_evaluating_trials()
+        # If the worker id on previous trial is the same as the current one, only then
+        # evaluate it.
+
+        if len(current_eval_trials) > 0:
+            current_trial = None
+            if prev_trial is None:
+                # TODO: This is wrong. we evaluate the first trial in the list
+                # Instead, we need to check and evaluate the trial that is being
+                # evaluated by the parent process.
+                # Currently this only works if the DDP trainings are launched after some
+                # trials evaluation has begun.
+                current_trial = current_eval_trials[0]
+            else:
+                for trial in current_eval_trials:  # type: ignore[unreachable]
+                    if (
+                        trial.metadata.evaluating_worker_id
+                        == prev_trial.metadata.evaluating_worker_id
+                    ) and (trial.id != prev_trial.id):
+                        current_trial = trial
+                        break
+            if current_trial:
+                evaluation_fn(**current_trial.config)
+                prev_trial = current_trial
 
 
 # TODO: This should be done directly in `api.run` at some point to make it clearer at an
