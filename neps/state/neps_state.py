@@ -214,6 +214,13 @@ class NePSState(Generic[Loc]):
             return take(n, _pending_itr)
         return next(_pending_itr, None)
 
+    def get_current_evaluating_trials(self) -> list[Trial]:
+        """Get all the current evaluating trials."""
+        _eval_itr = (
+            shared_trial.synced() for _, shared_trial in self._trials.evaluating()
+        )
+        return list(_eval_itr)
+
     def all_trial_ids(self) -> set[str]:
         """Get all the trial ids that are known about."""
         return self._trials.all_trial_ids()
