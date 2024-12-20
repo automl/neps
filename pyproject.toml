@@ -1,25 +1,24 @@
-[tool.poetry]
+[project]
 name = "neural-pipeline-search"
 version = "v0.12.2"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
-    "Danny Stoll <stolld@cs.uni-freiburg.de>",
-    "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-    "Simon Schrodi",
-    "Eddie Bergman",
-    "Maciej Janowski",
-    "Samir Garibov",
-    "Tarek Abou Chakra",
-    "Daniel Rogalla",
-    "Carl Hvarfner",
-    "Binxin Ru",
-    "Frank Hutter",
+    { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
+    { name = "Neeratyoy Mallik", email = "mallik@cs.uni-freiburg.de" },
+    { name = "Simon Schrodi" },
+    { name = "Eddie Bergman" },
+    { name = "Maciej Janowski" },
+    { name = "Samir Garibov" },
+    { name = "Tarek Abou Chakra" },
+    { name = "Daniel Rogalla" },
+    { name = "Carl Hvarfner" },
+    { name = "Binxin Ru" },
+    { name = "Nils Kober" },
+    { name = "Théophane Vallaeys" },
+    { name = "Frank Hutter" },
 ]
 readme = "README.md"
-license = "Apache-2.0"
-homepage = "https://github.com/automl/neps"
-repository = "https://github.com/automl/neps"
-documentation = "https://automl.github.io/neps/"
+license = { file = "LICENSE" }
 keywords = [
     "Neural Pipeline Search",
     "Neural Architecture Search",
@@ -37,57 +36,71 @@ classifiers = [
   "Operating System :: MacOS",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Distributed Computing",
 ]
-packages = [{ include = "neps" }, { include = "neps_examples" }]
+requires-python = ">=3.10,<3.13"
 
+dependencies = [
+    "ConfigSpace>=0.7,<1.0",
+    "grakel>=0.1,<0.2",
+    "pyyaml>=6.0,<7.0",
+    "tensorboard>=2.0,<3.0",
+    "typing-extensions",
+    "torchvision>=0.8.0",
+    "ifbo>=0.3.10",
+    "botorch>=0.12",
+    "pandas>=2.0,<3.0",
+    "networkx>=2.6.3,<3.0",
+    "nltk>=3.6.4,<4.0",
+    "matplotlib>=3.0,<4.0",
+    "more-itertools",
+    "portalocker>=2.0,<3.0",
+    # "numpy>=1.0,<2.0",        # included in tensorboard (>=1.12.0), botorch (>1.7), ifbo (<2)
+    # "scipy>=1.13.1",          # included in configspace (*), botorch,grakel (>= 1.6.0), results in (2.2.3)
+    # "torch>=2.0.1",           # included in ifbo (>=1.9.0), botorch (>=2.0.1), torchvision (2.5.1)
+    # "seaborn>=0.13,<0.14",    # removed any seaborn appearance, therefore not needed anymore
+    # "gpytorch==1.13.0",       # included in botorch (1.13.0)
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.12"
-ConfigSpace = "^0.7"
-grakel = "^0.1"
-nltk = "^3.6.4"
-tensorboard = "^2"
-torchvision = ">=0.8.0"
-ifbo = ">=0.3.10"
-botorch = ">=0.12"
-networkx = ">=2.6.3"        # upgraded from ^2.6.3, as versions 3.x are now available
-portalocker = "^2"          # upgradable, but not neccessary since 3.x are just now available
-matplotlib = "^3"           # included in seaborn, but seaborn is now removed
-pandas = "^2"               # included in seaborn (>=1.2), but seaborn is now removed
-# seaborn = "^0.13"         # removed any seaborn appearance, therefore not needed anymore
+[project.urls]
+homepage = "https://github.com/automl/neps"
+repository = "https://github.com/automl/neps"
+documentation = "https://automl.github.io/neps/"
 
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pre-commit>=3,<4",
+    "mypy>=1,<2",
+    "pytest>=7,<8",
+    "pytest-cases>=3,<4",
+    "types-PyYAML>=6,<7",
+    "mkdocs-material",
+    "mkdocs-autorefs",
+    "mkdocs-gen-files",
+    "mkdocstrings[python]",
+    "mkdocs-literate-nav",
+    "mike",
+    "black",  # This allows mkdocstrings to format signatures in the docs
+]
 
-# Neps dependencies resulting from others but not explicitly subsumed
-# scipy = ">=1.13.1"        # included in configspace (*), botorch,grakel (>= 1.6.0), results in (1.14.1)                         results in (2.2.3)
-pyyaml = "^6"               # included in pre-commit, mike, mkdocs (>=5.1),           results in (6.0.2)
-
-# Neps dependencies subsumed in others
-# numpy = "^1"              # included in tensorboard (>=1.12.0), botorch (>1.7), ifbo (<2)
-# torch = ">=2.0.1"         # included in ifbo (>=1.9.0), botorch (>=2.0.1), torchvision (2.5.1)
-# gpytorch = "1.13.0"       # included in botorch (1.13.0)
-more-itertools = "*"        # included in configspace
-typing-extensions = "*"     # included in many, e.g. botorch, configspace
-
-[tool.poetry.group.dev.dependencies]
-ruff = "*"
-pre-commit = "^3"
-mypy = "^1"
-pytest = "^7"
-pytest-cases = "^3"
-types-PyYAML = "^6"
-mkdocs-material = "*"
-mkdocs-autorefs = "*"
-mkdocs-gen-files = "*"
-mkdocstrings = { extras = ["python"], version = "*" }
-mkdocs-literate-nav = "*"
-mike = "*"
-black = "*"                                           # This allows mkdocstrings to format signatures in the docs
+[tool.setuptools.packages.find]
+include = [
+    "neps",
+    "neps.*",
+    "neps_examples",
+]
+exclude = []
 
 [build-system]
-requires = ["poetry-core>=1.1.0"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "setuptools>=68.2.2",
+    "wheel>=0.41.2",
+]
+
+build-backend = "setuptools.build_meta"
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 # "tests",
@@ -323,5 +336,17 @@ module = [
 ]
 ignore_errors = true
 
-[tool.poetry.scripts]
-neps = "neps.utils.cli:main"
+[tool.bumpversion]
+current_version = "0.12.2"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = "version = \"v{current_version}\""
+replace = "version = \"v{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+search = "version: {current_version}"
+replace = "version: {new_version}"

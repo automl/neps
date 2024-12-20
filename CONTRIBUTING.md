@@ -16,62 +16,44 @@ Automatic checks are run on every pull request and on every commit to `master`.
 
 There are three required steps and one optional:
 
-1. Optional: Install miniconda and create an environment
-1. Install poetry
-1. Install the neps package using poetry
+1. Install uv
+1. Install the neps package using uv
 1. Activate pre-commit for the repository
 
 For instructions see below.
 
-### 1. Optional: Install miniconda and create a virtual environment
+## 1. Install uv
 
-To manage python versions install e.g., miniconda with
-
-```bash
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O install_miniconda.sh
-bash install_miniconda.sh -b -p $HOME/.conda  # Change to place of preference
-rm install_miniconda.sh
-```
-
-Consider running `~/.conda/bin/conda init` or `~/.conda/bin/conda init zsh` .
-
-Then finally create the environment and activate it
+First, install uv, e.g., via
 
 ```bash
-conda create -n neps python=3.10
-conda activate neps
+# On macOS and Linux.
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-
-### 2. Install poetry
-
-First, install poetry, e.g., via
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
-# or directly into your virtual env using `pip install poetry`
+# On Windows.
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Then consider appending
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-to your `.zshrc` / `.bashrc` or alternatively simply running the export manually.
-
-### 3. Install the neps Package Using poetry
-
-Clone the repository, e.g.,
+## 2. Clone the neps repository
 
 ```bash
 git clone https://github.com/automl/neps.git
 cd neps
 ```
 
+## 3. Create a virtual environment and install the neps package
+
+```bash
+uv venv --python 3.11
+source .venv/bin/activate
+```
+
 Then, inside the main directory of neps run
 
 ```bash
-poetry install
+uv pip install -e ".[dev]"
 ```
 
 This will installthe neps package but also additional dev dependencies.
@@ -107,7 +89,7 @@ The tests correspond directly to examples in [neps_examples](https://github.com/
 For linting we use `ruff` for checking code quality. You can install it locally and use it as so:
 
 ```bash
-pip install ruff
+uv pip install ruff
 ruff check --fix neps  # the --fix flag will try to fix issues it can automatically
 ```
 
@@ -130,7 +112,7 @@ There you can find the documentation for all of the rules employed.
 For type checking we use `mypy`. You can install it locally and use it as so:
 
 ```bash
-pip install mypy
+uv pip install mypy
 mypy neps
 ```
 
@@ -169,6 +151,54 @@ pytest
 If tests fail for you on the master, please raise an issue on github, preferably with some information on the error,
 traceback and the environment in which you are running, i.e. python version, OS, etc.
 
+## Regression Tests
+
+Regression tests are run on each push to the repository to assure the performance of the optimizers don't degrade.
+
+Currently, regression runs are recorded on JAHS-Bench-201 data for 2 tasks: `cifar10` and `fashion_mnist` and only for optimizers: `random_search`, `bayesian_optimization`, `mf_bayesian_optimization`.
+This information is stored in the `tests/regression_runner.py` as two lists: `TASKS`, `OPTIMIZERS`.
+The recorded results are stored as a json dictionary in the `tests/losses.json` file.
+
+### Adding new optimizer algorithms
+
+Once a new algorithm is added to NEPS library, we need to first record the performance of the algorithm for 100 optimization runs.
+
+- If the algorithm expects standard loss function (pipeline) and accepts fidelity hyperparameters in pipeline space, then recording results only requires adding the optimizer name into `OPTIMIZERS` list in `tests/regression_runner.py` and running `tests/regression_runner.py`
+
+- In case your algorithm requires custom pipeline and/or pipeline space you can modify the `runner.run_pipeline` and `runner.pipeline_space` attributes of the `RegressionRunner` after initialization (around line `#322` in `tests/regression_runner.py`)
+
+You can verify the optimizer is recorded by rerunning the `regression_runner.py`.
+Now regression test will be run on your new optimizer as well on every push.
+
+### Regression test metrics
+
+For each regression test the algorithm is run 10 times to sample its performance, then they are statistically compared to the 100 recorded runs. We use these 3 boolean metrics to define the performance of the algorithm on any task:
+
+1. [Kolmogorov-Smirnov test for goodness of fit](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kstest.html) - `pvalue` >= 10%
+1. Absolute median distance - bounded within 92.5% confidence range of the expected median distance
+1. Median improvement - Median improvement over the recorded median
+
+Test metrics are run for each `(optimizer, task)` combination separately and then collected.
+The collected metrics are then further combined into 2 metrics
+
+1. Task pass - either both `Kolmogorov-Smirnov test` and `Absolute median distance` test passes or just `Median improvement`
+1. Test aggregate - Sum_over_tasks(`Kolmogorov-Smirnov test` + `Absolute median distance` + 2 * `Median improvement`)
+
+Finally, a test for an optimizer only passes when at least for one of the tasks `Task pass` is true, and `Test aggregate` is higher than 1 + `number of tasks`
+
+### On regression test failures
+
+Regression tests are stochastic by nature, so they might fail occasionally even the algorithm performance didn't degrade.
+In the case of regression test failure, try running it again first, if the problem still persists, then you can contact [Danny Stoll](mailto:stolld@cs.uni-freiburg.de) or [Samir](mailto:garibovs@cs.uni-freiburg.de).
+You can also run tests locally by running:
+
+```
+uv run pytest -m regression_all
+```
+
+## Disabling and Skipping Checks etc.
+
+
 ### Pre-commit: How to not run hooks?
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.
@@ -185,27 +215,26 @@ There are two options:
 
 ### Managing Dependencies
 
-To manage dependencies and for package distribution we use [poetry](https://python-poetry.org/docs/) (replaces pip).
+To manage dependencies we use [uv](https://docs.astral.sh/uv/getting-started/) (replaces pip).
 
 #### Add dependencies
 
 To install a dependency use
 
 ```bash
-poetry add dependency
+uv add dependency
 ```
 
 and commit the updated `pyproject.toml` to git.
 
-For more advanced dependency management see examples in `pyproject.toml` or have a look at the [poetry documentation](https://python-poetry.org/).
+For more advanced dependency management see examples in `pyproject.toml` or have a look at the [uv documentation](https://docs.astral.sh/uv/getting-started/).
 
 #### Install dependencies added by others
 
 When other contributors added dependencies to `pyproject.toml`, you can install them via
 
 ```bash
-poetry lock
-poetry install
+uv pip install -e ".[dev]"
 ```
 
 ## Documentation
@@ -244,38 +273,26 @@ There are four steps to releasing a new version of neps:
 
 We follow the [semantic versioning](https://semver.org) scheme.
 
-### 1. Update the Package Version and CITATION.cff
+## 1. Run tests
 
 ```bash
-poetry version v0.9.0
+uv run pytest
 ```
 
-and manually change the version specified in `CITATION.cff` and `docs/citations.md`
-
-### 2. Commit with a Version Tag
-
-First commit and test
+## 2. Update the Package Version and CITATION.cff
 
 ```bash
-git add pyproject.toml
-git commit -m "Bump version from v0.8.4 to v0.9.0"
-pytest
+bump-my-version bump <major | minor | patch>
 ```
 
-Then tag and push
-
-```bash
-git tag v0.9.0
-git push --tags
-git push
-```
+This will automatically update the version in `pyproject.toml` and `CITATION.cff`, tag the commit and push it to the remote repository.
 
 ### 3. Update Documentation
 
 First check if the documentation has any issues via
 
 ```bash
-mike deploy 0.9.0 latest -u
+mike deploy <current version> latest -u
 mike serve
 ```
 
@@ -284,7 +301,7 @@ and then looking at it.
 Afterwards, publish it via
 
 ```bash
-mike deploy 0.9.0 latest -up
+mike deploy <current version> latest -up
 ```
 
 ### 4. Publish on PyPI
@@ -296,7 +313,8 @@ To publish to PyPI:
 3. Run
 
 ```bash
-poetry publish --build
+uv build
+uv publish
 ```
 
 This will ask for your PyPI credentials.

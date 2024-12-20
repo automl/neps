@@ -1,6 +1,7 @@
-#False Python
+# False Python
 __pycache__
 dist
+**/*.egg-info
 
 # Log files
 *.out
@@ -18,9 +19,6 @@ site/*
 # IDE related
 .vscode/
 .idea/
-
-# Poetry
-poetry.lock
 
 # Misc
 *.sh
