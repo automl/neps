@@ -61,14 +61,14 @@ pandas = "^2"               # included in seaborn (>=1.2), but seaborn is now re
 
 # Neps dependencies resulting from others but not explicitly subsumed
 # scipy = ">=1.13.1"        # included in configspace (*), botorch,grakel (>= 1.6.0), results in (1.14.1)                         results in (2.2.3)
-# pyyaml = "^6"             # included in pre-commit, mike, mkdocs (>=5.1),           results in (6.0.2)
+pyyaml = "^6"               # included in pre-commit, mike, mkdocs (>=5.1),           results in (6.0.2)
 
 # Neps dependencies subsumed in others
 # numpy = "^1"              # included in tensorboard (>=1.12.0), botorch (>1.7), ifbo (<2)
 # torch = ">=2.0.1"         # included in ifbo (>=1.9.0), botorch (>=2.0.1), torchvision (2.5.1)
-# more-itertools = "*"      # included in configspace
-# typing-extensions = "*"   # included in many, e.g. botorch, configspace
 # gpytorch = "1.13.0"       # included in botorch (1.13.0)
+more-itertools = "*"        # included in configspace
+typing-extensions = "*"     # included in many, e.g. botorch, configspace
 
 [tool.poetry.group.dev.dependencies]
 ruff = "*"
