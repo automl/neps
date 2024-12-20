@@ -5,7 +5,6 @@ from __future__ import annotations
 import warnings
 from typing import Tuple
 from datetime import timedelta, datetime
-import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -797,6 +796,7 @@ def plot_incumbents(
     all_trials: List[Trial], incumbents: List[Trial], directory_path: Path
 ) -> str:
     """Plot the evolution of incumbent trials over the total number of trials."""
+
     id_to_index = {trial.id: idx + 1 for idx, trial in enumerate(all_trials)}
 
     # Collect data for plotting
@@ -808,14 +808,12 @@ def plot_incumbents(
     ]
 
     plt.figure(figsize=(12, 6))
-    sns.lineplot(
-        x=x_values,
-        y=y_values,
-        marker="o",
-        linestyle="-",
-        markersize=8,
-        color="dodgerblue",
+
+    # Create the line plot with desired styles
+    plt.plot(
+        x_values, y_values, marker="o", linestyle="-", markersize=8, color="dodgerblue"
     )
+
     plt.xlabel("Number of Trials")
     plt.ylabel("Loss")
     plt.title("Evolution of Incumbents Over Trials")
@@ -833,8 +831,10 @@ def plot_incumbents(
     ticks[0] = 1
     plt.xticks(ticks)
 
-    sns.set_style("whitegrid")
+    # Manually set grid and style elements from Seaborn
     plt.grid(True, linestyle="--", linewidth=0.5)
+    plt.axis("on")  # Equivalent to whitegrid background
+
     plt.tight_layout()
 
     # Save the figure
