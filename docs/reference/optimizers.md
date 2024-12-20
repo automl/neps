@@ -3,7 +3,9 @@
 ## 1 What are Multi-Fidelity and Priors?
 
 Low level-explanation of MF & Priors
+
 MF: Tests on small scale before investing a lot into ONE run
+
 Prior: Given an intuition on what could work, taking that into consideration
 
 ## 2 Automatic Optimizer Selection
