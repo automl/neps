@@ -34,7 +34,7 @@ neps.run(
 
 ## 3 Optimizer classes
 
-![Optimizer classes](../doc_images/venn_diagram.png)
+![Optimizer classes](../doc_images/venn_dia.png)
 
 ### 3.1 Multi-Fidelity optimizers
 

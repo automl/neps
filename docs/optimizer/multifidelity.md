@@ -28,12 +28,21 @@ Explain the problems of SH for parallelization and how rungs are used to maximiz
 
 Detailed explanation of `mobster`:
 
-Link to BO-explanation (extern), to explain BO and acquisition.
+Link to BO-explanation (extern), to explain BO.
 
 Explain the problem when parallelizing BO and how Mobster fantasizes outcomes via joint GP
 Explain the difference between using promotion and stopping and advantages of each (good defaults vs conservative)
 -> To consider when using Mobster in Neps.
 
+## 5 `IfBO`
+
+Detailed explanation of `IfBO`:
+
+Link to FT, PFNs and BO-explanation (extern), to explain BO, In-Context-Learning and Freeze-Thaw.
+
+Explain the combination of the a PFN as surrogate for Freeze-Thaw-BO.
+
+Write about what to consider when using IfBO  in Neps
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).
