@@ -63,7 +63,7 @@ def _get_fig_and_axs(
     )
 
     fig.tight_layout(pad=2.0, h_pad=2.5)  # type: ignore
-    for ax in axs.flat:
+    for ax in fig.get_axes():
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
