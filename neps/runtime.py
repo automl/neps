@@ -46,6 +46,9 @@ def _default_worker_name() -> str:
     return f"{os.getpid()}-{isoformat}"
 
 
+_DDP_ENV_VAR_NAME = "NEPS_DDP_TRIAL_ID"
+
+
 def _is_ddp_and_not_rank_zero() -> bool:
     import torch.distributed as dist
 
@@ -62,6 +65,11 @@ def _is_ddp_and_not_rank_zero() -> bool:
             if rank is not None:
                 return int(rank) != 0
     return False
+
+
+def _set_ddp_env_var(trial_id: str) -> None:
+    """Sets an environment variable with current trial_id in a DDP setup."""
+    os.environ[_DDP_ENV_VAR_NAME] = trial_id
 
 
 N_FAILED_GET_NEXT_PENDING_ATTEMPTS_BEFORE_ERROR = 0
@@ -131,6 +139,7 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
             "\n\nThis is most likely a bug and should be reported to NePS!"
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
+    _set_ddp_env_var(trial.id)
     yield
     for _key, callback in _TRIAL_END_CALLBACKS.items():
         callback(trial)
@@ -515,25 +524,25 @@ def _launch_ddp_runtime(
     optimization_dir: Path,
 ) -> None:
     neps_state = load_filebased_neps_state(directory=optimization_dir)
-
-    # TODO: This is a bit of a hack to get the current trial to evaluate. Sometimes
-    # the previous trial gets sampled when we don't want it to. This is a bit of a
-    # hack to get around that.
     prev_trial = None
     while True:
         current_eval_trials = neps_state.get_current_evaluating_trials()
         # If the worker id on previous trial is the same as the current one, only then
         # evaluate it.
-
         if len(current_eval_trials) > 0:
             current_trial = None
             if prev_trial is None:
-                # TODO: This is wrong. we evaluate the first trial in the list
-                # Instead, we need to check and evaluate the trial that is being
-                # evaluated by the parent process.
-                # Currently this only works if the DDP trainings are launched after some
-                # trials evaluation has begun.
-                current_trial = current_eval_trials[0]
+                # In the beginning, we simply read the current trial from the
+                # environment variable
+                if _DDP_ENV_VAR_NAME in os.environ:
+                    current_id = os.getenv(_DDP_ENV_VAR_NAME)
+                if current_id is None:
+                    raise RuntimeError(
+                        "In a pytorch-lightning DDP setup, the environment variable"
+                        f" '{_DDP_ENV_VAR_NAME}' was not set. This is probably a bug in"
+                        " NePS and should be reported."
+                    )
+                current_trial = neps_state.get_trial_by_id(current_id)
             else:
                 for trial in current_eval_trials:  # type: ignore[unreachable]
                     if (
