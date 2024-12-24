@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from botorch.models.gp_regression_mixed import Kernel
 
 
-# Making predictions on test data
-# No the wl_kernel needs to be aware of the test graphs
 @contextmanager
 def set_graph_lookup(
     kernel: Kernel,
@@ -24,7 +22,17 @@ def set_graph_lookup(
     *,
     append: bool = True,
 ) -> Iterator[None]:
+    """Context manager to temporarily set the graph lookup for a kernel.
+
+    Args:
+        kernel (Kernel): The kernel whose graph lookup is to be set.
+        new_graphs (list[nx.Graph]): The new graphs to set in the graph lookup.
+        append (bool, optional): Whether to append the new graphs to the existing graph
+            lookup. Defaults to True.
+    """
     kernel_prev_graphs: list[tuple[Kernel, list[nx.Graph]]] = []
+
+    # Determine the modules to update based on the kernel type
     if isinstance(kernel, TorchWLKernel):
         modules = [kernel]
     else:
@@ -33,6 +41,7 @@ def set_graph_lookup(
         ), "Kernel module must have sub_kernels method."
         modules = [k for k in kernel.sub_kernels() if isinstance(k, TorchWLKernel)]
 
+    # Save the current graph lookup and set the new graph lookup
     for kern in modules:
         kernel_prev_graphs.append((kern, kern.graph_lookup))
         if append:
@@ -42,8 +51,9 @@ def set_graph_lookup(
 
     yield
 
-    for _kern, _prev_graphs in kernel_prev_graphs:
-        _kern.set_graph_lookup(_prev_graphs)
+    # Restore the original graph lookup after the context manager exits
+    for kern, prev_graphs in kernel_prev_graphs:
+        kern.set_graph_lookup(prev_graphs)
 
 
 def sample_graphs(graphs: list[nx.Graph], num_samples: int) -> list[nx.Graph]:
@@ -116,35 +126,23 @@ def optimize_acqf_graph(
         raise ValueError("train_graphs cannot be None.")
 
     sampled_graphs = sample_graphs(train_graphs, num_samples=num_graph_samples)
-    gp = acq_function.model
-    covar_module = gp.covar_module
-
     best_candidates, best_scores = [], []
-
-    TODO_GRAPH_COLUMN_INDEX = bounds.shape[1] - 1
-
+    graph_idx = bounds.shape[1] - 1
+    # Iterate through all the kernels and include the sampled graph.
     for _graph in sampled_graphs:
-        # This is new, we essentially iterate through all the kernels and
-        # include the sampled graph.
-        with set_graph_lookup(covar_module, [_graph], append=True):
+        with set_graph_lookup(acq_function.model.covar_module, [_graph], append=True):
             for fixed_features in fixed_features_list or [{}]:
                 # We then consider this graph as a fixed feature, i.e. in the X's
                 # generated during acquisition, the graph column will just be full
                 # of `-1` indicating to select the very last graph in the lookup
                 # they used.
-                _fixed_features = {**fixed_features, TODO_GRAPH_COLUMN_INDEX: -1.0}
-
                 candidates, scores = optimize_acqf_mixed(
                     acq_function=acq_function,
                     bounds=bounds,
-                    fixed_features_list=[_fixed_features],
+                    fixed_features_list=[{**fixed_features, graph_idx: -1.0}],
                     num_restarts=num_restarts,
-                    raw_samples=raw_samples,
-                    q=q,
-                )
+                    raw_samples=raw_samples, q=q)
                 best_candidates.append(candidates)
                 best_scores.append(scores)
-
-    best_scores_tensor = torch.tensor(best_scores)
-    best_idx = torch.argmax(best_scores_tensor)
-    return best_candidates[best_idx], best_scores_tensor[best_idx].item()
+    best_idx = torch.argmax(torch.tensor(best_scores))
+    return best_candidates[best_idx], best_scores[best_idx].item()
