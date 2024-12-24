@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from itertools import product
@@ -7,16 +8,22 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 import torch
-from botorch import fit_gpytorch_mll
+from botorch import fit_gpytorch_mll, settings
 from botorch.acquisition import LinearMCObjective, qLogNoisyExpectedImprovement
+from botorch.models import SingleTaskGP
 from botorch.models.gp_regression_mixed import CategoricalKernel, Kernel, ScaleKernel
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 from grakel_replace.optimize import optimize_acqf_graph
 from grakel_replace.torch_wl_kernel import TorchWLKernel
+from grakel_replace.utils import min_max_scale, seed_all
 
 if TYPE_CHECKING:
     from gpytorch.distributions.multivariate_normal import MultivariateNormal
+
+start_time = time.time()
+settings.debug._set_state(True)
+seed_all()
 
 TRAIN_CONFIGS = 50
 TEST_CONFIGS = 10
@@ -26,90 +33,42 @@ N_NUMERICAL = 2
 N_CATEGORICAL = 1
 N_CATEGORICAL_VALUES_PER_CATEGORY = 2
 N_GRAPH = 1
+
 assert N_GRAPH == 1, "This example only supports a single graph feature"
 
-kernels = []
+# Generate random data
+X = torch.cat([
+    torch.rand((TOTAL_CONFIGS, N_NUMERICAL), dtype=torch.float64),
+    torch.randint(0, N_CATEGORICAL_VALUES_PER_CATEGORY, (TOTAL_CONFIGS, N_CATEGORICAL),
+                  dtype=torch.float64),
+    torch.arange(TOTAL_CONFIGS, dtype=torch.float64).unsqueeze(1)
+], dim=1)
 
-# Create numerical and categorical features
-X = torch.empty(
-    size=(TOTAL_CONFIGS, N_NUMERICAL + N_CATEGORICAL + N_GRAPH),
-    dtype=torch.float64,
-)
-if N_NUMERICAL > 0:
-    X[:, :N_NUMERICAL] = torch.rand(
-        size=(TOTAL_CONFIGS, N_NUMERICAL),
-        dtype=torch.float64,
-    )
+# Generate random graphs
+graphs = [nx.erdos_renyi_graph(5, 0.5) for _ in range(TOTAL_CONFIGS)]
 
-if N_CATEGORICAL > 0:
-    X[:, N_NUMERICAL : N_NUMERICAL + N_CATEGORICAL] = torch.randint(
-        0,
-        N_CATEGORICAL_VALUES_PER_CATEGORY,
-        size=(TOTAL_CONFIGS, N_CATEGORICAL),
-        dtype=torch.float64,
-    )
-
-# Create random graph architectures
-graphs = []
-for _ in range(TOTAL_CONFIGS):
-    G = nx.erdos_renyi_graph(n=5, p=0.5)  # Random graph with 5 nodes
-    graphs.append(G)
-
-# Assign a new index column to the graphs
-X[:, -1] = torch.arange(TOTAL_CONFIGS, dtype=torch.float64)
-
-# Create random target values
-y = torch.rand(size=(TOTAL_CONFIGS,), dtype=torch.float64) + 0.5
+# Generate random target values
+y = torch.rand(TOTAL_CONFIGS, dtype=torch.float64) + 0.5
 
 # Split into train and test sets
-train_x = X[:TRAIN_CONFIGS]
-train_graphs = graphs[:TRAIN_CONFIGS]
-train_y = y[:TRAIN_CONFIGS].unsqueeze(-1)  # Add dimension for botorch
+train_x, test_x = X[:TRAIN_CONFIGS], X[TRAIN_CONFIGS:]
+train_graphs, test_graphs = graphs[:TRAIN_CONFIGS], graphs[TRAIN_CONFIGS:]
+train_y, test_y = y[:TRAIN_CONFIGS].unsqueeze(-1), y[TRAIN_CONFIGS:].unsqueeze(-1)
 
-test_x = X[TRAIN_CONFIGS:]
-test_graphs = graphs[TRAIN_CONFIGS:]
-test_y = y[TRAIN_CONFIGS:].unsqueeze(-1)
+train_x, test_x = min_max_scale(train_x), min_max_scale(test_x)
 
+kernels = [
+    ScaleKernel(
+        MaternKernel(nu=2.5, ard_num_dims=N_NUMERICAL, active_dims=range(N_NUMERICAL))),
+    ScaleKernel(CategoricalKernel(
+        ard_num_dims=N_CATEGORICAL,
+        active_dims=range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL))),
+    ScaleKernel(TorchWLKernel(
+        graph_lookup=train_graphs, n_iter=5, normalize=True,
+        active_dims=(X.shape[1] - 1,)))
+]
 
-# Setup kernels for numerical and categorical features
-if N_NUMERICAL > 0:
-    matern = ScaleKernel(
-        MaternKernel(
-            nu=2.5,
-            ard_num_dims=N_NUMERICAL,
-            active_dims=tuple(range(N_NUMERICAL)),
-        ),
-    )
-    kernels.append(matern)
-
-if N_CATEGORICAL > 0:
-    hamming = ScaleKernel(
-        CategoricalKernel(
-            ard_num_dims=N_CATEGORICAL,
-            active_dims=tuple(range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL)),
-        ),
-    )
-    kernels.append(hamming)
-
-if N_GRAPH > 0:
-    wl_kernel = ScaleKernel(
-        TorchWLKernel(
-            graph_lookup=train_graphs,
-            n_iter=5,
-            normalize=True,
-            active_dims=(X.shape[1] - 1,),  # Last column
-        )
-    )
-    kernels.append(wl_kernel)
-
-
-# Combine numerical and categorical kernels
-kernel = AdditiveKernel(*kernels)
-
-from botorch.models import SingleTaskGP
-
-# Initialize the mixed GP
-gp = SingleTaskGP(train_X=train_x, train_Y=train_y, covar_module=kernel)
+gp = SingleTaskGP(train_X=train_x, train_Y=train_y, covar_module=AdditiveKernel(*kernels))
 
 # Compute the posterior distribution
 # The wl_kernel will use the indices to index into the training graphs it is holding
@@ -139,13 +98,9 @@ with torch.no_grad(), set_graph_lookup(gp, train_graphs + test_graphs):
     uncertainties = posterior.variance.sqrt()
     covar = posterior.covariance_matrix
 
-# =============== Fitting the GP using botorch ===============
-
-
 mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
 fit_gpytorch_mll(mll)
 
-# Define the acquisition function
 acq_function = qLogNoisyExpectedImprovement(
     model=gp,
     X_baseline=train_x,
@@ -153,36 +108,18 @@ acq_function = qLogNoisyExpectedImprovement(
     prune_baseline=True,
 )
 
-# Define bounds
-bounds = torch.tensor(
-    [
-        [0.0] * N_NUMERICAL + [0.0] * N_CATEGORICAL + [-1.0] * N_GRAPH,
-        [1.0] * N_NUMERICAL
-        + [float(N_CATEGORICAL_VALUES_PER_CATEGORY - 1)] * N_CATEGORICAL
-        + [len(X) - 1] * N_GRAPH,
-    ]
-)
+bounds = torch.tensor([
+    [0.0] * N_NUMERICAL + [0.0] * N_CATEGORICAL + [-1.0] * N_GRAPH,
+    [1.0] * N_NUMERICAL + [
+        float(N_CATEGORICAL_VALUES_PER_CATEGORY - 1)] * N_CATEGORICAL + [
+        len(X) - 1] * N_GRAPH,
+])
 
-# Setup categorical feature optimization
-cats_per_column: dict[int, list[float]] = {
-    column_ix: [float(i) for i in range(N_CATEGORICAL_VALUES_PER_CATEGORY)]
-    for column_ix in range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL)
-}
+cats_per_column = {i: list(range(N_CATEGORICAL_VALUES_PER_CATEGORY)) for i in
+                   range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL)}
+fixed_cats = [dict(zip(cats_per_column.keys(), combo, strict=False)) for combo in
+              product(*cats_per_column.values())]
 
-# Generate fixed categorical features
-fixed_cats: list[dict[int, float]]
-if len(cats_per_column) == 1:
-    col, choice_indices = next(iter(cats_per_column.items()))
-    fixed_cats = [{col: i} for i in choice_indices]
-else:
-    fixed_cats = [
-        dict(zip(cats_per_column.keys(), combo, strict=False))
-        for combo in product(*cats_per_column.values())
-    ]
-
-
-print("------------------")  # noqa: T201
-# Use the graph-optimized acquisition function
 best_candidate, best_score = optimize_acqf_graph(
     acq_function=acq_function,
     bounds=bounds,
@@ -193,3 +130,7 @@ best_candidate, best_score = optimize_acqf_graph(
     raw_samples=16,
     q=1,
 )
+
+print(f"Best candidate: {best_candidate}")
+print(f"Best score: {best_score}")
+print(f"Elapsed time: {time.time() - start_time} seconds")
