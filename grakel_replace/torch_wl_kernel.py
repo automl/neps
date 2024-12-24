@@ -5,7 +5,6 @@ from typing import Any
 import networkx as nx
 import torch
 from botorch.models.gp_regression_mixed import Kernel
-from torch import nn
 
 
 class TorchWLKernel(Kernel):
@@ -139,7 +138,7 @@ class TorchWLKernel(Kernel):
         return torch.tensor(labels, dtype=torch.long)
 
 
-class _TorchWLKernel(nn.Module):
+class _TorchWLKernel(torch.nn.Module):
     """A custom implementation of Weisfeiler-Lehman (WL) Kernel in PyTorch.
 
     The WL Kernel is a graph kernel that measures similarity between graphs based on
@@ -161,12 +160,11 @@ class _TorchWLKernel(nn.Module):
         self.n_iter = n_iter
         self.normalize = normalize
         self.device: torch.device = torch.device("cpu")
-        self.label_dict: dict[str, int] = {}
+        self.label_dict: dict[tuple, int] = {}
         self.label_counter: int = 0
 
-    def _wl_iteration(
-        self, adj: torch.sparse.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def _wl_iteration(self, adj: torch.sparse.Tensor,
+                      labels: torch.Tensor) -> torch.Tensor:
         """Perform one WL iteration to update node labels.
         Concatenate own label with sorted neighbor labels.
 
@@ -177,18 +175,30 @@ class _TorchWLKernel(nn.Module):
         Returns:
             Updated node label tensor
         """
-        indices = adj.coalesce().indices()
+        # Ensure the adjacency matrix is in COO format
+        adj = adj.coalesce()
+        indices = adj.indices()
+        adj.values()
+
+        # Get the neighbors for each node
+        rows, cols = indices
+        neighbors = cols[rows]
+
+        # Create a list of combined labels for each node
+        combined_labels = []
+        for node in range(labels.size(0)):
+            node_neighbors = neighbors[rows == node]
+            node_neighbor_labels = labels[node_neighbors]
+            combined_label = (labels[node].item(), tuple(node_neighbor_labels.tolist()))
+            combined_labels.append(combined_label)
+
+        # Update the label dictionary and counter
         new_labels = torch.empty_like(labels)
-
-        for node in range(adj.size(0)):
-            neighbors = indices[1][indices[0] == node]
-            neighbor_labels = sorted([labels[n].item() for n in neighbors])
-
-            combined_label = (labels[node].item(), tuple(neighbor_labels))
-            if combined_label not in self.label_dict:
-                self.label_dict[combined_label] = self.label_counter
+        for i, label in enumerate(combined_labels):
+            if label not in self.label_dict:
+                self.label_dict[label] = self.label_counter
                 self.label_counter += 1
-            new_labels[node] = self.label_dict[combined_label]
+            new_labels[i] = self.label_dict[label]
 
         return new_labels
 
