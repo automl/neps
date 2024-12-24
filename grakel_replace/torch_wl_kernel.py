@@ -5,6 +5,8 @@ from typing import Any
 import networkx as nx
 import torch
 from botorch.models.gp_regression_mixed import Kernel
+from torch import Tensor
+from torch.nn import Module
 
 
 class TorchWLKernel(Kernel):
@@ -46,13 +48,13 @@ class TorchWLKernel(Kernel):
 
     def forward(
         self,
-        x1: torch.Tensor,
-        x2: torch.Tensor,
+        x1: Tensor,
+        x2: Tensor,
         *,
         diag: bool = False,
         last_dim_is_batch: bool = False,
         **params: Any,
-    ):
+    ) -> Tensor:
         if last_dim_is_batch:
             raise NotImplementedError("TODO: Figure this out")
 
@@ -96,7 +98,7 @@ class TorchWLKernel(Kernel):
             return torch.diag(K_selected)
         return K_selected
 
-    def _get_sparse_adj(self, graph: nx.Graph) -> torch.sparse.Tensor:
+    def _get_sparse_adj(self, graph: nx.Graph) -> Tensor:
         """Convert a NetworkX graph to a sparse adjacency tensor."""
         edges = list(graph.edges())
         num_nodes = graph.number_of_nodes()
@@ -106,7 +108,7 @@ class TorchWLKernel(Kernel):
                 indices=torch.empty((2, 0), dtype=torch.long),
                 values=torch.empty(0),
                 size=(num_nodes, num_nodes),
-                device=torch.device("cpu"),
+                device=self.device,
             )
 
         edge_indices: list[tuple[int, int]] = edges + [(v, u) for u, v in edges]
@@ -116,10 +118,10 @@ class TorchWLKernel(Kernel):
         values = torch.ones(len(edge_indices), dtype=torch.float)
 
         return torch.sparse_coo_tensor(
-            indices, values, (num_nodes, num_nodes), device=torch.device("cpu")
+            indices, values, (num_nodes, num_nodes), device=self.device
         )
 
-    def _init_node_labels(self, graph: nx.Graph) -> torch.Tensor:
+    def _init_node_labels(self, graph: nx.Graph) -> Tensor:
         """Initialize node label tensor from graph attributes."""
         labels: list[int] = []
         label_dict: dict[str, int] = {}
@@ -135,10 +137,10 @@ class TorchWLKernel(Kernel):
                 label_counter += 1
             labels.append(label_dict[label])
 
-        return torch.tensor(labels, dtype=torch.long)
+        return torch.tensor(labels, dtype=torch.long, device=self.device)
 
 
-class _TorchWLKernel(torch.nn.Module):
+class _TorchWLKernel(Module):
     """A custom implementation of Weisfeiler-Lehman (WL) Kernel in PyTorch.
 
     The WL Kernel is a graph kernel that measures similarity between graphs based on
@@ -159,69 +161,83 @@ class _TorchWLKernel(torch.nn.Module):
         super().__init__()
         self.n_iter = n_iter
         self.normalize = normalize
-        self.device: torch.device = torch.device("cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.label_dict: dict[tuple, int] = {}
         self.label_counter: int = 0
+        self.hash_module = torch.nn.Linear(2, 1, bias=False)
+        torch.nn.init.normal_(self.hash_module.weight)
 
-    def _wl_iteration(self, adj: torch.sparse.Tensor,
-                      labels: torch.Tensor) -> torch.Tensor:
-        """Perform one WL iteration to update node labels.
-        Concatenate own label with sorted neighbor labels.
-
-        Args:
-            adj: Sparse adjacency matrix
-            labels: Current node label tensor
-
-        Returns:
-            Updated node label tensor
-        """
-        # Ensure the adjacency matrix is in COO format
+    def _wl_iteration(self, adj: Tensor, labels: Tensor) -> Tensor:
+        """Perform one iteration of the WL algorithm to update node labels."""
         adj = adj.coalesce()
         indices = adj.indices()
-        adj.values()
-
-        # Get the neighbors for each node
         rows, cols = indices
-        neighbors = cols[rows]
+        num_nodes = labels.size(0)
 
-        # Create a list of combined labels for each node
-        combined_labels = []
-        for node in range(labels.size(0)):
-            node_neighbors = neighbors[rows == node]
-            node_neighbor_labels = labels[node_neighbors]
-            combined_label = (labels[node].item(), tuple(node_neighbor_labels.tolist()))
-            combined_labels.append(combined_label)
+        # Create a mask for each node's neighbors
+        neighbor_mask = torch.zeros((num_nodes, num_nodes), dtype=torch.bool,
+                                    device=self.device)
+        neighbor_mask[rows, cols] = True
 
-        # Update the label dictionary and counter
-        new_labels = torch.empty_like(labels)
-        for i, label in enumerate(combined_labels):
-            if label not in self.label_dict:
-                self.label_dict[label] = self.label_counter
-                self.label_counter += 1
-            new_labels[i] = self.label_dict[label]
+        # Get neighbor labels for each node
+        # Shape: [num_nodes, num_nodes]
+        neighbor_labels = labels.unsqueeze(0).expand(num_nodes, -1)
+        neighbor_labels = neighbor_labels.masked_fill(~neighbor_mask, -1)
 
+        # Sort neighbor labels for each node
+        sorted_neighbor_labels, _ = torch.sort(neighbor_labels, dim=1, descending=True)
+
+        # Remove padding (-1 values) from sorted labels
+        valid_neighbors_mask = sorted_neighbor_labels != -1
+        max_neighbors = valid_neighbors_mask.sum(1).max().item()
+        sorted_neighbor_labels = sorted_neighbor_labels[:, :max_neighbors]
+
+        # Combine node labels with neighbor labels
+        node_labels_expanded = labels.unsqueeze(1).expand(-1, max_neighbors)
+
+        # Create feature vectors
+        features = torch.cat([
+            node_labels_expanded.unsqueeze(-1).float(),
+            sorted_neighbor_labels.unsqueeze(-1).float()
+        ], dim=-1)
+
+        # Hash the combined features
+        hashed_features = self.hash_module(features).squeeze(-1)
+        hashed_labels = hashed_features.sum(dim=1)
+
+        # Convert to discrete labels
+        _, new_labels = torch.unique(hashed_labels, sorted=True, return_inverse=True)
         return new_labels
 
-    def _compute_feature_vector(self, labels: torch.Tensor, size: int) -> torch.Tensor:
-        """Compute histogram feature vector from node labels.
+    def _compute_feature_vector(self, all_labels: list[list[Tensor]]) -> Tensor:
+        """Compute feature vectors for all graphs in a batch."""
+        max_label = 0
+        for iteration_labels in all_labels:
+            for labels in iteration_labels:
+                max_label = max(max_label, labels.max().item())
 
-        Args:
-            labels: Node label tensor
-            size: Size of the feature vector
+        batch_size = len(all_labels[0])
+        features = torch.zeros((batch_size, max_label + 1),
+                               dtype=torch.float32, device=self.device)
 
-        Returns:
-            Feature vector representing label distribution
-        """
-        feature = torch.zeros(size, device=self.device, dtype=torch.float32)
-        unique, counts = torch.unique(labels, return_counts=True)
-        feature[unique] = counts.to(dtype=feature.dtype)
-        return feature
+        # Accumulate label counts for each graph
+        for graph_idx in range(batch_size):
+            # Sum contributions from all WL iterations
+            for iteration_labels in all_labels:
+                graph_labels = iteration_labels[graph_idx]
+                label_counts = torch.bincount(
+                    graph_labels,
+                    minlength=max_label + 1
+                ).float()
+                features[graph_idx] += label_counts
+
+        return features
 
     def forward(
         self,
-        adj_matrices: list[torch.sparse.Tensor],
-        label_tensors: list[torch.Tensor],
-    ) -> torch.Tensor:
+        adj_matrices: list[Tensor],
+        label_tensors: list[Tensor],
+    ) -> Tensor:
         """Compute WL kernel matrix for a list of graphs.
 
         Args:
@@ -231,11 +247,10 @@ class _TorchWLKernel(torch.nn.Module):
         Returns:
             Kernel matrix containing pairwise graph similarities.
         """
-        # Validate inputs
         if len(adj_matrices) != len(label_tensors):
             raise ValueError("Mismatch between adjacency matrices and label tensors.")
 
-        # Perform WL iterations to update node labels
+        # Perform WL iterations to update the node labels
         all_labels = [label_tensors]
         for _ in range(self.n_iter):
             new_labels = [
@@ -244,24 +259,8 @@ class _TorchWLKernel(torch.nn.Module):
             ]
             all_labels.append(new_labels)
 
-        # Compute feature vectors for each graph at each iteration
-        feature_vectors = []
-        label_counter = max(
-            max(labels.max().item() for labels in label_set)
-            for label_set in all_labels
-        ) + 1
-        for iteration_labels in all_labels:
-            feature_vectors.append(
-                torch.stack(
-                    [
-                        self._compute_feature_vector(labels, label_counter)
-                        for labels in iteration_labels
-                    ]
-                )
-            )
-
-        # Combine features from all iterations
-        final_features = torch.stack(feature_vectors).sum(dim=0)
+        # Compute feature vectors for each graph in the batch
+        final_features = self._compute_feature_vector(all_labels)
 
         # Compute kernel matrix (similarity matrix)
         kernel_matrix = torch.mm(final_features, final_features.t())
@@ -269,7 +268,7 @@ class _TorchWLKernel(torch.nn.Module):
         # Apply normalization if requested
         if self.normalize:
             diag = torch.sqrt(torch.diag(kernel_matrix))
-            kernel_matrix /= diag.unsqueeze(0) * diag.unsqueeze(1)
+            kernel_matrix /= (diag.unsqueeze(0) * diag.unsqueeze(1))
 
         return kernel_matrix
 
