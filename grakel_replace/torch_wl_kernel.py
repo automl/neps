@@ -1,13 +1,122 @@
 from __future__ import annotations
 
 from collections import Counter
+from typing import Any
 
 import networkx as nx
 import torch
+from botorch.models.gp_regression_mixed import Kernel
 from torch import nn
 
 
-class TorchWLKernel(nn.Module):
+class TorchWLKernel(Kernel):
+    has_lengthscale = False
+
+    def __init__(
+        self,
+        graph_lookup: list[nx.Graph],
+        n_iter: int = 5,
+        *,
+        normalize: bool = True,
+        active_dims: tuple[int, ...],
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(active_dims=active_dims, **kwargs)
+        self.graph_lookup = graph_lookup
+        self.n_iter = n_iter
+        self.normalize = normalize
+
+        # NOTE: set in the `super().__init__()`
+        self.active_dims: torch.Tensor
+
+    def set_graph_lookup(self, graph_lookup: list[nx.Graph]) -> None:
+        self.graph_lookup = graph_lookup
+
+    def forward(
+        self,
+        x1: torch.Tensor,
+        x2: torch.Tensor,
+        *,
+        diag: bool = False,
+        last_dim_is_batch: bool = False,
+        **params: Any,
+    ):
+        if last_dim_is_batch:
+            raise NotImplementedError("TODO: Figure this out")
+
+        assert x1.shape[-1] == 1, "Last dimension must be the graph index"
+        assert x2.shape[-1] == 1, "Last dimension must be the graph index"
+
+        # TODO: Optimizations
+        #
+        # 1. We're computing the whole K Matrix, but we only need the K_x1_x2
+        #
+        #           K
+        #       --------------------
+        #       | K_x1_x1  K_x1_x2 |
+        #       | K_x2_x1  K_x2_x2 |
+        #       --------------------
+        #
+        # However in the case where x1 == x2, we can shortcut this slightly as in
+        # the above, K_x1_x2 == K_x2_x1 == K_x1_x1 == K_x2_x2
+        # This shortcut is implemented below based on this flag.
+        #
+        # 2. The _TorchWLKernel used below has the following properties, which
+        #   get set on forward. In the case where x1.ndim == 3 then the first dim is
+        #   the `q` dim. Doesn't matter what it is other than we end up repeating the
+        #   processing the graphs `q` times. Given that it's likely that the indices
+        #   in last dimension are likely to be constant (i.e. all `4`, indicating the
+        #   `4th` graph, we are effectively doing a lot of extra calculation. We could
+        #   shortcut this by pre-computing these for each index. Could be nice to somehow
+        #   have the inned `_TorchWLKernel` be aware of this extra dimension but it's
+        #   fine if not as long as we can reduce the extraneuous computations. We could
+        #   change the interface of `_TorchWLKernel` to take in the raw processed
+        #   tensors instead of `nx.Graph` objects, which we would instead preprocess here.
+        #   If that's the case, we could move the `_TorchWLKernel` to essentially just
+        #   be functions we call instead with the correct pre-processed data.
+        #
+        #       .self.label_dict
+        #       .self.label_counter
+        #
+        x1_is_x2 = torch.equal(x1, x2)
+
+        # NOTE: The active dim is already selected out for us and is the last dimension
+        # (not including whatever happens when last_dim_is_batch) is True.
+        if x1.ndim == 3:
+            # - x1: torch.Size([32, 5, 1])
+            # - x2: torch.Size([32, 55, 1])
+            # - output: torch.Size([32, 5, 55])
+            q_dim_size = x1.shape[0]
+            assert x2.shape[0] == q_dim_size
+
+            out = torch.empty((q_dim_size, x1.shape[1], x2.shape[1]), device=x1.device)
+            for q in range(q_dim_size):
+                out[q] = self.forward(x1[q], x2[q], diag=diag)
+            return out
+
+        if x1_is_x2:
+            _ixs = x1.flatten().to(torch.int64).tolist()
+            all_graphs = [self.graph_lookup[i] for i in _ixs]
+
+            # No selection requires
+            select = None
+        else:
+            _ixs1 = x1.flatten().to(torch.int64).tolist()
+            _ixs2 = x2.flatten().to(torch.int64).tolist()
+            all_graphs = [self.graph_lookup[i] for i in _ixs1 + _ixs2]
+
+            # Select out K_x1_x2
+            select = lambda _K: _K[: len(_ixs1), len(_ixs1) :]
+
+        _kernel = _TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
+        K = _kernel(all_graphs)
+        K_selected = K if select is None else select(K)
+        if diag:
+            return torch.diag(K_selected)
+        return K_selected
+
+
+class _TorchWLKernel(nn.Module):
     """A custom implementation of Weisfeiler-Lehman (WL) Kernel in PyTorch.
 
     The WL Kernel is a graph kernel that measures similarity between graphs based on
@@ -24,7 +133,7 @@ class TorchWLKernel(nn.Module):
         label_counter: Counter for generating new label indices
     """
 
-    def __init__(self, n_iter: int = 5, normalize: bool = True) -> None:
+    def __init__(self, n_iter: int = 5, *, normalize: bool = True) -> None:
         super().__init__()
         self.n_iter = n_iter
         self.normalize = normalize
@@ -49,7 +158,7 @@ class TorchWLKernel(nn.Module):
                 indices=torch.empty((2, 0), dtype=torch.long),
                 values=torch.empty(0),
                 size=(num_nodes, num_nodes),
-                device=self.device
+                device=self.device,
             )
 
         # Create bidirectional edge indices for undirected graph
@@ -60,8 +169,7 @@ class TorchWLKernel(nn.Module):
         values = torch.ones(len(edge_indices), dtype=torch.float, device=self.device)
 
         return torch.sparse_coo_tensor(
-            indices, values, (num_nodes, num_nodes),
-            device=self.device
+            indices, values, (num_nodes, num_nodes), device=self.device
         )
 
     def _init_node_labels(self, graph: nx.Graph) -> torch.Tensor:
@@ -88,9 +196,7 @@ class TorchWLKernel(nn.Module):
         return torch.tensor(labels, dtype=torch.long, device=self.device)
 
     def _wl_iteration(
-        self,
-        adj: torch.sparse.Tensor,
-        labels: torch.Tensor
+        self, adj: torch.sparse.Tensor, labels: torch.Tensor
     ) -> torch.Tensor:
         """Perform one WL iteration to update node labels.
         Concatenate own label with sorted neighbor labels.
@@ -126,11 +232,7 @@ class TorchWLKernel(nn.Module):
 
         return torch.tensor(new_labels, dtype=torch.long, device=self.device)
 
-    def _compute_feature_vector(
-        self,
-        labels: torch.Tensor,
-        size: int
-    ) -> torch.Tensor:
+    def _compute_feature_vector(self, labels: torch.Tensor, size: int) -> torch.Tensor:
         """Compute histogram feature vector from node labels.
 
         Args:
@@ -172,8 +274,9 @@ class TorchWLKernel(nn.Module):
             TypeError: If input is not a list of NetworkX graphs
         """
         # Validate input
-        if (not isinstance(graphs, list) or
-            not all(isinstance(g, nx.Graph) for g in graphs)):
+        if not isinstance(graphs, list) or not all(
+            isinstance(g, nx.Graph) for g in graphs
+        ):
             raise TypeError("Expected input type is a list of NetworkX graphs.")
 
         # Setup computation
@@ -201,10 +304,12 @@ class TorchWLKernel(nn.Module):
 
         # Compute feature matrices using final label count
         feature_matrices = [
-            torch.stack([
-                self._compute_feature_vector(labels, self.label_counter)
-                for labels in iteration_labels
-            ])
+            torch.stack(
+                [
+                    self._compute_feature_vector(labels, self.label_counter)
+                    for labels in iteration_labels
+                ]
+            )
             for iteration_labels in all_label_tensors
         ]
 
@@ -226,9 +331,9 @@ class GraphDataset:
     """Utility class to convert NetworkX graphs for WL kernel."""
 
     @staticmethod
-    def from_networkx(graphs: list[nx.Graph], node_labels_tag: str = "label") -> list[
-        nx.Graph]:
-
+    def from_networkx(
+        graphs: list[nx.Graph], node_labels_tag: str = "label"
+    ) -> list[nx.Graph]:
         if not all(isinstance(g, nx.Graph) for g in graphs):
             raise TypeError("Expected input type is a list of NetworkX graphs.")
 
