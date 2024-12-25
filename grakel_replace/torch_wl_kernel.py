@@ -80,7 +80,7 @@ class TorchWLKernel(Kernel):
             indices1 = x1.flatten().to(torch.int64).tolist()
             indices2 = x2.flatten().to(torch.int64).tolist()
             all_graphs = indices1 + indices2
-            select = lambda K: K[: len(indices1), len(indices1):]
+            select = lambda K: K[:len(indices1), len(indices1):]
 
         # Handle the special case for -1
         all_graphs = [
@@ -119,7 +119,7 @@ class TorchWLKernel(Kernel):
 
         return torch.sparse_coo_tensor(
             indices, values, (num_nodes, num_nodes), device=self.device
-        )
+        ).to_sparse_csr()  # Convert to CSR for efficient operations
 
     def _init_node_labels(self, graph: nx.Graph) -> Tensor:
         """Initialize node label tensor from graph attributes."""
@@ -169,6 +169,10 @@ class _TorchWLKernel(Module):
 
     def _wl_iteration(self, adj: Tensor, labels: Tensor) -> Tensor:
         """Perform one iteration of the WL algorithm to update node labels."""
+        # Ensure the adjacency matrix is in COO format before coalescing
+        if adj.layout == torch.sparse_csr:
+            adj = adj.to_sparse_coo()
+
         adj = adj.coalesce()
         indices = adj.indices()
         rows, cols = indices
@@ -180,7 +184,6 @@ class _TorchWLKernel(Module):
         neighbor_mask[rows, cols] = True
 
         # Get neighbor labels for each node
-        # Shape: [num_nodes, num_nodes]
         neighbor_labels = labels.unsqueeze(0).expand(num_nodes, -1)
         neighbor_labels = neighbor_labels.masked_fill(~neighbor_mask, -1)
 
