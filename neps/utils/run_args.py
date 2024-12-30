@@ -20,7 +20,7 @@ logger = logging.getLogger("neps")
 
 # Define the name of the arguments as variables for easier code maintenance
 RUN_ARGS = "run_args"
-EVALUATE_PIPELINE = "run_pipeline"
+EVALUATE_PIPELINE = "evaluate_pipeline"
 PIPELINE_SPACE = "pipeline_space"
 ROOT_DIRECTORY = "root_directory"
 MAX_EVALUATIONS_TOTAL = "max_evaluations_total"
