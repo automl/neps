@@ -1,6 +1,6 @@
-# Simple NePS configuration including run_pipeline
-run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
+# Simple NePS configuration including evaluate_pipeline
+evaluate_pipeline:
+  path: path/to/your/evaluate_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
 
 pipeline_space:

@@ -65,7 +65,7 @@ class BayesianOptimization(BaseOptimizer):
         use_priors: bool = False,
         use_cost: bool = False,
         cost_on_log_scale: bool = True,
-        sample_default_first: bool = False,
+        sample_prior_first: bool = False,
         device: torch.device | None = None,
         encoder: ConfigEncoder | None = None,
         seed: int | None = None,
@@ -92,7 +92,7 @@ class BayesianOptimization(BaseOptimizer):
                     If using `cost`, cost must be provided in the reports of the trials.
 
             cost_on_log_scale: Whether to use the log of the cost when using cost.
-            sample_default_first: Whether to sample the default configuration first.
+            sample_prior_first: Whether to sample the default configuration first.
             seed: Seed to use for the random number generator of samplers.
             device: Device to use for the optimization.
             encoder: Encoder to use for encoding the configurations. If None, it will
@@ -126,7 +126,7 @@ class BayesianOptimization(BaseOptimizer):
         self.use_priors = use_priors
         self.cost_on_log_scale = cost_on_log_scale
         self.device = device
-        self.sample_default_first = sample_default_first
+        self.sample_prior_first = sample_prior_first
         self.n_initial_design = initial_design_size
         self.init_design: list[dict[str, Any]] | None = None
 
@@ -145,7 +145,7 @@ class BayesianOptimization(BaseOptimizer):
             self.init_design = make_initial_design(
                 space=space,
                 encoder=self.encoder,
-                sample_default_first=self.sample_default_first,
+                sample_prior_first=self.sample_prior_first,
                 sampler=self.prior if self.prior is not None else "sobol",
                 seed=None,  # TODO: Seeding
                 sample_size=(

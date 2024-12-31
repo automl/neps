@@ -1,4 +1,4 @@
-run_pipeline:
+evaluate_pipeline:
   path: "tests/test_yaml_run_args/test_yaml_run_args.py"
   name: run_pipelin # typo in name
 pipeline_space: "tests/test_yaml_run_args/pipeline_space.yaml"
@@ -19,7 +19,7 @@ parallelization_setup:
   continue_until_max_evaluation_completed: True
 
 error_handling:
-  loss_value_on_error: 4.2
+  objective_to_minimize_value_on_error: 4.2
   cost_value_on_error: 3.7
   ignore_errors: True
 

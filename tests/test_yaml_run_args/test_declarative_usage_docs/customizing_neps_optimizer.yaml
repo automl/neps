@@ -1,5 +1,5 @@
-run_pipeline:
-  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+evaluate_pipeline:
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/evaluate_pipeline.py
   name: run_pipeline_constant
 
 pipeline_space:

@@ -12,6 +12,10 @@ pipeline_space = dict(
 
 def run_pipeline(val1, val2):
     warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(val1, val2)
+
+
+def evaluate_pipeline(val1, val2):
     objective_to_minimize = val1 * val2
     return objective_to_minimize
 
@@ -23,7 +27,7 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.join(script_directory, os.pardir)
 searcher_path = Path(parent_directory) / "testing_yaml" / "optimizer_test"
 neps.run(
-    evaluate_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="user_yaml_bo",
     max_evaluations_total=1,

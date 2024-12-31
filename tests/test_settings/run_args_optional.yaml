@@ -7,7 +7,7 @@ max_evaluations_per_run:
 continue_until_max_evaluation_completed: False
 max_evaluations_total: 11 # get ignored
 root_directory: "get/ignored"
-loss_value_on_error:
+objective_to_minimize_value_on_error:
 cost_value_on_error:
 ignore_errors:
 searcher: hyperband

@@ -16,7 +16,7 @@ parallelization_setup:
   continue_until_max_evaluation_completed: false
 
 error_handling:
-  loss_value_on_error: None
+  objective_to_minimize_value_on_error: None
   cost_value_on_error: None
   ignore_errors: None
 

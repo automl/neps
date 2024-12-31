@@ -58,8 +58,8 @@ class HyperbandBase(SuccessiveHalvingBase):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         args = {
             "pipeline_space": pipeline_space,
@@ -75,8 +75,8 @@ class HyperbandBase(SuccessiveHalvingBase):
             "ignore_errors": ignore_errors,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
-            "sample_default_first": sample_default_first,
-            "sample_default_at_target": sample_default_at_target,
+            "sample_prior_first": sample_prior_first,
+            "sample_prior_at_target": sample_prior_at_target,
         }
         super().__init__(**args)
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
@@ -199,7 +199,7 @@ class Hyperband(HyperbandBase):
         _min_rung = self.sh_brackets[self.current_sh_bracket].min_rung
         end = self.sh_brackets[self.current_sh_bracket].config_map[_min_rung]
 
-        if self.sample_default_first and self.sample_default_at_target:
+        if self.sample_prior_first and self.sample_prior_at_target:
             start += 1
             end += 1
 
@@ -283,8 +283,8 @@ class HyperbandWithPriors(Hyperband):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -299,8 +299,8 @@ class HyperbandWithPriors(Hyperband):
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -321,8 +321,8 @@ class HyperbandCustomDefault(HyperbandWithPriors):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -336,8 +336,8 @@ class HyperbandCustomDefault(HyperbandWithPriors):
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
         self.sampling_args = {
             "inc": None,
@@ -372,8 +372,8 @@ class AsynchronousHyperband(HyperbandBase):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         args = {
             "pipeline_space": pipeline_space,
@@ -388,8 +388,8 @@ class AsynchronousHyperband(HyperbandBase):
             "ignore_errors": ignore_errors,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
-            "sample_default_first": sample_default_first,
-            "sample_default_at_target": sample_default_at_target,
+            "sample_prior_first": sample_prior_first,
+            "sample_prior_at_target": sample_prior_at_target,
         }
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
@@ -466,8 +466,8 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -482,8 +482,8 @@ class AsynchronousHyperbandWithPriors(AsynchronousHyperband):
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -506,8 +506,8 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
         # new arguments for model
         model_policy: Any = ModelPolicy,
         surrogate_model: str | Any = "gp",  # TODO: Remove
@@ -531,8 +531,8 @@ class MOBSTER(MFBOBase, AsynchronousHyperband):
             "ignore_errors": ignore_errors,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
-            "sample_default_first": sample_default_first,
-            "sample_default_at_target": sample_default_at_target,
+            "sample_prior_first": sample_prior_first,
+            "sample_prior_at_target": sample_prior_at_target,
         }
         super().__init__(**hb_args)
 
