@@ -25,7 +25,7 @@ class BudgetInfo:
 class OptimizationState:
     """The current state of an optimizer."""
 
-    budget: BudgetInfo | None
+    max_cost_total_info: BudgetInfo | None
     """Information regarind the budget used by the optimization trajectory."""
 
     shared_state: dict[str, Any]
