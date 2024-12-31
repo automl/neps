@@ -92,8 +92,8 @@ class IFBO(BaseOptimizer):
         pipeline_space: SearchSpace,
         step_size: int | float = 1,
         use_priors: bool = False,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
         surrogate_model_args: dict | None = None,
         initial_design_size: int | Literal["ndim"] = "ndim",
         n_acquisition_new_configs: int = 1_000,
@@ -110,7 +110,7 @@ class IFBO(BaseOptimizer):
             step_size: The size of the step to take in the fidelity domain.
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
-            sample_default_first: Whether to sample the default configuration first
+            sample_prior_first: Whether to sample the default configuration first
             initial_design_size: Number of configs to sample before starting optimization
 
                 If None, the number of configs will be equal to the number of dimensions.
@@ -128,8 +128,8 @@ class IFBO(BaseOptimizer):
         super().__init__(pipeline_space=space)
         self.step_size = step_size
         self.use_priors = use_priors
-        self.sample_default_first = sample_default_first
-        self.sample_default_at_target = sample_default_at_target
+        self.sample_prior_first = sample_prior_first
+        self.sample_prior_at_target = sample_prior_at_target
         self.device = device
         self.n_initial_design: int | Literal["ndim"] = initial_design_size
         self.n_acquisition_new_configs = n_acquisition_new_configs
@@ -181,7 +181,7 @@ class IFBO(BaseOptimizer):
             self._initial_design = make_initial_design(
                 space=self.pipeline_space,
                 encoder=self._config_encoder,
-                sample_default_first=self.sample_default_first,
+                sample_prior_first=self.sample_prior_first,
                 sampler="sobol" if self._prior is None else self._prior,
                 seed=None,  # TODO:
                 sample_fidelity="min",

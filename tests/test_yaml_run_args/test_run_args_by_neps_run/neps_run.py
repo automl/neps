@@ -37,8 +37,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     hyperband_args_optimizer = {"random_interleave_prob": 0.9,
-                                "sample_default_first": False,
-                                "sample_default_at_target": False,
+                                "sample_prior_first": False,
+                                "sample_prior_at_target": False,
                                 "eta": 7}
 
     if args.kwargs_flag:

@@ -61,8 +61,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         """Initialise an SH bracket.
 
@@ -88,8 +88,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 The higher the confidence, the smaller is the standard deviation of the
                 prior distribution centered around the default
             random_interleave_prob: Chooses the fraction of samples from random vs prior
-            sample_default_first: Whether to sample the default configuration first
-            sample_default_at_target: Whether to evaluate the default configuration at
+            sample_prior_first: Whether to sample the prior configuration first
+            sample_prior_at_target: Whether to evaluate the prior configuration at
                 the target fidelity or max budget
         """
         super().__init__(
@@ -102,8 +102,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         if random_interleave_prob < 0 or random_interleave_prob > 1:
             raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
         self.random_interleave_prob = random_interleave_prob
-        self.sample_default_first = sample_default_first
-        self.sample_default_at_target = sample_default_at_target
+        self.sample_prior_first = sample_prior_first
+        self.sample_prior_at_target = sample_prior_at_target
 
         assert self.pipeline_space.fidelity is not None, "Fidelity parameter not set."
         self.min_budget = self.pipeline_space.fidelity.lower
@@ -286,8 +286,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         # remove the default from being part of a Successive-Halving bracket
         if (
-            self.sample_default_first
-            and self.sample_default_at_target
+            self.sample_prior_first
+            and self.sample_prior_at_target
             and 0 in observed_configs.index.values
         ):
             observed_configs = observed_configs.drop(index=0)
@@ -429,10 +429,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
             rng = random.Random(None)  # TODO: Seeding
             if (
                 self.use_priors
-                and self.sample_default_first
+                and self.sample_prior_first
                 and len(self.observed_configs) == 0
             ):
-                if self.sample_default_at_target:
+                if self.sample_prior_at_target:
                     # sets the default config to be evaluated at the target fidelity
                     rung_id = self.max_rung
                     logger.info("Next config will be evaluated at target fidelity.")
@@ -512,7 +512,7 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         # indexes to mark separate brackets
         start = 0
         end = self.config_map[self.min_rung]  # length of lowest rung in a bracket
-        if self.sample_default_at_target and self.sample_default_first:
+        if self.sample_prior_at_target and self.sample_prior_first:
             start += 1
             end += 1
         # iterates over the different SH brackets which span start-end by index
@@ -570,8 +570,8 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -587,8 +587,8 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -611,8 +611,8 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -628,8 +628,8 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -653,8 +653,8 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
@@ -670,6 +670,6 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )

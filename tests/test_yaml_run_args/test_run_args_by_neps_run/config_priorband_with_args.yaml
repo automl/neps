@@ -21,8 +21,8 @@ searcher:
   strategy: "priorband"
   initial_design_type: max_budget
   prior_confidence: medium
-  sample_default_first: true
-  sample_default_at_target: false
+  sample_prior_first: true
+  sample_prior_at_target: false
   prior_weight_type: geometric
   inc_sample_type: mutation
   inc_mutation_rate: 0.2
