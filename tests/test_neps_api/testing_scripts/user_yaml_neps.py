@@ -12,6 +12,10 @@ pipeline_space = dict(
 
 def run_pipeline(val1, val2):
     warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(val1, val2)
+
+
+def evaluate_pipeline(val1, val2):
     objective_to_minimize = val1 * val2
     return objective_to_minimize
 
