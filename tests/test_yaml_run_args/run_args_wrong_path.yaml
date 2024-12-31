@@ -1,6 +1,6 @@
-run_pipeline:
+evaluate_pipeline:
   path: "tests/test_yaml_run_args/test_yaml_ru_args.py" # typo in path
-  name: run_pipeline
+  name: evaluate_pipeline
 pipeline_space: "tests/test_yaml_run_args/pipeline_space.yaml"
 root_directory: "test_yaml"
 
