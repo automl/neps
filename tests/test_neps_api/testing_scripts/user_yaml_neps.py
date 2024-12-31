@@ -27,7 +27,7 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 parent_directory = os.path.join(script_directory, os.pardir)
 searcher_path = Path(parent_directory) / "testing_yaml" / "optimizer_test"
 neps.run(
-    evaluate_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="user_yaml_bo",
     max_evaluations_total=1,
