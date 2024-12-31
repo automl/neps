@@ -6,10 +6,10 @@ learning_rate:
   lower: 1e-6
   upper: 1e-1
   log: False
-  default: 1e-3
-  default_confidence: "low"
+  prior: 1e-3
+  prior_confidence: "low"
 optimizer:
   choices: ["a", "b", "c"]
-  default: "b"
-  default_confidence: "high"
+  prior: "b"
+  prior_confidence: "high"
 batch_size: 64
