@@ -31,7 +31,7 @@ max_evaluations_per_run: 6
 continue_until_max_evaluation_completed: False
 
 # Error Handling
-loss_value_on_error: 1.0
+objective_to_minimize_value_on_error: 1.0
 cost_value_on_error: 1.0
 ignore_errors: True
 
