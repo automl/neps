@@ -22,7 +22,7 @@ def neps_state(tmp_path: Path) -> NePSState[Path]:
     return create_or_load_filebased_neps_state(
         directory=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(max_cost_total_info=None, shared_state={}),
+        optimizer_state=OptimizationState(budget=None, shared_state={}),
     )
 
 

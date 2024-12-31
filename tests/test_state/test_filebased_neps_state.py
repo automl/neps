@@ -23,7 +23,7 @@ def optimizer_state(
     max_cost_total_info: BudgetInfo | None,
     shared_state: dict[str, Any],
 ) -> OptimizationState:
-    return OptimizationState(max_cost_total_info=max_cost_total_info, shared_state=shared_state)
+    return OptimizationState(budget=max_cost_total_info, shared_state=shared_state)
 
 
 @fixture
@@ -71,7 +71,7 @@ def test_create_or_load_with_load_filebased_neps_state(
     # that we prioritize what's in the existing data over what
     # was passed in.
     different_state = OptimizationState(
-        max_cost_total_info=BudgetInfo(max_cost_total=20, used_cost_budget=10),
+        budget=BudgetInfo(max_cost_total=20, used_cost_budget=10),
         shared_state={"c": "d"},
     )
     neps_state2 = create_or_load_filebased_neps_state(

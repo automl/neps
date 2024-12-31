@@ -159,7 +159,7 @@ def case_neps_state_filebased(
     return create_or_load_filebased_neps_state(
         directory=new_path,
         optimizer_info=optimizer_info,
-        optimizer_state=OptimizationState(max_cost_total_info=max_cost_total, shared_state=shared_state),
+        optimizer_state=OptimizationState(budget=max_cost_total, shared_state=shared_state),
     )
 
 
@@ -169,7 +169,7 @@ def test_sample_trial(
     optimizer_and_key: tuple[BaseOptimizer, str],
 ) -> None:
     optimizer, key = optimizer_and_key
-    if key in REQUIRES_COST and neps_state.optimizer_state().max_cost_total_info is None:
+    if key in REQUIRES_COST and neps_state.optimizer_state().budget is None:
         pytest.xfail(f"{key} requires a cost budget")
 
     assert neps_state.get_all_trials() == {}

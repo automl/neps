@@ -392,7 +392,7 @@ class ReaderWriterOptimizationState(ReaderWriter[OptimizationState, Path]):
         budget = BudgetInfo(**budget_info) if budget_info is not None else None
         return OptimizationState(
             shared_state=state.get("shared_state") or {},
-            max_cost_total_info=budget,
+            budget=budget,
         )
 
     @override
