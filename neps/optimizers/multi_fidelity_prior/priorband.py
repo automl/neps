@@ -304,7 +304,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,
@@ -337,7 +337,7 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             initial_design_type=initial_design_type,
             sampling_policy=sampling_policy,

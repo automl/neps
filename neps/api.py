@@ -416,7 +416,7 @@ def _run_args(
         SearcherMapping, searcher_alg, "searcher", as_class=True
     )(
         pipeline_space=pipeline_space,
-        budget=max_cost_total,  # TODO: use max_cost_total everywhere
+        max_cost_total=max_cost_total,  # TODO: use max_cost_total everywhere
         **searcher_config,
     )
 

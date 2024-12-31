@@ -34,7 +34,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
@@ -70,7 +70,7 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
@@ -143,7 +143,7 @@ class PriorBandAshaHB(PriorBandAsha):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
@@ -179,7 +179,7 @@ class PriorBandAshaHB(PriorBandAsha):
         # collecting arguments required by ASHA
         args: dict[str, Any] = {
             "pipeline_space": pipeline_space,
-            "budget": budget,
+            "max_cost_total": max_cost_total,
             "eta": eta,
             "early_stopping_rate": self.early_stopping_rate,
             "initial_design_type": initial_design_type,
@@ -238,7 +238,7 @@ class PriorBandAshaHB(PriorBandAsha):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         """This is basically the fit method."""
         completed: dict[str, ConfigResult] = {

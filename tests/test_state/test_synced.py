@@ -339,19 +339,19 @@ def case_optimizer_info(
 
 @case
 @pytest.mark.parametrize(
-    "budget", (None, BudgetInfo(max_cost_budget=10, used_cost_budget=0))
+    "max_cost_total_info", (None, BudgetInfo(max_cost_total=10, used_cost_budget=0))
 )
 @pytest.mark.parametrize("shared_state", ({}, {"a": "b"}))
 def case_optimization_state(
     tmp_path: Path,
-    budget: BudgetInfo | None,
+    max_cost_total_info: BudgetInfo | None,
     shared_state: dict[str, Any],
 ) -> tuple[Synced[OptimizationState, Path], Callable[[OptimizationState], None]]:
-    optimization_state = OptimizationState(budget=budget, shared_state=shared_state)
+    optimization_state = OptimizationState(max_cost_total_info=max_cost_total_info, shared_state=shared_state)
 
     def _update(optimization_state: OptimizationState) -> None:
         optimization_state.shared_state["a"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
-        optimization_state.budget = BudgetInfo(max_cost_budget=10, used_cost_budget=5)
+        optimization_state.max_cost_total_info = BudgetInfo(max_cost_total=10, used_cost_budget=5)
 
     x = Synced.new(
         data=optimization_state,
