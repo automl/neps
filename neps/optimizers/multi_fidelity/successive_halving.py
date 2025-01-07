@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.DEFAULT_CONFIDENCE_SCORES)
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.PRIOR_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -49,26 +49,26 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int | None = None,
+        max_cost_total: int | None = None,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
         sampling_policy: Any = RandomUniformPolicy,
         promotion_policy: Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         """Initialise an SH bracket.
 
         Args:
             pipeline_space: Space in which to search
-            budget: Maximum budget
+            max_cost_total: Maximum budget
             eta: The reduction factor used by SH
             early_stopping_rate: Determines the number of rungs in an SH bracket
                 Choosing 0 creates maximal rungs given the fidelity bounds
@@ -78,32 +78,32 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 Samples generated from a Gaussian centered around the default value
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
-            loss_value_on_error: Setting this and cost_value_on_error to any float will
-                supress any error during bayesian optimization and will use given loss
-                value instead. default: None
-            cost_value_on_error: Setting this and loss_value_on_error to any float will
-                supress any error during bayesian optimization and will use given cost
-                value instead. default: None
+            objective_to_minimize_value_on_error: Setting this and cost_value_on_error to
+                any float will supress any error during bayesian optimization and will
+                use given objective_to_minimize value instead. default: None
+            cost_value_on_error: Setting this and objective_to_minimize_value_on_error to
+                any float will supress any error during bayesian optimization and will
+                use given cost value instead. default: None
             prior_confidence: The range of confidence to have on the prior
                 The higher the confidence, the smaller is the standard deviation of the
                 prior distribution centered around the default
             random_interleave_prob: Chooses the fraction of samples from random vs prior
-            sample_default_first: Whether to sample the default configuration first
-            sample_default_at_target: Whether to evaluate the default configuration at
+            sample_prior_first: Whether to sample the prior configuration first
+            sample_prior_at_target: Whether to evaluate the prior configuration at
                 the target fidelity or max budget
         """
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
-            loss_value_on_error=loss_value_on_error,
+            max_cost_total=max_cost_total,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
         )
         if random_interleave_prob < 0 or random_interleave_prob > 1:
             raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
         self.random_interleave_prob = random_interleave_prob
-        self.sample_default_first = sample_default_first
-        self.sample_default_at_target = sample_default_at_target
+        self.sample_prior_first = sample_prior_first
+        self.sample_prior_at_target = sample_prior_at_target
 
         assert self.pipeline_space.fidelity is not None, "Fidelity parameter not set."
         self.min_budget = self.pipeline_space.fidelity.lower
@@ -224,7 +224,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     ) -> None:
         for config_id, config_val in previous_results.items():
             _config, _rung = self._get_config_id_split(config_id)
-            perf = self.get_loss(config_val.result)
+            perf = self.get_objective_to_minimize(config_val.result)
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
                 rung_recorded = self.observed_configs.at[int(_config), "rung"]
@@ -286,8 +286,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         # remove the default from being part of a Successive-Halving bracket
         if (
-            self.sample_default_first
-            and self.sample_default_at_target
+            self.sample_prior_first
+            and self.sample_prior_at_target
             and 0 in observed_configs.index.values
         ):
             observed_configs = observed_configs.drop(index=0)
@@ -320,7 +320,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         """This is basically the fit method."""
         completed: dict[str, ConfigResult] = {
@@ -429,15 +429,15 @@ class SuccessiveHalvingBase(BaseOptimizer):
             rng = random.Random(None)  # TODO: Seeding
             if (
                 self.use_priors
-                and self.sample_default_first
+                and self.sample_prior_first
                 and len(self.observed_configs) == 0
             ):
-                if self.sample_default_at_target:
+                if self.sample_prior_at_target:
                     # sets the default config to be evaluated at the target fidelity
                     rung_id = self.max_rung
                     logger.info("Next config will be evaluated at target fidelity.")
                 logger.info("Sampling the default configuration...")
-                config = self.pipeline_space.from_dict(self.pipeline_space.default_config)
+                config = self.pipeline_space.from_dict(self.pipeline_space.prior_config)
             elif rng.random() < self.random_interleave_prob:
                 config = sample_one_old(
                     self.pipeline_space,
@@ -476,7 +476,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
                     confidence = confidence_score["numeric"]
-                self.pipeline_space[k].default_confidence_score = confidence
+                self.pipeline_space[k].prior_confidence_score = confidence
             elif isinstance(v, Categorical):
                 if confidence_score is None:
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
@@ -484,18 +484,18 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     ]
                 else:
                     confidence = confidence_score["categorical"]
-                self.pipeline_space[k].default_confidence_score = confidence
+                self.pipeline_space[k].prior_confidence_score = confidence
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):
     def _calc_budget_used_in_bracket(self, config_history: list[int]) -> int:
-        budget = 0
+        max_cost_total = 0
         for rung in self.config_map:
             count = sum(config_history == rung)
             # `range(min_rung, rung+1)` counts the black-box cost of promotions since
             # SH budgets assume each promotion involves evaluation from scratch
-            budget += count * sum(np.arange(self.min_rung, rung + 1))
-        return budget
+            max_cost_total += count * sum(np.arange(self.min_rung, rung + 1))
+        return max_cost_total
 
     def clear_old_brackets(self) -> None:
         """Enforces reset at each new bracket.
@@ -512,7 +512,7 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         # indexes to mark separate brackets
         start = 0
         end = self.config_map[self.min_rung]  # length of lowest rung in a bracket
-        if self.sample_default_at_target and self.sample_default_first:
+        if self.sample_prior_at_target and self.sample_prior_first:
             start += 1
             end += 1
         # iterates over the different SH brackets which span start-end by index
@@ -559,36 +559,36 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = FixedPriorPolicy,
         promotion_policy: Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -599,37 +599,37 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
         sampling_policy: Any = RandomUniformPolicy,
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             use_priors=use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -642,34 +642,34 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = FixedPriorPolicy,
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )

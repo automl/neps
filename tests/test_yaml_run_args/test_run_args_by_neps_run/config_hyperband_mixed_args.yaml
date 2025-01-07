@@ -1,8 +1,8 @@
 # args of optimizer from searcher kwargs (neps.run) and from run_args (yaml)
 
-run_pipeline:
+evaluate_pipeline:
   path: "tests/test_yaml_run_args/test_run_args_by_neps_run/neps_run.py"
-  name: run_pipeline
+  name: evaluate_pipeline
 pipeline_space: "tests/test_yaml_run_args/test_run_args_by_neps_run/search_space_with_fidelity.yaml"
 root_directory: "tests_tmpdir/test_run_args_by_neps_run/optimizer_hyperband"
 

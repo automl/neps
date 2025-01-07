@@ -23,7 +23,7 @@ HERE = Path(__file__).parent.absolute()
 class Plotter3D:
     """Plot a 3d landscape of learning curves for a given run."""
 
-    loss_key: str = "Loss"
+    objective_to_minimize_key: str = "Objective to minimize"
     fidelity_key: str = "epochs"
     run_path: str | Path | None = None
     scatter: bool = True
@@ -49,7 +49,7 @@ class Plotter3D:
             )
 
             # Assigned at prep_df stage
-            self.loss_range: tuple[float, float] | None = None
+            self.objective_to_minimize_range: tuple[float, float] | None = None
             self.epochs_range: tuple[float, float] | None = None
 
     @staticmethod
@@ -66,7 +66,7 @@ class Plotter3D:
     @staticmethod
     def get_z(df: pd.DataFrame) -> np.ndarray:
         """Get the z-axis values for the plot."""
-        return df["result.loss"].to_numpy()
+        return df["result.objective_to_minimize"].to_numpy()
 
     @staticmethod
     def get_color(df: pd.DataFrame) -> np.ndarray:
@@ -78,7 +78,10 @@ class Plotter3D:
         df = self.df if df is None else df
 
         _fid_key = f"config.{self.fidelity_key}"
-        self.loss_range = (df["result.loss"].min(), df["result.loss"].max())  # type: ignore
+        self.objective_to_minimize_range = (
+            df["result.objective_to_minimize"].min(),
+            df["result.objective_to_minimize"].max(),
+        )  # type: ignore
         self.epochs_range = (df[_fid_key].min(), df[_fid_key].max())  # type: ignore
 
         split_values = np.array([[*index.split("_")] for index in df.index])
@@ -189,23 +192,26 @@ class Plotter3D:
                 # Draw lines
                 ax.add_collection(lc)
 
-        assert self.loss_range is not None
+        assert self.objective_to_minimize_range is not None
         assert self.epochs_range is not None
 
         ax3D.axes.set_xlim3d(left=self.epochs_range[0], right=self.epochs_range[1])  # type: ignore
         ax3D.axes.set_ylim3d(bottom=0, top=data_groups.ngroups)  # type: ignore
-        ax3D.axes.set_zlim3d(bottom=self.loss_range[0], top=self.loss_range[1])  # type: ignore
+        ax3D.axes.set_zlim3d(
+            bottom=self.objective_to_minimize_range[0],
+            top=self.objective_to_minimize_range[1],
+        )  # type: ignore
 
         ax3D.set_xlabel("Epochs")
         ax3D.set_ylabel("Iteration sampled")
-        ax3D.set_zlabel(f"{self.loss_key}")  # type: ignore
+        ax3D.set_zlabel(f"{self.objective_to_minimize_key}")  # type: ignore
 
         # set view angle
         ax3D.view_init(elev=self.view_angle[0], azim=self.view_angle[1])  # type: ignore
 
         ax.autoscale_view()
         ax.set_xlabel(self.fidelity_key)
-        ax.set_ylabel(f"{self.loss_key}")
+        ax.set_ylabel(f"{self.objective_to_minimize_key}")
         ax.set_facecolor(self.bck_color_2d)
         fig.suptitle("ifBO run")
 

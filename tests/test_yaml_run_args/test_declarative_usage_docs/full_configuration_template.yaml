@@ -1,6 +1,6 @@
 # Full Configuration Template for NePS
-run_pipeline:
-  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+evaluate_pipeline:
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/evaluate_pipeline.py
   name: run_pipeline_constant
 
 pipeline_space:
@@ -31,7 +31,7 @@ max_evaluations_per_run:
 continue_until_max_evaluation_completed: False
 
 # Error Handling
-loss_value_on_error:
+objective_to_minimize_value_on_error:
 cost_value_on_error:
 ignore_errors:
 

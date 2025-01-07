@@ -49,20 +49,20 @@ def case_search_space_with_fid() -> SearchSpace:
 @case
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, default=0.5),
-        b=Categorical(["a", "b", "c"], default="a"),
+        a=Float(0, 1, prior=0.5),
+        b=Categorical(["a", "b", "c"], prior="a"),
         c=Constant("a"),
-        d=Integer(0, 10, default=5),
+        d=Integer(0, 10, prior=5),
     )
 
 
 @case
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, default=0.5),
-        b=Categorical(["a", "b", "c"], default="a"),
+        a=Float(0, 1, prior=0.5),
+        b=Categorical(["a", "b", "c"], prior="a"),
         c=Constant("a"),
-        d=Integer(0, 10, default=5),
+        d=Integer(0, 10, prior=5),
         e=Integer(1, 10, is_fidelity=True),
     )
 
@@ -126,7 +126,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].default is None:
+    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].prior is None:
         pytest.xfail(f"{key} requires a prior")
 
     if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
@@ -139,7 +139,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
         "pipeline_space": search_space,
     }
     if key in OPTIMIZER_REQUIRES_BUDGET:
-        kwargs["budget"] = 10
+        kwargs["max_cost_total"] = 10
 
     optimizer_cls = SearcherMapping[key]
 
@@ -147,11 +147,11 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
 
 
 @parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])
-@parametrize("budget", [BudgetInfo(max_cost_budget=10, used_cost_budget=0), None])
+@parametrize("max_cost_total", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None])
 @parametrize("shared_state", [{"a": "b"}, {}])
 def case_neps_state_filebased(
     tmp_path: Path,
-    budget: BudgetInfo | None,
+    max_cost_total: BudgetInfo | None,
     optimizer_info: OptimizerInfo,
     shared_state: dict[str, Any],
 ) -> NePSState:
@@ -159,7 +159,7 @@ def case_neps_state_filebased(
     return create_or_load_filebased_neps_state(
         directory=new_path,
         optimizer_info=optimizer_info,
-        optimizer_state=OptimizationState(budget=budget, shared_state=shared_state),
+        optimizer_state=OptimizationState(budget=max_cost_total, shared_state=shared_state),
     )
 
 

@@ -27,12 +27,12 @@ class Constant(Parameter[T, T]):
     !!! note
 
         As the name suggests, the value of a `Constant` only have one
-        value and so its [`.default`][neps.search_spaces.parameter.Parameter.default]
+        value and so its [`.prior`][neps.search_spaces.parameter.Parameter.prior]
         and [`.value`][neps.search_spaces.parameter.Parameter.value] should always be
         the same.
 
         This also implies that the
-        [`.default`][neps.search_spaces.parameter.Parameter.default] can never be `None`.
+        [`.prior`][neps.search_spaces.parameter.Parameter.prior] can never be `None`.
 
         Please use
         [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.Constant.set_constant_value]
@@ -45,7 +45,7 @@ class Constant(Parameter[T, T]):
         Args:
             value: value for the hyperparameter.
         """
-        super().__init__(value=value, default=value, is_fidelity=False)  # type: ignore
+        super().__init__(value=value, prior=value, is_fidelity=False)  # type: ignore
         self._value: T = value  # type: ignore
 
     @override
@@ -84,7 +84,7 @@ class Constant(Parameter[T, T]):
             [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.Constant.set_constant_value]
             which can be used to set both the
             [`.value`][neps.search_spaces.parameter.Parameter.value]
-            and the [`.default`][neps.search_spaces.parameter.Parameter.default] at once
+            and the [`.prior`][neps.search_spaces.parameter.Parameter.prior] at once
 
         Args:
             value: value to set the parameter to.
@@ -94,7 +94,7 @@ class Constant(Parameter[T, T]):
         """
         if value != self._value:
             raise ValueError(
-                f"Constant does not allow chaning the set value. "
+                f"Constant does not allow changing the set value. "
                 f"Tried to set value to {value}, but it is already {self.value}"
             )
 

@@ -1,3 +1,4 @@
+from warnings import warn
 import pytest
 import neps
 from neps.utils.run_args import get_run_args_from_yaml
@@ -15,6 +16,11 @@ pipeline_space = dict(
 
 def run_pipeline():
     """func to test loading of run_pipeline"""
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline()
+
+def evaluate_pipeline():
+    """func to test loading of evaluate_pipeline"""
     return
 
 
@@ -74,7 +80,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
     # Compare keys with a function/list of functions as their values
     # Special because they include a module loading procedure by a path and the name of
     # the function
-    for special_key in ["run_pipeline", "pre_load_hooks"]:
+    for special_key in ["evaluate_pipeline", "pre_load_hooks"]:
         if special_key in expected_output:
             func_expected = expected_output.pop(special_key)
             func_output = output.pop(special_key)
@@ -99,7 +105,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -110,7 +116,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "task_id": 4,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 4.2,
+                "objective_to_minimize_value_on_error": 4.2,
                 "cost_value_on_error": 3.7,
                 "ignore_errors": True,
                 "searcher": {
@@ -123,7 +129,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full_same_level.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -134,7 +140,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "task_id": 2.0,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 2.4,
+                "objective_to_minimize_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": {
@@ -175,7 +181,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_optional_loading_format.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -185,7 +191,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "development_stage_id": 9,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 2.4,
+                "objective_to_minimize_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": BayesianOptimization,

@@ -91,7 +91,7 @@ def case_trial_3(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     def _update(trial: Trial) -> None:
         trial.set_complete(
             time_end=3,
-            loss=1,
+            objective_to_minimize=1,
             cost=1,
             extra={"hi": [1, 2, 3]},
             learning_curve=[1],
@@ -129,7 +129,7 @@ def case_trial_4(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     def _update(trial: Trial) -> None:
         trial.set_complete(
             time_end=3,
-            loss=np.nan,
+            objective_to_minimize=np.nan,
             cost=np.inf,
             extra={"hi": [1, 2, 3]},
             report_as="failed",
@@ -167,7 +167,7 @@ def case_trial_5(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     def _update(trial: Trial) -> None:
         trial.set_complete(
             time_end=3,
-            loss=np.nan,
+            objective_to_minimize=np.nan,
             cost=np.inf,
             extra={"hi": [1, 2, 3]},
             learning_curve=None,
@@ -231,7 +231,7 @@ def case_trial_7(tmp_path: Path) -> tuple[Synced[Trial, Path], Callable[[Trial],
     trial.set_evaluating(time_started=2, worker_id=1)
     trial.set_complete(
         time_end=3,
-        loss=np.nan,
+        objective_to_minimize=np.nan,
         cost=np.inf,
         extra={"hi": [1, 2, 3]},
         learning_curve=[1, 2, 3],
@@ -339,7 +339,7 @@ def case_optimizer_info(
 
 @case
 @pytest.mark.parametrize(
-    "budget", (None, BudgetInfo(max_cost_budget=10, used_cost_budget=0))
+    "budget", (None, BudgetInfo(max_cost_total=10, used_cost_budget=0))
 )
 @pytest.mark.parametrize("shared_state", ({}, {"a": "b"}))
 def case_optimization_state(
@@ -351,7 +351,7 @@ def case_optimization_state(
 
     def _update(optimization_state: OptimizationState) -> None:
         optimization_state.shared_state["a"] = "c"  # type: ignore # NOTE: We shouldn't be mutating but anywho...
-        optimization_state.budget = BudgetInfo(max_cost_budget=10, used_cost_budget=5)
+        optimization_state.budget = BudgetInfo(max_cost_total=10, used_cost_budget=5)
 
     x = Synced.new(
         data=optimization_state,

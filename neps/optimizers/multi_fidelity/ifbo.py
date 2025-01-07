@@ -73,9 +73,9 @@ def _adjust_pipeline_space_to_match_stepsize(
         lower=new_lower,
         upper=fidelity.upper,
         log=fidelity.log,
-        default=fidelity.default,
+        prior=fidelity.prior,
         is_fidelity=True,
-        default_confidence=fidelity.default_confidence_choice,
+        prior_confidence=fidelity.prior_confidence_choice,
     )
     return (
         SearchSpace(**{**pipeline_space.hyperparameters, fidelity_name: new_fid}),
@@ -92,14 +92,14 @@ class IFBO(BaseOptimizer):
         pipeline_space: SearchSpace,
         step_size: int | float = 1,
         use_priors: bool = False,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
         surrogate_model_args: dict | None = None,
         initial_design_size: int | Literal["ndim"] = "ndim",
         n_acquisition_new_configs: int = 1_000,
         device: torch.device | None = None,
-        budget: int | float | None = None,  # TODO: Remove
-        loss_value_on_error: float | None = None,  # TODO: Remove
+        max_cost_total: int | float | None = None,  # TODO: Remove
+        objective_to_minimize_value_on_error: float | None = None,  # TODO: Remove
         cost_value_on_error: float | None = None,  # TODO: Remove
         ignore_errors: bool = False,  # TODO: Remove
     ):
@@ -110,7 +110,7 @@ class IFBO(BaseOptimizer):
             step_size: The size of the step to take in the fidelity domain.
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
-            sample_default_first: Whether to sample the default configuration first
+            sample_prior_first: Whether to sample the default configuration first
             initial_design_size: Number of configs to sample before starting optimization
 
                 If None, the number of configs will be equal to the number of dimensions.
@@ -128,8 +128,8 @@ class IFBO(BaseOptimizer):
         super().__init__(pipeline_space=space)
         self.step_size = step_size
         self.use_priors = use_priors
-        self.sample_default_first = sample_default_first
-        self.sample_default_at_target = sample_default_at_target
+        self.sample_prior_first = sample_prior_first
+        self.sample_prior_at_target = sample_prior_at_target
         self.device = device
         self.n_initial_design: int | Literal["ndim"] = initial_design_size
         self.n_acquisition_new_configs = n_acquisition_new_configs
@@ -171,7 +171,7 @@ class IFBO(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None = None,
+        max_cost_total_info: BudgetInfo | None = None,
     ) -> SampledConfig:
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
@@ -181,7 +181,7 @@ class IFBO(BaseOptimizer):
             self._initial_design = make_initial_design(
                 space=self.pipeline_space,
                 encoder=self._config_encoder,
-                sample_default_first=self.sample_default_first,
+                sample_prior_first=self.sample_prior_first,
                 sampler="sobol" if self._prior is None else self._prior,
                 seed=None,  # TODO:
                 sample_fidelity="min",
@@ -222,7 +222,8 @@ class IFBO(BaseOptimizer):
             not_pending_X = X
 
         # NOTE: Can't really abstract this, requires knowledge that:
-        # 1. The encoding is such that the loss is 1 - loss
+        # 1. The encoding is such that the objective_to_minimize is 1 -
+        # objective_to_minimize
         # 2. The budget is the second column
         # 3. The budget is encoded between 1/max_fid and 1
         rng = np.random.RandomState(len(trials))

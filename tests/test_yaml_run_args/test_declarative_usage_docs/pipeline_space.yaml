@@ -3,15 +3,15 @@ learning_rate:
   lower: 1e-5
   upper: 1e-1
   log: True  # Log scale for learning rate
-  default: 1e-2
-  default_confidence: "medium"
+  prior: 1e-2
+  prior_confidence: "medium"
 epochs:
   lower: 5
   upper: 20
-  default: 10
+  prior: 10
   is_fidelity: True
 optimizer:
   choices: [adam, sgd, adamw]
-  default: adam
-  default_confidence: low
+  prior: adam
+  prior_confidence: low
 batch_size: 64
