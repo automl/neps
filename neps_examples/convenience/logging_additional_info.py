@@ -1,17 +1,21 @@
 import logging
 import time
+from warnings import warn
 
 import numpy as np
 
 import neps
 
-
 def run_pipeline(float1, float2, categorical, integer1, integer2):
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(float1, float2, categorical, integer1, integer2)
+
+def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
     start = time.time()
-    loss = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
+    objective_to_minimize = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
     end = time.time()
     return {
-        "loss": loss,
+        "objective_to_minimize": objective_to_minimize,
         "info_dict": {  # Optionally include additional information as an info_dict
             "train_time": end - start,
         },
@@ -28,7 +32,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/logging_additional_info",
     max_evaluations_total=5,

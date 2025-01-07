@@ -4,7 +4,7 @@ from neps.utils.run_args import Settings, Default
 import pytest
 from pathlib import Path
 from tests.test_yaml_run_args.test_yaml_run_args import (
-    run_pipeline,
+    evaluate_pipeline,
     hook1,
     hook2,
     pipeline_space,
@@ -12,7 +12,7 @@ from tests.test_yaml_run_args.test_yaml_run_args import (
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
 BASE_PATH = Path("tests") / "test_settings"
-run_pipeline = run_pipeline
+evaluate_pipeline = evaluate_pipeline
 hook1 = hook1
 hook2 = hook2
 pipeline_space = pipeline_space
@@ -25,7 +25,7 @@ my_bayesian = BayesianOptimization
     [
         (
             {  # only essential arguments provided by func_args, no yaml
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": Default(None),
@@ -38,7 +38,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": Default(False),
                 "max_cost_total": Default(None),
                 "ignore_errors": Default(False),
-                "loss_value_on_error": Default(None),
+                "objective_to_minimize_value_on_error": Default(None),
                 "cost_value_on_error": Default(None),
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
@@ -46,7 +46,7 @@ my_bayesian = BayesianOptimization
             },
             Default(None),
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -58,7 +58,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": "default",
@@ -67,7 +67,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # only required elements of run_args
-                "run_pipeline": Default(None),
+                "evaluate_pipeline": Default(None),
                 "root_directory": Default(None),
                 "pipeline_space": Default(None),
                 "run_args": Default(None),
@@ -80,7 +80,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": Default(False),
                 "max_cost_total": Default(None),
                 "ignore_errors": Default(False),
-                "loss_value_on_error": Default(None),
+                "objective_to_minimize_value_on_error": Default(None),
                 "cost_value_on_error": Default(None),
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
@@ -88,7 +88,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_required.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -100,7 +100,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": "default",
@@ -109,7 +109,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # required via func_args, optional via yaml
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": "tests/path/to/run_args",  # will be ignored by Settings
@@ -122,7 +122,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": Default(False),
                 "max_cost_total": Default(None),
                 "ignore_errors": Default(False),
-                "loss_value_on_error": Default(None),
+                "objective_to_minimize_value_on_error": Default(None),
                 "cost_value_on_error": Default(None),
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
@@ -130,7 +130,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_optional.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": True,
@@ -142,7 +142,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": "hyperband",
@@ -151,7 +151,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # overwrite all yaml values
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": "test",
@@ -164,7 +164,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": "default",
@@ -172,7 +172,7 @@ my_bayesian = BayesianOptimization
             },
             "overwrite_run_args.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -184,7 +184,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": "default",
@@ -193,7 +193,7 @@ my_bayesian = BayesianOptimization
         ),
         (
             {  # optimizer args special case
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "run_args": "test",
@@ -206,7 +206,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": Default("default"),
@@ -214,13 +214,13 @@ my_bayesian = BayesianOptimization
                     "initial_design_type": "max_budget",
                     "use_priors": False,
                     "random_interleave_prob": 0.0,
-                    "sample_default_first": False,
-                    "sample_default_at_target": False,
+                    "sample_prior_first": False,
+                    "sample_prior_at_target": False,
                 },
             },
             "run_args_optimizer_settings.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": False,
@@ -232,7 +232,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": {
@@ -241,21 +241,21 @@ my_bayesian = BayesianOptimization
                     "initial_design_type": "max_budget",
                     "use_priors": False,
                     "random_interleave_prob": 0.0,
-                    "sample_default_first": False,
-                    "sample_default_at_target": False,
+                    "sample_prior_first": False,
+                    "sample_prior_at_target": False,
                 },
                 "searcher_kwargs": {
                     "initial_design_type": "max_budget",
                     "use_priors": False,
                     "random_interleave_prob": 0.0,
-                    "sample_default_first": False,
-                    "sample_default_at_target": False,
+                    "sample_prior_first": False,
+                    "sample_prior_at_target": False,
                 },
             },
         ),
         (
             {  # load optimizer with args
-                "run_pipeline": Default(None),
+                "evaluate_pipeline": Default(None),
                 "root_directory": Default(None),
                 "pipeline_space": Default(None),
                 "run_args": Default(None),
@@ -268,7 +268,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": Default(False),
                 "max_cost_total": Default(None),
                 "ignore_errors": Default(False),
-                "loss_value_on_error": Default(None),
+                "objective_to_minimize_value_on_error": Default(None),
                 "cost_value_on_error": Default(None),
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
@@ -278,7 +278,7 @@ my_bayesian = BayesianOptimization
             },
             "run_args_optimizer_outside.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "root_directory": "path/to/root_directory",
                 "pipeline_space": pipeline_space,
                 "overwrite_working_directory": True,
@@ -290,7 +290,7 @@ my_bayesian = BayesianOptimization
                 "continue_until_max_evaluation_completed": False,
                 "max_cost_total": None,
                 "ignore_errors": False,
-                "loss_value_on_error": None,
+                "objective_to_minimize_value_on_error": None,
                 "cost_value_on_error": None,
                 "pre_load_hooks": None,
                 "searcher": my_bayesian,
@@ -331,7 +331,7 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
                 "continue_until_max_evaluation_completed": Default(False),
                 "max_cost_total": Default(None),
                 "ignore_errors": Default(False),
-                "loss_value_on_error": Default(None),
+                "objective_to_minimize_value_on_error": Default(None),
                 "cost_value_on_error": Default(None),
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),

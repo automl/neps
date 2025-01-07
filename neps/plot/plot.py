@@ -36,7 +36,7 @@ def plot(  # noqa: C901, PLR0913
         scientific_mode: If true, plot from a tree-structured root_directory:
             benchmark={}/algorithm={}/seed={}
         key_to_extract: The metric to be used on the x-axis
-            (if active, make sure run_pipeline returns the metric in the info_dict)
+            (if active, make sure evaluate_pipeline returns the metric in the info_dict)
         benchmarks: List of benchmarks to plot
         algorithms: List of algorithms to plot
         consider_continuations: If true, toggle calculation of continuation costs

@@ -19,7 +19,7 @@ def make_initial_design(  # noqa: PLR0912, C901
     encoder: ConfigEncoder,
     sampler: Literal["sobol", "prior", "uniform"] | Sampler,
     sample_size: int | Literal["ndim"] | None = "ndim",
-    sample_default_first: bool = True,
+    sample_prior_first: bool = True,
     sample_fidelity: (
         Literal["min", "max", True] | int | float | dict[str, int | float]
     ) = True,
@@ -44,9 +44,9 @@ def make_initial_design(  # noqa: PLR0912, C901
             If "ndim", the number of configs will be equal to the number of dimensions.
             If None, no configurations will be sampled.
 
-        sample_default_first: Whether to sample the default configuration first.
+        sample_prior_first: Whether to sample the prior configuration first.
         sample_fidelity:
-            At what fidelity to sample the configurations, including the default.
+            At what fidelity to sample the configurations, including the prior.
 
             If set to "min" or "max", the configuration will be sampled
             at the minimum or maximum fidelity, respectively. If set to an integer
@@ -95,14 +95,14 @@ def make_initial_design(  # noqa: PLR0912, C901
             fids = lambda: sample_fidelity
         case _:
             raise ValueError(
-                "Invalid value for `sample_default_at_target`. "
+                "Invalid value for `sample_prior_at_target`. "
                 "Expected 'min', 'max', True, int, float, or dict."
             )
 
-    if sample_default_first:
+    if sample_prior_first:
         # TODO: No way to pass a seed to the sampler
         default = {
-            name: hp.default if hp.default is not None else hp.sample_value()
+            name: hp.prior if hp.prior is not None else hp.sample_value()
             for name, hp in space.hyperparameters.items()
         }
         configs.append({**default, **fids()})
