@@ -2,4 +2,16 @@ strategy: asha_prior
 # Arguments that can be modified by the user
 eta: 3
 early_stopping_rate: 0
+<<<<<<< HEAD
 sample_default_first: false  # true, false, "highest_fidelity"
+=======
+initial_design_type: max_budget
+prior_confidence: medium  # or {"low", "high"}
+random_interleave_prob: 0.0
+sample_prior_first: false
+sample_prior_at_target: false
+
+# Arguments that can not be modified by the user
+# sampling_policy: FixedPriorPolicy
+# promotion_policy: AsyncPromotionPolicy
+>>>>>>> master

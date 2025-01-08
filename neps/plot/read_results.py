@@ -62,9 +62,9 @@ def process_seed(
             else:
                 config_cost = config_result.metadata["time_end"] - global_start
 
-        # TODO(eddiebergman): Assumes it never crashed and there's a loss available,
-        # not fixing now but it should be addressed
-        losses.append(config_result.result["loss"])  # type: ignore
+        # TODO(eddiebergman): Assumes it never crashed and there's a
+        # objective_to_minimize available,not fixing now but it should be addressed
+        losses.append(config_result.result["objective_to_minimize"])  # type: ignore
         costs.append(config_cost)
 
     return list(np.minimum.accumulate(losses)), costs, max_cost

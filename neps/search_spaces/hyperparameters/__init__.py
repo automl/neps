@@ -9,13 +9,13 @@ from neps.search_spaces.hyperparameters.numerical import Numerical, NumericalPar
 
 __all__ = [
     "Categorical",
-    "Constant",
-    "Integer",
-    "Float",
-    "Numerical",
     "CategoricalParameter",
+    "Constant",
     "ConstantParameter",
-    "IntegerParameter",
+    "Float",
     "FloatParameter",
+    "Integer",
+    "IntegerParameter",
+    "Numerical",
     "NumericalParameter",
 ]

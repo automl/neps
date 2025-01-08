@@ -1,36 +1,50 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from warnings import warn
+
 import pytest
+
 import neps
-from neps.utils.run_args import get_run_args_from_yaml
 from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from typing import Union, Callable, Dict, List, Type
+from neps.utils.run_args import get_run_args_from_yaml
 
 BASE_PATH = "tests/test_yaml_run_args/"
-pipeline_space = dict(
-    lr=neps.Float(lower=1e-3, upper=0.1),
-    optimizer=neps.Categorical(choices=["adam", "sgd", "adamw"]),
-    epochs=neps.Integer(lower=1, upper=10),
-    batch_size=neps.Constant(value=64),
-)
+pipeline_space = {
+    "lr": neps.Float(lower=1e-3, upper=0.1),
+    "optimizer": neps.Categorical(choices=["adam", "sgd", "adamw"]),
+    "epochs": neps.Integer(lower=1, upper=10),
+    "batch_size": neps.Constant(value=64),
+}
 
 
 def run_pipeline():
-    """func to test loading of run_pipeline"""
+    """Func to test loading of run_pipeline."""
+    warn(
+        "run_pipeline is deprecated, use evaluate_pipeline instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return evaluate_pipeline()
+
+
+def evaluate_pipeline():
+    """Func to test loading of evaluate_pipeline."""
     return
 
 
 def hook1(sampler):
-    """func to test loading of pre_load_hooks"""
+    """Func to test loading of pre_load_hooks."""
     return sampler
 
 
 def hook2(sampler):
-    """func to test loading of pre_load_hooks"""
+    """Func to test loading of pre_load_hooks."""
     return sampler
 
 
-def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
-    """
-    Validates the loaded NEPS configuration against expected settings.
+def check_run_args(yaml_path_run_args: str, expected_output: dict) -> None:
+    """Validates the loaded NEPS configuration against expected settings.
 
     Loads NEPS configuration settings from a specified YAML file and verifies
     against expected settings, including function objects, dict and classes. Special
@@ -46,10 +60,9 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
     output = get_run_args_from_yaml(BASE_PATH + yaml_path_run_args)
 
     def are_functions_equivalent(
-        f1: Union[Callable, List[Callable]], f2: Union[Callable, List[Callable]]
+        f1: Callable | list[Callable], f2: Callable | list[Callable]
     ) -> bool:
-        """
-        Compares functions or lists of functions for equivalence by their bytecode,
+        """Compares functions or lists of functions for equivalence by their bytecode,
         useful when identical functions have different memory addresses. This method
         identifies if functions, despite being distinct instances, perform identical
         operations.
@@ -67,14 +80,14 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 return False
             return all(
                 f1_item.__code__.co_code == f2_item.__code__.co_code
-                for f1_item, f2_item in zip(f1, f2)
+                for f1_item, f2_item in zip(f1, f2, strict=False)
             )
         return f1.__code__.co_code == f2.__code__.co_code
 
     # Compare keys with a function/list of functions as their values
     # Special because they include a module loading procedure by a path and the name of
     # the function
-    for special_key in ["run_pipeline", "pre_load_hooks"]:
+    for special_key in ["evaluate_pipeline", "pre_load_hooks"]:
         if special_key in expected_output:
             func_expected = expected_output.pop(special_key)
             func_output = output.pop(special_key)
@@ -94,12 +107,12 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
 
 @pytest.mark.neps_api
 @pytest.mark.parametrize(
-    "yaml_path,expected_output",
+    ("yaml_path", "expected_output"),
     [
         (
             "run_args_full.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -110,7 +123,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "task_id": 4,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 4.2,
+                "objective_to_minimize_value_on_error": 4.2,
                 "cost_value_on_error": 3.7,
                 "ignore_errors": True,
                 "searcher": {
@@ -123,7 +136,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_full_same_level.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -134,7 +147,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "task_id": 2.0,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 2.4,
+                "objective_to_minimize_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": {
@@ -175,7 +188,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         (
             "run_args_optional_loading_format.yaml",
             {
-                "run_pipeline": run_pipeline,
+                "evaluate_pipeline": evaluate_pipeline,
                 "pipeline_space": pipeline_space,
                 "root_directory": "test_yaml",
                 "max_evaluations_total": 20,
@@ -185,7 +198,7 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
                 "development_stage_id": 9,
                 "max_evaluations_per_run": 5,
                 "continue_until_max_evaluation_completed": True,
-                "loss_value_on_error": 2.4,
+                "objective_to_minimize_value_on_error": 2.4,
                 "cost_value_on_error": 2.1,
                 "ignore_errors": False,
                 "searcher": BayesianOptimization,
@@ -195,9 +208,8 @@ def check_run_args(yaml_path_run_args: str, expected_output: Dict) -> None:
         ),
     ],
 )
-def test_yaml_config(yaml_path: str, expected_output: Dict) -> None:
-    """
-    Tests NePS configuration loading from run_args=YAML, comparing expected settings
+def test_yaml_config(yaml_path: str, expected_output: dict) -> None:
+    """Tests NePS configuration loading from run_args=YAML, comparing expected settings
     against loaded ones. Covers hierarchical levels and partial/full of yaml
     dict definitions.
 
@@ -210,7 +222,7 @@ def test_yaml_config(yaml_path: str, expected_output: Dict) -> None:
 
 @pytest.mark.neps_api
 @pytest.mark.parametrize(
-    "yaml_path, expected_exception",
+    ("yaml_path", "expected_exception"),
     [
         ("run_args_invalid_type.yaml", TypeError),
         ("run_args_wrong_path.yaml", ImportError),
@@ -219,9 +231,8 @@ def test_yaml_config(yaml_path: str, expected_output: Dict) -> None:
         ("run_args_key_missing.yaml", KeyError),
     ],
 )
-def test_yaml_failure_cases(yaml_path: str, expected_exception: Type[Exception]) -> None:
-    """
-    Tests for expected exceptions when loading erroneous NePS configurations from YAML.
+def test_yaml_failure_cases(yaml_path: str, expected_exception: type[Exception]) -> None:
+    """Tests for expected exceptions when loading erroneous NePS configurations from YAML.
 
     Each case checks if `get_run_args_from_yaml` raises the correct exception for errors
     like invalid types, missing keys, and incorrect paths in YAML configurations.

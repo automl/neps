@@ -1,8 +1,10 @@
-import pytest
-import os
+from __future__ import annotations
+
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 BASE_PATH = Path("tests") / "test_yaml_run_args" / "test_declarative_usage_docs"
 
@@ -22,35 +24,31 @@ BASE_PATH = Path("tests") / "test_yaml_run_args" / "test_declarative_usage_docs"
     ],
 )
 def test_run_with_yaml(yaml_file: str) -> None:
-    """
-    Test 'neps.run' with various run_args.yaml settings to simulate loading options
+    """Test 'neps.run' with various run_args.yaml settings to simulate loading options
     for variables.
     """
     yaml_path = BASE_PATH / yaml_file
-    assert os.path.exists(yaml_path), f"{yaml_path} does not exist."
+    assert yaml_path.exists(), f"{yaml_path} does not exist."
 
     try:
         subprocess.check_call([sys.executable, BASE_PATH / "neps_run.py", yaml_path])
     except subprocess.CalledProcessError as e:
-        pytest.fail(
-            f"NePS run failed for configuration: {yaml_file} with error: {str(e)}"
-        )
+        pytest.fail(f"NePS run failed for configuration: {yaml_file} with error: {e!s}")
 
 
 @pytest.mark.neps_api
 def test_run_with_yaml_and_run_pipeline() -> None:
-    """
-    Test 'neps.run' with simple_example.yaml as run_args + a run_pipeline that is
+    """Test 'neps.run' with simple_example.yaml as run_args + a run_pipeline that is
     provided separately.
     """
     yaml_path = BASE_PATH / "simple_example.yaml"
-    assert os.path.exists(yaml_path), f"{yaml_path} does not exist."
+    assert yaml_path.exists(), f"{yaml_path} does not exist."
 
     try:
         subprocess.check_call(
-            [sys.executable, BASE_PATH / "neps_run.py", yaml_path, "--run_pipeline"]
+            [sys.executable, BASE_PATH / "neps_run.py", yaml_path, "--evaluate_pipeline"]
         )
     except subprocess.CalledProcessError as e:
         pytest.fail(
-            f"NePS run failed for configuration: simple_example.yaml with error: {str(e)}"
+            f"NePS run failed for configuration: simple_example.yaml with error: {e!s}"
         )

@@ -1,6 +1,6 @@
-# Simple NePS configuration including run_pipeline
-run_pipeline:
-  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
+# Simple NePS configuration including evaluate_pipeline
+evaluate_pipeline:
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/evaluate_pipeline.py
   name: run_pipeline_constant
 
 pipeline_space:
@@ -16,7 +16,7 @@ pipeline_space:
     choices: [adam, sgd, adamw]
   batch_size: 64
 
-root_directory: "tests_tmpdir/test_declarative_usage_docs/simple_example_including_run_pipeline"
+root_directory: "tests_tmpdir/test_declarative_usage_docs/simple_example_including_evaluate_pipeline"
 max_evaluations_total: 20             # Budget
 
 overwrite_working_directory: True

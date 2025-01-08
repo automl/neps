@@ -1,5 +1,8 @@
-import torch
+from __future__ import annotations
+
 import pytest
+import torch
+
 from neps.search_spaces.domain import Domain
 from neps.search_spaces.encoding import (
     CategoricalToIntegerTransformer,

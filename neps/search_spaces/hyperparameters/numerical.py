@@ -13,7 +13,7 @@ The [`Numerical`][neps.search_spaces.Numerical] is a
 base class for both of these hyperparameters, and includes methods from
 both [`ParameterWithPrior`][neps.search_spaces.ParameterWithPrior],
 allowing you to set a confidence along with a
-[`.default`][neps.search_spaces.Parameter.default] that can be used
+[`.prior`][neps.search_spaces.Parameter.prior] that can be used
 with certain algorithms.
 """
 
@@ -44,11 +44,11 @@ T = TypeVar("T", int, float)
 def _get_truncnorm_prior_and_std(
     low: int | float,
     high: int | float,
-    default: int | float,
+    prior: int | float,
     confidence_score: float,
 ) -> tuple[TruncNorm, float]:
     std = (high - low) * confidence_score
-    a, b = (low - default) / std, (high - default) / std
+    a, b = (low - prior) / std, (high - prior) / std
     return scipy.stats.truncnorm(a, b), float(std)
 
 
@@ -60,10 +60,10 @@ class Numerical(ParameterWithPrior[T, T]):
         upper: The upper bound of the numerical hyperparameter.
         log: Whether the hyperparameter is in log space.
         log_bounds: The log bounds of the hyperparameter, if `log=True`.
-        log_default: The log default value of the hyperparameter, if `log=True`
-            and a `default` is set.
-        default_confidence_choice: The default confidence choice.
-        default_confidence_score: The default confidence score.
+        log_prior: The log prior value of the hyperparameter, if `log=True`
+            and a `prior` is set.
+        prior_confidence_choice: The prior confidence choice.
+        prior_confidence_score: The prior confidence score.
         has_prior: Whether the hyperparameter has a prior.
     """
 
@@ -75,10 +75,10 @@ class Numerical(ParameterWithPrior[T, T]):
         upper: T,
         *,
         log: bool = False,
-        default: T | None,
+        prior: T | None,
         is_fidelity: bool,
         domain: Domain[T],
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize the numerical hyperparameter.
 
@@ -86,12 +86,12 @@ class Numerical(ParameterWithPrior[T, T]):
             lower: The lower bound of the numerical hyperparameter.
             upper: The upper bound of the numerical hyperparameter.
             log: Whether the hyperparameter is in log space.
-            default: The default value of the hyperparameter.
+            prior: The prior value of the hyperparameter.
             is_fidelity: Whether the hyperparameter is a fidelity parameter.
             domain: The domain of the hyperparameter.
-            default_confidence: The default confidence choice.
+            prior_confidence: The prior confidence choice.
         """
-        super().__init__(value=None, default=default, is_fidelity=is_fidelity)  # type: ignore
+        super().__init__(value=None, prior=prior, is_fidelity=is_fidelity)  # type: ignore
         _cls_name = self.__class__.__name__
         if lower >= upper:
             raise ValueError(
@@ -105,18 +105,24 @@ class Numerical(ParameterWithPrior[T, T]):
                 f" Actual values: lower={lower}, upper={upper}"
             )
 
-        if default is not None and not lower <= default <= upper:
+        if prior is not None and not lower <= prior <= upper:
             raise ValueError(
-                f"Float parameter: default bounds error. Expected lower <= default"
-                f" <= upper, but got lower={lower}, default={default},"
+                f"Float parameter: prior bounds error. Expected lower <= prior"
+                f" <= upper, but got lower={lower}, prior={prior},"
                 f" upper={upper}"
             )
 
-        if default_confidence not in self.DEFAULT_CONFIDENCE_SCORES:
+        if prior_confidence not in self.DEFAULT_CONFIDENCE_SCORES:
             raise ValueError(
-                f"{_cls_name} parameter: default confidence score error. Expected one of "
+                f"{_cls_name} parameter: prior confidence score error. Expected one of "
                 f"{list(self.DEFAULT_CONFIDENCE_SCORES.keys())}, but got "
-                f"{default_confidence}"
+                f"{prior_confidence}"
+            )
+
+        if is_fidelity and (lower <= 0 or upper <= 0):
+            raise ValueError(
+                f"{_cls_name} parameter: fidelity parameter bounds error (log scale "
+                f"can't have bounds <= 0). Actual values: lower={lower}, upper={upper}"
             )
 
         # Validate 'log' and 'is_fidelity' types to prevent configuration errors
@@ -133,21 +139,17 @@ class Numerical(ParameterWithPrior[T, T]):
         self.log: bool = log
         self.domain: Domain[T] = domain
         self.log_bounds: tuple[float, float] | None = None
-        self.log_default: float | None = None
+        self.log_prior: float | None = None
         if self.log:
             self.log_bounds = (float(np.log(lower)), float(np.log(upper)))
-            self.log_default = (
-                float(np.log(self.default)) if self.default is not None else None
-            )
+            self.log_prior = float(np.log(self.prior)) if self.prior is not None else None
 
-        self.default_confidence_choice: Literal["low", "medium", "high"] = (
-            default_confidence
-        )
+        self.prior_confidence_choice: Literal["low", "medium", "high"] = prior_confidence
 
-        self.default_confidence_score: float = self.DEFAULT_CONFIDENCE_SCORES[
-            default_confidence
+        self.prior_confidence_score: float = self.DEFAULT_CONFIDENCE_SCORES[
+            prior_confidence
         ]
-        self.has_prior: bool = self.default is not None
+        self.has_prior: bool = self.prior is not None
 
     @override
     def __eq__(self, other: Any) -> bool:
@@ -160,25 +162,25 @@ class Numerical(ParameterWithPrior[T, T]):
             and self.log == other.log
             and self.is_fidelity == other.is_fidelity
             and self.value == other.value
-            and self.default == other.default
-            and self.default_confidence_score == other.default_confidence_score
+            and self.prior == other.prior
+            and self.prior_confidence_score == other.prior_confidence_score
         )
 
     def _get_truncnorm_prior_and_std(self) -> tuple[TruncNorm, float]:
         if self.log:
             assert self.log_bounds is not None
             low, high = self.log_bounds
-            default = self.log_default
+            prior = self.log_prior
         else:
             low, high = self.lower, self.upper
-            default = self.default
+            prior = self.prior
 
-        assert default is not None
+        assert prior is not None
         return _get_truncnorm_prior_and_std(
             low=low,
             high=high,
-            default=default,
-            confidence_score=self.default_confidence_score,
+            prior=prior,
+            confidence_score=self.prior_confidence_score,
         )
 
 
@@ -195,10 +197,10 @@ class NumericalParameter(Numerical):
         upper: T,
         *,
         log: bool = False,
-        default: T | None,
+        prior: T | None,
         is_fidelity: bool,
         domain: Domain[T],
-        default_confidence: Literal["low", "medium", "high"] = "low",
+        prior_confidence: Literal["low", "medium", "high"] = "low",
     ):
         """Initialize a deprecated `NumericalParameter`.
 
@@ -206,10 +208,10 @@ class NumericalParameter(Numerical):
             lower: The lower bound of the numerical hyperparameter.
             upper: The upper bound of the numerical hyperparameter.
             log: Whether the hyperparameter is in log space.
-            default: The default value of the hyperparameter.
+            prior: The prior value of the hyperparameter.
             is_fidelity: Whether the hyperparameter is a fidelity parameter.
             domain: The domain of the hyperparameter.
-            default_confidence: The default confidence choice.
+            prior_confidence: The prior confidence choice.
 
         Raises:
             DeprecationWarning: A warning indicating that `neps.NumericalParameter` is
@@ -229,8 +231,8 @@ class NumericalParameter(Numerical):
             lower=lower,
             upper=upper,
             log=log,
-            default=default,
+            prior=prior,
             is_fidelity=is_fidelity,
             domain=domain,
-            default_confidence=default_confidence,
+            prior_confidence=prior_confidence,
         )

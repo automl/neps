@@ -69,7 +69,7 @@ log_prior_weighted: false
 random_interleave_prob: 0.1
 disable_priors: false
 prior_confidence: high
-sample_default_first: false
+sample_prior_first: false
 ```
 
 ```python
