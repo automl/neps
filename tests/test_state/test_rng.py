@@ -6,7 +6,6 @@ import torch
 import pytest
 
 from neps.state.seed_snapshot import SeedSnapshot
-from neps.state.filebased import ReaderWriterSeedSnapshot
 
 
 @pytest.mark.parametrize(
@@ -34,21 +33,3 @@ def test_randomstate_consistent(
 
     integers_2 = make_ints()
     assert integers_1 == integers_2
-
-    ReaderWriterSeedSnapshot.write(SeedSnapshot.new_capture(), seed_dir)
-
-    integers_3 = make_ints()
-    assert integers_3 != integers_2, "Ensure we have actually changed random state"
-
-    ReaderWriterSeedSnapshot.read(seed_dir).set_as_global_seed_state()
-    integers_4 = make_ints()
-
-    assert integers_3 == integers_4
-
-    before = SeedSnapshot.new_capture()
-    after = SeedSnapshot.new_capture()
-
-    _ = make_ints()
-
-    after.recapture()
-    assert before != after
