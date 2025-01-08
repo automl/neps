@@ -372,7 +372,7 @@ class DefaultWorker(Generic[Loc]):
                 if self._GRACE > 0:
                     time.sleep(self._GRACE)
 
-                trials = self.state._trials.latest()
+                trials = self.state._trial_repo.latest()
 
                 if self._requires_global_stopping_criterion:
                     should_stop = self._check_global_stopping_criterion(trials)
@@ -395,7 +395,7 @@ class DefaultWorker(Generic[Loc]):
                         time_started=time.time(),
                         worker_id=self.worker_id,
                     )
-                    self.state._trials.update_trial(earliest_pending, hints="metadata")
+                    self.state._trial_repo.update_trial(earliest_pending, hints="metadata")
                     logger.info(
                         "Worker '%s' picked up pending trial: %s.",
                         self.worker_id,
@@ -421,7 +421,7 @@ class DefaultWorker(Generic[Loc]):
                     worker_id=self.worker_id,
                 )
                 try:
-                    self.state._trials.new_trial(sampled_trials)
+                    self.state._trial_repo.store_new_trial(sampled_trials)
                     if isinstance(sampled_trials, Trial):
                         logger.info(
                             "Worker '%s' sampled new trial: %s.",

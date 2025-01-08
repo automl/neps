@@ -15,9 +15,7 @@ from neps.state.seed_snapshot import SeedSnapshot
 
 
 @fixture
-@parametrize(
-    "budget_info", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None]
-)
+@parametrize("budget_info", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None])
 @parametrize("shared_state", [{"a": "b"}, {}])
 def optimizer_state(
     budget_info: BudgetInfo | None,

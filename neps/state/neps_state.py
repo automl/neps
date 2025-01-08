@@ -24,7 +24,6 @@ from typing import (
     TypeVar,
     overload,
 )
-from uuid import uuid4
 
 from neps.env import (
     GLOBAL_ERR_FILELOCK_POLL,
@@ -108,16 +107,22 @@ class TrialRepo:
             _bytes = f.read()
 
         buffer = io.BytesIO(_bytes)
-        trials = {}
-        updates = []
+        trials: dict[str, Trial] = {}
+        updates: list[Trial] = []
         while True:
             try:
                 datum = pickle.load(buffer)  # noqa: S301
+
+                # If it's a `dict`, this is the whol trials cache
                 if isinstance(datum, dict):
                     assert len(trials) == 0, "Multiple caches present."
                     trials = datum
+
+                # If it's a `list`, these are multiple updates
                 elif isinstance(datum, list):
                     updates.extend(datum)
+
+                # Otherwise it's a single update
                 else:
                     assert isinstance(datum, Trial), "Not a trial."
                     updates.append(datum)
@@ -157,7 +162,7 @@ class TrialRepo:
 
         return self._read_pkl_and_maybe_consolidate()
 
-    def new_trial(self, trial: Trial | list[Trial]) -> None:
+    def store_new_trial(self, trial: Trial | list[Trial]) -> None:
         """Write a new trial to disk.
 
         Raises:
@@ -238,7 +243,7 @@ class NePSState:
     path: Path
 
     _trial_lock: FileLocker = field(repr=False)
-    _trials: TrialRepo = field(repr=False)
+    _trial_repo: TrialRepo = field(repr=False)
 
     _optimizer_lock: FileLocker = field(repr=False)
 
@@ -255,7 +260,7 @@ class NePSState:
     def lock_and_read_trials(self) -> dict[str, Trial]:
         """Acquire the state lock and read the trials."""
         with self._trial_lock.lock():
-            return self._trials.latest()
+            return self._trial_repo.latest()
 
     @overload
     def lock_and_sample_trial(
@@ -272,17 +277,17 @@ class NePSState:
         """Acquire the state lock and sample a trial."""
         with self._optimizer_lock.lock():
             with self._trial_lock.lock():
-                trials = self._trials.latest()
+                trials_ = self._trial_repo.latest()
 
             trials = self._sample_trial(
                 optimizer,
-                trials=trials,
+                trials=trials_,
                 worker_id=worker_id,
                 n=n,
             )
 
             with self._trial_lock.lock():
-                self._trials.new_trial(trials)
+                self._trial_repo.store_new_trial(trials)
 
             return trials
 
@@ -433,7 +438,7 @@ class NePSState:
         """
         # IMPORTANT: We need to attach the report to the trial before updating the things.
         trial.report = report
-        self._trials.update_trial(trial, hints=["report", "metadata"])
+        self._trial_repo.update_trial(trial, hints=["report", "metadata"])
 
         if report.err is not None:
             with self._err_lock.lock():
@@ -451,7 +456,7 @@ class NePSState:
 
     def all_trial_ids(self) -> list[str]:
         """Get all the trial ids."""
-        return self._trials.list_trial_ids()
+        return self._trial_repo.list_trial_ids()
 
     def lock_and_get_errors(self) -> ErrDump:
         """Get all the errors that have occurred during the optimization."""
@@ -467,18 +472,20 @@ class NePSState:
         """Get the optimizer state."""
         with self._optimizer_lock.lock():  # noqa: SIM117
             with self._optimizer_state_path.open("rb") as f:
-                return pickle.load(f)  # noqa: S301
+                obj = pickle.load(f)  # noqa: S301
+                assert isinstance(obj, OptimizationState)
+                return obj
 
     def lock_and_get_trial_by_id(self, trial_id: str) -> Trial:
         """Get a trial by its id."""
         with self._trial_lock.lock():
-            return self._trials.load_trial_from_disk(trial_id)
+            return self._trial_repo.load_trial_from_disk(trial_id)
 
     def unsafe_retry_get_trial_by_id(self, trial_id: str) -> Trial:
         """Get a trial by id but use unsafe retries."""
         for _ in range(N_UNSAFE_RETRIES):
             try:
-                return self._trials.load_trial_from_disk(trial_id)
+                return self._trial_repo.load_trial_from_disk(trial_id)
             except TrialNotFoundError as e:
                 raise e
             except Exception as e:  # noqa: BLE001
@@ -507,7 +514,7 @@ class NePSState:
                 If you don't know, leave `None`, this is a micro-optimization.
         """
         with self._trial_lock.lock():
-            self._trials.update_trial(trial, hints=hints)
+            self._trial_repo.update_trial(trial, hints=hints)
 
     @overload
     def lock_and_get_next_pending_trial(self) -> Trial | None: ...
@@ -521,7 +528,7 @@ class NePSState:
     ) -> Trial | list[Trial] | None:
         """Get the next pending trial."""
         with self._trial_lock.lock():
-            trials = self._trials.latest()
+            trials = self._trial_repo.latest()
             pendings = sorted(
                 [
                     trial
@@ -618,7 +625,7 @@ class NePSState:
 
         return NePSState(
             path=path,
-            _trials=TrialRepo(config_dir),
+            _trial_repo=TrialRepo(config_dir),
             # Locks,
             _trial_lock=FileLocker(
                 lock_path=path / ".configs.lock",
