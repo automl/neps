@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Hashable, Sequence, Sized
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
+import numpy as np
 from more_itertools import all_unique, pairwise
 
 if TYPE_CHECKING:
@@ -13,6 +14,70 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+
+def calculate_sh_rungs(
+    bounds: tuple[int, int] | tuple[float, float],
+    eta: int,
+    early_stopping_rate: int,
+) -> tuple[dict[int, int | float], dict[int, int]]:
+    bmin, bmax = bounds
+    budget_type = int if isinstance(bmin, int) else float
+    esr = early_stopping_rate
+    stop_rate_limit = int(np.floor(np.log(bmax / bmin) / np.log(eta)))
+    assert esr <= stop_rate_limit
+
+    nrungs = int(np.floor(np.log(bmax / (bmin * (eta**esr))) / np.log(eta)) + 1)
+    rung_to_fidelity = {
+        esr + j: budget_type(bmax / (eta**i))
+        for i, j in enumerate(reversed(range(nrungs)))
+    }
+
+    # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
+    s_max = stop_rate_limit + 1
+    _s = stop_rate_limit - esr
+    _n_config = int(np.floor(s_max / (_s + 1)) * eta**_s)
+    rung_sizes = {i + esr: _n_config // (eta**i) for i in range(nrungs)}
+    return rung_to_fidelity, rung_sizes
+
+
+def calculate_hb_bracket_layouts(
+    bounds: tuple[int, int] | tuple[float, float],
+    eta: int,
+) -> tuple[dict[int, int | float], list[dict[int, int]]]:
+    bmin, bmax = bounds
+    budget_type = int if isinstance(bmin, int) else float
+    stop_rate_limit = int(np.floor(np.log(bmax / bmin) / np.log(eta)))
+
+    nrungs = int(np.floor(np.log(bmax / bmin) / np.log(eta))) + 1
+    rung_to_fidelity = {
+        j: budget_type(bmax / (eta**i)) for i, j in enumerate(reversed(range(nrungs)))
+    }
+
+    # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
+    bracket_layouts: list[dict[int, int]] = []
+    s_max = stop_rate_limit + 1
+    for esr in range(nrungs):
+        _s = stop_rate_limit - esr
+        _n_config = int(np.floor(s_max / (_s + 1)) * eta**_s)
+
+        sh_rungs = int(np.floor(np.log(bmax / (bmin * (eta**esr))) / np.log(eta)) + 1)
+        rung_sizes = {i + esr: _n_config // (eta**i) for i in range(sh_rungs)}
+        bracket_layouts.append(rung_sizes)
+
+    return rung_to_fidelity, bracket_layouts
+
+
+def async_hb_sample_bracket_to_run(max_rung: int, eta: int) -> int:
+    # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
+    # Adapting the distribution based on the current optimization state
+    # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
+    # and thus K \in [1, ..., max_rung, ...]
+    # Since in this version, we see the full SH rung, we fix the K to max_rung
+    K = max_rung
+    bracket_probs = [eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(max_rung + 1)]
+    bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
+    return int(np.random.choice(range(max_rung + 1), p=bracket_probs))
 
 
 @dataclass
@@ -100,8 +165,9 @@ class SyncBracket:
         | tuple[Literal["new"], int]
         | Literal["pending", "done"]
     ):
-        # If the bottom rung has capacity, we need to sample for it.
         bottom_rung = self.rungs[0]
+
+        # If the bottom rung has capacity, we need to sample for it.
         if bottom_rung.has_capacity():
             return "new", bottom_rung.value
 
@@ -127,21 +193,56 @@ class SyncBracket:
         return "promote", config, _id, upper.value
 
     @classmethod
-    def create_repeating_brackets(
-        cls,
-        table: pd.DataFrame,
-        *,
-        rung_sizes: dict[int, int],
+    def repeating_brackets(
+        cls, table: pd.DataFrame, *, rung_sizes: dict[int, int]
     ) -> list[SyncBracket]:
-        # Data has multi-index of (id, rung)
-        all_ids = table.index.get_level_values("id").unique()
+        """Create a list of brackets from the table.
+
+        The table should have a multi-index of (id, rung) where rung is the
+        fidelity level of the configuration.
+
+        This method will always ensure there is at least one bracket, with at least one
+        empty slot. For example, if each bracket houses a maximum of 9 configurations,
+        and there are 27 total unique configurations in the table, these will be split
+        into 3 brackets with 9 configurations + 1 additional bracket with 0 in it
+        configurations.
+
+        ```
+        # Unrealistic example showing the format of the table
+        (id, rung) -> config, perf
+        --------------------------
+        0     0   |  {"hp": 0, ...}, 0.1
+              1   |  {"hp": 0, ...}, 0.2
+        1     0   |  {"hp": 1, ...}, 0.1
+        2     1   |  {"hp": 2, ...}, 0.3
+              2   |  {"hp": 2, ...}, 0.4
+        3     2   |  {"hp": 3, ...}, 0.4
+        ```
+
+        Args:
+            table: The table of configurations to split into brackets.
+            rung_sizes: A mapping of rung to the capacity of that rung.
+            ensure_additional_bracket:
+
+        Returns:
+            Brackets which have each subselected the table with the corresponding rung
+            sizes.
+        """
+        uniq_ids = table.index.get_level_values("id").unique()
 
         # Split the ids into N brackets of size K.
         # K is the number of configurations in the lowest rung, i.e. number of config ids
         K = rung_sizes[min(rung_sizes)]
-        N = len(all_ids) // K
 
-        bracket_id_slices: list[Index] = [all_ids[i * K : (i + 1) * K] for i in range(N)]
+        # Here we don't do `((len(uniq_ids) - 1) // K) + 1` because we want to ensure
+        # the extra bracket,
+        # i.e. if K = 9 and for varying len(uniq_ids):
+        # N = (26 // 9) + 1 = 3
+        # N = (27 // 9) + 1 = 4
+        # N = (28 // 9) + 1 = 4
+        N = max(((len(uniq_ids) - 1) // K) + 1, 1)
+
+        bracket_id_slices: list[Index] = [uniq_ids[i * K : (i + 1) * K] for i in range(N)]
         bracket_datas = [table.loc[bracket_ids] for bracket_ids in bracket_id_slices]
 
         # [bracket] -> {rung: table}
@@ -198,7 +299,12 @@ class AsyncBracket:
                 continue  # Not enough configs to promote yet
 
             best_k = lower.top_k(k)
-            candidates = best_k.drop(upper.config_ids, errors="ignore")
+            candidates = best_k.drop(
+                upper.config_ids,
+                axis="index",
+                level="id",
+                errors="ignore",
+            )
             if candidates.empty:
                 continue  # No configs that aren't already promoted
 
@@ -229,3 +335,240 @@ class AsyncBracket:
             ],
             eta=eta,
         )
+
+
+@dataclass
+class HyperbandBrackets:
+    sh_brackets: list[SyncBracket]
+
+    _min_rung: int = field(init=False, repr=False)
+    _max_rung: int = field(init=False, repr=False)
+
+    def __post_init__(self):
+        if not self.sh_brackets:
+            raise ValueError("HyperbandBrackets must have at least one SH bracket")
+
+        # Sort the brackets by those which contain the lowest rung values first
+        self.sh_brackets = sorted(
+            self.sh_brackets, key=lambda sh_bracket: sh_bracket.rungs[0].value
+        )
+        self._min_rung = min(bracket.rungs[0].value for bracket in self.sh_brackets)
+        self._max_rung = max(bracket.rungs[-1].value for bracket in self.sh_brackets)
+
+    @classmethod
+    def create_repeating(
+        cls, table: pd.DataFrame, *, bracket_layouts: list[dict[int, int]]
+    ) -> list[HyperbandBrackets]:
+        """Create a list of brackets from the table.
+
+        The table should have a multi-index of (id, rung) where rung is the
+        fidelity level of the configuration.
+
+        This method will always ensure there is at least one hyperband set of brackets,
+        with at least one empty slot. For example, if each hyperband set of brackets
+        houses a maximum of 9 configurations, and there are 27 total unique configurations
+        in the table, these will be split into 3 hyperband brackets with 9 configurations
+        + 1 additional hyperband bracket with 0 in it configurations.
+
+        ```
+        # Unrealistic example showing the format of the table
+        (id, rung) -> config, perf
+        --------------------------
+        0     0   |  {"hp": 0, ...}, 0.1
+              1   |  {"hp": 0, ...}, 0.2
+        1     0   |  {"hp": 1, ...}, 0.1
+        2     1   |  {"hp": 2, ...}, 0.3
+              2   |  {"hp": 2, ...}, 0.4
+        3     2   |  {"hp": 3, ...}, 0.4
+        ```
+
+        Args:
+            table: The table of configurations to split into brackets.
+            rung_sizes: A mapping of rung to the capacity of that rung.
+            ensure_additional_bracket:
+
+        Returns:
+            HyperbandBrackets which have each subselected the table with the
+            corresponding rung sizes.
+        """
+        all_ids = table.index.get_level_values("id").unique()
+
+        # Split the ids into N hyperband brackets of size K.
+        # K is sum of number of configurations in the lowest rung of each SH bracket
+        #
+        # For example:
+        # > bracket_layouts = [
+        # >   {0: 81, 1: 27, 2: 9, 3: 3, 4: 1},
+        # >   {1: 27, 2: 9, 3: 3, 4: 1},
+        # >   {2: 9, 3: 3, 4: 1},
+        # >   ...
+        # > ]
+        #
+        # Corresponds to:
+        # bracket1 - [rung_0: 81, rung_1: 27, rung_2: 9, rung_3: 3, rung_4: 1]
+        # bracket2 - [rung_1: 27, rung_2: 9, rung_3: 3, rung_4: 1]
+        # bracket3 - [rung_2: 9, rung_3: 3, rung_4: 1]
+        # ...
+        # > K = 81 + 27 + 9 + ...
+        #
+        bottom_rung_sizes = [sh[min(sh.keys())] for sh in bracket_layouts]
+        K = sum(bottom_rung_sizes)
+        N = max(len(all_ids) // K + 1, 1)
+
+        hb_id_slices: list[Index] = [all_ids[i * K : (i + 1) * K] for i in range(N)]
+
+        # Used if there is nothing for one of the rungs
+        empty_slice = table.loc[[]]
+
+        # Now for each of our HB brackets, we need to split them into the SH brackets
+        hb_brackets: list[list[SyncBracket]] = []
+
+        offsets = np.cumsum([0, *bottom_rung_sizes])
+        for hb_ids in hb_id_slices:
+            # Split the ids into each of the respective brackets, e.g. [81, 27, 9, ...]
+            ids_for_each_bracket = [hb_ids[s:e] for s, e in pairwise(offsets)]
+
+            # Select the data for each of the configs allocated to these sh_brackets
+            data_for_each_bracket = [table.loc[_ids] for _ids in ids_for_each_bracket]
+
+            # Create the bracket
+            sh_brackets: list[SyncBracket] = []
+            for data_for_bracket, layout in zip(
+                data_for_each_bracket,
+                bracket_layouts,
+                strict=True,
+            ):
+                rung_data = dict(iter(data_for_bracket.groupby(level="rung", sort=False)))
+                bracket = SyncBracket(
+                    rungs=[
+                        Rung(
+                            value=rung,
+                            capacity=capacity,
+                            table=rung_data.get(rung, empty_slice),
+                        )
+                        for rung, capacity in layout.items()
+                    ]
+                )
+                sh_brackets.append(bracket)
+
+            hb_brackets.append(sh_brackets)
+
+        return [cls(sh_brackets=sh_brackets) for sh_brackets in hb_brackets]
+
+    def next(
+        self,
+    ) -> (
+        tuple[Literal["promote"], dict, int, int]
+        | tuple[Literal["new"], int]
+        | Literal["pending", "done"]
+    ):
+        # We check what each SH bracket wants to do
+        statuses = [sh_bracket.next() for sh_bracket in self.sh_brackets]
+
+        # We define a priority function to sort and decide what to return:
+        #
+        # 1. "promote"/"new": tie break by rung value
+        #   1.1 Tie break by rung value if needed
+        #   1.2 Further tie break by index (bracket with lowest rung goes first)
+        #         (1.2 is handled implicitly by the sorted order of the brackets
+        # 2. "pending": If there are no promotions or new samples, we say HB is pending
+        # 3. "done": If everything is done, then we are done.
+        def priority(
+            x: (
+                tuple[Literal["promote"], dict, int, int]
+                | tuple[Literal["new"], int]
+                | Literal["pending", "done"]
+            ),
+        ) -> tuple[int, int]:
+            match x:
+                case ("promote", _, _, promote_to_rung):
+                    return 0, promote_to_rung
+                case ("new", sample_at_rung):
+                    return 0, sample_at_rung
+                case "pending":
+                    return 1, 0
+                case "done":
+                    return 2, 0
+                case _:
+                    raise RuntimeError("This is a bug!")
+
+        sorted_priorities = sorted(statuses, key=priority)  # type: ignore
+        return sorted_priorities[0]
+
+
+@dataclass
+class AsyncHyperbandBrackets:
+    asha_brackets: list[AsyncBracket]
+    """A list of ASHA brackets, ordered from lowest to highest according to the lowest
+    rung value in each bracket."""
+
+    eta: int
+    """The eta parameter used for deciding when to promote."""
+
+    _min_rung: int = field(init=False, repr=False)
+    _max_rung: int = field(init=False, repr=False)
+
+    def __post_init__(self):
+        if not self.asha_brackets:
+            raise ValueError("HyperbandBrackets must have at least one ASHA bracket")
+
+        # Sort the brackets by those which contain the lowest rung values first
+        self.asha_brackets = sorted(
+            self.asha_brackets, key=lambda bracket: bracket.rungs[0].value
+        )
+        self._min_rung = min(bracket.rungs[0].value for bracket in self.asha_brackets)
+        self._max_rung = max(bracket.rungs[-1].value for bracket in self.asha_brackets)
+
+    @classmethod
+    def create(
+        cls,
+        table: pd.DataFrame,
+        *,
+        bracket_rungs: list[list[int]],
+        eta: int,
+    ) -> AsyncHyperbandBrackets:
+        """Create an AsyncHyperbandBrackets from the table.
+
+        The table should have a multi-index of (id, rung) where rung is the
+        fidelity level of the configuration.
+        ```
+        # Unrealistic example showing the format of the table
+        (id, rung) -> config, perf
+        --------------------------
+        0     0   |  {"hp": 0, ...}, 0.1
+              1   |  {"hp": 0, ...}, 0.2
+        1     0   |  {"hp": 1, ...}, 0.1
+        2     1   |  {"hp": 2, ...}, 0.3
+              2   |  {"hp": 2, ...}, 0.4
+        3     2   |  {"hp": 3, ...}, 0.4
+        ```
+
+        Args:
+            table: The table of configurations to split into brackets.
+            bracket_rungs: A list of rungs for each bracket. Each element of the list
+                is a list for that given bracket.
+
+        Returns:
+            The AsyncHyperbandBrackets which have each subselected the table with the
+            corresponding rung sizes.
+        """
+        return AsyncHyperbandBrackets(
+            asha_brackets=[
+                AsyncBracket.make_asha_bracket(table=table, rungs=layout, eta=eta)
+                for layout in bracket_rungs
+            ],
+            eta=eta,
+        )
+
+    def next(
+        self,
+    ) -> tuple[Literal["promote"], dict, int, int] | tuple[Literal["new"], int]:
+        # Each ASHA bracket always has an action, sample which to take
+        bracket_ix = async_hb_sample_bracket_to_run(self._max_rung, self.eta)
+        bracket = self.asha_brackets[bracket_ix]
+        return bracket.next()
+
+
+Bracket: TypeAlias = (
+    SyncBracket | AsyncBracket | HyperbandBrackets | AsyncHyperbandBrackets
+)

@@ -246,7 +246,7 @@ class IFBO(BaseOptimizer):
             return scores
 
         # Do acquisition on ftpfn
-        sample_dims = self._config_encoder.ncols
+        sample_dims = self._config_encoder.ndim
         best_row = acquire_next_from_ftpfn(
             ftpfn=ftpfn,
             # How to encode

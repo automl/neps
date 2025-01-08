@@ -109,7 +109,6 @@ class NePSState(Generic[Loc]):
                 budget_info=budget,
             )
             logger.debug("Sampled config: %s", sampled_config_maybe_new_opt_state)
-            print(sampled_config_maybe_new_opt_state)  # noqa: T201
 
             if isinstance(sampled_config_maybe_new_opt_state, tuple):
                 sampled_config, new_opt_state = sampled_config_maybe_new_opt_state

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.multi_fidelity.hyperband import sample_bracket_to_run
+from neps.optimizers.multi_fidelity.hyperband_old import sample_bracket_to_run
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import AsyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import (
@@ -16,7 +16,7 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     ModelPolicy,
 )
 from neps.optimizers.multi_fidelity.successive_halving import (
-    SuccessiveHalving,
+    BracketOptimizer,
     trials_to_table,
 )
 from neps.optimizers.multi_fidelity_prior.priorband import PriorBandBase
@@ -373,7 +373,7 @@ class PriorBandAshaHB(PriorBandAsha):
         for s in range(self.max_rung + 1):
             args.update({"early_stopping_rate": s})
             # key difference from vanilla HB where it runs synchronous SH brackets
-            self.sh_brackets[s] = SuccessiveHalving(use_priors=True, **args)
+            self.sh_brackets[s] = BracketOptimizer(use_priors=True, **args)
             self.sh_brackets[s].sampling_policy = self.sampling_policy
             self.sh_brackets[s].sampling_args = self.sampling_args
             self.sh_brackets[s].model_policy = self.model_policy  # type: ignore

@@ -1,17 +1,14 @@
-from neps.optimizers.multi_fidelity.hyperband import (
-    MOBSTER,
-    AsynchronousHyperband,
-    Hyperband,
-)
+from neps.optimizers.multi_fidelity.asynchronous import ASHA, AsyncHB
 from neps.optimizers.multi_fidelity.ifbo import IFBO
-from neps.optimizers.multi_fidelity.successive_halving import (
+from neps.optimizers.multi_fidelity.synchronous import (
+    HyperBand,
     SuccessiveHalving,
 )
 
 __all__ = [
     "SuccessiveHalving",
-    "Hyperband",
-    "AsynchronousHyperband",
-    "MOBSTER",
+    "ASHA",
+    "HyperBand",
+    "AsyncHB",
     "IFBO",
 ]

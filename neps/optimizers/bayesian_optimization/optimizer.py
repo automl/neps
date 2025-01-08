@@ -178,9 +178,7 @@ class BayesianOptimization(BaseOptimizer):
         pibo_exp_term = None
         prior = None
         if self.prior:
-            pibo_exp_term = _pibo_exp_term(
-                n_sampled, encoder.ncols, len(self.init_design)
-            )
+            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, len(self.init_design))
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 

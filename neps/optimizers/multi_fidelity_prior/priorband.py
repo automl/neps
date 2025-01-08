@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from neps.optimizers.multi_fidelity.hyperband import Hyperband
+from neps.optimizers.multi_fidelity.hyperband_old import Hyperband
 from neps.optimizers.multi_fidelity.mf_bo import MFBOBase
 from neps.optimizers.multi_fidelity.promotion_policy import SyncPromotionPolicy
 from neps.optimizers.multi_fidelity.sampling_policy import EnsemblePolicy, ModelPolicy
-from neps.optimizers.multi_fidelity.successive_halving import SuccessiveHalving
+from neps.optimizers.multi_fidelity.successive_halving import BracketOptimizer
 from neps.optimizers.multi_fidelity_prior.utils import (
     compute_config_dist,
     compute_scores,
@@ -139,7 +139,7 @@ class PriorBandBase:
             # for SH or ASHA which do not invoke multiple SH brackets
             bracket = self
 
-        assert isinstance(bracket, SuccessiveHalving)
+        assert isinstance(bracket, BracketOptimizer)
 
         # calculating the total resources spent in the first SH bracket, taking into
         # account the continuations, that is, the resources spent on a promoted config is

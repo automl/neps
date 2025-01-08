@@ -2,5 +2,4 @@ strategy: asha
 # Arguments that can be modified by the user
 eta: 3
 early_stopping_rate: 0
-sampler: uniform  # uniform, prior, {"uniform": float weight, "prior": float weight}
 sample_default_first: false  # true, false, "highest_fidelity"

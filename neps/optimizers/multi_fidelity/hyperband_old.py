@@ -18,10 +18,6 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     ModelPolicy,
     RandomUniformPolicy,
 )
-from neps.optimizers.multi_fidelity.successive_halving import (
-    SuccessiveHalving,
-    trials_to_table,
-)
 from neps.sampling.priors import Prior
 from neps.search_spaces import Categorical, Constant, Float, Integer
 from neps.search_spaces.functions import sample_one_old
@@ -40,18 +36,6 @@ CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
-
-
-def sample_bracket_to_run(max_rung: int, eta: int) -> int:
-    # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
-    # Adapting the distribution based on the current optimization state
-    # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
-    # and thus K \in [1, ..., max_rung, ...]
-    # Since in this version, we see the full SH rung, we fix the K to max_rung
-    K = max_rung
-    bracket_probs = [eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(max_rung + 1)]
-    bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-    return int(np.random.choice(range(max_rung + 1), p=bracket_probs))
 
 
 class HyperbandBase(BaseOptimizer):
@@ -201,9 +185,9 @@ class HyperbandBase(BaseOptimizer):
         # stores the flattened sequence of SH brackets to loop over - the HB heuristic
         # for (n,r) pairing, i.e., (num. configs, fidelity)
         self.full_rung_trace = []
-        self.sh_brackets: dict[int, SuccessiveHalving] = {}
+        self.sh_brackets: dict[int, BracketOptimizer] = {}
         for s in range(self.max_rung + 1):
-            self.sh_brackets[s] = SuccessiveHalving(early_stopping_rate=s, **sh_args)
+            self.sh_brackets[s] = BracketOptimizer(early_stopping_rate=s, **sh_args)
             # `full_rung_trace` contains the index of SH bracket to run sequentially
             self.full_rung_trace.extend([s] * len(self.sh_brackets[s].full_rung_trace))
 
@@ -334,7 +318,7 @@ class Hyperband(HyperbandBase):
             # for the SH bracket in start-end, calculate total SH budget used, from the
             # correct SH bracket object to make the right budget calculations
 
-            assert isinstance(sh_bracket, SuccessiveHalving)
+            assert isinstance(sh_bracket, BracketOptimizer)
             bracket_budget_used = tmp_calc_budget_used_in_bracket(
                 rungs=sh_bracket.rung_capacitires.keys(),
                 min_rung=sh_bracket.min_rung,
@@ -459,9 +443,9 @@ class AsynchronousHyperband(HyperbandBase):
         }
         super().__init__(**args)
         # overwrite parent class SH brackets with Async SH brackets
-        self.sh_brackets: dict[int, SuccessiveHalving] = {}
+        self.sh_brackets: dict[int, BracketOptimizer] = {}
         for s in range(self.max_rung + 1):
-            self.sh_brackets[s] = SuccessiveHalving(early_stopping_rate=s, **args)
+            self.sh_brackets[s] = BracketOptimizer(early_stopping_rate=s, **args)
 
     def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
         """...and this is the method that decides which point to query.

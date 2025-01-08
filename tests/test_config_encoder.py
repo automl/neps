@@ -33,7 +33,7 @@ def test_config_encoder_default() -> None:
         Domain.indices(n=len(parameters["a"].choices), is_categorical=True),
     ]
 
-    assert encoder.ncols == len(parameters)
+    assert encoder.ndim == len(parameters)
     assert encoder.n_numerical == 2
     assert encoder.n_categorical == 1
     assert encoder.numerical_slice == slice(0, 2)

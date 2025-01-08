@@ -65,10 +65,10 @@ class Sampler(ABC):
         to: ConfigEncoder,
         *,
         seed: torch.Generator | None = None,
-        extra: Mapping[str, Any] | None = None,
+        include: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """See [`sample_configs()`][neps.samplers.Sampler.sample_configs]."""
-        return self.sample_configs(1, to, seed=seed, extra=extra)[0]
+        return self.sample_configs(1, to, seed=seed, include=include)[0]
 
     def sample_configs(
         self,
@@ -76,7 +76,7 @@ class Sampler(ABC):
         to: ConfigEncoder,
         *,
         seed: torch.Generator | None = None,
-        extra: Mapping[str, Any] | None = None,
+        include: Mapping[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """Sample configurations directly into a search space.
 
@@ -84,16 +84,16 @@ class Sampler(ABC):
             n: The number of configurations to sample.
             to: The encoding to sample into.
             seed: The seed generator.
-            extra: Additional values to include in the configuration.
+            include: Additional values to include in the configuration.
 
         Returns:
             A list of configurations.
         """
         tensors = self.sample(n, to=to, seed=seed)
         configs = to.decode(tensors)
-        if extra is None:
+        if include is None:
             return configs
-        return [{**config, **extra} for config in configs]
+        return [{**config, **include} for config in configs]
 
     @classmethod
     def sobol(cls, ndim: int, *, scramble: bool = True) -> Sobol:

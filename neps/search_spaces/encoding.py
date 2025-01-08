@@ -375,7 +375,7 @@ class ConfigEncoder:
         return sq
 
     @property
-    def ncols(self) -> int:
+    def ndim(self) -> int:
         """The number of columns in the encoded tensor."""
         return len(self.transformers)
 
