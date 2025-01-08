@@ -44,7 +44,7 @@ def test_default_examples(tmp_path: Path, example_script: Path) -> None:
 
     # Testing each folder with its corresponding expected dictionary
     for folder in tmp_path.iterdir():
-        info_yaml_path = folder / ".optimizer_info" / "info.yaml"
+        info_yaml_path = folder / "optimizer_info.yaml"
 
         assert info_yaml_path.exists()
         loaded_data = yaml.safe_load(info_yaml_path.read_text())
