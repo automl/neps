@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
+
+from neps import Categorical, Constant, Float, Integer
 from neps.search_spaces.search_space import (
     SearchSpaceFromYamlFileError,
     pipeline_space_from_yaml,
 )
-
-from neps import Categorical, Constant, Float, Integer
 
 BASE_PATH = "tests/test_yaml_search_space/"
 
@@ -43,7 +45,9 @@ def test_correct_including_priors_yaml_file():
         BASE_PATH + "correct_config_including_priors.yml"
     )
     assert isinstance(pipeline_space, dict)
-    float1 = Float(0.00001, 0.1, log=True, is_fidelity=False, prior=3.3e-2, prior_confidence="high")
+    float1 = Float(
+        0.00001, 0.1, log=True, is_fidelity=False, prior=3.3e-2, prior_confidence="high"
+    )
     assert float1.__eq__(pipeline_space["learning_rate"]) is True
     int1 = Integer(3, 30, log=False, is_fidelity=True)
     assert int1.__eq__(pipeline_space["num_epochs"]) is True
@@ -72,7 +76,8 @@ def test_yaml_file_with_missing_key():
 @pytest.mark.neps_api
 def test_yaml_file_with_inconsistent_types():
     """Test the function with a YAML file having inconsistent types for
-    'lower' and 'upper'."""
+    'lower' and 'upper'.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "inconsistent_types_config.yml")
     assert str(excinfo.value.exception_type == "TypeError")
@@ -84,16 +89,18 @@ def test_yaml_file_with_inconsistent_types():
 @pytest.mark.neps_api
 def test_yaml_file_including_wrong_types():
     """Test the function with a YAML file that defines the wrong but existing type
-    int to float as an optional argument"""
+    int to float as an optional argument.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(Path(BASE_PATH + "inconsistent_types_config2.yml"))
-        assert excinfo.value.exception_type == "TypeError"
+    assert excinfo.value.exception_type == "TypeError"
 
 
 @pytest.mark.neps_api
 def test_yaml_file_including_unkown_types():
     """Test the function with a YAML file that defines an unknown type as an optional
-    argument"""
+    argument.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "config_including_unknown_types.yaml")
     assert excinfo.value.exception_type == "TypeError"
@@ -102,7 +109,8 @@ def test_yaml_file_including_unkown_types():
 @pytest.mark.neps_api
 def test_yaml_file_including_not_allowed_parameter_keys():
     """Test the function with a YAML file that defines an unknown type as an optional
-    argument"""
+    argument.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "not_allowed_key_config.yml")
     assert excinfo.value.exception_type == "TypeError"
@@ -111,7 +119,8 @@ def test_yaml_file_including_not_allowed_parameter_keys():
 @pytest.mark.neps_api
 def test_yaml_file_default_parameter_not_in_range():
     """Test if the default value outside the specified range is
-    correctly identified and handled."""
+    correctly identified and handled.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "default_not_in_range_config.yaml")
     assert excinfo.value.exception_type == "ValueError"
@@ -128,7 +137,8 @@ def test_float_log_not_boolean():
 @pytest.mark.neps_api
 def test_float_is_fidelity_not_boolean():
     """Test if an exception is raised when for Float the 'is_fidelity'
-    attribute is not a boolean."""
+    attribute is not a boolean.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(
             BASE_PATH + "not_boolean_type_is_fidelity_float_config.yaml"
@@ -139,15 +149,18 @@ def test_float_is_fidelity_not_boolean():
 @pytest.mark.neps_api
 def test_categorical_default_value_not_in_choices():
     """Test if a ValueError is raised when the default value is not in the choices
-    for a Categorical."""
+    for a Categorical.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "default_value_not_in_choices_config.yaml")
     assert excinfo.value.exception_type == "ValueError"
 
+
 @pytest.mark.neps_api
 def test_incorrect_fidelity_parameter_bounds():
     """Test if a ValueError is raised when the bounds of a fidelity parameter are
-    not correctly specified."""
+    not correctly specified.
+    """
     with pytest.raises(SearchSpaceFromYamlFileError) as excinfo:
         pipeline_space_from_yaml(BASE_PATH + "incorrect_fidelity_bounds_config.yaml")
     assert excinfo.value.exception_type == "ValueError"

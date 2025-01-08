@@ -395,7 +395,9 @@ class DefaultWorker(Generic[Loc]):
                         time_started=time.time(),
                         worker_id=self.worker_id,
                     )
-                    self.state._trial_repo.update_trial(earliest_pending, hints="metadata")
+                    self.state._trial_repo.update_trial(
+                        earliest_pending, hints="metadata"
+                    )
                     logger.info(
                         "Worker '%s' picked up pending trial: %s.",
                         self.worker_id,

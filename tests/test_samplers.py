@@ -1,9 +1,10 @@
-from pytest_cases import parametrize
-from neps.sampling.samplers import Sampler, Sobol, WeightedSampler, BorderSampler
-from neps.sampling.priors import Prior, UniformPrior
+from __future__ import annotations
 
 import torch
+from pytest_cases import parametrize
 
+from neps.sampling.priors import Prior, UniformPrior
+from neps.sampling.samplers import BorderSampler, Sampler, Sobol, WeightedSampler
 from neps.search_spaces.domain import Domain
 
 

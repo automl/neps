@@ -1,20 +1,23 @@
-from pathlib import Path
+from __future__ import annotations
+
 import random
-from typing import Callable
+from collections.abc import Callable
+from pathlib import Path
+
 import numpy as np
-import torch
 import pytest
+import torch
 
 from neps.state.seed_snapshot import SeedSnapshot
 
 
 @pytest.mark.parametrize(
     "make_ints",
-    (
+    [
         lambda: [random.randint(0, 100) for _ in range(10)],
         lambda: list(np.random.randint(0, 100, (10,))),
         lambda: list(torch.randint(0, 100, (10,))),
-    ),
+    ],
 )
 def test_randomstate_consistent(
     tmp_path: Path, make_ints: Callable[[], list[int]]

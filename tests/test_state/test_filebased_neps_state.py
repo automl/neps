@@ -1,15 +1,18 @@
 """NOTE: These tests are pretty specific to the filebased state implementation.
 This could be generalized if we end up with a server based implementation but
-for now we're just testing the filebased implementation."""
+for now we're just testing the filebased implementation.
+"""
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from neps.exceptions import NePSError, TrialNotFoundError
-from neps.state.err_dump import ErrDump
-from neps.state.neps_state import NePSState
 
 import pytest
 from pytest_cases import fixture, parametrize
+
+from neps.exceptions import NePSError, TrialNotFoundError
+from neps.state.err_dump import ErrDump
+from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 

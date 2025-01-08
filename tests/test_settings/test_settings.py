@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from neps.utils.run_args import Settings, Default
-import pytest
 from pathlib import Path
+
+import pytest
+
+from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
+from neps.utils.run_args import Default, Settings
 from tests.test_yaml_run_args.test_yaml_run_args import (
     evaluate_pipeline,
     hook1,
     hook2,
     pipeline_space,
 )
-from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
 BASE_PATH = Path("tests") / "test_settings"
 evaluate_pipeline = evaluate_pipeline
@@ -21,7 +23,7 @@ my_bayesian = BayesianOptimization
 
 @pytest.mark.neps_api
 @pytest.mark.parametrize(
-    "func_args, yaml_args, expected_output",
+    ("func_args", "yaml_args", "expected_output"),
     [
         (
             {  # only essential arguments provided by func_args, no yaml
@@ -300,13 +302,8 @@ my_bayesian = BayesianOptimization
     ],
 )
 def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) -> None:
-    """
-    Check if expected settings are set
-    """
-    if isinstance(yaml_args, str):
-        args = BASE_PATH / yaml_args
-    else:
-        args = yaml_args
+    """Check if expected settings are set."""
+    args = BASE_PATH / yaml_args if isinstance(yaml_args, str) else yaml_args
 
     settings = Settings(func_args, args)
     for key, value in expected_output.items():
@@ -315,7 +312,7 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
 
 @pytest.mark.neps_api
 @pytest.mark.parametrize(
-    "func_args, yaml_args, error",
+    ("func_args", "yaml_args", "error"),
     [
         (
             {
@@ -345,8 +342,6 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
 def test_settings_initialization_error(
     func_args: dict, yaml_args: str | Default, error: Exception
 ) -> None:
-    """
-    Test if Settings raises Error when essential arguments are missing
-    """
+    """Test if Settings raises Error when essential arguments are missing."""
     with pytest.raises(error):
         Settings(func_args, yaml_args)

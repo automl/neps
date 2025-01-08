@@ -15,15 +15,15 @@ from neps.optimizers.multi_fidelity.successive_halving import (
 )
 
 __all__ = [
-    "SuccessiveHalving",
-    "SuccessiveHalvingWithPriors",
+    "IFBO",
+    "MOBSTER",
+    "AsynchronousHyperband",
+    "AsynchronousHyperbandWithPriors",
     "AsynchronousSuccessiveHalving",
     "AsynchronousSuccessiveHalvingWithPriors",
     "Hyperband",
-    "HyperbandWithPriors",
     "HyperbandCustomDefault",
-    "AsynchronousHyperband",
-    "AsynchronousHyperbandWithPriors",
-    "MOBSTER",
-    "IFBO",
+    "HyperbandWithPriors",
+    "SuccessiveHalving",
+    "SuccessiveHalvingWithPriors",
 ]

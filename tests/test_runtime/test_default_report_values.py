@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 from pathlib import Path
+
 from pytest_cases import fixture
 
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
+from neps.search_spaces import Float
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.search_spaces import Float
 from neps.state.trial import Trial
 
 
@@ -42,6 +45,7 @@ def test_default_values_on_error(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:

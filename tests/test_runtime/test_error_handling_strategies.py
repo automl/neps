@@ -1,18 +1,21 @@
-from neps.exceptions import WorkerRaiseError
-import pytest
+from __future__ import annotations
+
 from dataclasses import dataclass
-from pandas.core.common import contextlib
 from pathlib import Path
+
+import pytest
+from pandas.core.common import contextlib
 from pytest_cases import fixture, parametrize
 
+from neps.exceptions import WorkerRaiseError
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
+from neps.search_spaces import Float
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.search_spaces import Float
 from neps.state.trial import Trial
 
 

@@ -28,7 +28,7 @@ keywords = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "Intended Audience :: Science/Research", 
+  "Intended Audience :: Science/Research",
   "Natural Language :: English",
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX :: Linux",
@@ -214,7 +214,7 @@ ignore = [
   "S101",    # Use of assert detected.
   "W292",    # No newline at end of file
   "PLC1901", # "" can be simplified to be falsey
-  "TCH003",  # Move stdlib import into TYPE_CHECKING
+  "TC003",   # Move stdlib import into TYPE_CHECKING
   "B010",    # Do not use `setattr`
   "PD901",   # Use a better name than 'df'
   "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)

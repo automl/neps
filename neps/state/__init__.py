@@ -3,9 +3,9 @@ from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.trial import Trial
 
 __all__ = [
-    "SeedSnapshot",
     "BudgetInfo",
     "OptimizationState",
     "OptimizerInfo",
+    "SeedSnapshot",
     "Trial",
 ]

@@ -1,26 +1,27 @@
 """NOTE: These tests are pretty specific to the filebased state implementation.
 This could be generalized if we end up with a server based implementation but
-for now we're just testing the filebased implementation."""
+for now we're just testing the filebased implementation.
+"""
+from __future__ import annotations
 
 import time
 from pathlib import Path
 from typing import Any
 
 import pytest
+from pytest_cases import case, fixture, parametrize, parametrize_with_cases
+
+from neps.optimizers import SearcherMapping
 from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.search_spaces.hyperparameters import (
+    Categorical,
+    Constant,
     Float,
     Integer,
-    Constant,
-    Categorical,
 )
 from neps.search_spaces.search_space import SearchSpace
 from neps.state.neps_state import NePSState
-
-from pytest_cases import fixture, parametrize, parametrize_with_cases, case
-from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.optimizers import SearcherMapping
 from neps.state.seed_snapshot import SeedSnapshot
 
 
@@ -71,7 +72,6 @@ JUST_SKIP = [
     "multifidelity_tpe",
 ]
 
-#
 OPTIMIZER_FAILS_WITH_FIDELITY = [
     "random_search",
     "bayesian_optimization",
@@ -119,7 +119,7 @@ REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
 
 @fixture
-@parametrize("key", [k for k in SearcherMapping.keys()])
+@parametrize("key", list(SearcherMapping.keys()))
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
 def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimizer, str]:
     if key in JUST_SKIP:

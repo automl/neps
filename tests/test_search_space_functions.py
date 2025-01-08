@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import torch
+
 from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.hyperparameters import Categorical, Float, Integer
 from neps.search_spaces.functions import pairwise_dist
+from neps.search_spaces.hyperparameters import Categorical, Float, Integer
 
 
 def test_config_encoder_pdist_calculation() -> None:

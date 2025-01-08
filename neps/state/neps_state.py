@@ -18,7 +18,6 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
-    TYPE_CHECKING,
     Literal,
     TypeAlias,
     TypeVar,
@@ -43,12 +42,9 @@ from neps.state.filebased import (
     ReaderWriterTrial,
     TrialWriteHint,
 )
-from neps.state.optimizer import OptimizerInfo
+from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.trial import Report, Trial
 from neps.utils.files import atomic_write, deserialize, serialize
-
-if TYPE_CHECKING:
-    from neps.state.optimizer import OptimizationState
 
 logger = logging.getLogger(__name__)
 
