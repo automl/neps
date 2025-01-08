@@ -171,8 +171,10 @@ class IFBO(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        max_cost_total_info: BudgetInfo | None = None,
+        budget_info: BudgetInfo | None = None,
+        n: int | None = None,
     ) -> SampledConfig:
+        assert n is None, "TODO"
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
 

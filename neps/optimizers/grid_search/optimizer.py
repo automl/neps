@@ -100,7 +100,9 @@ class GridSearch(BaseOptimizer):
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
+        n: int | None = None,
     ) -> SampledConfig:
+        assert n is None, "TODO"
         _num_previous_configs = len(trials)
         if _num_previous_configs > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")

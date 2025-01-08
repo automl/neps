@@ -321,8 +321,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
+        n: int | None = None,
     ) -> SampledConfig:
         """This is basically the fit method."""
+        assert n is None, "TODO"
         completed: dict[str, ConfigResult] = {
             trial_id: trial.into_config_result(self.pipeline_space.from_dict)
             for trial_id, trial in trials.items()
