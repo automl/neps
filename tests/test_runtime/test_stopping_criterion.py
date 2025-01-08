@@ -44,6 +44,7 @@ def test_max_evaluations_total_stopping_criterion(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -97,6 +98,7 @@ def test_worker_evaluations_total_stopping_criterion(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -159,6 +161,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     # We put in one trial as being inprogress
@@ -215,6 +218,7 @@ def test_max_cost_total(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> dict:
@@ -266,6 +270,7 @@ def test_worker_cost_total(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=2,  # <- Highlight, only 2 maximum evaluations allowed
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> dict:
@@ -325,6 +330,7 @@ def test_worker_wallclock_time(
         max_wallclock_time_for_worker_seconds=1,  # <- highlight, 1 second
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -383,6 +389,7 @@ def test_max_worker_evaluation_time(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=0.5,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -442,6 +449,7 @@ def test_max_evaluation_time_global(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:

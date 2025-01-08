@@ -97,6 +97,7 @@ def test_default_values_on_not_specified(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -146,6 +147,7 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     LOSS = 1.0

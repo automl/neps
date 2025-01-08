@@ -45,6 +45,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             Default(None),
             {
@@ -65,6 +66,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -87,6 +89,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             "run_args_required.yaml",
             {
@@ -107,6 +110,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -129,6 +133,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             "run_args_optional.yaml",
             {
@@ -149,6 +154,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "hyperband",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -171,6 +177,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             "overwrite_run_args.yaml",
             {
@@ -191,6 +198,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -219,6 +227,7 @@ my_bayesian = BayesianOptimization
                     "sample_prior_first": False,
                     "sample_prior_at_target": False,
                 },
+                "sample_batch_size": Default(None),
             },
             "run_args_optimizer_settings.yaml",
             {
@@ -253,6 +262,7 @@ my_bayesian = BayesianOptimization
                     "sample_prior_first": False,
                     "sample_prior_at_target": False,
                 },
+                "sample_batch_size": None,
             },
         ),
         (
@@ -277,6 +287,7 @@ my_bayesian = BayesianOptimization
                 "searcher_kwargs": {
                     "initial_design_size": 9,
                 },
+                "sample_batch_size": Default(None),
             },
             "run_args_optimizer_outside.yaml",
             {
@@ -297,6 +308,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": my_bayesian,
                 "searcher_kwargs": {"initial_design_size": 9},
+                "sample_batch_size": None,
             },
         ),
     ],
@@ -333,6 +345,7 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             Default(None),
             ValueError,
@@ -340,7 +353,7 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
     ],
 )
 def test_settings_initialization_error(
-    func_args: dict, yaml_args: str | Default, error: Exception
+    func_args: dict, yaml_args: str | Default, error: type[Exception]
 ) -> None:
     """Test if Settings raises Error when essential arguments are missing."""
     with pytest.raises(error):

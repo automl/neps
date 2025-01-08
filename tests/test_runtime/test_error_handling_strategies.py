@@ -52,6 +52,7 @@ def test_worker_raises_when_error_in_self(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -92,6 +93,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def evaler(*args, **kwargs) -> float:
@@ -153,6 +155,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     @dataclass

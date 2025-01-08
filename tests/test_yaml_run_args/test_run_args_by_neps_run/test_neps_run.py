@@ -60,12 +60,12 @@ def test_run_with_yaml(config: dict) -> None:
         pytest.fail(f"NePS run failed for configuration: {file_name}")
 
     if check_optimizer:
-        optimizer_path = config.pop("optimizer_path")
-        result_path = config.pop("result_path")
+        optimizer_path = Path(config.pop("optimizer_path"))
+        result_path = Path(config.pop("result_path"))
         compare_generated_yaml(result_path, optimizer_path)
 
 
-def compare_generated_yaml(result_path, optimizer_path):
+def compare_generated_yaml(result_path: Path, optimizer_path: Path) -> None:
     """Compare generated optimizer settings and solution settings."""
     assert result_path.exists(), "Generated YAML file does not exist."
 
