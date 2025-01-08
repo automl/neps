@@ -1,7 +1,9 @@
+from __future__ import annotations
+
+import pytest
+import torch
 from pytest_cases import parametrize
 
-import torch
-import pytest
 from neps.search_spaces.domain import Domain
 
 T = torch.tensor

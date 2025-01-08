@@ -111,17 +111,17 @@ class BaseOptimizer:
     def ask(
         self,
         trials: Mapping[str, Trial],
-        max_cost_total_info: BudgetInfo | None,
-    ) -> SampledConfig:
+        budget_info: BudgetInfo | None,
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
         """Sample a new configuration.
 
         Args:
             trials: All of the trials that are known about.
-            max_cost_total_info: information about the max_cost_total
+            budget_info: information about the budget constraints.
 
         Returns:
-            SampledConfig: a sampled configuration
-            dict: state the optimizer would like to keep between calls
+            The sampled configuration(s)
         """
         ...
 

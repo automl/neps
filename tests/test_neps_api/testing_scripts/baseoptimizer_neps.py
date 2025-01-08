@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from warnings import warn
 
@@ -6,28 +8,27 @@ from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 from neps.optimizers.multi_fidelity.hyperband import Hyperband
 from neps.search_spaces.search_space import SearchSpace
 
-pipeline_space_fidelity = dict(
-    val1=neps.Float(lower=-10, upper=10),
-    val2=neps.Integer(lower=1, upper=5, is_fidelity=True),
-)
+pipeline_space_fidelity = {
+    "val1": neps.Float(lower=-10, upper=10),
+    "val2": neps.Integer(lower=1, upper=5, is_fidelity=True),
+}
 
-pipeline_space = dict(
-    val1=neps.Float(lower=-10, upper=10),
-    val2=neps.Integer(lower=1, upper=5),
-)
+pipeline_space = {
+    "val1": neps.Float(lower=-10, upper=10),
+    "val2": neps.Integer(lower=1, upper=5),
+}
 
 
 def run_pipeline(val1, val2):
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning, stacklevel=2)
     return evaluate_pipeline(val1, val2)
 
 def evaluate_pipeline(val1, val2):
-    objective_to_minimize = val1 * val2
-    return objective_to_minimize
+    return val1 * val2
 
 
 def run_pipeline_fidelity(val1, val2):
-    warn("run_pipeline_fidelity is deprecated, use evaluate_pipeline_fidelity instead", DeprecationWarning)
+    warn("run_pipeline_fidelity is deprecated, use evaluate_pipeline_fidelity instead", DeprecationWarning, stacklevel=2)
     return evaluate_pipeline_fidelity(val1, val2)
 
 def evaluate_pipeline_fidelity(val1, val2):

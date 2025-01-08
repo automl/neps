@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from neps.utils.run_args import Settings, Default
-import pytest
 from pathlib import Path
+
+import pytest
+
+from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
+from neps.utils.run_args import Default, Settings
 from tests.test_yaml_run_args.test_yaml_run_args import (
     evaluate_pipeline,
     hook1,
     hook2,
     pipeline_space,
 )
-from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
 
 BASE_PATH = Path("tests") / "test_settings"
 evaluate_pipeline = evaluate_pipeline
@@ -21,7 +23,7 @@ my_bayesian = BayesianOptimization
 
 @pytest.mark.neps_api
 @pytest.mark.parametrize(
-    "func_args, yaml_args, expected_output",
+    ("func_args", "yaml_args", "expected_output"),
     [
         (
             {  # only essential arguments provided by func_args, no yaml
@@ -43,6 +45,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             Default(None),
             {
@@ -63,6 +66,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -85,6 +89,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             "run_args_required.yaml",
             {
@@ -105,6 +110,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -127,6 +133,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             "run_args_optional.yaml",
             {
@@ -147,6 +154,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "hyperband",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -169,6 +177,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             "overwrite_run_args.yaml",
             {
@@ -189,6 +198,7 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": "default",
                 "searcher_kwargs": {},
+                "sample_batch_size": None,
             },
         ),
         (
@@ -217,6 +227,7 @@ my_bayesian = BayesianOptimization
                     "sample_prior_first": False,
                     "sample_prior_at_target": False,
                 },
+                "sample_batch_size": Default(None),
             },
             "run_args_optimizer_settings.yaml",
             {
@@ -251,6 +262,7 @@ my_bayesian = BayesianOptimization
                     "sample_prior_first": False,
                     "sample_prior_at_target": False,
                 },
+                "sample_batch_size": None,
             },
         ),
         (
@@ -275,6 +287,7 @@ my_bayesian = BayesianOptimization
                 "searcher_kwargs": {
                     "initial_design_size": 9,
                 },
+                "sample_batch_size": Default(None),
             },
             "run_args_optimizer_outside.yaml",
             {
@@ -295,18 +308,14 @@ my_bayesian = BayesianOptimization
                 "pre_load_hooks": None,
                 "searcher": my_bayesian,
                 "searcher_kwargs": {"initial_design_size": 9},
+                "sample_batch_size": None,
             },
         ),
     ],
 )
 def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) -> None:
-    """
-    Check if expected settings are set
-    """
-    if isinstance(yaml_args, str):
-        args = BASE_PATH / yaml_args
-    else:
-        args = yaml_args
+    """Check if expected settings are set."""
+    args = BASE_PATH / yaml_args if isinstance(yaml_args, str) else yaml_args
 
     settings = Settings(func_args, args)
     for key, value in expected_output.items():
@@ -315,7 +324,7 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
 
 @pytest.mark.neps_api
 @pytest.mark.parametrize(
-    "func_args, yaml_args, error",
+    ("func_args", "yaml_args", "error"),
     [
         (
             {
@@ -336,6 +345,7 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
                 "pre_load_hooks": Default(None),
                 "searcher": Default("default"),
                 "searcher_kwargs": {},
+                "sample_batch_size": Default(None),
             },
             Default(None),
             ValueError,
@@ -343,10 +353,8 @@ def test_check_settings(func_args: dict, yaml_args: str, expected_output: dict) 
     ],
 )
 def test_settings_initialization_error(
-    func_args: dict, yaml_args: str | Default, error: Exception
+    func_args: dict, yaml_args: str | Default, error: type[Exception]
 ) -> None:
-    """
-    Test if Settings raises Error when essential arguments are missing
-    """
+    """Test if Settings raises Error when essential arguments are missing."""
     with pytest.raises(error):
         Settings(func_args, yaml_args)

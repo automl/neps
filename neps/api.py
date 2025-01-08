@@ -44,6 +44,7 @@ def run(
     objective_to_minimize_value_on_error: None | float = Default(None),
     cost_value_on_error: None | float = Default(None),
     pre_load_hooks: Iterable | None = Default(None),
+    sample_batch_size: int | None = Default(None),
     searcher: (
         Literal[
             "default",
@@ -98,6 +99,8 @@ def run(
         cost_value_on_error: Setting this and objective_to_minimize_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
         pre_load_hooks: List of functions that will be called before load_results().
+        sample_batch_size: The number of samples to ask for in a single call to the
+            optimizer.
         searcher: Which optimizer to use. Can be a string identifier, an
             instance of BaseOptimizer, or a Path to a custom optimizer.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
@@ -236,6 +239,7 @@ def run(
         ignore_errors=settings.ignore_errors,
         overwrite_optimization_dir=settings.overwrite_working_directory,
         pre_load_hooks=settings.pre_load_hooks,
+        sample_batch_size=settings.sample_batch_size,
     )
 
     if settings.post_run_summary:
@@ -278,7 +282,8 @@ def _run_args(
             "mobster",
             "asha",
         ]
-        | BaseOptimizer | dict
+        | BaseOptimizer
+        | dict
     ) = "default",
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:

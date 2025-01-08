@@ -100,12 +100,7 @@ def make_initial_design(  # noqa: PLR0912, C901
             )
 
     if sample_prior_first:
-        # TODO: No way to pass a seed to the sampler
-        default = {
-            name: hp.prior if hp.prior is not None else hp.sample_value()
-            for name, hp in space.hyperparameters.items()
-        }
-        configs.append({**default, **fids()})
+        configs.append({**space.prior_config, **fids()})
 
     ndims = len(space.numerical) + len(space.categoricals)
     if sample_size == "ndim":

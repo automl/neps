@@ -39,7 +39,7 @@ AcquisitionMapping: dict[str, Callable] = {
 
 __all__ = [
     "AcquisitionMapping",
+    "BaseAcquisition",
     "ComprehensiveExpectedImprovement",
     "UpperConfidenceBound",
-    "BaseAcquisition",
 ]

@@ -1,36 +1,37 @@
+from __future__ import annotations
+
 import logging
 from warnings import warn
 
 import neps
 
-pipeline_space_fidelity_priors = dict(
-    val1=neps.Float(lower=-10, upper=10, prior=1),
-    val2=neps.Integer(lower=1, upper=5, is_fidelity=True),
-)
+pipeline_space_fidelity_priors = {
+    "val1": neps.Float(lower=-10, upper=10, prior=1),
+    "val2": neps.Integer(lower=1, upper=5, is_fidelity=True),
+}
 
-pipeline_space_not_fidelity_priors = dict(
-    val1=neps.Float(lower=-10, upper=10, prior=1),
-    val2=neps.Integer(lower=1, upper=5, prior=1),
-)
+pipeline_space_not_fidelity_priors = {
+    "val1": neps.Float(lower=-10, upper=10, prior=1),
+    "val2": neps.Integer(lower=1, upper=5, prior=1),
+}
 
-pipeline_space_fidelity = dict(
-    val1=neps.Float(lower=-10, upper=10),
-    val2=neps.Integer(lower=1, upper=5, is_fidelity=True),
-)
+pipeline_space_fidelity = {
+    "val1": neps.Float(lower=-10, upper=10),
+    "val2": neps.Integer(lower=1, upper=5, is_fidelity=True),
+}
 
-pipeline_space_not_fidelity = dict(
-    val1=neps.Float(lower=-10, upper=10),
-    val2=neps.Integer(lower=1, upper=5),
-)
+pipeline_space_not_fidelity = {
+    "val1": neps.Float(lower=-10, upper=10),
+    "val2": neps.Integer(lower=1, upper=5),
+}
 
 
 def run_pipeline(val1, val2):
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning, stacklevel=2)
     return evaluate_pipeline(val1, val2)
 
 def evaluate_pipeline(val1, val2):
-    objective_to_minimize = val1 * val2
-    return objective_to_minimize
+    return val1 * val2
 
 
 logging.basicConfig(level=logging.INFO)

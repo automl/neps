@@ -74,6 +74,9 @@ class WorkerSettings:
     default_report_values: DefaultReportValues
     """Values to use when an error occurs or was not specified."""
 
+    batch_size: int | None
+    """The number of configurations to sample in a single batch."""
+
     # --------- Global Stopping Criterion ---------
     max_evaluations_total: int | None
     """The maximum number of evaluations to run in total.

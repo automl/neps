@@ -127,35 +127,61 @@ class BayesianOptimization(BaseOptimizer):
         self.cost_on_log_scale = cost_on_log_scale
         self.device = device
         self.sample_prior_first = sample_prior_first
-        self.n_initial_design = initial_design_size
-        self.init_design: list[dict[str, Any]] | None = None
+
+        if initial_design_size is not None:
+            self.n_initial_design = initial_design_size
+        else:
+            self.n_initial_design = len(pipeline_space.numerical) + len(
+                pipeline_space.categoricals
+            )
 
     @override
     def ask(
         self,
         trials: Mapping[str, Trial],
-        max_cost_total_info: BudgetInfo | None = None,
-    ) -> SampledConfig:
+        budget_info: BudgetInfo | None = None,
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
+        _n = 1 if n is None else n
         n_sampled = len(trials)
-        config_id = str(n_sampled + 1)
+        config_ids = iter(str(i + 1) for i in range(n_sampled, n_sampled + _n))
         space = self.pipeline_space
 
-        # If we havn't passed the intial design phase
-        if self.init_design is None:
-            self.init_design = make_initial_design(
+        sampled_configs: list[SampledConfig] = []
+
+        # If the amount of configs evaluated is less than the initial design
+        # requirement, keep drawing from initial design
+        n_evaluated = sum(
+            1
+            for trial in trials.values()
+            if trial.report is not None and trial.report.objective_to_minimize is not None
+        )
+        if n_evaluated < self.n_initial_design:
+            design_samples = make_initial_design(
                 space=space,
                 encoder=self.encoder,
-                sample_prior_first=self.sample_prior_first,
-                sampler=self.prior if self.prior is not None else "sobol",
+                sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
+                sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding
-                sample_size=(
-                    "ndim" if self.n_initial_design is None else self.n_initial_design
-                ),
+                sample_size=_n,
                 sample_fidelity="max",
             )
 
-        if n_sampled < len(self.init_design):
-            return SampledConfig(id=config_id, config=self.init_design[n_sampled])
+            sampled_configs.extend(
+                [
+                    SampledConfig(id=config_id, config=config)
+                    for config_id, config in zip(
+                        config_ids,
+                        design_samples,
+                        strict=False,
+                    )
+                ]
+            )
+            if len(sampled_configs) == _n:
+                if n is None:
+                    return sampled_configs[0]
+
+                return sampled_configs
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -164,16 +190,14 @@ class BayesianOptimization(BaseOptimizer):
 
         cost_percent = None
         if self.use_cost:
-            if max_cost_total_info is None:
+            if budget_info is None:
                 raise ValueError(
                     "Must provide a 'cost' to configurations if using cost"
                     " with BayesianOptimization."
                 )
-            if max_cost_total_info.max_cost_total is None:
+            if budget_info.max_cost_total is None:
                 raise ValueError("Cost budget must be set if using cost")
-            cost_percent = (
-                max_cost_total_info.used_cost_budget / max_cost_total_info.max_cost_total
-            )
+            cost_percent = budget_info.used_cost_budget / budget_info.max_cost_total
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.
@@ -181,13 +205,13 @@ class BayesianOptimization(BaseOptimizer):
         prior = None
         if self.prior:
             pibo_exp_term = _pibo_exp_term(
-                n_sampled, encoder.ncols, len(self.init_design)
+                n_sampled, encoder.ncols, self.n_initial_design
             )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
-        candidate = fit_and_acquire_from_gp(
+        candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
             encoder=encoder,
@@ -202,11 +226,22 @@ class BayesianOptimization(BaseOptimizer):
                 prune_baseline=True,
             ),
             prior=prior,
+            n_candidates_required=_n,
             pibo_exp_term=pibo_exp_term,
             costs=data.cost if self.use_cost else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_on_log_scale,
         )
 
-        config = encoder.decode(candidate)[0]
-        return SampledConfig(id=config_id, config=config)
+        configs = encoder.decode(candidates)
+        sampled_configs.extend(
+            [
+                SampledConfig(id=config_id, config=config)
+                for config_id, config in zip(config_ids, configs, strict=True)
+            ]
+        )
+
+        if n is None:
+            return sampled_configs[0]
+
+        return sampled_configs
