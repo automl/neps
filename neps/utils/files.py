@@ -24,6 +24,12 @@ except ImportError:
 
 @contextmanager
 def atomic_write(file_path: Path | str, *args: Any, **kwargs: Any) -> Iterator[IO]:
+    """Write to a file atomically.
+
+    This means that the file will be flushed to disk and explicitly ask the operating
+    systems to sync the contents to disk. This ensures that other processes that read
+    from this file should see the contents immediately.
+    """
     with open(file_path, *args, **kwargs) as file_stream:  # noqa: PTH123
         yield file_stream
         file_stream.flush()

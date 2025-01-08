@@ -465,7 +465,7 @@ class DefaultWorker(Generic[Loc]):
 
     # Forgive me lord, for I have sinned, this function is atrocious but complicated
     # due to locking.
-    def run(self) -> None:  # noqa: C901, PLR0915
+    def run(self) -> None:  # noqa: C901, PLR0912, PLR0915
         """Run the worker.
 
         Will keep running until one of the criterion defined by the `WorkerSettings`

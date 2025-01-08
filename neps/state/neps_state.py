@@ -78,6 +78,14 @@ CONFIG_PREFIX_LEN = len("config_")
 # TODO: Ergonomics of this class sucks
 @dataclass
 class TrialRepo:
+    """A repository for trials that are stored on disk.
+
+    !!! warning
+
+        This class does not implement locking and it is up to the caller to ensure
+        there are no race conflicts.
+    """
+
     CACHE_FILE_NAME = ".trial_cache.pkl"
     UPDATE_CONSOLIDATION_LIMIT = TRIAL_CACHE_MAX_UPDATES_BEFORE_CONSOLIDATION
 
@@ -89,6 +97,7 @@ class TrialRepo:
         self.cache_path = self.directory / self.CACHE_FILE_NAME
 
     def list_trial_ids(self) -> list[str]:
+        """List all the trial ids on disk."""
         return [
             config_path.name[CONFIG_PREFIX_LEN:]
             for config_path in self.directory.iterdir()
@@ -136,6 +145,7 @@ class TrialRepo:
         return trials
 
     def latest(self) -> dict[str, Trial]:
+        """Get the latest trials from the cache."""
         if not self.cache_path.exists():
             # If we end up with no cache but there are trials on disk, we need to read in.
             if any(path.name.startswith("config_") for path in self.directory.iterdir()):
@@ -153,6 +163,11 @@ class TrialRepo:
         return self._read_pkl_and_maybe_consolidate()
 
     def new_trial(self, trial: Trial | list[Trial]) -> None:
+        """Write a new trial to disk.
+
+        Raises:
+            TrialAlreadyExistsError: If the trial already exists on disk.
+        """
         if isinstance(trial, Trial):
             config_path = self.directory / f"config_{trial.id}"
             if config_path.exists():
@@ -192,6 +207,14 @@ class TrialRepo:
         *,
         hints: Iterable[TrialWriteHint] | TrialWriteHint | None = ("report", "metadata"),
     ) -> None:
+        """Update a trial on disk.
+
+        Args:
+            trial: The trial to update.
+            hints: The hints to use when updating the trial. Defines what files need
+                to be updated.
+                If you don't know, leave `None`, this is a micro-optimization.
+        """
         bytes_ = pickle.dumps(trial, protocol=pickle.HIGHEST_PROTOCOL)
         with atomic_write(self.cache_path, "ab") as f:
             f.write(bytes_)
@@ -199,6 +222,11 @@ class TrialRepo:
         ReaderWriterTrial.write(trial, self.directory / f"config_{trial.id}", hints=hints)
 
     def load_trial_from_disk(self, trial_id: str) -> Trial:
+        """Load a trial from disk.
+
+        Raises:
+            TrialNotFoundError: If the trial is not found on disk.
+        """
         config_path = self.directory / f"config_{trial_id}"
         if not config_path.exists():
             raise TrialNotFoundError(
