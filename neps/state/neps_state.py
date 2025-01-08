@@ -54,8 +54,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-N_UNSAFE_RETRIES = 10
-
 # TODO: Technically we don't need the same Location type for all shared objects.
 Loc = TypeVar("Loc")
 T = TypeVar("T")
@@ -67,10 +65,7 @@ Resource: TypeAlias = Literal[
 ]
 
 
-def make_sha() -> Version:
-    """Generate a str hex sha."""
-    return uuid4().hex
-
+N_UNSAFE_RETRIES = 10
 
 CONFIG_PREFIX_LEN = len("config_")
 
