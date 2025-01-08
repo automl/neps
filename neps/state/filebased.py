@@ -65,71 +65,71 @@ class ReaderWriterTrial:
         )
 
     @classmethod
-    def write(
+    def write(  # noqa: C901, PLR0912
         cls,
         trial: Trial,
         directory: Path,
         *,
         hints: Iterable[TrialWriteHint] | TrialWriteHint | None = None,
-        _recurse: bool = False,
     ) -> None:
+        """Write a trial to a directory.
+
+        Args:
+            trial: The trial to write.
+            directory: The directory to write the trial to.
+            hints: What to write. If None, write everything.
+        """
         config_path = directory / cls.CONFIG_FILENAME
         metadata_path = directory / cls.METADATA_FILENAME
 
-        cm = contextlib.nullcontext if _recurse else gc_disabled
-        with cm():
-            if isinstance(hints, str):
-                match hints:
-                    case "config":
-                        serialize(
-                            trial.config,
-                            config_path,
-                            check_serialized=False,
-                            file_format=CONFIG_SERIALIZE_FORMAT,
+        if isinstance(hints, str):
+            match hints:
+                case "config":
+                    serialize(
+                        trial.config,
+                        config_path,
+                        check_serialized=False,
+                        file_format=CONFIG_SERIALIZE_FORMAT,
+                    )
+                case "metadata":
+                    data = asdict(trial.metadata)
+                    data["state"] = data["state"].value
+                    with metadata_path.open("w") as f:
+                        json.dump(data, f)
+
+                    if trial.metadata.previous_trial_id is not None:
+                        previous_trial_path = directory / cls.PREVIOUS_TRIAL_ID_FILENAME
+                        previous_trial_path.write_text(trial.metadata.previous_trial_id)
+                case "report":
+                    if trial.report is None:
+                        raise ValueError(
+                            "Cannot write report 'hint' when report is None."
                         )
-                    case "metadata":
-                        data = asdict(trial.metadata)
-                        data["state"] = data["state"].value
-                        with metadata_path.open("w") as f:
-                            json.dump(data, f)
 
-                        if trial.metadata.previous_trial_id is not None:
-                            previous_trial_path = (
-                                directory / cls.PREVIOUS_TRIAL_ID_FILENAME
-                            )
-                            previous_trial_path.write_text(
-                                trial.metadata.previous_trial_id
-                            )
-                    case "report":
-                        if trial.report is None:
-                            raise ValueError(
-                                "Cannot write report 'hint' when report is None."
-                            )
+                    report_path = directory / cls.REPORT_FILENAME
+                    _report = asdict(trial.report)
+                    if (err := _report.get("err")) is not None:
+                        _report["err"] = str(err)
 
-                        report_path = directory / cls.REPORT_FILENAME
-                        _report = asdict(trial.report)
-                        if (err := _report.get("err")) is not None:
-                            _report["err"] = str(err)
+                    serialize(
+                        _report,
+                        report_path,
+                        check_serialized=False,
+                        file_format=CONFIG_SERIALIZE_FORMAT,
+                    )
+                case _:
+                    raise ValueError(f"Invalid hint: {hints}")
+        elif isinstance(hints, Iterable):
+            for hint in hints:
+                cls.write(trial, directory, hints=hint)
+        elif hints is None:
+            # We don't know, write everything
+            cls.write(trial, directory, hints=["config", "metadata"])
 
-                        serialize(
-                            _report,
-                            report_path,
-                            check_serialized=False,
-                            file_format=CONFIG_SERIALIZE_FORMAT,
-                        )
-                    case _:
-                        raise ValueError(f"Invalid hint: {hints}")
-            elif isinstance(hints, Iterable):
-                for hint in hints:
-                    cls.write(trial, directory, hints=hint, _recurse=True)
-            elif hints is None:
-                # We don't know, write everything
-                cls.write(trial, directory, hints=["config", "metadata"], _recurse=True)
-
-                if trial.report is not None:
-                    cls.write(trial, directory, hints="report", _recurse=True)
-            else:
-                raise ValueError(f"Invalid hint: {hints}")
+            if trial.report is not None:
+                cls.write(trial, directory, hints="report")
+        else:
+            raise ValueError(f"Invalid hint: {hints}")
 
 
 @dataclass
