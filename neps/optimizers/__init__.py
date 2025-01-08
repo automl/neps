@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
-
-from pandas.io.common import Path
 
 from neps.optimizers.bo import BayesianOptimization
 from neps.optimizers.bracket_optimizer import BracketOptimizer
@@ -13,10 +12,7 @@ from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.priorband import PriorBandArgs
 from neps.optimizers.random_search import RandomSearch
-from neps.optimizers.utils import brackets
-from neps.optimizers.utils.grid import make_grid
-from neps.sampling.priors import Prior, Uniform
-from neps.sampling.samplers import Sampler
+from neps.sampling import Prior, Sampler, Uniform
 from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
 
 if TYPE_CHECKING:
@@ -141,6 +137,8 @@ def bracket_optimizer(  # noqa: C901
             "sample_prior_first should be either True, False or 'highest_fidelity'"
         )
 
+    from neps.optimizers.utils import brackets
+
     match bracket_type:
         case "successive_halving":
             rung_to_fidelity, rung_sizes = brackets.calculate_sh_rungs(
@@ -219,6 +217,8 @@ def grid_search(
     pipeline_space: SearchSpace,
     seed: int | None = None,
 ) -> GridSearch:
+    from neps.optimizers.utils.grid import make_grid
+
     return GridSearch(
         pipeline_space=pipeline_space,
         configs_list=make_grid(pipeline_space),
@@ -310,7 +310,7 @@ def ifbo(
         n_initial_design=_initial_design_size,
         fid_domain=space.fidelity.domain,
         fidelity_name=space.fidelity_name,
-        prior=Prior.from_space(space, include_fidelity=False) if use_priors else None,
+        prior=(Prior.from_space(space, include_fidelity=False) if use_priors else None),
         ftpfn=FTPFNSurrogate(
             target_path=Path(surrogate_path) if surrogate_path is not None else None,
             version=surrogate_version,
