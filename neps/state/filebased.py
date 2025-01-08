@@ -1,3 +1,5 @@
+"""TODO."""
+
 from __future__ import annotations
 
 import contextlib
@@ -16,7 +18,6 @@ import portalocker as pl
 from neps.env import CONFIG_SERIALIZE_FORMAT, ENV_VARS_USED
 from neps.state.err_dump import ErrDump
 from neps.state.trial import Trial
-from neps.utils.common import gc_disabled
 from neps.utils.files import deserialize, serialize
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class ReaderWriterTrial:
 
     @classmethod
     def read(cls, directory: Path) -> Trial:
+        """Read a trial from a directory."""
         config_path = directory / cls.CONFIG_FILENAME
         metadata_path = directory / cls.METADATA_FILENAME
         report_path = directory / cls.REPORT_FILENAME
@@ -138,6 +140,7 @@ class ReaderWriterErrDump:
 
     @classmethod
     def read(cls, path: Path) -> ErrDump:
+        """Read an error dump from a file."""
         if not path.exists():
             return ErrDump([])
 
@@ -148,6 +151,7 @@ class ReaderWriterErrDump:
 
     @classmethod
     def write(cls, err_dump: ErrDump, path: Path) -> None:
+        """Write an error dump to a file."""
         with path.open("w") as f:
             lines = [json.dumps(asdict(trial_err)) for trial_err in err_dump.errs]
             f.write("\n".join(lines))
@@ -181,6 +185,13 @@ class FileLocker:
 
     @contextmanager
     def lock(self, *, worker_id: str | None = None) -> Iterator[None]:
+        """Lock the file.
+
+        Args:
+            worker_id: The id of the worker trying to acquire the lock.
+
+                Used for debug messaging purposes.
+        """
         try:
             with self._lock:
                 if worker_id is not None:

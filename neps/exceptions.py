@@ -21,6 +21,7 @@ class TrialAlreadyExistsError(NePSError):
     """Raised when a trial already exists in the store."""
 
     def __init__(self, trial_id: str, *args: Any) -> None:
+        """Initialize the exception with the trial id."""
         super().__init__(trial_id, *args)
         self.trial_id = trial_id
 
