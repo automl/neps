@@ -322,7 +322,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         n: int | None = None,
-    ) -> SampledConfig:
+    ) -> SampledConfig | list[SampledConfig]:
         """This is basically the fit method."""
         assert n is None, "TODO"
         completed: dict[str, ConfigResult] = {

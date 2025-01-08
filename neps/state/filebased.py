@@ -123,7 +123,7 @@ class ReaderWriterTrial:
                     raise ValueError(f"Invalid hint: {hints}")
         elif isinstance(hints, Iterable):
             for hint in hints:
-                cls.write(trial, directory, hints=hint)
+                cls.write(trial, directory, hints=hint)  # type: ignore
         elif hints is None:
             # We don't know, write everything
             cls.write(trial, directory, hints=["config", "metadata"])
