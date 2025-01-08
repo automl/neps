@@ -41,14 +41,14 @@ def apply_cost_cooling(
 def cost_cooled_acq(
     acq_fn: AcquisitionFunction,
     model: GPyTorchModel,
-    used_budget_percentage: float,
+    used_max_cost_total_percentage: float,
 ) -> WeightedAcquisition:
-    assert 0 <= used_budget_percentage <= 1
+    assert 0 <= used_max_cost_total_percentage <= 1
     return WeightedAcquisition(
         acq=acq_fn,
         apply_weight=partial(
             apply_cost_cooling,
             cost_model=model,
-            alpha=1 - used_budget_percentage,
+            alpha=1 - used_max_cost_total_percentage,
         ),
     )

@@ -64,7 +64,7 @@ def test_max_evaluations_total_stopping_criterion(
     for _, trial in trials.items():
         assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
-        assert trial.report.loss == 1.0
+        assert trial.report.objective_to_minimize == 1.0
 
     # New worker has the same total number of evaluations so it should not run anything.
     new_worker = DefaultWorker.new(
@@ -118,7 +118,7 @@ def test_worker_evaluations_total_stopping_criterion(
     for _, trial in trials.items():
         assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
-        assert trial.report.loss == 1.0
+        assert trial.report.objective_to_minimize == 1.0
 
     # New worker should run 2 more evaluations
     new_worker = DefaultWorker.new(
@@ -139,7 +139,7 @@ def test_worker_evaluations_total_stopping_criterion(
     for _, trial in trials.items():
         assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
-        assert trial.report.loss == 1.0
+        assert trial.report.objective_to_minimize == 1.0
 
 
 def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
@@ -195,7 +195,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 
     assert the_completed_trial.metadata.state == Trial.State.SUCCESS
     assert the_completed_trial.report is not None
-    assert the_completed_trial.report.loss == 1.0
+    assert the_completed_trial.report.objective_to_minimize == 1.0
 
 
 def test_max_cost_total(
@@ -216,7 +216,7 @@ def test_max_cost_total(
     )
 
     def eval_function(*args, **kwargs) -> dict:
-        return {"loss": 1.0, "cost": 1.0}
+        return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
         state=neps_state,
@@ -267,7 +267,7 @@ def test_worker_cost_total(
     )
 
     def eval_function(*args, **kwargs) -> dict:
-        return {"loss": 1.0, "cost": 1.0}
+        return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
         state=neps_state,

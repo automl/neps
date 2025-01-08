@@ -7,5 +7,5 @@ searcher_args:
   initial_design_type: max_budget
   use_priors: false
   random_interleave_prob: 0.9
-  sample_default_first: false
-  sample_default_at_target: false
+  sample_prior_first: false
+  sample_prior_at_target: false

@@ -1,6 +1,6 @@
 # Full Configuration Template for NePS
-run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
+evaluate_pipeline:
+  path: path/to/your/evaluate_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
 
 pipeline_space:
@@ -31,7 +31,7 @@ max_evaluations_per_run:
 continue_until_max_evaluation_completed: false
 
 # Error Handling
-loss_value_on_error:
+objective_to_minimize_value_on_error:
 cost_value_on_error:
 ignore_errors:
 

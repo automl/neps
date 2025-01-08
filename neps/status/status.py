@@ -81,7 +81,7 @@ def get_summary_dict(
     summary["num_pending_configs"] = len(in_progress) + len(pending)
     summary["num_pending_configs_with_worker"] = len(in_progress)
 
-    summary["best_loss"] = float("inf")
+    summary["best_objective_to_minimize"] = float("inf")
     summary["best_config_id"] = None
     summary["best_config_metadata"] = None
     summary["best_config"] = None
@@ -89,9 +89,12 @@ def get_summary_dict(
     for evaluation in evaluated.values():
         if evaluation.result == "error":
             summary["num_error"] += 1
-        loss = evaluation.loss
-        if isinstance(loss, float) and loss < summary["best_loss"]:
-            summary["best_loss"] = loss
+        objective_to_minimize = evaluation.objective_to_minimize
+        if (
+            isinstance(objective_to_minimize, float)
+            and objective_to_minimize < summary["best_objective_to_minimize"]
+        ):
+            summary["best_objective_to_minimize"] = objective_to_minimize
             summary["best_config"] = evaluation.config
             summary["best_config_id"] = evaluation.id
             summary["best_config_metadata"] = evaluation.metadata
@@ -111,7 +114,8 @@ def status(
 
     Args:
         root_directory: The root directory given to neps.run.
-        best_losses: If true, show the trajectory of the best loss across evaluations
+        best_losses: If true, show the trajectory of the best objective_to_minimize
+            across evaluations
         best_configs: If true, show the trajectory of the best configs and their losses
             across evaluations
         all_configs: If true, show all configs and their losses
@@ -137,29 +141,35 @@ def status(
             return summary["previous_results"], summary["pending_configs"]
 
         print()
-        print(f"Best loss: {summary['best_loss']}")
+        print(f"Best objective_to_minimize: {summary['best_objective_to_minimize']}")
         print(f"Best config id: {summary['best_config_id']}")
         print(f"Best config: {summary['best_config']}")
 
         if best_losses:
             print()
-            print("Best loss across evaluations:")
-            best_loss_trajectory = root_directory / "best_loss_trajectory.txt"
-            print(best_loss_trajectory.read_text(encoding="utf-8"))
+            print("Best objective_to_minimize across evaluations:")
+            best_objective_to_minimize_trajectory = (
+                root_directory / "best_objective_to_minimize_trajectory.txt"
+            )
+            print(best_objective_to_minimize_trajectory.read_text(encoding="utf-8"))
 
         if best_configs:
             print()
             print("Best configs and their losses across evaluations:")
             print(79 * "-")
-            best_loss_config = root_directory / "best_loss_with_config_trajectory.txt"
-            print(best_loss_config.read_text(encoding="utf-8"))
+            best_objective_to_minimize_config = (
+                root_directory / "best_objective_to_minimize_with_config_trajectory.txt"
+            )
+            print(best_objective_to_minimize_config.read_text(encoding="utf-8"))
 
         if all_configs:
             print()
             print("All evaluated configs and their losses:")
             print(79 * "-")
-            all_loss_config = root_directory / "all_losses_and_configs.txt"
-            print(all_loss_config.read_text(encoding="utf-8"))
+            all_objective_to_minimize_config = (
+                root_directory / "all_losses_and_configs.txt"
+            )
+            print(all_objective_to_minimize_config.read_text(encoding="utf-8"))
 
     return summary["previous_results"], summary["pending_configs"]
 
@@ -268,7 +278,7 @@ def _get_dataframes_from_summary(
         "num_evaluated_configs": summary["num_evaluated_configs"],
         "num_pending_configs": summary["num_pending_configs"],
         "num_pending_configs_with_worker": summary["num_pending_configs_with_worker"],
-        "best_loss": summary["best_loss"],
+        "best_objective_to_minimize": summary["best_objective_to_minimize"],
         "best_config_id": summary["best_config_id"],
         "num_error": summary["num_error"],
     }
@@ -313,7 +323,7 @@ def _save_data_to_csv(
             # Represents the last worker
             if int(pending_configs) == 0 and int(pending_configs_with_worker) == 0:
                 config_data_df = config_data_df.sort_values(
-                    by="result.loss",
+                    by="result.objective_to_minimize",
                     ascending=True,
                 )
                 config_data_df.to_csv(config_data_file_path, index=False, mode="w")
@@ -334,7 +344,7 @@ def _save_data_to_csv(
                 # check if the current worker has more evaluated configs than the previous
                 if int(num_evaluated_configs_csv) < num_evaluated_configs_run.iloc[0]:
                     config_data_df = config_data_df.sort_values(
-                        by="result.loss",
+                        by="result.objective_to_minimize",
                         ascending=True,
                     )
                     config_data_df.to_csv(config_data_file_path, index=False, mode="w")
@@ -342,7 +352,7 @@ def _save_data_to_csv(
             # Represents the first worker to be evaluated
             else:
                 config_data_df = config_data_df.sort_values(
-                    by="result.loss",
+                    by="result.objective_to_minimize",
                     ascending=True,
                 )
                 config_data_df.to_csv(config_data_file_path, index=False, mode="w")

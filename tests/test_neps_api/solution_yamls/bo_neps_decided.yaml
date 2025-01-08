@@ -6,5 +6,5 @@ searcher_args:
   initial_design_size: null
   use_priors: false
   use_cost: false
-  sample_default_first: false
+  sample_prior_first: false
   device: null

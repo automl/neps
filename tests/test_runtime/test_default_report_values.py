@@ -30,7 +30,7 @@ def test_default_values_on_error(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
-            loss_value_on_error=2.4,  # <- Highlight
+            objective_to_minimize_value_on_error=2.4,  # <- Highlight
             cost_value_on_error=2.4,  # <- Highlight
             learning_curve_on_error=[2.4, 2.5],  # <- Highlight
         ),
@@ -70,7 +70,7 @@ def test_default_values_on_error(
     trial = trials.popitem()[1]
     assert trial.metadata.state == Trial.State.CRASHED
     assert trial.report is not None
-    assert trial.report.loss == 2.4
+    assert trial.report.objective_to_minimize == 2.4
     assert trial.report.cost == 2.4
     assert trial.report.learning_curve == [2.4, 2.5]
 
@@ -125,13 +125,15 @@ def test_default_values_on_not_specified(
     assert trial.report.learning_curve == [2.4, 2.5]
 
 
-def test_default_value_loss_curve_take_loss_value(
+def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
     neps_state: NePSState,
 ) -> None:
     optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
-        default_report_values=DefaultReportValues(learning_curve_if_not_provided="loss"),
+        default_report_values=DefaultReportValues(
+            learning_curve_if_not_provided="objective_to_minimize"
+        ),
         max_evaluations_total=None,
         include_in_progress_evaluations_towards_maximum=False,
         max_cost_total=None,

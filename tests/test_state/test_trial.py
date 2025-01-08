@@ -120,7 +120,7 @@ def test_trial_as_success_after_being_progress() -> None:
     previous_trial = "0"
     sampling_worker_id = "42"
     evaluating_worker_id = "43"
-    loss = 427
+    objective_to_minimize = 427
     cost = -123.6
     extra = {"picnic": "basket", "counts": [1, 2, 3]}
 
@@ -137,7 +137,7 @@ def test_trial_as_success_after_being_progress() -> None:
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
     report = trial.set_complete(
         report_as="success",
-        loss=loss,
+        objective_to_minimize=objective_to_minimize,
         cost=cost,
         err=None,
         tb=None,
@@ -166,7 +166,7 @@ def test_trial_as_success_after_being_progress() -> None:
     )
     assert report == Trial.Report(
         trial_id=trial_id,
-        loss=loss,
+        objective_to_minimize=objective_to_minimize,
         cost=cost,
         learning_curve=None,
         evaluation_duration=1,
@@ -177,7 +177,7 @@ def test_trial_as_success_after_being_progress() -> None:
     )
 
 
-def test_trial_as_failed_with_nan_loss_and_in_cost() -> None:
+def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
     trial_id = "1"
     time_sampled = 0
     time_submitted = 1
@@ -186,7 +186,7 @@ def test_trial_as_failed_with_nan_loss_and_in_cost() -> None:
     previous_trial = "0"
     sampling_worker_id = "42"
     evaluating_worker_id = "43"
-    loss = np.nan
+    objective_to_minimize = np.nan
     cost = np.inf
     extra = {"picnic": "basket", "counts": [1, 2, 3]}
 
@@ -203,7 +203,7 @@ def test_trial_as_failed_with_nan_loss_and_in_cost() -> None:
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
     report = trial.set_complete(
         report_as="failed",
-        loss=loss,
+        objective_to_minimize=objective_to_minimize,
         cost=cost,
         learning_curve=None,
         evaluation_duration=time_end - time_started,
@@ -231,7 +231,7 @@ def test_trial_as_failed_with_nan_loss_and_in_cost() -> None:
     )
     assert report == Trial.Report(
         trial_id=trial_id,
-        loss=loss,
+        objective_to_minimize=objective_to_minimize,
         cost=cost,
         learning_curve=None,
         evaluation_duration=time_end - time_started,
@@ -268,7 +268,7 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
     report = trial.set_complete(
         report_as="crashed",
-        loss=None,
+        objective_to_minimize=None,
         cost=None,
         learning_curve=None,
         evaluation_duration=time_end - time_started,
@@ -297,7 +297,7 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
     )
     assert report == Trial.Report(
         trial_id=trial_id,
-        loss=None,
+        objective_to_minimize=None,
         cost=None,
         learning_curve=None,
         evaluation_duration=time_end - time_started,

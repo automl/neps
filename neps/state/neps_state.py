@@ -322,7 +322,7 @@ class NePSState:
             The new trial.
         """
         with self._optimizer_state_path.open("rb") as f:
-            opt_state = pickle.load(f)  # noqa: S301
+            opt_state: OptimizationState = pickle.load(f)  # noqa: S301
 
         opt_state.seed_snapshot.set_as_global_seed_state()
 
@@ -346,7 +346,9 @@ class NePSState:
 
         sampled_configs = optimizer.ask(
             trials=trials,
-            budget_info=opt_state.budget.clone(),
+            budget_info=opt_state.budget.clone()
+            if opt_state.budget is not None
+            else None,
             n=n,
         )
 

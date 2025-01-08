@@ -91,7 +91,7 @@ class PriorBandBase:
         else:
             # THIS block should not ever execute, but for runtime anomalies, if no
             # incumbent can be extracted, the prior is treated as the incumbent
-            inc = self.pipeline_space.from_dict(self.pipeline_space.default_config)
+            inc = self.pipeline_space.from_dict(self.pipeline_space.prior_config)
             logger.warning(
                 "Treating the prior as the incumbent. "
                 "Please check if this should not happen."
@@ -259,7 +259,7 @@ class PriorBandBase:
         # requires at least eta completed configurations to begin computing scores
         if len(self.rung_histories[rung]["config"]) >= self.eta:
             # retrieve the prior
-            prior = self.pipeline_space.from_dict(self.pipeline_space.default_config)
+            prior = self.pipeline_space.from_dict(self.pipeline_space.prior_config)
             # retrieve the global incumbent
             inc = self.find_incumbent()
             # subsetting the top 1/eta configs from the rung
@@ -304,18 +304,18 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,
         promotion_policy: Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = True,
-        sample_default_at_target: bool = True,
+        sample_prior_first: bool = True,
+        sample_prior_at_target: bool = True,
         prior_weight_type: Literal["geometric", "linear", "50-50"] = "geometric",
         inc_sample_type: Literal[
             "hypersphere", "mutation", "crossover", "gaussian"
@@ -337,18 +337,18 @@ class PriorBand(MFBOBase, HyperbandCustomDefault, PriorBandBase):
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             initial_design_type=initial_design_type,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
         self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type

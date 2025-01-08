@@ -8,7 +8,7 @@ development_stage_id: None
 task_id: 4
 max_evaluations_per_run: None
 continue_until_max_evaluation_completed: True
-loss_value_on_error: None
+objective_to_minimize_value_on_error: None
 ignore_errors: True
 searcher:
 pre_load_hooks: None

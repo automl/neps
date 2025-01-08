@@ -2,6 +2,7 @@
 __pycache__
 dist
 **/*.egg-info
+uv.lock
 
 # Log files
 *.out

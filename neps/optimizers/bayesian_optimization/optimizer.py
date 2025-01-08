@@ -65,13 +65,13 @@ class BayesianOptimization(BaseOptimizer):
         use_priors: bool = False,
         use_cost: bool = False,
         cost_on_log_scale: bool = True,
-        sample_default_first: bool = False,
+        sample_prior_first: bool = False,
         device: torch.device | None = None,
         encoder: ConfigEncoder | None = None,
         seed: int | None = None,
-        budget: Any | None = None,  # TODO: remove
+        max_cost_total: Any | None = None,  # TODO: remove
         surrogate_model: Any | None = None,  # TODO: remove
-        loss_value_on_error: Any | None = None,  # TODO: remove
+        objective_to_minimize_value_on_error: Any | None = None,  # TODO: remove
         cost_value_on_error: Any | None = None,  # TODO: remove
         ignore_errors: Any | None = None,  # TODO: remove
     ):
@@ -92,7 +92,7 @@ class BayesianOptimization(BaseOptimizer):
                     If using `cost`, cost must be provided in the reports of the trials.
 
             cost_on_log_scale: Whether to use the log of the cost when using cost.
-            sample_default_first: Whether to sample the default configuration first.
+            sample_prior_first: Whether to sample the default configuration first.
             seed: Seed to use for the random number generator of samplers.
             device: Device to use for the optimization.
             encoder: Encoder to use for encoding the configurations. If None, it will
@@ -126,8 +126,7 @@ class BayesianOptimization(BaseOptimizer):
         self.use_priors = use_priors
         self.cost_on_log_scale = cost_on_log_scale
         self.device = device
-        self.sample_default_first = sample_default_first
-        self.init_design: list[dict[str, Any]] | None = None
+        self.sample_prior_first = sample_prior_first
 
         if initial_design_size is not None:
             self.n_initial_design = initial_design_size
@@ -161,9 +160,7 @@ class BayesianOptimization(BaseOptimizer):
             design_samples = make_initial_design(
                 space=space,
                 encoder=self.encoder,
-                sample_default_first=(
-                    self.sample_default_first if n_sampled == 0 else False
-                ),
+                sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding
                 sample_size=_n,
@@ -193,14 +190,16 @@ class BayesianOptimization(BaseOptimizer):
 
         cost_percent = None
         if self.use_cost:
-            if budget_info is None:
+            if max_cost_total_info is None:
                 raise ValueError(
                     "Must provide a 'cost' to configurations if using cost"
                     " with BayesianOptimization."
                 )
-            if budget_info.max_cost_budget is None:
+            if max_cost_total_info.max_cost_total is None:
                 raise ValueError("Cost budget must be set if using cost")
-            cost_percent = budget_info.used_cost_budget / budget_info.max_cost_budget
+            cost_percent = (
+                max_cost_total_info.used_cost_budget / max_cost_total_info.max_cost_total
+            )
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.

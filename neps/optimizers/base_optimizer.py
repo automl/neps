@@ -14,9 +14,9 @@ if TYPE_CHECKING:
     from neps.utils.types import ERROR, ResultDict
 
 
-def _get_loss(
+def _get_objective_to_minimize(
     result: ERROR | ResultDict | float,
-    loss_value_on_error: float | None = None,
+    objective_to_minimize_value_on_error: float | None = None,
     *,
     ignore_errors: bool = False,
 ) -> ERROR | float:
@@ -24,19 +24,20 @@ def _get_loss(
         if ignore_errors:
             return "error"
 
-        if loss_value_on_error is not None:
-            return loss_value_on_error
+        if objective_to_minimize_value_on_error is not None:
+            return objective_to_minimize_value_on_error
 
         raise ValueError(
-            "An error happened during the execution of your run_pipeline function."
+            "An error happened during the execution of your evaluate_pipeline function."
             " You have three options: 1. If the error is expected and corresponds to"
-            " a loss value in your application (e.g., 0% accuracy), you can set"
-            " loss_value_on_error to some float. 2. If sometimes your pipeline"
-            " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
+            " an objective_to_minimize value in your application (e.g., 0% accuracy),"
+            " you can set objective_to_minimize_value_on_error to some float. 2. If "
+            " sometimes your pipeline crashes randomly, you can set ignore_errors=True."
+            " 3. Fix your error."
         )
 
     if isinstance(result, dict):
-        return float(result["loss"])
+        return float(result["objective_to_minimize"])
 
     assert isinstance(result, float)
     return float(result)
@@ -54,9 +55,9 @@ def _get_cost(
 
         if cost_value_on_error is None:
             raise ValueError(
-                "An error happened during the execution of your run_pipeline function."
-                " You have three options: 1. If the error is expected and corresponds to"
-                " a cost value in your application, you can set"
+                "An error happened during the execution of your evaluate_pipeline"
+                " function. You have three options: 1. If the error is expected and"
+                " corresponds to a cost value in your application, you can set"
                 " cost_value_on_error to some float. 2. If sometimes your pipeline"
                 " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
             )
@@ -88,8 +89,8 @@ class BaseOptimizer:
         pipeline_space: SearchSpace,
         patience: int = 50,
         logger: logging.Logger | None = None,
-        budget: int | float | None = None,
-        loss_value_on_error: float | None = None,
+        max_cost_total: int | float | None = None,
+        objective_to_minimize_value_on_error: float | None = None,
         cost_value_on_error: float | None = None,
         learning_curve_on_error: float | list[float] | None = None,
         ignore_errors: bool = False,
@@ -97,11 +98,11 @@ class BaseOptimizer:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.budget = budget
+        self.max_cost_total = max_cost_total
         self.pipeline_space = pipeline_space
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
-        self.loss_value_on_error = loss_value_on_error
+        self.objective_to_minimize_value_on_error = objective_to_minimize_value_on_error
         self.cost_value_on_error = cost_value_on_error
         self.learning_curve_on_error = learning_curve_on_error
         self.ignore_errors = ignore_errors
@@ -133,7 +134,7 @@ class BaseOptimizer:
 
         Args:
             trials: All of the trials that are known about.
-            budget_info: information about the budget
+            max_cost_total_info: information about the max_cost_total
 
         Returns:
             SampledConfig: a sampled configuration
@@ -141,20 +142,27 @@ class BaseOptimizer:
         """
         ...
 
-    def get_loss(self, result: ERROR | ResultDict | float | Report) -> float | ERROR:
-        """Calls result.utils.get_loss() and passes the error handling through.
-        Please use self.get_loss() instead of get_loss() in all optimizer classes.
+    def get_objective_to_minimize(
+        self, result: ERROR | ResultDict | float | Report
+    ) -> float | ERROR:
+        """Calls result.utils.get_objective_to_minimize() and passes the error handling
+        through. Please use self.get_objective_to_minimize() instead of
+        get_objective_to_minimize() in all optimizer classes.
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do
-        # this `_get_loss` at every call. We can also then just use `None` instead of
-        # the string `"error"`
+        # this `_get_objective_to_minimize` at every call. We can also then just use
+        # `None` instead of the string `"error"`
         if isinstance(result, Report):
-            return result.loss if result.loss is not None else "error"
+            return (
+                result.objective_to_minimize
+                if result.objective_to_minimize is not None
+                else "error"
+            )
 
-        return _get_loss(
+        return _get_objective_to_minimize(
             result,
-            loss_value_on_error=self.loss_value_on_error,
+            objective_to_minimize_value_on_error=self.objective_to_minimize_value_on_error,
             ignore_errors=self.ignore_errors,
         )
 
@@ -164,9 +172,13 @@ class BaseOptimizer:
         """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
         # use `Trial` and `Report`, they already take care of this and save having to do
-        # this `_get_loss` at every call
+        # this `_get_objective_to_minimize` at every call
         if isinstance(result, Report):
-            return result.loss if result.loss is not None else "error"
+            return (
+                result.objective_to_minimize
+                if result.objective_to_minimize is not None
+                else "error"
+            )
 
         return _get_cost(
             result,

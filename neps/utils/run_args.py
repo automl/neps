@@ -20,7 +20,7 @@ logger = logging.getLogger("neps")
 
 # Define the name of the arguments as variables for easier code maintenance
 RUN_ARGS = "run_args"
-RUN_PIPELINE = "run_pipeline"
+EVALUATE_PIPELINE = "evaluate_pipeline"
 PIPELINE_SPACE = "pipeline_space"
 ROOT_DIRECTORY = "root_directory"
 MAX_EVALUATIONS_TOTAL = "max_evaluations_total"
@@ -30,7 +30,7 @@ POST_RUN_SUMMARY = "post_run_summary"
 DEVELOPMENT_STAGE_ID = "development_stage_id"
 TASK_ID = "task_id"
 CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED = "continue_until_max_evaluation_completed"
-LOSS_VALUE_ON_ERROR = "loss_value_on_error"
+OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR = "objective_to_minimize_value_on_error"
 COST_VALUE_ON_ERROR = "cost_value_on_error"
 IGNORE_ERROR = "ignore_errors"
 SEARCHER = "searcher"
@@ -49,7 +49,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
     validates these arguments, and then returns them in a dictionary. It checks for the
     presence and validity of expected parameters, and distinctively handles more complex
     configurations, specifically those that are dictionaries(e.g. pipeline_space) or
-    objects(e.g. run_pipeline) requiring loading.
+    objects(e.g. evaluate_pipeline) requiring loading.
 
     Args:
         path (str): The file path to the YAML configuration file.
@@ -67,7 +67,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
     settings = {}
 
     # List allowed NePS run arguments with simple types (e.g., string, int). Parameters
-    # like 'run_pipeline', 'preload_hooks', 'pipeline_space',
+    # like 'evaluate_pipeline', 'preload_hooks', 'pipeline_space',
     # and 'searcher' are excluded due to needing specialized processing.
     expected_parameters = [
         ROOT_DIRECTORY,
@@ -79,7 +79,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
         TASK_ID,
         MAX_EVALUATIONS_PER_RUN,
         CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED,
-        LOSS_VALUE_ON_ERROR,
+        OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR,
         COST_VALUE_ON_ERROR,
         IGNORE_ERROR,
     ]
@@ -98,7 +98,7 @@ def get_run_args_from_yaml(path: str | Path) -> dict:
                 f"provided via run_args."
                 f"See here all valid arguments:"
                 f" {', '.join(expected_parameters)}, "
-                f"'run_pipeline', 'preload_hooks', 'pipeline_space'"
+                f"'evaluate_pipeline', 'preload_hooks', 'pipeline_space'"
             )
 
     # Process complex configurations (e.g., 'pipeline_space', 'searcher') and integrate
@@ -146,7 +146,7 @@ def config_loader(path: str | Path) -> dict:
 
 def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, dict]:
     """Recursive function to extract leaf keys and their values from a nested dictionary.
-    Special keys (e.g.'run_pipeline') are also extracted if present
+    Special keys (e.g.'evaluate_pipeline') are also extracted if present
     and their corresponding values (dict) at any level in the nested structure.
 
     Args:
@@ -159,7 +159,7 @@ def extract_leaf_keys(d: dict, special_keys: dict | None = None) -> tuple[dict, 
     """
     if special_keys is None:
         special_keys = {
-            RUN_PIPELINE: None,
+            EVALUATE_PIPELINE: None,
             PRE_LOAD_HOOKS: None,
             SEARCHER: None,
             PIPELINE_SPACE: None,
@@ -194,7 +194,7 @@ def handle_special_argument_cases(settings: dict, special_configs: dict) -> None
 
     """
     # process special configs
-    process_run_pipeline(RUN_PIPELINE, special_configs, settings)
+    process_evaluate_pipeline(EVALUATE_PIPELINE, special_configs, settings)
     process_pipeline_space(PIPELINE_SPACE, special_configs, settings)
     process_searcher(SEARCHER, special_configs, settings)
 
@@ -284,7 +284,7 @@ def process_searcher(key: str, special_configs: dict, settings: dict) -> None:
         settings[key] = searcher
 
 
-def process_run_pipeline(key: str, special_configs: dict, settings: dict) -> None:
+def process_evaluate_pipeline(key: str, special_configs: dict, settings: dict) -> None:
     """Processes the run pipeline configuration and updates the settings dictionary.
 
     Args:
@@ -405,7 +405,7 @@ def check_run_args(settings: dict) -> None:
     # [task_id, development_stage_id, pre_load_hooks] require special handling of type,
     # that's why they are not listed
     expected_types = {
-        RUN_PIPELINE: Callable,
+        EVALUATE_PIPELINE: Callable,
         ROOT_DIRECTORY: str,
         # TODO: Support CS.ConfigurationSpace for pipeline_space
         PIPELINE_SPACE: (str, dict),
@@ -415,7 +415,7 @@ def check_run_args(settings: dict) -> None:
         MAX_COST_TOTAL: (int, float),
         MAX_EVALUATIONS_PER_RUN: int,
         CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED: bool,
-        LOSS_VALUE_ON_ERROR: float,
+        OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR: float,
         COST_VALUE_ON_ERROR: float,
         IGNORE_ERROR: bool,
         SEARCHER_KWARGS: dict,
@@ -447,7 +447,7 @@ def check_run_args(settings: dict) -> None:
 
 
 def check_essential_arguments(
-    run_pipeline: Callable | None,
+    evaluate_pipeline: Callable | None,
     root_directory: str | None,
     pipeline_space: dict | None,
     max_cost_total: int | None,
@@ -456,13 +456,13 @@ def check_essential_arguments(
 ) -> None:
     """Validates essential NePS configuration arguments.
 
-    Ensures 'run_pipeline', 'root_directory', 'pipeline_space', and either
+    Ensures 'evaluate_pipeline', 'root_directory', 'pipeline_space', and either
     'max_cost_total' or 'max_evaluations_total' are provided for NePS execution.
     Raises ValueError with missing argument details. Additionally, checks 'searcher'
     is a BaseOptimizer if 'pipeline_space' is absent.
 
     Args:
-        run_pipeline: Function for the pipeline execution.
+        evaluate_pipeline: Function for the pipeline execution.
         root_directory (str): Directory path for data storage.
         pipeline_space: search space for this run.
         max_cost_total: Max allowed total cost for experiments.
@@ -472,8 +472,8 @@ def check_essential_arguments(
     Raises:
         ValueError: Missing or invalid essential arguments.
     """
-    if not run_pipeline:
-        raise ValueError("'run_pipeline' is required but was not provided.")
+    if not evaluate_pipeline:
+        raise ValueError("'evaluate_pipeline' is required but was not provided.")
     if not root_directory:
         raise ValueError("'root_directory' is required but was not provided.")
     if not pipeline_space and not isinstance(searcher, BaseOptimizer):
@@ -515,7 +515,7 @@ class Settings:
         func_args (dict): The function arguments directly passed to NePS.
         yaml_args (dict | None): Optional. YAML file arguments provided via run_args.
         """
-        self.run_pipeline = UNSET
+        self.evaluate_pipeline = UNSET
         self.root_directory = UNSET
         self.pipeline_space = UNSET
         self.overwrite_working_directory = UNSET
@@ -527,7 +527,7 @@ class Settings:
         self.continue_until_max_evaluation_completed = UNSET
         self.max_cost_total = UNSET
         self.ignore_errors = UNSET
-        self.loss_value_on_error = UNSET
+        self.objective_to_minimize_value_on_error = UNSET
         self.cost_value_on_error = UNSET
         self.pre_load_hooks = UNSET
         self.searcher = UNSET
@@ -599,7 +599,7 @@ class Settings:
                 f"{', '.join(unassigned_attributes)}"
             )
         check_essential_arguments(
-            self.run_pipeline,  # type: ignore
+            self.evaluate_pipeline,  # type: ignore
             self.root_directory,  # type: ignore
             self.pipeline_space,  # type: ignore
             self.max_cost_total,  # type: ignore

@@ -1,5 +1,5 @@
-run_pipeline:
-  name: run_pipeline
+evaluate_pipeline:
+  name: evaluate_pipeline
   path: "tests/test_settings/test_settings.py"
 pipeline_space:
   name: pipeline_space

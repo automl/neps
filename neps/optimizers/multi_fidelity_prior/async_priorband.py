@@ -34,19 +34,19 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = True,
-        sample_default_at_target: bool = True,
+        sample_prior_first: bool = True,
+        sample_prior_at_target: bool = True,
         prior_weight_type: Literal["geometric", "linear", "50-50"] = "geometric",
         inc_sample_type: Literal[
             "crossover", "gaussian", "hypersphere", "mutation"
@@ -70,19 +70,19 @@ class PriorBandAsha(MFBOBase, PriorBandBase, AsynchronousSuccessiveHalvingWithPr
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
         self.prior_weight_type = prior_weight_type
         self.inc_sample_type = inc_sample_type
@@ -143,18 +143,18 @@ class PriorBandAshaHB(PriorBandAsha):
         self,
         *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         sampling_policy: Any = EnsemblePolicy,  # key difference to ASHA
         promotion_policy: Any = AsyncPromotionPolicy,  # key difference from PB
-        loss_value_on_error: None | float = None,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = True,
-        sample_default_at_target: bool = True,
+        sample_prior_first: bool = True,
+        sample_prior_at_target: bool = True,
         prior_weight_type: Literal["geometric", "linear", "50-50"] = "geometric",
         inc_sample_type: Literal[
             "crossover", "gaussian", "hypersphere", "mutation"
@@ -179,19 +179,19 @@ class PriorBandAshaHB(PriorBandAsha):
         # collecting arguments required by ASHA
         args: dict[str, Any] = {
             "pipeline_space": pipeline_space,
-            "budget": budget,
+            "max_cost_total": max_cost_total,
             "eta": eta,
             "early_stopping_rate": self.early_stopping_rate,
             "initial_design_type": initial_design_type,
             "sampling_policy": sampling_policy,
             "promotion_policy": promotion_policy,
-            "loss_value_on_error": loss_value_on_error,
+            "objective_to_minimize_value_on_error": objective_to_minimize_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
             "prior_confidence": prior_confidence,
             "random_interleave_prob": random_interleave_prob,
-            "sample_default_first": sample_default_first,
-            "sample_default_at_target": sample_default_at_target,
+            "sample_prior_first": sample_prior_first,
+            "sample_prior_at_target": sample_prior_at_target,
         }
         super().__init__(
             **args,
@@ -238,7 +238,7 @@ class PriorBandAshaHB(PriorBandAsha):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        max_cost_total_info: BudgetInfo | None,
     ) -> SampledConfig:
         """This is basically the fit method."""
         completed: dict[str, ConfigResult] = {

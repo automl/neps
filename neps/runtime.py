@@ -74,9 +74,9 @@ def get_workers_neps_state() -> NePSState:
     if _WORKER_NEPS_STATE is None:
         raise RuntimeError(
             "The worker's NePS state has not been set! This should only be called"
-            " from within a `run_pipeline` context. If you are not running a pipeline"
-            " and you did not call this function (`get_workers_neps_state`) yourself,"
-            " this is a bug and should be reported to NePS."
+            " from within a `evaluate_pipeline` context. If you are not running a"
+            " pipeline and you did not call this function (`get_workers_neps_state`)"
+            " yourself, this is a bug and should be reported to NePS."
         )
     return _WORKER_NEPS_STATE
 
@@ -91,9 +91,9 @@ def get_in_progress_trial() -> Trial:
     if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is None:
         raise RuntimeError(
             "The worker's NePS state has not been set! This should only be called"
-            " from within a `run_pipeline` context. If you are not running a pipeline"
-            " and you did not call this function (`get_workers_neps_state`) yourself,"
-            " this is a bug and should be reported to NePS."
+            " from within a `evaluate_pipeline` context. If you are not running a"
+            " pipeline and you did not call this function (`get_workers_neps_state`)"
+            " yourself, this is a bug and should be reported to NePS."
         )
     return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
 
@@ -601,8 +601,8 @@ class DefaultWorker(Generic[Loc]):
                 )
 
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
-            logger.debug("Loss %s: %s", evaluated_trial.id, report.loss)
-            logger.debug("Cost %s: %s", evaluated_trial.id, report.loss)
+            logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
+            logger.debug("Cost %s: %s", evaluated_trial.id, report.objective_to_minimize)
             logger.debug(
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
@@ -618,7 +618,7 @@ def _launch_runtime(  # noqa: PLR0913
     optimization_dir: Path,
     max_cost_total: float | None,
     ignore_errors: bool = False,
-    loss_value_on_error: float | None,
+    objective_to_minimize_value_on_error: float | None,
     cost_value_on_error: float | None,
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
@@ -644,7 +644,7 @@ def _launch_runtime(  # noqa: PLR0913
                     seed_snapshot=SeedSnapshot.new_capture(),
                     budget=(
                         BudgetInfo(
-                            max_cost_budget=max_cost_total,
+                            max_cost_total=max_cost_total,
                             used_cost_budget=0,
                             max_evaluations=max_evaluations_total,
                             used_evaluations=0,
@@ -675,11 +675,12 @@ def _launch_runtime(  # noqa: PLR0913
         ),
         batch_size=sample_batch_size,
         default_report_values=DefaultReportValues(
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             cost_if_not_provided=None,  # TODO: User can't specify yet
             learning_curve_on_error=None,  # TODO: User can't specify yet
-            learning_curve_if_not_provided="loss",  # report the loss as single value LC
+            learning_curve_if_not_provided="objective_to_minimize",  # report the
+            # objective_to_minimize as single value LC
         ),
         max_evaluations_total=max_evaluations_total,
         include_in_progress_evaluations_towards_maximum=(

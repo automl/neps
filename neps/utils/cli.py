@@ -21,7 +21,7 @@ from neps.status.status import post_run_csv
 import pandas as pd
 from neps.utils.run_args import (
     RUN_ARGS,
-    RUN_PIPELINE,
+    EVALUATE_PIPELINE,
     ROOT_DIRECTORY,
     POST_RUN_SUMMARY,
     MAX_EVALUATIONS_PER_RUN,
@@ -33,7 +33,7 @@ from neps.utils.run_args import (
     SEARCHER,
     SEARCHER_KWARGS,
     IGNORE_ERROR,
-    LOSS_VALUE_ON_ERROR,
+    OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR,
     COST_VALUE_ON_ERROR,
     CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED,
     OVERWRITE_WORKING_DIRECTORY,
@@ -143,7 +143,7 @@ def init_config(args: argparse.Namespace) -> None:
                     optimizer_state=OptimizationState(
                         seed_snapshot=SeedSnapshot.new_capture(),
                         budget=(
-                            BudgetInfo(max_cost_budget=max_cost_total, used_cost_budget=0)
+                            BudgetInfo(max_cost_total=max_cost_total, used_cost_budget=0)
                             if max_cost_total is not None
                             else None
                         ),
@@ -170,8 +170,8 @@ def init_config(args: argparse.Namespace) -> None:
                 file.write(
                     """# Add your NEPS configuration settings here
 
-run_pipeline:
-  path: "path/to/your/run_pipeline.py"
+evaluate_pipeline:
+  path: "path/to/your/evaluate_pipeline.py"
   name: name_of_your_pipeline_function
 
 pipeline_space:
@@ -197,8 +197,8 @@ overwrite_working_directory:
                 file.write(
                     """# Full Configuration Template for NePS
 
-run_pipeline:
-  path: path/to/your/run_pipeline.py  # Path to the function file
+evaluate_pipeline:
+  path: path/to/your/evaluate_pipeline.py  # Path to the function file
   name: example_pipeline              # Function name within the file
 
 pipeline_space:
@@ -229,7 +229,7 @@ max_evaluations_per_run:
 continue_until_max_evaluation_completed: true
 
 # Error Handling
-loss_value_on_error:
+objective_to_minimize_value_on_error:
 cost_value_on_error:
 ignore_errors:
 
@@ -284,12 +284,14 @@ def run_optimization(args: argparse.Namespace) -> None:
         run_args = Path("run_config.yaml")
     else:
         run_args = args.run_args
-    if not isinstance(args.run_pipeline, Default):
-        module_path, function_name = args.run_pipeline.split(":")
-        run_pipeline = load_and_return_object(module_path, function_name, RUN_PIPELINE)
+    if not isinstance(args.evaluate_pipeline, Default):
+        module_path, function_name = args.evaluate_pipeline.split(":")
+        evaluate_pipeline = load_and_return_object(
+            module_path, function_name, EVALUATE_PIPELINE
+        )
 
     else:
-        run_pipeline = args.run_pipeline
+        evaluate_pipeline = args.evaluate_pipeline
 
     kwargs = {}
     if args.searcher_kwargs:
@@ -298,7 +300,7 @@ def run_optimization(args: argparse.Namespace) -> None:
     # Collect arguments from args and prepare them for neps.run
     options = {
         RUN_ARGS: run_args,
-        RUN_PIPELINE: run_pipeline,
+        EVALUATE_PIPELINE: evaluate_pipeline,
         PIPELINE_SPACE: args.pipeline_space,
         ROOT_DIRECTORY: args.root_directory,
         OVERWRITE_WORKING_DIRECTORY: args.overwrite_working_directory,
@@ -312,7 +314,7 @@ def run_optimization(args: argparse.Namespace) -> None:
         ),
         MAX_COST_TOTAL: args.max_cost_total,
         IGNORE_ERROR: args.ignore_errors,
-        LOSS_VALUE_ON_ERROR: args.loss_value_on_error,
+        OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR: args.objective_to_minimize_value_on_error,
         COST_VALUE_ON_ERROR: args.cost_value_on_error,
         SEARCHER: args.searcher,
         **kwargs,
@@ -357,7 +359,7 @@ def info_config(args: argparse.Namespace) -> None:
 
     if trial.report is not None:
         print("\nReport:")
-        print(f"  Loss: {trial.report.loss}")
+        print(f"  Objective_to_minimize: {trial.report.objective_to_minimize}")
         print(f"  Cost: {trial.report.cost}")
         print(f"  Reported As: {trial.report.reported_as}")
         error = trial.report.err
@@ -505,7 +507,7 @@ def status(args: argparse.Namespace) -> None:
     print(f"Failed Trials (Errors): {failed_trials_count}")
     print(f"Active Trials: {evaluating_trials_count}")
     print(f"Pending Trials: {pending_trials_count}")
-    print(f"Best Loss Achieved: {summary['best_loss']}")
+    print(f"Best Objective_to_minimize Achieved: {summary['best_objective_to_minimize']}")
 
     print("\nLatest Trials:")
     print("-----------------------------")
@@ -538,7 +540,12 @@ def status(args: argparse.Namespace) -> None:
     # Print the header
     print(
         header_format.format(
-            "Sampled Time", "Duration", "Trial ID", "Worker ID", "State", "Loss"
+            "Sampled Time",
+            "Duration",
+            "Trial ID",
+            "Worker ID",
+            "State",
+            "Objective_to_minimize",
         )
     )
 
@@ -556,13 +563,17 @@ def status(args: argparse.Namespace) -> None:
         trial_id = trial.id
         worker_id = trial.metadata.sampling_worker_id
         state = trial.metadata.state.name
-        loss = (
-            f"{trial.report.loss:.6f}"
-            if (trial.report and trial.report.loss is not None)
+        objective_to_minimize = (
+            f"{trial.report.objective_to_minimize:.6f}"
+            if (trial.report and trial.report.objective_to_minimize is not None)
             else "N/A"
         )
 
-        print(row_format.format(time_sampled, duration, trial_id, worker_id, state, loss))
+        print(
+            row_format.format(
+                time_sampled, duration, trial_id, worker_id, state, objective_to_minimize
+            )
+        )
 
     # If no specific filter is applied, print the best trial and optimizer info
     if not args.pending and not args.evaluating and not args.succeeded:
@@ -570,7 +581,7 @@ def status(args: argparse.Namespace) -> None:
             print("\nBest Trial:")
             print("-----------------------------")
             print(f"ID: {summary['best_config_id']}")
-            print(f"Loss: {summary['best_loss']}")
+            print(f"Loss: {summary['best_objective_to_minimize']}")
             print("Config:")
             for key, value in summary["best_config"].items():
                 print(f"  {key}: {value}")
@@ -671,16 +682,16 @@ def load_neps_state(directory_path: Path) -> Optional[NePSState]:
 
 
 def compute_incumbents(sorted_trials: List[Trial]) -> List[Trial]:
-    """Compute the list of incumbent trials based on the best loss."""
-    best_loss = float("inf")
+    """Compute the list of incumbent trials based on the best objective_to_minimize."""
+    best_objective_to_minimize = float("inf")
     incumbents = []
     for trial in sorted_trials:
         if (
             trial.report is not None
-            and trial.report.loss is not None
-            and trial.report.loss < best_loss
+            and trial.report.objective_to_minimize is not None
+            and trial.report.objective_to_minimize < best_objective_to_minimize
         ):
-            best_loss = trial.report.loss
+            best_objective_to_minimize = trial.report.objective_to_minimize
             incumbents.append(trial)
     return incumbents[::-1]  # Reverse for most recent first
 
@@ -784,11 +795,16 @@ def display_results(directory_path: Path, incumbents: List[Trial]) -> None:
     print("-" * len(header))
     if incumbents:
         for trial in incumbents:
-            if trial.report is not None and trial.report.loss is not None:
+            if (
+                trial.report is not None
+                and trial.report.objective_to_minimize is not None
+            ):
                 config = ", ".join(f"{k}: {v}" for k, v in trial.config.items())
-                print(f"{trial.id:<6} {trial.report.loss:<12.6f} {config:<60}")
+                print(
+                    f"{trial.id:<6} {trial.report.objective_to_minimize:<12.6f} {config:<60}"
+                )
             else:
-                print(f"Trial {trial.id} has no valid loss.")
+                print(f"Trial {trial.id} has no valid objective_to_minimize.")
     else:
         print("No Incumbent Trials found.")
 
@@ -802,9 +818,10 @@ def plot_incumbents(
     # Collect data for plotting
     x_values = [id_to_index[incumbent.id] for incumbent in incumbents]
     y_values = [
-        incumbent.report.loss
+        incumbent.report.objective_to_minimize
         for incumbent in incumbents
-        if incumbent.report is not None and incumbent.report.loss is not None
+        if incumbent.report is not None
+        and incumbent.report.objective_to_minimize is not None
     ]
 
     plt.figure(figsize=(12, 6))
@@ -879,7 +896,7 @@ neps run [OPTIONS]
     --continue-until-max-evaluation-completed (Continue until max evaluations are completed.)
     --max-cost-total <float> (Max cost before halting new evaluations.)
     --ignore-errors (Ignore errors during optimization.)
-    --loss-value-on-error <float> (Assumed loss value on error.)
+    --objective_to_minimize-value-on-error <float> (Assumed objective_to_minimize value on error.)
     --cost-value-on-error <float> (Assumed cost value on error.)
     --searcher <key> (Searcher algorithm key for optimization.)
     --searcher-kwargs <key=value>... (Additional kwargs for the searcher.)
@@ -1043,7 +1060,7 @@ def handle_report_config(args: argparse.Namespace) -> None:
     report = trial.set_complete(
         report_as=args.reported_as,
         time_end=args.time_end,
-        loss=args.loss,
+        objective_to_minimize=args.objective_to_minimize,
         cost=args.cost,
         learning_curve=args.learning_curve,
         err=Exception(args.err) if args.err else None,
@@ -1067,7 +1084,9 @@ def handle_report_config(args: argparse.Namespace) -> None:
     print(f"Trial ID: {trial.metadata.id}")
     print(f"Reported As: {report.reported_as}")
     print(f"Time Ended: {convert_timestamp(trial.metadata.time_end)}")
-    print(f"Loss: {report.loss if report.loss is not None else 'N/A'}")
+    print(
+        f"Loss: {report.objective_to_minimize if report.objective_to_minimize is not None else 'N/A'}"
+    )
     print(f"Cost: {report.cost if report.cost is not None else 'N/A'}")
     print(f"Evaluation Duration: {format_duration(report.evaluation_duration)}")
 
@@ -1104,7 +1123,9 @@ def load_optimizer(run_args: dict) -> Tuple[Optional[BaseOptimizer], Optional[di
             pipeline_space=run_args.get(PIPELINE_SPACE),
             max_cost_total=run_args.get(MAX_COST_TOTAL, None),
             ignore_errors=run_args.get(IGNORE_ERROR, False),
-            loss_value_on_error=run_args.get(LOSS_VALUE_ON_ERROR, None),
+            objective_to_minimize_value_on_error=run_args.get(
+                OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR, None
+            ),
             cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
             searcher=run_args.get(SEARCHER, "default"),
             **run_args.get(SEARCHER_KWARGS, {}),
@@ -1185,7 +1206,7 @@ def main() -> None:
         type=str,
         help="Optional: Provide the path to a Python file and a function name separated "
         "by a colon, e.g., 'path/to/module.py:function_name'. "
-        "If provided, it overrides the run_pipeline setting from the YAML "
+        "If provided, it overrides the evaluate_pipeline setting from the YAML "
         "configuration.",
         default=Default(None),
     )
@@ -1210,7 +1231,7 @@ def main() -> None:
         action="store_true",
         default=Default(False),  # noqa: FBT003
         help="If set, deletes the working directory at the start of the run. "
-        "This is useful, for example, when debugging a run_pipeline function. "
+        "This is useful, for example, when debugging a evaluate_pipeline function. "
         "(default: %(default)s)",
     )
     parser_run.add_argument(
@@ -1266,8 +1287,8 @@ def main() -> None:
         type=float,
         default=Default(None),
         help="No new evaluations will start when this cost is exceeded. Requires "
-        "returning a cost in the run_pipeline function, e.g., `return dict("
-        "loss=loss, cost=cost)`. (default: %(default)s)",
+        "returning a cost in the evaluate_pipeline function, e.g., `return dict("
+        "objective_to_minimize=objective_to_minimize, cost=cost)`. (default: %(default)s)",
     )
     parser_run.add_argument(
         "--ignore-errors",
@@ -1277,7 +1298,7 @@ def main() -> None:
         "default)s)",
     )
     parser_run.add_argument(
-        "--loss-value-on-error",
+        "--objective_to_minimize-value-on-error",
         type=float,
         default=Default(None),
         help="Loss value to assume on error. (default: %(default)s)",
@@ -1371,7 +1392,9 @@ def main() -> None:
         default="cli",
         help="The worker ID for which the configuration is being sampled.",
     )
-    report_parser.add_argument("--loss", type=float, help="Loss value of the trial")
+    report_parser.add_argument(
+        "--objective_to_minimize", type=float, help="Loss value of the trial"
+    )
     report_parser.add_argument(
         "--run-args", type=str, help="Path to the YAML file containing run configurations"
     )

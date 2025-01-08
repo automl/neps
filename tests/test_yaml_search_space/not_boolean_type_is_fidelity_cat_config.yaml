@@ -1,4 +1,4 @@
 cat1:
   choices: ["a", "b", "c"]
   is_fidelity: fals
-  default: "c"
+  prior: "c"
