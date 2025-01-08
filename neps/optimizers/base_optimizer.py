@@ -134,7 +134,7 @@ class BaseOptimizer:
 
         Args:
             trials: All of the trials that are known about.
-            max_cost_total_info: information about the max_cost_total
+            budget_info: information about the budget constraints.
 
         Returns:
             SampledConfig: a sampled configuration

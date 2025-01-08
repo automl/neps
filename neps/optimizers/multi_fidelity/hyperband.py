@@ -125,7 +125,7 @@ class HyperbandBase(SuccessiveHalvingBase):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        max_cost_total_info: BudgetInfo | None,
+        budget_info: BudgetInfo | None,
     ) -> SampledConfig:
         completed: dict[str, ConfigResult] = {
             trial_id: trial.into_config_result(self.pipeline_space.from_dict)

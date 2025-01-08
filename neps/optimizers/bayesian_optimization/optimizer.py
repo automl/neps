@@ -154,7 +154,7 @@ class BayesianOptimization(BaseOptimizer):
         n_evaluated = sum(
             1
             for trial in trials.values()
-            if trial.report is not None and trial.report.loss is not None
+            if trial.report is not None and trial.report.objective_to_minimize is not None
         )
         if n_evaluated < self.n_initial_design:
             design_samples = make_initial_design(
@@ -190,16 +190,14 @@ class BayesianOptimization(BaseOptimizer):
 
         cost_percent = None
         if self.use_cost:
-            if max_cost_total_info is None:
+            if budget_info is None:
                 raise ValueError(
                     "Must provide a 'cost' to configurations if using cost"
                     " with BayesianOptimization."
                 )
-            if max_cost_total_info.max_cost_total is None:
+            if budget_info.max_cost_total is None:
                 raise ValueError("Cost budget must be set if using cost")
-            cost_percent = (
-                max_cost_total_info.used_cost_budget / max_cost_total_info.max_cost_total
-            )
+            cost_percent = budget_info.used_cost_budget / budget_info.max_cost_total
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.

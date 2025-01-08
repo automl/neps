@@ -320,7 +320,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
     def ask(
         self,
         trials: Mapping[str, Trial],
-        max_cost_total_info: BudgetInfo | None,
+        budget_info: BudgetInfo | None,
     ) -> SampledConfig:
         """This is basically the fit method."""
         completed: dict[str, ConfigResult] = {

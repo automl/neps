@@ -16,15 +16,15 @@ from neps.state.seed_snapshot import SeedSnapshot
 
 @fixture
 @parametrize(
-    "max_cost_total_info", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None]
+    "budget_info", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None]
 )
 @parametrize("shared_state", [{"a": "b"}, {}])
 def optimizer_state(
-    max_cost_total_info: BudgetInfo | None,
+    budget_info: BudgetInfo | None,
     shared_state: dict[str, Any],
 ) -> OptimizationState:
     return OptimizationState(
-        budget=max_cost_total_info,
+        budget=budget_info,
         seed_snapshot=SeedSnapshot.new_capture(),
         shared_state=shared_state,
     )
