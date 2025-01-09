@@ -5,9 +5,7 @@ from typing import TYPE_CHECKING
 import torch
 from botorch.acquisition.logei import partial
 
-from neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition import (  # noqa: E501
-    WeightedAcquisition,
-)
+from neps.optimizers.acquisition.weighted_acquisition import WeightedAcquisition
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction

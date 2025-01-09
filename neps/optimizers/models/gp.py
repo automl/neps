@@ -20,10 +20,10 @@ from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
 
-from neps.optimizers.bayesian_optimization.acquisition_functions.cost_cooling import (
+from neps.optimizers.acquisition.cost_cooling import (
     cost_cooled_acq,
 )
-from neps.optimizers.bayesian_optimization.acquisition_functions.pibo import (
+from neps.optimizers.acquisition.pibo import (
     pibo_acquisition,
 )
 from neps.search_spaces.encoding import CategoricalToIntegerTransformer, ConfigEncoder
