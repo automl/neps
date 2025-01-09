@@ -62,7 +62,7 @@ class Categorical(ParameterWithPrior[CategoricalTypes, CategoricalTypes]):
             prior: prior value for the hyperparameter, must be in `choices=`
                 if provided.
             prior_confidence: confidence score for the prior value, used when
-                condsider prior based optimization.
+                considering prior based optimization.
         """
         choices = list(choices)
         if len(choices) <= 1:

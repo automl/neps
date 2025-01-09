@@ -84,7 +84,7 @@ The `run_status.csv` provides general run details, such as the number of sampled
 ## TensorBoard Integration
 [TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments,
 offering the ability to observe losses and metrics throughout the model training process.
-In NePS, we use this to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
+In NePS, we use this to show metrics of configurations during training in addition to comparisons of different hyperparameters used in the search for better diagnosis of the model.
 
 ### Logging Things
 
