@@ -1,4 +1,10 @@
+<<<<<<< HEAD
+from pytest_cases import parametrize
+from neps.sampling.samplers import Sampler, Sobol, WeightedSampler, BorderSampler
+from neps.sampling.priors import Prior, Uniform
+=======
 from __future__ import annotations
+>>>>>>> master
 
 import torch
 from pytest_cases import parametrize
@@ -20,11 +26,11 @@ def _make_centered_prior(ndim: int) -> Prior:
     [
         Sobol(ndim=3),
         BorderSampler(ndim=3),
-        UniformPrior(ndim=3),
+        Uniform(ndim=3),
         # Convenence method for making a distribution around center points
         _make_centered_prior(ndim=3),
         WeightedSampler(
-            [UniformPrior(ndim=3), _make_centered_prior(3), Sobol(ndim=3)],
+            [Uniform(ndim=3), _make_centered_prior(3), Sobol(ndim=3)],
             weights=torch.tensor([0.5, 0.25, 0.25]),
         ),
     ],
@@ -57,7 +63,7 @@ def test_sampler_samples_into_domain(sampler: Sampler) -> None:
 @parametrize(
     "prior",
     [
-        UniformPrior(ndim=3),
+        Uniform(ndim=3),
         # Convenence method for making a distribution around center points
         _make_centered_prior(ndim=3),
     ],

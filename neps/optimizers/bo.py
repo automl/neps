@@ -2,25 +2,25 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
-from typing_extensions import override
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 
-from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
-from neps.optimizers.bayesian_optimization.models.gp import (
+from neps.optimizers.models.gp import (
     encode_trials_for_gp,
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
-from neps.optimizers.initial_design import make_initial_design
-from neps.sampling import Prior
-from neps.search_spaces.encoding import ConfigEncoder
+from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.utils.initial_design import make_initial_design
 
 if TYPE_CHECKING:
-    from neps.search_spaces import SearchSpace
+    from neps.sampling import Prior
+    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.search_spaces.search_space import SearchSpace
     from neps.state import BudgetInfo, Trial
 
 
@@ -54,89 +54,30 @@ def _pibo_exp_term(
     return math.exp(-n_bo_samples / ndims)
 
 
-class BayesianOptimization(BaseOptimizer):
-    """Implements the basic BO loop."""
+@dataclass
+class BayesianOptimization:
+    pipeline_space: SearchSpace
+    """The search space to use."""
 
-    def __init__(
-        self,
-        pipeline_space: SearchSpace,
-        *,
-        initial_design_size: int | None = None,
-        use_priors: bool = False,
-        use_cost: bool = False,
-        cost_on_log_scale: bool = True,
-        sample_prior_first: bool = False,
-        device: torch.device | None = None,
-        encoder: ConfigEncoder | None = None,
-        seed: int | None = None,
-        max_cost_total: Any | None = None,  # TODO: remove
-        surrogate_model: Any | None = None,  # TODO: remove
-        objective_to_minimize_value_on_error: Any | None = None,  # TODO: remove
-        cost_value_on_error: Any | None = None,  # TODO: remove
-        ignore_errors: Any | None = None,  # TODO: remove
-    ):
-        """Initialise the BO loop.
+    encoder: ConfigEncoder
+    """The encoder to use for encoding and decoding configurations."""
 
-        Args:
-            pipeline_space: Space in which to search
-            initial_design_size: Number of samples used before using the surrogate model.
-                If None, it will use the number of parameters in the search space.
-            use_priors: Whether to use priors set on the hyperparameters during search.
-            use_cost: Whether to consider reported "cost" from configurations in decision
-                making. If True, the optimizer will weigh potential candidates by how much
-                they cost, incentivising the optimizer to explore cheap, good performing
-                configurations. This amount is modified over time
+    prior: Prior | None
+    """The prior to use for sampling configurations and inferring their likelihood."""
 
-                !!! warning
+    sample_prior_first: bool
+    """Whether to sample the prior configuration first."""
 
-                    If using `cost`, cost must be provided in the reports of the trials.
+    cost_aware: bool | Literal["log"]
+    """Whether to consider the cost of configurations in decision making."""
 
-            cost_on_log_scale: Whether to use the log of the cost when using cost.
-            sample_prior_first: Whether to sample the default configuration first.
-            seed: Seed to use for the random number generator of samplers.
-            device: Device to use for the optimization.
-            encoder: Encoder to use for encoding the configurations. If None, it will
-                will use the default encoder.
+    n_initial_design: int
+    """The number of initial design samples to use before fitting the GP."""
 
-        Raises:
-            ValueError: if initial_design_size < 1
-            ValueError: if no kernel is provided
-        """
-        if seed is not None:
-            raise NotImplementedError(
-                "Seed is not implemented yet for BayesianOptimization"
-            )
-        if any(pipeline_space.graphs):
-            raise NotImplementedError("Only supports flat search spaces for now!")
-        if any(pipeline_space.fidelities):
-            raise ValueError(
-                "Fidelities are not supported for BayesianOptimization."
-                " Please consider setting the fidelity to a constant value."
-                f" Got: {pipeline_space.fidelities}"
-            )
+    device: torch.device | None
+    """The device to use for the optimization."""
 
-        super().__init__(pipeline_space=pipeline_space)
-
-        self.encoder = encoder or ConfigEncoder.from_space(
-            space=pipeline_space,
-            include_constants_when_decoding=True,
-        )
-        self.prior = Prior.from_space(pipeline_space) if use_priors is True else None
-        self.use_cost = use_cost
-        self.use_priors = use_priors
-        self.cost_on_log_scale = cost_on_log_scale
-        self.device = device
-        self.sample_prior_first = sample_prior_first
-
-        if initial_design_size is not None:
-            self.n_initial_design = initial_design_size
-        else:
-            self.n_initial_design = len(pipeline_space.numerical) + len(
-                pipeline_space.categoricals
-            )
-
-    @override
-    def ask(
+    def __call__(
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None = None,
@@ -189,7 +130,11 @@ class BayesianOptimization(BaseOptimizer):
         )
 
         cost_percent = None
-        if self.use_cost:
+        if self.cost_aware:
+            # TODO: Interaction with `"log"` cost aware
+            if self.cost_aware == "log":
+                raise NotImplementedError("Log cost aware not implemented yet.")
+
             if budget_info is None:
                 raise ValueError(
                     "Must provide a 'cost' to configurations if using cost"
@@ -204,9 +149,7 @@ class BayesianOptimization(BaseOptimizer):
         pibo_exp_term = None
         prior = None
         if self.prior:
-            pibo_exp_term = _pibo_exp_term(
-                n_sampled, encoder.ncols, self.n_initial_design
-            )
+            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_initial_design)
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
@@ -228,9 +171,9 @@ class BayesianOptimization(BaseOptimizer):
             prior=prior,
             n_candidates_required=_n,
             pibo_exp_term=pibo_exp_term,
-            costs=data.cost if self.use_cost else None,
+            costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
-            costs_on_log_scale=self.cost_on_log_scale,
+            costs_on_log_scale=self.cost_aware == "log",
         )
 
         configs = encoder.decode(candidates)

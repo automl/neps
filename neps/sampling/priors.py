@@ -105,14 +105,21 @@ class Prior(Sampler):
         """
         return torch.exp(self.log_pdf(x, frm=frm))
 
+    def pdf_configs(self, x: list[dict[str, Any]], *, frm: ConfigEncoder) -> torch.Tensor:
+        """Compute the pdf of values in `x` under a prior.
+
+        See [`log_pdf()`][neps.priors.Prior.log_pdf] for details on shapes.
+        """
+        return self.pdf(frm.encode(x), frm=frm)
+
     @classmethod
-    def uniform(cls, ncols: int) -> UniformPrior:
+    def uniform(cls, ncols: int) -> Uniform:
         """Create a uniform prior for a given list of domains.
 
         Args:
             ncols: The number of columns in the tensor to sample.
         """
-        return UniformPrior(ndim=ncols)
+        return Uniform(ndim=ncols)
 
     @classmethod
     def from_parameters(
@@ -215,7 +222,21 @@ class Prior(Sampler):
             # the distributions to all be unit uniform as it can speed up sampling when
             # consistentaly the same. This still works for categoricals
             if center_conf is None:
-                distributions.append(UNIT_UNIFORM_DIST)
+                if domain.is_categorical:
+                    # Uniform categorical
+                    n_cats = domain.cardinality
+                    assert n_cats is not None
+                    dist = TorchDistributionWithDomain(
+                        distribution=torch.distributions.Categorical(
+                            probs=torch.ones(n_cats, device=device) / n_cats,
+                            validate_args=False,
+                        ),
+                        domain=domain,
+                    )
+                    distributions.append(dist)
+                else:
+                    distributions.append(UNIT_UNIFORM_DIST)
+
                 continue
 
             center, conf = center_conf
@@ -308,6 +329,34 @@ class Prior(Sampler):
             params,
             center_values=center_values,
             confidence_values=confidence_values,
+        )
+
+    @classmethod
+    def from_config(
+        cls,
+        config: dict[str, Any],
+        *,
+        space: SearchSpace,
+        confidence_values: Mapping[str, float] | None = None,
+        include_fidelity: bool = False,
+    ) -> Prior:
+        """Create a prior from a configuration.
+
+        Args:
+            config: The configuration to create a prior from.
+            space: The search space to create the prior from.
+            confidence_values: Any confidence values to override by what's set in the
+                `space`.
+            include_fidelity: Whether to include the fidelity of the search space.
+
+        Returns:
+            The prior distribution
+        """
+        return Prior.from_space(
+            space,
+            center_values=config,
+            confidence_values=confidence_values,
+            include_fidelity=include_fidelity,
         )
 
 
@@ -443,7 +492,7 @@ class CenteredPrior(Prior):
 
 
 @dataclass
-class UniformPrior(Prior):
+class Uniform(Prior):
     """A prior that is uniform over a given domain.
 
     Uses a UnitUniform under the hood before converting to the value domain.
@@ -451,6 +500,22 @@ class UniformPrior(Prior):
 
     ndim: int
     """The number of columns in the tensor to sample from."""
+
+    @classmethod
+    def from_space(cls, space: SearchSpace, *, include_fidelity: bool = False) -> Uniform:
+        """Create a uniform prior for a given search space.
+
+        Args:
+            space: The search space to create a prior for.
+            include_fidelity: Whether to include the fidelity of the search space.
+
+        Returns:
+            A uniform prior for the search space.
+        """
+        ndims = len(space.numerical) + len(space.categoricals)
+        if include_fidelity:
+            ndims += len(space.fidelities)
+        return Uniform(ndim=ndims)
 
     @property
     @override

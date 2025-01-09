@@ -1,25 +1,19 @@
 from __future__ import annotations
 
-import random
-from collections.abc import Mapping
 from itertools import product
 from typing import TYPE_CHECKING, Any
-from typing_extensions import override
 
 import torch
 
-from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.search_spaces import Categorical, Constant, Float, Integer
 from neps.search_spaces.architecture.graph_grammar import GraphParameter
 from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
-    from neps.state.optimizer import BudgetInfo
-    from neps.state.trial import Trial
 
 
-def _make_grid(
+def make_grid(
     space: SearchSpace,
     *,
     size_per_numerical_hp: int = 10,
@@ -87,29 +81,3 @@ def _make_grid(
     keys = list(space.hyperparameters.keys())
 
     return [dict(zip(keys, p, strict=False)) for p in values]
-
-
-class GridSearch(BaseOptimizer):
-    def __init__(self, pipeline_space: SearchSpace, seed: int | None = None):
-        super().__init__(pipeline_space=pipeline_space)
-        self.configs_list = _make_grid(pipeline_space)
-        self.seed = seed
-
-    @override
-    def ask(
-        self,
-        trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
-        n: int | None = None,
-    ) -> SampledConfig:
-        assert n is None, "TODO"
-        _num_previous_configs = len(trials)
-        if _num_previous_configs > len(self.configs_list) - 1:
-            raise ValueError("Grid search exhausted!")
-
-        rng = random.Random(self.seed)
-        configs = rng.sample(self.configs_list, len(self.configs_list))
-
-        config = configs[_num_previous_configs]
-        config_id = str(_num_previous_configs)
-        return SampledConfig(config=config, id=config_id, previous_config_id=None)
