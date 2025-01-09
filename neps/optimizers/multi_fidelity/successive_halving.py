@@ -1,24 +1,16 @@
-# type: ignore
-
 from __future__ import annotations
 
+import logging
 import random
-import typing
+from collections.abc import Mapping
 from copy import deepcopy
+from typing import TYPE_CHECKING, Any, Literal
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd
-from typing_extensions import Literal, override
 
-from neps.utils.types import ConfigResult, RawConfig
-from neps.search_spaces import (
-    CategoricalParameter,
-    ConstantParameter,
-    FloatParameter,
-    IntegerParameter,
-    SearchSpace,
-)
-from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.base_optimizer import BaseOptimizer, SampledConfig
 from neps.optimizers.multi_fidelity.promotion_policy import (
     AsyncPromotionPolicy,
     SyncPromotionPolicy,
@@ -27,13 +19,26 @@ from neps.optimizers.multi_fidelity.sampling_policy import (
     FixedPriorPolicy,
     RandomUniformPolicy,
 )
+from neps.search_spaces import (
+    Categorical,
+    Constant,
+    Float,
+    Integer,
+    SearchSpace,
+)
+from neps.search_spaces.functions import sample_one_old
 
-CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(FloatParameter.DEFAULT_CONFIDENCE_SCORES)
+if TYPE_CHECKING:
+    from neps.state.optimizer import BudgetInfo
+    from neps.state.trial import Trial
+    from neps.utils.types import ConfigResult, RawConfig
+
+logger = logging.getLogger(__name__)
+
+CUSTOM_FLOAT_CONFIDENCE_SCORES = dict(Float.DEFAULT_CONFIDENCE_SCORES)
 CUSTOM_FLOAT_CONFIDENCE_SCORES.update({"ultra": 0.05})
 
-CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(
-    CategoricalParameter.DEFAULT_CONFIDENCE_SCORES
-)
+CUSTOM_CATEGORICAL_CONFIDENCE_SCORES = dict(Categorical.PRIOR_CONFIDENCE_SCORES)
 CUSTOM_CATEGORICAL_CONFIDENCE_SCORES.update({"ultra": 8})
 
 
@@ -42,28 +47,28 @@ class SuccessiveHalvingBase(BaseOptimizer):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
-        budget: int = None,
+        max_cost_total: int | None = None,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        sampling_policy: Any = RandomUniformPolicy,
+        promotion_policy: Any = SyncPromotionPolicy,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         """Initialise an SH bracket.
 
         Args:
             pipeline_space: Space in which to search
-            budget: Maximum budget
+            max_cost_total: Maximum budget
             eta: The reduction factor used by SH
             early_stopping_rate: Determines the number of rungs in an SH bracket
                 Choosing 0 creates maximal rungs given the fidelity bounds
@@ -73,44 +78,41 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 Samples generated from a Gaussian centered around the default value
             sampling_policy: The type of sampling procedure to use
             promotion_policy: The type of promotion procedure to use
-            loss_value_on_error: Setting this and cost_value_on_error to any float will
-                supress any error during bayesian optimization and will use given loss
-                value instead. default: None
-            cost_value_on_error: Setting this and loss_value_on_error to any float will
-                supress any error during bayesian optimization and will use given cost
-                value instead. default: None
-            logger: logger object, or None to use the neps logger
+            objective_to_minimize_value_on_error: Setting this and cost_value_on_error to
+                any float will supress any error during bayesian optimization and will
+                use given objective_to_minimize value instead. default: None
+            cost_value_on_error: Setting this and objective_to_minimize_value_on_error to
+                any float will supress any error during bayesian optimization and will
+                use given cost value instead. default: None
             prior_confidence: The range of confidence to have on the prior
                 The higher the confidence, the smaller is the standard deviation of the
                 prior distribution centered around the default
             random_interleave_prob: Chooses the fraction of samples from random vs prior
-            sample_default_first: Whether to sample the default configuration first
-            sample_default_at_target: Whether to evaluate the default configuration at
+            sample_prior_first: Whether to sample the prior configuration first
+            sample_prior_at_target: Whether to evaluate the prior configuration at
                 the target fidelity or max budget
         """
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
-            loss_value_on_error=loss_value_on_error,
+            max_cost_total=max_cost_total,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
         )
         if random_interleave_prob < 0 or random_interleave_prob > 1:
             raise ValueError("random_interleave_prob should be in [0.0, 1.0]")
         self.random_interleave_prob = random_interleave_prob
-        self.sample_default_first = sample_default_first
-        self.sample_default_at_target = sample_default_at_target
+        self.sample_prior_first = sample_prior_first
+        self.sample_prior_at_target = sample_prior_at_target
 
+        assert self.pipeline_space.fidelity is not None, "Fidelity parameter not set."
         self.min_budget = self.pipeline_space.fidelity.lower
         self.max_budget = self.pipeline_space.fidelity.upper
         self.eta = eta
         # SH implicitly sets early_stopping_rate to 0
         # the parameter is exposed to allow HB to call SH with different stopping rates
         self.early_stopping_rate = early_stopping_rate
-        self.sampling_policy = sampling_policy(
-            pipeline_space=self.pipeline_space, logger=self.logger
-        )
+        self.sampling_policy = sampling_policy(pipeline_space=self.pipeline_space)
         self.promotion_policy = promotion_policy(self.eta)
 
         # `max_budget_init` checks for the number of configurations that have been
@@ -142,13 +144,11 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # crucial data structure used for determining promotion candidates
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
         # stores which configs occupy each rung at any time
-        self.rung_members: dict = dict()  # stores config IDs per rung
-        self.rung_members_performance: dict = dict()  # performances recorded per rung
-        self.rung_promotions: dict = dict()  # records a promotable config per rung
-        self.total_fevals = 0
+        self.rung_members: dict = {}  # stores config IDs per rung
+        self.rung_members_performance: dict = {}  # performances recorded per rung
+        self.rung_promotions: dict = {}  # records a promotable config per rung
 
         # setup SH state counter
-        self._counter = 0
         self.full_rung_trace = SuccessiveHalving._get_rung_trace(
             self.rung_map, self.config_map
         )
@@ -159,7 +159,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # the std. dev or peakiness of distribution
         self.prior_confidence = prior_confidence
         self._enhance_priors()
-        self.rung_histories = None
+        self.rung_histories: dict[
+            int, dict[Literal["config", "perf"], list[int | float]]
+        ] = {}
 
     @classmethod
     def _get_rung_trace(cls, rung_map: dict, config_map: dict) -> list[int]:
@@ -168,12 +170,6 @@ class SuccessiveHalvingBase(BaseOptimizer):
         for rung in sorted(rung_map.keys()):
             rung_trace.extend([rung] * config_map[rung])
         return rung_trace
-
-    def get_incumbent_score(self):
-        y_star = np.inf  # minimizing optimizer
-        if len(self.observed_configs):
-            y_star = self.observed_configs.perf.values.min()
-        return y_star
 
     def _get_rung_map(self, s: int = 0) -> dict:
         """Maps rungs (0,1,...,k) to a fidelity value based on fidelity bounds, eta, s."""
@@ -186,18 +182,18 @@ class SuccessiveHalvingBase(BaseOptimizer):
             + 1
         )
         _max_budget = self.max_budget
-        rung_map = dict()
+        rung_map = {}
         for i in reversed(range(nrungs)):
             rung_map[i + s] = (
                 int(_max_budget)
-                if isinstance(self.pipeline_space.fidelity, IntegerParameter)
+                if isinstance(self.pipeline_space.fidelity, Integer)
                 else _max_budget
             )
             _max_budget /= self.eta
         return rung_map
 
     def _get_config_map(self, s: int = 0) -> dict:
-        """Maps rungs (0,1,...,k) to the number of configs for each fidelity"""
+        """Maps rungs (0,1,...,k) to the number of configs for each fidelity."""
         assert s <= self.stopping_rate_limit
         new_min_budget = self.min_budget * (self.eta**s)
         nrungs = (
@@ -210,7 +206,7 @@ class SuccessiveHalvingBase(BaseOptimizer):
         _s = self.stopping_rate_limit - s
         # L2 from Alg 1 in https://arxiv.org/pdf/1603.06560.pdf
         _n_config = np.floor(s_max / (_s + 1)) * self.eta**_s
-        config_map = dict()
+        config_map = {}
         for i in range(nrungs):
             config_map[i + s] = int(_n_config)
             _n_config //= self.eta
@@ -223,11 +219,12 @@ class SuccessiveHalvingBase(BaseOptimizer):
         return _config, _rung
 
     def _load_previous_observations(
-        self, previous_results: dict[str, ConfigResult]
+        self,
+        previous_results: dict[str, ConfigResult],
     ) -> None:
         for config_id, config_val in previous_results.items():
             _config, _rung = self._get_config_id_split(config_id)
-            perf = self.get_loss(config_val.result)
+            perf = self.get_objective_to_minimize(config_val.result)
             if int(_config) in self.observed_configs.index:
                 # config already recorded in dataframe
                 rung_recorded = self.observed_configs.at[int(_config), "rung"]
@@ -242,18 +239,20 @@ class SuccessiveHalvingBase(BaseOptimizer):
                     columns=self.observed_configs.columns,
                     index=pd.Series(int(_config)),  # key for config_id
                 )
-                self.observed_configs = pd.concat(
-                    (self.observed_configs, _df)
-                ).sort_index()
+                if self.observed_configs.empty:
+                    self.observed_configs = _df
+                else:
+                    self.observed_configs = pd.concat(
+                        (self.observed_configs, _df)
+                    ).sort_index()
             # for efficiency, redefining the function to have the
             # `rung_histories` assignment inside the for loop
             # rung histories are collected only for `previous` and not `pending` configs
             self.rung_histories[int(_rung)]["config"].append(int(_config))
             self.rung_histories[int(_rung)]["perf"].append(perf)
-        return
 
     def _handle_pending_evaluations(
-        self, pending_evaluations: dict[str, ConfigResult]
+        self, pending_evaluations: dict[str, SearchSpace]
     ) -> None:
         # iterates over all pending evaluations and updates the list of observed
         # configs with the rung and performance as None
@@ -271,14 +270,13 @@ class SuccessiveHalvingBase(BaseOptimizer):
             else:
                 self.observed_configs.at[int(_config), "rung"] = int(_rung)
                 self.observed_configs.at[int(_config), "perf"] = np.nan
-        return
 
-    def clean_rung_information(self):
-        self.rung_members = {k: [] for k in self.rung_map.keys()}
-        self.rung_members_performance = {k: [] for k in self.rung_map.keys()}
-        self.rung_promotions = {k: [] for k in self.rung_map.keys()}
+    def clean_rung_information(self) -> None:
+        self.rung_members = {k: [] for k in self.rung_map}
+        self.rung_members_performance = {k: [] for k in self.rung_map}
+        self.rung_promotions = {k: [] for k in self.rung_map}
 
-    def _get_rungs_state(self, observed_configs=None):
+    def _get_rungs_state(self, observed_configs: pd.DataFrame | None = None) -> None:
         """Collects info on configs at a rung and their performance there."""
         # to account for incomplete evaluations from being promoted --> working on a copy
         observed_configs = (
@@ -288,8 +286,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         # remove the default from being part of a Successive-Halving bracket
         if (
-            self.sample_default_first
-            and self.sample_default_at_target
+            self.sample_prior_first
+            and self.sample_prior_at_target
             and 0 in observed_configs.index.values
         ):
             observed_configs = observed_configs.drop(index=0)
@@ -300,9 +298,8 @@ class SuccessiveHalvingBase(BaseOptimizer):
             idxs = observed_configs.rung == _rung
             self.rung_members[_rung] = observed_configs.index[idxs].values
             self.rung_members_performance[_rung] = observed_configs.perf[idxs].values
-        return
 
-    def _handle_promotions(self):
+    def _handle_promotions(self) -> None:
         self.promotion_policy.set_state(
             max_rung=self.max_rung,
             members=self.rung_members,
@@ -311,23 +308,34 @@ class SuccessiveHalvingBase(BaseOptimizer):
         )
         self.rung_promotions = self.promotion_policy.retrieve_promotions()
 
-    def clear_old_brackets(self):
+    def clear_old_brackets(self) -> None:
         return
 
-    def _fit_models(self):
+    def _fit_models(self) -> None:
         # define any model or surrogate training and acquisition function state setting
         # if adding model-based search to the basic multi-fidelity algorithm
         return
 
     @override
-    def load_optimization_state(
+    def ask(
         self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
+        trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> None:
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
         """This is basically the fit method."""
+        assert n is None, "TODO"
+        completed: dict[str, ConfigResult] = {
+            trial_id: trial.into_config_result(self.pipeline_space.from_dict)
+            for trial_id, trial in trials.items()
+            if trial.report is not None
+        }
+        pending: dict[str, SearchSpace] = {
+            trial_id: self.pipeline_space.from_dict(trial.config)
+            for trial_id, trial in trials.items()
+            if trial.report is None
+        }
+
         self.rung_histories = {
             rung: {"config": [], "perf": []}
             for rung in range(self.min_rung, self.max_rung + 1)
@@ -336,11 +344,10 @@ class SuccessiveHalvingBase(BaseOptimizer):
         self.observed_configs = pd.DataFrame([], columns=("config", "rung", "perf"))
 
         # previous optimization run exists and needs to be loaded
-        self._load_previous_observations(previous_results)
-        self.total_fevals = len(previous_results) + len(pending_evaluations)
+        self._load_previous_observations(completed)
 
         # account for pending evaluations
-        self._handle_pending_evaluations(pending_evaluations)
+        self._handle_pending_evaluations(pending)
 
         # process optimization state and bucket observations per rung
         self._get_rungs_state()
@@ -354,37 +361,38 @@ class SuccessiveHalvingBase(BaseOptimizer):
         # fit any model/surrogates
         self._fit_models()
 
-        return
+        config, _id, previous_id = self.get_config_and_ids()
+        return SampledConfig(id=_id, config=config, previous_config_id=previous_id)
 
     def is_init_phase(self) -> bool:
         return True
 
     def sample_new_config(
         self,
-        rung: int = None,
-        **kwargs,
-    ):
+        rung: int | None = None,
+        **kwargs: Any,
+    ) -> SearchSpace:
         # Samples configuration from policy or random
         if self.sampling_policy is None:
-            config = self.pipeline_space.sample(
+            return sample_one_old(
+                self.pipeline_space,
                 patience=self.patience,
                 user_priors=self.use_priors,
                 ignore_fidelity=True,
             )
-        else:
-            config = self.sampling_policy.sample(**self.sampling_args)
-        return config
 
-    def _generate_new_config_id(self):
-        return self.observed_configs.index.max() + 1 if len(self.observed_configs) else 0
+        return self.sampling_policy.sample(**self.sampling_args)
 
-    def get_default_configuration(self):
-        pass
+    def _generate_new_config_id(self) -> int:
+        if len(self.observed_configs) == 0:
+            return 0
+
+        _max = self.observed_configs.index.max()
+        return int(_max) + 1  # type: ignore
 
     def is_promotable(self) -> int | None:
         """Returns an int if a rung can be promoted, else a None."""
         rung_to_promote = None
-
         # # iterates starting from the highest fidelity promotable to the lowest fidelity
         for rung in reversed(range(self.min_rung, self.max_rung)):
             if len(self.rung_promotions[rung]) > 0:
@@ -400,6 +408,9 @@ class SuccessiveHalvingBase(BaseOptimizer):
         Returns:
             [type]: [description]
         """
+        fidelity_name = self.pipeline_space.fidelity_name
+        assert fidelity_name is not None
+
         rung_to_promote = self.is_promotable()
         if rung_to_promote is not None:
             # promotes the first recorded promotable config in the argsort-ed rung
@@ -407,27 +418,31 @@ class SuccessiveHalvingBase(BaseOptimizer):
             config = row["config"].clone()
             rung = rung_to_promote + 1
             # assigning the fidelity to evaluate the config at
-            config.fidelity.set_value(self.rung_map[rung])
+
+            config_values = config._values
+            config_values[fidelity_name] = self.rung_map[rung]
+
             # updating config IDs
             previous_config_id = f"{row.name}_{rung_to_promote}"
             config_id = f"{row.name}_{rung}"
         else:
             rung_id = self.min_rung
             # using random instead of np.random to be consistent with NePS BO
+            rng = random.Random(None)  # TODO: Seeding
             if (
                 self.use_priors
-                and self.sample_default_first
+                and self.sample_prior_first
                 and len(self.observed_configs) == 0
             ):
-                if self.sample_default_at_target:
+                if self.sample_prior_at_target:
                     # sets the default config to be evaluated at the target fidelity
                     rung_id = self.max_rung
-                    self.logger.info("Next config will be evaluated at target fidelity.")
-                self.logger.info("Sampling the default configuration...")
-                config = self.pipeline_space.sample_default_configuration()
-
-            elif random.random() < self.random_interleave_prob:
-                config = self.pipeline_space.sample(
+                    logger.info("Next config will be evaluated at target fidelity.")
+                logger.info("Sampling the default configuration...")
+                config = self.pipeline_space.from_dict(self.pipeline_space.prior_config)
+            elif rng.random() < self.random_interleave_prob:
+                config = sample_one_old(
+                    self.pipeline_space,
                     patience=self.patience,
                     user_priors=False,  # sample uniformly random
                     ignore_fidelity=True,
@@ -436,14 +451,15 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 config = self.sample_new_config(rung=rung_id)
 
             fidelity_value = self.rung_map[rung_id]
-            config.fidelity.set_value(fidelity_value)
+            config_values = config._values
+            config_values[fidelity_name] = fidelity_value
 
             previous_config_id = None
             config_id = f"{self._generate_new_config_id()}_{rung_id}"
 
-        return config.hp_values(), config_id, previous_config_id  # type: ignore
+        return config_values, config_id, previous_config_id
 
-    def _enhance_priors(self, confidence_score=None):
+    def _enhance_priors(self, confidence_score: dict[str, float] | None = None) -> None:
         """Only applicable when priors are given along with a confidence.
 
         Args:
@@ -451,38 +467,39 @@ class SuccessiveHalvingBase(BaseOptimizer):
                 The confidence scores for the types.
                 Example: {"categorical": 5.2, "numeric": 0.15}
         """
-        if not self.use_priors and self.prior_confidence is None:
+        if not self.use_priors or self.prior_confidence is None:
             return
+
         for k, v in self.pipeline_space.items():
-            if v.is_fidelity or isinstance(v, ConstantParameter):
+            if v.is_fidelity or isinstance(v, Constant):
                 continue
-            elif isinstance(v, (FloatParameter, IntegerParameter)):
+            if isinstance(v, Float | Integer):
                 if confidence_score is None:
                     confidence = CUSTOM_FLOAT_CONFIDENCE_SCORES[self.prior_confidence]
                 else:
                     confidence = confidence_score["numeric"]
-                self.pipeline_space[k].default_confidence_score = confidence
-            elif isinstance(v, CategoricalParameter):
+                self.pipeline_space[k].prior_confidence_score = confidence
+            elif isinstance(v, Categorical):
                 if confidence_score is None:
                     confidence = CUSTOM_CATEGORICAL_CONFIDENCE_SCORES[
                         self.prior_confidence
                     ]
                 else:
                     confidence = confidence_score["categorical"]
-                self.pipeline_space[k].default_confidence_score = confidence
+                self.pipeline_space[k].prior_confidence_score = confidence
 
 
 class SuccessiveHalving(SuccessiveHalvingBase):
-    def _calc_budget_used_in_bracket(self, config_history: list[int]):
-        budget = 0
-        for rung in self.config_map.keys():
+    def _calc_budget_used_in_bracket(self, config_history: list[int]) -> int:
+        max_cost_total = 0
+        for rung in self.config_map:
             count = sum(config_history == rung)
             # `range(min_rung, rung+1)` counts the black-box cost of promotions since
             # SH budgets assume each promotion involves evaluation from scratch
-            budget += count * sum(np.arange(self.min_rung, rung + 1))
-        return budget
+            max_cost_total += count * sum(np.arange(self.min_rung, rung + 1))
+        return max_cost_total
 
-    def clear_old_brackets(self):
+    def clear_old_brackets(self) -> None:
         """Enforces reset at each new bracket.
 
         The _get_rungs_state() function creates the `rung_promotions` dict mapping which
@@ -497,7 +514,7 @@ class SuccessiveHalving(SuccessiveHalvingBase):
         # indexes to mark separate brackets
         start = 0
         end = self.config_map[self.min_rung]  # length of lowest rung in a bracket
-        if self.sample_default_at_target and self.sample_default_first:
+        if self.sample_prior_at_target and self.sample_prior_first:
             start += 1
             end += 1
         # iterates over the different SH brackets which span start-end by index
@@ -542,39 +559,38 @@ class SuccessiveHalvingWithPriors(SuccessiveHalving):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = FixedPriorPolicy,
-        promotion_policy: typing.Any = SyncPromotionPolicy,
-        loss_value_on_error: None | float = None,
+        sampling_policy: Any = FixedPriorPolicy,
+        promotion_policy: Any = SyncPromotionPolicy,
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",  # medium = 0.25
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -583,40 +599,39 @@ class AsynchronousSuccessiveHalving(SuccessiveHalvingBase):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
         use_priors: bool = False,
-        sampling_policy: typing.Any = RandomUniformPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        sampling_policy: Any = RandomUniformPolicy,
+        promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
-        prior_confidence: Literal["low", "medium", "high"] = None,
+        prior_confidence: Literal["low", "medium", "high"] | None = None,
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             use_priors=use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
 
 
@@ -627,41 +642,36 @@ class AsynchronousSuccessiveHalvingWithPriors(AsynchronousSuccessiveHalving):
 
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
-        budget: int,
+        max_cost_total: int,
         eta: int = 3,
         early_stopping_rate: int = 0,
         initial_design_type: Literal["max_budget", "unique_configs"] = "max_budget",
-        sampling_policy: typing.Any = FixedPriorPolicy,
-        promotion_policy: typing.Any = AsyncPromotionPolicy,  # key difference from SH
-        loss_value_on_error: None | float = None,
+        sampling_policy: Any = FixedPriorPolicy,
+        promotion_policy: Any = AsyncPromotionPolicy,  # key difference from SH
+        objective_to_minimize_value_on_error: None | float = None,
         cost_value_on_error: None | float = None,
         ignore_errors: bool = False,
-        logger=None,
         prior_confidence: Literal["low", "medium", "high"] = "medium",
         random_interleave_prob: float = 0.0,
-        sample_default_first: bool = False,
-        sample_default_at_target: bool = False,
+        sample_prior_first: bool = False,
+        sample_prior_at_target: bool = False,
     ):
         super().__init__(
             pipeline_space=pipeline_space,
-            budget=budget,
+            max_cost_total=max_cost_total,
             eta=eta,
             early_stopping_rate=early_stopping_rate,
             initial_design_type=initial_design_type,
             use_priors=self.use_priors,
             sampling_policy=sampling_policy,
             promotion_policy=promotion_policy,
-            loss_value_on_error=loss_value_on_error,
+            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
             cost_value_on_error=cost_value_on_error,
             ignore_errors=ignore_errors,
-            logger=logger,
             prior_confidence=prior_confidence,
             random_interleave_prob=random_interleave_prob,
-            sample_default_first=sample_default_first,
-            sample_default_at_target=sample_default_at_target,
+            sample_prior_first=sample_prior_first,
+            sample_prior_at_target=sample_prior_at_target,
         )
-
-
-if __name__ == "__main__":
-    pass

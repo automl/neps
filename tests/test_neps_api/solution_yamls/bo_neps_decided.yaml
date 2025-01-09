@@ -3,11 +3,8 @@ searcher_alg: bayesian_optimization
 searcher_selection: neps-default
 neps_decision_tree: true
 searcher_args:
-  initial_design_size: 10
-  surrogate_model: gp
-  acquisition: EI
-  log_prior_weighted: false
-  acquisition_sampler: mutation
-  random_interleave_prob: 0.0
-  disable_priors: true
-  sample_default_first: false
+  initial_design_size: null
+  use_priors: false
+  use_cost: false
+  sample_prior_first: false
+  device: null

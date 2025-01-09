@@ -1,29 +1,26 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Literal
 
 import numpy as np
-from typing_extensions import Literal
 
 import neps
 from neps.search_spaces.search_space import SearchSpace, pipeline_space_from_configspace
 
 
 class RegressionObjectiveBase:
-    """
-    Base class for creating new synthetic or real objectives for the regression tests
+    """Base class for creating new synthetic or real objectives for the regression tests
     Regression runner uses properties defined here,
-    each property should be appropriately defined by the subclasses
+    each property should be appropriately defined by the subclasses.
     """
 
     def __init__(self, optimizer: str, task: str):
         self.optimizer = optimizer
         self.task = task
-        self.has_fidelity = (self.optimizer != "regularized_evolution") and (
-            self.optimizer != "random_search"
-        )
+        self.has_fidelity = self.optimizer != "random_search"
         self._run_pipeline: Callable | None = None
         self._pipeline_space: SearchSpace | dict[str, Any] = {}
 
@@ -35,8 +32,7 @@ class RegressionObjectiveBase:
                 f" the subclass {type(self)} must implement "
                 f"a pipeline_space attribute"
             )
-        else:
-            return self._pipeline_space
+        return self._pipeline_space
 
     @pipeline_space.setter
     def pipeline_space(self, value):
@@ -44,17 +40,32 @@ class RegressionObjectiveBase:
 
     @property
     def run_pipeline(self) -> Callable:
+        warnings.warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning, stacklevel=2)
         if self._run_pipeline is None:
             raise NotImplementedError(
                 f"run_pipeline can not be None, "
                 f"the subclass {type(self)} must "
                 f"implement a run_pipeline Callable"
             )
-        else:
-            return self._run_pipeline
+        return self._run_pipeline
+
+    @property
+    def evaluate_pipeline(self) -> Callable:
+        if self._run_pipeline is None:
+            raise NotImplementedError(
+                f"evaluate_pipeline can not be None, "
+                f"the subclass {type(self)} must "
+                f"implement a evaluate_pipeline Callable"
+            )
+        return self._run_pipeline
 
     @run_pipeline.setter
     def run_pipeline(self, value):
+        warnings.warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning, stacklevel=2)
+        self._run_pipeline = value
+
+    @evaluate_pipeline.setter
+    def evaluate_pipeline(self, value):
         self._run_pipeline = value
 
     def __call__(self, *args, **kwargs) -> dict[str, Any]:
@@ -63,9 +74,7 @@ class RegressionObjectiveBase:
 
 class JAHSObjective(RegressionObjectiveBase):
     def evaluation_func(self):
-        """
-        If the optimizer is cost aware, return the evaluation function with cost
-        """
+        """If the optimizer is cost aware, return the evaluation function with cost."""
         import jahs_bench
 
         self.benchmark = jahs_bench.Benchmark(
@@ -78,11 +87,11 @@ class JAHSObjective(RegressionObjectiveBase):
 
             results = self.benchmark(joint_configuration, nepochs=epoch)
             return {
-                "loss": 100 - results[epoch]["valid-acc"],
+                "objective_to_minimize": 100 - results[epoch]["valid-acc"],
                 "cost": results[epoch]["runtime"],
             }
 
-        def loss_evaluation(**joint_configuration):
+        def objective_to_minimize_evaluation(**joint_configuration):
             epoch = joint_configuration.pop("epoch")
             joint_configuration.update({"N": 5, "W": 16, "Resolution": 1.0})
 
@@ -91,8 +100,7 @@ class JAHSObjective(RegressionObjectiveBase):
 
         if "cost" in self.optimizer:
             return cost_evaluation
-        else:
-            return loss_evaluation
+        return objective_to_minimize_evaluation
 
     def __init__(
         self,
@@ -103,8 +111,7 @@ class JAHSObjective(RegressionObjectiveBase):
         save_dir: str | Path = "jahs_bench_data",
         **kwargs,
     ):
-        """
-        Download benchmark, initialize Pipeline space and evaluation function
+        """Download benchmark, initialize Pipeline space and evaluation function.
 
         Args:
             optimizer: The optimizer that will be run, this is used to determine the
@@ -122,16 +129,13 @@ class JAHSObjective(RegressionObjectiveBase):
 
         self.pipeline_space = pipeline_space_from_configspace(joint_config_space)
 
-        # For Regularized evolution sampler ignores fidelity hyperparameters
-        # by sampling None for them
-
-        self.pipeline_space["epoch"] = neps.IntegerParameter(
+        self.pipeline_space["epoch"] = neps.Integer(
             lower=1, upper=200, is_fidelity=self.has_fidelity
         )
         self.run_pipeline = self.evaluation_func()
 
         self.surrogate_model = "gp" if self.optimizer != "random_search" else None
-        self.surrogate_model_args = kwargs.get("surrogate_model_args", None)
+        self.surrogate_model_args = kwargs.get("surrogate_model_args")
 
 
 class HartmannObjective(RegressionObjectiveBase):
@@ -140,15 +144,12 @@ class HartmannObjective(RegressionObjectiveBase):
 
     def evaluation_fn(self) -> Callable:
         def hartmann3(**z_nX):
-            if self.has_fidelity:
-                z = z_nX.get("z")
-            else:
-                z = self.z_max
+            z = z_nX.get("z") if self.has_fidelity else self.z_max
 
             X_0 = z_nX.get("X_0")
             X_1 = z_nX.get("X_1")
             X_2 = z_nX.get("X_2")
-            Xs = tuple((X_0, X_1, X_2))
+            Xs = (X_0, X_1, X_2)
 
             log_z = np.log(z)
             log_lb, log_ub = np.log(self.z_min), np.log(self.z_max)
@@ -179,20 +180,17 @@ class HartmannObjective(RegressionObjectiveBase):
 
             noise = np.abs(rng.normal(size=H.size)) * self.noise * (1 - log_z_scaled)
 
-            loss = float((H + noise)[0])
+            objective_to_minimize = float((H + noise)[0])
             cost = 0.05 + (1 - 0.05) * (z / self.z_max) ** 2
 
-            result = {"loss": loss}
+            result = {"objective_to_minimize": objective_to_minimize}
             if "cost" in self.optimizer:
                 result.update({"cost": cost})
 
             return result
 
         def hartmann6(**z_nX):
-            if self.has_fidelity:
-                z = z_nX.get("z")
-            else:
-                z = self.z_max
+            z = z_nX.get("z") if self.has_fidelity else self.z_max
 
             X_0 = z_nX.get("X_0")
             X_1 = z_nX.get("X_1")
@@ -200,7 +198,7 @@ class HartmannObjective(RegressionObjectiveBase):
             X_3 = z_nX.get("X_3")
             X_4 = z_nX.get("X_4")
             X_5 = z_nX.get("X_5")
-            Xs = tuple((X_0, X_1, X_2, X_3, X_4, X_5))
+            Xs = (X_0, X_1, X_2, X_3, X_4, X_5)
 
             # Change by Carl - z now comes in normalized
             log_z = np.log(z)
@@ -238,21 +236,17 @@ class HartmannObjective(RegressionObjectiveBase):
 
             noise = np.abs(rng.normal(size=H.size)) * self.noise * (1 - log_z_scaled)
 
-            loss = float((H + noise)[0])
+            objective_to_minimize = float((H + noise)[0])
             cost = 0.05 + (1 - 0.05) * (z / self.z_max) ** 2
 
-            result = {"loss": loss}
+            result = {"objective_to_minimize": objective_to_minimize}
             if "cost" in self.optimizer:
                 result.update({"cost": cost})
 
             return result
 
-        if self.dim == 3:
-            hartmann_fn = hartmann3
-        else:
-            hartmann_fn = hartmann6
+        return hartmann3 if self.dim == 3 else hartmann6
 
-        return hartmann_fn
 
     def __init__(
         self,
@@ -263,8 +257,7 @@ class HartmannObjective(RegressionObjectiveBase):
         seed: int = 1337,
         **kwargs,
     ):
-        """
-        Initialize Pipeline space and evaluation function
+        """Initialize Pipeline space and evaluation function.
 
         Args:
             optimizer: The optimizer that will be run, this is used to determine the
@@ -283,11 +276,11 @@ class HartmannObjective(RegressionObjectiveBase):
             )
 
         self.pipeline_space: dict[str, Any] = {
-            f"X_{i}": neps.FloatParameter(lower=0.0, upper=1.0) for i in range(self.dim)
+            f"X_{i}": neps.Float(lower=0.0, upper=1.0) for i in range(self.dim)
         }
 
         if self.has_fidelity:
-            self.pipeline_space["z"] = neps.IntegerParameter(
+            self.pipeline_space["z"] = neps.Integer(
                 lower=self.z_min, upper=self.z_max, is_fidelity=self.has_fidelity
             )
 
@@ -297,6 +290,6 @@ class HartmannObjective(RegressionObjectiveBase):
         self.random_state = np.random.default_rng(seed)
 
         self.surrogate_model = "gp" if self.optimizer != "random_search" else None
-        self.surrogate_model_args = kwargs.get("surrogate_model_args", None)
+        self.surrogate_model_args = kwargs.get("surrogate_model_args")
 
         self.run_pipeline = self.evaluation_fn()

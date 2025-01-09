@@ -4,10 +4,9 @@ import inspect
 import logging
 import time
 import traceback
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, TypeVar
-
-from neps.exceptions import NePSError
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 if TYPE_CHECKING:
     from neps.state.settings import DefaultReportValues
@@ -17,36 +16,6 @@ logger = logging.getLogger(__name__)
 
 Loc = TypeVar("Loc")
 _notset = object()
-
-
-class GotNonePendingTrialForEvalautionError(NePSError):
-    """Raised when trying to evaluate a trial that is not in a pending state."""
-
-    def __init__(
-        self,
-        trial_id: Trial.ID,
-        state: Trial.State,
-        worker_id: str,
-        *args: Any,
-    ):
-        """Initialize the error.
-
-        Args:
-            trial_id: The ID of the trial that was not in a pending state.
-            state: The state of the trial.
-            worker_id: The ID of the worker that picked up this trial.
-            *args: Additional arguments to pass to the parent class.
-        """
-        super().__init__(trial_id, state, worker_id, *args)
-        self.trial_id = trial_id
-        self.state = state
-        self.worker_id = worker_id
-
-    def __str__(self) -> str:
-        return (
-            f"Trial '{self.trial_id}' is not in a pending state but in '{self.state}'."
-            f"This trial was picked up for evaluation by worker '{self.worker_id}'."
-        )
 
 
 def _check_float(value: Any, name: str) -> float:
@@ -63,15 +32,17 @@ def parse_user_result(
     user_result: float | dict[str, Any],
     *,
     default_cost_value: float | None = None,
-    default_learning_curve: Literal["loss"] | list[float] | None = None,
+    default_learning_curve: Literal["objective_to_minimize"] | list[float] | None = None,
 ) -> tuple[float, float | None, list[float] | None, dict[str, Any]]:
     """Check if the trial has succeeded."""
     if isinstance(user_result, Mapping):
-        extracted_loss = user_result.pop("loss", _notset)
-        if extracted_loss is _notset:
+        extracted_objective_to_minimize = user_result.pop(
+            "objective_to_minimize", _notset
+        )
+        if extracted_objective_to_minimize is _notset:
             raise KeyError(
-                "The 'loss' should be provided in the evaluation result if providing"
-                " a dictionary."
+                "The 'objective_to_minimize' should be provided in the evaluation result"
+                " if providing a dictionary."
             )
         extracted_cost = user_result.pop("cost", default_cost_value)
 
@@ -87,30 +58,32 @@ def parse_user_result(
             else:
                 extracted_learning_curve = default_learning_curve
 
-        if extracted_learning_curve == "loss":
-            extracted_learning_curve = [extracted_loss]
+        if extracted_learning_curve == "objective_to_minimize":
+            extracted_learning_curve = [extracted_objective_to_minimize]
 
         extra = user_result
     else:
-        extracted_loss = user_result
+        extracted_objective_to_minimize = user_result
         extracted_learning_curve = (
             None
             if default_learning_curve is None
             else [user_result]
-            if default_learning_curve == "loss"
+            if default_learning_curve == "objective_to_minimize"
             else default_learning_curve
         )
         extracted_cost = default_cost_value
         extra = {}
 
-    loss = _check_float(extracted_loss, "loss")
+    objective_to_minimize = _check_float(
+        extracted_objective_to_minimize, "objective_to_minimize"
+    )
     cost = _check_float(extracted_cost, "cost") if extracted_cost is not None else None
     learning_curve = (
         [float(v) for v in extracted_learning_curve]
         if extracted_learning_curve is not None
         else None
     )
-    return loss, cost, learning_curve, extra
+    return objective_to_minimize, cost, learning_curve, extra
 
 
 def _eval_trial(
@@ -131,7 +104,7 @@ def _eval_trial(
         logger.exception(e)
         report = trial.set_complete(
             report_as="crashed",
-            loss=default_report_values.loss_value_on_error,
+            objective_to_minimize=default_report_values.objective_to_minimize_value_on_error,
             cost=default_report_values.cost_value_on_error,
             learning_curve=default_report_values.learning_curve_on_error,
             extra=None,
@@ -145,14 +118,14 @@ def _eval_trial(
         time_end = time.time()
         logger.info(f"Successful evaluation of '{trial.id}': {user_result}.")
 
-        loss, cost, learning_curve, extra = parse_user_result(
+        objective_to_minimize, cost, learning_curve, extra = parse_user_result(
             dict(user_result) if isinstance(user_result, Mapping) else user_result,
             default_cost_value=default_report_values.cost_if_not_provided,
             default_learning_curve=default_report_values.learning_curve_if_not_provided,
         )
         report = trial.set_complete(
             report_as="success",
-            loss=loss,
+            objective_to_minimize=objective_to_minimize,
             cost=cost,
             learning_curve=learning_curve,
             err=None,

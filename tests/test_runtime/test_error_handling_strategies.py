@@ -1,29 +1,34 @@
 from __future__ import annotations
 
-import pytest
 from dataclasses import dataclass
-from pandas.core.common import contextlib
 from pathlib import Path
+
+import pytest
+from pandas.core.common import contextlib
 from pytest_cases import fixture, parametrize
 
+from neps.exceptions import WorkerRaiseError
 from neps.optimizers.random_search.optimizer import RandomSearch
 from neps.runtime import DefaultWorker
+from neps.search_spaces import Float
 from neps.search_spaces.search_space import SearchSpace
-from neps.state.err_dump import SerializedError
-from neps.state.filebased import create_or_load_filebased_neps_state
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
+from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.search_spaces import FloatParameter
 from neps.state.trial import Trial
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState[Path]:
-    return create_or_load_filebased_neps_state(
-        directory=tmp_path / "neps_state",
+def neps_state(tmp_path: Path) -> NePSState:
+    return NePSState.create_or_load(
+        path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(budget=None, shared_state={}),
+        optimizer_state=OptimizationState(
+            budget=None,
+            seed_snapshot=SeedSnapshot.new_capture(),
+            shared_state=None,
+        ),
     )
 
 
@@ -35,7 +40,7 @@ def test_worker_raises_when_error_in_self(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -47,6 +52,7 @@ def test_worker_raises_when_error_in_self(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -59,22 +65,23 @@ def test_worker_raises_when_error_in_self(
         settings=settings,
         _pre_sample_hooks=None,
     )
-    with pytest.raises(ValueError, match="This is an error"):
+    with pytest.raises(WorkerRaiseError):
         worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -86,6 +93,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def evaler(*args, **kwargs) -> float:
@@ -107,23 +115,24 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     )
 
     # Worker1 should run 1 and error out
-    with contextlib.suppress(ValueError):
+    with contextlib.suppress(WorkerRaiseError):
         worker1.run()
 
     # Worker2 should not run and immeditaly error out, however
     # it will have loaded in a serialized error
-    with pytest.raises(SerializedError):
+    with pytest.raises(WorkerRaiseError):
         worker2.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1
 
 
 @pytest.mark.parametrize(
@@ -134,7 +143,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=FloatParameter(0, 1)))
+    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_WORKER_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -146,6 +155,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     @dataclass
@@ -176,7 +186,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
 
     # Worker1 should run 1 and error out
     evaler.do_raise = True
-    with contextlib.suppress(ValueError):
+    with contextlib.suppress(WorkerRaiseError):
         worker1.run()
     assert worker1.worker_cumulative_eval_count == 1
 
@@ -185,16 +195,18 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     worker2.run()
     assert worker2.worker_cumulative_eval_count == 1
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_success = sum(
-        trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.SUCCESS is not None
+        for trial in trials.values()
     )
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert n_success == 1
     assert n_crashed == 1
     assert len(trials) == 2
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1

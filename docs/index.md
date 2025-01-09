@@ -11,17 +11,16 @@ NePS houses recently published and also well-established algorithms that can all
 
 ## Key Features
 
-In addition to the features offered by traditional HPO and NAS libraries, NePS, e.g., stands out with:
+In addition to the features offered by traditional HPO and NAS libraries, NePS stands out with:
 
-
-1. [**Hyperparameter Optimization (HPO) with Prior Knowledge and Cheap Proxies:**](.examples/template/priorband_template.py) <br /> <br />
-NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge within the search space. This is leveraged by the insights presented in:
-     - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning](https://arxiv.org/abs/2306.12370)
-     - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization](https://arxiv.org/abs/2204.11051) <br /> <br />
-1. [**Neural Architecture Search (NAS) with General Search Spaces:**](neps_examples/basic_usage/architecture.py) <br /> <br />
-    NePS is equipped to handle context-free grammar search spaces, providing advanced capabilities for designing and optimizing architectures. this is leveraged by the insights presented in:
-     - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars](https://arxiv.org/abs/2211.01842) <br /> <br />
-1. [**Easy Parallelization and Design Tailored to DL:**](.examples/efficiency/) <br /> <br />
+1. **Hyperparameter Optimization (HPO) Efficient Enough For Deep Learning:** <br />
+    NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge, while also using many other efficiency boosters.
+     - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning (NeurIPS 2023)](https://arxiv.org/abs/2306.12370)
+     - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization (ICLR 2022)](https://arxiv.org/abs/2204.11051) <br /> <br />
+1. **Neural Architecture Search (NAS) with Expressive Search Spaces:** <br />
+    NePS provides capabilities for designing and optimizing architectures in an expressive and natural fashion.
+     - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars (NeurIPS 2023)](https://arxiv.org/abs/2211.01842) <br /> <br />
+1. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
      NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
      computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
      DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
@@ -32,7 +31,8 @@ NePS excels in efficiently tuning hyperparameters using algorithms that enable u
 
     * [Reference documentation](./reference/neps_run.md) for a quick overview.
     * [API](./api/neps/api.md) for a more detailed reference.
-    * [Examples](./examples/template/basic_template.md) for copy-pastable code to get started.
+    * [Colab Tutorial](https://colab.research.google.com/drive/11IOhkmMKsIUhWbHyMYzT0v786O9TPWlH?usp=sharing) walking through NePS's main features.
+    * [Examples](./examples) for basic code snippets to get started.
 
 ## Installation
 
@@ -40,12 +40,6 @@ To install the latest release from PyPI run
 
 ```bash
 pip install neural-pipeline-search
-```
-
-To get the latest version from Github run
-
-```bash
-pip install git+https://github.com/automl/neps.git
 ```
 
 ## Basic Usage
@@ -66,7 +60,7 @@ import logging
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
 def run_pipeline(
-    hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
+        hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
 ) -> dict:
     # Create your model
     model = MyModel(architecture_parameter)
@@ -80,13 +74,12 @@ def run_pipeline(
 
 # 2. Define a search space of parameters; use the same parameter names as in run_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.FloatParameter(
+    hyperparameter_a=neps.Float(
         lower=0.001, upper=0.1, log=True  # The search space is sampled in log space
     ),
-    hyperparameter_b=neps.IntegerParameter(lower=1, upper=42),
-    architecture_parameter=neps.CategoricalParameter(["option_a", "option_b"]),
+    hyperparameter_b=neps.Integer(lower=1, upper=42),
+    architecture_parameter=neps.Categorical(["option_a", "option_b"]),
 )
-
 
 # 3. Run the NePS optimization
 logging.basicConfig(level=logging.INFO)

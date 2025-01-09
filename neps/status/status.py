@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from neps.state.filebased import load_filebased_neps_state
+from neps.runtime import get_workers_neps_state
+from neps.state.filebased import FileLocker
+from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
-from neps.utils._locker import Locker
 from neps.utils.types import ConfigID, _ConfigResultForStats
 
 if TYPE_CHECKING:
@@ -37,9 +38,12 @@ def get_summary_dict(
 
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
-    shared_state = load_filebased_neps_state(root_directory)
+    try:
+        shared_state = get_workers_neps_state()
+    except RuntimeError:
+        shared_state = NePSState.create_or_load(root_directory)
 
-    trials = shared_state.get_all_trials()
+    trials = shared_state.lock_and_read_trials()
 
     evaluated: dict[ConfigID, _ConfigResultForStats] = {}
 
@@ -58,12 +62,12 @@ def get_summary_dict(
     in_progress = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.EVALUATING
+        if trial.metadata.state == Trial.State.EVALUATING
     }
     pending = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.PENDING
+        if trial.metadata.state == Trial.State.PENDING
     }
 
     summary: dict[str, Any] = {}
@@ -77,7 +81,7 @@ def get_summary_dict(
     summary["num_pending_configs"] = len(in_progress) + len(pending)
     summary["num_pending_configs_with_worker"] = len(in_progress)
 
-    summary["best_loss"] = float("inf")
+    summary["best_objective_to_minimize"] = float("inf")
     summary["best_config_id"] = None
     summary["best_config_metadata"] = None
     summary["best_config"] = None
@@ -85,9 +89,12 @@ def get_summary_dict(
     for evaluation in evaluated.values():
         if evaluation.result == "error":
             summary["num_error"] += 1
-        loss = evaluation.loss
-        if isinstance(loss, float) and loss < summary["best_loss"]:
-            summary["best_loss"] = loss
+        objective_to_minimize = evaluation.objective_to_minimize
+        if (
+            isinstance(objective_to_minimize, float)
+            and objective_to_minimize < summary["best_objective_to_minimize"]
+        ):
+            summary["best_objective_to_minimize"] = objective_to_minimize
             summary["best_config"] = evaluation.config
             summary["best_config_id"] = evaluation.id
             summary["best_config_metadata"] = evaluation.metadata
@@ -107,7 +114,8 @@ def status(
 
     Args:
         root_directory: The root directory given to neps.run.
-        best_losses: If true, show the trajectory of the best loss across evaluations
+        best_losses: If true, show the trajectory of the best objective_to_minimize
+            across evaluations
         best_configs: If true, show the trajectory of the best configs and their losses
             across evaluations
         all_configs: If true, show all configs and their losses
@@ -133,34 +141,40 @@ def status(
             return summary["previous_results"], summary["pending_configs"]
 
         print()
-        print(f"Best loss: {summary['best_loss']}")
+        print(f"Best objective_to_minimize: {summary['best_objective_to_minimize']}")
         print(f"Best config id: {summary['best_config_id']}")
         print(f"Best config: {summary['best_config']}")
 
         if best_losses:
             print()
-            print("Best loss across evaluations:")
-            best_loss_trajectory = root_directory / "best_loss_trajectory.txt"
-            print(best_loss_trajectory.read_text(encoding="utf-8"))
+            print("Best objective_to_minimize across evaluations:")
+            best_objective_to_minimize_trajectory = (
+                root_directory / "best_objective_to_minimize_trajectory.txt"
+            )
+            print(best_objective_to_minimize_trajectory.read_text(encoding="utf-8"))
 
         if best_configs:
             print()
             print("Best configs and their losses across evaluations:")
             print(79 * "-")
-            best_loss_config = root_directory / "best_loss_with_config_trajectory.txt"
-            print(best_loss_config.read_text(encoding="utf-8"))
+            best_objective_to_minimize_config = (
+                root_directory / "best_objective_to_minimize_with_config_trajectory.txt"
+            )
+            print(best_objective_to_minimize_config.read_text(encoding="utf-8"))
 
         if all_configs:
             print()
             print("All evaluated configs and their losses:")
             print(79 * "-")
-            all_loss_config = root_directory / "all_losses_and_configs.txt"
-            print(all_loss_config.read_text(encoding="utf-8"))
+            all_objective_to_minimize_config = (
+                root_directory / "all_losses_and_configs.txt"
+            )
+            print(all_objective_to_minimize_config.read_text(encoding="utf-8"))
 
     return summary["previous_results"], summary["pending_configs"]
 
 
-def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, Locker]:
+def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:
     """Initializes a summary CSV and an associated locker for file access control.
 
     Args:
@@ -181,7 +195,7 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, Locke
     csv_config_data = summary_csv_directory / "config_data.csv"
     csv_run_data = summary_csv_directory / "run_status.csv"
 
-    csv_locker = Locker(summary_csv_directory / ".csv_lock")
+    csv_locker = FileLocker(summary_csv_directory / ".csv_lock", poll=2, timeout=600)
 
     return (
         csv_config_data,
@@ -264,7 +278,7 @@ def _get_dataframes_from_summary(
         "num_evaluated_configs": summary["num_evaluated_configs"],
         "num_pending_configs": summary["num_pending_configs"],
         "num_pending_configs_with_worker": summary["num_pending_configs_with_worker"],
-        "best_loss": summary["best_loss"],
+        "best_objective_to_minimize": summary["best_objective_to_minimize"],
         "best_config_id": summary["best_config_id"],
         "num_error": summary["num_error"],
     }
@@ -282,7 +296,7 @@ def _get_dataframes_from_summary(
 def _save_data_to_csv(
     config_data_file_path: Path,
     run_data_file_path: Path,
-    locker: Locker,
+    locker: FileLocker,
     config_data_df: pd.DataFrame,
     run_data_df: pd.DataFrame,
 ) -> None:
@@ -299,7 +313,7 @@ def _save_data_to_csv(
         config_data_df: The DataFrame containing configuration data.
         run_data_df: The DataFrame containing additional run data.
     """
-    with locker(poll=2):
+    with locker.lock():
         try:
             pending_configs = run_data_df.loc["num_pending_configs", "value"]
             pending_configs_with_worker = run_data_df.loc[
@@ -309,7 +323,7 @@ def _save_data_to_csv(
             # Represents the last worker
             if int(pending_configs) == 0 and int(pending_configs_with_worker) == 0:
                 config_data_df = config_data_df.sort_values(
-                    by="result.loss",
+                    by="result.objective_to_minimize",
                     ascending=True,
                 )
                 config_data_df.to_csv(config_data_file_path, index=False, mode="w")
@@ -330,7 +344,7 @@ def _save_data_to_csv(
                 # check if the current worker has more evaluated configs than the previous
                 if int(num_evaluated_configs_csv) < num_evaluated_configs_run.iloc[0]:
                     config_data_df = config_data_df.sort_values(
-                        by="result.loss",
+                        by="result.objective_to_minimize",
                         ascending=True,
                     )
                     config_data_df.to_csv(config_data_file_path, index=False, mode="w")
@@ -338,7 +352,7 @@ def _save_data_to_csv(
             # Represents the first worker to be evaluated
             else:
                 config_data_df = config_data_df.sort_values(
-                    by="result.loss",
+                    by="result.objective_to_minimize",
                     ascending=True,
                 )
                 config_data_df.to_csv(config_data_file_path, index=False, mode="w")
@@ -347,13 +361,18 @@ def _save_data_to_csv(
             raise RuntimeError(f"Error during data saving: {e}") from e
 
 
-def post_run_csv(root_directory: str | Path) -> None:
+def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
     """Create CSV files summarizing the run data.
 
     Args:
         root_directory: The root directory of the NePS run.
+
+    Returns:
+        The paths to the configuration data CSV and the run data CSV.
     """
     csv_config_data, csv_rundata, csv_locker = _initiate_summary_csv(root_directory)
+    csv_config_data = Path(csv_config_data).absolute().resolve()
+    csv_rundata = Path(csv_rundata).absolute().resolve()
 
     df_config_data, df_run_data = _get_dataframes_from_summary(
         root_directory,
@@ -369,13 +388,4 @@ def post_run_csv(root_directory: str | Path) -> None:
         df_config_data,
         df_run_data,
     )
-
-
-# TODO(eddiebergman): This function name is misleading as it doesn't get anything.
-def get_run_summary_csv(root_directory: str | Path) -> None:
-    """Create CSV files summarizing the run data.
-
-    Args:
-        root_directory: The root directory of the NePS run.
-    """
-    post_run_csv(root_directory=root_directory)
+    return csv_config_data, csv_rundata

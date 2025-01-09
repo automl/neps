@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 ITERATIONS = 100
@@ -7,7 +9,6 @@ OPTIMIZERS = [
     "random_search",
     # "mf_bayesian_optimization",
     "bayesian_optimization",
-    "regularized_evolution",
 ]
 
 TASKS = [

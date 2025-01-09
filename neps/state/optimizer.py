@@ -2,28 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Mapping
+from collections.abc import Mapping
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from neps.state.seed_snapshot import SeedSnapshot
 
 
 @dataclass
 class BudgetInfo:
     """Information about the budget of an optimizer."""
 
-    max_cost_budget: float
-    used_cost_budget: float
-
-    @property
-    def remaining_cost_budget(self) -> float:
-        """The remaining budget."""
-        return self.max_cost_budget - self.used_cost_budget
+    max_cost_total: float | None = None
+    used_cost_budget: float = 0.0
+    max_evaluations: int | None = None
+    used_evaluations: int = 0
 
     def clone(self) -> BudgetInfo:
-        """Clone the budget info."""
-        return BudgetInfo(
-            max_cost_budget=self.max_cost_budget,
-            used_cost_budget=self.used_cost_budget,
-        )
+        """Create a copy of the budget info."""
+        return replace(self)
 
 
 @dataclass
@@ -33,7 +31,10 @@ class OptimizationState:
     budget: BudgetInfo | None
     """Information regarind the budget used by the optimization trajectory."""
 
-    shared_state: dict[str, Any]
+    seed_snapshot: SeedSnapshot
+    """The state of the random number generators at the time of the last sample."""
+
+    shared_state: dict[str, Any] | None
     """Any information the optimizer wants to store between calls
     to sample and post evaluations.
 

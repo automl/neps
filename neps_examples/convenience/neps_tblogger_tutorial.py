@@ -51,6 +51,7 @@ import logging
 import random
 import time
 from typing import Tuple
+from warnings import warn
 
 import numpy as np
 import torch
@@ -155,7 +156,7 @@ class MLP(nn.Module):
 # misclassified images.
 
 
-def loss_ev(model: nn.Module, data_loader: DataLoader) -> float:
+def objective_to_minimize_ev(model: nn.Module, data_loader: DataLoader) -> float:
     # Set the model in evaluation mode (no gradient computation).
     model.eval()
 
@@ -208,22 +209,22 @@ def training(
     for x, y in train_loader:
         optimizer.zero_grad()
         output = model(x)
-        loss = criterion(output, y)
-        loss.backward()
+        objective_to_minimize = criterion(output, y)
+        objective_to_minimize.backward()
         optimizer.step()
 
         predicted_labels = torch.argmax(output, dim=1)
         incorrect_mask = predicted_labels != y
         incorrect_images.append(x[incorrect_mask])
 
-    # Calculate validation loss using the loss_ev function.
-    validation_loss = loss_ev(model, validation_loader)
+    # Calculate validation objective_to_minimize using the objective_to_minimize_ev function.
+    validation_objective_to_minimize = objective_to_minimize_ev(model, validation_loader)
 
     # Return the misclassified image by during model training.
     if len(incorrect_images) > 0:
         incorrect_images = torch.cat(incorrect_images, dim=0)
 
-    return (validation_loss, incorrect_images)
+    return (validation_objective_to_minimize, incorrect_images)
 
 
 #############################################################
@@ -232,9 +233,9 @@ def training(
 
 def pipeline_space() -> dict:
     pipeline = dict(
-        lr=neps.FloatParameter(lower=1e-5, upper=1e-1, log=True),
-        optim=neps.CategoricalParameter(choices=["Adam", "SGD"]),
-        weight_decay=neps.FloatParameter(lower=1e-4, upper=1e-1, log=True),
+        lr=neps.Float(lower=1e-5, upper=1e-1, log=True),
+        optim=neps.Categorical(choices=["Adam", "SGD"]),
+        weight_decay=neps.Float(lower=1e-4, upper=1e-1, log=True),
     )
 
     return pipeline
@@ -243,8 +244,13 @@ def pipeline_space() -> dict:
 #############################################################
 # Implement the pipeline run search.
 
-
 def run_pipeline(lr, optim, weight_decay):
+    # Deprecated function, use evaluate_pipeline instead
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(lr, optim, weight_decay)
+
+
+def evaluate_pipeline(lr, optim, weight_decay):
     # Create the network model.
     model = MLP()
 
@@ -268,7 +274,7 @@ def run_pipeline(lr, optim, weight_decay):
     criterion = nn.CrossEntropyLoss()
 
     for i in range(max_epochs):
-        loss, miss_img = training(
+        objective_to_minimize, miss_img = training(
             optimizer=optimizer,
             model=model,
             criterion=criterion,
@@ -295,10 +301,10 @@ def run_pipeline(lr, optim, weight_decay):
         # 4. First two layer gradients passed as scalar configs.
 
         tblogger.log(
-            loss=loss,
+            objective_to_minimize=objective_to_minimize,
             current_epoch=i,
             write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
-            writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
+            writer_config_scalar=True,  # Set to `True` for a live objective_to_minimize trajectory for each config.
             writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
             # Appending extra data
             extra_data={
@@ -313,15 +319,15 @@ def run_pipeline(lr, optim, weight_decay):
 
         scheduler.step()
 
-        print(f"  Epoch {i + 1} / {max_epochs} Val Error: {loss} ")
+        print(f"  Epoch {i + 1} / {max_epochs} Val Error: {objective_to_minimize} ")
 
     # Calculate training and test accuracy.
-    train_accuracy = loss_ev(model, train_loader)
-    test_accuracy = loss_ev(model, test_loader)
+    train_accuracy = objective_to_minimize_ev(model, train_loader)
+    test_accuracy = objective_to_minimize_ev(model, test_loader)
 
     # Return a dictionary with relevant metrics and information.
     return {
-        "loss": loss,
+        "objective_to_minimize": objective_to_minimize,
         "info_dict": {
             "train_accuracy": train_accuracy,
             "test_accuracy": test_accuracy,
@@ -351,7 +357,7 @@ if __name__ == "__main__":
     # tblogger.get_status()
 
     run_args = dict(
-        run_pipeline=run_pipeline,
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space(),
         root_directory="results/neps_tblogger_example",
         searcher="random_search",

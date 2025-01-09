@@ -35,10 +35,11 @@ In code, the usage pattern can look like this:
 import neps
 import logging
 
-def run_pipeline( # (1)!
-    hyperparameter_a: float,
-    hyperparameter_b: int,
-    architecture_parameter: str,
+
+def run_pipeline(  # (1)!
+        hyperparameter_a: float,
+        hyperparameter_b: int,
+        architecture_parameter: str,
 ) -> dict:
     # insert here your own model
     model = MyModel(architecture_parameter)
@@ -49,7 +50,7 @@ def run_pipeline( # (1)!
     )
 
     return {
-        "loss": validation_error, #! (2)
+        "loss": validation_error,  # ! (2)
         "info_dict": {
             "training_error": training_error
             # + Other metrics
@@ -58,9 +59,9 @@ def run_pipeline( # (1)!
 
 
 pipeline_space = {  # (3)!
-    "hyperparameter_b":neps.IntegerParameter(1, 42, is_fidelity=True), #! (4)
-    "hyperparameter_a":neps.FloatParameter(1e-3, 1e-1, log=True) #! (5)
-    "architecture_parameter": neps.CategoricalParameter(["option_a", "option_b", "option_c"]),
+    "hyperparameter_b": neps.Integer(1, 42, is_fidelity=True),  # ! (4)
+    "hyperparameter_a": neps.Float(1e-3, 1e-1, log=True)  # ! (5)
+    "architecture_parameter": neps.Categorical(["option_a", "option_b", "option_c"]),
 }
 
 if __name__ == "__main__":

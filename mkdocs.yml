@@ -137,6 +137,7 @@ nav:
     - Optimizers: 'reference/optimizers.md'
     - Declarative Usage: 'reference/declarative_usage.md'
     - The Run Function: 'reference/run_pipeline.md'
+    - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
   - Examples: "examples/"  # auto-generated
   - API: 'api/' # auto-generated

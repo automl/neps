@@ -1,7 +1,7 @@
 # Optimizer settings from YAML configuration
-run_pipeline:
-  path: tests/test_yaml_run_args/test_declarative_usage_docs/run_pipeline.py
-  name: run_pipeline
+evaluate_pipeline:
+  path: tests/test_yaml_run_args/test_declarative_usage_docs/evaluate_pipeline.py
+  name: evaluate_pipeline
 
 pipeline_space:
   learning_rate:

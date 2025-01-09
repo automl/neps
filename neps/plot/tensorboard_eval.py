@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, ClassVar, Mapping
+from typing import TYPE_CHECKING, Any, ClassVar
 from typing_extensions import override
 
 import numpy as np
@@ -12,9 +13,16 @@ import torch
 from torch.utils.tensorboard.summary import hparams
 from torch.utils.tensorboard.writer import SummaryWriter
 
-from neps.runtime import get_in_progress_trial, get_workers_neps_state
+from neps.runtime import (
+    get_in_progress_trial,
+    get_workers_neps_state,
+    register_notify_trial_end,
+)
 from neps.status.status import get_summary_dict
 from neps.utils.common import get_initial_directory
+
+if TYPE_CHECKING:
+    from neps.state.trial import Trial
 
 
 class SummaryWriter_(SummaryWriter):  # noqa: N801
@@ -27,7 +35,7 @@ class SummaryWriter_(SummaryWriter):  # noqa: N801
     - Ensures all logs are stored in the same 'tfevent' directory for
       better organization.
     - Updates metric keys to have a consistent 'Summary/' prefix for clarity.
-    - Improves the display of 'Loss' or 'Accuracy' on the Summary file.
+    - Improves the display of 'objective_to_minimize' or 'Accuracy' on the Summary file.
 
     Methods:
     - add_hparams: Overrides the base method to log hyperparameters and
@@ -66,11 +74,7 @@ class tblogger:  # noqa: N801
 
     disable_logging: ClassVar[bool] = False
 
-    logger_bool: ClassVar[bool] = False
-    """logger_bool is true only if tblogger.log is used by the user, this
-    allows to always capturing the configuration data."""
-
-    loss: ClassVar[float | None] = None
+    objective_to_minimize: ClassVar[float | None] = None
     current_epoch: ClassVar[int | None] = None
 
     write_incumbent: ClassVar[bool | None] = None
@@ -87,8 +91,10 @@ class tblogger:  # noqa: N801
         trial = get_in_progress_trial()
         neps_state = get_workers_neps_state()
 
+        register_notify_trial_end("NEPS_TBLOGGER", tblogger.end_of_config)
+
         # We are assuming that neps state is all filebased here
-        root_dir = Path(neps_state.location)
+        root_dir = Path(neps_state.path)
         assert root_dir.exists()
 
         tblogger.config_working_directory = Path(trial.metadata.location)
@@ -97,12 +103,12 @@ class tblogger:  # noqa: N801
             if trial.metadata.previous_trial_location is not None
             else None
         )
+        tblogger.config_id = trial.metadata.id
         tblogger.optimizer_dir = root_dir
         tblogger.config = trial.config
 
     @staticmethod
     def _is_initialized() -> bool:
-        # Returns 'True' if config_writer is already initialized. 'False' otherwise
         return tblogger.config_writer is not None
 
     @staticmethod
@@ -110,7 +116,7 @@ class tblogger:  # noqa: N801
         # This code runs only once per config, to assign that config a config_writer.
         if (
             tblogger.config_previous_directory is None
-            and tblogger.config_working_directory
+            and tblogger.config_working_directory is not None
         ):
             # If no fidelities are there yet, define the writer via the config_id
             tblogger.config_id = str(tblogger.config_working_directory).rsplit(
@@ -120,8 +126,9 @@ class tblogger:  # noqa: N801
                 tblogger.config_working_directory / "tbevents"
             )
             return
+
         # Searching for the initial directory where tensorboard events are stored.
-        if tblogger.config_working_directory:
+        if tblogger.config_working_directory is not None:
             init_dir = get_initial_directory(
                 pipeline_directory=tblogger.config_working_directory
             )
@@ -135,7 +142,7 @@ class tblogger:  # noqa: N801
             )
 
     @staticmethod
-    def end_of_config() -> None:
+    def end_of_config(trial: Trial) -> None:  # noqa: ARG004
         """Closes the writer."""
         if tblogger.config_writer:
             # Close and reset previous config writers for consistent logging.
@@ -324,10 +331,7 @@ class tblogger:  # noqa: N801
         if tblogger.current_epoch >= 0 and tblogger.current_epoch % counter == 0:
             # Log every multiple of "counter"
 
-            if num_images > len(image):
-                # If the number of images requested by the user
-                # is more than the ones available.
-                num_images = len(image)
+            num_images = min(num_images, len(image))
 
             if random_images is False:
                 subset_images = image[:num_images]
@@ -338,7 +342,7 @@ class tblogger:  # noqa: N801
                 # We do not interfere with any randomness from the pipeline
                 num_total_images = len(image)
                 indices = seed.choice(num_total_images, num_images, replace=False)
-                subset_images = image[indices]  # type: ignore
+                subset_images = image[indices]
 
             resized_images = torch.nn.functional.interpolate(
                 subset_images,
@@ -373,20 +377,20 @@ class tblogger:  # noqa: N801
             TensorBoard writer is initialized at the correct directory.
 
             It also depends on the following global variables:
-                - tblogger.loss (float)
+                - tblogger.objective_to_minimize (float)
                 - tblogger.config_writer (SummaryWriter_)
                 - tblogger.config (dict)
                 - tblogger.current_epoch (int)
 
             The function will log hyperparameter configurations along
-            with a metric value (either accuracy or loss) to TensorBoard
+            with a metric value (either accuracy or objective_to_minimize) to TensorBoard
             based on the given configurations.
         """
         if not tblogger._is_initialized():
             tblogger._initialize_writers()
 
-        str_name = "Loss"
-        str_value = tblogger.loss
+        str_name = "Objective to minimize"
+        str_value = tblogger.objective_to_minimize
 
         values = {str_name: str_value}
         # Just an extra safety measure
@@ -407,7 +411,8 @@ class tblogger:  # noqa: N801
 
     @staticmethod
     def _tracking_incumbent_api() -> None:
-        """Track the incumbent (best) loss and log it in the TensorBoard summary.
+        """Track the incumbent (best) objective_to_minimize and log it in the TensorBoard
+            summary.
 
         Note:
             The function relies on the following global variables:
@@ -420,7 +425,7 @@ class tblogger:  # noqa: N801
         summary_dict = get_summary_dict(tblogger.optimizer_dir, add_details=True)
 
         incum_tracker = summary_dict["num_evaluated_configs"]
-        incum_val = summary_dict["best_loss"]
+        incum_val = summary_dict["best_objective_to_minimize"]
 
         if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
             tblogger.summary_writer = SummaryWriter_(tblogger.optimizer_dir / "summary")
@@ -474,7 +479,7 @@ class tblogger:  # noqa: N801
 
     @staticmethod
     def log(
-        loss: float,
+        objective_to_minimize: float,
         current_epoch: int,
         *,
         writer_config_scalar: bool = True,
@@ -486,28 +491,27 @@ class tblogger:  # noqa: N801
         hyperparameters, and images.
 
         Args:
-            loss: Current loss value.
+            objective_to_minimize: Current objective_to_minimize value.
             current_epoch: Current epoch of the experiment (used as the global step).
-            writer_config_scalar: Displaying the loss or accuracy
+            writer_config_scalar: Displaying the objective_to_minimize or accuracy
                 curve on tensorboard (default: True)
             writer_config_hparam: Write hyperparameters logging of the configs.
             write_summary_incumbent: Set to `True` for a live incumbent trajectory.
             extra_data: Additional experiment data for logging.
         """
         if tblogger.disable_logging:
-            tblogger.logger_bool = False
             return
 
-        tblogger.logger_bool = True
-
         tblogger.current_epoch = current_epoch
-        tblogger.loss = loss
+        tblogger.objective_to_minimize = objective_to_minimize
         tblogger.write_incumbent = write_summary_incumbent
 
         tblogger._initiate_internal_configurations()
 
         if writer_config_scalar:
-            tblogger._write_scalar_config(tag="Loss", value=loss)
+            tblogger._write_scalar_config(
+                tag="objective_to_minimize", value=objective_to_minimize
+            )
 
         if writer_config_hparam:
             tblogger._write_hparam_config()

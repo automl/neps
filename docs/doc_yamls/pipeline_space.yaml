@@ -3,8 +3,8 @@ learning_rate:
   lower: 1e-5
   upper: 1e-1
   log: true  # Log scale for learning rate
-  default: 1e-2
-  default_confidence: "medium"
+  prior: 1e-2
+  prior_confidence: "medium"
 epochs:
   lower: 5
   upper: 20
@@ -12,10 +12,10 @@ epochs:
 dropout_rate:
   lower: 0.1
   upper: 0.5
-  default: 0.2
-  default_confidence: "high"
+  prior: 0.2
+  prior_confidence: "high"
 optimizer:
   choices: [adam, sgd, adamw]
-  default: adam
-  # if default confidence is not defined it gets its default 'low'
+  prior: adam
+  # if prior confidence is not defined it gets its default 'low'
 batch_size: 64

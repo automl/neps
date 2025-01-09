@@ -44,6 +44,7 @@ import random
 import time
 from pathlib import Path
 from typing import Tuple
+from warnings import warn
 
 import lightning as L
 import numpy as np
@@ -90,7 +91,7 @@ class LitMNIST(L.LightningModule):
         self.n_train = n_train
         self.n_valid = n_valid
 
-        # Define data transformation and loss function
+        # Define data transformation and objective_to_minimize function
         self.transform = transforms.ToTensor()
         self.criterion = nn.NLLLoss()
 
@@ -118,39 +119,39 @@ class LitMNIST(L.LightningModule):
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Perform a forward pass and compute loss, predictions, and get the ground
+        Perform a forward pass and compute objective_to_minimize, predictions, and get the ground
         truth labels for a batch of data.
         """
         x, y = batch
         logits = self.forward(x)
-        loss = self.criterion(logits, y)
+        objective_to_minimize = self.criterion(logits, y)
         preds = torch.argmax(logits, dim=1)
 
-        return loss, preds, y
+        return objective_to_minimize, preds, y
 
     def training_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> float:
-        loss, preds, y = self.common_step(batch, batch_idx)
+        objective_to_minimize, preds, y = self.common_step(batch, batch_idx)
         self.train_accuracy.update(preds, y)
 
         self.log_dict(
-            {"train_loss": loss, "train_acc": self.val_accuracy.compute()},
+            {"train_objective_to_minimize": objective_to_minimize, "train_acc": self.val_accuracy.compute()},
             on_epoch=True,
             on_step=False,
             prog_bar=True,
         )
 
-        return loss
+        return objective_to_minimize
 
     def validation_step(
         self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
     ) -> None:
-        loss, preds, y = self.common_step(batch, batch_idx)
+        objective_to_minimize, preds, y = self.common_step(batch, batch_idx)
         self.val_accuracy.update(preds, y)
 
         self.log_dict(
-            {"val_loss": loss, "val_acc": self.val_accuracy.compute()},
+            {"val_objective_to_minimize": objective_to_minimize, "val_acc": self.val_accuracy.compute()},
             on_epoch=True,
             on_step=False,
             prog_bar=True,
@@ -249,14 +250,14 @@ class LitMNIST(L.LightningModule):
 def search_space() -> dict:
     # Define a dictionary to represent the hyperparameter search space
     space = dict(
-        data_dir=neps.ConstantParameter("./data"),
-        batch_size=neps.ConstantParameter(64),
-        lr=neps.FloatParameter(lower=1e-5, upper=1e-2, log=True, default=1e-3),
-        weight_decay=neps.FloatParameter(
-            lower=1e-5, upper=1e-3, log=True, default=5e-4
+        data_dir=neps.Constant("./data"),
+        batch_size=neps.Constant(64),
+        lr=neps.Float(lower=1e-5, upper=1e-2, log=True, prior=1e-3),
+        weight_decay=neps.Float(
+            lower=1e-5, upper=1e-3, log=True, prior=5e-4
         ),
-        optimizer=neps.CategoricalParameter(choices=["Adam", "SGD"], default="Adam"),
-        epochs=neps.IntegerParameter(lower=1, upper=9, log=False, is_fidelity=True),
+        optimizer=neps.Categorical(choices=["Adam", "SGD"], prior="Adam"),
+        epochs=neps.Integer(lower=1, upper=9, log=False, is_fidelity=True),
     )
     return space
 
@@ -264,8 +265,17 @@ def search_space() -> dict:
 #############################################################
 # Define the run pipeline function
 
+def run_pipeline(pipeline_directory, previous_pipeline_directory, **config):
+    # Deprecated function, use evaluate_pipeline instead
+    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
+    return evaluate_pipeline(
+        pipeline_directory,
+        previous_pipeline_directory,
+        **config,
+    )
 
-def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
+
+def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
     # Initialize the first directory to store the event and checkpoints files
     init_dir = get_initial_directory(pipeline_directory)
     checkpoint_dir = init_dir / "checkpoints"
@@ -281,7 +291,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
     # Add checkpoints at the end of training
     checkpoint_callback = ModelCheckpoint(
         dirpath=checkpoint_dir,
-        filename="{epoch}-{val_loss:.2f}",
+        filename="{epoch}-{val_objective_to_minimize:.2f}",
     )
 
     # Use this function to load the previous checkpoint if it exists
@@ -311,7 +321,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
         trainer.fit(model)
 
     train_accuracy = trainer.logged_metrics.get("train_acc", None)
-    val_loss = trainer.logged_metrics.get("val_loss", None)
+    val_objective_to_minimize = trainer.logged_metrics.get("val_objective_to_minimize", None)
     val_accuracy = trainer.logged_metrics.get("val_acc", None)
 
     # Test the model and retrieve test metrics
@@ -320,7 +330,7 @@ def run_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> d
     test_accuracy = trainer.logged_metrics.get("test_acc", None)
 
     return {
-        "loss": val_loss,
+        "objective_to_minimize": val_objective_to_minimize,
         "cost": epochs - previously_spent_epochs,
         "info_dict": {
             "train_accuracy": train_accuracy,
@@ -348,7 +358,7 @@ if __name__ == "__main__":
 
     # Run NePS with specified parameters
     neps.run(
-        run_pipeline=run_pipeline,
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=search_space(),
         root_directory="results/hyperband",
         max_evaluations_total=args.max_evaluations_total,

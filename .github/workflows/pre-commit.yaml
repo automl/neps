@@ -25,10 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
+    - name: install the latest version uv
+      uses: astral-sh/setup-uv@v3
       with:
-        python-version: 3.8
-    - run: pip install pre-commit
-    - run: pre-commit install
-    - run: pre-commit run --all-files
-
+        version: latest
+    - name: create virtual environment
+      run: uv venv --python '3.10'
+    - name: install pre-commit
+      run: uv pip install pre-commit
+    - name: install pre-commit hooks
+      run: uv run pre-commit install
+    - name: Run pre-commit hooks
+      run: uv run pre-commit run --all-files

@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, Literal, Mapping, Union
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 import numpy as np
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
-    from neps.state.trial import Trial
+    from neps.state.trial import Report
 
 # TODO(eddiebergman): We can turn this to an enum at some
 # point to prevent having to isinstance and str match
 ERROR: TypeAlias = Literal["error"]
-Number: TypeAlias = Union[int, float, np.number]
+Number: TypeAlias = int | float
 ConfigID: TypeAlias = str
 RawConfig: TypeAlias = Mapping[str, Any]
-Metadata: TypeAlias = Dict[str, Any]
 ResultDict: TypeAlias = Mapping[str, Any]
 
 # NOTE(eddiebergman): Getting types for scipy distributions sucks
@@ -33,9 +32,7 @@ class _NotSet:
 
 NotSet = _NotSet()
 
-
 f64 = np.float64
-i64 = np.int64
 
 
 # TODO(eddiebergman): Ideally, use `Trial` objects which can carry a lot more
@@ -51,7 +48,7 @@ class ConfigResult:
     config: SearchSpace
     """Configuration that was evaluated."""
 
-    result: Trial.Report | ResultDict | ERROR
+    result: Report | ResultDict | ERROR
     """Some dictionary of results."""
 
     metadata: dict
@@ -71,18 +68,7 @@ class _ConfigResultForStats:
     metadata: dict
 
     @property
-    def loss(self) -> float | ERROR:
+    def objective_to_minimize(self) -> float | ERROR:
         if isinstance(self.result, dict):
-            return float(self.result["loss"])
+            return float(self.result["objective_to_minimize"])
         return "error"
-
-
-# NOTE: Please try to avoid using this class and prefer a dict if its dynamic
-# or make a dataclass if the fields are known and are static
-class AttrDict(dict):
-    """Dictionary that allows access to keys as attributes."""
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        """Initialize like a dict."""
-        super().__init__(*args, **kwargs)
-        self.__dict__ = self

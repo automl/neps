@@ -5,7 +5,7 @@ param_float1:
   is_fidelity: off
 
 param_int1:
-  lower: -3
+  lower: 3
   upper: 30
   log: false
   is_fidelity: on

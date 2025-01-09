@@ -12,10 +12,10 @@ effectively incorporate various parameter types, ensuring that NePS can utilize 
 ## Parameters
 NePS currently features 4 primary hyperparameter types:
 
-* [`CategoricalParameter`][neps.search_spaces.hyperparameters.categorical.CategoricalParameter]
-* [`FloatParameter`][neps.search_spaces.hyperparameters.float.FloatParameter]
-* [`IntegerParameter`][neps.search_spaces.hyperparameters.integer.IntegerParameter]
-* [`ConstantParameter`][neps.search_spaces.hyperparameters.constant.ConstantParameter]
+* [`Categorical`][neps.search_spaces.hyperparameters.categorical.Categorical]
+* [`Float`][neps.search_spaces.hyperparameters.float.Float]
+* [`Integer`][neps.search_spaces.hyperparameters.integer.Integer]
+* [`Constant`][neps.search_spaces.hyperparameters.constant.Constant]
 
 Using these types, you can define the parameters that NePS will optimize during the search process.
 The most basic way to pass these parameters is through a Python dictionary, where each key-value
@@ -25,32 +25,32 @@ for optimizing a deep learning model:
 
 ```python
 pipeline_space = {
-    "learning_rate": neps.FloatParameter(0.00001, 0.1, log=True),
-    "num_epochs": neps.IntegerParameter(3, 30, is_fidelity=True),
-    "optimizer": neps.CategoricalParameter(["adam", "sgd", "rmsprop"]),
-    "dropout_rate": neps.ConstantParameter(0.5),
+    "learning_rate": neps.Float(0.00001, 0.1, log=True),
+    "num_epochs": neps.Integer(3, 30, is_fidelity=True),
+    "optimizer": neps.Categorical(["adam", "sgd", "rmsprop"]),
+    "dropout_rate": neps.Constant(0.5),
 }
 
-neps.run(.., pipeline_space=pipeline_space)
+neps.run(.., pipeline_space = pipeline_space)
 ```
 
 ??? example "Quick Parameter Reference"
 
-    === "`CategoricalParameter`"
+    === "`Categorical`"
 
-        ::: neps.search_spaces.hyperparameters.categorical.CategoricalParameter
+        ::: neps.search_spaces.hyperparameters.categorical.Categorical
 
-    === "`FloatParameter`"
+    === "`Float`"
 
-        ::: neps.search_spaces.hyperparameters.float.FloatParameter
+        ::: neps.search_spaces.hyperparameters.float.Float
 
-    === "`IntegerParameter`"
+    === "`Integer`"
 
-        ::: neps.search_spaces.hyperparameters.integer.IntegerParameter
+        ::: neps.search_spaces.hyperparameters.integer.Integer
 
-    === "`ConstantParameter`"
+    === "`Constant`"
 
-        ::: neps.search_spaces.hyperparameters.constant.ConstantParameter
+        ::: neps.search_spaces.hyperparameters.constant.Constant
 
 
 ## Using your knowledge, providing a Prior
@@ -70,10 +70,10 @@ import neps
 neps.run(
     ...,
     pipeline_space={
-        "learning_rate": neps.FloatParameter(1e-4, 1e-1, log=True, default=1e-2, default_confidence="medium"),
-        "num_epochs": neps.IntegerParameter(3, 30, is_fidelity=True),
-        "optimizer": neps.CategoricalParameter(["adam", "sgd", "rmsprop"], default="adam", default_confidence="low"),
-        "dropout_rate": neps.ConstantParameter(0.5),
+        "learning_rate": neps.Float(1e-4, 1e-1, log=True, default=1e-2, default_confidence="medium"),
+        "num_epochs": neps.Integer(3, 30, is_fidelity=True),
+        "optimizer": neps.Categorical(["adam", "sgd", "rmsprop"], default="adam", default_confidence="low"),
+        "dropout_rate": neps.Constant(0.5),
     }
 )
 ```

@@ -7,8 +7,8 @@ searcher_args:
   initial_design_type: max_budget
   prior_confidence: medium
   random_interleave_prob: 0.0
-  sample_default_first: true
-  sample_default_at_target: false
+  sample_prior_first: true
+  sample_prior_at_target: false
   prior_weight_type: geometric
   inc_sample_type: mutation
   inc_mutation_rate: 0.5
@@ -20,4 +20,3 @@ searcher_args:
   surrogate_model: gp
   acquisition: EI
   log_prior_weighted: false
-  acquisition_sampler: mutation

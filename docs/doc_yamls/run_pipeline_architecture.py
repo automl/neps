@@ -11,4 +11,4 @@ def example_pipeline(architecture, optimizer, learning_rate):
     model = architecture.to_pytorch()
     training_loss = train_model(model, optimizer, learning_rate)
     evaluation_loss = evaluate_model(model)
-    return {"loss": evaluation_loss, "training_loss": training_loss}
+    return {"objective_to_minimize": evaluation_objective_to_minimize, "training_loss": training_loss}

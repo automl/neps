@@ -1,32 +1,29 @@
-[tool.poetry]
+[project]
 name = "neural-pipeline-search"
 version = "v0.12.2"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
-  "Danny Stoll <stolld@cs.uni-freiburg.de>",
-  "Neeratyoy Mallik <mallik@cs.uni-freiburg.de>",
-  "Simon Schrodi",
-  "Eddie Bergman",
-  "Maciej Janowski",
-  "Samir Garibov",
-  "Tarek Abou Chakra",
-  "Daniel Rogalla",
-  "Carl Hvarfner",
-  "Binxin Ru",
-  "Nils Kober",
-  "Théophane Vallaeys",
-  "Frank Hutter",
+    { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
+    { name = "Neeratyoy Mallik", email = "mallik@cs.uni-freiburg.de" },
+    { name = "Simon Schrodi" },
+    { name = "Eddie Bergman" },
+    { name = "Maciej Janowski" },
+    { name = "Samir Garibov" },
+    { name = "Tarek Abou Chakra" },
+    { name = "Daniel Rogalla" },
+    { name = "Carl Hvarfner" },
+    { name = "Binxin Ru" },
+    { name = "Nils Kober" },
+    { name = "Théophane Vallaeys" },
+    { name = "Frank Hutter" },
 ]
 readme = "README.md"
-license = "Apache-2.0"
-homepage = "https://github.com/automl/neps"
-repository = "https://github.com/automl/neps"
-documentation = "https://automl.github.io/neps/"
+license = { file = "LICENSE" }
 keywords = [
-  "Neural Pipeline Search",
-  "Neural Architecture Search",
-  "Hyperparameter Optimization",
-  "AutoML",
+    "Neural Pipeline Search",
+    "Neural Architecture Search",
+    "Hyperparameter Optimization",
+    "AutoML",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -37,103 +34,117 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: MacOS",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Distributed Computing",
 ]
-packages = [{ include = "neps" }, { include = "neps_examples" }]
+requires-python = ">=3.10,<3.13"
 
+dependencies = [
+    "ConfigSpace>=0.7,<1.0",
+    "grakel>=0.1,<0.2",
+    "numpy>=1.0,<2.0",
+    "pandas>=2.0,<3.0",
+    "networkx>=2.6.3,<3.0",
+    "nltk>=3.6.4,<4.0",
+    "scipy>=1.13.1",
+    "torch>=2.0.1",
+    "matplotlib>=3.0,<4.0",
+    "more-itertools",
+    "portalocker>=2.0,<3.0",
+    "seaborn>=0.13,<0.14",
+    "pyyaml>=6.0,<7.0",
+    "tensorboard>=2.0,<3.0",
+    "typing-extensions",
+    "torchvision>=0.8.0",
+    "ifbo>=0.3.10",
+    "botorch>=0.12",
+    "gpytorch==1.13.0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.8,<3.12"
-ConfigSpace = "^0.7"
-grakel = "^0.1"
-numpy = "^1"
-pandas = "^2"
-networkx = "^2.6.3"
-nltk = "^3.6.4"
-scipy = "^1"
-torch = ">1.7.0,!=2.0.1, !=2.1.0"
-matplotlib = "^3"
-more-itertools = "*"
-portalocker = "^2"
-seaborn = "^0.13"
-pyyaml = "^6"
-tensorboard = "^2"
-typing-extensions = "*"
-torchvision = ">=0.8.0"
+[project.urls]
+homepage = "https://github.com/automl/neps"
+repository = "https://github.com/automl/neps"
+documentation = "https://automl.github.io/neps/"
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.4"
-pre-commit = "^3"
-mypy = "^1"
-pytest = "^7"
-pytest-cases = "^3"
-types-PyYAML = "^6"
-mkdocs-material = "*"
-mkdocs-autorefs = "*"
-mkdocs-gen-files = "*"
-mkdocstrings = { extras = ["python"], version = "*" }
-mkdocs-literate-nav = "*"
-mike = "*"
-black = "*"                                           # This allows mkdocstrings to format signatures in the docs
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pre-commit>=3,<4",
+    "mypy>=1,<2",
+    "pytest>=7,<8",
+    "pytest-cases>=3,<4",
+    "types-PyYAML>=6,<7",
+    "mkdocs-material",
+    "mkdocs-autorefs",
+    "mkdocs-gen-files",
+    "mkdocstrings[python]",
+    "mkdocs-literate-nav",
+    "mike",
+    "black",  # This allows mkdocstrings to format signatures in the docs
+]
 
-
-[tool.poetry.group.experimental]
-optional = true
-
-[tool.poetry.group.experimental.dependencies]
-gpytorch = "1.8.0"
+[tool.setuptools.packages.find]
+include = [
+    "neps",
+    "neps.*",
+    "neps_examples",
+]
+exclude = []
 
 [build-system]
-requires = ["poetry-core>=1.1.0"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "setuptools>=68.2.2",
+    "wheel>=0.41.2",
+]
+
+build-backend = "setuptools.build_meta"
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 # "tests",
 # "neps_examples",
 [tool.ruff]
-target-version = "py38"
+target-version = "py310"
 output-format = "full"
 line-length = 90
 src = ["neps"]
 
 # TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
-  "neps/optimizers/**/*.py",
-  "neps/search_spaces/architecture/**/*.py",
-  "neps/search_spaces/yaml_search_space_utils.py",
-  "neps/utils/run_args_from_yaml.py",
-  "neps/api.py",
-  "tests",
-  "neps_examples",
-  ".bzr",
-  ".direnv",
-  ".eggs",
-  ".git",
-  ".hg",
-  ".mypy_cache",
-  ".nox",
-  ".pants.d",
-  ".ruff_cache",
-  ".svn",
-  ".tox",
-  ".venv",
-  "__pypackages__",
-  "_build",
-  "buck-out",
-  "build",
-  "dist",
-  "node_modules",
-  "venv",
-  "docs",
+    "neps/optimizers/multi_fidelity_prior/utils.py",
+    "neps/search_spaces/architecture/**/*.py",
+    "neps/search_spaces/yaml_search_space_utils.py",
+    "neps/search_spaces/architecture",
+    "neps/utils/run_args_from_yaml.py",
+    "neps/api.py",
+    "tests",
+    "neps_examples",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "docs",
 ]
 
 [tool.ruff.lint]
-# Extend what ruff is allowed to fix, even it it may break
+# Extend what ruff is allowed to fix, even if it may break
 # This is okay given we use it all the time and it ensures
 # better practices. Would be dangerous if using for first
 # time on established project.
@@ -143,52 +154,52 @@ extend-safe-fixes = ["ALL"]
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 select = [
-  "A",
-  # "ANN", # Handled by mypy
-  "ARG",
-  "B",
-  "BLE",
-  "COM",
-  "C4",
-  "D",
-  # "DTZ",  # One day I should know how to utilize timezones and dates...
-  "E",
-  # "EXE", Meh
-  "ERA",
-  "F",
-  "FBT",
-  "I",
-  # "ISC",  # Favours implicit string concatenation
-  "INP",
-  # "INT", # I don't understand this one
-  "N",
-  "NPY",
-  "PD",
-  "PLC",
-  "PLE",
-  "PLR",
-  "PLW",
-  "PIE",
-  "PT",
-  "PTH",
-  # "PYI", # Specific to .pyi files for type stubs
-  "Q",
-  "PGH004",
-  "RET",
-  "RUF",
-  "C90",
-  "S",
-  # "SLF",    # Private member accessed (sure, it's python)
-  "SIM",
-  # "TRY", # Good in principle, would take a lot of work to statisfy
-  "T10",
-  "T20",
-  "TID",
-  "TCH",
-  "UP",
-  "N",
-  "W",
-  "YTT",
+    "A",
+    # "ANN", # Handled by mypy
+    "ARG",
+    "B",
+    "BLE",
+    "COM",
+    "C4",
+    "D",
+    # "DTZ",  # One day I should know how to utilize timezones and dates...
+    "E",
+    # "EXE", Meh
+    "ERA",
+    "F",
+    "FBT",
+    "I",
+    # "ISC",  # Favours implicit string concatenation
+    "INP",
+    # "INT", # I don't understand this one
+    "N",
+    "NPY",
+    "PD",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "PIE",
+    "PT",
+    "PTH",
+    # "PYI", # Specific to .pyi files for type stubs
+    "Q",
+    "PGH004",
+    "RET",
+    "RUF",
+    "C90",
+    "S",
+    # "SLF",    # Private member accessed (sure, it's python)
+    "SIM",
+    # "TRY", # Good in principle, would take a lot of work to statisfy
+    "T10",
+    "T20",
+    "TID",
+    "TCH",
+    "UP",
+    "N",
+    "W",
+    "YTT",
 ]
 
 ignore = [
@@ -203,54 +214,64 @@ ignore = [
   "S101",    # Use of assert detected.
   "W292",    # No newline at end of file
   "PLC1901", # "" can be simplified to be falsey
-  "TCH003",  # Move stdlib import into TYPE_CHECKING
+  "TC003",   # Move stdlib import into TYPE_CHECKING
   "B010",    # Do not use `setattr`
   "PD901",   # Use a better name than 'df'
   "PD011",   # Use .to_numpy() instead of .values  (triggers on report.values)
+  "PD008",   # Use `.loc` instead of `.at`. If speed is important, use NumPy.
   "COM812",  # Require trailing commas, recommended to ignore due to ruff formatter
   "PLR2004", # No magic numbers inline
   "N817",    # CamelCase import as (ignore for ConfigSpace)
+  "N999",    # Invalid name for module
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
+  "N803",    # Arguments should start with a lower case letter.
+  "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
 
 
 # Exclude a variety of commonly ignored directories.
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
-  "S101",
-  "D101",
-  "D102",
-  "D103",
-  "ANN001",
-  "ANN201",
-  "FBT001",
-  "D100",
-  "PD901",  #  X is a bad variable name. (pandas)
-  "TCH",
-  "N803",
-  "C901",   # Too complex
+    "S101",
+    "D101",
+    "D102",
+    "D103",
+    "ANN001",
+    "ANN201",
+    "FBT001",
+    "D100",
+    "PD901", #  X is a bad variable name. (pandas)
+    "TCH",
+    "N803",
+    "C901", # Too complex
 ]
 "__init__.py" = ["I002"]
 "neps_examples/*" = [
-  "INP001",
-  "I002",
-  "E741",
-  "D101",
-  "D103",
-  "T20",
-  "D415",
-  "ERA001",
-  "E402",
-  "E501",
+    "INP001",
+    "I002",
+    "E741",
+    "D101",
+    "D103",
+    "T20",
+    "D415",
+    "ERA001",
+    "E402",
+    "E501",
 ]
 "docs/*" = ["INP001"]
+# TODO
+"neps/optimizers/**.py" = [
+  "D", # Documentation of everything
+  "ARG002", # Unused arguments, bunch of them in inits
+  "PLR0913", # Too many arguments...
+]
 
 
 [tool.ruff.lint.isort]
 known-first-party = ["neps"]
 known-third-party = []
-no-lines-before = ["future"]
 required-imports = ["from __future__ import annotations"]
+no-lines-before = ["future"]
 combine-as-imports = true
 extra-standard-library = ["typing_extensions"]
 force-wrap-aliases = true
@@ -264,17 +285,17 @@ max-args = 10 # Changed from default of 5
 [tool.pytest.ini_options]
 addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
 markers = [
-  "ci_examples",
-  "core_examples",
-  "regression_all",
-  "runtime",
-  "neps_api",
-  "summary_csv",
+    "ci_examples",
+    "core_examples",
+    "regression_all",
+    "runtime",
+    "neps_api",
+    "summary_csv",
 ]
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
-python_version = "3.8"  # Match minimum supported version
+python_version = "3.10"  # Match minimum supported version
 packages = ["neps"]
 show_error_codes = true
 
@@ -300,12 +321,32 @@ check_untyped_defs = true
 # TODO(eddiebergman): Improve coverage on these modules
 [[tool.mypy.overrides]]
 module = [
-  "neps.api",
-  "neps.optimizers.*",
-  "neps.search_spaces.architecture.*",
-  "neps.utils.run_args_from_yaml",
+    "neps.api",
+    "neps.search_spaces.architecture.*",
+    "neps.utils.run_args_from_yaml",
+    "neps.optimizers.multi_fidelity.successive_halving",
+    "neps.optimizers.multi_fidelity.sampling_policy",
+    "neps.optimizers.multi_fidelity.promotion_policy",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.ei",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.ucb",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition",
+    "neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition",
+    "requests.*",
 ]
 ignore_errors = true
 
-[tool.poetry.scripts]
-neps = "neps.utils.cli:main"
+[tool.bumpversion]
+current_version = "0.12.2"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = "version = \"v{current_version}\""
+replace = "version = \"v{new_version}\""
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+search = "version: {current_version}"
+replace = "version: {new_version}"

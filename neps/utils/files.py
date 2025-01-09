@@ -3,11 +3,38 @@
 from __future__ import annotations
 
 import dataclasses
+import io
+import os
+from collections.abc import Iterable, Iterator, Mapping
+from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import IO, Any, Literal
 
 import yaml
+
+try:
+    from yaml import (
+        CDumper as YamlDumper,  # type: ignore
+        CSafeLoader as SafeLoader,  # type: ignore
+    )
+except ImportError:
+    from yaml import SafeLoader, YamlDumper  # type: ignore
+
+
+@contextmanager
+def atomic_write(file_path: Path | str, *args: Any, **kwargs: Any) -> Iterator[IO]:
+    """Write to a file atomically.
+
+    This means that the file will be flushed to disk and explicitly ask the operating
+    systems to sync the contents to disk. This ensures that other processes that read
+    from this file should see the contents immediately.
+    """
+    with open(file_path, *args, **kwargs) as file_stream:  # noqa: PTH123
+        yield file_stream
+        file_stream.flush()
+        os.fsync(file_stream.fileno())
+        file_stream.close()
 
 
 def serializable_format(data: Any) -> Any:  # noqa: PLR0911
@@ -40,24 +67,53 @@ def serializable_format(data: Any) -> Any:  # noqa: PLR0911
     return data
 
 
-def serialize(data: Any, path: Path | str, *, sort_keys: bool = True) -> None:
+def serialize(
+    data: Any,
+    path: Path,
+    *,
+    check_serialized: bool = True,
+    file_format: Literal["json", "yaml"] = "yaml",
+    sort_keys: bool = True,
+) -> None:
     """Serialize data to a yaml file."""
-    data = serializable_format(data)
-    path = Path(path)
-    with path.open("w") as file_stream:
+    if check_serialized:
+        data = serializable_format(data)
+
+    buf = io.StringIO()
+    if file_format == "yaml":
         try:
-            return yaml.safe_dump(data, file_stream, sort_keys=sort_keys)
+            yaml.dump(data, buf, YamlDumper, sort_keys=sort_keys)
         except yaml.representer.RepresenterError as e:
             raise TypeError(
                 "Could not serialize to yaml! The object "
                 f"{e.args[1]} of type {type(e.args[1])} is not."
             ) from e
+    elif file_format == "json":
+        import json
+
+        json.dump(data, buf, sort_keys=sort_keys)
+    else:
+        raise ValueError(f"Unknown format: {file_format}")
+
+    _str = buf.getvalue()
+    path.write_text(_str)
 
 
-def deserialize(path: Path | str) -> dict[str, Any]:
+def deserialize(
+    path: Path | str,
+    *,
+    file_format: Literal["json", "yaml"] = "yaml",
+) -> dict[str, Any]:
     """Deserialize data from a yaml file."""
     with Path(path).open("r") as file_stream:
-        data = yaml.full_load(file_stream)  # type: ignore
+        if file_format == "json":
+            import json
+
+            data = json.load(file_stream)
+        elif file_format == "yaml":
+            data = yaml.load(file_stream, SafeLoader)
+        else:
+            raise ValueError(f"Unknown format: {file_format}")
 
     if not isinstance(data, dict):
         raise TypeError(
@@ -66,8 +122,3 @@ def deserialize(path: Path | str) -> dict[str, Any]:
         )
 
     return data
-
-
-def empty_file(file_path: Path) -> bool:
-    """Check if a file does not exist, or if it does, if it is empty."""
-    return not file_path.exists() or file_path.stat().st_size <= 0

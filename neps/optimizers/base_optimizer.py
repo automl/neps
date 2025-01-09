@@ -2,194 +2,170 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from typing import Any, Mapping
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
-from dataclasses import asdict, dataclass
-from neps.state.optimizer import BudgetInfo
-from neps.utils.types import ConfigResult, RawConfig, ERROR, ResultDict
-from neps.search_spaces.search_space import SearchSpace
-from neps.utils.data_loading import _get_cost, _get_learning_curve, _get_loss
-from neps.state.trial import Trial
+from neps.state.trial import Report, Trial
+
+if TYPE_CHECKING:
+    from neps.search_spaces.search_space import SearchSpace
+    from neps.state.optimizer import BudgetInfo
+    from neps.utils.types import ERROR, ResultDict
+
+
+def _get_objective_to_minimize(
+    result: ERROR | ResultDict | float,
+    objective_to_minimize_value_on_error: float | None = None,
+    *,
+    ignore_errors: bool = False,
+) -> ERROR | float:
+    if result == "error":
+        if ignore_errors:
+            return "error"
+
+        if objective_to_minimize_value_on_error is not None:
+            return objective_to_minimize_value_on_error
+
+        raise ValueError(
+            "An error happened during the execution of your evaluate_pipeline function."
+            " You have three options: 1. If the error is expected and corresponds to"
+            " an objective_to_minimize value in your application (e.g., 0% accuracy),"
+            " you can set objective_to_minimize_value_on_error to some float. 2. If "
+            " sometimes your pipeline crashes randomly, you can set ignore_errors=True."
+            " 3. Fix your error."
+        )
+
+    if isinstance(result, dict):
+        return float(result["objective_to_minimize"])
+
+    assert isinstance(result, float)
+    return float(result)
+
+
+def _get_cost(
+    result: ERROR | ResultDict | float,
+    cost_value_on_error: float | None = None,
+    *,
+    ignore_errors: bool = False,
+) -> float | Any:
+    if result == "error":
+        if ignore_errors:
+            return "error"
+
+        if cost_value_on_error is None:
+            raise ValueError(
+                "An error happened during the execution of your evaluate_pipeline"
+                " function. You have three options: 1. If the error is expected and"
+                " corresponds to a cost value in your application, you can set"
+                " cost_value_on_error to some float. 2. If sometimes your pipeline"
+                " crashes randomly, you can set ignore_errors=True. 3. Fix your error."
+            )
+
+        return cost_value_on_error
+
+    if isinstance(result, Mapping):
+        return float(result["cost"])
+
+    return float(result)
 
 
 @dataclass
 class SampledConfig:
-    id: Trial.ID
+    id: str
     config: Mapping[str, Any]
-    previous_config_id: Trial.ID | None
+    previous_config_id: str | None = None
 
 
 class BaseOptimizer:
     """Base sampler class. Implements all the low-level work."""
 
+    # TODO: Remove a lot of these init params
+    # Ideally we just make this a `Protocol`, i.e. an interface
+    # and it has no functionality
     def __init__(
         self,
+        *,
         pipeline_space: SearchSpace,
         patience: int = 50,
         logger: logging.Logger | None = None,
-        budget: int | float | None = None,
-        loss_value_on_error: float | None = None,
+        max_cost_total: int | float | None = None,
+        objective_to_minimize_value_on_error: float | None = None,
         cost_value_on_error: float | None = None,
         learning_curve_on_error: float | list[float] | None = None,
-        ignore_errors=False,
+        ignore_errors: bool = False,
     ) -> None:
         if patience < 1:
             raise ValueError("Patience should be at least 1")
 
-        self.used_budget: float = 0.0
-        self.budget = budget
+        self.max_cost_total = max_cost_total
         self.pipeline_space = pipeline_space
         self.patience = patience
         self.logger = logger or logging.getLogger("neps")
-        self.loss_value_on_error = loss_value_on_error
+        self.objective_to_minimize_value_on_error = objective_to_minimize_value_on_error
         self.cost_value_on_error = cost_value_on_error
         self.learning_curve_on_error = learning_curve_on_error
         self.ignore_errors = ignore_errors
 
     @abstractmethod
-    def load_optimization_state(
-        self,
-        previous_results: dict[str, ConfigResult],
-        pending_evaluations: dict[str, SearchSpace],
-        budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_config_and_ids(self) -> tuple[RawConfig, str, str | None]:
-        """Sample a new configuration
-
-        Returns:
-            config: serializable object representing the configuration
-            config_id: unique identifier for the configuration
-            previous_config_id: if provided, id of a previous on which this
-                configuration is based
-        """
-        raise NotImplementedError
-
     def ask(
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
-        optimizer_state: dict[str, Any],
-    ) -> tuple[SampledConfig, dict[str, Any]]:
-        """Sample a new configuration
-
-        !!! note
-
-            The plan is this method replaces the two-step procedure of `load_optimization_state`
-            and `get_config_and_ids` in the future, replacing both with a single method `ask`
-            which would be easier for developer of NePS optimizers to implement.
-
-        !!! note
-
-            The `optimizer_state` right now is just a `dict` that optimizers are free to mutate
-            as desired. A `dict` is not ideal as its _stringly_ typed but this was the least
-            invasive way to add this at the moment. It's actually an existing feature no
-            optimizer uses except _cost-cooling_ which basically just took a value from
-            `budget_info`.
-
-            Ideally an optimizer overwriting this can decide what to return instead of having
-            to rely on them mutating it, however this is the best work-around I could come up with
-            for now.
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
+        """Sample a new configuration.
 
         Args:
             trials: All of the trials that are known about.
-            budget_info: information about the budget
-            optimizer_state: extra state the optimizer would like to keep between calls
+            budget_info: information about the budget constraints.
 
         Returns:
-            SampledConfig: a sampled configuration
-            dict: state the optimizer would like to keep between calls
+            The sampled configuration(s)
         """
-        completed: dict[Trial.ID, ConfigResult] = {}
-        pending: dict[Trial.ID, SearchSpace] = {}
-        for trial_id, trial in trials.items():
-            if trial.report is not None:
-                completed[trial_id] = ConfigResult(
-                    id=trial_id,
-                    config=self.pipeline_space.from_dict(trial.config),
-                    result=trial.report,
-                    # TODO: Better if we could just pass around this metadata
-                    # object instead of converting to a dict each time.
-                    metadata=asdict(trial.metadata),
-                )
-            elif trial.state in (
-                Trial.State.PENDING,
-                Trial.State.SUBMITTED,
-                Trial.State.EVALUATING,
-            ):
-                pending[trial_id] = self.pipeline_space.from_dict(trial.config)
+        ...
 
-        self.load_optimization_state(
-            previous_results=completed,
-            pending_evaluations=pending,
-            budget_info=budget_info,
-            optimizer_state=optimizer_state,
-        )
-        config, config_id, previous_config_id = self.get_config_and_ids()
-        return SampledConfig(
-            id=config_id, config=config, previous_config_id=previous_config_id
-        ), optimizer_state
-
-    def update_state_post_evaluation(
-        self, state: dict[str, Any], report: Trial.Report
-    ) -> dict[str, Any]:
-        # TODO: There's a slot in `OptimizerState` to store extra things
-        # required for the optimizer but is currently not used
-        # state["key"] = "value"
-        return state
-
-    def get_loss(
-        self, result: ERROR | ResultDict | float | Trial.Report
+    def get_objective_to_minimize(
+        self, result: ERROR | ResultDict | float | Report
     ) -> float | ERROR:
-        """Calls result.utils.get_loss() and passes the error handling through.
-        Please use self.get_loss() instead of get_loss() in all optimizer classes."""
-
+        """Calls result.utils.get_objective_to_minimize() and passes the error handling
+        through. Please use self.get_objective_to_minimize() instead of
+        get_objective_to_minimize() in all optimizer classes.
+        """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do this
-        # `_get_loss` at every call. We can also then just use `None` instead of the string `"error"`
-        if isinstance(result, Trial.Report):
-            return result.loss if result.loss is not None else "error"
+        # use `Trial` and `Report`, they already take care of this and save having to do
+        # this `_get_objective_to_minimize` at every call. We can also then just use
+        # `None` instead of the string `"error"`
+        if isinstance(result, Report):
+            return (
+                result.objective_to_minimize
+                if result.objective_to_minimize is not None
+                else "error"
+            )
 
-        return _get_loss(
+        return _get_objective_to_minimize(
             result,
-            loss_value_on_error=self.loss_value_on_error,
+            objective_to_minimize_value_on_error=self.objective_to_minimize_value_on_error,
             ignore_errors=self.ignore_errors,
         )
 
-    def get_cost(
-        self, result: ERROR | ResultDict | float | Trial.Report
-    ) -> float | ERROR:
+    def get_cost(self, result: ERROR | ResultDict | float | Report) -> float | ERROR:
         """Calls result.utils.get_cost() and passes the error handling through.
-        Please use self.get_cost() instead of get_cost() in all optimizer classes."""
+        Please use self.get_cost() instead of get_cost() in all optimizer classes.
+        """
         # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do this
-        # `_get_loss` at every call
-        if isinstance(result, Trial.Report):
-            return result.loss if result.loss is not None else "error"
+        # use `Trial` and `Report`, they already take care of this and save having to do
+        # this `_get_objective_to_minimize` at every call
+        if isinstance(result, Report):
+            return (
+                result.objective_to_minimize
+                if result.objective_to_minimize is not None
+                else "error"
+            )
 
         return _get_cost(
             result,
             cost_value_on_error=self.cost_value_on_error,
-            ignore_errors=self.ignore_errors,
-        )
-
-    def get_learning_curve(
-        self, result: str | dict | float | Trial.Report
-    ) -> list[float] | Any:
-        """Calls result.utils.get_loss() and passes the error handling through.
-        Please use self.get_loss() instead of get_loss() in all optimizer classes."""
-        # TODO(eddiebergman): This is a forward change for whenever we can have optimizers
-        # use `Trial` and `Report`, they already take care of this and save having to do this
-        # `_get_loss` at every call
-        if isinstance(result, Trial.Report):
-            return result.learning_curve
-
-        return _get_learning_curve(
-            result,
-            learning_curve_on_error=self.learning_curve_on_error,
             ignore_errors=self.ignore_errors,
         )
 

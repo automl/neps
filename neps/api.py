@@ -1,7 +1,5 @@
 """API for the neps package."""
 
-from __future__ import annotations
-
 import inspect
 import logging
 import warnings
@@ -28,14 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 def run(
-    run_pipeline: Callable | None = Default(None),
+    evaluate_pipeline: Callable | None = Default(None),
     root_directory: str | Path | None = Default(None),
     pipeline_space: (
-        dict[str, Parameter | CS.ConfigurationSpace]
-        | str
-        | Path
-        | CS.ConfigurationSpace
-        | None
+        dict[str, Parameter] | str | Path | CS.ConfigurationSpace | None
     ) = Default(None),
     run_args: str | Path | None = Default(None),
     overwrite_working_directory: bool = Default(False),
@@ -47,9 +41,10 @@ def run(
     continue_until_max_evaluation_completed: bool = Default(False),
     max_cost_total: int | float | None = Default(None),
     ignore_errors: bool = Default(False),
-    loss_value_on_error: None | float = Default(None),
+    objective_to_minimize_value_on_error: None | float = Default(None),
     cost_value_on_error: None | float = Default(None),
     pre_load_hooks: Iterable | None = Default(None),
+    sample_batch_size: int | None = Default(None),
     searcher: (
         Literal[
             "default",
@@ -59,7 +54,6 @@ def run(
             "priorband",
             "mobster",
             "asha",
-            "regularized_evolution",
         ]
         | BaseOptimizer
         | Path
@@ -75,14 +69,14 @@ def run(
         the multiple calls to run(.) will be independent.
 
     Args:
-        run_pipeline: The objective function to minimize.
+        evaluate_pipeline: The objective function to minimize.
         pipeline_space: The search space to minimize over.
         root_directory: The directory to save progress to. This is also used to
             synchronize multiple calls to run(.) for parallelization.
         run_args: An option for providing the optimization settings e.g.
-            max_evaluation_total in a YAML file.
+            max_evaluations_total in a YAML file.
         overwrite_working_directory: If true, delete the working directory at the start of
-            the run. This is, e.g., useful when debugging a run_pipeline function.
+            the run. This is, e.g., useful when debugging a evaluate_pipeline function.
         post_run_summary: If True, creates a csv file after each worker is done,
             holding summary information about the configs and results.
         development_stage_id: ID for the current development stage. Only needed if
@@ -96,15 +90,17 @@ def run(
             max_evaluations_total have been completed. This is only relevant in the
             parallel setting.
         max_cost_total: No new evaluations will start when this cost is exceeded. Requires
-            returning a cost in the run_pipeline function, e.g.,
+            returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards max_evaluations_total.
-        loss_value_on_error: Setting this and cost_value_on_error to any float will
-            supress any error and will use given loss value instead. default: None
-        cost_value_on_error: Setting this and loss_value_on_error to any float will
+        objective_to_minimize_value_on_error: Setting this and cost_value_on_error to any float will
+            supress any error and will use given objective_to_minimize value instead. default: None
+        cost_value_on_error: Setting this and objective_to_minimize_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
         pre_load_hooks: List of functions that will be called before load_results().
+        sample_batch_size: The number of samples to ask for in a single call to the
+            optimizer.
         searcher: Which optimizer to use. Can be a string identifier, an
             instance of BaseOptimizer, or a Path to a custom optimizer.
         **searcher_kwargs: Will be passed to the searcher. This is usually only needed by
@@ -118,15 +114,15 @@ def run(
     Example:
         >>> import neps
 
-        >>> def run_pipeline(some_parameter: float):
+        >>> def evaluate_pipeline(some_parameter: float):
         >>>    validation_error = -some_parameter
         >>>    return validation_error
 
-        >>> pipeline_space = dict(some_parameter=neps.FloatParameter(lower=0, upper=1))
+        >>> pipeline_space = dict(some_parameter=neps.Float(lower=0, upper=1))
 
         >>> logging.basicConfig(level=logging.INFO)
         >>> neps.run(
-        >>>    run_pipeline=run_pipeline,
+        >>>    evaluate_pipeline=evaluate_pipeline,
         >>>    pipeline_space=pipeline_space,
         >>>    root_directory="usage_example",
         >>>    max_evaluations_total=5,
@@ -200,7 +196,7 @@ def run(
             pipeline_space=settings.pipeline_space,
             max_cost_total=settings.max_cost_total,
             ignore_errors=settings.ignore_errors,
-            loss_value_on_error=settings.loss_value_on_error,
+            objective_to_minimize_value_on_error=settings.objective_to_minimize_value_on_error,
             cost_value_on_error=settings.cost_value_on_error,
             searcher=settings.searcher,
             **settings.searcher_kwargs,
@@ -230,7 +226,7 @@ def run(
         )
 
     _launch_runtime(
-        evaluation_fn=settings.run_pipeline,
+        evaluation_fn=settings.evaluate_pipeline,
         optimizer=searcher_instance,
         optimizer_info=searcher_info,
         max_cost_total=settings.max_cost_total,
@@ -238,16 +234,29 @@ def run(
         max_evaluations_total=settings.max_evaluations_total,
         max_evaluations_for_worker=settings.max_evaluations_per_run,
         continue_until_max_evaluation_completed=settings.continue_until_max_evaluation_completed,
-        loss_value_on_error=settings.loss_value_on_error,
+        objective_to_minimize_value_on_error=settings.objective_to_minimize_value_on_error,
         cost_value_on_error=settings.cost_value_on_error,
         ignore_errors=settings.ignore_errors,
         overwrite_optimization_dir=settings.overwrite_working_directory,
         pre_load_hooks=settings.pre_load_hooks,
+        sample_batch_size=settings.sample_batch_size,
     )
 
     if settings.post_run_summary:
         assert settings.root_directory is not None
-        post_run_csv(settings.root_directory)
+        config_data_path, run_data_path = post_run_csv(settings.root_directory)
+        logger.info(
+            "The post run summary has been created, which is a csv file with the "
+            "output of all data in the run."
+            f"\nYou can find a csv of all the configuratins at: {config_data_path}."
+            f"\nYou can find a csv of results at: {run_data_path}."
+        )
+    else:
+        logger.info(
+            "Skipping the creation of the post run summary, which is a csv file with the "
+            " output of all data in the run."
+            "\nSet `post_run_summary=True` to enable it."
+        )
 
 
 def _run_args(
@@ -261,7 +270,7 @@ def _run_args(
     ) = None,
     max_cost_total: int | float | None = None,
     ignore_errors: bool = False,
-    loss_value_on_error: None | float = None,
+    objective_to_minimize_value_on_error: None | float = None,
     cost_value_on_error: None | float = None,
     searcher: (
         Literal[
@@ -272,9 +281,9 @@ def _run_args(
             "priorband",
             "mobster",
             "asha",
-            "regularized_evolution",
         ]
         | BaseOptimizer
+        | dict
     ) = "default",
     **searcher_kwargs,
 ) -> tuple[BaseOptimizer, dict]:
@@ -337,11 +346,11 @@ def _run_args(
         if searcher in ["default", None]:
             # NePS decides the searcher according to the pipeline space.
             if pipeline_space.has_prior:
-                searcher = "priorband" if pipeline_space.has_fidelity else "pibo"
+                searcher = "priorband" if len(pipeline_space.fidelities) > 0 else "pibo"
             else:
                 searcher = (
                     "hyperband"
-                    if pipeline_space.has_fidelity
+                    if len(pipeline_space.fidelities) > 0
                     else "bayesian_optimization"
                 )
             searcher_info["searcher_selection"] = "neps-default"
@@ -402,7 +411,7 @@ def _run_args(
 
     searcher_config.update(
         {
-            "loss_value_on_error": loss_value_on_error,
+            "objective_to_minimize_value_on_error": objective_to_minimize_value_on_error,
             "cost_value_on_error": cost_value_on_error,
             "ignore_errors": ignore_errors,
         }
@@ -412,7 +421,7 @@ def _run_args(
         SearcherMapping, searcher_alg, "searcher", as_class=True
     )(
         pipeline_space=pipeline_space,
-        budget=max_cost_total,  # TODO: use max_cost_total everywhere
+        max_cost_total=max_cost_total,  # TODO: use max_cost_total everywhere
         **searcher_config,
     )
 
