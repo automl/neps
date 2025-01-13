@@ -1,16 +1,11 @@
-<<<<<<< HEAD
-from pytest_cases import parametrize
-from neps.sampling.samplers import Sampler, Sobol, WeightedSampler, BorderSampler
-from neps.sampling.priors import Prior, Uniform
-=======
 from __future__ import annotations
->>>>>>> master
 
 import torch
 from pytest_cases import parametrize
 
-from neps.sampling.priors import Prior, UniformPrior
-from neps.sampling.samplers import BorderSampler, Sampler, Sobol, WeightedSampler
+from pytest_cases import parametrize
+from neps.sampling.samplers import Sampler, Sobol, WeightedSampler, BorderSampler
+from neps.sampling.priors import Prior, Uniform
 from neps.search_spaces.domain import Domain
 
 
@@ -31,7 +26,7 @@ def _make_centered_prior(ndim: int) -> Prior:
         _make_centered_prior(ndim=3),
         WeightedSampler(
             [Uniform(ndim=3), _make_centered_prior(3), Sobol(ndim=3)],
-            weights=torch.tensor([0.5, 0.25, 0.25]),
+            weights=torch.tensor([0.5, 0.25, 0.25]).tolist(),
         ),
     ],
 )

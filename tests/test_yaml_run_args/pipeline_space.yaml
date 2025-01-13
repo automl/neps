@@ -1,9 +1,0 @@
-lr:
-  lower: 1e-3
-  upper: 0.1
-epochs:
-  lower: 1
-  upper: 10
-optimizer:
-  choices: [adam, sgd, adamw]
-batch_size: 64

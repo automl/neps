@@ -4,10 +4,9 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps.optimizers.random_search.optimizer import RandomSearch
+from neps.optimizers import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces import Float
-from neps.search_spaces.search_space import SearchSpace
+from neps.search_spaces import Float, SearchSpace
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.seed_snapshot import SeedSnapshot
@@ -29,11 +28,11 @@ def neps_state(tmp_path: Path) -> NePSState:
 def test_default_values_on_error(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
-            objective_to_minimize_value_on_error=2.4,  # <- Highlight
+            objective_value_on_error=2.4,  # <- Highlight
             cost_value_on_error=2.4,  # <- Highlight
             learning_curve_on_error=[2.4, 2.5],  # <- Highlight
         ),
@@ -82,7 +81,7 @@ def test_default_values_on_error(
 def test_default_values_on_not_specified(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -133,7 +132,7 @@ def test_default_values_on_not_specified(
 def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(

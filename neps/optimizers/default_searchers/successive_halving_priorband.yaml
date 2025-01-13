@@ -1,4 +1,0 @@
-strategy: successive_halving_priorband
-# Arguments that can be modified by the user
-eta: 3
-sample_default_first: false  # true, false, "highest_fidelity"

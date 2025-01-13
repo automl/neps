@@ -4,9 +4,11 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
 import torch
+import random
 
 from neps.sampling import Sampler
 from neps.sampling.priors import Prior
+from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
 
 if TYPE_CHECKING:
     from neps.search_spaces.encoding import ConfigEncoder
@@ -72,7 +74,8 @@ def make_initial_design(  # noqa: PLR0912, C901
             fids = lambda: _fids
         case True:
             fids = lambda: {
-                name: hp.sample_value() for name, hp in space.fidelities.items()
+                name: hp.domain.cast_one(random.random(), frm=UNIT_FLOAT_DOMAIN)
+                for name, hp in space.fidelities.items()
             }
         case int() | float():
             if len(space.fidelities) != 1:

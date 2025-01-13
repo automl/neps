@@ -5,15 +5,19 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps.optimizers.random_search.optimizer import RandomSearch
+from neps.optimizers import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces import Float
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
-from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
+from neps.search_spaces import Float, SearchSpace
+from neps.state import (
+    NePSState,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+    DefaultReportValues,
+    OnErrorPossibilities,
+    WorkerSettings,
+    Trial,
+)
 
 
 @fixture
@@ -32,7 +36,7 @@ def neps_state(tmp_path: Path) -> NePSState:
 def test_max_evaluations_total_stopping_criterion(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -86,7 +90,7 @@ def test_max_evaluations_total_stopping_criterion(
 def test_worker_evaluations_total_stopping_criterion(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -149,7 +153,7 @@ def test_worker_evaluations_total_stopping_criterion(
 def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -206,7 +210,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 def test_max_cost_total(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -258,7 +262,7 @@ def test_max_cost_total(
 def test_worker_cost_total(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -318,7 +322,7 @@ def test_worker_cost_total(
 def test_worker_wallclock_time(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -377,7 +381,7 @@ def test_worker_wallclock_time(
 def test_max_worker_evaluation_time(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -437,7 +441,7 @@ def test_max_worker_evaluation_time(
 def test_max_evaluation_time_global(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),

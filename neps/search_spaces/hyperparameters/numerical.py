@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeVar
 from typing_extensions import override
 
 import numpy as np
@@ -52,7 +52,7 @@ def _get_truncnorm_prior_and_std(
     return scipy.stats.truncnorm(a, b), float(std)
 
 
-class Numerical(ParameterWithPrior[T, T]):
+class Numerical(ParameterWithPrior, Generic[T]):
     """A numerical hyperparameter is bounded by a lower and upper value.
 
     Attributes:
@@ -66,8 +66,6 @@ class Numerical(ParameterWithPrior[T, T]):
         prior_confidence_score: The prior confidence score.
         has_prior: Whether the hyperparameter has a prior.
     """
-
-    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]]
 
     def __init__(
         self,
@@ -112,13 +110,6 @@ class Numerical(ParameterWithPrior[T, T]):
                 f" upper={upper}"
             )
 
-        if prior_confidence not in self.DEFAULT_CONFIDENCE_SCORES:
-            raise ValueError(
-                f"{_cls_name} parameter: prior confidence score error. Expected one of "
-                f"{list(self.DEFAULT_CONFIDENCE_SCORES.keys())}, but got "
-                f"{prior_confidence}"
-            )
-
         if is_fidelity and (lower <= 0 or upper <= 0):
             raise ValueError(
                 f"{_cls_name} parameter: fidelity parameter bounds error (log scale "
@@ -150,89 +141,3 @@ class Numerical(ParameterWithPrior[T, T]):
             prior_confidence
         ]
         self.has_prior: bool = self.prior is not None
-
-    @override
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, self.__class__):
-            return False
-
-        return (
-            self.lower == other.lower
-            and self.upper == other.upper
-            and self.log == other.log
-            and self.is_fidelity == other.is_fidelity
-            and self.value == other.value
-            and self.prior == other.prior
-            and self.prior_confidence_score == other.prior_confidence_score
-        )
-
-    def _get_truncnorm_prior_and_std(self) -> tuple[TruncNorm, float]:
-        if self.log:
-            assert self.log_bounds is not None
-            low, high = self.log_bounds
-            prior = self.log_prior
-        else:
-            low, high = self.lower, self.upper
-            prior = self.prior
-
-        assert prior is not None
-        return _get_truncnorm_prior_and_std(
-            low=low,
-            high=high,
-            prior=prior,
-            confidence_score=self.prior_confidence_score,
-        )
-
-
-class NumericalParameter(Numerical):
-    """Deprecated: Use `Numerical` instead of `NumericalParameter`.
-
-    This class remains for backward compatibility and will raise a deprecation
-    warning if used.
-    """
-
-    def __init__(
-        self,
-        lower: T,
-        upper: T,
-        *,
-        log: bool = False,
-        prior: T | None,
-        is_fidelity: bool,
-        domain: Domain[T],
-        prior_confidence: Literal["low", "medium", "high"] = "low",
-    ):
-        """Initialize a deprecated `NumericalParameter`.
-
-        Args:
-            lower: The lower bound of the numerical hyperparameter.
-            upper: The upper bound of the numerical hyperparameter.
-            log: Whether the hyperparameter is in log space.
-            prior: The prior value of the hyperparameter.
-            is_fidelity: Whether the hyperparameter is a fidelity parameter.
-            domain: The domain of the hyperparameter.
-            prior_confidence: The prior confidence choice.
-
-        Raises:
-            DeprecationWarning: A warning indicating that `neps.NumericalParameter` is
-            deprecated and `neps.Numerical` should be used instead.
-        """
-        import warnings
-
-        warnings.warn(
-            (
-                "Usage of 'neps.NumericalParameter' is deprecated and will be removed in"
-                " future releases. Please use 'neps.Numerical' instead."
-            ),
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(
-            lower=lower,
-            upper=upper,
-            log=log,
-            prior=prior,
-            is_fidelity=is_fidelity,
-            domain=domain,
-            prior_confidence=prior_confidence,
-        )

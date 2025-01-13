@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import numpy as np
 import torch
 
-from neps.optimizers.mf_brackets import calculate_sh_rungs
+from neps.optimizers.utils import brackets
 from neps.sampling.priors import Prior
 from neps.sampling.samplers import Sampler
 from neps.search_spaces.encoding import ConfigEncoder
@@ -92,7 +92,7 @@ def sample_with_priorband(
     # Extra
     seed: torch.Generator | None = None,
 ) -> dict[str, Any]:
-    rung_to_fid, rung_sizes = calculate_sh_rungs(
+    rung_to_fid, rung_sizes = brackets.calculate_sh_rungs(
         bounds=fid_bounds,
         eta=eta,
         early_stopping_rate=early_stopping_rate,

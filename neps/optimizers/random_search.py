@@ -20,7 +20,6 @@ class RandomSearch:
 
     pipeline_space: SearchSpace
     ignore_fidelity: bool
-    seed: int | None
     encoder: ConfigEncoder
     sampler: Sampler
 

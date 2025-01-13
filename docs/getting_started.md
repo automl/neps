@@ -71,7 +71,7 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         root_directory="path/to/save/results",  # Replace with the actual path.
         max_evaluations_total=100,
-        searcher="hyperband"  # Optional specifies the search strategy,
+        optimizer="hyperband"  # Optional specifies optimizer to use
         # otherwise NePs decides based on your data.
     )
 ```

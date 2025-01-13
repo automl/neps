@@ -288,7 +288,6 @@ addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
 markers = [
     "ci_examples",
     "core_examples",
-    "regression_all",
     "runtime",
     "neps_api",
     "summary_csv",

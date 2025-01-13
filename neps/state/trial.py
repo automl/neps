@@ -76,25 +76,6 @@ class Report:
         if isinstance(self.err, str):
             self.err = Exception(self.err)  # type: ignore
 
-    def to_deprecate_result_dict(self) -> dict[str, Any] | ERROR:
-        """Return the report as a dictionary."""
-        if self.reported_as == "success":
-            d = {
-                "objective_to_minimize": self.objective_to_minimize,
-                "cost": self.cost,
-                **self.extra,
-            }
-
-            # HACK: Backwards compatibility. Not sure how much this is needed
-            # but it should be removed once optimizers stop calling the
-            # `get_objective_to_minimize`, `get_cost`, `get_learning_curve` methods of
-            #  `BaseOptimizer` and just use the `Report` directly.
-            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
-                d.setdefault("info_dict", {})["learning_curve"] = self.learning_curve
-            return d
-
-        return "error"
-
     def __eq__(self, value: Any, /) -> bool:
         # HACK : Since it could be probably that one of objective_to_minimize or cost is
         # nan, we need a custom comparator for this object

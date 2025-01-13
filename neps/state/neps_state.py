@@ -34,7 +34,7 @@ from neps.env import (
     TRIAL_FILELOCK_TIMEOUT,
 )
 from neps.exceptions import NePSError, TrialAlreadyExistsError, TrialNotFoundError
-from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers.optimizer import AskFunction
 from neps.state.err_dump import ErrDump
 from neps.state.filebased import (
     FileLocker,
@@ -260,15 +260,15 @@ class NePSState:
 
     @overload
     def lock_and_sample_trial(
-        self, optimizer: BaseOptimizer, *, worker_id: str, n: None = None
+        self, optimizer: AskFunction, *, worker_id: str, n: None = None
     ) -> Trial: ...
     @overload
     def lock_and_sample_trial(
-        self, optimizer: BaseOptimizer, *, worker_id: str, n: int
+        self, optimizer: AskFunction, *, worker_id: str, n: int
     ) -> list[Trial]: ...
 
     def lock_and_sample_trial(
-        self, optimizer: BaseOptimizer, *, worker_id: str, n: int | None = None
+        self, optimizer: AskFunction, *, worker_id: str, n: int | None = None
     ) -> Trial | list[Trial]:
         """Acquire the state lock and sample a trial."""
         with self._optimizer_lock.lock():
@@ -301,7 +301,7 @@ class NePSState:
     @overload
     def _sample_trial(
         self,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         *,
         worker_id: str,
         trials: dict[str, Trial],
@@ -312,7 +312,7 @@ class NePSState:
     @overload
     def _sample_trial(
         self,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         *,
         worker_id: str,
         trials: dict[str, Trial],
@@ -322,7 +322,7 @@ class NePSState:
 
     def _sample_trial(
         self,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         *,
         worker_id: str,
         trials: dict[str, Trial],
@@ -356,7 +356,7 @@ class NePSState:
             for hook in _sample_hooks:
                 optimizer = hook(optimizer)  # type: ignore
 
-        assert isinstance(optimizer, BaseOptimizer)
+        assert callable(optimizer)
         if opt_state.budget is not None:
             # NOTE: All other values of budget are ones that should remain
             # constant, there are currently only these two which are dynamic as
@@ -368,11 +368,11 @@ class NePSState:
             )
             opt_state.budget.used_evaluations = len(trials)
 
-        sampled_configs = optimizer.ask(
+        sampled_configs = optimizer(
             trials=trials,
-            budget_info=opt_state.budget.clone()
-            if opt_state.budget is not None
-            else None,
+            budget_info=(
+                opt_state.budget.clone() if opt_state.budget is not None else None
+            ),
             n=n,
         )
 

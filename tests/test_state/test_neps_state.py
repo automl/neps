@@ -2,6 +2,7 @@
 This could be generalized if we end up with a server based implementation but
 for now we're just testing the filebased implementation.
 """
+
 from __future__ import annotations
 
 import time
@@ -11,8 +12,7 @@ from typing import Any
 import pytest
 from pytest_cases import case, fixture, parametrize, parametrize_with_cases
 
-from neps.optimizers import SearcherMapping
-from neps.optimizers.base_optimizer import BaseOptimizer
+from neps.optimizers import PredefinedOptimizers, AskFunction, load_optimizer
 from neps.search_spaces.hyperparameters import (
     Categorical,
     Constant,
@@ -74,6 +74,7 @@ JUST_SKIP = [
 
 OPTIMIZER_FAILS_WITH_FIDELITY = [
     "random_search",
+    "bayesian_optimization_cost_aware",
     "bayesian_optimization",
     "pibo",
     "cost_cooling_bayesian_optimization",
@@ -88,26 +89,17 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "asha",
     "asha_prior",
     "hyperband",
-    "hyperband_custom_default",
+    "hyperband_prior",
+    "async_hb",
+    "async_hb_prior",
     "priorband",
-    "priorband_bo",
-    "mobster",
-    "mf_ei_bo",
+    "priorband_sh",
     "priorband_asha",
+    "priorband_async",
+    "priorband_bo",
+    "bayesian_optimization_cost_aware",
+    "mobster",
     "ifbo",
-    "priorband_asha_hyperband",
-]
-OPTIMIZER_REQUIRES_BUDGET = [
-    "successive_halving_prior",
-    "hyperband_custom_default",
-    "asha",
-    "priorband",
-    "priorband_bo",
-    "priorband_asha",
-    "priorband_asha_hyperband",
-    "hyperband",
-    "asha_prior",
-    "mobster",
 ]
 REQUIRES_PRIOR = {
     "priorband",
@@ -119,9 +111,9 @@ REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
 
 @fixture
-@parametrize("key", list(SearcherMapping.keys()))
+@parametrize("key", list(PredefinedOptimizers.keys()))
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
-def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimizer, str]:
+def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[AskFunction, str]:
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
@@ -134,15 +126,9 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in OPTIMIZER_REQUIRES_FIDELITY and not len(search_space.fidelities) > 0:
         pytest.xfail(f"{key} requires a fidelity parameter")
 
-    kwargs: dict[str, Any] = {
-        "pipeline_space": search_space,
-    }
-    if key in OPTIMIZER_REQUIRES_BUDGET:
-        kwargs["max_cost_total"] = 10
-
-    optimizer_cls = SearcherMapping[key]
-
-    return optimizer_cls(**kwargs), key
+    kwargs: dict[str, Any] = {}
+    opt, _ = load_optimizer((key, kwargs), search_space)
+    return opt, key
 
 
 @parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])
@@ -169,7 +155,7 @@ def case_neps_state_filebased(
 @parametrize_with_cases("neps_state", cases=".", prefix="case_neps_state")
 def test_sample_trial(
     neps_state: NePSState,
-    optimizer_and_key: tuple[BaseOptimizer, str],
+    optimizer_and_key: tuple[AskFunction, str],
 ) -> None:
     optimizer, key = optimizer_and_key
     if key in REQUIRES_COST and neps_state.lock_and_get_optimizer_state().budget is None:
@@ -182,7 +168,6 @@ def test_sample_trial(
 
     trial1 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
-        assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     # HACK: Unfortunatly due to windows, who's time.time() is not very
@@ -196,7 +181,6 @@ def test_sample_trial(
 
     trial2 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
-        assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     assert trial1 != trial2

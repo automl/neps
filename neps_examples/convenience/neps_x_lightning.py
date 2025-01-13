@@ -37,6 +37,7 @@ pip install lightning
 
 These dependencies ensure you have everything you need for this tutorial.
 """
+
 import argparse
 import glob
 import logging
@@ -136,7 +137,10 @@ class LitMNIST(L.LightningModule):
         self.train_accuracy.update(preds, y)
 
         self.log_dict(
-            {"train_objective_to_minimize": objective_to_minimize, "train_acc": self.val_accuracy.compute()},
+            {
+                "train_objective_to_minimize": objective_to_minimize,
+                "train_acc": self.val_accuracy.compute(),
+            },
             on_epoch=True,
             on_step=False,
             prog_bar=True,
@@ -151,15 +155,16 @@ class LitMNIST(L.LightningModule):
         self.val_accuracy.update(preds, y)
 
         self.log_dict(
-            {"val_objective_to_minimize": objective_to_minimize, "val_acc": self.val_accuracy.compute()},
+            {
+                "val_objective_to_minimize": objective_to_minimize,
+                "val_acc": self.val_accuracy.compute(),
+            },
             on_epoch=True,
             on_step=False,
             prog_bar=True,
         )
 
-    def test_step(
-        self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int
-    ) -> None:
+    def test_step(self, batch: Tuple[torch.Tensor, torch.Tensor], batch_idx: int) -> None:
         _, preds, y = self.common_step(batch, batch_idx)
         self.test_accuracy.update(preds, y)
 
@@ -253,9 +258,7 @@ def search_space() -> dict:
         data_dir=neps.Constant("./data"),
         batch_size=neps.Constant(64),
         lr=neps.Float(lower=1e-5, upper=1e-2, log=True, prior=1e-3),
-        weight_decay=neps.Float(
-            lower=1e-5, upper=1e-3, log=True, prior=5e-4
-        ),
+        weight_decay=neps.Float(lower=1e-5, upper=1e-3, log=True, prior=5e-4),
         optimizer=neps.Categorical(choices=["Adam", "SGD"], prior="Adam"),
         epochs=neps.Integer(lower=1, upper=9, log=False, is_fidelity=True),
     )
@@ -264,6 +267,7 @@ def search_space() -> dict:
 
 #############################################################
 # Define the run pipeline function
+
 
 def run_pipeline(pipeline_directory, previous_pipeline_directory, **config):
     # Deprecated function, use evaluate_pipeline instead
@@ -321,7 +325,9 @@ def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, **config)
         trainer.fit(model)
 
     train_accuracy = trainer.logged_metrics.get("train_acc", None)
-    val_objective_to_minimize = trainer.logged_metrics.get("val_objective_to_minimize", None)
+    val_objective_to_minimize = trainer.logged_metrics.get(
+        "val_objective_to_minimize", None
+    )
     val_accuracy = trainer.logged_metrics.get("val_acc", None)
 
     # Test the model and retrieve test metrics
@@ -362,7 +368,7 @@ if __name__ == "__main__":
         pipeline_space=search_space(),
         root_directory="results/hyperband",
         max_evaluations_total=args.max_evaluations_total,
-        searcher="hyperband",
+        optimizer="hyperband",
     )
 
     # Record the end time and calculate execution time

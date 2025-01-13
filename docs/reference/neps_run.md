@@ -206,8 +206,8 @@ Parameters not explicitly defined within this file will receive their default va
     root_directory: "neps_results"  # Output directory for results
     max_evaluations_total: 100
     post_run_summary: # Defaults applied if left empty
-    searcher:
-      strategy: "bayesian_optimization"
+    optimizer:
+      name: "bayesian_optimization"
       initial_design_size: 5
       surrogate_model: "gp"
     ```
@@ -246,43 +246,10 @@ neps.run(
     Any runs that error will still count towards the total `max_evaluations_total` or `max_evaluations_per_run`.
 
 ## Selecting an Optimizer
-By default NePS intelligently selects the most appropriate search strategy based on your defined configurations in `pipeline_space=`, one of the arguments to [`neps.run()`][neps.api.run].
+By default NePS intelligently selects the most appropriate optimizer based on your defined configurations in `pipeline_space=`, one of the arguments to [`neps.run()`][neps.api.run].
 
 The characteristics of your search space, as represented in the `pipeline_space=`, play a crucial role in determining which optimizer NePS will choose.
-This automatic selection process ensures that the strategy aligns with the specific requirements and nuances of your search space, thereby optimizing the effectiveness of the hyperparameter and/or architecture optimization.
+This automatic selection process ensures that the optimizer aligns with the specific requirements and nuances of your search space, thereby optimizing the effectiveness of the hyperparameter and/or architecture optimization.
 
 You can also manually select a specific or custom optimizer that better matches your specific needs.
-For more information about the available searchers and how to customize your own, refer [here](../reference/optimizers.md).
-
-## Managing Experiments
-While tuning pipelines, it is common to run multiple experiments, perhaps varying the search space, the metric, the model or any other factors of your development.
-We provide two extra arguments to help manage directories for these, `development_stage_id=` and `task_id=`.
-
-```python
-
-def run1(learning_rate: float, epochs: int) -> float:
-    # Only tuning learning rate
-
-    return
-
-def run2(learning_rate: float, l2: float, epochs: int) -> float:
-    # Tuning learning rate and l2 regularization
-
-    return
-
-neps.run(
-    ...,
-    task_id="l2_regularization", # (1)!
-    development_stage_id="003", # (2)!
-)
-```
-
-1.  An identifier used when working with multiple development stages.
-    Instead of creating new root directories, use this identifier to save the results of an optimization run in a separate dev_id folder within the root_directory.
-2.  An identifier used when the optimization process involves multiple tasks.
-    This functions similarly to `development_stage_id=`, but it creates a folder named after the `task_id=`, providing an organized way to separate results for different tasks within the `root_directory=`.
-
-## Others
-
-* `pre_load_hooks=`: A list of hook functions to be called before loading results.
-
+For more information about the available optimizers and how to customize your own, refer [here](../reference/optimizers.md).

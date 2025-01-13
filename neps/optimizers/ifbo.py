@@ -124,8 +124,8 @@ class IFBO:
         budget_index_domain = Domain.indices(self.n_fidelity_bins)
 
         # If we havn't passed the intial design phase
-        if self._initial_design is None:
-            self._initial_design = make_initial_design(
+        if new_id < self.n_initial_design:
+            init_design = make_initial_design(
                 space=self.pipeline_space,
                 encoder=self.encoder,
                 sample_prior_first=self.sample_prior_first,
@@ -134,9 +134,7 @@ class IFBO:
                 sample_fidelity="min",
                 sample_size=self.n_initial_design,
             )
-
-        if new_id < len(self._initial_design):
-            config = self._initial_design[new_id]
+            config = init_design[new_id]
             config[self.fidelity_name] = min_fid
             return SampledConfig(id=f"{new_id}_0", config=config)
 

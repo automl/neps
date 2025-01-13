@@ -42,7 +42,6 @@ class GraphParameter(  # noqa: D101
     # a way to go from the graph object to the string in this code...
     # Essentially on the outside, we need to ensure we don't pass ih the graph object
     # itself
-    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {"not_in_use": 1.0}
     prior_confidence_choice = "not_in_use"
     has_prior: bool
     input_kwargs: dict[str, Any]

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import random
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
-
-from scipy.sparse import random
 
 from neps.optimizers.optimizer import SampledConfig
 
@@ -18,7 +17,6 @@ if TYPE_CHECKING:
 class GridSearch:
     pipeline_space: SearchSpace
     configs_list: list[dict[str, Any]]
-    seed: int | None
 
     def __call__(
         self,
@@ -31,7 +29,7 @@ class GridSearch:
         if _num_previous_configs > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")
 
-        rng = random.Random(self.seed)
+        rng = random.Random()
         configs = rng.sample(self.configs_list, len(self.configs_list))
 
         config = configs[_num_previous_configs]

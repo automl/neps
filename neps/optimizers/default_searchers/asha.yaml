@@ -1,5 +1,0 @@
-strategy: asha
-# Arguments that can be modified by the user
-eta: 3
-early_stopping_rate: 0
-sample_prior_first: false  # true, false, "highest_fidelity"

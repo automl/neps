@@ -620,14 +620,13 @@ def _launch_runtime(  # noqa: PLR0913
     optimization_dir: Path,
     max_cost_total: float | None,
     ignore_errors: bool = False,
-    objective_to_minimize_value_on_error: float | None,
+    objective_value_on_error: float | None,
     cost_value_on_error: float | None,
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
     max_evaluations_total: int | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
-    pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None,
 ) -> None:
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(
@@ -677,7 +676,7 @@ def _launch_runtime(  # noqa: PLR0913
         ),
         batch_size=sample_batch_size,
         default_report_values=DefaultReportValues(
-            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
+            objective_value_on_error=objective_value_on_error,
             cost_value_on_error=cost_value_on_error,
             cost_if_not_provided=None,  # TODO: User can't specify yet
             learning_curve_on_error=None,  # TODO: User can't specify yet
@@ -722,6 +721,6 @@ def _launch_runtime(  # noqa: PLR0913
         optimizer=optimizer,
         evaluation_fn=evaluation_fn,
         settings=settings,
-        _pre_sample_hooks=list(pre_load_hooks) if pre_load_hooks is not None else None,
+        _pre_sample_hooks=[],
     )
     worker.run()

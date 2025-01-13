@@ -34,12 +34,6 @@ class Integer(Numerical[int]):
     ```
     """
 
-    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {
-        "low": 0.5,
-        "medium": 0.25,
-        "high": 0.125,
-    }
-
     def __init__(
         self,
         lower: Number,

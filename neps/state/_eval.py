@@ -104,7 +104,7 @@ def _eval_trial(
         logger.exception(e)
         report = trial.set_complete(
             report_as="crashed",
-            objective_to_minimize=default_report_values.objective_to_minimize_value_on_error,
+            objective_to_minimize=default_report_values.objective_value_on_error,
             cost=default_report_values.cost_value_on_error,
             learning_curve=default_report_values.learning_curve_on_error,
             extra=None,

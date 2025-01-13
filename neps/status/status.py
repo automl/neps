@@ -12,14 +12,14 @@ import pandas as pd
 from neps.runtime import get_workers_neps_state
 from neps.state.filebased import FileLocker
 from neps.state.neps_state import NePSState
-from neps.state.trial import Trial
-from neps.utils.types import ConfigID, _ConfigResultForStats
+from neps.state.trial import Report, Trial
+from neps.utils.types import ERROR, ConfigID, _ConfigResultForStats
 
 if TYPE_CHECKING:
     from neps.search_spaces.search_space import SearchSpace
 
 
-def get_summary_dict(
+def get_summary_dict(  # noqa: C901
     root_directory: str | Path,
     *,
     add_details: bool = False,
@@ -35,6 +35,25 @@ def get_summary_dict(
         summary_dict: Information summarizing a run
     """
     root_directory = Path(root_directory)
+
+    def _to_deprecate_result_dict(report: Report) -> dict[str, Any] | ERROR:
+        """Return the report as a dictionary."""
+        if report.reported_as == "success":
+            d = {
+                "objective_to_minimize": report.objective_to_minimize,
+                "cost": report.cost,
+                **report.extra,
+            }
+
+            # HACK: Backwards compatibility. Not sure how much this is needed
+            # but it should be removed once optimizers stop calling the
+            # `get_objective_to_minimize`, `get_cost`, `get_learning_curve` methods of
+            #  `BaseOptimizer` and just use the `Report` directly.
+            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
+                d.setdefault("info_dict", {})["learning_curve"] = report.learning_curve
+            return d
+
+        return "error"
 
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
@@ -54,7 +73,7 @@ def get_summary_dict(
         _result_for_stats = _ConfigResultForStats(
             id=trial.id,
             config=trial.config,
-            result=trial.report.to_deprecate_result_dict(),
+            result=_to_deprecate_result_dict(trial.report),
             metadata=asdict(trial.metadata),
         )
         evaluated[trial.id] = _result_for_stats

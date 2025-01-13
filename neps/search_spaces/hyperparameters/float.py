@@ -38,12 +38,6 @@ class Float(Numerical[float]):
     class for more details on the methods available for this class.
     """
 
-    DEFAULT_CONFIDENCE_SCORES: ClassVar[Mapping[str, float]] = {
-        "low": 0.5,
-        "medium": 0.25,
-        "high": 0.125,
-    }
-
     def __init__(
         self,
         lower: Number,

@@ -98,7 +98,7 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space, # Assuming the pipeline space is defined
         root_directory="results/bo",
         max_cost_total=10,
-        searcher="bayesian_optimization",
+        optimizer="bayesian_optimization",
     )
 ```
 
@@ -108,7 +108,7 @@ Each evaluation carries a cost of 2. Hence in this example, the Bayesian optimiz
 
 NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `run_pipeline=` function for user convenience.
 
-Regard an example to be run with a multi-fidelity searcher, some checkpointing would be advantageos such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
+Regard an example to be run with a multi-fidelity optimizer, some checkpointing would be advantageos such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
 
 ```python
 def run_pipeline(
