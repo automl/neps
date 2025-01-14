@@ -11,7 +11,7 @@ Please check [`neps.run()`][neps.api.run] for complete information on the argume
 Below is a YAML configuration example for NePS covering the required arguments.
 The arguments match those that you can pass to [`neps.run()`][neps.api.run].
 
-In general, you can encode any of the [parameters][neps.space.parameters] into a YAML format.
+In general, you can encode any [`Parameter`][neps.space.Parameter] into a YAML format.
 
 === "config.yaml"
 
@@ -52,17 +52,17 @@ In general, you can encode any of the [parameters][neps.space.parameters] into a
     import neps
     import yaml
 
-    def run_pipeline(learning_rate, optimizer, epochs, batch_size):
+    def evaluate_pipeline(learning_rate, optimizer, epochs, batch_size):
         model = initialize_model()
         training_loss = train_model(model, optimizer, learning_rate, epochs)
         evaluation_loss = evaluate_model(model)
-        return {"loss": evaluation_loss, "training_loss": training_loss}
+        return {"objective_value_to_minimize": evaluation_loss, "training_loss": training_loss}
 
     if __name__ == "__main__":
         with open("path/config.yaml") as f:
             settings = yaml.safe_load(f)
 
-        neps.run(run_pipeline, **settings)
+        neps.run(evaluate_pipeline, **settings)
     ```
 
 !!! tip "Merging multiple yaml files"
@@ -74,12 +74,12 @@ In general, you can encode any of the [parameters][neps.space.parameters] into a
     ```python
     import neps
 
-    def run_pipeline(...):
+    def evaluate_pipeline(...):
         ...
 
     if __name__ == "__main__":
         settings = neps.load_yamls("path/to/your/config.yaml", "path/to/your/optimizer.yaml")
-        neps.run(run_pipeline, **settings)
+        neps.run(evaluate_pipeline, **settings)
     ```
 
 

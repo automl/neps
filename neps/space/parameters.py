@@ -1,10 +1,4 @@
-"""A module of all the parameters for the search space.
-
-* [`Float`][neps.space.Float]
-* [`Integer`][neps.space.Integer]
-* [`Categorical`][neps.space.Categorical]
-* [`Constant`][neps.space.Constant]
-"""
+"""A module of all the parameters for the search space."""
 
 from __future__ import annotations
 
@@ -234,3 +228,10 @@ class Constant:
 
 
 Parameter: TypeAlias = Float | Integer | Categorical | Constant
+"""A type alias for all the parameter types.
+
+* [`Float`][neps.space.Float]
+* [`Integer`][neps.space.Integer]
+* [`Categorical`][neps.space.Categorical]
+* [`Constant`][neps.space.Constant]
+"""

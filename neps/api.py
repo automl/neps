@@ -52,7 +52,7 @@ def run(  # noqa: PLR0913
 ) -> None:
     """Run the optimization.
 
-    !!! tip "Parallelization":
+    !!! tip "Parallelization"
 
         To run with multiple processes or machines, execute the script that
         calls `neps.run()` multiple times. They will keep in sync using
@@ -61,26 +61,61 @@ def run(  # noqa: PLR0913
 
     ```python
     import neps
+    import logging
 
-    def evaluate_pipeline(some_parameter: float):
+    logging.basicConfig(level=logging.INFO)
+
+    def evaluate_pipeline(some_parameter: float) -> float:
         validation_error = -some_parameter
         return validation_error
 
     pipeline_space = dict(some_parameter=neps.Float(lower=0, upper=1))
-
-    logging.basicConfig(level=logging.INFO)
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=pipeline_space,
+        pipeline_space={
+            "some_parameter": (0.0, 1.0),   # float
+            "another_parameter": (0, 10),   # integer
+            "optimizer": ["sgd", "adam"],   # categorical
+            "epoch": neps.Integer(          # fidelity integer
+                lower=1,
+                upper=100,
+                is_fidelity=True
+            ),
+            "learning_rate": neps.Float(    # log spaced float
+                lower=1e-5,
+                uperr=1,
+                log=True
+            ),
+            "alpha": neps.Float(            # float with a prior
+                lower=0.1,
+                upper=1.0,
+                prior=0.99,
+                prior_confidence="high",
+            )
+        },
         root_directory="usage_example",
         max_evaluations_total=5,
     )
     ```
 
     Args:
-        evaluate_pipeline: The objective function to minimize.
+        evaluate_pipeline: The objective function to minimize. This will be called
+            with a configuration from the `pipeline_space=` that you define.
 
-            !!! note "`str` usage for dynamic imports"
+            The function should return one of the following:
+
+            * A `float`, which is the objective value to minimize.
+            * A `dict` which can have the following keys:
+
+                ```python
+                {
+                    "objective_to_minimize": float,  # The thing to minimize (required)
+                    "cost": float,  # The cost of the evaluate_pipeline, used by some algorithms
+                    "info_dict": dict,  # Any additional information you want to store, should be YAML serializable
+                }
+                ```
+
+            ??? note "`str` usage for dynamic imports"
 
                 If a string, it should be in the format `"/path/to/:function"`.
                 to specify the function to call. You may also directly provide
@@ -113,14 +148,17 @@ def run(  # noqa: PLR0913
             )
             ```
 
+            You can also directly instantiate any of the parameters
+            defined by [`Parameter`][neps.space.parameters.Parameter]
+            and provide them directly.
+
             Some important properties you can set on parameters are:
 
             * `prior=`: If you have a good idea about what a good setting
                 for a parameter may be, you can set this as the prior for
-                a parameter. Optimizers with `"prior"` in their name will
-                pick up on this and use it to their advantage and help
-                speed up optimization.
-
+                a parameter. You can specify this along with `prior_confidence`
+                if you would like to assign a `"low"`, `"medium"`, or `"high"`
+                confidence to the prior.
 
 
             !!! note "Yaml support"
@@ -177,7 +215,7 @@ def run(  # noqa: PLR0913
         sample_batch_size:
             The number of samples to ask for in a single call to the optimizer.
 
-            !!! note "Batching"
+            ??? tip "When to use this?"
 
                 This is only useful in scenarios where you have many workers
                 available, and the optimizers sample time prevents full
@@ -189,12 +227,13 @@ def run(  # noqa: PLR0913
                 that the proceeding workers will then pick up and evaluate.
 
                 We advise to only use this if:
-                    * You are using a Ifbo or bayesian optimization.
-                    * You have a fast to evaluate `evaluate_pipeline`
-                    * You have a significant amount of workers available,
-                    relative to the time it takes to evaluate a single configuration.
 
-            !!! warning "Downsides of batching"
+                * You are using a `#!python "ifbo"` or `#!python "bayesian_optimization"`.
+                * You have a fast to evaluate `evaluate_pipeline`
+                * You have a significant amount of workers available, relative to the
+                time it takes to evaluate a single configuration.
+
+            ??? warning "Downsides of batching"
 
                 The primary downside of batched optimization is that
                 the next `sample_batch_size` configurations will not
@@ -209,179 +248,98 @@ def run(  # noqa: PLR0913
 
             ??? note "Available optimizers"
 
-                * `"bayesian_optimization"`,
+                ---
 
-                    Models the relation between hyperparameters in your `pipeline_space`
-                    and the results of `evaluate_pipeline` using bayesian optimization.
+                * `#!python "bayesian_optimization"`,
 
-                    Use the `"_cost_aware"` variant to inform the optimizer
-                    about the cost of each configuration, whether it be time or otherwise,
-                    and the optimizer will attempt to balance getting the best result
-                    while minimizing the cost.
+                    ::: neps.optimizers.algorithms.bayesian_optimization
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    Use `"pibo"` the `"_prior"` variant to inform the optimizer
-                    about your prior you specified in the search space. This is a way
-                    to encode your `prior` knowledge about what hyperparameter values
-                    are likely to be most useful, into the optimization procedure itself.
-                    The strength of
-                    `prior_confidence` in your prior.
+                ---
 
+                * `#!python "ifbo"`
 
-                    !!! tip "Fidelities?"
+                    ::: neps.optimizers.algorithms.ifbo
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                        If you are using fidelities such as epochs, we advice loooking
-                        at using `"ifbo"`.
+                ---
 
-                * `"successive_halving"`:
+                * `#!python "successive_halving"`:
 
-                    A bandit-based optimization algorithm that uses a _fidelity_ parameter
-                    to gradually invest resources into more promising configurations.
+                    ::: neps.optimizers.algorithms.successive_halving
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    It does this by creating a competition between N configurations and
-                    racing them in a _bracket_ against each other.
-                    This _bracket_ has a series of incrementing _rungs_, where lower rungs
-                    indicate less resources invested. The amount of resources is related
-                    to your fidelity parameter, with the highest rung relating to the
-                    maximum of your fidelity parameter.
+                ---
 
-                    Those that perform well get _promoted_ and evaluated with more resources.
+                * `#!python "hyperband"`:
 
-                    ```
-                    # A bracket indicating the rungs and configurations.
-                    # Those which performed best get promoted through the rungs.
+                    ::: neps.optimizers.algorithms.hyperband
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    |        | fidelity    | c1 | c2 | c3 | c4 | c5 | ... | cN |
-                    | Rung 0 | (3 epochs)  |  o |  o |  o |  o |  o | ... | o  |
-                    | Rung 1 | (9 epochs)  |  o |    |  o |  o |    | ... | o  |
-                    | Rung 2 | (27 epochs) |  o |    |    |    |    | ... |    |
-                    ```
+                ---
 
-                    By default, new configurations are sampled using random search, however
-                    you can also specify to prefer sampling from around a distribution you
-                    think is more promising by setting the `prior` and the `prior_confidence`
-                    in the search space and specifying `optimizer="successive_halving_prior"`.
+                * `#!python "priorband"`:
 
-                    Note that `"successive_halving"` relies crucially on:
+                    ::: neps.optimizers.algorithms.priorband
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    > The rank of N configurations at a lower fidelity correlates well with
-                    the rank if you were to evaluate those configurations at higher fidelities.
+                ---
 
-                    !!! tip "Fidelities?"
+                * `#!python "asha"`:
 
-                        A fidelity parameter lets you control how many resources to invest in
-                        a single evaluation. For example, a common one for deep-learing is
-                        `epochs`. By evaluating a model for just a few epochs, we can quickly
-                        get a sense if the model is promising or not. Only those that perform
-                        well get _promoted_ and evaluated at a higher epoch.
+                    ::: neps.optimizers.algorithms.asha
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                * `"hyperband"`:
+                ---
 
-                    Another bandit-based optimization algorithm that uses a _fidelity_ parameter,
-                    very similar to `"successive_halving"`, but it instead hosts many different
-                    competitions, with different rungs. This helps hedge against scenarios where
-                    rankings at the lowest fidelity do not correlate well with the upper fidelity.
+                * `#!python "async_hb"`:
 
-                    ```
-                    # Hyperband runs different successive halving brackets
+                    ::: neps.optimizers.algorithms.async_hb
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    | Bracket 1 |         | Bracket 2 |        | Bracket 3 |
-                    | Rung 0    | ... |   | (skipped) |        | (skipped) |
-                    | Rung 1    | ... |   | Rung 1    | ... |  | (skipped) |
-                    | Rung 2    | ... |   | Rung 2    | ... |  | Rung 2    | ... |
-                    ```
+                ---
 
-                    Similar to `"successive_halving"`, you can also specify to prefer sampling
-                    from around a distribution you think is more promising by setting the `prior`
-                    and the `prior_confidence` in the search space and specifying
-                    `optimizer="hyperband_prior"`.
+                * `#!python "random_search"`:
 
-                * `"asha"`:
+                    ::: neps.optimizers.algorithms.random_search
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    A bandit-based optimization algorithm that uses a _fidelity_ parameter,
-                    the _asynchronous_ version of `"successive_halving"`, one that scales better to
-                    many parallel workers. It does this by maintaining one big bracket, i.e. one
-                    big on-going competition, with a promotion rule based on the sizes of each rung.
+                ---
 
-                    ```
-                    # ASHA maintains one big bracket with an exponentially decreasing amount of
-                    # configurations promoted, relative to those in the rung below.
+                * `#!python "grid_search"`:
 
-                    |        | fidelity    | c1 | c2 | c3 | c4 | c5 | ...
-                    | Rung 0 | (3 epochs)  |  o |  o |  o |  o |  o | ...
-                    | Rung 1 | (9 epochs)  |  o |    |  o |  o |    | ...
-                    | Rung 2 | (27 epochs) |  o |    |    |  o |    | ...
-                    ```
+                    ::: neps.optimizers.algorithms.grid_search
+                        options:
+                            show_root_heading: false
+                            show_signature: false
+                            show_source: false
 
-                    Similar to `"successive_halving"`, you can also specify to prefer sampling
-                    from around a distribution you think is more promising by setting the `prior`
-                    and the `prior_confidence` in the search space and specifying
-                    `optimizer="asha_prior"`.
+                ---
 
-                * `"async_hb"`:
-
-                    An asynchronous version of `"hyperband"`, where the brackets are run
-                    asynchronously, and the promotion rule is based on the number of evaluations
-                    each configuration has had.
-
-                    You can think of this as the asynchronous version of `"hyperband"`,
-                    similar to how `"asha"` is the asynchronous version of `"successive_halving"`.
-
-
-                    ```
-                    # Async HB runs different "asha" brackets, which are unbounded in the number
-                    # of configurations that can be in each. The bracket chosen at each iteration
-                    # is a sampling function based on the resources invested in each bracket.
-
-                    | Bracket 1 |         | Bracket 2 |        | Bracket 3 |
-                    | Rung 0    | ...     | (skipped) |        | (skipped) |
-                    | Rung 1    | ...     | Rung 1    | ...    | (skipped) |
-                    | Rung 2    | ...     | Rung 2    | ...    | Rung 2    | ...
-                    ```
-
-                    Similar to `"hyperband"`, you can also specify to prefer sampling
-                    from around a distribution you think is more promising by setting the `prior`
-                    and the `prior_confidence` in the search space and specifying
-                    `optimizer="async_hb_prior"`.
-
-                * `"priorband"`:
-
-                    Priorband is an improvement on the "hyperband" algorithm, by dynamically
-                    adjusting the sampling procedure to sample from one of the following three
-                    distributions:
-
-                    * 1) a uniform distribution
-                    * 2) a prior distribution
-                    * 3) a distribution around the best found configuration so far.
-
-                    By weighing the likelihood of good configurations having been sampled
-                    from each of these distribution, we can score them against each other to aid
-                    selection. We further use the fact that we can afford to explore and take more
-                    risk at lower fidelities, which is factored into the sampling procedure.
-
-                    There are also priorband version of some of the other algorithms:
-
-                    * `"priorband_sh"`: `"successive_halving"` with the priorband sampling procedure.
-                    * `"priorband_asha"`: `"asha"` with the priorband sampling procedure.
-                    * `"priorband_async"`: `"async_hb"` with the priorband sampling procedure.
-
-                * `"random_search"`:
-
-                    A simple random search algorithm that samples configurations uniformly at random.
-
-                * `"grid_search"`:
-
-                    A simple grid search algorithm which discretizes the search space and evaluates
-                    all possible configurations.
-
-                * `"ifbo"`:
-
-                    A transformer that has been trained to predict loss curves of deep-learing
-                    models, used to guide the optimization procedure and select configurations
-                    which are most promising to evaluate.
-
-                    This algorithm requires a fidelity parameter, such as `epochs`, to be present.
-                    Each time we evaluate a configuration, we will only evaluate it for a single
-                    epoch, before returning back to the ifbo algorithm to select the next configuration.
 
             With any optimizer choice, you also may provide some additional parameters to the optimizers.
             We do not recommend this unless you are familiar with the optimizer you are using. You
@@ -396,6 +354,7 @@ def run(  # noqa: PLR0913
                     "sample_prior_first": True,
                 }
             )
+            ```
 
             ??? tip "Own optimzier"
 

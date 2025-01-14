@@ -234,6 +234,8 @@ ignore = [
     "TCH",
     "N803",
     "C901", # Too complex
+    "PT011", # Catch value error to broad
+    "ARG001", # unused param
 ]
 "__init__.py" = ["I002"]
 "neps_examples/*" = [

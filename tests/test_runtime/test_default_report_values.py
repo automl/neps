@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps.optimizers import random_search
+from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
 from neps.space import Float, SearchSpace
 from neps.state import (
@@ -60,7 +60,6 @@ def test_default_values_on_error(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -104,7 +103,7 @@ def test_default_values_on_not_specified(
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         return 1.0
 
     worker = DefaultWorker.new(
@@ -112,7 +111,6 @@ def test_default_values_on_not_specified(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -156,7 +154,7 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
 
     LOSS = 1.0
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         return LOSS
 
     worker = DefaultWorker.new(
@@ -164,7 +162,6 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 

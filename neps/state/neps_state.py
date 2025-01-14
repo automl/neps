@@ -5,7 +5,7 @@ manner, such that each worker can create an identical NePSState and interact wit
 it without having to worry about locking or out-dated information.
 
 For an actual instantiation of this object, see
-[`create_or_load_filebased_neps_state`][neps.state.filebased.create_or_load_filebased_neps_state].
+[`create_or_load_filebased_neps_state()`][neps.state.neps_state.NePSState.create_or_load].
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import io
 import logging
 import pickle
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
@@ -309,7 +309,6 @@ class NePSState:
         worker_id: str,
         trials: dict[str, Trial],
         n: int,
-        _sample_hooks: list[Callable] | None = ...,
     ) -> list[Trial]: ...
 
     @overload
@@ -320,7 +319,6 @@ class NePSState:
         worker_id: str,
         trials: dict[str, Trial],
         n: None,
-        _sample_hooks: list[Callable] | None = ...,
     ) -> Trial: ...
 
     def _sample_trial(
@@ -330,7 +328,6 @@ class NePSState:
         worker_id: str,
         trials: dict[str, Trial],
         n: int | None,
-        _sample_hooks: list[Callable] | None = None,
     ) -> Trial | list[Trial]:
         """Sample a new trial from the optimizer.
 
@@ -343,7 +340,6 @@ class NePSState:
             worker_id: The worker that is sampling the trial.
             n: The number of trials to sample.
             trials: The current trials.
-            _sample_hooks: A list of hooks to apply to the optimizer before sampling.
 
         Returns:
             The new trial.
@@ -352,12 +348,6 @@ class NePSState:
             opt_state: OptimizationState = pickle.load(f)  # noqa: S301
 
         opt_state.seed_snapshot.set_as_global_seed_state()
-
-        # TODO: Not sure if any existing pre_load hooks required
-        # it to be done after `load_results`... I hope not.
-        if _sample_hooks is not None:
-            for hook in _sample_hooks:
-                optimizer = hook(optimizer)  # type: ignore
 
         assert callable(optimizer)
         if opt_state.budget is not None:
@@ -399,7 +389,7 @@ class NePSState:
 
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
+                location=str(self._trial_repo.directory / f"config_{sampled_config.id}"),
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,

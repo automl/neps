@@ -1124,7 +1124,7 @@ def main() -> None:
     )
 
     # Subparser for "init" command
-    parser_init = subparsers.add_parser("init", help="Generate 'run_args' " "YAML file")
+    parser_init = subparsers.add_parser("init", help="Generate 'run_args' YAML file")
     parser_init.add_argument(
         "--config-path",
         type=str,
@@ -1262,7 +1262,7 @@ def main() -> None:
 
     # Subparser for "info-config" command
     parser_info_config = subparsers.add_parser(
-        "info-config", help="Provides information about " "specific config."
+        "info-config", help="Provides information about specific config."
     )
     parser_info_config.add_argument(
         "id", type=str, help="The configuration ID to be used."

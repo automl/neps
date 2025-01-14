@@ -25,9 +25,9 @@ the unit interval if the domains are the same, as no transformation is needed.
 
 The primary methods for creating a domain are
 
-* [`Domain.float(l, u, ...)`][neps.space.domain.Domain.float] -
+* [`Domain.floating(l, u, ...)`][neps.space.domain.Domain.floating] -
     Used for modelling float ranges
-* [`Domain.int(l, u, ...)`][neps.space.domain.Domain.int] -
+* [`Domain.integer(l, u, ...)`][neps.space.domain.Domain.integer] -
     Used for modelling integer ranges
 * [`Domain.indices(n)`][neps.space.domain.Domain.indices] -
     Primarly used to model categorical choices
@@ -62,9 +62,9 @@ class Domain(Generic[V]):
 
     The primary methods for creating a domain are
 
-    * [`Domain.float(l, u, ...)`][neps.space.domain.Domain.float] -
+    * [`Domain.floating(l, u, ...)`][neps.space.domain.Domain.floating] -
         Used for modelling float ranges
-    * [`Domain.int(l, u, ...)`][neps.space.domain.Domain.int] -
+    * [`Domain.integer(l, u, ...)`][neps.space.domain.Domain.integer] -
         Used for modelling integer ranges
     * [`Domain.indices(n)`][neps.space.domain.Domain.indices] -
         Primarly used to model categorical choices

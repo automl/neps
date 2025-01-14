@@ -14,8 +14,13 @@ if TYPE_CHECKING:
 
 @dataclass
 class GridSearch:
+    """Evaluates a fixed list of configurations in order."""
+
     pipeline_space: SearchSpace
+    """The search space from which the configurations are derived."""
+
     configs_list: list[dict[str, Any]]
+    """The list of configurations to evaluate."""
 
     def __call__(
         self,

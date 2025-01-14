@@ -2,6 +2,7 @@ import logging
 from warnings import warn
 
 import numpy as np
+from pathlib import Path
 import torch
 import torch.nn.functional as F
 from torch import nn, optim
@@ -39,15 +40,17 @@ def get_model_and_optimizer(learning_rate):
 
 
 # Important: Include the "pipeline_directory" and "previous_pipeline_directory" arguments
-# in your run_pipeline function. This grants access to NePS's folder system and is
+# in your evaluate_pipeline function. This grants access to NePS's folder system and is
 # critical for leveraging efficient multi-fidelity optimization strategies.
 
 
-def run_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch):
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    return evaluate_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch)
-
-def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, learning_rate, epoch):
+def evaluate_pipeline(
+    pipeline_directory: Path,  # The path associated with this configuration
+    previous_pipeline_directory: Path
+    | None,  # The path associated with any previous config
+    learning_rate: float,
+    epoch: int,
+) -> dict:
     model, optimizer = get_model_and_optimizer(learning_rate)
     checkpoint_name = "checkpoint.pth"
 
@@ -74,7 +77,9 @@ def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, learning_
 
     objective_to_minimize = np.log(learning_rate / epoch)  # Replace with actual error
     epochs_spent_in_this_call = epoch - epochs_previously_spent  # Optional for stopping
-    return dict(objective_to_minimize=objective_to_minimize, cost=epochs_spent_in_this_call)
+    return dict(
+        objective_to_minimize=objective_to_minimize, cost=epochs_spent_in_this_call
+    )
 
 
 pipeline_space = dict(

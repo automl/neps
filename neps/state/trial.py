@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal
 from typing_extensions import Self
 
 import numpy as np
 
 from neps.exceptions import NePSError
-
-if TYPE_CHECKING:
-    from neps.space import SearchSpace
-    from neps.utils.types import ERROR, ConfigResult, RawConfig
 
 logger = logging.getLogger(__name__)
 
@@ -150,32 +146,6 @@ class Trial:
     def id(self) -> str:
         """Return the id of the trial."""
         return self.metadata.id  # type: ignore
-
-    def into_config_result(
-        self,
-        config_to_search_space: Callable[[RawConfig], SearchSpace],
-    ) -> ConfigResult:
-        """Convert the trial and report to a `ConfigResult` object."""
-        if self.report is None:
-            raise self.NotReportedYetError("The trial has not been reported yet.")
-        from neps.utils.types import ConfigResult
-
-        result: dict[str, Any] | ERROR
-        if self.report.reported_as == "success":
-            result = {
-                **self.report.extra,
-                "objective_to_minimize": self.report.objective_to_minimize,
-                "cost": self.report.cost,
-            }
-        else:
-            result = "error"
-
-        return ConfigResult(
-            self.id,
-            config=config_to_search_space(self.config),
-            result=result,
-            metadata=asdict(self.metadata),
-        )
 
     def set_submitted(self, *, time_submitted: float) -> None:
         """Set the trial as submitted."""

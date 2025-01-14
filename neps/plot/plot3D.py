@@ -35,9 +35,9 @@ class Plotter3D:
 
     def __post_init__(self) -> None:
         if self.run_path is not None:
-            assert (
-                Path(self.run_path).absolute().is_dir()
-            ), f"Path {self.run_path} is not a directory"
+            assert Path(self.run_path).absolute().is_dir(), (
+                f"Path {self.run_path} is not a directory"
+            )
             self.data_path = (
                 Path(self.run_path).absolute() / "summary_csv" / "config_data.csv"
             )

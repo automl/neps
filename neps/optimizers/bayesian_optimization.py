@@ -55,6 +55,8 @@ def _pibo_exp_term(
 
 @dataclass
 class BayesianOptimization:
+    """Uses `botorch` as an engine for doing bayesian optimiziation."""
+
     pipeline_space: SearchSpace
     """The search space to use."""
 

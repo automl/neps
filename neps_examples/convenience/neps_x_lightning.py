@@ -266,19 +266,7 @@ def search_space() -> dict:
 
 
 #############################################################
-# Define the run pipeline function
-
-
-def run_pipeline(pipeline_directory, previous_pipeline_directory, **config):
-    # Deprecated function, use evaluate_pipeline instead
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    return evaluate_pipeline(
-        pipeline_directory,
-        previous_pipeline_directory,
-        **config,
-    )
-
-
+# Define the evaluate pipeline function
 def evaluate_pipeline(pipeline_directory, previous_pipeline_directory, **config) -> dict:
     # Initialize the first directory to store the event and checkpoints files
     init_dir = get_initial_directory(pipeline_directory)

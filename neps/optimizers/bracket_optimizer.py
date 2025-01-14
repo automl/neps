@@ -53,19 +53,45 @@ def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
 
 @dataclass
 class BracketOptimizer:
-    """Implements an optimizer over brackets."""
+    """Implements an optimizer over brackets.
+
+    This is the main class behind algorithms like `"priorband"`,
+    `"successive_halving"`, `"asha"`, `"hyperband"`, etc.
+    """
 
     pipeline_space: SearchSpace
+    """The pipeline space to optimize over."""
+
     encoder: ConfigEncoder
+    """The encoder to use for the pipeline space."""
+
     sample_prior_first: bool | Literal["highest_fidelity"]
+    """Whether or not to sample the prior first.
+
+    If set to `"highest_fidelity"`, the prior will be sampled at the highest fidelity,
+    otherwise at the lowest fidelity.
+    """
+
     eta: int
+    """The eta parameter for the algorithm."""
+
     rung_to_fid: Mapping[int, int | float]
+    """The mapping from rung to fidelity value."""
+
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
+    """A function that creates the brackets from the table of trials."""
+
     sampler: Sampler | PriorBandArgs
+    """The sampler used to generate new trials."""
 
     fid_min: int | float
+    """The minimum fidelity value."""
+
     fid_max: int | float
+    """The maximum fidelity value."""
+
     fid_name: str
+    """The name of the fidelity in the space."""
 
     def __call__(  # noqa: PLR0912, C901
         self,

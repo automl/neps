@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The `run_pipeline=` function is crucial for NePS. It encapsulates the objective function to be minimized, which could range from a regular equation to a full training and evaluation pipeline for a neural network.
+The `evaluate_pipeline=` function is crucial for NePS. It encapsulates the objective function to be minimized, which could range from a regular equation to a full training and evaluation pipeline for a neural network.
 
 This function receives the configuration to be utilized from the parameters defined in the search space. Consequently, it executes the same set of instructions or equations based on the provided configuration to minimize the objective function.
 
@@ -13,10 +13,10 @@ We will show some basic usages and some functionalites this function would requi
 ### 1. Single Value
 
 Assuming the `pipeline_space=` was already created (have a look at [pipeline space](./pipeline_space.md) for more details).
-A `run_pipeline=` function with an objective of minimizing the loss will resemble the following:
+A `evaluate_pipeline=` function with an objective of minimizing the loss will resemble the following:
 
 ```python
-def run_pipeline(
+def evaluate_pipeline(
     **config,   # The hyperparameters to be used in the pipeline
 ):
     element_1 = config["element_1"]
@@ -30,7 +30,7 @@ def run_pipeline(
 
 ### 2. Dictionary
 
-In this section, we will outline the special variables that are expected to be returned when the `run_pipeline=` function returns a dictionary.
+In this section, we will outline the special variables that are expected to be returned when the `evaluate_pipeline=` function returns a dictionary.
 
 #### Loss
 
@@ -41,7 +41,7 @@ One crucial return variable is the `loss`. This metric serves as a fundamental i
     Loss can be any value that is to be minimized by the objective function.
 
 ```python
-def run_pipeline(
+def evaluate_pipeline(
     **config,   # The hyperparameters to be used in the pipeline
 ):
 
@@ -53,7 +53,7 @@ def run_pipeline(
     reverse_loss = -loss
 
     return {
-        "loss": loss,
+        "objective_value_to_minimize": loss,
         "info_dict": {
             "reverse_loss": reverse_loss
             ...
@@ -63,7 +63,7 @@ def run_pipeline(
 
 #### Cost
 
-Along with the return of the `loss`, the `run_pipeline=` function would optionally need to return a `cost` in certain cases. Specifically when the `max_cost_total` parameter is being utilized in the `neps.run` function.
+Along with the return of the `loss`, the `evaluate_pipeline=` function would optionally need to return a `cost` in certain cases. Specifically when the `max_cost_total` parameter is being utilized in the `neps.run` function.
 
 
 !!! note
@@ -75,7 +75,7 @@ import neps
 import logging
 
 
-def run_pipeline(
+def evaluate_pipeline(
     **config,   # The hyperparameters to be used in the pipeline
 ):
 
@@ -87,14 +87,14 @@ def run_pipeline(
     cost = 2
 
     return {
-        "loss": loss,
+        "objective_value_to_minimize": loss,
         "cost": cost,
     }
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     neps.run(
-        run_pipeline=run_pipeline,
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space, # Assuming the pipeline space is defined
         root_directory="results/bo",
         max_cost_total=10,
@@ -106,12 +106,12 @@ Each evaluation carries a cost of 2. Hence in this example, the Bayesian optimiz
 
 ## Arguments for Convenience
 
-NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `run_pipeline=` function for user convenience.
+NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `evaluate_pipeline=` function for user convenience.
 
 Regard an example to be run with a multi-fidelity optimizer, some checkpointing would be advantageos such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
 
 ```python
-def run_pipeline(
+def evaluate_pipeline(
     pipeline_directory,           # The directory where the config is saved
     previous_pipeline_directory,  # The directory of the immediate lower fidelity config
     **config,                     # The hyperparameters to be used in the pipeline

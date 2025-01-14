@@ -1,6 +1,6 @@
 """Samplers for generating points in a search space.
 
-These are similar to [`Prior`][neps.priors.Prior] objects, but they
+These are similar to [`Prior`][neps.sampling.Prior] objects, but they
 do not necessarily have an easily definable pdf.
 """
 
@@ -45,7 +45,7 @@ class Sampler(ABC):
 
         Args:
             n: The number of points to sample. If a torch.Size, an additional dimension
-                will be added with [`.ncols`][neps.samplers.Sampler.ncols].
+                will be added with [`.ncols`][neps.sampling.Sampler.ncols].
                 For example, if `n = 5`, the output will be `(5, ncols)`. If
                 `n = (5, 3)`, the output will be `(5, 3, ncols)`.
             to: If a single domain, `.ncols` columns will be produced form that one
@@ -66,7 +66,7 @@ class Sampler(ABC):
         seed: torch.Generator | None = None,
         include: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """See [`sample_configs()`][neps.samplers.Sampler.sample_configs]."""
+        """See [`sample_configs()`][neps.sampling.Sampler.sample_configs]."""
         return self.sample_configs(1, to, seed=seed, include=include)[0]
 
     def sample_configs(

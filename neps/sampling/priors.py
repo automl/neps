@@ -4,7 +4,7 @@ Loosely speaking, they are joint distributions over multiple independent
 variables, i.e. each column of a tensor is assumed to be independent and
 can be acted on independently.
 
-See the class doc description of [`Prior`][neps.priors.Prior] for more details.
+See the class doc description of [`Prior`][neps.sampling.Prior] for more details.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 class Prior(Sampler):
     """A protocol for priors over search spaces.
 
-    Extends from the [`Sampler`][neps.samplers.Sampler] protocol.
+    Extends from the [`Sampler`][neps.sampling.Sampler] protocol.
 
     At it's core, the two methods that need to be implemented are
     `log_pdf` and `sample`. The `log_pdf` method should return the
@@ -41,13 +41,13 @@ class Prior(Sampler):
 
     All values given to the `log_pdf` and the ones returned from the
     `sample` method are assumed to be in the value domain of the prior,
-    i.e. the [`.domains`][neps.priors.Prior] attribute.
+    i.e. the [`.domains`][neps.sampling.Prior] attribute.
 
     !!! warning
 
         The domain in which samples are actually drawn from not necessarily
         need to match that of the value domain. For example, the
-        [`UniformPrior`][neps.priors.UniformPrior] class uses a unit uniform
+        [`Uniform`][neps.sampling.Uniform] class uses a unit uniform
         distribution to sample from the unit interval before converting
         samples to the value domain.
 
@@ -56,7 +56,7 @@ class Prior(Sampler):
 
         For example, consider a value domain `[0, 1e9]`. You might expect
         the `pdf` to be `1e-9` (1 / 1e9) for any given value inside the domain.
-        However, since the `UniformPrior` samples from the unit interval, the `pdf` will
+        However, since the `Uniform` samples from the unit interval, the `pdf` will
         actually be `1` (1 / 1) for any value inside the domain.
     """
 
@@ -97,14 +97,14 @@ class Prior(Sampler):
     ) -> torch.Tensor:
         """Compute the pdf of values in `x` under a prior.
 
-        See [`log_pdf()`][neps.priors.Prior.log_pdf] for details on shapes.
+        See [`log_pdf()`][neps.sampling.Prior.log_pdf] for details on shapes.
         """
         return torch.exp(self.log_pdf(x, frm=frm))
 
     def pdf_configs(self, x: list[dict[str, Any]], *, frm: ConfigEncoder) -> torch.Tensor:
         """Compute the pdf of values in `x` under a prior.
 
-        See [`log_pdf()`][neps.priors.Prior.log_pdf] for details on shapes.
+        See [`log_pdf()`][neps.sampling.Prior.log_pdf] for details on shapes.
         """
         return self.pdf(frm.encode(x), frm=frm)
 
@@ -125,7 +125,7 @@ class Prior(Sampler):
         center_values: Mapping[str, Any] | None = None,
         confidence_values: Mapping[str, float] | None = None,
     ) -> CenteredPrior:
-        """Please refer to [`from_space()`][neps.priors.Prior.from_space]
+        """Please refer to [`from_space()`][neps.sampling.Prior.from_space]
         for more details.
         """
         _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
@@ -189,9 +189,6 @@ class Prior(Sampler):
                     The values contained in centers should be contained within the
                     domain. All confidence levels should be within the `[0, 1]` range.
 
-            confidence: The confidence level for the center. Entries containing `None`
-                should match with `centers` that are `None`. If not, this is considered an
-                error.
             device: Device to place the tensors on for distributions.
 
         Returns:
@@ -358,7 +355,11 @@ class CenteredPrior(Prior):
     not have a center and confidence level, i.e. no prior information.
 
     You can create this class more easily using
-    [`Prior.make_centered()`][neps.priors.Prior.make_centered].
+    [`Prior.from_space()`][neps.sampling.Prior.from_space] to use the prior config
+    of the search space.
+
+    If you need to create a prior around a specific configuration, you can also
+    use the [`Prior.from_config()`][neps.sampling.Prior.from_config] method.
     """
 
     distributions: list[TorchDistributionWithDomain]

@@ -232,7 +232,7 @@ class ConfigEncoder:
         which require knowledge of the
         domains of each column for the tensor, for example, to sample values directly
         into the encoded space, getting log probabilities of the encoded values.
-    * [`ncols`][neps.space.encoding.ConfigEncoder.ncols]: The number of columns
+    * [`ndim`][neps.space.encoding.ConfigEncoder.ndim]: The number of columns
         in the encoded tensor, useful for initializing some `Sampler`s.
     """
 

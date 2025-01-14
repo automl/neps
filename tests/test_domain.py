@@ -170,7 +170,7 @@ def test_domain_casting(
     "x, frm, to, expected",
     [
         (
-            # This test combines all the previous cast domains in one go as a single tensor
+            # Combines all the previous cast domains in one go as a single tensor
             T(
                 [
                     [1e-2, 1e-1, 1e0, 1e1, 1e2],

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 FTPFN_DTYPE = torch.float32
 
 
-def adjust_space_to_match_stepsize(
+def _adjust_space_to_match_stepsize(
     space: SearchSpace,
     step_size: int | float,
 ) -> tuple[SearchSpace, int]:
@@ -35,7 +35,7 @@ def adjust_space_to_match_stepsize(
     that enables this.
 
     Args:
-        pipeline_space: The pipeline space to adjust
+        space: The pipeline space to adjust
         step_size: The size of the step to take in the fidelity domain.
 
     Returns:
@@ -95,18 +95,44 @@ def adjust_space_to_match_stepsize(
 
 @dataclass
 class IFBO:
+    """The ifBO optimizer.
+
+    * Paper: https://openreview.net/forum?id=VyoY3Wh9Wd
+    * Github: https://github.com/automl/ifBO/tree/main
+    """
+
     pipeline_space: SearchSpace
+    """The search space for the pipeline."""
+
     encoder: ConfigEncoder
+    """The encoder to use for the pipeline space."""
+
     sample_prior_first: bool
+    """Whether to sample the prior first."""
+
     prior: Prior | None
+    """The prior to use for sampling the pipeline space."""
+
     n_initial_design: int
+    """The number of initial designs to sample."""
 
     device: torch.device | None
+    """The device to use for the optimizer."""
+
     ftpfn: FTPFNSurrogate
+    """The FTPFN surrogate to use."""
 
     fid_domain: Domain
+    """The domain of the fidelity parameter."""
+
     fidelity_name: str
+    """The name of the fidelity parameter."""
+
     n_fidelity_bins: int
+    """The number of bins to divide the fidelity domain into.
+
+    Each one will be treated as an individual fidelity level.
+    """
 
     def __call__(
         self,

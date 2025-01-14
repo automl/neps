@@ -73,7 +73,7 @@ Steps for a successful training pipeline:
 #2 Prepare the input data.
 #3 Design the model.
 #4 Design the pipeline search spaces.
-#5 Design the run pipeline function.
+#5 Design the evaluate pipeline function.
 #6 Use neps.run the run the entire search using your specified optimizer.
 
 Each step will be covered in detail thourghout the code
@@ -243,14 +243,6 @@ def pipeline_space() -> dict:
 
 #############################################################
 # Implement the pipeline run search.
-
-
-def run_pipeline(lr, optim, weight_decay):
-    # Deprecated function, use evaluate_pipeline instead
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    return evaluate_pipeline(lr, optim, weight_decay)
-
-
 def evaluate_pipeline(lr, optim, weight_decay):
     # Create the network model.
     model = MLP()

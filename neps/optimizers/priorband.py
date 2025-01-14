@@ -1,4 +1,4 @@
-"""Implements the priorband sampling strategy."""
+"""Implements functionallity for the priorband sampling strategy."""
 
 from __future__ import annotations
 
@@ -89,6 +89,23 @@ def sample_with_priorband(
     # Extra
     seed: torch.Generator | None = None,
 ) -> dict[str, Any]:
+    """Samples a configuration using the PriorBand algorithm.
+
+    Args:
+        table: The table of all the trials that have been run.
+        rung_to_sample_for: The rung to sample for.
+        space: The search space to sample from.
+        encoder: The encoder to use for the search space.
+        inc_mutation_rate: The mutation rate for the incumbent.
+        inc_mutation_std: The standard deviation for the incumbent mutation rate.
+        eta: The eta parameter for the Successive Halving algorithm.
+        early_stopping_rate: The early stopping rate for the Successive Halving algorithm.
+        fid_bounds: The bounds for the fidelity parameter.
+        seed: The seed to use for the random number generator.
+
+    Returns:
+        The sampled configuration.
+    """
     rung_to_fid, rung_sizes = brackets.calculate_sh_rungs(
         bounds=fid_bounds,
         eta=eta,

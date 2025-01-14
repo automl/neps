@@ -1,14 +1,16 @@
 # Configuring and Running Optimizations
 
-The [`neps.run()`][neps.api.run] function is the core interface for running Hyperparameter and/or architecture search using optimizers in NePS.
+The [`neps.run()`][neps.api.run] function is the core interface for running Hyperparameter
+and/or architecture search using optimizers in NePS.
+You can find most of the features NePS provides through the API of this function.
 
 This document breaks down the core arguments that allow users to control the optimization process in NePS.
-Please see the documentation of [`neps.run()`][neps.api.run] for a full list.
 
+---
 
 ## Required Arguments
-To operate, NePS requires at minimum the following three arguments
-[`neps.run(run_pipeline=..., pipeline_space=..., root_directory=...)`][neps.api.run]:
+To operate, NePS requires at minimum the following two arguments
+[`neps.run(evaluate_pipeline=..., pipeline_space=...)`][neps.api.run]:
 
 ```python
 import neps
@@ -19,7 +21,7 @@ def run(learning_rate: float, epochs: int) -> float:
     return loss
 
 neps.run(
-    run_pipeline=run, # (1)!
+    evaluate_pipeline=run, # (1)!
     pipeline_space={, # (2)!
         "learning_rate": neps.Float(1e-3, 1e-1, log=True),
         "epochs": neps.Integer(10, 100)
@@ -30,21 +32,23 @@ neps.run(
 
 1.  The objective function, targeted by NePS for minimization, by evaluation various configurations.
     It requires these configurations as input and should return either a dictionary or a sole loss value as the output.
-    For correct setup instructions, refer to the [run pipeline page](../reference/run_pipeline.md)
 2.  This defines the search space for the configurations from which the optimizer samples.
     It accepts either a dictionary with the configuration names as keys, a path to a YAML configuration file, or a [`configSpace.ConfigurationSpace`](https://automl.github.io/ConfigSpace/) object.
     For comprehensive information and examples, please refer to the detailed guide available [here](../reference/pipeline_space.md)
 3.  The directory path where the information about the optimization and its progress gets stored.
     This is also used to synchronize multiple calls to `neps.run()` for parallelization.
 
-To learn more about the `run_pipeline` function and the `pipeline_space` configuration, please refer to the [run pipeline](../reference/run_pipeline.md) and [pipeline space](../reference/pipeline_space.md) pages.
+
+See the following for more:
+
+* What kind of [pipeline space](../reference/pipeline_space.md) can you define?
+* What goes in and what goes out of [`evaluate_pipeline()`](../reference/evaluate_pipeline.md)?
 
 ## Budget, how long to run?
-To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run], to specify the total number of evaluations to conduct before halting the optimization process,
+To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run],
+to specify the total number of evaluations to conduct before halting the optimization process,
 or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary.
 
-
-```python
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -53,7 +57,7 @@ def run(learning_rate: float, epochs: int) -> float:
     # Your code here
     end = time.time()
     duration = end - start
-    return {"loss": loss, "cost": duration}
+    return {"objective_function_to_minimize": loss, "cost": duration}
 
 neps.run(
     max_evaluations_total=10, # (1)!
@@ -64,12 +68,12 @@ neps.run(
 1.  Specifies the total number of evaluations to conduct before halting the optimization process.
 2.  Prevents the initiation of new evaluations once this cost threshold is surpassed.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
-    This requires adding a cost value to the output of the `run_pipeline` function, for example, return `#!python {'loss': loss, 'cost': cost}`.
-    For more details, please refer [here](../reference/run_pipeline.md)
+    This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'loss': loss, 'cost': cost}`.
+    For more details, please refer [here](../reference/evaluate_pipeline.md)
 
 ## Getting some feedback, logging
-Most of NePS will not print anything to the console.
-To view the progress of workers, you can do so by enabling logging through [logging.basicConfig][].
+NePS will not print anything to the console. To view the progress of workers,
+you can enable logging through python's [logging.basicConfig][].
 
 ```python
 import logging
@@ -92,7 +96,7 @@ def run(learning_rate: float, epochs: int) -> float:
     # Your code here
     end = time.time()
     duration = end - start
-    return {"loss": loss, "cost": duration}
+    return {"objective_value_to_minimize": loss, "cost": duration}
 
 neps.run(
     # Increase the total number of trials from 10 as set previously to 50
@@ -119,26 +123,31 @@ neps.run(
     This will delete the folder specified by `root_directory=` and all its contents.
 
 ## Getting the results
-The results of the optimization process are stored in the `root_directory=` provided to [`neps.run()`][neps.api.run].
-To obtain a summary of the optimization process, you can enable the `post_run_summary=True` argument in [`neps.run()`][neps.api.run], while will generate a summary csv after the run has finished.
+The results of the optimization process are stored in the `root_directory=`
+provided to [`neps.run()`][neps.api.run].
+To obtain a summary of the optimization process, you can enable the
+`post_run_summary=True` argument in [`neps.run()`][neps.api.run],
+while will generate a summary csv after the run has finished.
 
 === "Result Directory"
 
     The root directory after utilizing this argument will look like the following:
 
     ```
-    ROOT_DIRECTORY
-    ├── results
-    │  └── config_1
-    │      ├── config.yaml
-    │      ├── metadata.yaml
-    │      └── result.yaml
-    ├── summary_csv         # Only if post_run_summary=True
+    root_directory
+    ├── configs
+    │   ├── config_1
+    │   │   ├── config.yaml     # The configuration
+    │   │   ├── report.yaml    # The results of this run, if any
+    │   │   └── metadata.json   # Metadata about this run, such as state and times
+    │   └── config_2
+    │       ├── config.yaml
+    │       └── metadata.json
+    ├── summary_csv             # Only if post_run_summary=True
     │  ├── config_data.csv
     │  └── run_status.csv
-    ├── all_losses_and_configs.txt
-    ├── best_loss_trajectory.txt
-    └── best_loss_with_config_trajectory.txt
+    ├── optimizer_info.yaml     # The optimizer's configuration
+    └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
 
 === "python"
@@ -152,7 +161,8 @@ closer to NePS. For more information, please refer to the [analyses page](../ref
 
 ## Parallelization
 NePS utilizes the file-system and locks as a means of communication for implementing parallelization and resuming runs.
-As a result, you can start multiple [`neps.run()`][neps.api.run] from different processes however you like and they will synchronize, **as long as they share the same `root_directory=`**.
+As a result, you can start multiple [`neps.run()`][neps.api.run] from different processes however you like
+and they will synchronize, **as long as they share the same `root_directory=`**.
 Any new workers that come online will automatically pick up work and work together to until the budget is exhausted.
 
 === "Worker script"
@@ -160,7 +170,7 @@ Any new workers that come online will automatically pick up work and work togeth
     ```python
     # worker.py
     neps.run(
-        run_pipeline=...,
+        evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
         max_evaluations_total=100,
@@ -197,11 +207,11 @@ For more on yaml usage, please visit the dedicated
 [page on usage of YAML with NePS](../reference/declarative_usage.md).
 
 
-=== "Yaml Configuration"
+=== "`config.yaml`"
 
     ```yaml
-    # path/to/your/config.yaml
-    evaluate_pipeline: path/to/your/run_pipeline.py:name_of_your_run_pipeline_function
+    # We allow specifying the evaluate_pipeline as a module path and function name
+    evaluate_pipeline: path/to/evaluate_pipeline.py:eval_func_name
 
     pipeline_space:
       batch_size: 64                # Constant
@@ -224,13 +234,13 @@ For more on yaml usage, please visit the dedicated
     optimizer:
       name: "bayesian_optimization"
       initial_design_size: 5
-      surrogate_model: "gp"
+      cost_aware: true
     ```
 
-=== "Python"
+=== "`run_neps.py`"
 
     ```python
-    with open("path/to/your/config.yaml", "r") as file:
+    with open("config.yaml", "r") as file:
         settings = yaml.safe_load(file)
 
     neps.run(**settings)
@@ -238,7 +248,9 @@ For more on yaml usage, please visit the dedicated
 
 ## Handling Errors
 Things go wrong during optimization runs and it's important to consider what to do in these cases.
-By default, NePS will halt the optimization process when an error but you can choose to `ignore_errors=`, providing a `loss_value_on_error=` and `cost_value_on_error=` to control what values should be reported to the optimization process.
+By default, NePS will halt the optimization process when an error but you can choose to `ignore_errors=`,
+providing a `loss_value_on_error=` and `cost_value_on_error=` to control what values should be
+reported to the optimization process.
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -262,6 +274,41 @@ neps.run(
 !!! note
 
     Any runs that error will still count towards the total `max_evaluations_total` or `max_evaluations_per_run`.
+
+### Re-running Failed Configurations
+Sometimes things go wrong but not due to the configuration itself.
+Sometimes you'd also like to change the state so that you re-evaluate that configuration.
+
+If you need to go in there and change anything, **the entire optimization state** is editable on disk.
+You can follow these steps to modify the state of things.
+
+```
+root_directory
+├── configs
+│   ├── .trial_cache.pkl    # A cache of all trial information for optimizers
+│   ├── config_1
+│   │   ├── config.yaml     # The configuration
+│   │   ├── report.yaml    # The results of this run, if any
+│   │   ├── metadata.json   # Metadata about this run, such as state and times
+│   └── config_2
+│       ├── config.yaml
+│       └── metadata.json
+├── optimizer_info.yaml
+└── optimizer_state.pkl     # The optimizer's state, shared between workers
+```
+
+1. The first thing you should do is make sure no workers are running.
+2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share betwen the
+   workers.
+3. Lastly, you can go in and modify any of the following files:
+
+    * `config.yaml` - The configuration to be run. This was samled from your search space.
+    * `report.yaml` - The results of the run. This is where you can change what was reported back.
+    * `metadata.json` - Metadata about the run. Here you can change the `"state"` key to one
+        of [`State`][neps.state.trial.State] to re-run the configuration, usually you'd want to set it
+        to `"pending"` such that the next worker will pick it up and re-run it.
+4. Once you've made your changes, you can start the workers again and they will pick up the new state
+    re-creating the caches as necessary.
 
 ## Selecting an Optimizer
 By default NePS intelligently selects the most appropriate optimizer based on your defined configurations in `pipeline_space=`, one of the arguments to [`neps.run()`][neps.api.run].

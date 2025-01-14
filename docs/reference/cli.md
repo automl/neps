@@ -32,17 +32,17 @@ Executes the optimization based on the provided configuration. This command serv
 
 - `-h, --help` (Optional): show this help message and exit
 - `--run-args` (Optional): Path to the YAML configuration file.
-- `--run-pipeline` (Optional): Optional: Provide the path to a Python file and a function name separated by a colon, e.g., 'path/to/module.py:function_name'. If provided, it overrides the run_pipeline setting from the YAML configuration.
+- `--evaluate-pipeline` (Optional): Optional: Provide the path to a Python file and a function name separated by a colon, e.g., 'path/to/module.py:function_name'. If provided, it overrides the evaluate_pipeline setting from the YAML configuration.
 - `--pipeline-space` (Optional): Path to the YAML file defining the search space for the optimization. This can be provided here or defined within the 'run_args' YAML file.
 - `--root-directory` (Optional): The directory to save progress to. This is also used to synchronize multiple calls for parallelization.
-- `--overwrite-working-directory` (Optional): If set, deletes the working directory at the start of the run. This is useful, for example, when debugging a run_pipeline function.
+- `--overwrite-working-directory` (Optional): If set, deletes the working directory at the start of the run. This is useful, for example, when debugging a evalute_pipeline function.
 - `--post-run-summary` (Optional): Provide a summary of the results after running.
 - `--no-post-run-summary` (Optional): Do not provide a summary of the results after running.
 - `--max-evaluations-total` (Optional): Total number of evaluations to run.
 - `--max-evaluations-per-run` (Optional): Number of evaluations a specific call should maximally do.
 - `--continue-until-max-evaluation-completed` (Optional): If set, only stop after max-evaluations-total have been completed. This is only relevant in the parallel setting.
 - `--max-cost-total` (Optional): No new evaluations will start when this cost is exceeded. Requires returning a cost
-  in the run_pipeline function.
+  in the evalute_pipeline function.
 - `--ignore-errors` (Optional): If set, ignore errors during the optimization process.
 - `--loss-value-on-error` (Optional): Loss value to assume on error.
 - `--cost-value-on-error` (Optional): Cost value to assume on error.

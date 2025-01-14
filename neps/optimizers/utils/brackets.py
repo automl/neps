@@ -231,7 +231,6 @@ class Sync:
         Args:
             table: The table of configurations to split into brackets.
             rung_sizes: A mapping of rung to the capacity of that rung.
-            ensure_additional_bracket:
 
         Returns:
             Brackets which have each subselected the table with the corresponding rung
@@ -364,7 +363,10 @@ class Hyperband:
 
     @classmethod
     def create_repeating(
-        cls, table: pd.DataFrame, *, bracket_layouts: list[dict[int, int]]
+        cls,
+        table: pd.DataFrame,
+        *,
+        bracket_layouts: list[dict[int, int]],
     ) -> list[Hyperband]:
         """Create a list of brackets from the table.
 
@@ -391,8 +393,7 @@ class Hyperband:
 
         Args:
             table: The table of configurations to split into brackets.
-            rung_sizes: A mapping of rung to the capacity of that rung.
-            ensure_additional_bracket:
+            bracket_layouts: A mapping of rung to the capacity of that rung.
 
         Returns:
             HyperbandBrackets which have each subselected the table with the

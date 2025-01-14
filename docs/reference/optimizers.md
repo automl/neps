@@ -21,7 +21,7 @@ For example, running the following format, without specifying a optimizer will c
 the `pipeline_space` passed.
 ```python
 neps.run(
-    run_pipeline=run_function,
+    evalute_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
@@ -37,7 +37,7 @@ please refer to the next section on [PredefinedOptimizerConfigs](#optimizer-conf
 
 ```python
 neps.run(
-    run_pipeline=run_function,
+    evalute_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
@@ -72,7 +72,7 @@ sample_prior_first: false
 
 ```python
 neps.run(
-    run_pipeline=run_function,
+    evalute_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
@@ -89,11 +89,11 @@ precedence over those specified in the YAML configuration.
 
 ```python
 neps.run(
-    run_pipeline=run_function,
+    evalute_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
-    optimizir="path/to/custom_bo.yaml",
+    optimizer="path/to/custom_bo.yaml",
     initial_design_size=5,        # overrides value in custom_bo.yaml
     random_interleave_prob=0.25  # overrides value in custom_bo.yaml
 )

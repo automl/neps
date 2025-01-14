@@ -3,18 +3,37 @@
 # ruff: noqa: T201
 from __future__ import annotations
 
-from dataclasses import asdict
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
 from neps.runtime import get_workers_neps_state
 from neps.state.neps_state import FileLocker, NePSState, Report, Trial
-from neps.utils.types import ERROR, ConfigID, _ConfigResultForStats
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
+
+
+# TODO(eddiebergman): This is a hack because status.py expects a `ConfigResult`
+# where the `config` is a dict config (`RawConfig`), while all the optimizers
+# expect a `ConfigResult` where the `config` is a `SearchSpace`. Ideally we
+# just rework status to use `Trial` and `Report` directly as they contain a lot more
+# information.
+@dataclass
+class _ConfigResultForStats:
+    id: str
+    config: Mapping[str, Any]
+    result: Mapping[str, Any] | Literal["error"]
+    metadata: dict
+
+    @property
+    def objective_to_minimize(self) -> float | Literal["error"]:
+        if isinstance(self.result, dict):
+            return float(self.result["objective_to_minimize"])
+        return "error"
 
 
 def get_summary_dict(  # noqa: C901
@@ -34,7 +53,7 @@ def get_summary_dict(  # noqa: C901
     """
     root_directory = Path(root_directory)
 
-    def _to_deprecate_result_dict(report: Report) -> dict[str, Any] | ERROR:
+    def _to_deprecate_result_dict(report: Report) -> dict[str, Any] | Literal["error"]:
         """Return the report as a dictionary."""
         if report.reported_as == "success":
             d = {
@@ -43,10 +62,6 @@ def get_summary_dict(  # noqa: C901
                 **report.extra,
             }
 
-            # HACK: Backwards compatibility. Not sure how much this is needed
-            # but it should be removed once optimizers stop calling the
-            # `get_objective_to_minimize`, `get_cost`, `get_learning_curve` methods of
-            #  `BaseOptimizer` and just use the `Report` directly.
             if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
                 d.setdefault("info_dict", {})["learning_curve"] = report.learning_curve
             return d
@@ -62,7 +77,7 @@ def get_summary_dict(  # noqa: C901
 
     trials = shared_state.lock_and_read_trials()
 
-    evaluated: dict[ConfigID, _ConfigResultForStats] = {}
+    evaluated: dict[str, _ConfigResultForStats] = {}
 
     for trial in trials.values():
         if trial.report is None:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps.optimizers import random_search
+from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
 from neps.space import Float, SearchSpace
 from neps.state import (
@@ -51,7 +51,7 @@ def test_max_evaluations_total_stopping_criterion(
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         return 1.0
 
     worker = DefaultWorker.new(
@@ -59,7 +59,6 @@ def test_max_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -79,7 +78,6 @@ def test_max_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 0
@@ -105,7 +103,7 @@ def test_worker_evaluations_total_stopping_criterion(
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         return 1.0
 
     worker = DefaultWorker.new(
@@ -113,7 +111,6 @@ def test_worker_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -134,7 +131,6 @@ def test_worker_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
 
@@ -173,7 +169,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     pending_trial.set_evaluating(time_started=0.0, worker_id="dummy")
     neps_state.put_updated_trial(pending_trial)
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         return 1.0
 
     worker = DefaultWorker.new(
@@ -181,7 +177,6 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -223,7 +218,7 @@ def test_max_cost_total(neps_state: NePSState) -> None:
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> dict:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> dict:
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
@@ -231,7 +226,6 @@ def test_max_cost_total(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -251,7 +245,6 @@ def test_max_cost_total(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 0
@@ -273,7 +266,7 @@ def test_worker_cost_total(neps_state: NePSState) -> None:
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> dict:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> dict:
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
@@ -281,7 +274,6 @@ def test_worker_cost_total(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -301,7 +293,6 @@ def test_worker_cost_total(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 2
@@ -331,7 +322,7 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         return 1.0
 
     worker = DefaultWorker.new(
@@ -339,7 +330,6 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy",
     )
     worker.run()
@@ -358,7 +348,6 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy2",
     )
     new_worker.run()
@@ -388,7 +377,7 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         time.sleep(0.6)
         return 1.0
 
@@ -397,7 +386,6 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy",
     )
     worker.run()
@@ -416,7 +404,6 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy2",
     )
     new_worker.run()
@@ -446,7 +433,7 @@ def test_max_evaluation_time_global(neps_state: NePSState) -> None:
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
+    def eval_function(*args, **kwargs) -> float:
         time.sleep(0.6)
         return 1.0
 
@@ -455,7 +442,6 @@ def test_max_evaluation_time_global(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy",
     )
     worker.run()
@@ -474,7 +460,6 @@ def test_max_evaluation_time_global(neps_state: NePSState) -> None:
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy2",
     )
     new_worker.run()

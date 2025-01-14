@@ -4,9 +4,6 @@ from warnings import warn
 
 import neps
 
-def run_pipeline(some_float, some_integer, some_cat):
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    return evaluate_pipeline(some_float, some_integer, some_cat)
 
 def evaluate_pipeline(some_float, some_integer, some_cat):
     start = time.time()
@@ -28,13 +25,22 @@ def evaluate_pipeline(some_float, some_integer, some_cat):
 # that speeds up the search
 pipeline_space = dict(
     some_float=neps.Float(
-        lower=1, upper=1000, log=True, prior=900, prior_confidence="medium"
+        lower=1,
+        upper=1000,
+        log=True,
+        prior=900,
+        prior_confidence="medium",
     ),
     some_integer=neps.Integer(
-        lower=0, upper=50, prior=35, prior_confidence="low"
+        lower=0,
+        upper=50,
+        prior=35,
+        prior_confidence="low",
     ),
     some_cat=neps.Categorical(
-        choices=["a", "b", "c"], prior="a", prior_confidence="high"
+        choices=["a", "b", "c"],
+        prior="a",
+        prior_confidence="high",
     ),
 )
 

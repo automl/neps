@@ -120,8 +120,11 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
     yield
+
+    # This is mostly for `tblogger`
     for _key, callback in _TRIAL_END_CALLBACKS.items():
         callback(trial)
+
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
 
 
@@ -149,9 +152,6 @@ class DefaultWorker(Generic[Loc]):
     worker_id: str
     """The id of the worker."""
 
-    _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None
-    """Hooks to run before sampling a new trial."""
-
     worker_cumulative_eval_count: int = 0
     """The number of evaluations done by this worker."""
 
@@ -171,7 +171,6 @@ class DefaultWorker(Generic[Loc]):
         optimizer: BaseOptimizer,
         settings: WorkerSettings,
         evaluation_fn: Callable[..., float | Mapping[str, Any]],
-        _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
         worker_id: str | None = None,
     ) -> DefaultWorker:
         """Create a new worker."""
@@ -181,7 +180,6 @@ class DefaultWorker(Generic[Loc]):
             settings=settings,
             evaluation_fn=evaluation_fn,
             worker_id=worker_id if worker_id is not None else _default_worker_name(),
-            _pre_sample_hooks=_pre_sample_hooks,
         )
 
     def _check_worker_local_settings(
@@ -721,6 +719,5 @@ def _launch_runtime(  # noqa: PLR0913
         optimizer=optimizer,
         evaluation_fn=evaluation_fn,
         settings=settings,
-        _pre_sample_hooks=[],
     )
     worker.run()

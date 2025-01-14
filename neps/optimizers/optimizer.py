@@ -1,4 +1,26 @@
-"""Optimizer interface."""
+"""Optimizer interface.
+
+By implementing the [`AskFunction`][neps.optimizers.optimizer.AskFunction] protocol,
+you can inject your own optimizer into the neps runtime.
+
+```python
+class MyOpt:
+
+    def __init__(self, space: SearchSpace, ...): ...
+
+    def __call__(
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None,
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]: ...
+
+neps.run(..., optimizer=MyOpt)
+
+# Or with optimizer hyperparameters
+neps.run(..., optimizer=(MyOpt, {"a": 1, "b": 2}))
+```
+"""
 
 from __future__ import annotations
 
@@ -34,6 +56,9 @@ class AskFunction(Protocol):
         Args:
             trials: All of the trials that are known about.
             budget_info: information about the budget constraints.
+            n: The number of configurations to sample. If you do not support
+                sampling multiple configurations at once, you should raise
+                a `ValueError`.
 
         Returns:
             The sampled configuration(s)

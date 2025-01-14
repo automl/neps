@@ -207,7 +207,7 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
 
 def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
     """Constructs a [`SearchSpace`][neps.space.SearchSpace]
-    from a [`ConfigurationSpace`][ConfigSpace.configuration_space.ConfigurationSpace].
+    from a [`ConfigurationSpace`](https://automl.github.io/ConfigSpace/latest/).
 
     Args:
         configspace: The configuration space to construct the pipeline space from.

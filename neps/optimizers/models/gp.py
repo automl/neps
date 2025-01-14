@@ -217,6 +217,17 @@ def encode_trials_for_gp(
     encoder: ConfigEncoder | None = None,
     device: torch.device | None = None,
 ) -> tuple[GPEncodedData, ConfigEncoder]:
+    """Encode the trials for use in a GP.
+
+    Args:
+        trials: The trials to encode.
+        space: The search space.
+        encoder: The encoder to use. If `None`, one will be created.
+        device: The device to use.
+
+    Returns:
+        The encoded data and the encoder
+    """
     train_configs: list[Mapping[str, Any]] = []
     train_losses: list[float] = []
     train_costs: list[float] = []
@@ -288,9 +299,9 @@ def fit_and_acquire_from_gp(
     Please see the following for:
 
     * Making a GP to pass in:
-        [`make_default_single_obj_gp`][neps.optimizers.bayesian_optimization.models.gp.make_default_single_obj_gp]
+        [`make_default_single_obj_gp()`][neps.optimizers.models.gp.make_default_single_obj_gp]
     * Encoding configurations:
-        [`encode_trails_for_gp`][neps.optimizers.bayesian_optimization.models.gp.encode_trails_for_gp]
+        [`encode_trials_for_gp()`][neps.optimizers.models.gp.encode_trials_for_gp]
 
     Args:
         gp: The GP model to use.

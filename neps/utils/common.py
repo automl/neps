@@ -265,21 +265,19 @@ def dynamic_load_object(path: str, object_name: str) -> object:
     Args:
         path: File system path or module path to the Python module.
         object_name: Name of the object to import from the module.
-        key: Identifier for the argument causing the error, for enhanced error feedback.
 
     Returns:
         object: The imported object from the module.
 
     Raises:
-        ImportError: If the module or object cannot be found, with a message detailing
-        the issue.
+        ImportError: If the module or object cannot be found.
     """
     # file system path
     if os.sep in path:
         _path = Path(path).with_suffix(".py")
         if not _path.exists():
             raise ImportError(
-                f"Failed to import '{object_name}'." f" File '{path}' does not exist."
+                f"Failed to import '{object_name}'. File '{path}' does not exist."
             )
         module_path = path.replace(os.sep, ".").replace(".py", "")
 
