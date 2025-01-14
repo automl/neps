@@ -308,11 +308,11 @@ def _ifbo(
 
         device: Device to use for the model
     """
-    from neps.optimizers.ifbo import adjust_pipeline_space_to_match_stepsize
+    from neps.optimizers.ifbo import adjust_space_to_match_stepsize
 
     # TODO: I'm not sure how this might effect tables, whose lowest fidelity
     # might be below to possibly increased lower bound.
-    space, fid_bins = adjust_pipeline_space_to_match_stepsize(pipeline_space, step_size)
+    space, fid_bins = adjust_space_to_match_stepsize(pipeline_space, step_size)
     assert space.fidelity is not None
     fidelity_name, fidelity = space.fidelity
 
@@ -574,7 +574,6 @@ def _load_optimizer_from_string(
         _optimizer = optimizer
 
     optimizer_build = PredefinedOptimizers.get(_optimizer)
-    print(optimizer_build)  # noqa: T201
     if optimizer_build is None:
         raise ValueError(
             f"Unrecognized `optimizer` of type {type(optimizer)}."

@@ -109,7 +109,6 @@ line-length = 90
 src = ["neps"]
 
 exclude = [
-    "tests",
     "neps_examples",
     ".bzr",
     ".direnv",

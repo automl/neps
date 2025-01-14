@@ -24,9 +24,8 @@ if TYPE_CHECKING:
     from botorch.acquisition.acquisition import AcquisitionFunction
     from torch import Tensor
 
-    from neps.sampling.priors import Prior
-    from neps.search_spaces.domain import Domain
-    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.sampling import Prior
+    from neps.space import ConfigEncoder, Domain
 
 
 def apply_pibo_acquisition_weight(

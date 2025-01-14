@@ -7,11 +7,9 @@ from typing import TYPE_CHECKING
 from neps.optimizers.optimizer import SampledConfig
 
 if TYPE_CHECKING:
-    from neps.sampling.samplers import Sampler
-    from neps.search_spaces.encoding import ConfigEncoder
-    from neps.search_spaces.search_space import SearchSpace
-    from neps.state.optimizer import BudgetInfo
-    from neps.state.trial import Trial
+    from neps.sampling import Sampler
+    from neps.space import ConfigEncoder, SearchSpace
+    from neps.state import BudgetInfo, Trial
 
 
 @dataclass

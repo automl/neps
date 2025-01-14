@@ -15,22 +15,18 @@ from neps.optimizers.models.ftpfn import (
 )
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
-from neps.sampling.samplers import Sampler
-from neps.search_spaces.domain import Domain
-from neps.search_spaces.search_space import Float, Integer, SearchSpace
+from neps.sampling import Prior, Sampler
+from neps.space import ConfigEncoder, Domain, Float, Integer, SearchSpace
 
 if TYPE_CHECKING:
-    from neps.sampling.priors import Prior
-    from neps.search_spaces.encoding import ConfigEncoder
-    from neps.state.optimizer import BudgetInfo
-    from neps.state.trial import Trial
+    from neps.state import BudgetInfo, Trial
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
 
 
-def adjust_pipeline_space_to_match_stepsize(
-    pipeline_space: SearchSpace,
+def adjust_space_to_match_stepsize(
+    space: SearchSpace,
     step_size: int | float,
 ) -> tuple[SearchSpace, int]:
     """Adjust the pipeline space to be evenly divisible by the step size.
@@ -45,10 +41,9 @@ def adjust_pipeline_space_to_match_stepsize(
     Returns:
         The adjusted pipeline space and the number of bins it can be divided into
     """
-    fidelity = pipeline_space.fidelity
-    fidelity_name = pipeline_space.fidelity_name
-    assert fidelity_name is not None
-    assert isinstance(fidelity, Float | Integer)
+    assert space.fidelity is not None
+    fidelity_name, fidelity = space.fidelity
+
     if fidelity.log:
         raise NotImplementedError("Log fidelity not yet supported")
 
@@ -71,18 +66,31 @@ def adjust_pipeline_space_to_match_stepsize(
     # > r = x - n*k
     r = x - n * step_size
     new_lower = fidelity.lower + r
-    new_fid = fidelity.__class__(
-        lower=new_lower,
-        upper=fidelity.upper,
-        log=fidelity.log,
-        prior=fidelity.prior,
-        is_fidelity=True,
-        prior_confidence=fidelity.prior_confidence_choice,
-    )
-    return (
-        SearchSpace(**{**pipeline_space.hyperparameters, fidelity_name: new_fid}),
-        n,
-    )
+
+    new_fid: Float | Integer
+    match fidelity:
+        case Float():
+            new_fid = Float(
+                lower=float(new_lower),
+                upper=float(fidelity.upper),
+                log=fidelity.log,
+                prior=fidelity.prior,
+                is_fidelity=True,
+                prior_confidence=fidelity.prior_confidence,
+            )
+        case Integer():
+            new_fid = Integer(
+                lower=int(new_lower),
+                upper=int(fidelity.upper),
+                log=fidelity.log,
+                prior=fidelity.prior,
+                is_fidelity=True,
+                prior_confidence=fidelity.prior_confidence,
+            )
+        case _:
+            raise ValueError(f"Unsupported fidelity type: {type(fidelity)}")
+    new_space = SearchSpace({**space.parameters, fidelity_name: new_fid})
+    return new_space, n
 
 
 @dataclass

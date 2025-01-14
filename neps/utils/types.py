@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 import numpy as np
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import SearchSpace
 
 # TODO(eddiebergman): We can turn this to an enum at some
 # point to prevent having to isinstance and str match

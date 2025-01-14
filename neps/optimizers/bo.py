@@ -19,8 +19,7 @@ from neps.optimizers.utils.initial_design import make_initial_design
 
 if TYPE_CHECKING:
     from neps.sampling import Prior
-    from neps.search_spaces.encoding import ConfigEncoder
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
 
 

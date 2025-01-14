@@ -11,6 +11,8 @@ Please check [`neps.run()`][neps.api.run] for complete information on the argume
 Below is a YAML configuration example for NePS covering the required arguments.
 The arguments match those that you can pass to [`neps.run()`][neps.api.run].
 
+In general, you can encode any of the [parameters][neps.space.parameters] into a YAML format.
+
 === "config.yaml"
 
     ```yaml
@@ -19,15 +21,20 @@ The arguments match those that you can pass to [`neps.run()`][neps.api.run].
 
       batch_size: 64  # Constant
 
-      learning_rate:  # Float
+      optimizer: [adam, sgd, adamw] # Categorical
+
+      alpha: [0.01, 1.0] # Uniform Float
+
+      n_layers: [1, 10]  # Uniform Integer
+
+      learning_rate:  # Log scale Float with a prior
         lower: 1e-5
         upper: 1e-1
-        log: true  # Log scale for learning rate
+        log: true
+        prior: 1e-3
+        prior_confidence: high
 
-      optimizer:      # Categorical
-        choices: [adam, sgd, adamw]
-
-      epochs:         # Integer
+      epochs:         # Integer fidelity
         lower: 5
         upper: 20
         is_fidelity: true

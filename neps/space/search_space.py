@@ -1,4 +1,4 @@
-"""Contains the [`SearchSpace`][neps.search_spaces.search_space.SearchSpace] class
+"""Contains the [`SearchSpace`][neps.space.search_space.SearchSpace] class
 which is a container for hyperparameters that can be sampled, mutated, and crossed over.
 """
 
@@ -25,6 +25,10 @@ class SearchSpace:
 
     categoricals: dict[str, Categorical] = field(init=False, default_factory=dict)
     """The categorical hyperparameters in the search space."""
+
+    searchables: dict[str, Integer | Float | Categorical] = field(
+        init=False, default_factory=dict
+    )
 
     numerical: dict[str, Integer | Float] = field(init=False, default_factory=dict)
     """The numerical hyperparameters in the search space."""
@@ -56,12 +60,14 @@ class SearchSpace:
                         self.fidelities[name] = hp
 
                     self.numerical[name] = hp
+                    self.searchables[name] = hp
 
                     if hp.prior is not None:
                         self.prior[name] = hp.prior
 
                 case Categorical():
                     self.categoricals[name] = hp
+                    self.searchables[name] = hp
 
                     if hp.prior is not None:
                         self.prior[name] = hp.prior

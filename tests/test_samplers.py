@@ -3,10 +3,8 @@ from __future__ import annotations
 import torch
 from pytest_cases import parametrize
 
-from pytest_cases import parametrize
-from neps.sampling.samplers import Sampler, Sobol, WeightedSampler, BorderSampler
-from neps.sampling.priors import Prior, Uniform
-from neps.search_spaces.domain import Domain
+from neps.sampling import BorderSampler, Prior, Sampler, Sobol, Uniform, WeightedSampler
+from neps.space import Domain
 
 
 def _make_centered_prior(ndim: int) -> Prior:

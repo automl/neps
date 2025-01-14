@@ -8,7 +8,7 @@ Some properties include:
 * Whether the domain is split into bins.
 
 With that, the primary method of a domain is to be able to
-[`cast()`][neps.search_spaces.domain.Domain.cast] a tensor of
+[`cast()`][neps.space.domain.Domain.cast] a tensor of
 values from one to domain to another,
 e.g. `values_a = domain_a.cast(values_b, frm=domain_b)`.
 
@@ -16,27 +16,27 @@ This can be used to convert float samples to integers, integers
 to log space, etc.
 
 The core method to do so is to be able to cast
-[`to_unit()`][neps.search_spaces.domain.Domain.to_unit] which takes
+[`to_unit()`][neps.space.domain.Domain.to_unit] which takes
 values to a unit interval [0, 1], and then to be able to cast values in [0, 1]
-to the new domain with [`from_unit()`][neps.search_spaces.domain.Domain.from_unit].
+to the new domain with [`from_unit()`][neps.space.domain.Domain.from_unit].
 
 There are some shortcuts implemented in `cast`, such as skipping going through
 the unit interval if the domains are the same, as no transformation is needed.
 
 The primary methods for creating a domain are
 
-* [`Domain.float(l, u, ...)`][neps.search_spaces.domain.Domain.float] -
+* [`Domain.float(l, u, ...)`][neps.space.domain.Domain.float] -
     Used for modelling float ranges
-* [`Domain.int(l, u, ...)`][neps.search_spaces.domain.Domain.int] -
+* [`Domain.int(l, u, ...)`][neps.space.domain.Domain.int] -
     Used for modelling integer ranges
-* [`Domain.indices(n)`][neps.search_spaces.domain.Domain.indices] -
+* [`Domain.indices(n)`][neps.space.domain.Domain.indices] -
     Primarly used to model categorical choices
 
 If you have a tensor of values, where each column corresponds to a different domain,
-you can take a look at [`Domain.translate()`][neps.search_spaces.domain.Domain.translate]
+you can take a look at [`Domain.translate()`][neps.space.domain.Domain.translate]
 
 If you need a unit-interval domain, please use the
-[`Domain.unit_float()`][neps.search_spaces.domain.Domain.unit_float].
+[`Domain.unit_float()`][neps.space.domain.Domain.unit_float].
 """
 
 from __future__ import annotations
@@ -62,11 +62,11 @@ class Domain(Generic[V]):
 
     The primary methods for creating a domain are
 
-    * [`Domain.float(l, u, ...)`][neps.search_spaces.domain.Domain.float] -
+    * [`Domain.float(l, u, ...)`][neps.space.domain.Domain.float] -
         Used for modelling float ranges
-    * [`Domain.int(l, u, ...)`][neps.search_spaces.domain.Domain.int] -
+    * [`Domain.int(l, u, ...)`][neps.space.domain.Domain.int] -
         Used for modelling integer ranges
-    * [`Domain.indices(n)`][neps.search_spaces.domain.Domain.indices] -
+    * [`Domain.indices(n)`][neps.space.domain.Domain.indices] -
         Primarly used to model categorical choices
     """
 
@@ -287,7 +287,7 @@ class Domain(Generic[V]):
         """Cast a tensor of values frm the domain `frm` to this domain.
 
         If you need to cast a tensor of mixed domains, use
-        [`Domain.translate()`][neps.search_spaces.domain.Domain.translate].
+        [`Domain.translate()`][neps.space.domain.Domain.translate].
 
         Args:
             x: Tensor of values in the `frm` domain to cast to this domain.

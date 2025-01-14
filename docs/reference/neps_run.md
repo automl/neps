@@ -189,23 +189,38 @@ Any new workers that come online will automatically pick up work and work togeth
     ```
 
 ## YAML Configuration
-You have the option to configure all arguments using a YAML file through [`neps.run(run_args=...)`][neps.api.run].
-For more on yaml usage, please visit the dedicated [page on usage of YAML with NePS](../reference/declarative_usage.md).
+We support arguments to [`neps.run()`][neps.api.run] that have been seriliazed into a
+YAML file. This means you can manage your configurations in a more human-readable format
+if you prefer.
 
-Parameters not explicitly defined within this file will receive their default values.
+For more on yaml usage, please visit the dedicated
+[page on usage of YAML with NePS](../reference/declarative_usage.md).
 
 
 === "Yaml Configuration"
 
     ```yaml
     # path/to/your/config.yaml
-    run_pipeline:
-      path: "path/to/your/run_pipeline.py" # File path of the run_pipeline function
-      name: "name_of_your_run_pipeline" # Function name
-    pipeline_space: "path/to/your/search_space.yaml" # Path of the search space yaml file
+    evaluate_pipeline: path/to/your/run_pipeline.py:name_of_your_run_pipeline_function
+
+    pipeline_space:
+      batch_size: 64                # Constant
+      optimizer: [adam, sgd, adamw] # Categorical
+      alpha: [0.01, 1.0]            # Uniform Float
+      n_layers: [1, 10]             # Uniform Integer
+      learning_rate:                # Log scale Float with a prior
+        lower: 1e-5
+        upper: 1e-1
+        log: true
+        prior: 1e-3
+        prior_confidence: high
+      epochs:                       # Integer fidelity
+        lower: 5
+        upper: 20
+        is_fidelity: true
+
     root_directory: "neps_results"  # Output directory for results
     max_evaluations_total: 100
-    post_run_summary: # Defaults applied if left empty
     optimizer:
       name: "bayesian_optimization"
       initial_design_size: 5
@@ -215,7 +230,10 @@ Parameters not explicitly defined within this file will receive their default va
 === "Python"
 
     ```python
-    neps.run(run_args="path/to/your/config.yaml")
+    with open("path/to/your/config.yaml", "r") as file:
+        settings = yaml.safe_load(file)
+
+    neps.run(**settings)
     ```
 
 ## Handling Errors

@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING, Any
 from neps.optimizers.optimizer import SampledConfig
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
-    from neps.state.optimizer import BudgetInfo
-    from neps.state.trial import Trial
+    from neps.space import SearchSpace
+    from neps.state import BudgetInfo, Trial
 
 
 @dataclass

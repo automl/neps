@@ -4,7 +4,7 @@ import pytest
 import torch
 from pytest_cases import parametrize
 
-from neps.search_spaces.domain import Domain
+from neps.space import Domain
 
 T = torch.tensor
 

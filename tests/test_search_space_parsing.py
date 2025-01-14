@@ -1,17 +1,26 @@
+from __future__ import annotations
+
 from typing import Any
 
 import pytest
 
-from neps import Float, Integer, Constant, Categorical, Parameter
-from neps.search_spaces import parsing
+from neps.space import Categorical, Constant, Float, Integer, Parameter, parsing
 
 
 @pytest.mark.parametrize(
-    "config, expected",
+    ("config", "expected"),
     [
         (
             (0, 1),
             Integer(0, 1),
+        ),
+        (
+            ("1e3", "1e5"),
+            Integer(1e3, 1e5),
+        ),
+        (
+            ("1e-3", "1e-1"),
+            Float(1e-3, 1e-1),
         ),
         (
             (1e-5, 1e-1),

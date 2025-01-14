@@ -1,7 +1,7 @@
 """Encoding of hyperparameter configurations into tensors.
 
 For the most part, you can just use
-[`ConfigEncoder.from_space()`][neps.search_spaces.encoding.ConfigEncoder.from_space]
+[`ConfigEncoder.from_space()`][neps.space.encoding.ConfigEncoder.from_space]
 to create an encoder over a list of hyperparameters, along with any constants you
 want to include when decoding configurations.
 """
@@ -216,23 +216,23 @@ class ConfigEncoder:
     tensors.
 
     The primary methods/properties to be aware of are:
-    * [`from_space()`](neps.search_spaces.encoding.ConfigEncoder.default]: Create a
+    * [`from_space()`][neps.space.encoding.ConfigEncoder.from_space]: Create a
         default encoder over a list of hyperparameters. Please see the method docs for
         more details on how it encodes different types of hyperparameters.
-    * [`encode()`]]neps.search_spaces.encoding.ConfigEncoder.encode]: Encode a list of
+    * [`encode()`]]neps.space.encoding.ConfigEncoder.encode]: Encode a list of
         configurations into a single tensor using the transforms of the encoder.
-    * [`decode()`][neps.search_spaces.encoding.ConfigEncoder.decode]: Decode a 2d tensor
+    * [`decode()`][neps.space.encoding.ConfigEncoder.decode]: Decode a 2d tensor
         of length `N` into a list of `N` configurations.
-    * [`domains`][neps.search_spaces.encoding.ConfigEncoder.domains): The
-        [`Domain`][neps.search_spaces.domain.Domain] that each hyperparameter is encoded
+    * [`domains`][neps.space.encoding.ConfigEncoder.domains]: The
+        [`Domain`][neps.space.domain.Domain] that each hyperparameter is encoded
         into. This is useful in combination with classes like
         [`Sampler`][neps.sampling.samplers.Sampler],
-        [`Prior`][neps.sampling.priors.Prior], and
+        [`Prior`][neps.sampling.Prior], and
         [`TorchDistributionWithDomain`][neps.sampling.distributions.TorchDistributionWithDomain],
         which require knowledge of the
         domains of each column for the tensor, for example, to sample values directly
         into the encoded space, getting log probabilities of the encoded values.
-    * [`ncols`][neps.search_spaces.encoding.ConfigEncoder.ncols]: The number of columns
+    * [`ncols`][neps.space.encoding.ConfigEncoder.ncols]: The number of columns
         in the encoded tensor, useful for initializing some `Sampler`s.
     """
 

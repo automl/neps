@@ -12,58 +12,70 @@ from typing import Any
 import pytest
 from pytest_cases import case, fixture, parametrize, parametrize_with_cases
 
-from neps.optimizers import PredefinedOptimizers, AskFunction, load_optimizer
-from neps.search_spaces.hyperparameters import (
+from neps.optimizers import AskFunction, PredefinedOptimizers, load_optimizer
+from neps.space import (
     Categorical,
     Constant,
     Float,
     Integer,
+    SearchSpace,
 )
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
+from neps.state import (
+    BudgetInfo,
+    NePSState,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+)
 
 
 @case
 def case_search_space_no_fid() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1),
-        b=Categorical(["a", "b", "c"]),
-        c=Constant("a"),
-        d=Integer(0, 10),
+        {
+            "a": Float(0, 1),
+            "b": Categorical(["a", "b", "c"]),
+            "c": Constant("a"),
+            "d": Integer(0, 10),
+        }
     )
 
 
 @case
 def case_search_space_with_fid() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1),
-        b=Categorical(["a", "b", "c"]),
-        c=Constant("a"),
-        d=Integer(0, 10),
-        e=Integer(1, 10, is_fidelity=True),
+        {
+            "a": Float(0, 1),
+            "b": Categorical(["a", "b", "c"]),
+            "c": Constant("a"),
+            "d": Integer(0, 10),
+            "e": Integer(1, 10, is_fidelity=True),
+        }
     )
 
 
 @case
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, prior=0.5),
-        b=Categorical(["a", "b", "c"], prior="a"),
-        c=Constant("a"),
-        d=Integer(0, 10, prior=5),
+        {
+            "a": Float(0, 1, prior=0.5),
+            "b": Categorical(["a", "b", "c"], prior="a"),
+            "c": Constant("a"),
+            "d": Integer(0, 10, prior=5),
+        }
     )
 
 
 @case
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, prior=0.5),
-        b=Categorical(["a", "b", "c"], prior="a"),
-        c=Constant("a"),
-        d=Integer(0, 10, prior=5),
-        e=Integer(1, 10, is_fidelity=True),
+        {
+            "a": Float(0, 1, prior=0.5),
+            "b": Categorical(["a", "b", "c"], prior="a"),
+            "c": Constant("a"),
+            "d": Integer(0, 10, prior=5),
+            "e": Integer(1, 10, is_fidelity=True),
+        }
     )
 
 
@@ -76,6 +88,7 @@ OPTIMIZER_FAILS_WITH_FIDELITY = [
     "random_search",
     "bayesian_optimization_cost_aware",
     "bayesian_optimization",
+    "bayesian_optimization_prior",
     "pibo",
     "cost_cooling_bayesian_optimization",
     "cost_cooling",
@@ -117,7 +130,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[AskFunction,
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].prior is None:
+    if key in REQUIRES_PRIOR and search_space.searchables["a"].prior is None:
         pytest.xfail(f"{key} requires a prior")
 
     if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
@@ -127,7 +140,7 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[AskFunction,
         pytest.xfail(f"{key} requires a fidelity parameter")
 
     kwargs: dict[str, Any] = {}
-    opt, _ = load_optimizer((key, kwargs), search_space)
+    opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
     return opt, key
 
 

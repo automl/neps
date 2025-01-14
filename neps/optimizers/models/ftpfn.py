@@ -7,13 +7,10 @@ from typing import TYPE_CHECKING, Any
 import torch
 from ifbo import FTPFN
 
-from neps.sampling.priors import Prior
+from neps.sampling import Prior, Sampler
 
 if TYPE_CHECKING:
-    from neps.sampling.samplers import Sampler
-    from neps.search_spaces.domain import Domain
-    from neps.search_spaces.encoding import ConfigEncoder
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import ConfigEncoder, Domain, SearchSpace
     from neps.state.trial import Trial
 
 
@@ -145,8 +142,9 @@ def encode_ftpfn(
     # Select all trials which have something we can actually use for modelling
     # The absence of a report signifies pending
     selected = dict(trials.items())
-    assert space.fidelity_name is not None
     assert space.fidelity is not None
+    fidelity_name, fidelity = space.fidelity
+
     assert 0 <= error_value <= 1
     train_configs = encoder.encode(
         [t.config for t in selected.values()], device=device, dtype=dtype
@@ -160,12 +158,12 @@ def encode_ftpfn(
     ids = ids + 1
 
     train_fidelities = torch.tensor(
-        [t.config[space.fidelity_name] for t in selected.values()],
+        [t.config[fidelity_name] for t in selected.values()],
         device=device,
         dtype=dtype,
     )
     train_max_cost_total = budget_domain.cast(
-        train_fidelities, frm=space.fidelity.domain, dtype=dtype
+        train_fidelities, frm=fidelity.domain, dtype=dtype
     )
 
     # TODO: Document that it's on the user to ensure these are already all bounded

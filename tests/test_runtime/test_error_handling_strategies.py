@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from pathlib import Path
-import contextlib
 
 import pytest
 from pytest_cases import fixture, parametrize
@@ -10,16 +10,16 @@ from pytest_cases import fixture, parametrize
 from neps.exceptions import WorkerRaiseError
 from neps.optimizers import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces import Float, SearchSpace
+from neps.space import Float, SearchSpace
 from neps.state import (
+    DefaultReportValues,
     NePSState,
+    OnErrorPossibilities,
     OptimizationState,
     OptimizerInfo,
     SeedSnapshot,
-    DefaultReportValues,
-    OnErrorPossibilities,
-    WorkerSettings,
     Trial,
+    WorkerSettings,
 )
 
 
@@ -44,7 +44,7 @@ def test_worker_raises_when_error_in_self(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = random_search(SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -85,7 +85,7 @@ def test_worker_raises_when_error_in_self(
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
-    optimizer = random_search(SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -147,9 +147,9 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = random_search(SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
-        on_error=OnErrorPossibilities.RAISE_WORKER_ERROR,  # <- Highlight
+        on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
         max_evaluations_total=None,
         include_in_progress_evaluations_towards_maximum=False,
@@ -166,7 +166,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     class _Eval:
         do_raise: bool
 
-        def __call__(self, *args, **kwargs) -> float:
+        def __call__(self, *args, **kwargs) -> float:  # noqa: ARG002
             if self.do_raise:
                 raise ValueError("This is an error")
             return 10

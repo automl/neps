@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import torch
 
-from neps.search_spaces.encoding import ConfigEncoder
-from neps.search_spaces.functions import pairwise_dist
-from neps.search_spaces.hyperparameters import Categorical, Float, Integer
+from neps.space import Categorical, ConfigEncoder, Float, Integer, SearchSpace
+from neps.space.functions import pairwise_dist
 
 
 def test_config_encoder_pdist_calculation() -> None:
-    parameters = {
-        "a": Categorical(["cat", "mouse", "dog"]),
-        "b": Integer(1, 10),
-        "c": Float(1, 10),
-    }
-    encoder = ConfigEncoder.from_parameters(parameters)
+    parameters = SearchSpace(
+        {
+            "a": Categorical(["cat", "mouse", "dog"]),
+            "b": Integer(1, 10),
+            "c": Float(1, 10),
+        }
+    )
+    encoder = ConfigEncoder.from_space(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
     config2 = {"a": "mouse", "b": 10, "c": 10.0}
 
@@ -44,12 +45,14 @@ def test_config_encoder_pdist_calculation() -> None:
 
 
 def test_config_encoder_pdist_squareform() -> None:
-    parameters = {
-        "a": Categorical(["cat", "mouse", "dog"]),
-        "b": Integer(1, 10),
-        "c": Float(1, 10),
-    }
-    encoder = ConfigEncoder.from_parameters(parameters)
+    parameters = SearchSpace(
+        {
+            "a": Categorical(["cat", "mouse", "dog"]),
+            "b": Integer(1, 10),
+            "c": Float(1, 10),
+        }
+    )
+    encoder = ConfigEncoder.from_space(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
     config2 = {"a": "dog", "b": 5, "c": 5}
     config3 = {"a": "mouse", "b": 10, "c": 10.0}

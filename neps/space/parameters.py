@@ -1,10 +1,17 @@
-"""A module of all the parameters for the search space."""
+"""A module of all the parameters for the search space.
+
+* [`Float`][neps.space.Float]
+* [`Integer`][neps.space.Integer]
+* [`Categorical`][neps.space.Categorical]
+* [`Constant`][neps.space.Constant]
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Literal, TypeAlias
 
+import numpy as np
 from more_itertools import all_unique
 
 from neps.space.domain import Domain
@@ -27,9 +34,6 @@ class Float:
     l2_norm = neps.Float(0, 1)
     learning_rate = neps.Float(1e-4, 1e-1, log=True)
     ```
-
-    Please see the [`Numerical`][neps.search_spaces.numerical.Numerical]
-    class for more details on the methods available for this class.
     """
 
     lower: float
@@ -71,6 +75,15 @@ class Float:
                 f"but got lower={self.lower}, prior={self.prior}, upper={self.upper}"
             )
 
+        self.lower = float(self.lower)
+        self.upper = float(self.upper)
+
+        if np.isnan(self.lower):
+            raise ValueError("Can not have lower bound that is nan")
+
+        if np.isnan(self.upper):
+            raise ValueError("Can not have upper bound that is nan")
+
         self.domain = Domain.floating(self.lower, self.upper, log=self.log)
 
 
@@ -93,16 +106,16 @@ class Integer:
     ```
     """
 
-    lower: float
+    lower: int
     """The lower bound of the numerical hyperparameter."""
 
-    upper: float
+    upper: int
     """The upper bound of the numerical hyperparameter."""
 
     log: bool = False
     """Whether the hyperparameter is in log space."""
 
-    prior: float | None = None
+    prior: int | None = None
     """Prior value for the hyperparameter."""
 
     prior_confidence: Literal["low", "medium", "high"] = "low"
@@ -118,11 +131,20 @@ class Integer:
                 f"lower={self.lower}, upper={self.upper}"
             )
 
-        if not isinstance(self.lower, int) or not isinstance(self.upper, int):
+        # We could get scientific notation such as 1e3 which would be a float.
+        # However we can safely cast this to `int` so we do an equality check
+        # to see if a possible float value matches its int value, before raising
+        # about floats.
+        lower_int = int(self.lower)
+        upper_int = int(self.upper)
+        if lower_int != self.lower or upper_int != self.upper:
             raise ValueError(
                 f"Integer parameter: bounds error (lower and upper must be integers). "
                 f"Actual values: lower={self.lower}, upper={self.upper}"
             )
+
+        self.lower = lower_int
+        self.upper = upper_int
 
         if self.log and (self.lower <= 0 or self.upper <= 0):
             raise ValueError(
@@ -206,20 +228,6 @@ class Constant:
 
     batch_size = neps.Constant(32)
     ```
-
-    !!! note
-
-        As the name suggests, the value of a `Constant` only have one
-        value and so its [`.prior`][neps.search_spaces.parameter.Parameter.prior]
-        and [`.value`][neps.search_spaces.parameter.Parameter.value] should always be
-        the same.
-
-        This also implies that the
-        [`.prior`][neps.search_spaces.parameter.Parameter.prior] can never be `None`.
-
-        Please use
-        [`.set_constant_value()`][neps.search_spaces.hyperparameters.constant.Constant.set_constant_value]
-        if you need to change the value of the constant parameter.
     """
 
     value: Any

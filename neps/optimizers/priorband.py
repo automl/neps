@@ -9,14 +9,11 @@ import numpy as np
 import torch
 
 from neps.optimizers.utils import brackets
-from neps.sampling.priors import Prior
-from neps.sampling.samplers import Sampler
-from neps.search_spaces.encoding import ConfigEncoder
+from neps.sampling import Prior, Sampler
+from neps.space import ConfigEncoder, SearchSpace
 
 if TYPE_CHECKING:
     import pandas as pd
-
-    from neps.search_spaces.search_space import SearchSpace
 
 
 @dataclass
@@ -98,7 +95,7 @@ def sample_with_priorband(
         early_stopping_rate=early_stopping_rate,
     )
     max_rung = max(rung_sizes)
-    prior_dist = Prior.from_config(space.prior_config, space=space)
+    prior_dist = Prior.from_config(space.prior, space=space)
 
     # Below we will follow the "geomtric" spacing
     w_random = 1 / (1 + eta**rung_to_sample_for)

@@ -13,7 +13,7 @@ import torch
 from torch.distributions import Distribution, Uniform, constraints
 from torch.distributions.utils import broadcast_all
 
-from neps.search_spaces.domain import Domain
+from neps.space import Domain
 
 if TYPE_CHECKING:
     from torch.distributions.constraints import Constraint

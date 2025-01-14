@@ -14,7 +14,7 @@ import numpy as np
 from neps.exceptions import NePSError
 
 if TYPE_CHECKING:
-    from neps.search_spaces import SearchSpace
+    from neps.space import SearchSpace
     from neps.utils.types import ERROR, ConfigResult, RawConfig
 
 logger = logging.getLogger(__name__)

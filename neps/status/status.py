@@ -10,13 +10,11 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from neps.runtime import get_workers_neps_state
-from neps.state.filebased import FileLocker
-from neps.state.neps_state import NePSState
-from neps.state.trial import Report, Trial
+from neps.state.neps_state import FileLocker, NePSState, Report, Trial
 from neps.utils.types import ERROR, ConfigID, _ConfigResultForStats
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import SearchSpace
 
 
 def get_summary_dict(  # noqa: C901

@@ -6,12 +6,17 @@ from pytest_cases import fixture
 
 from neps.optimizers import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces import Float, SearchSpace
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
-from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
+from neps.space import Float, SearchSpace
+from neps.state import (
+    DefaultReportValues,
+    NePSState,
+    OnErrorPossibilities,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+    Trial,
+    WorkerSettings,
+)
 
 
 @fixture
@@ -28,7 +33,7 @@ def neps_state(tmp_path: Path) -> NePSState:
 def test_default_values_on_error(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -81,7 +86,7 @@ def test_default_values_on_error(
 def test_default_values_on_not_specified(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -99,7 +104,7 @@ def test_default_values_on_not_specified(
         batch_size=None,
     )
 
-    def eval_function(*args, **kwargs) -> float:
+    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
         return 1.0
 
     worker = DefaultWorker.new(
@@ -132,7 +137,7 @@ def test_default_values_on_not_specified(
 def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -151,7 +156,7 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
 
     LOSS = 1.0
 
-    def eval_function(*args, **kwargs) -> float:
+    def eval_function(*args, **kwargs) -> float:  # noqa: ARG001
         return LOSS
 
     worker = DefaultWorker.new(
