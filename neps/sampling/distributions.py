@@ -40,7 +40,7 @@ class TruncatedStandardNormal(Distribution):
         "a": constraints.real,
         "b": constraints.real,
     }  # type: ignore
-    has_rsample: ClassVar[bool] = True
+    has_rsample: ClassVar[bool] = True  # type: ignore
     eps: ClassVar[float] = 1e-6
 
     def __init__(
@@ -111,41 +111,41 @@ class TruncatedStandardNormal(Distribution):
     @property
     @override  # type: ignore
     def variance(self) -> torch.Tensor:
-        return self._variance
+        return self._variance  # type: ignore
 
     @override  # type: ignore
     def entropy(self) -> torch.Tensor:
-        return self._entropy
+        return self._entropy  # type: ignore
 
     @staticmethod
     def _little_phi(x: torch.Tensor) -> torch.Tensor:
-        return (-(x**2) * 0.5).exp() * CONST_INV_SQRT_2PI
+        return (-(x**2) * 0.5).exp() * CONST_INV_SQRT_2PI  # type: ignore
 
     def _big_phi(self, x: torch.Tensor) -> torch.Tensor:
         phi = 0.5 * (1 + (x * CONST_INV_SQRT_2).erf())
-        return phi.clamp(self.eps, 1 - self.eps)
+        return phi.clamp(self.eps, 1 - self.eps)  # type: ignore
 
     @staticmethod
     def _inv_big_phi(x: torch.Tensor) -> torch.Tensor:
-        return CONST_SQRT_2 * (2 * x - 1).erfinv()
+        return CONST_SQRT_2 * (2 * x - 1).erfinv()  # type: ignore
 
     @override  # type: ignore
     def cdf(self, value: torch.Tensor) -> torch.Tensor:
         if self._validate_args:
             self._validate_sample(value)
-        return ((self._big_phi(value) - self._big_phi_a) / self._Z).clamp(0, 1)
+        return ((self._big_phi(value) - self._big_phi_a) / self._Z).clamp(0, 1)  # type: ignore
 
     @override  # type: ignore
     def icdf(self, value: torch.Tensor) -> torch.Tensor:
         y = self._big_phi_a + value * self._Z
         y = y.clamp(self.eps, 1 - self.eps)
-        return self._inv_big_phi(y)
+        return self._inv_big_phi(y)  # type: ignore
 
     @override  # type: ignore
     def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         if self._validate_args:
             self._validate_sample(value)
-        return CONST_LOG_INV_SQRT_2PI - self._log_Z - (value**2) * 0.5
+        return CONST_LOG_INV_SQRT_2PI - self._log_Z - (value**2) * 0.5  # type: ignore
 
     @override  # type: ignore
     def rsample(self, sample_shape: torch.Size | None = None) -> torch.Tensor:
@@ -200,14 +200,14 @@ class TruncatedNormal(TruncatedStandardNormal):
         self._entropy += self._log_scale
 
     def _to_std_rv(self, value: torch.Tensor) -> torch.Tensor:
-        return (value - self.loc) / self.scale
+        return (value - self.loc) / self.scale  # type: ignore
 
     def _from_std_rv(self, value: torch.Tensor) -> torch.Tensor:
-        return value * self.scale + self.loc
+        return value * self.scale + self.loc  # type: ignore
 
     @override
     def cdf(self, value: torch.Tensor) -> torch.Tensor:
-        return super().cdf(self._to_std_rv(value))
+        return super().cdf(self._to_std_rv(value))  # type: ignore
 
     @override
     def icdf(self, value: torch.Tensor) -> torch.Tensor:
@@ -221,12 +221,12 @@ class TruncatedNormal(TruncatedStandardNormal):
             [sample_clip, self._non_std_b.detach().expand_as(sample)], 0
         ).min(0)[0]
         sample.data.copy_(sample_clip)
-        return sample
+        return sample  # type: ignore
 
     @override
     def log_prob(self, value: torch.Tensor) -> torch.Tensor:
         value = self._to_std_rv(value)
-        return super().log_prob(value) - self._log_scale
+        return super().log_prob(value) - self._log_scale  # type: ignore
 
 
 class UniformWithUpperBound(Uniform):

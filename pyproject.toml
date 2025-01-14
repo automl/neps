@@ -102,23 +102,13 @@ requires = [
 
 build-backend = "setuptools.build_meta"
 
-# TODO(eddiebergman): Include more of these as we go on in migration
-# "tests",
-# "neps_examples",
 [tool.ruff]
 target-version = "py310"
 output-format = "full"
 line-length = 90
 src = ["neps"]
 
-# TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
-    "neps/optimizers/multi_fidelity_prior/utils.py",
-    "neps/search_spaces/architecture/**/*.py",
-    "neps/search_spaces/yaml_search_space_utils.py",
-    "neps/search_spaces/architecture",
-    "neps/utils/run_args_from_yaml.py",
-    "neps/api.py",
     "tests",
     "neps_examples",
     ".bzr",
@@ -318,23 +308,9 @@ disallow_incomplete_defs = true    # ...all types
 no_implicit_optional = true
 check_untyped_defs = true
 
-# TODO(eddiebergman): Improve coverage on these modules
 [[tool.mypy.overrides]]
-module = [
-    "neps.api",
-    "neps.search_spaces.architecture.*",
-    "neps.utils.run_args_from_yaml",
-    "neps.optimizers.multi_fidelity.successive_halving",
-    "neps.optimizers.multi_fidelity.sampling_policy",
-    "neps.optimizers.multi_fidelity.promotion_policy",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.ei",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.ucb",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition",
-    "requests.*",
-]
-ignore_errors = true
+module = ["requests"]
+ignore_missing_imports = true
 
 [tool.bumpversion]
 current_version = "0.12.2"

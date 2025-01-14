@@ -125,9 +125,6 @@ def init_config(args: argparse.Namespace) -> None:
                 optimizer=run_args.get(OPTIMIZER),  # type: ignore
                 space=run_args.get(PIPELINE_SPACE),  # type: ignore
             )
-            if optimizer_info is None:
-                return
-
             try:
                 directory = run_args.get(ROOT_DIRECTORY)
                 if directory is None:
@@ -430,8 +427,6 @@ def sample_config(args: argparse.Namespace) -> None:
         optimizer=run_args.get(OPTIMIZER),  # type: ignore
         space=run_args.get(PIPELINE_SPACE),  # type: ignore
     )
-    if optimizer is None:
-        return
 
     # Sample trials
     for _ in range(num_configs):

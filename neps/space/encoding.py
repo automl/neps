@@ -15,14 +15,11 @@ from typing_extensions import Protocol, override
 
 import torch
 
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.hyperparameters.categorical import Categorical
-from neps.search_spaces.hyperparameters.float import Float
-from neps.search_spaces.hyperparameters.integer import Integer
+from neps.space.domain import Domain
+from neps.space.parameters import Categorical, Float, Integer
 
 if TYPE_CHECKING:
-    from neps.search_spaces.parameter import Parameter
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space.search_space import SearchSpace
 
 V = TypeVar("V", int, float)
 
@@ -177,7 +174,7 @@ class MinMaxNormalizer(TensorTransformer, Generic[V]):
 
     def __post_init__(self) -> None:
         if self.bins is None:
-            self.domain = UNIT_FLOAT_DOMAIN
+            self.domain = Domain.unit_float()
         else:
             self.domain = Domain.floating(0.0, 1.0, bins=self.bins)
 
@@ -348,7 +345,7 @@ class ConfigEncoder:
             numericals = Domain.translate(
                 numericals,
                 frm=self.numerical_domains,
-                to=UNIT_FLOAT_DOMAIN,
+                to=Domain.unit_float(),
             )
 
             dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
@@ -487,57 +484,17 @@ class ConfigEncoder:
         Returns:
             A `ConfigEncoder` instance
         """
+        # Sanity check we do not apply custom transformers to constants
+        if len(space.constants) and custom_transformers is not None:
+            overlap = set(custom_transformers) & set(space.constants)
+            if any(overlap):
+                raise ValueError(
+                    f"Can not apply `custom_transformers= to `constants=`: {overlap=}"
+                )
+
         parameters = {**space.numerical, **space.categoricals}
         if include_fidelity:
             parameters.update(space.fidelities)
-
-        return ConfigEncoder.from_parameters(
-            parameters=parameters,
-            constants=space.constants,
-            custom_transformers=custom_transformers,
-        )
-
-    @classmethod
-    def from_parameters(
-        cls,
-        parameters: Mapping[str, Parameter],
-        constants: Mapping[str, Any] | None = None,
-        *,
-        custom_transformers: dict[str, TensorTransformer] | None = None,
-    ) -> ConfigEncoder:
-        """Create a default encoder over a list of hyperparameters.
-
-        This method creates a default encoder over a list of hyperparameters. It
-        automatically creates transformers for each hyperparameter based on its type.
-        The transformers are as follows:
-
-        * `Float` and `Integer` are normalized to the unit interval.
-        * `Categorical` is transformed into an integer.
-
-        Args:
-            parameters: A mapping of hyperparameter names to hyperparameters.
-            constants: A mapping of constant hyperparameters to include when decoding.
-            custom_transformers: A mapping of hyperparameter names to custom transformers.
-
-        Returns:
-            A `ConfigEncoder` instance
-        """
-        if constants is not None:
-            overlap = set(parameters) & set(constants)
-            if any(overlap):
-                raise ValueError(
-                    "`constants=` and `parameters=` cannot have overlapping"
-                    f" keys: {overlap=}"
-                )
-            if custom_transformers is not None:
-                overlap = set(custom_transformers) & set(constants)
-                if any(overlap):
-                    raise ValueError(
-                        f"Can not apply `custom_transformers=`"
-                        f" to `constants=`: {overlap=}"
-                    )
-        else:
-            constants = {}
 
         custom = custom_transformers or {}
         transformers: dict[str, TensorTransformer] = {}
@@ -557,4 +514,4 @@ class ConfigEncoder:
                         " please provide it as `constants=`."
                     )
 
-        return cls(transformers, constants=constants)
+        return cls(transformers, constants=space.constants)

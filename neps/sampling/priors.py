@@ -23,14 +23,10 @@ from neps.sampling.distributions import (
     TruncatedNormal,
 )
 from neps.sampling.samplers import Sampler
-from neps.search_spaces import Categorical
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.encoding import ConfigEncoder
+from neps.space import Categorical, ConfigEncoder, Domain, Float, Integer, SearchSpace
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
-
-    from neps.search_spaces import Float, Integer, SearchSpace
 
 
 class Prior(Sampler):
@@ -132,12 +128,6 @@ class Prior(Sampler):
         """Please refer to [`from_space()`][neps.priors.Prior.from_space]
         for more details.
         """
-        # TODO: This needs to be moved to the search space class, however
-        # to not break the current prior based APIs used elsewhere, we can
-        # just manually create this here.
-        # We use confidence here where `0` means no confidence and `1` means
-        # absolute confidence. This gets translated in to std's and weights
-        # accordingly in a `CenteredPrior`
         _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
 
         center_values = center_values or {}
@@ -152,10 +142,7 @@ class Prior(Sampler):
                 centers.append(None)
                 continue
 
-            confidence_score = confidence_values.get(
-                name,
-                _mapping[hp.prior_confidence_choice],
-            )
+            confidence_score = confidence_values.get(name, _mapping[hp.prior_confidence])
             center = hp.choices.index(default) if isinstance(hp, Categorical) else default
             centers.append((center, confidence_score))
 
@@ -283,7 +270,7 @@ class Prior(Sampler):
                     device=device,
                     validate_args=False,
                 ),
-                domain=UNIT_FLOAT_DOMAIN,
+                domain=Domain.unit_float(),
             )
             distributions.append(dist)
 
@@ -501,22 +488,6 @@ class Uniform(Prior):
     ndim: int
     """The number of columns in the tensor to sample from."""
 
-    @classmethod
-    def from_space(cls, space: SearchSpace, *, include_fidelity: bool = False) -> Uniform:
-        """Create a uniform prior for a given search space.
-
-        Args:
-            space: The search space to create a prior for.
-            include_fidelity: Whether to include the fidelity of the search space.
-
-        Returns:
-            A uniform prior for the search space.
-        """
-        ndims = len(space.numerical) + len(space.categoricals)
-        if include_fidelity:
-            ndims += len(space.fidelities)
-        return Uniform(ndim=ndims)
-
     @property
     @override
     def ncols(self) -> int:
@@ -557,4 +528,4 @@ class Uniform(Prior):
         else:
             samples = torch.rand(_n, device=device)
 
-        return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to, dtype=dtype)
+        return Domain.translate(samples, frm=Domain.unit_float(), to=to, dtype=dtype)

@@ -7,12 +7,10 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.parameter import Parameter, ParameterWithPrior
-from neps.search_spaces.search_space import SearchSpace
+from neps.space.domain import Domain
 
 if TYPE_CHECKING:
-    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.space.encoding import ConfigEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +53,7 @@ def pairwise_dist(
         numericals = Domain.translate(
             numericals,
             frm=encoder.numerical_domains,
-            to=UNIT_FLOAT_DOMAIN,
+            to=Domain.unit_float(),
         )
 
         dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
@@ -81,53 +79,3 @@ def pairwise_dist(
     sq[row_ix, col_ix] = dists
     sq[col_ix, row_ix] = dists
     return sq
-
-
-def sample_one_old(
-    space: SearchSpace,
-    *,
-    user_priors: bool = False,
-    patience: int = 1,
-    ignore_fidelity: bool = True,
-) -> SearchSpace:
-    """Sample a configuration from the search space.
-
-    Args:
-        space: The search space to sample from.
-        user_priors: Whether to use user priors when sampling.
-        patience: The number of times to try to sample a valid value for a
-            hyperparameter.
-        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
-
-    Returns:
-        A sampled configuration from the search space.
-    """
-    sampled_hps: dict[str, Parameter] = {}
-
-    for name, hp in space.hyperparameters.items():
-        if hp.is_fidelity and ignore_fidelity:
-            sampled_hps[name] = hp.clone()
-            continue
-
-        for attempt in range(patience):
-            try:
-                if user_priors and isinstance(hp, ParameterWithPrior):
-                    sampled_hps[name] = hp.sample(user_priors=user_priors)
-                else:
-                    sampled_hps[name] = hp.sample()
-                break
-            except Exception as e:  # noqa: BLE001
-                logger.warning(
-                    f"Attempt {attempt + 1}/{patience} failed for"
-                    f" sampling {name}: {e!s}"
-                )
-        else:
-            logger.error(
-                f"Failed to sample valid value for {name} after {patience} attempts"
-            )
-            raise ValueError(
-                f"Could not sample valid value for hyperparameter {name}"
-                f" in {patience} tries!"
-            )
-
-    return SearchSpace(**sampled_hps)

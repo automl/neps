@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
@@ -16,11 +16,14 @@ from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.priorband import PriorBandArgs
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
-from neps.search_spaces.encoding import CategoricalToUnitNorm, ConfigEncoder
+from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    import pandas as pd
+
+    from neps.optimizers.utils.brackets import Bracket
+    from neps.space import SearchSpace
 
 
 def _bo(
@@ -55,9 +58,6 @@ def _bo(
     Raises:
         ValueError: if initial_design_size < 1
     """
-    if any(pipeline_space.graphs):
-        raise NotImplementedError("Only supports flat search spaces for now!")
-
     if any(pipeline_space.fidelities):
         raise ValueError(
             "Fidelities are not supported for BayesianOptimization."
@@ -106,7 +106,7 @@ def _bracket_optimizer(  # noqa: C901
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["uniform", "prior", "priorband"],
+    sampler: Literal["uniform", "prior", "priorband"] | PriorBandArgs | Sampler,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
     # is not required for hyperband style algorithms, only single bracket
@@ -141,13 +141,18 @@ def _bracket_optimizer(  # noqa: C901
             * If "priorband", samples with weights according to the PriorBand
                 algorithm. See: https://arxiv.org/abs/2306.12370
 
+            * If a `PriorBandArgs` object, samples with weights according to the
+                PriorBand algorithm with the given parameters.
+            * If a `Sampler` object, samples from the space using the sampler.
+
         sample_prior_first: Whether to sample the prior configuration first.
     """
     assert pipeline_space.fidelity is not None
-    assert pipeline_space.fidelity_name is not None
+    fidelity_name, fidelity = pipeline_space.fidelity
+
     if len(pipeline_space.fidelities) != 1:
         raise ValueError(
-            "Fidelity should be defined in the pipeline space."
+            "Only one fidelity should be defined in the pipeline space."
             f"\nGot: {pipeline_space.fidelities}"
         )
 
@@ -158,11 +163,13 @@ def _bracket_optimizer(  # noqa: C901
 
     from neps.optimizers.utils import brackets
 
+    # Determine the strategy for creating brackets for sampling
+    create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     match bracket_type:
         case "successive_halving":
             assert early_stopping_rate is not None
             rung_to_fidelity, rung_sizes = brackets.calculate_sh_rungs(
-                bounds=(pipeline_space.fidelity.lower, pipeline_space.fidelity.upper),
+                bounds=(fidelity.lower, fidelity.upper),
                 eta=eta,
                 early_stopping_rate=early_stopping_rate,
             )
@@ -172,7 +179,7 @@ def _bracket_optimizer(  # noqa: C901
         case "hyperband":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
-                bounds=(pipeline_space.fidelity.lower, pipeline_space.fidelity.upper),
+                bounds=(fidelity.lower, fidelity.upper),
                 eta=eta,
             )
             create_brackets = partial(
@@ -182,7 +189,7 @@ def _bracket_optimizer(  # noqa: C901
         case "asha":
             assert early_stopping_rate is not None
             rung_to_fidelity, _rung_sizes = brackets.calculate_sh_rungs(
-                bounds=(pipeline_space.fidelity.lower, pipeline_space.fidelity.upper),
+                bounds=(fidelity.lower, fidelity.upper),
                 eta=eta,
                 early_stopping_rate=early_stopping_rate,
             )
@@ -192,7 +199,7 @@ def _bracket_optimizer(  # noqa: C901
         case "async_hb":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
-                bounds=(pipeline_space.fidelity.lower, pipeline_space.fidelity.upper),
+                bounds=(fidelity.lower, fidelity.upper),
                 eta=eta,
             )
             # We don't care about the capacity of each bracket, we need the rung layout
@@ -207,13 +214,12 @@ def _bracket_optimizer(  # noqa: C901
 
     encoder = ConfigEncoder.from_space(pipeline_space, include_fidelity=False)
 
+    _sampler: Sampler | PriorBandArgs
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
         case "prior":
-            _sampler = Prior.from_config(
-                pipeline_space.prior_config, space=pipeline_space
-            )
+            _sampler = Prior.from_config(pipeline_space.prior, space=pipeline_space)
         case "priorband":
             _sampler = PriorBandArgs(mutation_rate=0.5, mutation_std=0.25)
         case PriorBandArgs() | Sampler():
@@ -226,9 +232,9 @@ def _bracket_optimizer(  # noqa: C901
         encoder=encoder,
         eta=eta,
         rung_to_fid=rung_to_fidelity,
-        fid_min=pipeline_space.fidelity.lower,
-        fid_max=pipeline_space.fidelity.upper,
-        fid_name=pipeline_space.fidelity_name,
+        fid_min=fidelity.lower,
+        fid_max=fidelity.upper,
+        fid_name=fidelity_name,
         sampler=_sampler,
         sample_prior_first=sample_prior_first,
         create_brackets=create_brackets,
@@ -263,6 +269,7 @@ def _random_search(
         pipeline_space, include_fidelity=not ignore_fidelity
     )
 
+    sampler: Sampler
     if use_priors:
         sampler = Prior.from_space(pipeline_space, include_fidelity=not ignore_fidelity)
     else:
@@ -307,7 +314,7 @@ def _ifbo(
     # might be below to possibly increased lower bound.
     space, fid_bins = adjust_pipeline_space_to_match_stepsize(pipeline_space, step_size)
     assert space.fidelity is not None
-    assert isinstance(space.fidelity_name, str)
+    fidelity_name, fidelity = space.fidelity
 
     match initial_design_size:
         case "ndim":
@@ -331,8 +338,8 @@ def _ifbo(
         device=device,
         sample_prior_first=sample_prior_first,
         n_initial_design=_initial_design_size,
-        fid_domain=space.fidelity.domain,
-        fidelity_name=space.fidelity_name,
+        fid_domain=fidelity.domain,
+        fidelity_name=fidelity_name,
         prior=(Prior.from_space(space, include_fidelity=False) if use_priors else None),
         ftpfn=FTPFNSurrogate(
             target_path=Path(surrogate_path) if surrogate_path is not None else None,
@@ -483,7 +490,7 @@ bayesian_optimization_cost_aware = partial(
 
 
 def determine_optimizer_automatically(space: SearchSpace) -> str:
-    if space.has_prior:
+    if len(space.prior) > 0:
         return "priorband" if len(space.fidelities) > 0 else "pibo"
 
     return "hyperband" if len(space.fidelities) > 0 else "bayesian_optimization"
@@ -523,40 +530,40 @@ PredefinedOptimizers: Mapping[
     "grid_search": grid_search,
     "ifbo": ifbo,
     # TODO:
-    # "mobster": MOBSTER,
-    # "priorband_bo": partial(PriorBand, model_based=True),
+    # > "mobster": MOBSTER,
+    # > "priorband_bo": partial(PriorBand, model_based=True),
 }
 
 OptimizerChoice: TypeAlias = Literal[
-    "bayesian_optimization"
-    "bayesian_optimization_cost_aware"
-    "pibo"
+    "bayesian_optimization",
+    "bayesian_optimization_cost_aware",
+    "pibo",
     # Successive Halving
-    "successive_halving"
-    "successive_halving_prior"
+    "successive_halving",
+    "successive_halving_prior",
     # Hyperband
-    "hyperband"
-    "hyperband_prior"
+    "hyperband",
+    "hyperband_prior",
     # ASHA
-    "asha"
-    "asha_prior"
+    "asha",
+    "asha_prior",
     # AsyncHB
-    "async_hb"
-    "async_hb_prior"
+    "async_hb",
+    "async_hb_prior",
     # Priorband
-    "priorband"
-    "priorband_sh"
-    "priorband_asha"
-    "priorband_async"
+    "priorband",
+    "priorband_sh",
+    "priorband_asha",
+    "priorband_async",
     # Other
-    "random_search"
-    "grid_search"
-    "ifbo"
+    "random_search",
+    "grid_search",
+    "ifbo",
 ]
 
 
 def _load_optimizer_from_string(
-    optimizer: OptimizerChoice,
+    optimizer: OptimizerChoice | Literal["auto"],
     space: SearchSpace,
     *,
     optimizer_kwargs: Mapping[str, Any] | None = None,
@@ -589,6 +596,7 @@ def load_optimizer(
         | Mapping[str, Any]
         | tuple[OptimizerChoice | Callable[..., AskFunction], Mapping[str, Any]]
         | Callable[..., AskFunction]
+        | Literal["auto"]
     ),
     space: SearchSpace,
 ) -> tuple[AskFunction, dict[str, Any]]:
@@ -598,7 +606,7 @@ def load_optimizer(
             return _load_optimizer_from_string(optimizer, space)
 
         # class/builder
-        case Callable():
+        case _ if callable(optimizer):
             info = extract_keyword_defaults(optimizer)
             _optimizer = optimizer(space)
             info["name"] = optimizer.__name__
@@ -606,7 +614,7 @@ def load_optimizer(
 
         # Predefined string with kwargs
         case (opt, kwargs) if isinstance(opt, str):
-            return _load_optimizer_from_string(opt, space, optimizer_kwargs=kwargs)
+            return _load_optimizer_from_string(opt, space, optimizer_kwargs=kwargs)  # type: ignore
 
         # class/builder with kwargs
         case (opt, kwargs):
@@ -616,8 +624,8 @@ def load_optimizer(
             return _optimizer, info
 
         # Mapping with a name
-        case {"name": name, **kwargs}:
-            return _load_optimizer_from_string(name, space, optimizer_kwargs=kwargs)
+        case {"name": name, **_kwargs}:
+            return _load_optimizer_from_string(name, space, optimizer_kwargs=_kwargs)  # type: ignore
 
         case _:
             raise ValueError(

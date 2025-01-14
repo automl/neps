@@ -7,7 +7,7 @@ import logging
 import os
 import shutil
 import time
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path

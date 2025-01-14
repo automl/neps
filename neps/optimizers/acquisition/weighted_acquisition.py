@@ -126,7 +126,7 @@ class WeightedAcquisition(AcquisitionFunction):
         self._log = acq._log
 
     # Taken from PiBO implementation in botorch (PriorGuidedAcquisitionFunction).
-    @concatenate_pending_points
+    @concatenate_pending_points  # type: ignore
     @t_batch_mode_transform()  # type: ignore
     def forward(self, X: Tensor) -> Tensor:
         """Evaluate a weighted acquisition function on the candidate set X.
@@ -145,9 +145,9 @@ class WeightedAcquisition(AcquisitionFunction):
             weighted_acq_values = self.apply_weight(acq_values, X, self.acq)
             q_reduced_acq = self.acq._q_reduction(weighted_acq_values)
             sample_reduced_acq = self.acq._sample_reduction(q_reduced_acq)
-            return sample_reduced_acq.squeeze(-1)
+            return sample_reduced_acq.squeeze(-1)  # type: ignore
 
         # shape: batch x q-candidates
         acq_values = self.acq(X).unsqueeze(-1)
         weighted_acq_values = self.apply_weight(acq_values, X, self.acq)
-        return weighted_acq_values.squeeze(-1)
+        return weighted_acq_values.squeeze(-1)  # type: ignore

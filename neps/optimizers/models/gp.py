@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import reduce
 from itertools import product
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import gpytorch.constraints
 import torch
@@ -20,25 +20,17 @@ from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
 
-from neps.optimizers.acquisition.cost_cooling import (
-    cost_cooled_acq,
-)
-from neps.optimizers.acquisition.pibo import (
-    pibo_acquisition,
-)
-from neps.search_spaces.encoding import CategoricalToIntegerTransformer, ConfigEncoder
+from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
+from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
 
     from neps.sampling.priors import Prior
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import SearchSpace
     from neps.state.trial import Trial
 
 logger = logging.getLogger(__name__)
-
-
-T = TypeVar("T")
 
 
 @dataclass
@@ -158,7 +150,7 @@ def optimize_acq(
             # Cap out at 4096 when len(bounds) >= 8
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
-        return optimize_acqf(
+        return optimize_acqf(  # type: ignore
             acq_function=acq_fn,
             bounds=bounds,
             q=n_candidates_required,
@@ -207,7 +199,7 @@ def optimize_acq(
 
     # TODO: we should deterministically shuffle the fixed_categoricals
     # as the underlying function does not.
-    return optimize_acqf_mixed(
+    return optimize_acqf_mixed(  # type: ignore
         acq_function=acq_fn,
         bounds=bounds,
         num_restarts=min(num_restarts // n_combos, 2),
@@ -231,10 +223,7 @@ def encode_trials_for_gp(
     pending_configs: list[Mapping[str, Any]] = []
 
     if encoder is None:
-        encoder = ConfigEncoder.from_space(
-            space=space,
-            include_constants_when_decoding=True,
-        )
+        encoder = ConfigEncoder.from_space(space=space)
 
     for trial in trials.values():
         if trial.report is None:

@@ -16,6 +16,21 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class PromoteAction:
+    config: dict[str, Any]
+    id: int
+    new_rung: int
+
+
+@dataclass
+class SampleAction:
+    rung: int
+
+
+BracketAction: TypeAlias = PromoteAction | SampleAction | Literal["pending", "done"]
+
+
 def calculate_sh_rungs(
     bounds: tuple[int, int] | tuple[float, float],
     eta: int,
@@ -98,7 +113,7 @@ class Rung(Sized):
 
     @property
     def config_ids(self) -> list[int]:
-        return self.table.index.get_level_values("id").unique().tolist()
+        return self.table.index.get_level_values("id").unique().tolist()  # type: ignore
 
     def has_pending(self) -> bool:
         return bool(self.table["perf"].isna().any())
@@ -158,18 +173,12 @@ class Sync:
 
         self.rungs = _sorted
 
-    def next(
-        self,
-    ) -> (
-        tuple[Literal["promote"], dict, int, int]
-        | tuple[Literal["new"], int]
-        | Literal["pending", "done"]
-    ):
+    def next(self) -> BracketAction:
         bottom_rung = self.rungs[0]
 
         # If the bottom rung has capacity, we need to sample for it.
         if bottom_rung.has_capacity():
-            return "new", bottom_rung.value
+            return SampleAction(bottom_rung.value)
 
         if not any(rung.has_capacity() for rung in self.rungs):
             return "done"
@@ -190,7 +199,7 @@ class Sync:
             )
 
         _id, config, _perf = promote_config
-        return "promote", config, _id, upper.value
+        return PromoteAction(config, _id, upper.value)
 
     @classmethod
     def create_repeating(
@@ -289,9 +298,7 @@ class Async:
                 f"\nrungs: {self.rungs}"
             )
 
-    def next(
-        self,
-    ) -> tuple[Literal["promote"], dict, int, int] | tuple[Literal["new"], int]:
+    def next(self) -> BracketAction:
         # Starting from the highest rung going down, check if any configs to promote
         for lower, upper in reversed(list(pairwise(self.rungs))):
             k = len(lower) // self.eta
@@ -311,10 +318,10 @@ class Async:
             promotable = candidates.iloc[0]
             _id, _rung = promotable.name
             config = dict(promotable["config"])
-            return "promote", config, _id, upper.value
+            return PromoteAction(config, _id, upper.value)
 
         # We couldn't find any promotions, sample at the lowest rung
-        return "new", self.rungs[0].value
+        return SampleAction(self.rungs[0].value)
 
     @classmethod
     def create(
@@ -344,7 +351,7 @@ class Hyperband:
     _min_rung: int = field(init=False, repr=False)
     _max_rung: int = field(init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.sh_brackets:
             raise ValueError("HyperbandBrackets must have at least one SH bracket")
 
@@ -455,13 +462,7 @@ class Hyperband:
 
         return [cls(sh_brackets=sh_brackets) for sh_brackets in hb_brackets]
 
-    def next(
-        self,
-    ) -> (
-        tuple[Literal["promote"], dict, int, int]
-        | tuple[Literal["new"], int]
-        | Literal["pending", "done"]
-    ):
+    def next(self) -> BracketAction:
         # We check what each SH bracket wants to do
         statuses = [sh_bracket.next() for sh_bracket in self.sh_brackets]
 
@@ -473,17 +474,11 @@ class Hyperband:
         #         (1.2 is handled implicitly by the sorted order of the brackets
         # 2. "pending": If there are no promotions or new samples, we say HB is pending
         # 3. "done": If everything is done, then we are done.
-        def priority(
-            x: (
-                tuple[Literal["promote"], dict, int, int]
-                | tuple[Literal["new"], int]
-                | Literal["pending", "done"]
-            ),
-        ) -> tuple[int, int]:
+        def priority(x: BracketAction) -> tuple[int, int]:
             match x:
-                case ("promote", _, _, promote_to_rung):
-                    return 0, promote_to_rung
-                case ("new", sample_at_rung):
+                case PromoteAction(new_rung=new_rung):
+                    return 0, new_rung
+                case SampleAction(sample_at_rung):
                     return 0, sample_at_rung
                 case "pending":
                     return 1, 0
@@ -508,7 +503,7 @@ class AsyncHyperband:
     _min_rung: int = field(init=False, repr=False)
     _max_rung: int = field(init=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.asha_brackets:
             raise ValueError("HyperbandBrackets must have at least one ASHA bracket")
 
@@ -560,9 +555,7 @@ class AsyncHyperband:
             eta=eta,
         )
 
-    def next(
-        self,
-    ) -> tuple[Literal["promote"], dict, int, int] | tuple[Literal["new"], int]:
+    def next(self) -> BracketAction:
         # Each ASHA bracket always has an action, sample which to take
         bracket_ix = async_hb_sample_bracket_to_run(self._max_rung, self.eta)
         bracket = self.asha_brackets[bracket_ix]

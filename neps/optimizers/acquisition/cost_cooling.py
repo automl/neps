@@ -29,7 +29,7 @@ def apply_cost_cooling(
         # -- x = acq / cost^alpha
         # -- log(x) = log(acq) - alpha * log(cost)
         w = alpha * cost.log()
-        return acq_values - w
+        return acq_values - w  # type: ignore
 
     # https://github.com/pytorch/botorch/discussions/2194
     w = cost.pow(alpha)

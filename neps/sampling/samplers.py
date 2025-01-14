@@ -16,8 +16,7 @@ from typing_extensions import override
 import torch
 from more_itertools import all_equal
 
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.encoding import ConfigEncoder
+from neps.space import ConfigEncoder, Domain
 
 if TYPE_CHECKING:
     from neps.sampling.priors import Uniform
@@ -195,7 +194,7 @@ class Sobol(Sampler):
         if isinstance(n, torch.Size):
             x = x.view(*n, self.ncols)
 
-        return Domain.translate(x, frm=UNIT_FLOAT_DOMAIN, to=to)
+        return Domain.translate(x, frm=Domain.unit_float(), to=to)
 
 
 @dataclass
@@ -328,7 +327,7 @@ class BorderSampler(Sampler):
     @property
     def n_possible(self) -> int:
         """The amount of possible border configurations."""
-        return 2**self.ndim
+        return int(2**self.ndim)
 
     @override
     def sample(
@@ -370,4 +369,4 @@ class BorderSampler(Sampler):
         configs = configs.unsqueeze(1).bitwise_and(bit_masks).ne(0).to(dtype)
         # Reshape to the output shape including ncols dimension
         configs = configs.view(output_shape)
-        return Domain.translate(configs, frm=UNIT_FLOAT_DOMAIN, to=to)
+        return Domain.translate(configs, frm=Domain.unit_float(), to=to)

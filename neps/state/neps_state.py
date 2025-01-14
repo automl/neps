@@ -18,6 +18,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Literal,
     TypeAlias,
     TypeVar,
@@ -34,7 +35,6 @@ from neps.env import (
     TRIAL_FILELOCK_TIMEOUT,
 )
 from neps.exceptions import NePSError, TrialAlreadyExistsError, TrialNotFoundError
-from neps.optimizers.optimizer import AskFunction
 from neps.state.err_dump import ErrDump
 from neps.state.filebased import (
     FileLocker,
@@ -45,6 +45,9 @@ from neps.state.filebased import (
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.trial import Report, Trial
 from neps.utils.files import atomic_write, deserialize, serialize
+
+if TYPE_CHECKING:
+    from neps.optimizers.optimizer import AskFunction
 
 logger = logging.getLogger(__name__)
 

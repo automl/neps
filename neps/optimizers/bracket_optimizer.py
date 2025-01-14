@@ -10,12 +10,13 @@ import pandas as pd
 
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.priorband import PriorBandArgs, sample_with_priorband
+from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.sampling.samplers import Sampler
 
 if TYPE_CHECKING:
     from neps.optimizers.utils.brackets import Bracket
-    from neps.search_spaces import SearchSpace
-    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.space import SearchSpace
+    from neps.space.encoding import ConfigEncoder
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
 
@@ -79,11 +80,11 @@ class BracketOptimizer:
         if len(trials) == 0:
             match self.sample_prior_first:
                 case "highest_fidelity":
-                    config = {**space.prior_config, self.fid_name: self.fid_max}
+                    config = {**space.prior, self.fid_name: self.fid_max}
                     rung = max(self.rung_to_fid)
                     return SampledConfig(id=f"0_{rung}", config=config)
                 case True:
-                    config = {**space.prior_config, self.fid_name: self.fid_min}
+                    config = {**space.prior, self.fid_name: self.fid_min}
                     rung = min(self.rung_to_fid)
                     return SampledConfig(id=f"0_{rung}", config=config)
                 case False:
@@ -121,14 +122,17 @@ class BracketOptimizer:
             )
 
         match next_action:
-            case ("promote", config, config_id, new_rung):
+            # The bracket would like us to promote a configuration
+            case PromoteAction(config=config, id=config_id, new_rung=new_rung):
                 config = {**config, self.fid_name: self.rung_to_fid[new_rung]}
                 return SampledConfig(
                     id=f"{config_id}_{new_rung}",
                     config=config,
                     previous_config_id=f"{config_id}_{new_rung - 1}",
                 )
-            case ("new", rung):
+
+            # The bracket would like us to sample a new configuration for a rung
+            case SampleAction(rung=rung):
                 match self.sampler:
                     case Sampler():
                         config = self.sampler.sample_config(to=self.encoder)

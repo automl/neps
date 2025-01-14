@@ -1,18 +1,13 @@
 from __future__ import annotations
 
+import random
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 import torch
-import random
 
-from neps.sampling import Sampler
-from neps.sampling.priors import Prior
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
-
-if TYPE_CHECKING:
-    from neps.search_spaces.encoding import ConfigEncoder
-    from neps.search_spaces.search_space import SearchSpace
+from neps.sampling import Prior, Sampler
+from neps.space import ConfigEncoder, Domain, SearchSpace
 
 
 def make_initial_design(  # noqa: PLR0912, C901
@@ -74,7 +69,7 @@ def make_initial_design(  # noqa: PLR0912, C901
             fids = lambda: _fids
         case True:
             fids = lambda: {
-                name: hp.domain.cast_one(random.random(), frm=UNIT_FLOAT_DOMAIN)
+                name: hp.domain.cast_one(random.random(), frm=Domain.unit_float())
                 for name, hp in space.fidelities.items()
             }
         case int() | float():
@@ -103,7 +98,7 @@ def make_initial_design(  # noqa: PLR0912, C901
             )
 
     if sample_prior_first:
-        configs.append({**space.prior_config, **fids()})
+        configs.append({**space.prior, **fids()})
 
     ndims = len(space.numerical) + len(space.categoricals)
     if sample_size == "ndim":

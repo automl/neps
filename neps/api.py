@@ -3,26 +3,26 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
-from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Literal
 
 from neps.optimizers import OptimizerChoice, load_optimizer
-from neps.optimizers.optimizer import AskFunction
-
 from neps.runtime import _launch_runtime
-from neps.search_spaces import Parameter, SearchSpace
-from neps.search_spaces.parsing import convert_to_space
+from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv
 from neps.utils.common import dynamic_load_object
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
+    from neps.optimizers.optimizer import AskFunction
+    from neps.space import Parameter, SearchSpace
+
 logger = logging.getLogger(__name__)
 
 
-def run(
+def run(  # noqa: PLR0913
     evaluate_pipeline: Callable | str,
     pipeline_space: (
         Mapping[str, dict | str | int | float | Parameter]
@@ -47,6 +47,7 @@ def run(
         | tuple[OptimizerChoice, Mapping[str, Any]]
         | tuple[Callable[..., AskFunction], Mapping[str, Any]]
         | Callable[..., AskFunction]
+        | Literal["auto"]
     ) = "auto",
 ) -> None:
     """Run the optimization.
@@ -260,7 +261,7 @@ def run(
         >>>    root_directory="usage_example",
         >>>    max_evaluations_total=5,
         >>> )
-    """
+    """  # noqa: E501
     logger.info(f"Starting neps.run using root directory {root_directory}")
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
@@ -278,7 +279,8 @@ def run(
         _eval = evaluate_pipeline
     else:
         raise ValueError(
-            f"evaluate_pipeline must be a callable or a string in the format 'module:function'."
+            "evaluate_pipeline must be a callable or a string in the format"
+            "'module:function'."
         )
 
     _launch_runtime(

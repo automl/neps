@@ -149,7 +149,7 @@ class Trial:
     @property
     def id(self) -> str:
         """Return the id of the trial."""
-        return self.metadata.id
+        return self.metadata.id  # type: ignore
 
     def into_config_result(
         self,

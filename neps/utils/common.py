@@ -21,15 +21,12 @@ def extract_keyword_defaults(f: Callable) -> dict[str, Any]:
     if isinstance(f, partial):
         return dict(f.keywords)
 
-    if callable(f):
-        signature = inspect.signature(f)
-        return {
-            k: v.default
-            for k, v in signature.parameters.items()
-            if v.default is not inspect.Parameter.empty
-        }
-
-    return {}
+    signature = inspect.signature(f)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
 
 
 # TODO(eddiebergman): I feel like this function should throw an error if it can't

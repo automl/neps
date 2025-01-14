@@ -269,7 +269,7 @@ def acquire_next_from_ftpfn(
 
         # ... update best if needed
         sample_best_ix = acq_scores.argmax()
-        sample_best_score = acq_scores[sample_best_ix]
+        sample_best_score = acq_scores[sample_best_ix].item()
         sample_best_row = X_test[sample_best_ix].clone().detach()
         if sample_best_score > best_score:
             best_score = sample_best_score
@@ -293,7 +293,7 @@ def acquire_next_from_ftpfn(
         acq_scores = acq_function(X_test)
 
         local_best_ix = acq_scores.argmax()
-        local_best_score = acq_scores[local_best_ix].clone().detach()
+        local_best_score = acq_scores[local_best_ix].clone().detach().item()
         if local_best_score > best_score:
             best_score = local_best_score
             best_row = X_test[local_best_ix].clone().detach()
@@ -334,7 +334,7 @@ class FTPFNSurrogate:
     def _get_logits(
         self, train_x: torch.Tensor, train_y: torch.Tensor, test_x: torch.Tensor
     ) -> torch.Tensor:
-        return self.ftpfn.model(
+        return self.ftpfn.model(  # type: ignore
             _cast_tensor_shapes(train_x),
             _cast_tensor_shapes(train_y),
             _cast_tensor_shapes(test_x),
@@ -348,7 +348,7 @@ class FTPFNSurrogate:
         test_x: torch.Tensor,
     ) -> torch.Tensor:
         logits = self._get_logits(train_x, train_y, test_x).squeeze()
-        return self.ftpfn.model.criterion.mean(logits)
+        return self.ftpfn.model.criterion.mean(logits)  # type: ignore
 
     @torch.no_grad()  # type: ignore
     def get_pi(
@@ -359,7 +359,7 @@ class FTPFNSurrogate:
         y_best: torch.Tensor | float,
     ) -> torch.Tensor:
         logits = self._get_logits(train_x, train_y, test_x)
-        return self.ftpfn.model.criterion.pi(logits.squeeze(), best_f=y_best)
+        return self.ftpfn.model.criterion.pi(logits.squeeze(), best_f=y_best)  # type: ignore
 
     @torch.no_grad()  # type: ignore
     def get_ei(
@@ -370,7 +370,7 @@ class FTPFNSurrogate:
         y_best: torch.Tensor | float,
     ) -> torch.Tensor:
         logits = self._get_logits(train_x, train_y, test_x)
-        return self.ftpfn.model.criterion.ei(logits.squeeze(), best_f=y_best)
+        return self.ftpfn.model.criterion.ei(logits.squeeze(), best_f=y_best)  # type: ignore
 
     @torch.no_grad()  # type: ignore
     def get_lcb(
@@ -381,7 +381,7 @@ class FTPFNSurrogate:
         beta: float = (1 - 0.682) / 2,
     ) -> torch.Tensor:
         logits = self._get_logits(train_x, train_y, test_x)
-        return self.ftpfn.model.criterion.ucb(
+        return self.ftpfn.model.criterion.ucb(  # type: ignore
             logits=logits,
             best_f=None,
             rest_prob=beta,
@@ -398,7 +398,7 @@ class FTPFNSurrogate:
         beta: float = (1 - 0.682) / 2,
     ) -> torch.Tensor:
         logits = self._get_logits(train_x, train_y, test_x)
-        return self.ftpfn.model.criterion.ucb(
+        return self.ftpfn.model.criterion.ucb(  # type: ignore
             logits=logits,
             best_f=None,
             rest_prob=beta,

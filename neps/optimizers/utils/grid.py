@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import torch
 
-from neps.search_spaces import Categorical, Constant, Float, Integer
-from neps.search_spaces.architecture.graph_grammar import GraphParameter
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN
-
-if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+from neps.space import Categorical, Constant, Domain, Float, Integer, SearchSpace
 
 
 def make_grid(
@@ -50,12 +45,8 @@ def make_grid(
         A list of configurations from the search space.
     """
     param_ranges: dict[str, list[Any]] = {}
-    for name, hp in space.hyperparameters.items():
+    for name, hp in space.parameters.items():
         match hp:
-            # NOTE(eddiebergman): This is a temporary fix to avoid graphs
-            # If this is resolved, please update the docstring!
-            case GraphParameter():
-                raise ValueError("Trying to create a grid for graphs!")
             case Categorical():
                 param_ranges[name] = list(hp.choices)
             case Constant():
@@ -71,13 +62,13 @@ def make_grid(
                     steps = min(size_per_numerical_hp, hp.domain.cardinality)
 
                 xs = torch.linspace(0, 1, steps=steps)
-                numeric_values = hp.domain.cast(xs, frm=UNIT_FLOAT_DOMAIN)
+                numeric_values = hp.domain.cast(xs, frm=Domain.unit_float())
                 uniq_values = torch.unique(numeric_values).tolist()
                 param_ranges[name] = uniq_values
             case _:
                 raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
 
     values = product(*param_ranges.values())
-    keys = list(space.hyperparameters.keys())
+    keys = list(space.parameters.keys())
 
     return [dict(zip(keys, p, strict=False)) for p in values]

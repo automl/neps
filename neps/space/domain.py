@@ -36,8 +36,7 @@ If you have a tensor of values, where each column corresponds to a different dom
 you can take a look at [`Domain.translate()`][neps.search_spaces.domain.Domain.translate]
 
 If you need a unit-interval domain, please use the
-[`Domain.unit_float()`][neps.search_spaces.domain.Domain.unit_float]
-or `UNIT_FLOAT_DOMAIN` constant.
+[`Domain.unit_float()`][neps.search_spaces.domain.Domain.unit_float].
 """
 
 from __future__ import annotations
@@ -51,7 +50,7 @@ import torch
 from torch import Tensor
 
 if TYPE_CHECKING:
-    from neps.search_spaces.encoding import ConfigEncoder
+    from neps.space.encoding import ConfigEncoder
 
 Number = int | float
 V = TypeVar("V", int, float)
@@ -377,7 +376,7 @@ class Domain(Generic[V]):
         if isinstance(frm, Domain) and isinstance(to, Domain):
             return to.cast(x, frm=frm, dtype=dtype)
 
-        from neps.search_spaces.encoding import ConfigEncoder
+        from neps.space.encoding import ConfigEncoder
 
         frm = (
             [frm] * ndims

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import re
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
-from neps.search_spaces import Categorical, Constant, Float, Integer, Parameter
-from neps.search_spaces.search_space import SearchSpace
+from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
+from neps.space.search_space import SearchSpace
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
@@ -243,7 +244,7 @@ def formatting_const(details: str | int | float) -> str | int | float:
     return details
 
 
-def deduce_type(  # noqa: PLR0911
+def deduce_type(  # noqa: C901, PLR0911
     details: Mapping[str, str | int | float] | str | int | float,
 ) -> Literal["int", "float", "categorical", "const"]:
     """Deduces the parameter type from details.
@@ -334,8 +335,8 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
     parameters: dict[str, Parameter] = {}
     for name, details in pipeline_space.items():
         match details:
-            case Parameter():
-                parameters[name] = details.clone()
+            case Float() | Integer() | Categorical() | Constant():
+                parameters[name] = dataclasses.replace(details)  # copy
             case str() | int() | float() | Mapping():
                 try:
                     parameters[name] = as_parameter(details)
@@ -346,7 +347,7 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
                     f"Unrecognized parameter type '{type(details)}' for '{name}'."
                 )
 
-    return SearchSpace(**parameters)
+    return SearchSpace(parameters)
 
 
 def convert_configspace(
@@ -401,7 +402,7 @@ def convert_configspace(
         else:
             raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
         pipeline_space[hyperparameter.name] = parameter
-    return SearchSpace(**pipeline_space)
+    return SearchSpace(pipeline_space)
 
 
 def convert_to_space(
