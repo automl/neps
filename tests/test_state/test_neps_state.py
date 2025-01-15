@@ -2,6 +2,7 @@
 This could be generalized if we end up with a server based implementation but
 for now we're just testing the filebased implementation.
 """
+
 from __future__ import annotations
 
 import time
@@ -11,59 +12,70 @@ from typing import Any
 import pytest
 from pytest_cases import case, fixture, parametrize, parametrize_with_cases
 
-from neps.optimizers import SearcherMapping
-from neps.optimizers.base_optimizer import BaseOptimizer
-from neps.search_spaces.hyperparameters import (
+from neps.optimizers import AskFunction, PredefinedOptimizers, load_optimizer
+from neps.space import (
     Categorical,
     Constant,
     Float,
     Integer,
+    SearchSpace,
 )
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
+from neps.state import (
+    BudgetInfo,
+    NePSState,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+)
 
 
 @case
 def case_search_space_no_fid() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1),
-        b=Categorical(["a", "b", "c"]),
-        c=Constant("a"),
-        d=Integer(0, 10),
+        {
+            "a": Float(0, 1),
+            "b": Categorical(["a", "b", "c"]),
+            "c": Constant("a"),
+            "d": Integer(0, 10),
+        }
     )
 
 
 @case
 def case_search_space_with_fid() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1),
-        b=Categorical(["a", "b", "c"]),
-        c=Constant("a"),
-        d=Integer(0, 10),
-        e=Integer(1, 10, is_fidelity=True),
+        {
+            "a": Float(0, 1),
+            "b": Categorical(["a", "b", "c"]),
+            "c": Constant("a"),
+            "d": Integer(0, 10),
+            "e": Integer(1, 10, is_fidelity=True),
+        }
     )
 
 
 @case
 def case_search_space_no_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, prior=0.5),
-        b=Categorical(["a", "b", "c"], prior="a"),
-        c=Constant("a"),
-        d=Integer(0, 10, prior=5),
+        {
+            "a": Float(0, 1, prior=0.5),
+            "b": Categorical(["a", "b", "c"], prior="a"),
+            "c": Constant("a"),
+            "d": Integer(0, 10, prior=5),
+        }
     )
 
 
 @case
 def case_search_space_fid_with_prior() -> SearchSpace:
     return SearchSpace(
-        a=Float(0, 1, prior=0.5),
-        b=Categorical(["a", "b", "c"], prior="a"),
-        c=Constant("a"),
-        d=Integer(0, 10, prior=5),
-        e=Integer(1, 10, is_fidelity=True),
+        {
+            "a": Float(0, 1, prior=0.5),
+            "b": Categorical(["a", "b", "c"], prior="a"),
+            "c": Constant("a"),
+            "d": Integer(0, 10, prior=5),
+            "e": Integer(1, 10, is_fidelity=True),
+        }
     )
 
 
@@ -74,7 +86,9 @@ JUST_SKIP = [
 
 OPTIMIZER_FAILS_WITH_FIDELITY = [
     "random_search",
+    "bayesian_optimization_cost_aware",
     "bayesian_optimization",
+    "bayesian_optimization_prior",
     "pibo",
     "cost_cooling_bayesian_optimization",
     "cost_cooling",
@@ -88,26 +102,17 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "asha",
     "asha_prior",
     "hyperband",
-    "hyperband_custom_default",
+    "hyperband_prior",
+    "async_hb",
+    "async_hb_prior",
     "priorband",
-    "priorband_bo",
-    "mobster",
-    "mf_ei_bo",
+    "priorband_sh",
     "priorband_asha",
+    "priorband_async",
+    "priorband_bo",
+    "bayesian_optimization_cost_aware",
+    "mobster",
     "ifbo",
-    "priorband_asha_hyperband",
-]
-OPTIMIZER_REQUIRES_BUDGET = [
-    "successive_halving_prior",
-    "hyperband_custom_default",
-    "asha",
-    "priorband",
-    "priorband_bo",
-    "priorband_asha",
-    "priorband_asha_hyperband",
-    "hyperband",
-    "asha_prior",
-    "mobster",
 ]
 REQUIRES_PRIOR = {
     "priorband",
@@ -119,13 +124,13 @@ REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
 
 @fixture
-@parametrize("key", list(SearcherMapping.keys()))
+@parametrize("key", list(PredefinedOptimizers.keys()))
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
-def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimizer, str]:
+def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[AskFunction, str]:
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.hyperparameters["a"].prior is None:
+    if key in REQUIRES_PRIOR and search_space.searchables["a"].prior is None:
         pytest.xfail(f"{key} requires a prior")
 
     if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
@@ -134,15 +139,9 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[BaseOptimize
     if key in OPTIMIZER_REQUIRES_FIDELITY and not len(search_space.fidelities) > 0:
         pytest.xfail(f"{key} requires a fidelity parameter")
 
-    kwargs: dict[str, Any] = {
-        "pipeline_space": search_space,
-    }
-    if key in OPTIMIZER_REQUIRES_BUDGET:
-        kwargs["max_cost_total"] = 10
-
-    optimizer_cls = SearcherMapping[key]
-
-    return optimizer_cls(**kwargs), key
+    kwargs: dict[str, Any] = {}
+    opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
+    return opt, key
 
 
 @parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])
@@ -169,7 +168,7 @@ def case_neps_state_filebased(
 @parametrize_with_cases("neps_state", cases=".", prefix="case_neps_state")
 def test_sample_trial(
     neps_state: NePSState,
-    optimizer_and_key: tuple[BaseOptimizer, str],
+    optimizer_and_key: tuple[AskFunction, str],
 ) -> None:
     optimizer, key = optimizer_and_key
     if key in REQUIRES_COST and neps_state.lock_and_get_optimizer_state().budget is None:
@@ -182,7 +181,6 @@ def test_sample_trial(
 
     trial1 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
-        assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     # HACK: Unfortunatly due to windows, who's time.time() is not very
@@ -196,7 +194,6 @@ def test_sample_trial(
 
     trial2 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
-        assert k in optimizer.pipeline_space.hyperparameters
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
     assert trial1 != trial2

@@ -122,3 +122,29 @@ def deserialize(
         )
 
     return data
+
+
+def load_and_merge_yamls(*paths: str | Path | IO[str]) -> dict[str, Any]:
+    """Load and merge yaml files into a single dictionary.
+
+    Raises:
+        ValueError: If there are duplicate keys in the yaml files.
+    """
+    config: dict[str, Any] = {}
+    for path in paths:
+        match path:
+            case str() | Path():
+                with Path(path).open("r") as file:
+                    read_config = yaml.safe_load(file)
+
+            case _:
+                read_config = yaml.safe_load(path)
+
+        shared_keys = set(config) & set(read_config)
+
+        if any(shared_keys):
+            raise ValueError(f"Duplicate key(s) {shared_keys} in {paths}")
+
+        config.update(read_config)
+
+    return config

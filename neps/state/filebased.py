@@ -1,4 +1,4 @@
-"""TODO."""
+"""Contains reading and writing of various aspects of NePS."""
 
 from __future__ import annotations
 
@@ -162,13 +162,7 @@ FILELOCK_EXCLUSIVE_NONE_BLOCKING = pl.LOCK_EX | pl.LOCK_NB
 
 @dataclass
 class FileLocker:
-    """File-based locker using `portalocker`.
-
-    [`FileLocker`][neps.state.locker.file.FileLocker] implements
-    the [`Locker`][neps.state.locker.locker.Locker] protocol using
-    `portalocker` to lock a file between processes with a shared
-    filesystem.
-    """
+    """File-based locker using `portalocker`."""
 
     lock_path: Path
     poll: float

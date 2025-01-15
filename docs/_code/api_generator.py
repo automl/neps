@@ -3,7 +3,6 @@
 # https://mkdocstrings.github.io/recipes/
 """
 
-
 import logging
 from pathlib import Path
 

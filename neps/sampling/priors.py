@@ -4,7 +4,7 @@ Loosely speaking, they are joint distributions over multiple independent
 variables, i.e. each column of a tensor is assumed to be independent and
 can be acted on independently.
 
-See the class doc description of [`Prior`][neps.priors.Prior] for more details.
+See the class doc description of [`Prior`][neps.sampling.Prior] for more details.
 """
 
 from __future__ import annotations
@@ -23,20 +23,16 @@ from neps.sampling.distributions import (
     TruncatedNormal,
 )
 from neps.sampling.samplers import Sampler
-from neps.search_spaces import Categorical
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.encoding import ConfigEncoder
+from neps.space import Categorical, ConfigEncoder, Domain, Float, Integer, SearchSpace
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
-
-    from neps.search_spaces import Float, Integer, SearchSpace
 
 
 class Prior(Sampler):
     """A protocol for priors over search spaces.
 
-    Extends from the [`Sampler`][neps.samplers.Sampler] protocol.
+    Extends from the [`Sampler`][neps.sampling.Sampler] protocol.
 
     At it's core, the two methods that need to be implemented are
     `log_pdf` and `sample`. The `log_pdf` method should return the
@@ -45,13 +41,13 @@ class Prior(Sampler):
 
     All values given to the `log_pdf` and the ones returned from the
     `sample` method are assumed to be in the value domain of the prior,
-    i.e. the [`.domains`][neps.priors.Prior] attribute.
+    i.e. the [`.domains`][neps.sampling.Prior] attribute.
 
     !!! warning
 
         The domain in which samples are actually drawn from not necessarily
         need to match that of the value domain. For example, the
-        [`UniformPrior`][neps.priors.UniformPrior] class uses a unit uniform
+        [`Uniform`][neps.sampling.Uniform] class uses a unit uniform
         distribution to sample from the unit interval before converting
         samples to the value domain.
 
@@ -60,7 +56,7 @@ class Prior(Sampler):
 
         For example, consider a value domain `[0, 1e9]`. You might expect
         the `pdf` to be `1e-9` (1 / 1e9) for any given value inside the domain.
-        However, since the `UniformPrior` samples from the unit interval, the `pdf` will
+        However, since the `Uniform` samples from the unit interval, the `pdf` will
         actually be `1` (1 / 1) for any value inside the domain.
     """
 
@@ -101,18 +97,25 @@ class Prior(Sampler):
     ) -> torch.Tensor:
         """Compute the pdf of values in `x` under a prior.
 
-        See [`log_pdf()`][neps.priors.Prior.log_pdf] for details on shapes.
+        See [`log_pdf()`][neps.sampling.Prior.log_pdf] for details on shapes.
         """
         return torch.exp(self.log_pdf(x, frm=frm))
 
+    def pdf_configs(self, x: list[dict[str, Any]], *, frm: ConfigEncoder) -> torch.Tensor:
+        """Compute the pdf of values in `x` under a prior.
+
+        See [`log_pdf()`][neps.sampling.Prior.log_pdf] for details on shapes.
+        """
+        return self.pdf(frm.encode(x), frm=frm)
+
     @classmethod
-    def uniform(cls, ncols: int) -> UniformPrior:
+    def uniform(cls, ncols: int) -> Uniform:
         """Create a uniform prior for a given list of domains.
 
         Args:
             ncols: The number of columns in the tensor to sample.
         """
-        return UniformPrior(ndim=ncols)
+        return Uniform(ndim=ncols)
 
     @classmethod
     def from_parameters(
@@ -122,15 +125,9 @@ class Prior(Sampler):
         center_values: Mapping[str, Any] | None = None,
         confidence_values: Mapping[str, float] | None = None,
     ) -> CenteredPrior:
-        """Please refer to [`from_space()`][neps.priors.Prior.from_space]
+        """Please refer to [`from_space()`][neps.sampling.Prior.from_space]
         for more details.
         """
-        # TODO: This needs to be moved to the search space class, however
-        # to not break the current prior based APIs used elsewhere, we can
-        # just manually create this here.
-        # We use confidence here where `0` means no confidence and `1` means
-        # absolute confidence. This gets translated in to std's and weights
-        # accordingly in a `CenteredPrior`
         _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
 
         center_values = center_values or {}
@@ -145,10 +142,7 @@ class Prior(Sampler):
                 centers.append(None)
                 continue
 
-            confidence_score = confidence_values.get(
-                name,
-                _mapping[hp.prior_confidence_choice],
-            )
+            confidence_score = confidence_values.get(name, _mapping[hp.prior_confidence])
             center = hp.choices.index(default) if isinstance(hp, Categorical) else default
             centers.append((center, confidence_score))
 
@@ -195,9 +189,6 @@ class Prior(Sampler):
                     The values contained in centers should be contained within the
                     domain. All confidence levels should be within the `[0, 1]` range.
 
-            confidence: The confidence level for the center. Entries containing `None`
-                should match with `centers` that are `None`. If not, this is considered an
-                error.
             device: Device to place the tensors on for distributions.
 
         Returns:
@@ -215,7 +206,21 @@ class Prior(Sampler):
             # the distributions to all be unit uniform as it can speed up sampling when
             # consistentaly the same. This still works for categoricals
             if center_conf is None:
-                distributions.append(UNIT_UNIFORM_DIST)
+                if domain.is_categorical:
+                    # Uniform categorical
+                    n_cats = domain.cardinality
+                    assert n_cats is not None
+                    dist = TorchDistributionWithDomain(
+                        distribution=torch.distributions.Categorical(
+                            probs=torch.ones(n_cats, device=device) / n_cats,
+                            validate_args=False,
+                        ),
+                        domain=domain,
+                    )
+                    distributions.append(dist)
+                else:
+                    distributions.append(UNIT_UNIFORM_DIST)
+
                 continue
 
             center, conf = center_conf
@@ -262,7 +267,7 @@ class Prior(Sampler):
                     device=device,
                     validate_args=False,
                 ),
-                domain=UNIT_FLOAT_DOMAIN,
+                domain=Domain.unit_float(),
             )
             distributions.append(dist)
 
@@ -310,6 +315,34 @@ class Prior(Sampler):
             confidence_values=confidence_values,
         )
 
+    @classmethod
+    def from_config(
+        cls,
+        config: dict[str, Any],
+        *,
+        space: SearchSpace,
+        confidence_values: Mapping[str, float] | None = None,
+        include_fidelity: bool = False,
+    ) -> Prior:
+        """Create a prior from a configuration.
+
+        Args:
+            config: The configuration to create a prior from.
+            space: The search space to create the prior from.
+            confidence_values: Any confidence values to override by what's set in the
+                `space`.
+            include_fidelity: Whether to include the fidelity of the search space.
+
+        Returns:
+            The prior distribution
+        """
+        return Prior.from_space(
+            space,
+            center_values=config,
+            confidence_values=confidence_values,
+            include_fidelity=include_fidelity,
+        )
+
 
 @dataclass
 class CenteredPrior(Prior):
@@ -322,7 +355,11 @@ class CenteredPrior(Prior):
     not have a center and confidence level, i.e. no prior information.
 
     You can create this class more easily using
-    [`Prior.make_centered()`][neps.priors.Prior.make_centered].
+    [`Prior.from_space()`][neps.sampling.Prior.from_space] to use the prior config
+    of the search space.
+
+    If you need to create a prior around a specific configuration, you can also
+    use the [`Prior.from_config()`][neps.sampling.Prior.from_config] method.
     """
 
     distributions: list[TorchDistributionWithDomain]
@@ -443,7 +480,7 @@ class CenteredPrior(Prior):
 
 
 @dataclass
-class UniformPrior(Prior):
+class Uniform(Prior):
     """A prior that is uniform over a given domain.
 
     Uses a UnitUniform under the hood before converting to the value domain.
@@ -492,4 +529,4 @@ class UniformPrior(Prior):
         else:
             samples = torch.rand(_n, device=device)
 
-        return Domain.translate(samples, frm=UNIT_FLOAT_DOMAIN, to=to, dtype=dtype)
+        return Domain.translate(samples, frm=Domain.unit_float(), to=to, dtype=dtype)

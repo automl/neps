@@ -3,23 +3,40 @@
 # ruff: noqa: T201
 from __future__ import annotations
 
-from dataclasses import asdict
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
 from neps.runtime import get_workers_neps_state
-from neps.state.filebased import FileLocker
-from neps.state.neps_state import NePSState
-from neps.state.trial import Trial
-from neps.utils.types import ConfigID, _ConfigResultForStats
+from neps.state.neps_state import FileLocker, NePSState, Report, Trial
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import SearchSpace
 
 
-def get_summary_dict(
+# TODO(eddiebergman): This is a hack because status.py expects a `ConfigResult`
+# where the `config` is a dict config (`RawConfig`), while all the optimizers
+# expect a `ConfigResult` where the `config` is a `SearchSpace`. Ideally we
+# just rework status to use `Trial` and `Report` directly as they contain a lot more
+# information.
+@dataclass
+class _ConfigResultForStats:
+    id: str
+    config: Mapping[str, Any]
+    result: Mapping[str, Any] | Literal["error"]
+    metadata: dict
+
+    @property
+    def objective_to_minimize(self) -> float | Literal["error"]:
+        if isinstance(self.result, dict):
+            return float(self.result["objective_to_minimize"])
+        return "error"
+
+
+def get_summary_dict(  # noqa: C901
     root_directory: str | Path,
     *,
     add_details: bool = False,
@@ -36,6 +53,21 @@ def get_summary_dict(
     """
     root_directory = Path(root_directory)
 
+    def _to_deprecate_result_dict(report: Report) -> dict[str, Any] | Literal["error"]:
+        """Return the report as a dictionary."""
+        if report.reported_as == "success":
+            d = {
+                "objective_to_minimize": report.objective_to_minimize,
+                "cost": report.cost,
+                **report.extra,
+            }
+
+            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
+                d.setdefault("info_dict", {})["learning_curve"] = report.learning_curve
+            return d
+
+        return "error"
+
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
     try:
@@ -45,7 +77,7 @@ def get_summary_dict(
 
     trials = shared_state.lock_and_read_trials()
 
-    evaluated: dict[ConfigID, _ConfigResultForStats] = {}
+    evaluated: dict[str, _ConfigResultForStats] = {}
 
     for trial in trials.values():
         if trial.report is None:
@@ -54,7 +86,7 @@ def get_summary_dict(
         _result_for_stats = _ConfigResultForStats(
             id=trial.id,
             config=trial.config,
-            result=trial.report.to_deprecate_result_dict(),
+            result=_to_deprecate_result_dict(trial.report),
             metadata=asdict(trial.metadata),
         )
         evaluated[trial.id] = _result_for_stats

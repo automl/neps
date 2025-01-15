@@ -7,12 +7,8 @@ import numpy as np
 import neps
 
 
-def run_pipeline(pipeline_directory: Path, float1, categorical, integer1):
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    return evaluate_pipeline(pipeline_directory, float1, categorical, integer1)
-
 def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
-    # When adding pipeline_directory to run_pipeline, neps detects its presence and
+    # When adding pipeline_directory to evaluate_pipeline, neps detects its presence and
     # passes a directory unique for each pipeline configuration. You can then use this
     # pipeline_directory to create / save files pertaining to a specific pipeline, e.g.:
     weight_file = pipeline_directory / "weight_file.txt"

@@ -1,22 +1,26 @@
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from pandas.core.common import contextlib
 from pytest_cases import fixture, parametrize
 
 from neps.exceptions import WorkerRaiseError
-from neps.optimizers.random_search.optimizer import RandomSearch
+from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces import Float
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
-from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
+from neps.space import Float, SearchSpace
+from neps.state import (
+    DefaultReportValues,
+    NePSState,
+    OnErrorPossibilities,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+    Trial,
+    WorkerSettings,
+)
 
 
 @fixture
@@ -40,7 +44,7 @@ def test_worker_raises_when_error_in_self(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -63,7 +67,6 @@ def test_worker_raises_when_error_in_self(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     with pytest.raises(WorkerRaiseError):
         worker.run()
@@ -81,7 +84,7 @@ def test_worker_raises_when_error_in_self(
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -104,14 +107,12 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker2 = DefaultWorker.new(
         state=neps_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
-        _pre_sample_hooks=None,
     )
 
     # Worker1 should run 1 and error out
@@ -143,9 +144,9 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
-        on_error=OnErrorPossibilities.RAISE_WORKER_ERROR,  # <- Highlight
+        on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
         max_evaluations_total=None,
         include_in_progress_evaluations_towards_maximum=False,
@@ -162,7 +163,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     class _Eval:
         do_raise: bool
 
-        def __call__(self, *args, **kwargs) -> float:
+        def __call__(self, *args, **kwargs) -> float:  # noqa: ARG002
             if self.do_raise:
                 raise ValueError("This is an error")
             return 10
@@ -174,14 +175,12 @@ def test_worker_does_not_raise_when_error_in_other_worker(
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker2 = DefaultWorker.new(
         state=neps_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
-        _pre_sample_hooks=None,
     )
 
     # Worker1 should run 1 and error out

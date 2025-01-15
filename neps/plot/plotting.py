@@ -195,7 +195,8 @@ def _set_legend(
     )
 
     for legend_item in legend.legend_handles:
-        legend_item.set_linewidth(2.0)
+        if legend_item is not None:
+            legend_item.set_linewidth(2.0)  # type: ignore
 
 
 def _save_fig(

@@ -39,10 +39,10 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-1. Define a `run_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
+1. Define a `evaluate_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
    for your problem.
 1. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
-1. Call `neps.run` to optimize `run_pipeline` over `pipeline_space`
+1. Call `neps.run(evaluate_pipeline, pipeline_space)`
 
 In code, the usage pattern can look like this:
 
@@ -50,34 +50,33 @@ In code, the usage pattern can look like this:
 import neps
 import logging
 
+logging.basicConfig(level=logging.INFO)
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
-def run_pipeline(
-        hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
-) -> dict:
+def evaluate_pipeline(lr: float, alpha: int, optimizer: str) -> float:
     # Create your model
-    model = MyModel(architecture_parameter)
+    model = MyModel(lr=lr, alpha=alpha, optimizer=optimizer)
 
     # Train and evaluate the model with your training pipeline
-    validation_error = train_and_eval(
-        model, hyperparameter_a, hyperparameter_b
-    )
+    validation_error = train_and_eval(model)
     return validation_error
 
 
-# 2. Define a search space of parameters; use the same parameter names as in run_pipeline
+# 2. Define a search space of parameters; use the same parameter names as in evaluate_pipeline
 pipeline_space = dict(
-    hyperparameter_a=neps.Float(
-        lower=0.001, upper=0.1, log=True  # The search space is sampled in log space
+    lr=neps.Float(
+        lower=1e-5,
+        upper=1e-1,
+        log=True,   # Log spaces
+        prior=1e-3, # Incorporate you knowledge to help optimization
     ),
-    hyperparameter_b=neps.Integer(lower=1, upper=42),
-    architecture_parameter=neps.Categorical(["option_a", "option_b"]),
+    alpha=neps.Integer(lower=1, upper=42),
+    optimizer=neps.Categorical(choices=["sgd", "adam"])
 )
 
 # 3. Run the NePS optimization
-logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="path/to/save/results",  # Replace with the actual path.
     max_evaluations_total=100,
@@ -93,8 +92,6 @@ Discover how NePS works through these examples:
 - **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
 - **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
-
-- **[Architecture Search](neps_examples/basic_usage/architecture.py)**: Dive into (hierarchical) architecture search in NePS.
 
 - **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
 

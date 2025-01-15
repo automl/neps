@@ -7,7 +7,7 @@ import logging
 import os
 import shutil
 import time
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -120,8 +120,11 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
     yield
+
+    # This is mostly for `tblogger`
     for _key, callback in _TRIAL_END_CALLBACKS.items():
         callback(trial)
+
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
 
 
@@ -149,9 +152,6 @@ class DefaultWorker(Generic[Loc]):
     worker_id: str
     """The id of the worker."""
 
-    _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None
-    """Hooks to run before sampling a new trial."""
-
     worker_cumulative_eval_count: int = 0
     """The number of evaluations done by this worker."""
 
@@ -171,7 +171,6 @@ class DefaultWorker(Generic[Loc]):
         optimizer: BaseOptimizer,
         settings: WorkerSettings,
         evaluation_fn: Callable[..., float | Mapping[str, Any]],
-        _pre_sample_hooks: list[Callable[[BaseOptimizer], BaseOptimizer]] | None = None,
         worker_id: str | None = None,
     ) -> DefaultWorker:
         """Create a new worker."""
@@ -181,7 +180,6 @@ class DefaultWorker(Generic[Loc]):
             settings=settings,
             evaluation_fn=evaluation_fn,
             worker_id=worker_id if worker_id is not None else _default_worker_name(),
-            _pre_sample_hooks=_pre_sample_hooks,
         )
 
     def _check_worker_local_settings(
@@ -620,14 +618,13 @@ def _launch_runtime(  # noqa: PLR0913
     optimization_dir: Path,
     max_cost_total: float | None,
     ignore_errors: bool = False,
-    objective_to_minimize_value_on_error: float | None,
+    objective_value_on_error: float | None,
     cost_value_on_error: float | None,
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
     max_evaluations_total: int | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
-    pre_load_hooks: Iterable[Callable[[BaseOptimizer], BaseOptimizer]] | None,
 ) -> None:
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(
@@ -677,7 +674,7 @@ def _launch_runtime(  # noqa: PLR0913
         ),
         batch_size=sample_batch_size,
         default_report_values=DefaultReportValues(
-            objective_to_minimize_value_on_error=objective_to_minimize_value_on_error,
+            objective_value_on_error=objective_value_on_error,
             cost_value_on_error=cost_value_on_error,
             cost_if_not_provided=None,  # TODO: User can't specify yet
             learning_curve_on_error=None,  # TODO: User can't specify yet
@@ -722,6 +719,5 @@ def _launch_runtime(  # noqa: PLR0913
         optimizer=optimizer,
         evaluation_fn=evaluation_fn,
         settings=settings,
-        _pre_sample_hooks=list(pre_load_hooks) if pre_load_hooks is not None else None,
     )
     worker.run()

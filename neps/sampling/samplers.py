@@ -1,26 +1,25 @@
 """Samplers for generating points in a search space.
 
-These are similar to [`Prior`][neps.priors.Prior] objects, but they
+These are similar to [`Prior`][neps.sampling.Prior] objects, but they
 do not necessarily have an easily definable pdf.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import reduce
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 import torch
 from more_itertools import all_equal
 
-from neps.search_spaces.domain import UNIT_FLOAT_DOMAIN, Domain
-from neps.search_spaces.encoding import ConfigEncoder
+from neps.space import ConfigEncoder, Domain
 
 if TYPE_CHECKING:
-    from neps.sampling.priors import UniformPrior
+    from neps.sampling.priors import Uniform
 
 
 class Sampler(ABC):
@@ -46,7 +45,7 @@ class Sampler(ABC):
 
         Args:
             n: The number of points to sample. If a torch.Size, an additional dimension
-                will be added with [`.ncols`][neps.samplers.Sampler.ncols].
+                will be added with [`.ncols`][neps.sampling.Sampler.ncols].
                 For example, if `n = 5`, the output will be `(5, ncols)`. If
                 `n = (5, 3)`, the output will be `(5, 3, ncols)`.
             to: If a single domain, `.ncols` columns will be produced form that one
@@ -60,22 +59,40 @@ class Sampler(ABC):
             A tensor of (n, ndim) points sampled cast to the given domain.
         """
 
-    def sample_one(
+    def sample_config(
         self,
+        to: ConfigEncoder,
         *,
-        to: Domain | list[Domain] | ConfigEncoder,
         seed: torch.Generator | None = None,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ) -> torch.Tensor:
-        """Sample a single point and convert it to the given domain.
+        include: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """See [`sample_configs()`][neps.sampling.Sampler.sample_configs]."""
+        return self.sample_configs(1, to, seed=seed, include=include)[0]
 
-        The configuration will be a single dimensional tensor of shape
-        `(ncols,)`.
+    def sample_configs(
+        self,
+        n: int,
+        to: ConfigEncoder,
+        *,
+        seed: torch.Generator | None = None,
+        include: Mapping[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Sample configurations directly into a search space.
 
-        Please see [`sample`][neps.samplers.Sampler.sample] for more details.
+        Args:
+            n: The number of configurations to sample.
+            to: The encoding to sample into.
+            seed: The seed generator.
+            include: Additional values to include in the configuration.
+
+        Returns:
+            A list of configurations.
         """
-        return self.sample(1, to=to, seed=seed, device=device, dtype=dtype).squeeze(0)
+        tensors = self.sample(n, to=to, seed=seed)
+        configs = to.decode(tensors)
+        if include is None:
+            return configs
+        return [{**config, **include} for config in configs]
 
     @classmethod
     def sobol(cls, ndim: int, *, scramble: bool = True) -> Sobol:
@@ -91,7 +108,7 @@ class Sampler(ABC):
         return Sobol(ndim=ndim, scramble=scramble)
 
     @classmethod
-    def uniform(cls, ndim: int) -> UniformPrior:
+    def uniform(cls, ndim: int) -> Uniform:
         """Create a uniform sampler.
 
         Args:
@@ -100,9 +117,9 @@ class Sampler(ABC):
         Returns:
             A uniform sampler.
         """
-        from neps.sampling.priors import UniformPrior
+        from neps.sampling.priors import Uniform
 
-        return UniformPrior(ndim=ndim)
+        return Uniform(ndim=ndim)
 
     @classmethod
     def borders(cls, ndim: int) -> BorderSampler:
@@ -177,7 +194,7 @@ class Sobol(Sampler):
         if isinstance(n, torch.Size):
             x = x.view(*n, self.ncols)
 
-        return Domain.translate(x, frm=UNIT_FLOAT_DOMAIN, to=to)
+        return Domain.translate(x, frm=Domain.unit_float(), to=to)
 
 
 @dataclass
@@ -187,7 +204,7 @@ class WeightedSampler(Sampler):
     samplers: Sequence[Sampler]
     """The samplers to sample from."""
 
-    weights: torch.Tensor
+    weights: Sequence[float]
     """The weights for each sampler."""
 
     sampler_probabilities: torch.Tensor = field(init=False, repr=False)
@@ -199,20 +216,21 @@ class WeightedSampler(Sampler):
                 f"At least two samplers must be given. Got {len(self.samplers)}"
             )
 
-        if self.weights.ndim != 1:
-            raise ValueError("Weights must be a 1D tensor.")
+        probs = torch.as_tensor(self.weights, dtype=torch.float64)
+        if probs.ndim != 1:
+            raise ValueError("Weights must be a 1D.")
 
-        if len(self.samplers) != len(self.weights):
+        if len(self.samplers) != len(probs):
             raise ValueError("The number of samplers and weights must be the same.")
 
         ncols = [sampler.ncols for sampler in self.samplers]
         if not all_equal(ncols):
             raise ValueError(
-                "All samplers must have the same number of columns." f" Got {ncols}."
+                f"All samplers must have the same number of columns. Got {ncols}."
             )
 
         self._ncols = ncols[0]
-        self.sampler_probabilities = self.weights / self.weights.sum()
+        self.sampler_probabilities = probs / probs.sum()
 
     @property
     @override
@@ -309,7 +327,7 @@ class BorderSampler(Sampler):
     @property
     def n_possible(self) -> int:
         """The amount of possible border configurations."""
-        return 2**self.ndim
+        return int(2**self.ndim)
 
     @override
     def sample(
@@ -351,4 +369,4 @@ class BorderSampler(Sampler):
         configs = configs.unsqueeze(1).bitwise_and(bit_masks).ne(0).to(dtype)
         # Reshape to the output shape including ncols dimension
         configs = configs.view(output_shape)
-        return Domain.translate(configs, frm=UNIT_FLOAT_DOMAIN, to=to)
+        return Domain.translate(configs, frm=Domain.unit_float(), to=to)

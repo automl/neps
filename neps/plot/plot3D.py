@@ -35,17 +35,17 @@ class Plotter3D:
 
     def __post_init__(self) -> None:
         if self.run_path is not None:
-            assert (
-                Path(self.run_path).absolute().is_dir()
-            ), f"Path {self.run_path} is not a directory"
+            assert Path(self.run_path).absolute().is_dir(), (
+                f"Path {self.run_path} is not a directory"
+            )
             self.data_path = (
                 Path(self.run_path).absolute() / "summary_csv" / "config_data.csv"
             )
             assert self.data_path.exists(), f"File {self.data_path} does not exist"
-            self.df = pd.read_csv(
+            self.df = pd.read_csv(  # type: ignore
                 self.data_path,
                 index_col=0,
-                float_precision="round_trip",
+                float_precision="round_trip",  # type: ignore
             )
 
             # Assigned at prep_df stage
@@ -55,23 +55,23 @@ class Plotter3D:
     @staticmethod
     def get_x(df: pd.DataFrame) -> np.ndarray:
         """Get the x-axis values for the plot."""
-        return df["epochID"].to_numpy()
+        return df["epochID"].to_numpy()  # type: ignore
 
     @staticmethod
     def get_y(df: pd.DataFrame) -> np.ndarray:
         """Get the y-axis values for the plot."""
         y_ = df["configID"].to_numpy()
-        return np.ones_like(y_) * y_[0]
+        return np.ones_like(y_) * y_[0]  # type: ignore
 
     @staticmethod
     def get_z(df: pd.DataFrame) -> np.ndarray:
         """Get the z-axis values for the plot."""
-        return df["result.objective_to_minimize"].to_numpy()
+        return df["result.objective_to_minimize"].to_numpy()  # type: ignore
 
     @staticmethod
     def get_color(df: pd.DataFrame) -> np.ndarray:
         """Get the color values for the plot."""
-        return df.index.to_numpy()
+        return df.index.to_numpy()  # type: ignore
 
     def prep_df(self, df: pd.DataFrame | None = None) -> pd.DataFrame:
         """Prepare the dataframe for plotting."""
@@ -197,7 +197,7 @@ class Plotter3D:
 
         ax3D.axes.set_xlim3d(left=self.epochs_range[0], right=self.epochs_range[1])  # type: ignore
         ax3D.axes.set_ylim3d(bottom=0, top=data_groups.ngroups)  # type: ignore
-        ax3D.axes.set_zlim3d(
+        ax3D.axes.set_zlim3d(  # type: ignore
             bottom=self.objective_to_minimize_range[0],
             top=self.objective_to_minimize_range[1],
         )  # type: ignore
