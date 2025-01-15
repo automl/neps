@@ -54,7 +54,7 @@ neps.run(.., pipeline_space=pipeline_space)
 
 
 ## Using your knowledge, providing a Prior
-When optimizing, you can provide your own knowledge using the parameters `prior=`.
+When optimizing, you can provide your own knowledge using the parameter `prior=`.
 By indicating a `prior=` we take this to be your user prior,
 **your knowledge about where a good value for this parameter lies**.
 
