@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Concatenate, Literal, TypeAlias
 
 import torch
 
+from neps.optimizers.ask_and_tell import AskAndTell  # noqa: F401
 from neps.optimizers.bayesian_optimization import BayesianOptimization
 from neps.optimizers.bracket_optimizer import BracketOptimizer
 from neps.optimizers.grid_search import GridSearch
