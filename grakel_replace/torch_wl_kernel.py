@@ -74,85 +74,113 @@ class TorchWLKernel(Kernel):
         diag: bool = False,
         last_dim_is_batch: bool = False,
     ) -> Tensor:
-        """Compute the kernel matrix efficiently with caching.
+        """Compute the kernel matrix.
 
         Args:
-            x1 (Tensor): Tensor of indices for the first set of graphs.
-            x2 (Tensor): Tensor of indices for the second set of graphs.
-            diag (bool, optional): If True, only computes the diagonal of the kernel
-            matrix. Defaults to False.
-            last_dim_is_batch (bool, optional): Whether the last dimension represents
-            batch size. Defaults to False.
+            x1 (Tensor): Tensor of indices for the first set of graphs
+            x2 (Tensor): Tensor of indices for the second set of graphs
+            diag (bool): If True, only computes the diagonal of the kernel matrix
+            last_dim_is_batch (bool): Whether the last dimension represents batch size
 
         Returns:
-            Tensor: Kernel matrix containing pairwise similarities between graphs.
+            Tensor: Kernel matrix containing pairwise similarities between graphs
         """
         if last_dim_is_batch:
             raise NotImplementedError("Batch dimension handling is not implemented.")
 
-        x1_is_x2 = torch.equal(x1, x2)
-
+        # Handle batched input if present
         if x1.ndim == 3:
-            # Handle batched input
-            q_dim_size = x1.shape[0]
-            assert x2.shape[0] == q_dim_size
+            return self._handle_batched_input(x1, x2, diag)
 
-            out = torch.empty((q_dim_size, x1.shape[1], x2.shape[1]), device=x1.device)
-            for q in range(q_dim_size):
-                out[q] = self._compute_kernel(x1[q], x2[q], diag=diag)
-            return out
+        # Convert indices to integer lists and handle special cases
+        indices1, indices2 = self._prepare_indices(x1, x2)
 
-        # Ensure indices are integers
+        # Check if we're computing self-similarity or cross-similarity
+        if torch.equal(x1, x2):
+            return self._compute_self_kernel(indices1, diag)
+        else:
+            return self._compute_cross_kernel(indices1, indices2, diag)
+
+    def _handle_batched_input(self, x1: Tensor, x2: Tensor, diag: bool) -> Tensor:
+        """Handle computation for batched input tensors."""
+        q_dim_size = x1.shape[0]
+        assert x2.shape[0] == q_dim_size
+
+        out = torch.empty((q_dim_size, x1.shape[1], x2.shape[1]), device=x1.device)
+        for q in range(q_dim_size):
+            out[q] = self._compute_kernel(x1[q], x2[q], diag=diag)
+        return out
+
+    def _prepare_indices(self, x1: Tensor, x2: Tensor) -> tuple[list[int], list[int]]:
+        """Convert tensor indices to integer lists and handle special cases."""
         indices1 = x1.flatten().round().to(torch.int64).tolist()
         indices2 = x2.flatten().round().to(torch.int64).tolist()
 
-        # Handle the special case for -1
-        if (-1 in indices1 or -1 in indices2) and -1 not in self.adjacency_cache:
-            # Map -1 to the last graph in the graph lookup
+        # Handle special case for -1 index
+        if -1 in indices1 or -1 in indices2:
+            self._handle_negative_one_index()
+
+        return indices1, indices2
+
+    def _handle_negative_one_index(self) -> None:
+        """Handle the special case where -1 index is present."""
+        if -1 not in self.adjacency_cache:
             last_graph_idx = len(self.graph_lookup) - 1
             self.adjacency_cache[-1] = self.adjacency_cache[last_graph_idx]
             self.label_cache[-1] = self.label_cache[last_graph_idx]
 
-        if x1_is_x2:
-            indices = tuple(indices1)
-            if indices in self.cache:
-                return self.cache[indices]
+    def _compute_self_kernel(self, indices: list[int], diag: bool) -> Tensor:
+        """Compute kernel matrix for self-similarity case."""
+        indices_tuple = tuple(indices)
+        if indices_tuple in self.cache:
+            return self.cache[indices_tuple]
 
-            # Compute pairwise kernel
-            adj_matrices = [self.adjacency_cache[i] for i in indices]
-            label_tensors = [self.label_cache[i] for i in indices]
+        # Get precomputed data for the indices
+        adj_matrices = [self.adjacency_cache[i] for i in indices]
+        label_tensors = [self.label_cache[i] for i in indices]
 
-            _kernel = _TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
-            K = _kernel(adj_matrices, label_tensors)
-            if diag:
-                K = torch.diag(K)
+        # Compute kernel matrix
+        K = self._compute_base_kernel(adj_matrices, label_tensors)
+        if diag:
+            K = torch.diag(K)
 
-            # Cache the result
-            self.cache[indices] = K
-            return K
-        else:
-            cache_key = (tuple(indices1), tuple(indices2))
-            if cache_key in self.cache:
-                return self.cache[cache_key]
+        self.cache[indices_tuple] = K
+        return K
 
-            # Compute cross-kernel
-            all_graphs = list(set(indices1 + indices2))
-            adj_matrices = [self.adjacency_cache[i] for i in all_graphs]
-            label_tensors = [self.label_cache[i] for i in all_graphs]
+    def _compute_cross_kernel(
+        self,
+        indices1: list[int],
+        indices2: list[int],
+        diag: bool
+    ) -> Tensor:
+        """Compute kernel matrix for cross-similarity case."""
+        cache_key = (tuple(indices1), tuple(indices2))
+        if cache_key in self.cache:
+            return self.cache[cache_key]
 
-            _kernel = _TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
-            K_full = _kernel(adj_matrices, label_tensors)
+        # Compute unique set of graphs needed
+        all_graphs = list(set(indices1 + indices2))
+        adj_matrices = [self.adjacency_cache[i] for i in all_graphs]
+        label_tensors = [self.label_cache[i] for i in all_graphs]
 
-            # Extract the relevant submatrix
-            idx1 = [all_graphs.index(i) for i in indices1]
-            idx2 = [all_graphs.index(i) for i in indices2]
-            K = K_full[idx1][:, idx2]
-            if diag:
-                K = torch.diag(K)
+        # Compute full kernel matrix
+        K_full = self._compute_base_kernel(adj_matrices, label_tensors)
 
-            # Cache the result
-            self.cache[cache_key] = K
-            return K
+        # Extract relevant submatrix
+        idx1 = [all_graphs.index(i) for i in indices1]
+        idx2 = [all_graphs.index(i) for i in indices2]
+        K = K_full[idx1][:, idx2]
+        if diag:
+            K = torch.diag(K)
+
+        self.cache[cache_key] = K
+        return K
+
+    def _compute_base_kernel(self, adj_matrices: list[Tensor],
+                             label_tensors: list[Tensor]) -> Tensor:
+        """Compute the base kernel matrix using WL algorithm."""
+        _kernel = _TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
+        return _kernel(adj_matrices, label_tensors)
 
     def _get_sparse_adj(self, graph: nx.Graph) -> Tensor:
         """Convert a NetworkX graph to a sparse adjacency tensor."""
