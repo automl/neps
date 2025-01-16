@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import networkx as nx
 import torch
 from botorch.models.gp_regression_mixed import Kernel
 from torch import Tensor
 from torch.nn import Module
+
+if TYPE_CHECKING:
+    import networkx as nx
 
 
 class BoTorchWLKernel(Kernel):
@@ -373,25 +375,3 @@ class TorchWLKernel(Module):
             kernel_matrix /= (diag.unsqueeze(0) * diag.unsqueeze(1))
 
         return kernel_matrix
-
-
-class GraphDataset:
-    """Utility class to convert NetworkX graphs for WL kernel."""
-
-    @staticmethod
-    def from_networkx(
-        graphs: list[nx.Graph], node_labels_tag: str = "label"
-    ) -> list[nx.Graph]:
-        if not all(isinstance(g, nx.Graph) for g in graphs):
-            raise TypeError("Expected input type is a list of NetworkX graphs.")
-
-        """Convert NetworkX graphs ensuring proper node labeling."""
-        processed_graphs = []
-        for g in graphs:
-            g = g.copy()
-            # Add default labels if not present
-            for node in g.nodes():
-                if node_labels_tag not in g.nodes[node]:
-                    g.nodes[node][node_labels_tag] = str(node)
-            processed_graphs.append(g)
-        return processed_graphs
