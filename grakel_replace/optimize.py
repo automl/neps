@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import torch
 from botorch.optim import optimize_acqf_mixed
-from grakel_replace.torch_wl_kernel import TorchWLKernel
+from grakel_replace.torch_wl_kernel import BoTorchWLKernel
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
@@ -33,13 +33,13 @@ def set_graph_lookup(
     kernel_prev_graphs: list[tuple[Kernel, list[nx.Graph]]] = []
 
     # Determine the modules to update based on the kernel type
-    if isinstance(kernel, TorchWLKernel):
+    if isinstance(kernel, BoTorchWLKernel):
         modules = [kernel]
     else:
         assert hasattr(
             kernel, "sub_kernels"
         ), "Kernel module must have sub_kernels method."
-        modules = [k for k in kernel.sub_kernels() if isinstance(k, TorchWLKernel)]
+        modules = [k for k in kernel.sub_kernels() if isinstance(k, BoTorchWLKernel)]
 
     # Save the current graph lookup and set the new graph lookup
     for kern in modules:

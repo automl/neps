@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.nn import Module
 
 
-class TorchWLKernel(Kernel):
+class BoTorchWLKernel(Kernel):
     has_lengthscale = False
 
     def __init__(
@@ -179,7 +179,7 @@ class TorchWLKernel(Kernel):
     def _compute_base_kernel(self, adj_matrices: list[Tensor],
                              label_tensors: list[Tensor]) -> Tensor:
         """Compute the base kernel matrix using WL algorithm."""
-        _kernel = _TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
+        _kernel = TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
         return _kernel(adj_matrices, label_tensors)
 
     def _get_sparse_adj(self, graph: nx.Graph) -> Tensor:
@@ -224,7 +224,7 @@ class TorchWLKernel(Kernel):
         return torch.tensor(labels, dtype=torch.long, device=self.device)
 
 
-class _TorchWLKernel(Module):
+class TorchWLKernel(Module):
     """A custom implementation of Weisfeiler-Lehman (WL) Kernel in PyTorch.
 
     The WL Kernel is a graph kernel that measures similarity between graphs based on

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import networkx as nx
 import torch
-from torch_wl_kernel import GraphDataset, TorchWLKernel
+from torch_wl_kernel import GraphDataset, BoTorchWLKernel
 
 # Create the same graphs as for the Grakel example
 G1 = nx.Graph()
@@ -16,7 +16,7 @@ G3.add_edges_from([(0, 1), (1, 3), (3, 2)])
 graphs: list[nx.Graph] = GraphDataset.from_networkx([G1, G2, G3])
 
 # Initialize and run WL kernel
-wl_kernel = TorchWLKernel(
+wl_kernel = BoTorchWLKernel(
     training_graph_list=graphs,
     n_iter=2,
     normalize=True,

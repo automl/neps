@@ -15,7 +15,7 @@ from botorch.models.gp_regression_mixed import CategoricalKernel, Kernel, ScaleK
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 from grakel_replace.optimize import optimize_acqf_graph
-from grakel_replace.torch_wl_kernel import TorchWLKernel
+from grakel_replace.torch_wl_kernel import BoTorchWLKernel
 from grakel_replace.utils import min_max_scale, seed_all
 
 if TYPE_CHECKING:
@@ -63,7 +63,7 @@ kernels = [
     ScaleKernel(CategoricalKernel(
         ard_num_dims=N_CATEGORICAL,
         active_dims=range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL))),
-    ScaleKernel(TorchWLKernel(
+    ScaleKernel(BoTorchWLKernel(
         graph_lookup=train_graphs, n_iter=5, normalize=True,
         active_dims=(X.shape[1] - 1,)))
 ]
@@ -82,7 +82,7 @@ multivariate_normal: MultivariateNormal = gp.forward(train_x)
 def set_graph_lookup(_gp: SingleTaskGP, new_graphs: list[nx.Graph]) -> Iterator[None]:
     kernel_prev_graphs: list[tuple[Kernel, list[nx.Graph]]] = []
     for kern in _gp.covar_module.sub_kernels():
-        if isinstance(kern, TorchWLKernel):
+        if isinstance(kern, BoTorchWLKernel):
             kernel_prev_graphs.append((kern, kern.graph_lookup))
             kern.set_graph_lookup(new_graphs)
 
