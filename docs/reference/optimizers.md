@@ -7,12 +7,12 @@ When presented with a machine learning problem, there are often ways to make the
 ### 1.1 Multi-Fidelity (MF)
 
 Multi-Fidelity optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, to get an idea of what could work. This could mean training a model for a shorter time, using only a subset of the training data, or a smaller model entirely. From these 'low fidelity' runs, MF-algorithms can infer which configurations are likely to perform well on the full problem, before actually investing larger compute amounts.
-For a more detailed explanation of Multi-Fidelity and a list of Neps-optimizers, using MF, please refer [here](../reference/search_algorithms/multifidelity.md).
+For a more detailed explanation of Multi-Fidelity and a list of Neps-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
 
 
 ### 1.2 Priors
 
-Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. This intuition could come from expert knowledge or previous experiments. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute. For a more detailed explanation of Priors and a list of Neps-optimizers, using Priors, please refer [here](../reference/search_algorithms/prior.md).
+Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. This intuition could come from expert knowledge or previous experiments. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute. For a more detailed explanation of Priors and a list of Neps-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
 
 ## 2 Neps Optimizer Selection
 
@@ -20,7 +20,7 @@ Neps provides a variety of optimizers that utilize Multi-Fidelity, Priors or bot
 
 ![Optimizer classes](../doc_images/venn_dia.png)
 
-The [Optimizer Classes](../reference/search_algorithms/)-Chapter goes into detail on the different optimizers, while the rest of this chapter will focus on how to select when using Neps.
+The [Optimizer Classes](../reference/search_algorithms/#optimizer-classes)-Chapter goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using Neps.
 
 ### 2.1 Automatic Optimizer Selection
 
@@ -30,9 +30,9 @@ space. This provides a hassle-free way to get started quickly.
 
 The optimizer selection is based on the following characteristics of your `pipeline_space`:
 
-- If it has fidelity: `hyperband`
-- If it has both fidelity and a prior: `priorband`
-- If it has a prior: `pibo`
+- If it has fidelity: [`hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)
+- If it has both fidelity and a prior: [`priorband`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)
+- If it has a prior: [`pibo`](../reference/search_algorithms/prior.md#1-pibo)
 - If it has neither: `bayesian_optimization`
 
 For example, running the following format, without specifying a optimizer will choose an optimizer depending on

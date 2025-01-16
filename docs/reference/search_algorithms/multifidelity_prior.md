@@ -1,7 +1,7 @@
 # Multi-Fidelity and Prior Optimizers
 
-This section concerns optimizers that use both Multi-Fidelity and Priors. The combined advantages and disadvantages 
-For a detailed explanation of Multi-Fidelity and Priors, please refer [here](../reference/search_algorithms/multifidelity.md) and [here](../reference/search_algorithms/prior.md).
+This section concerns optimizers that use both Multi-Fidelity and Priors. They combine the advantages and disadvantages of both methods to exploit all available information.
+For a detailed explanation of Multi-Fidelity and Priors, please refer [here](../../reference/search_algorithms/multifidelity.md) and [here](../../reference/search_algorithms/prior.md).
 
 ## 1 `PriorBand`
 
