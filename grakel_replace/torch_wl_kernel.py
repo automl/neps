@@ -26,18 +26,18 @@ class TorchWLKernel(Kernel):
         self.n_iter = n_iter
         self.normalize = normalize
 
-        # Cache adjacency matrices and initial node labels
+        self._init_caches()
+        self._precompute_graph_data()
+
+    def _init_caches(self) -> None:
+        """Initialize cache dictionaries."""
         self.adjacency_cache = {}
         self.label_cache = {}
         self.cache = {}
 
-        self._precompute_graph_data()
-
     def _precompute_graph_data(self) -> None:
-        """Precompute adjacency matrices and initial node labels for all graphs."""
-        self.adjacency_cache = {}
-        self.label_cache = {}
-
+        """Precompute and cache adjacency matrices and initial node labels."""
+        self._init_caches()
         for idx, graph in enumerate(self.graph_lookup):
             self.adjacency_cache[idx] = self._get_sparse_adj(graph)
             self.label_cache[idx] = self._init_node_labels(graph)
@@ -74,14 +74,15 @@ class TorchWLKernel(Kernel):
         diag: bool = False,
         last_dim_is_batch: bool = False,
     ) -> Tensor:
-        """
-        Compute the kernel matrix efficiently with caching and minimal redundant computations.
+        """Compute the kernel matrix efficiently with caching.
 
         Args:
             x1 (Tensor): Tensor of indices for the first set of graphs.
             x2 (Tensor): Tensor of indices for the second set of graphs.
-            diag (bool, optional): If True, only computes the diagonal of the kernel matrix. Defaults to False.
-            last_dim_is_batch (bool, optional): Whether the last dimension represents batch size. Defaults to False.
+            diag (bool, optional): If True, only computes the diagonal of the kernel
+            matrix. Defaults to False.
+            last_dim_is_batch (bool, optional): Whether the last dimension represents
+            batch size. Defaults to False.
 
         Returns:
             Tensor: Kernel matrix containing pairwise similarities between graphs.
@@ -106,12 +107,11 @@ class TorchWLKernel(Kernel):
         indices2 = x2.flatten().round().to(torch.int64).tolist()
 
         # Handle the special case for -1
-        if -1 in indices1 or -1 in indices2:
-            if -1 not in self.adjacency_cache:
-                # Map -1 to the last graph in the graph lookup
-                last_graph_idx = len(self.graph_lookup) - 1
-                self.adjacency_cache[-1] = self.adjacency_cache[last_graph_idx]
-                self.label_cache[-1] = self.label_cache[last_graph_idx]
+        if (-1 in indices1 or -1 in indices2) and -1 not in self.adjacency_cache:
+            # Map -1 to the last graph in the graph lookup
+            last_graph_idx = len(self.graph_lookup) - 1
+            self.adjacency_cache[-1] = self.adjacency_cache[last_graph_idx]
+            self.label_cache[-1] = self.label_cache[last_graph_idx]
 
         if x1_is_x2:
             indices = tuple(indices1)
@@ -221,6 +221,10 @@ class _TorchWLKernel(Module):
         self.label_dict: dict[tuple, int] = {}
         self.label_counter: int = 0
         self.cache = {}
+        self._init_hash_module()
+
+    def _init_hash_module(self) -> None:
+        """Initialize the hash module with normal weights."""
         self.hash_module = torch.nn.Linear(2, 1, bias=False)
         torch.nn.init.normal_(self.hash_module.weight)
 
