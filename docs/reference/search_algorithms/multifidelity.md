@@ -1,5 +1,11 @@
 # Multi-Fidelity Optimizers
 
+Detailed explanation of MF
+Advantages (Heuristic, less compute per config, possibly exploration)
+Disadvantages (More compute i.g., variance, low MF-correlation)
+Examples (less iterations, smaller datasets, smaller models)
+
+
 ## 1 `Successive Halving`
 
 Detailed explanation of `successive halving`:

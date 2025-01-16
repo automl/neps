@@ -1,6 +1,11 @@
 # Prior Optimizers
 
-Link to the explanation of priors in the optimizers page.
+
+Detailed explanation of Priors
+Intution (Experts recommending ranges, Intution for "Trust" in Prior)
+Advantages (Less compute wasted, more exploitation)
+Disadvantages (Less exploration, bad priors)
+
 
 ## 1 `PiBO`
 
