@@ -1,8 +1,8 @@
-# Bayesian Optimization (BO)
+# Bayesian Optimization
 
 ## What is Bayesian Optimization?
 
-Bayesian Optimization (BO) is a fundamental optimization technique for finding (local) optima of expensive-to-evaluate functions. The main idea of BO is an interplay of a model (the `surrogate function`) of the objective function, built from the data collected during the optimization process, and an `acquisition function` that guides the search for the next evaluation point.
+Bayesian Optimization (B=) is a fundamental optimization technique for finding (local) optima of expensive-to-evaluate functions. The main idea of BO is an interplay of a model (the `surrogate function`) of the objective function, built from the data collected during the optimization process, and an `acquisition function` that guides the search for the next evaluation point.
 
 ### The surrogate function
 
@@ -21,15 +21,17 @@ There are numerous acquisition functions, with the most popular being `Expected 
 
 - EI is defined as the expected improvement over the current best observation:
 
-$EI(\boldsymbol{x}) = \mathbb{E}[\max(0, f(\boldsymbol{x}) - f(\boldsymbol{x}^+))]$
+$$EI(\boldsymbol{x}) = \mathbb{E}[\max(0, f(\boldsymbol{x}) - f(\boldsymbol{x}^+))]$$
 
 - PI is defined as the probability that the surrogate function is better than the current best observation:
 
-$PI(\boldsymbol{x}) = P(f(\boldsymbol{x}) > f(\boldsymbol{x}^+))$
+$$PI(\boldsymbol{x}) = P(f(\boldsymbol{x}) > f(\boldsymbol{x}^+))$$
 
 where $f(\boldsymbol{x})$ is the surrogate function and $f(\boldsymbol{x}^+)$ is the best observation so far.
 
-## Application
+To read more about BO, please refer to the [Bayesian Optimization paper](https://arxiv.org/abs/1807.02811) or this article on [Towards Data Science](https://towardsdatascience.com/bayesian-optimization-concept-explained-in-layman-terms-1d2bcdeaf12f).
 
-BO is the standard optimization technique in AutoML, as it can handle expensive-to-evaluate, black-box, noisy and high-dimensional objectives, all of which are common in AutoML. It is used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
+## BO in Neps
+
+BO is the standard optimization technique in AutoML, as it can handle expensive-to-evaluate, noisy, high-dimensional and black-box objectives, all of which are common challenges in AutoML. It is used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
 Therefore, BO is chosen as the default optimizer in NePS when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.

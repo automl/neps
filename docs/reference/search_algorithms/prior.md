@@ -18,16 +18,16 @@ In the following, we will discuss the Neps-optimizers that use Priors.
 
 ## 1 `PiBO`
 
-Link to BO-explanation (extern), to explain BO and acquisition.
-
-`PiBO` is an extension of Bayesian Optimization (BO) that uses a special `acquisition function` that incorporates Priors. Precisely, PiBO uses a `prior-factor` that decays over time, to give more weight to the Prior in the beginning of the optimization process. This way, the optimizer first relies on the existing knowledge, before shifting focus to the data acquired during the optimization process.
+`PiBO` is an extension of [Bayesian Optimization (BO)](../search_algorithms/bayesian_optimization.md) that uses a specific `acquisition function` that incorporates Priors, by including a `Prior-factor` that decays over time. This way, the optimizer first relies on the Prior knowledge, before shifting focus to the data acquired during the optimization process.
 The altered acquisition function takes this form:
-$\boldsymbol{x}_n\in \argmax_{\boldsymbol{x}\in\mathcal{X}}\alpha(\boldsymbol{x},\mathcal{D}_n)\pi(\boldsymbol{x})^{\beta/n}$
-where after $n$ evaluations, the Prior-function $\pi(\boldsymbol{x})$ is decayed by a factor $\beta/n$ and multiplied with the acquisition function $\alpha(\boldsymbol{x},\mathcal{D}_n)$. In our `PiBO` implementation, we use `Expected Improvement` as the acquisition function.
+$$\boldsymbol{x}_n\in \argmax_{\boldsymbol{x}\in\mathcal{X}}\alpha(\boldsymbol{x},\mathcal{D}_n)\pi(\boldsymbol{x})^{\beta/n}$$
+where after $n$ evaluations, the Prior-function $\pi(\boldsymbol{x})$ is decayed by a factor $\beta/n$ and multiplied with the acquisition function $\alpha(\boldsymbol{x},\mathcal{D}_n)$. In our `PiBO` implementation, we use [`Expected Improvement`](../search_algorithms/bayesian_optimization.md#the-acquisition-function) as the acquisition function.
 
-The following illustration from the `PiBO`-paper shows the influence of a well-chosen and a bad, deacying Prior on the optimization process:
+The following illustration from the `PiBO`-paper shows the influence of a well-chosen and a bad, decaying Prior on the optimization process:
 
 ![Prior-Acquisition function](../../doc_images/optimizers/pibo_acqus.png)
+
+In both cases, the optimization process uses the additional information provided by the Prior to arrive at the solution, however, the bad Prior (right) results in a slower convergence to the optimum.
 
 ### Practical Tips
 
