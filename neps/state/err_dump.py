@@ -73,5 +73,5 @@ class ErrDump:
     def latest_err_as_raisable(self) -> SerializedError | None:
         """Get the latest error."""
         if self.errs:
-            return self.errs[-1].as_raisable()
+            return self.errs[-1].as_raisable()  # type: ignore
         return None

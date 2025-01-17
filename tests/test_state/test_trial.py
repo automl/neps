@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -20,12 +22,13 @@ def test_trial_creation() -> None:
         previous_trial=previous_trial,
         worker_id=worker_id,
     )
-    assert trial.state == Trial.State.PENDING
+    assert trial.metadata.state == Trial.State.PENDING
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id="1",
         time_sampled=time_sampled,
+        state=Trial.State.PENDING,
         location="1",
         previous_trial_location=None,
         previous_trial_id=previous_trial,
@@ -54,11 +57,12 @@ def test_trial_as_submitted() -> None:
     )
     trial.set_submitted(time_submitted=time_submitted)
 
-    assert trial.state == Trial.State.SUBMITTED
+    assert trial.metadata.state == Trial.State.SUBMITTED
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id=trial_id,
+        state=Trial.State.SUBMITTED,
         time_sampled=time_sampled,
         previous_trial_location="0",
         location="1",
@@ -91,11 +95,12 @@ def test_trial_as_in_progress_with_different_evaluating_worker() -> None:
     trial.set_submitted(time_submitted=time_submitted)
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
 
-    assert trial.state == Trial.State.EVALUATING
+    assert trial.metadata.state == Trial.State.EVALUATING
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id=trial_id,
+        state=Trial.State.EVALUATING,
         time_sampled=time_sampled,
         previous_trial_id=previous_trial,
         previous_trial_location="0",
@@ -144,11 +149,12 @@ def test_trial_as_success_after_being_progress() -> None:
         time_end=time_end,
     )
 
-    assert trial.state == Trial.State.SUCCESS
+    assert trial.metadata.state == Trial.State.SUCCESS
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id=trial_id,
+        state=Trial.State.SUCCESS,
         time_sampled=time_sampled,
         previous_trial_location="0",
         location="1",
@@ -208,11 +214,12 @@ def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
         extra=extra,
         time_end=time_end,
     )
-    assert trial.state == Trial.State.FAILED
+    assert trial.metadata.state == Trial.State.FAILED
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id=trial_id,
+        state=Trial.State.FAILED,
         time_sampled=time_sampled,
         previous_trial_id=previous_trial,
         sampling_worker_id=sampling_worker_id,
@@ -273,11 +280,12 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
         time_end=time_end,
     )
 
-    assert trial.state == Trial.State.CRASHED
+    assert trial.metadata.state == Trial.State.CRASHED
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id=trial_id,
+        state=Trial.State.CRASHED,
         time_sampled=time_sampled,
         previous_trial_id=previous_trial,
         sampling_worker_id=sampling_worker_id,

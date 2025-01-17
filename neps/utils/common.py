@@ -2,16 +2,31 @@
 
 from __future__ import annotations
 
+import gc
+import importlib.util
 import inspect
-from collections.abc import Mapping, Sequence
+import os
+import sys
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
 from typing import Any
 
 import torch
-import yaml
 
-from neps.runtime import get_in_progress_trial, get_workers_neps_state
+
+def extract_keyword_defaults(f: Callable) -> dict[str, Any]:
+    """Extracts the keywords from a function, if any."""
+    if isinstance(f, partial):
+        return dict(f.keywords)
+
+    signature = inspect.signature(f)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
 
 
 # TODO(eddiebergman): I feel like this function should throw an error if it can't
@@ -35,6 +50,8 @@ def load_checkpoint(
         A dictionary containing the checkpoint values, or None if the checkpoint file
         does not exist hence no checkpointing was previously done.
     """
+    from neps.runtime import get_in_progress_trial
+
     if directory is None:
         trial = get_in_progress_trial()
         directory = trial.metadata.previous_trial_location
@@ -75,6 +92,8 @@ def save_checkpoint(
         optimizer: The optimizer to save.
         checkpoint_name: The name of the checkpoint file.
     """
+    from neps.runtime import get_in_progress_trial
+
     if directory is None:
         in_progress_trial = get_in_progress_trial()
         directory = in_progress_trial.metadata.location
@@ -113,6 +132,8 @@ def load_lightning_checkpoint(
         A tuple containing the checkpoint path (str) and the loaded checkpoint data (dict)
         or (None, None) if no checkpoint files are found in the directory.
     """
+    from neps.runtime import get_in_progress_trial
+
     if previous_pipeline_directory is None:
         trial = get_in_progress_trial()
         previous_pipeline_directory = trial.metadata.previous_trial_location
@@ -156,11 +177,13 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     Returns:
         The initial directory.
     """
+    from neps.runtime import get_in_progress_trial, get_workers_neps_state
+
     neps_state = get_workers_neps_state()
     if pipeline_directory is not None:
         # TODO: Hard coded assumption
         config_id = Path(pipeline_directory).name.split("_", maxsplit=1)[-1]
-        trial = neps_state.get_trial_by_id(config_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(config_id)
     else:
         trial = get_in_progress_trial()
 
@@ -169,7 +192,7 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
 
     # Recursively find the initial directory
     while (prev_trial_id := trial.metadata.previous_trial_id) is not None:
-        trial = neps_state.get_trial_by_id(prev_trial_id)
+        trial = neps_state.unsafe_retry_get_trial_by_id(prev_trial_id)
 
     initial_dir = trial.metadata.location
 
@@ -181,62 +204,22 @@ def get_initial_directory(pipeline_directory: Path | str | None = None) -> Path:
     return path
 
 
-def get_searcher_data(
-    searcher: str | Path, *, loading_custom_searcher: bool = False
-) -> tuple[dict[str, Any], str]:
-    """Returns the data from the YAML file associated with the specified searcher.
+def capture_function_arguments(the_locals: dict, func: Callable) -> dict:
+    """Capture the function arguments and their values from the locals dictionary.
 
     Args:
-        searcher: The name of the searcher.
-        loading_custom_searcher: Flag if searcher contains a custom yaml
+        the_locals: The locals dictionary of the function.
+        func: The function to capture arguments from.
 
     Returns:
-        The content of the YAML file and searcher name.
+        A dictionary of function arguments and their values.
     """
-    if loading_custom_searcher:
-        user_yaml_path = Path(searcher).with_suffix(".yaml")
-
-        if not user_yaml_path.exists():
-            raise FileNotFoundError(
-                "Failed to get info for searcher from user-defined YAML file. "
-                f"File '{searcher}.yaml' does not exist at '{user_yaml_path}'"
-            )
-
-        with user_yaml_path.open("r") as file:
-            data = yaml.safe_load(file)
-
-        file_name = user_yaml_path.stem
-        searcher = data.pop("name", file_name)
-
-    else:
-        # TODO(eddiebergman): This is a bad idea as it relies on folder structure to be
-        # correct, we should either have a dedicated resource folder or at least have
-        # this defined as a constant somewhere, incase we access elsewhere.
-        # Seems like we could just include this as a method on `SearcherConfigs` class.
-        # TODO(eddiebergman): Need to make sure that these yaml files are actually
-        # included in a source dist when published to PyPI.
-
-        # This is pointing to yaml file directory elsewhere in the source code.
-        resource_path = (
-            Path(__file__).parent.parent.absolute()
-            / "optimizers"
-            / "default_searchers"
-            / searcher
-        ).with_suffix(".yaml")
-
-        from neps.optimizers.info import SearcherConfigs
-
-        searchers = SearcherConfigs.get_searchers()
-
-        if not resource_path.exists():
-            raise FileNotFoundError(
-                f"Searcher '{searcher}' not in:\n{', '.join(searchers)}"
-            )
-
-        with resource_path.open() as file:
-            data = yaml.safe_load(file)
-
-    return data, searcher  # type: ignore
+    signature = inspect.signature(func)
+    return {
+        key: the_locals[key]
+        for key in signature.parameters
+        if key in the_locals and key != "self"
+    }
 
 
 # TODO(eddiebergman): This seems like a bad function name, I guess this is used for a
@@ -262,74 +245,65 @@ def is_partial_class(obj: Any) -> bool:
     return inspect.isclass(obj)
 
 
-def instance_from_map(  # noqa: C901
-    mapping: dict[str, Any],
-    request: str | list | tuple | type,
-    name: str = "mapping",
-    *,
-    allow_any: bool = True,
-    as_class: bool = False,
-    kwargs: dict | None = None,
-) -> Any:
-    """Get an instance of an class from a mapping.
+@contextmanager
+def gc_disabled() -> Iterator[None]:
+    """Context manager to disable garbage collection for a block.
 
-    Arguments:
-        mapping: Mapping from string keys to classes or instances
-        request: A key from the mapping. If allow_any is True, could also be an
-            object or a class, to use a custom object.
-        name: Name of the mapping used in error messages
-        allow_any: If set to True, allows using custom classes/objects.
-        as_class: If the class should be returned without beeing instanciated
-        kwargs: Arguments used for the new instance, if created. Its purpose is
-            to serve at default arguments if the user doesn't built the object.
+    We specifically put this around file I/O operations to minimize the time
+    spend garbage collecting while having the file handle open.
+    """
+    gc.disable()
+    try:
+        yield
+    finally:
+        gc.enable()
+
+
+def dynamic_load_object(path: str, object_name: str) -> object:
+    """Dynamically loads an object from a given module file path.
+
+    Args:
+        path: File system path or module path to the Python module.
+        object_name: Name of the object to import from the module.
+
+    Returns:
+        object: The imported object from the module.
 
     Raises:
-        ValueError: if the request is invalid (not a string if allow_any is False),
-            or invalid key.
+        ImportError: If the module or object cannot be found.
     """
-    # Split arguments of the form (request, kwargs)
-    args_dict = kwargs or {}
-    if isinstance(request, Sequence) and not isinstance(request, str):
-        if len(request) != 2:
-            raise ValueError(
-                "When building an instance and specifying arguments, "
-                "you should give a pair (class, arguments)"
+    # file system path
+    if os.sep in path:
+        _path = Path(path).with_suffix(".py")
+        if not _path.exists():
+            raise ImportError(
+                f"Failed to import '{object_name}'. File '{path}' does not exist."
             )
-        request, req_args_dict = request
+        module_path = path.replace(os.sep, ".").replace(".py", "")
 
-        if not isinstance(req_args_dict, Mapping):
-            raise ValueError("The arguments should be given as a dictionary")
-
-        args_dict = {**args_dict, **req_args_dict}
-
-    # Then, get the class/instance from the request
-    if isinstance(request, str):
-        if request not in mapping:
-            raise ValueError(f"{request} doesn't exists for {name}")
-
-        instance = mapping[request]
-    elif allow_any:
-        instance = request
+    # module path
     else:
-        raise ValueError(f"Object {request} invalid key for {name}")
+        module_path = path
 
-    # Check if the request is a class if it is mandatory
-    if (args_dict or as_class) and not is_partial_class(instance):
-        raise ValueError(
-            f"{instance} is not a class and can't be used with additional arguments"
+    # Dynamically import the module.
+    spec = importlib.util.spec_from_file_location(module_path, path)
+
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            f"Failed to import '{object_name}'."
+            f" Spec or loader is None for module '{module_path}'."
         )
 
-    # Give the arguments to the class
-    if args_dict:
-        instance = partial(instance, **args_dict)  # type: ignore
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_path] = module
+    spec.loader.exec_module(module)
 
-    if as_class:
-        return instance
+    # Retrieve the object.
+    imported_object = getattr(module, object_name, None)
+    if imported_object is None:
+        raise ImportError(
+            f"Failed to import '{object_name}'."
+            f"Object does not exist in module '{module_path}'."
+        )
 
-    if is_partial_class(instance):
-        try:
-            instance = instance()  # type: ignore
-        except TypeError as e:
-            raise TypeError(f"{e} when calling {instance} with {args_dict}") from e
-
-    return instance
+    return imported_object

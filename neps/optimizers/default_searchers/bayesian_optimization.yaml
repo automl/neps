@@ -1,7 +1,0 @@
-strategy: bayesian_optimization
-# Arguments that can be modified by the user
-initial_design_size: null  # Defaults to depending on number or hyperparameters
-use_cost: false  # Whether to factor in cost when selecting new configurations
-use_priors: false  # Whether to use user set priors in optimization
-sample_prior_first: false # Whether to sample the default configuration first
-device: null  # Device to load the gaussian process model on with torch

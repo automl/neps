@@ -94,7 +94,7 @@ class tblogger:  # noqa: N801
         register_notify_trial_end("NEPS_TBLOGGER", tblogger.end_of_config)
 
         # We are assuming that neps state is all filebased here
-        root_dir = Path(neps_state.location)
+        root_dir = Path(neps_state.path)
         assert root_dir.exists()
 
         tblogger.config_working_directory = Path(trial.metadata.location)

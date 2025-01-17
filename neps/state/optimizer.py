@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from neps.state.seed_snapshot import SeedSnapshot
 
 
 @dataclass
@@ -28,7 +31,10 @@ class OptimizationState:
     budget: BudgetInfo | None
     """Information regarind the budget used by the optimization trajectory."""
 
-    shared_state: dict[str, Any]
+    seed_snapshot: SeedSnapshot
+    """The state of the random number generators at the time of the last sample."""
+
+    shared_state: dict[str, Any] | None
     """Any information the optimizer wants to store between calls
     to sample and post evaluations.
 

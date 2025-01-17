@@ -77,7 +77,7 @@ NePS will also generate a summary CSV file for you.
 
 
 The `config_data.csv` contains all configuration details in CSV format, ordered by ascending `loss`.
-Details include configuration hyperparameters, any returned result from the `run_pipeline` function, and metadata information.
+Details include configuration hyperparameters, any returned result from the `evalute_pipeline` function, and metadata information.
 
 The `run_status.csv` provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
 
@@ -122,7 +122,7 @@ tblogger.log(
 
 !!! tip
 
-    The logger function is primarily designed for use within the `run_pipeline` function during the training of the neural network.
+    The logger function is primarily designed for use within the `evalute_pipeline` function during the training of the neural network.
 
 ??? example "Quick Reference"
 

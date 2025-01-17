@@ -1,8 +1,0 @@
-searcher_name: optimizer_test
-searcher_alg: bayesian_optimization
-searcher_selection: user-yaml
-neps_decision_tree: false
-searcher_args:
-  initial_design_size: 5
-  use_priors: true
-  sample_prior_first: true

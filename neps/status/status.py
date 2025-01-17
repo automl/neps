@@ -3,22 +3,40 @@
 # ruff: noqa: T201
 from __future__ import annotations
 
-from dataclasses import asdict
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
-from neps.state.filebased import load_filebased_neps_state
-from neps.state.trial import Trial
-from neps.utils._locker import Locker
-from neps.utils.types import ConfigID, _ConfigResultForStats
+from neps.runtime import get_workers_neps_state
+from neps.state.neps_state import FileLocker, NePSState, Report, Trial
 
 if TYPE_CHECKING:
-    from neps.search_spaces.search_space import SearchSpace
+    from neps.space import SearchSpace
 
 
-def get_summary_dict(
+# TODO(eddiebergman): This is a hack because status.py expects a `ConfigResult`
+# where the `config` is a dict config (`RawConfig`), while all the optimizers
+# expect a `ConfigResult` where the `config` is a `SearchSpace`. Ideally we
+# just rework status to use `Trial` and `Report` directly as they contain a lot more
+# information.
+@dataclass
+class _ConfigResultForStats:
+    id: str
+    config: Mapping[str, Any]
+    result: Mapping[str, Any] | Literal["error"]
+    metadata: dict
+
+    @property
+    def objective_to_minimize(self) -> float | Literal["error"]:
+        if isinstance(self.result, dict):
+            return float(self.result["objective_to_minimize"])
+        return "error"
+
+
+def get_summary_dict(  # noqa: C901
     root_directory: str | Path,
     *,
     add_details: bool = False,
@@ -35,13 +53,31 @@ def get_summary_dict(
     """
     root_directory = Path(root_directory)
 
+    def _to_deprecate_result_dict(report: Report) -> dict[str, Any] | Literal["error"]:
+        """Return the report as a dictionary."""
+        if report.reported_as == "success":
+            d = {
+                "objective_to_minimize": report.objective_to_minimize,
+                "cost": report.cost,
+                **report.extra,
+            }
+
+            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
+                d.setdefault("info_dict", {})["learning_curve"] = report.learning_curve
+            return d
+
+        return "error"
+
     # NOTE: We don't lock the shared state since we are just reading and don't need to
     # make decisions based on the state
-    shared_state = load_filebased_neps_state(root_directory)
+    try:
+        shared_state = get_workers_neps_state()
+    except RuntimeError:
+        shared_state = NePSState.create_or_load(root_directory)
 
-    trials = shared_state.get_all_trials()
+    trials = shared_state.lock_and_read_trials()
 
-    evaluated: dict[ConfigID, _ConfigResultForStats] = {}
+    evaluated: dict[str, _ConfigResultForStats] = {}
 
     for trial in trials.values():
         if trial.report is None:
@@ -50,7 +86,7 @@ def get_summary_dict(
         _result_for_stats = _ConfigResultForStats(
             id=trial.id,
             config=trial.config,
-            result=trial.report.to_deprecate_result_dict(),
+            result=_to_deprecate_result_dict(trial.report),
             metadata=asdict(trial.metadata),
         )
         evaluated[trial.id] = _result_for_stats
@@ -58,12 +94,12 @@ def get_summary_dict(
     in_progress = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.EVALUATING
+        if trial.metadata.state == Trial.State.EVALUATING
     }
     pending = {
         trial.id: trial.config
         for trial in trials.values()
-        if trial.State == Trial.State.PENDING
+        if trial.metadata.state == Trial.State.PENDING
     }
 
     summary: dict[str, Any] = {}
@@ -170,7 +206,7 @@ def status(
     return summary["previous_results"], summary["pending_configs"]
 
 
-def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, Locker]:
+def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:
     """Initializes a summary CSV and an associated locker for file access control.
 
     Args:
@@ -191,7 +227,7 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, Locke
     csv_config_data = summary_csv_directory / "config_data.csv"
     csv_run_data = summary_csv_directory / "run_status.csv"
 
-    csv_locker = Locker(summary_csv_directory / ".csv_lock")
+    csv_locker = FileLocker(summary_csv_directory / ".csv_lock", poll=2, timeout=600)
 
     return (
         csv_config_data,
@@ -292,7 +328,7 @@ def _get_dataframes_from_summary(
 def _save_data_to_csv(
     config_data_file_path: Path,
     run_data_file_path: Path,
-    locker: Locker,
+    locker: FileLocker,
     config_data_df: pd.DataFrame,
     run_data_df: pd.DataFrame,
 ) -> None:
@@ -309,7 +345,7 @@ def _save_data_to_csv(
         config_data_df: The DataFrame containing configuration data.
         run_data_df: The DataFrame containing additional run data.
     """
-    with locker(poll=2):
+    with locker.lock():
         try:
             pending_configs = run_data_df.loc["num_pending_configs", "value"]
             pending_configs_with_worker = run_data_df.loc[

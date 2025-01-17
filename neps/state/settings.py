@@ -11,7 +11,7 @@ from typing import Literal
 class DefaultReportValues:
     """Values to use when an error occurs."""
 
-    objective_to_minimize_value_on_error: float | None = None
+    objective_value_on_error: float | None = None
     """The value to use for the objective_to_minimize when an error occurs."""
 
     cost_value_on_error: float | None = None
@@ -73,6 +73,9 @@ class WorkerSettings:
 
     default_report_values: DefaultReportValues
     """Values to use when an error occurs or was not specified."""
+
+    batch_size: int | None
+    """The number of configurations to sample in a single batch."""
 
     # --------- Global Stopping Criterion ---------
     max_evaluations_total: int | None
