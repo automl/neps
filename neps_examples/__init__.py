@@ -18,6 +18,7 @@ all_main_examples = {  # Used for printing in python -m neps_examples
         "multi_fidelity",
         "multi_fidelity_and_expert_priors",
         "pytorch_native_ddp",
+        "pytorch_lightning_ddp",
     ],
 }
 

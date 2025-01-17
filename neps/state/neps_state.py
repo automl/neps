@@ -530,6 +530,16 @@ class NePSState:
                 return pendings[0] if pendings else None
             return pendings[:n]
 
+    def lock_and_get_current_evaluating_trials(self) -> list[Trial]:
+        """Get the current evaluating trials."""
+        with self._trial_lock.lock():
+            trials = self._trial_repo.latest()
+            return [
+                trial
+                for trial in trials.values()
+                if trial.metadata.state == Trial.State.EVALUATING
+            ]
+
     @classmethod
     def create_or_load(
         cls,

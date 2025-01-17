@@ -55,6 +55,32 @@ def _default_worker_name() -> str:
     return f"{os.getpid()}-{isoformat}"
 
 
+_DDP_ENV_VAR_NAME = "NEPS_DDP_TRIAL_ID"
+
+
+def _is_ddp_and_not_rank_zero() -> bool:
+    import torch.distributed as dist
+
+    # Check for environment variables typically set by DDP
+    ddp_env_vars = ["WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT"]
+    rank_env_vars = ["RANK", "LOCAL_RANK", "SLURM_PROCID", "JSM_NAMESPACE_RANK"]
+
+    # Check if PyTorch distributed is initialized
+    if (dist.is_available() and dist.is_initialized()) or all(
+        var in os.environ for var in ddp_env_vars
+    ):
+        for var in rank_env_vars:
+            rank = os.environ.get(var)
+            if rank is not None:
+                return int(rank) != 0
+    return False
+
+
+def _set_ddp_env_var(trial_id: str) -> None:
+    """Sets an environment variable with current trial_id in a DDP setup."""
+    os.environ[_DDP_ENV_VAR_NAME] = trial_id
+
+
 Loc = TypeVar("Loc")
 
 # NOTE: As each NEPS process is only ever evaluating a single trial, this global can
@@ -119,6 +145,7 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
             "\n\nThis is most likely a bug and should be reported to NePS!"
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
+    _set_ddp_env_var(trial.id)
     yield
 
     # This is mostly for `tblogger`
@@ -608,6 +635,47 @@ class DefaultWorker(Generic[Loc]):
             )
 
 
+def _launch_ddp_runtime(
+    *,
+    evaluation_fn: Callable[..., float | Mapping[str, Any]],
+    optimization_dir: Path,
+) -> None:
+    neps_state = NePSState.create_or_load(
+        path=optimization_dir,
+        load_only=True,
+    )
+    prev_trial = None
+    while True:
+        current_eval_trials = neps_state.lock_and_get_current_evaluating_trials()
+        # If the worker id on previous trial is the same as the current one, only then
+        # evaluate it.
+        if len(current_eval_trials) > 0:
+            current_trial = None
+            if prev_trial is None:
+                # In the beginning, we simply read the current trial from the
+                # environment variable
+                if _DDP_ENV_VAR_NAME in os.environ:
+                    current_id = os.getenv(_DDP_ENV_VAR_NAME)
+                if current_id is None:
+                    raise RuntimeError(
+                        "In a pytorch-lightning DDP setup, the environment variable"
+                        f" '{_DDP_ENV_VAR_NAME}' was not set. This is probably a bug in"
+                        " NePS and should be reported."
+                    )
+                current_trial = neps_state.lock_and_get_trial_by_id(current_id)
+            else:
+                for trial in current_eval_trials:  # type: ignore[unreachable]
+                    if (
+                        trial.metadata.evaluating_worker_id
+                        == prev_trial.metadata.evaluating_worker_id
+                    ) and (trial.id != prev_trial.id):
+                        current_trial = trial
+                        break
+            if current_trial:
+                evaluation_fn(**current_trial.config)
+                prev_trial = current_trial
+
+
 # TODO: This should be done directly in `api.run` at some point to make it clearer at an
 # entryy point how the woerer is set up to run if someone reads the entry point code.
 def _launch_runtime(  # noqa: PLR0913
@@ -626,6 +694,13 @@ def _launch_runtime(  # noqa: PLR0913
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
 ) -> None:
+    if _is_ddp_and_not_rank_zero():
+        # Do not launch a new worker if we are in a DDP setup and not rank 0
+        _launch_ddp_runtime(
+            evaluation_fn=evaluation_fn, optimization_dir=optimization_dir
+        )
+        return
+
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(
             f"Overwriting optimization directory '{optimization_dir}' as"
