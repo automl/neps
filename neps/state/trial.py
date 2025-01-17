@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal
 from typing_extensions import Self
 
 import numpy as np
 
 from neps.exceptions import NePSError
-
-if TYPE_CHECKING:
-    from neps.search_spaces import SearchSpace
-    from neps.utils.types import ERROR, ConfigResult, RawConfig
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +32,6 @@ class State(Enum):
     CORRUPTED = "corrupted"
     UNKNOWN = "unknown"
 
-    def pending(self) -> bool:
-        """Return True if the trial is pending."""
-        return self in (State.PENDING, State.SUBMITTED, State.EVALUATING)
-
 
 @dataclass
 class MetaData:
@@ -47,8 +39,10 @@ class MetaData:
 
     id: str
     location: str
+    state: State
     previous_trial_id: str | None
     previous_trial_location: str | None
+
     sampling_worker_id: str
     time_sampled: float
 
@@ -65,7 +59,7 @@ class Report:
     """A failed report of the evaluation of a configuration."""
 
     trial_id: str
-    loss: float | None
+    objective_to_minimize: float | None
     cost: float | None
     learning_curve: list[float] | None  # TODO: Serializing a large list into yaml sucks!
     extra: Mapping[str, Any]
@@ -78,24 +72,9 @@ class Report:
         if isinstance(self.err, str):
             self.err = Exception(self.err)  # type: ignore
 
-    def to_deprecate_result_dict(self) -> dict[str, Any] | ERROR:
-        """Return the report as a dictionary."""
-        if self.reported_as == "success":
-            d = {"loss": self.loss, "cost": self.cost, **self.extra}
-
-            # HACK: Backwards compatibility. Not sure how much this is needed
-            # but it should be removed once optimizers stop calling the
-            # `get_loss`, `get_cost`, `get_learning_curve` methods of `BaseOptimizer`
-            # and just use the `Report` directly.
-            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
-                d.setdefault("info_dict", {})["learning_curve"] = self.learning_curve
-            return d
-
-        return "error"
-
     def __eq__(self, value: Any, /) -> bool:
-        # HACK : Since it could be probably that one of loss or cost is nan,
-        # we need a custom comparator for this object
+        # HACK : Since it could be probably that one of objective_to_minimize or cost is
+        # nan, we need a custom comparator for this object
         # HACK : We also have to skip over the `Err` object since when it's deserialized,
         # we can not recover the original object/type.
         if not isinstance(value, Report):
@@ -110,7 +89,7 @@ class Report:
             if k == "err":
                 if str(v) != str(other_v):
                     return False
-            elif k in ("loss", "cost"):
+            elif k in ("objective_to_minimize", "cost"):
                 if v is not None and np.isnan(v):
                     if other_v is None or not np.isnan(other_v):
                         return False
@@ -133,7 +112,6 @@ class Trial:
 
     config: Mapping[str, Any]
     metadata: MetaData
-    state: State
     report: Report | None
 
     @classmethod
@@ -151,10 +129,10 @@ class Trial:
         """Create a new trial object that was just sampled."""
         worker_id = str(worker_id)
         return cls(
-            state=State.PENDING,
             config=config,
             metadata=MetaData(
                 id=trial_id,
+                state=State.PENDING,
                 location=location,
                 time_sampled=time_sampled,
                 previous_trial_id=previous_trial,
@@ -167,51 +145,25 @@ class Trial:
     @property
     def id(self) -> str:
         """Return the id of the trial."""
-        return self.metadata.id
-
-    def into_config_result(
-        self,
-        config_to_search_space: Callable[[RawConfig], SearchSpace],
-    ) -> ConfigResult:
-        """Convert the trial and report to a `ConfigResult` object."""
-        if self.report is None:
-            raise self.NotReportedYetError("The trial has not been reported yet.")
-        from neps.utils.types import ConfigResult
-
-        result: dict[str, Any] | ERROR
-        if self.report.reported_as == "success":
-            result = {
-                **self.report.extra,
-                "loss": self.report.loss,
-                "cost": self.report.cost,
-            }
-        else:
-            result = "error"
-
-        return ConfigResult(
-            self.id,
-            config=config_to_search_space(self.config),
-            result=result,
-            metadata=asdict(self.metadata),
-        )
+        return self.metadata.id  # type: ignore
 
     def set_submitted(self, *, time_submitted: float) -> None:
         """Set the trial as submitted."""
         self.metadata.time_submitted = time_submitted
-        self.state = State.SUBMITTED
+        self.metadata.state = State.SUBMITTED
 
     def set_evaluating(self, *, time_started: float, worker_id: int | str) -> None:
         """Set the trial as in progress."""
         self.metadata.time_started = time_started
         self.metadata.evaluating_worker_id = str(worker_id)
-        self.state = State.EVALUATING
+        self.metadata.state = State.EVALUATING
 
     def set_complete(
         self,
         *,
         report_as: Literal["success", "failed", "crashed"],
         time_end: float,
-        loss: float | None,
+        objective_to_minimize: float | None,
         cost: float | None,
         learning_curve: list[float] | None,
         err: Exception | None,
@@ -221,11 +173,11 @@ class Trial:
     ) -> Report:
         """Set the report for the trial."""
         if report_as == "success":
-            self.state = State.SUCCESS
+            self.metadata.state = State.SUCCESS
         elif report_as == "failed":
-            self.state = State.FAILED
+            self.metadata.state = State.FAILED
         elif report_as == "crashed":
-            self.state = State.CRASHED
+            self.metadata.state = State.CRASHED
         else:
             raise ValueError(f"Invalid report_as: '{report_as}'")
 
@@ -234,7 +186,9 @@ class Trial:
 
         extra = {} if extra is None else extra
 
-        loss = float(loss) if loss is not None else None
+        objective_to_minimize = (
+            float(objective_to_minimize) if objective_to_minimize is not None else None
+        )
         cost = float(cost) if cost is not None else None
         if learning_curve is not None:
             learning_curve = [float(v) for v in learning_curve]
@@ -243,7 +197,7 @@ class Trial:
             trial_id=self.metadata.id,
             reported_as=report_as,
             evaluation_duration=evaluation_duration,
-            loss=loss,
+            objective_to_minimize=objective_to_minimize,
             cost=cost,
             learning_curve=learning_curve,
             extra=extra,
@@ -253,13 +207,13 @@ class Trial:
 
     def set_corrupted(self) -> None:
         """Set the trial as corrupted."""
-        self.state = State.CORRUPTED
+        self.metadata.state = State.CORRUPTED
 
     def reset(self) -> None:
         """Reset the trial to a pending state."""
-        self.state = State.PENDING
         self.metadata = MetaData(
             id=self.metadata.id,
+            state=State.PENDING,
             location=self.metadata.location,
             previous_trial_id=self.metadata.previous_trial_id,
             previous_trial_location=self.metadata.previous_trial_location,

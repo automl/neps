@@ -1,31 +1,46 @@
 import logging
+from warnings import warn
 
 import numpy as np
 
 import neps
 
 
-def run_pipeline(float1, float2, integer1, fidelity):
-    loss = -float(np.sum([float1, float2, integer1])) / fidelity
-    return loss
+def evaluate_pipeline(float1, float2, integer1, fidelity):
+    objective_to_minimize = -float(np.sum([float1, float2, integer1])) / fidelity
+    return objective_to_minimize
 
 
 pipeline_space = dict(
     float1=neps.Float(
-        lower=1, upper=1000, log=False, default=600, default_confidence="medium"
+        lower=1,
+        upper=1000,
+        log=False,
+        prior=600,
+        prior_confidence="medium",
     ),
     float2=neps.Float(
-        lower=-10, upper=10, default=0, default_confidence="medium"
+        lower=-10,
+        upper=10,
+        prior=0,
+        prior_confidence="medium",
     ),
     integer1=neps.Integer(
-        lower=0, upper=50, default=35, default_confidence="low"
+        lower=0,
+        upper=50,
+        prior=35,
+        prior_confidence="low",
     ),
-    fidelity=neps.Integer(lower=1, upper=10, is_fidelity=True),
+    fidelity=neps.Integer(
+        lower=1,
+        upper=10,
+        is_fidelity=True,
+    ),
 )
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/multifidelity_priors",
     max_evaluations_total=25,  # For an alternate stopping method see multi_fidelity.py

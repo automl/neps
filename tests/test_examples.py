@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 import logging
 import os
 import runpy
 from pathlib import Path
 
 import pytest
-
 from neps_examples import ci_examples, core_examples
 
 

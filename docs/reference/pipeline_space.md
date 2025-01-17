@@ -12,10 +12,10 @@ effectively incorporate various parameter types, ensuring that NePS can utilize 
 ## Parameters
 NePS currently features 4 primary hyperparameter types:
 
-* [`Categorical`][neps.search_spaces.hyperparameters.categorical.Categorical]
-* [`Float`][neps.search_spaces.hyperparameters.float.Float]
-* [`Integer`][neps.search_spaces.hyperparameters.integer.Integer]
-* [`Constant`][neps.search_spaces.hyperparameters.constant.Constant]
+* [`Categorical`][neps.space.Categorical]
+* [`Float`][neps.space.Float]
+* [`Integer`][neps.space.Integer]
+* [`Constant`][neps.space.Constant]
 
 Using these types, you can define the parameters that NePS will optimize during the search process.
 The most basic way to pass these parameters is through a Python dictionary, where each key-value
@@ -27,35 +27,35 @@ for optimizing a deep learning model:
 pipeline_space = {
     "learning_rate": neps.Float(0.00001, 0.1, log=True),
     "num_epochs": neps.Integer(3, 30, is_fidelity=True),
-    "optimizer": neps.Categorical(["adam", "sgd", "rmsprop"]),
-    "dropout_rate": neps.Constant(0.5),
+    "optimizer": ["adam", "sgd", "rmsprop"], # Categorical
+    "dropout_rate": 0.5, # Constant
 }
 
-neps.run(.., pipeline_space = pipeline_space)
+neps.run(.., pipeline_space=pipeline_space)
 ```
 
 ??? example "Quick Parameter Reference"
 
     === "`Categorical`"
 
-        ::: neps.search_spaces.hyperparameters.categorical.Categorical
+        ::: neps.space.Categorical
 
     === "`Float`"
 
-        ::: neps.search_spaces.hyperparameters.float.Float
+        ::: neps.space.Float
 
     === "`Integer`"
 
-        ::: neps.search_spaces.hyperparameters.integer.Integer
+        ::: neps.space.Integer
 
     === "`Constant`"
 
-        ::: neps.search_spaces.hyperparameters.constant.Constant
+        ::: neps.space.Constant
 
 
 ## Using your knowledge, providing a Prior
-When optimizing, you can provide your own knowledge using the parameters `prior=`.
-By indicating a `prior=` we take this to be 
+When optimizing, you can provide your own knowledge using the parameter `prior=`.
+By indicating a `prior=` we take this to be your user prior,
 **your knowledge about where a good value for this parameter lies**.
 
 You can also specify a `prior_confidence=` to indicate how strongly you want NePS,

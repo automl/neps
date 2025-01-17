@@ -104,8 +104,8 @@ plugins:
               returns_multiple_items: false
             show_docstring_attributes: true
             show_docstring_description: true
-            show_root_heading: true
-            show_root_toc_entry: true
+            show_root_heading: false
+            show_root_toc_entry: false
             show_object_full_path: false
             show_root_members_full_path: false
             signature_crossrefs: true
@@ -140,7 +140,7 @@ nav:
       - Prior Optimizers: 'search_algorithms/prior.md'
       - Multi-Fidelity & Prior Optimizers: 'search_algorithms/multifidelity_prior.md'
     - Declarative Usage: 'reference/declarative_usage.md'
-    - The Run Function: 'reference/run_pipeline.md'
+    - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
   - Examples: "examples/"  # auto-generated

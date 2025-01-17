@@ -1,34 +1,43 @@
+from __future__ import annotations
+
 from pathlib import Path
+
 from pytest_cases import fixture
 
-from neps.optimizers.random_search.optimizer import RandomSearch
+from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.filebased import create_or_load_filebased_neps_state
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.search_spaces import Float
-from neps.state.trial import Trial
+from neps.space import Float, SearchSpace
+from neps.state import (
+    DefaultReportValues,
+    NePSState,
+    OnErrorPossibilities,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+    Trial,
+    WorkerSettings,
+)
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState[Path]:
-    return create_or_load_filebased_neps_state(
-        directory=tmp_path / "neps_state",
+def neps_state(tmp_path: Path) -> NePSState:
+    return NePSState.create_or_load(
+        path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(info={"nothing": "here"}),
-        optimizer_state=OptimizationState(budget=None, shared_state={}),
+        optimizer_state=OptimizationState(
+            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+        ),
     )
 
 
 def test_default_values_on_error(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
-            loss_value_on_error=2.4,  # <- Highlight
+            objective_value_on_error=2.4,  # <- Highlight
             cost_value_on_error=2.4,  # <- Highlight
             learning_curve_on_error=[2.4, 2.5],  # <- Highlight
         ),
@@ -40,6 +49,7 @@ def test_default_values_on_error(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -50,24 +60,24 @@ def test_default_values_on_error(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_crashed = sum(
-        trial.state == Trial.State.CRASHED is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.CRASHED is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 1
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 1
 
     trial = trials.popitem()[1]
-    assert trial.state == Trial.State.CRASHED
+    assert trial.metadata.state == Trial.State.CRASHED
     assert trial.report is not None
-    assert trial.report.loss == 2.4
+    assert trial.report.objective_to_minimize == 2.4
     assert trial.report.cost == 2.4
     assert trial.report.learning_curve == [2.4, 2.5]
 
@@ -75,7 +85,7 @@ def test_default_values_on_error(
 def test_default_values_on_not_specified(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -90,6 +100,7 @@ def test_default_values_on_not_specified(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     def eval_function(*args, **kwargs) -> float:
@@ -100,34 +111,36 @@ def test_default_values_on_not_specified(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_sucess = sum(
-        trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.SUCCESS is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_sucess == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
-    assert trial.state == Trial.State.SUCCESS
+    assert trial.metadata.state == Trial.State.SUCCESS
     assert trial.report is not None
     assert trial.report.cost == 2.4
     assert trial.report.learning_curve == [2.4, 2.5]
 
 
-def test_default_value_loss_curve_take_loss_value(
+def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
-        default_report_values=DefaultReportValues(learning_curve_if_not_provided="loss"),
+        default_report_values=DefaultReportValues(
+            learning_curve_if_not_provided="objective_to_minimize"
+        ),
         max_evaluations_total=None,
         include_in_progress_evaluations_towards_maximum=False,
         max_cost_total=None,
@@ -136,6 +149,7 @@ def test_default_value_loss_curve_take_loss_value(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     LOSS = 1.0
@@ -148,21 +162,21 @@ def test_default_value_loss_curve_take_loss_value(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     n_sucess = sum(
-        trial.state == Trial.State.SUCCESS is not None for trial in trials.values()
+        trial.metadata.state == Trial.State.SUCCESS is not None
+        for trial in trials.values()
     )
     assert len(trials) == 1
     assert n_sucess == 1
 
-    assert neps_state.get_next_pending_trial() is None
-    assert len(neps_state.get_errors()) == 0
+    assert neps_state.lock_and_get_next_pending_trial() is None
+    assert len(neps_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
-    assert trial.state == Trial.State.SUCCESS
+    assert trial.metadata.state == Trial.State.SUCCESS
     assert trial.report is not None
     assert trial.report.learning_curve == [LOSS]

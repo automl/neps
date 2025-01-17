@@ -11,8 +11,8 @@ from typing import Literal
 class DefaultReportValues:
     """Values to use when an error occurs."""
 
-    loss_value_on_error: float | None = None
-    """The value to use for the loss when an error occurs."""
+    objective_value_on_error: float | None = None
+    """The value to use for the objective_to_minimize when an error occurs."""
 
     cost_value_on_error: float | None = None
     """The value to use for the cost when an error occurs."""
@@ -23,11 +23,13 @@ class DefaultReportValues:
     learning_curve_on_error: list[float] | None = None
     """The value to use for the learning curve when an error occurs.
 
-    If `'loss'`, the learning curve will be set to the loss value but as
-    a list with a single value.
+    If `'objective_to_minimize'`, the learning curve will be set to the
+    objective_to_minimize value but as a list with a single value.
     """
 
-    learning_curve_if_not_provided: Literal["loss"] | list[float] | None = None
+    learning_curve_if_not_provided: (
+        Literal["objective_to_minimize"] | list[float] | None
+    ) = None
     """The value to use for the learning curve when the evaluation function does
     not provide one."""
 
@@ -71,6 +73,9 @@ class WorkerSettings:
 
     default_report_values: DefaultReportValues
     """Values to use when an error occurs or was not specified."""
+
+    batch_size: int | None
+    """The number of configurations to sample in a single batch."""
 
     # --------- Global Stopping Criterion ---------
     max_evaluations_total: int | None
