@@ -1,5 +1,4 @@
-""" Example that shows HPO with NePS based on a slurm script.
-"""
+"""Example that shows HPO with NePS based on a slurm script."""
 
 import logging
 import os
@@ -28,7 +27,7 @@ def _get_validation_error(pipeline_directory: Path):
     return None
 
 
-def run_pipeline_via_slurm(
+def evaluate_pipeline_via_slurm(
     pipeline_directory: Path, optimizer: str, learning_rate: float
 ):
     script = f"""#!/bin/bash
@@ -58,7 +57,7 @@ pipeline_space = dict(
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    run_pipeline=run_pipeline_via_slurm,
+    evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=pipeline_space,
     root_directory="results/slurm_script_example",
     max_evaluations_total=5,

@@ -1,18 +1,20 @@
 """Displays status information about a working directory of a neps.run.
 
 Usage:
-    python -m neps.status [-h] [--best_losses] [--best_configs] [--all_configs]
-                          working_directory
+    python -m neps.status [-h] [--best_objective_to_minimizees] [--best_configs]
+        [--all_configs] working_directory
 
 Positional arguments:
     working_directory  The working directory given to neps.run
 
 Optional arguments:
     -h, --help         show this help message and exit
-    --best_losses      Show the trajectory of the best loss across evaluations
-    --best_configs     Show the trajectory of the best configs and their losses
+    --best_objective_to_minimizees      Show the trajectory of the best
+        objective_to_minimize across evaluations
+    --best_configs     Show the trajectory of the best configs and their
+        objective_to_minimizees
                      across evaluations
-    --all_configs      Show all configs and their losses
+    --all_configs      Show all configs and their objective_to_minimizees
 
 Note:
     We have to use the __main__.py construct due to the issues explained in
@@ -36,14 +38,15 @@ parser = argparse.ArgumentParser(
 parser.add_argument("root_directory", type=Path,
                     help="The working directory given to neps.run")
 parser.add_argument(
-    "--best_losses",
+    "--best_objective_to_minimizees",
     action="store_true",
-    help="Show the trajectory of the best loss across evaluations",
+    help="Show the trajectory of the best objective_to_minimize across evaluations",
 )
 parser.add_argument(
     "--best_configs",
     action="store_true",
-    help="Show the trajectory of the best configs and their losses across evaluations",
+    help="Show the trajectory of the best configs and their losses "
+        "across evaluations",
 )
 parser.add_argument(
     "--all_configs",

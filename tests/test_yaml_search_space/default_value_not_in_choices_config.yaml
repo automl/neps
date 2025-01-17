@@ -1,3 +1,0 @@
-cat1:
-  choices: ["a", "b", "c"]
-  default: "d"

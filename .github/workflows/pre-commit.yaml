@@ -26,14 +26,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: install the latest version uv
-      uses: astral-sh/setup-uv@v3
+      uses: astral-sh/setup-uv@v5
       with:
+        python-version: '3.10'
         version: latest
-    - name: create virtual environment
-      run: uv venv --python '3.10'
-    - name: install pre-commit
-      run: uv pip install pre-commit
+        enable-cache: true
+        prune-cache: false
+        cache-dependency-glob: "**/pyproject.toml"
     - name: install pre-commit hooks
-      run: uv run pre-commit install
+      run: uv run --all-extras pre-commit install
     - name: Run pre-commit hooks
-      run: uv run pre-commit run --all-files
+      run: uv run --all-extras pre-commit run --all-files

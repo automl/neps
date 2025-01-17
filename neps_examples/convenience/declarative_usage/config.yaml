@@ -3,7 +3,6 @@ experiment:
   max_evaluations_total: 20
   overwrite_working_directory: true
   post_run_summary: true
-  development_stage_id: "beta"
 
 pipeline_space:
   epochs: 5
@@ -20,7 +19,7 @@ pipeline_space:
     lower: 64
     upper: 128
 
-searcher:
-  strategy: "bayesian_optimization"
+optimizer:
+  name: "bayesian_optimization"
   initial_design_size: 5
   surrogate_model: gp
