@@ -35,24 +35,33 @@ Write how its called as subroutine and the advantages.
 
 Explain parallelization mode
 
-### 3 `ASHA`
+### 3 `BOHB`
+
+Detailed explanation of `BOHB`:
+
+Link to BO-explanation.
+Link to HB for its explanation.
+
+Explain how instead of random configs, BOHB uses BO to choose the next configs for HB.
+
+### 4 `ASHA`
 
 Detailed explanation of `asha`:
 
 Link to Sucessive Halving for its explanation.
 Explain the problems of SH for parallelization and how rungs are used to maximize compute use and quick promotion
 
-### 4 `Mobster`
+### 5 `Mobster`
 
 Detailed explanation of `mobster`:
 
-Link to BO-explanation (extern), to explain BO.
+Link to BO-explanation.
 
 Explain the problem when parallelizing BO and how Mobster fantasizes outcomes via joint GP
 Explain the difference between using promotion and stopping and advantages of each (good defaults vs conservative)
 -> To consider when using Mobster in Neps.
 
-### 5 `IfBO`
+### 6 `IfBO`
 
 Detailed explanation of `IfBO`:
 

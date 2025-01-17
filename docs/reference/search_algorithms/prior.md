@@ -20,9 +20,11 @@ In the following, we will discuss the Neps-optimizers that use Priors.
 
 ### 1 `PiBO`
 
-`PiBO` is an extension of [Bayesian Optimization (BO)](../search_algorithms/bayesian_optimization.md) that uses a specific `acquisition function` that incorporates Priors, by including a `Prior-factor` that decays over time. This way, the optimizer first relies on the Prior knowledge, before shifting focus to the data acquired during the optimization process.
+`PiBO` [Link: Hfarvner et al.] is an extension of [Bayesian Optimization (BO)](../search_algorithms/bayesian_optimization.md) that uses a specific `acquisition function` that incorporates Priors, by including a `Prior-factor` that decays over time. This way, the optimizer first relies on the Prior knowledge, before shifting focus to the data acquired during the optimization process.
 The altered acquisition function takes this form:
-$$\boldsymbol{x}_n\in \argmax_{\boldsymbol{x}\in\mathcal{X}}\alpha(\boldsymbol{x},\mathcal{D}_n)\pi(\boldsymbol{x})^{\beta/n}$$
+$$
+\boldsymbol{x}_n\in \argmax_{\boldsymbol{x}\in\mathcal{X}}\alpha(\boldsymbol{x},\mathcal{D}_n)\pi(\boldsymbol{x})^{\beta/n}
+$$
 where after $n$ evaluations, the Prior-function $\pi(\boldsymbol{x})$ is decayed by a factor $\beta/n$ and multiplied with the acquisition function $\alpha(\boldsymbol{x},\mathcal{D}_n)$. In our `PiBO` implementation, we use [`Expected Improvement`](../search_algorithms/bayesian_optimization.md#the-acquisition-function) as the acquisition function.
 
 The following illustration from the `PiBO`-paper shows the influence of a well-chosen and a bad, decaying Prior on the optimization process:

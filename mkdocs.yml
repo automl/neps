@@ -68,6 +68,8 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.arithmatex:
+      generic: true
 
 extra:
   version:
@@ -134,8 +136,8 @@ nav:
   - Reference:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
-    - Optimizers: 'reference/optimizers.md'
-    - Optimizer Classes:
+    - Optimizer Overview and Configuration: 'reference/optimizers.md'
+    - Optimizer Details and Best Practice:
       - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
       - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
       - Prior Optimizers: 'reference/search_algorithms/prior.md'
