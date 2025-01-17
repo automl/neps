@@ -1,8 +1,0 @@
-evaluate_pipeline:
-  name: evaluate_pipeline
-  path: "tests/test_settings/test_settings.py"
-pipeline_space:
-  name: pipeline_space
-  path: "tests/test_settings/test_settings.py"
-max_evaluations_total: 10
-root_directory: "path/to/root_directory"

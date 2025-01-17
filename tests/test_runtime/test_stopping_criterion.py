@@ -5,15 +5,19 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps.optimizers.random_search.optimizer import RandomSearch
+from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.search_spaces import Float
-from neps.search_spaces.search_space import SearchSpace
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
-from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
+from neps.space import Float, SearchSpace
+from neps.state import (
+    DefaultReportValues,
+    NePSState,
+    OnErrorPossibilities,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+    Trial,
+    WorkerSettings,
+)
 
 
 @fixture
@@ -32,7 +36,7 @@ def neps_state(tmp_path: Path) -> NePSState:
 def test_max_evaluations_total_stopping_criterion(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -55,7 +59,6 @@ def test_max_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -75,7 +78,6 @@ def test_max_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 0
@@ -86,7 +88,7 @@ def test_max_evaluations_total_stopping_criterion(
 def test_worker_evaluations_total_stopping_criterion(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -109,7 +111,6 @@ def test_worker_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -130,7 +131,6 @@ def test_worker_evaluations_total_stopping_criterion(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
 
@@ -149,12 +149,12 @@ def test_worker_evaluations_total_stopping_criterion(
 def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     neps_state: NePSState,
 ) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
         max_evaluations_total=2,  # <- Highlight, only 2 maximum evaluations allowed
-        include_in_progress_evaluations_towards_maximum=True,  # <- include the inprogress trial
+        include_in_progress_evaluations_towards_maximum=True,  # <- inprogress trial
         max_cost_total=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
@@ -177,7 +177,6 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -203,10 +202,8 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     assert the_completed_trial.report.objective_to_minimize == 1.0
 
 
-def test_max_cost_total(
-    neps_state: NePSState,
-) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+def test_max_cost_total(neps_state: NePSState) -> None:
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -229,7 +226,6 @@ def test_max_cost_total(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -249,16 +245,13 @@ def test_max_cost_total(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 0
 
 
-def test_worker_cost_total(
-    neps_state: NePSState,
-) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+def test_worker_cost_total(neps_state: NePSState) -> None:
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -281,7 +274,6 @@ def test_worker_cost_total(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     worker.run()
 
@@ -301,7 +293,6 @@ def test_worker_cost_total(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
     new_worker.run()
     assert new_worker.worker_cumulative_eval_count == 2
@@ -315,14 +306,12 @@ def test_worker_cost_total(
     assert len(trials) == 4  # 2 more trials were ran
 
 
-def test_worker_wallclock_time(
-    neps_state: NePSState,
-) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+def test_worker_wallclock_time(neps_state: NePSState) -> None:
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        max_evaluations_total=1000,  # Safety incase it doesn't work that we eventually stop
+        max_evaluations_total=1000,  # Incase it doesn't work that we eventually stop
         include_in_progress_evaluations_towards_maximum=False,
         max_cost_total=None,
         max_evaluations_for_worker=None,
@@ -341,7 +330,6 @@ def test_worker_wallclock_time(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy",
     )
     worker.run()
@@ -360,7 +348,6 @@ def test_worker_wallclock_time(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy2",
     )
     new_worker.run()
@@ -374,10 +361,8 @@ def test_worker_wallclock_time(
     assert len_trials_on_second_worker > len_trials_on_first_worker
 
 
-def test_max_worker_evaluation_time(
-    neps_state: NePSState,
-) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -401,7 +386,6 @@ def test_max_worker_evaluation_time(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy",
     )
     worker.run()
@@ -420,7 +404,6 @@ def test_max_worker_evaluation_time(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy2",
     )
     new_worker.run()
@@ -434,10 +417,8 @@ def test_max_worker_evaluation_time(
     assert len_trials_on_second_worker > len_trials_on_first_worker
 
 
-def test_max_evaluation_time_global(
-    neps_state: NePSState,
-) -> None:
-    optimizer = RandomSearch(pipeline_space=SearchSpace(a=Float(0, 1)))
+def test_max_evaluation_time_global(neps_state: NePSState) -> None:
+    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -461,7 +442,6 @@ def test_max_evaluation_time_global(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy",
     )
     worker.run()
@@ -480,7 +460,6 @@ def test_max_evaluation_time_global(
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
-        _pre_sample_hooks=None,
         worker_id="dummy2",
     )
     new_worker.run()

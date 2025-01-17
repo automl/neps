@@ -1,18 +1,14 @@
 import logging
-import time
-from warnings import warn
 
 import numpy as np
 
 import neps
 
-def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
-    warn("run_pipeline is deprecated, use evaluate_pipeline instead", DeprecationWarning)
-    return evaluate_pipeline(float1, float2, categorical, integer1, integer2)
 
 def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
-    objective_to_minimize = -float(np.sum([float1, float2, int(categorical), integer1, integer2]))
-    # time.sleep(0.7)  # For demonstration purposes
+    objective_to_minimize = -float(
+        np.sum([float1, float2, int(categorical), integer1, integer2])
+    )
     return objective_to_minimize
 
 

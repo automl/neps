@@ -60,8 +60,7 @@ def plot(  # noqa: C901, PLR0913
         algorithms = ["neps"]
 
     logger.info(
-        f"Processing {len(benchmarks)} benchmark(s) "
-        f"and {len(algorithms)} algorithm(s)..."
+        f"Processing {len(benchmarks)} benchmark(s) and {len(algorithms)} algorithm(s)..."
     )
 
     ncols = 1 if len(benchmarks) == 1 else 2

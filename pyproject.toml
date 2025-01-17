@@ -43,12 +43,9 @@ classifiers = [
 requires-python = ">=3.10,<3.13"
 
 dependencies = [
-    "ConfigSpace>=0.7,<1.0",
-    "grakel>=0.1,<0.2",
     "numpy>=1.0,<2.0",
     "pandas>=2.0,<3.0",
     "networkx>=2.6.3,<3.0",
-    "nltk>=3.6.4,<4.0",
     "scipy>=1.13.1",
     "torch>=2.0.1",
     "matplotlib>=3.0,<4.0",
@@ -102,24 +99,13 @@ requires = [
 
 build-backend = "setuptools.build_meta"
 
-# TODO(eddiebergman): Include more of these as we go on in migration
-# "tests",
-# "neps_examples",
 [tool.ruff]
 target-version = "py310"
 output-format = "full"
 line-length = 90
 src = ["neps"]
 
-# TODO(eddiebergman): Include more of these as we go on in migration
 exclude = [
-    "neps/optimizers/multi_fidelity_prior/utils.py",
-    "neps/search_spaces/architecture/**/*.py",
-    "neps/search_spaces/yaml_search_space_utils.py",
-    "neps/search_spaces/architecture",
-    "neps/utils/run_args_from_yaml.py",
-    "neps/api.py",
-    "tests",
     "neps_examples",
     ".bzr",
     ".direnv",
@@ -226,6 +212,7 @@ ignore = [
   "NPY002",  # Replace legacy `np.random.choice` call with `np.random.Generator`
   "N803",    # Arguments should start with a lower case letter.
   "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
+  "E741",    # `l` is an ambiguous variable name
 ]
 
 
@@ -244,6 +231,8 @@ ignore = [
     "TCH",
     "N803",
     "C901", # Too complex
+    "PT011", # Catch value error to broad
+    "ARG001", # unused param
 ]
 "__init__.py" = ["I002"]
 "neps_examples/*" = [
@@ -287,7 +276,6 @@ addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
 markers = [
     "ci_examples",
     "core_examples",
-    "regression_all",
     "runtime",
     "neps_api",
     "summary_csv",
@@ -318,23 +306,9 @@ disallow_incomplete_defs = true    # ...all types
 no_implicit_optional = true
 check_untyped_defs = true
 
-# TODO(eddiebergman): Improve coverage on these modules
 [[tool.mypy.overrides]]
-module = [
-    "neps.api",
-    "neps.search_spaces.architecture.*",
-    "neps.utils.run_args_from_yaml",
-    "neps.optimizers.multi_fidelity.successive_halving",
-    "neps.optimizers.multi_fidelity.sampling_policy",
-    "neps.optimizers.multi_fidelity.promotion_policy",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.ei",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.prior_weighted",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.ucb",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.base_acquisition",
-    "neps.optimizers.bayesian_optimization.acquisition_functions.weighted_acquisition",
-    "requests.*",
-]
-ignore_errors = true
+module = ["requests"]
+ignore_missing_imports = true
 
 [tool.bumpversion]
 current_version = "0.12.2"

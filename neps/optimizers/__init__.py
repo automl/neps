@@ -1,42 +1,86 @@
+from __future__ import annotations
+
 from collections.abc import Callable, Mapping
-from functools import partial
+from typing import TYPE_CHECKING, Any, Literal
 
-from neps.optimizers.base_optimizer import BaseOptimizer
-from neps.optimizers.bayesian_optimization.optimizer import BayesianOptimization
-from neps.optimizers.grid_search.optimizer import GridSearch
-from neps.optimizers.multi_fidelity import (
-    IFBO,
-    MOBSTER,
-    AsynchronousSuccessiveHalving,
-    AsynchronousSuccessiveHalvingWithPriors,
-    Hyperband,
-    HyperbandCustomDefault,
-    SuccessiveHalving,
-    SuccessiveHalvingWithPriors,
+from neps.optimizers.algorithms import (
+    OptimizerChoice,
+    PredefinedOptimizers,
+    determine_optimizer_automatically,
 )
-from neps.optimizers.multi_fidelity_prior import (
-    PriorBand,
-    PriorBandAsha,
-    PriorBandAshaHB,
-)
-from neps.optimizers.random_search.optimizer import RandomSearch
+from neps.optimizers.optimizer import AskFunction  # noqa: TC001
+from neps.utils.common import extract_keyword_defaults
 
-# TODO: Rename Searcher to Optimizer...
-SearcherMapping: Mapping[str, Callable[..., BaseOptimizer]] = {
-    "bayesian_optimization": partial(BayesianOptimization, use_priors=False),
-    "pibo": partial(BayesianOptimization, use_priors=True),
-    "random_search": RandomSearch,
-    "grid_search": GridSearch,
-    "successive_halving": SuccessiveHalving,
-    "successive_halving_prior": SuccessiveHalvingWithPriors,
-    "asha": AsynchronousSuccessiveHalving,
-    "hyperband": Hyperband,
-    "asha_prior": AsynchronousSuccessiveHalvingWithPriors,
-    "hyperband_custom_default": HyperbandCustomDefault,
-    "priorband": PriorBand,
-    "priorband_bo": partial(PriorBand, model_based=True),
-    "priorband_asha": PriorBandAsha,
-    "priorband_asha_hyperband": PriorBandAshaHB,
-    "mobster": MOBSTER,
-    "ifbo": IFBO,
-}
+if TYPE_CHECKING:
+    from neps.space import SearchSpace
+
+
+def _load_optimizer_from_string(
+    optimizer: OptimizerChoice | Literal["auto"],
+    space: SearchSpace,
+    *,
+    optimizer_kwargs: Mapping[str, Any] | None = None,
+) -> tuple[AskFunction, dict[str, Any]]:
+    if optimizer == "auto":
+        _optimizer = determine_optimizer_automatically(space)
+    else:
+        _optimizer = optimizer
+
+    optimizer_build = PredefinedOptimizers.get(_optimizer)
+    if optimizer_build is None:
+        raise ValueError(
+            f"Unrecognized `optimizer` of type {type(optimizer)}."
+            f" {optimizer}. Available optimizers are:"
+            f" {PredefinedOptimizers.keys()}"
+        )
+
+    info = extract_keyword_defaults(optimizer_build)
+    info["name"] = _optimizer
+
+    optimizer_kwargs = optimizer_kwargs or {}
+    opt = optimizer_build(space, **optimizer_kwargs)
+    return opt, info
+
+
+def load_optimizer(
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice | Callable[..., AskFunction], Mapping[str, Any]]
+        | Callable[..., AskFunction]
+        | Literal["auto"]
+    ),
+    space: SearchSpace,
+) -> tuple[AskFunction, dict[str, Any]]:
+    match optimizer:
+        # Predefined string
+        case str():
+            return _load_optimizer_from_string(optimizer, space)
+
+        # class/builder
+        case _ if callable(optimizer):
+            info = extract_keyword_defaults(optimizer)
+            _optimizer = optimizer(space)
+            info["name"] = optimizer.__name__
+            return _optimizer, info
+
+        # Predefined string with kwargs
+        case (opt, kwargs) if isinstance(opt, str):
+            return _load_optimizer_from_string(opt, space, optimizer_kwargs=kwargs)  # type: ignore
+
+        # class/builder with kwargs
+        case (opt, kwargs):
+            info = extract_keyword_defaults(opt)  # type: ignore
+            info["name"] = opt.__name__  # type: ignore
+            _optimizer = opt(space, **kwargs)  # type: ignore
+            return _optimizer, info
+
+        # Mapping with a name
+        case {"name": name, **_kwargs}:
+            return _load_optimizer_from_string(name, space, optimizer_kwargs=_kwargs)  # type: ignore
+
+        case _:
+            raise ValueError(
+                f"Unrecognized `optimizer` of type {type(optimizer)}."
+                f" {optimizer}. Must either be a string or a callable."
+            )

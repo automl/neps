@@ -1,16 +1,8 @@
 # NePS Command Line Interface
 This section provides a brief overview of the commands available in the NePS CLI.
 
-!!! note "Support of Development and Task ID"
-    The NePS arguments `development_stage_id` and `task_id` are only partially
-    supported. To retrieve results for a specific task or development stage, you must modify the `root_directory` to
-    point to the corresponding folder of your NePS results. For example, if you have task_id 1 and development_stage_id 4,
-    update your root_directory to root_directory/task_1/development_4. This can be done either by specifying the
-    --root-directory option in your command or by updating the root_directory in your corresponding `run_args` yaml
-    file.
-
-
 ---
+
 ## **`init` Command**
 
 Generates a default `run_args` YAML configuration file, providing a template that you can customize for your experiments.
@@ -40,24 +32,22 @@ Executes the optimization based on the provided configuration. This command serv
 
 - `-h, --help` (Optional): show this help message and exit
 - `--run-args` (Optional): Path to the YAML configuration file.
-- `--run-pipeline` (Optional): Optional: Provide the path to a Python file and a function name separated by a colon, e.g., 'path/to/module.py:function_name'. If provided, it overrides the run_pipeline setting from the YAML configuration.
+- `--evaluate-pipeline` (Optional): Optional: Provide the path to a Python file and a function name separated by a colon, e.g., 'path/to/module.py:function_name'. If provided, it overrides the evaluate_pipeline setting from the YAML configuration.
 - `--pipeline-space` (Optional): Path to the YAML file defining the search space for the optimization. This can be provided here or defined within the 'run_args' YAML file.
 - `--root-directory` (Optional): The directory to save progress to. This is also used to synchronize multiple calls for parallelization.
-- `--overwrite-working-directory` (Optional): If set, deletes the working directory at the start of the run. This is useful, for example, when debugging a run_pipeline function.
-- `--development-stage-id` (Optional): Identifier for the current development stage, used in multi-stage projects.
-- `--task-id` (Optional): Identifier for the current task, useful in projects with multiple tasks.
+- `--overwrite-working-directory` (Optional): If set, deletes the working directory at the start of the run. This is useful, for example, when debugging a evalute_pipeline function.
 - `--post-run-summary` (Optional): Provide a summary of the results after running.
 - `--no-post-run-summary` (Optional): Do not provide a summary of the results after running.
 - `--max-evaluations-total` (Optional): Total number of evaluations to run.
 - `--max-evaluations-per-run` (Optional): Number of evaluations a specific call should maximally do.
 - `--continue-until-max-evaluation-completed` (Optional): If set, only stop after max-evaluations-total have been completed. This is only relevant in the parallel setting.
 - `--max-cost-total` (Optional): No new evaluations will start when this cost is exceeded. Requires returning a cost
-  in the run_pipeline function.
+  in the evalute_pipeline function.
 - `--ignore-errors` (Optional): If set, ignore errors during the optimization process.
 - `--loss-value-on-error` (Optional): Loss value to assume on error.
 - `--cost-value-on-error` (Optional): Cost value to assume on error.
-- `--searcher` (Optional): String key of searcher algorithm to use for optimization.
-- `--searcher-kwargs` (Optional): Additional keyword arguments as key=value pairs for the searcher.
+- `--optimizer` (Optional): String key of optimizer algorithm to use for optimization.
+- `--optimizer-kwargs` (Optional): Additional keyword arguments as key=value pairs for the optimizer.
 
 
 **Example Usage:**
@@ -266,5 +256,3 @@ neps report-config 42 success --worker-id worker_1 --loss 0.95 --duration 120
 - **`--worker_id worker_1`**: Identifies the worker reporting the configuration.
 - **`--loss 0.95`**: The loss value obtained from the trial.
 - **`--duration 120`**: The duration of the evaluation in seconds.
-
-

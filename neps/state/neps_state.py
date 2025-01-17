@@ -5,7 +5,7 @@ manner, such that each worker can create an identical NePSState and interact wit
 it without having to worry about locking or out-dated information.
 
 For an actual instantiation of this object, see
-[`create_or_load_filebased_neps_state`][neps.state.filebased.create_or_load_filebased_neps_state].
+[`create_or_load_filebased_neps_state()`][neps.state.neps_state.NePSState.create_or_load].
 """
 
 from __future__ import annotations
@@ -14,10 +14,11 @@ import io
 import logging
 import pickle
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Literal,
     TypeAlias,
     TypeVar,
@@ -34,7 +35,6 @@ from neps.env import (
     TRIAL_FILELOCK_TIMEOUT,
 )
 from neps.exceptions import NePSError, TrialAlreadyExistsError, TrialNotFoundError
-from neps.optimizers.base_optimizer import BaseOptimizer
 from neps.state.err_dump import ErrDump
 from neps.state.filebased import (
     FileLocker,
@@ -45,6 +45,9 @@ from neps.state.filebased import (
 from neps.state.optimizer import OptimizationState, OptimizerInfo
 from neps.state.trial import Report, Trial
 from neps.utils.files import atomic_write, deserialize, serialize
+
+if TYPE_CHECKING:
+    from neps.optimizers.optimizer import AskFunction
 
 logger = logging.getLogger(__name__)
 
@@ -260,15 +263,15 @@ class NePSState:
 
     @overload
     def lock_and_sample_trial(
-        self, optimizer: BaseOptimizer, *, worker_id: str, n: None = None
+        self, optimizer: AskFunction, *, worker_id: str, n: None = None
     ) -> Trial: ...
     @overload
     def lock_and_sample_trial(
-        self, optimizer: BaseOptimizer, *, worker_id: str, n: int
+        self, optimizer: AskFunction, *, worker_id: str, n: int
     ) -> list[Trial]: ...
 
     def lock_and_sample_trial(
-        self, optimizer: BaseOptimizer, *, worker_id: str, n: int | None = None
+        self, optimizer: AskFunction, *, worker_id: str, n: int | None = None
     ) -> Trial | list[Trial]:
         """Acquire the state lock and sample a trial."""
         with self._optimizer_lock.lock():
@@ -301,33 +304,30 @@ class NePSState:
     @overload
     def _sample_trial(
         self,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         *,
         worker_id: str,
         trials: dict[str, Trial],
         n: int,
-        _sample_hooks: list[Callable] | None = ...,
     ) -> list[Trial]: ...
 
     @overload
     def _sample_trial(
         self,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         *,
         worker_id: str,
         trials: dict[str, Trial],
         n: None,
-        _sample_hooks: list[Callable] | None = ...,
     ) -> Trial: ...
 
     def _sample_trial(
         self,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         *,
         worker_id: str,
         trials: dict[str, Trial],
         n: int | None,
-        _sample_hooks: list[Callable] | None = None,
     ) -> Trial | list[Trial]:
         """Sample a new trial from the optimizer.
 
@@ -340,7 +340,6 @@ class NePSState:
             worker_id: The worker that is sampling the trial.
             n: The number of trials to sample.
             trials: The current trials.
-            _sample_hooks: A list of hooks to apply to the optimizer before sampling.
 
         Returns:
             The new trial.
@@ -350,13 +349,7 @@ class NePSState:
 
         opt_state.seed_snapshot.set_as_global_seed_state()
 
-        # TODO: Not sure if any existing pre_load hooks required
-        # it to be done after `load_results`... I hope not.
-        if _sample_hooks is not None:
-            for hook in _sample_hooks:
-                optimizer = hook(optimizer)  # type: ignore
-
-        assert isinstance(optimizer, BaseOptimizer)
+        assert callable(optimizer)
         if opt_state.budget is not None:
             # NOTE: All other values of budget are ones that should remain
             # constant, there are currently only these two which are dynamic as
@@ -368,11 +361,11 @@ class NePSState:
             )
             opt_state.budget.used_evaluations = len(trials)
 
-        sampled_configs = optimizer.ask(
+        sampled_configs = optimizer(
             trials=trials,
-            budget_info=opt_state.budget.clone()
-            if opt_state.budget is not None
-            else None,
+            budget_info=(
+                opt_state.budget.clone() if opt_state.budget is not None else None
+            ),
             n=n,
         )
 
@@ -396,7 +389,7 @@ class NePSState:
 
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location="",  # HACK: This will be set by the `TrialRepo` in `put_new`
+                location=str(self._trial_repo.directory / f"config_{sampled_config.id}"),
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,

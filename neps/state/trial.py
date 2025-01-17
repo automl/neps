@@ -3,19 +3,15 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal
 from typing_extensions import Self
 
 import numpy as np
 
 from neps.exceptions import NePSError
-
-if TYPE_CHECKING:
-    from neps.search_spaces import SearchSpace
-    from neps.utils.types import ERROR, ConfigResult, RawConfig
 
 logger = logging.getLogger(__name__)
 
@@ -75,25 +71,6 @@ class Report:
     def __post_init__(self) -> None:
         if isinstance(self.err, str):
             self.err = Exception(self.err)  # type: ignore
-
-    def to_deprecate_result_dict(self) -> dict[str, Any] | ERROR:
-        """Return the report as a dictionary."""
-        if self.reported_as == "success":
-            d = {
-                "objective_to_minimize": self.objective_to_minimize,
-                "cost": self.cost,
-                **self.extra,
-            }
-
-            # HACK: Backwards compatibility. Not sure how much this is needed
-            # but it should be removed once optimizers stop calling the
-            # `get_objective_to_minimize`, `get_cost`, `get_learning_curve` methods of
-            #  `BaseOptimizer` and just use the `Report` directly.
-            if "info_dict" not in d or "learning_curve" not in d["info_dict"]:
-                d.setdefault("info_dict", {})["learning_curve"] = self.learning_curve
-            return d
-
-        return "error"
 
     def __eq__(self, value: Any, /) -> bool:
         # HACK : Since it could be probably that one of objective_to_minimize or cost is
@@ -168,33 +145,7 @@ class Trial:
     @property
     def id(self) -> str:
         """Return the id of the trial."""
-        return self.metadata.id
-
-    def into_config_result(
-        self,
-        config_to_search_space: Callable[[RawConfig], SearchSpace],
-    ) -> ConfigResult:
-        """Convert the trial and report to a `ConfigResult` object."""
-        if self.report is None:
-            raise self.NotReportedYetError("The trial has not been reported yet.")
-        from neps.utils.types import ConfigResult
-
-        result: dict[str, Any] | ERROR
-        if self.report.reported_as == "success":
-            result = {
-                **self.report.extra,
-                "objective_to_minimize": self.report.objective_to_minimize,
-                "cost": self.report.cost,
-            }
-        else:
-            result = "error"
-
-        return ConfigResult(
-            self.id,
-            config=config_to_search_space(self.config),
-            result=result,
-            metadata=asdict(self.metadata),
-        )
+        return self.metadata.id  # type: ignore
 
     def set_submitted(self, *, time_submitted: float) -> None:
         """Set the trial as submitted."""

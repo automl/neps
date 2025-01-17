@@ -2,8 +2,8 @@
 """This module provides a command-line interface (CLI) for NePS."""
 
 from __future__ import annotations
+
 import warnings
-from typing import Tuple
 from datetime import timedelta, datetime
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -15,11 +15,10 @@ import yaml
 from pathlib import Path
 from typing import Optional, List
 import neps
-from neps.api import Default
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.status.status import post_run_csv
 import pandas as pd
-from neps.utils.run_args import (
+from neps.utils.yaml_loading import (
     RUN_ARGS,
     EVALUATE_PIPELINE,
     ROOT_DIRECTORY,
@@ -28,24 +27,20 @@ from neps.utils.run_args import (
     MAX_EVALUATIONS_TOTAL,
     MAX_COST_TOTAL,
     PIPELINE_SPACE,
-    DEVELOPMENT_STAGE_ID,
-    TASK_ID,
-    SEARCHER,
-    SEARCHER_KWARGS,
+    OPTIMIZER,
     IGNORE_ERROR,
-    OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR,
+    OBJECTIVE_VALUE_ON_ERROR,
     COST_VALUE_ON_ERROR,
     CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED,
     OVERWRITE_WORKING_DIRECTORY,
-    get_run_args_from_yaml,
+    load_yaml_config,
 )
-from neps.optimizers.base_optimizer import BaseOptimizer
-from neps.utils.run_args import load_and_return_object
+from neps.utils.yaml_loading import load_and_return_object
 from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
 from neps.exceptions import TrialNotFoundError
 from neps.status.status import get_summary_dict
-from neps.api import _run_args
+from neps.optimizers import load_optimizer
 from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
 
 # Suppress specific warnings
@@ -123,13 +118,13 @@ def init_config(args: argparse.Namespace) -> None:
 
     if args.database:
         if config_path.exists():
-            run_args = get_run_args_from_yaml(config_path)
+            run_args = load_yaml_config(config_path)
             max_cost_total = run_args.get(MAX_COST_TOTAL)
             # Create the optimizer
-            _, optimizer_info = load_optimizer(run_args)
-            if optimizer_info is None:
-                return
-
+            _, optimizer_info = load_optimizer(
+                optimizer=run_args.get(OPTIMIZER),  # type: ignore
+                space=run_args.get(PIPELINE_SPACE),  # type: ignore
+            )
             try:
                 directory = run_args.get(ROOT_DIRECTORY)
                 if directory is None:
@@ -221,23 +216,18 @@ max_cost_total:
 # Debug and Monitoring
 overwrite_working_directory: false
 post_run_summary: true
-development_stage_id:
-task_id:
 
 # Parallelization Setup
 max_evaluations_per_run:
 continue_until_max_evaluation_completed: true
 
 # Error Handling
-objective_to_minimize_value_on_error:
+objective_value_on_error:
 cost_value_on_error:
 ignore_errors:
 
 # Customization Options
-searcher: hyperband       # Internal key to select a NePS optimizer.
-
-# Hooks
-pre_load_hooks:
+optimizer: hyperband       # Internal key to select a NePS optimizer.
 """
                 )
     else:
@@ -280,11 +270,12 @@ def run_optimization(args: argparse.Namespace) -> None:
     """Collects arguments from the parser and runs the NePS optimization.
     Args: args (argparse.Namespace): Parsed command-line arguments.
     """
-    if isinstance(args.run_args, Default):
+    if args.run_args is None:
         run_args = Path("run_config.yaml")
     else:
         run_args = args.run_args
-    if not isinstance(args.evaluate_pipeline, Default):
+
+    if isinstance(args.evaluate_pipeline, str):
         module_path, function_name = args.evaluate_pipeline.split(":")
         evaluate_pipeline = load_and_return_object(
             module_path, function_name, EVALUATE_PIPELINE
@@ -294,8 +285,8 @@ def run_optimization(args: argparse.Namespace) -> None:
         evaluate_pipeline = args.evaluate_pipeline
 
     kwargs = {}
-    if args.searcher_kwargs:
-        kwargs = parse_kv_pairs(args.searcher_kwargs)  # convert kwargs
+    if args.optimizer_kwargs:
+        kwargs = parse_kv_pairs(args.optimizer_kwargs)  # convert kwargs
 
     # Collect arguments from args and prepare them for neps.run
     options = {
@@ -305,8 +296,6 @@ def run_optimization(args: argparse.Namespace) -> None:
         ROOT_DIRECTORY: args.root_directory,
         OVERWRITE_WORKING_DIRECTORY: args.overwrite_working_directory,
         POST_RUN_SUMMARY: args.post_run_summary,
-        DEVELOPMENT_STAGE_ID: args.development_stage_id,
-        TASK_ID: args.task_id,
         MAX_EVALUATIONS_TOTAL: args.max_evaluations_total,
         MAX_EVALUATIONS_PER_RUN: args.max_evaluations_per_run,
         CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED: (
@@ -314,9 +303,9 @@ def run_optimization(args: argparse.Namespace) -> None:
         ),
         MAX_COST_TOTAL: args.max_cost_total,
         IGNORE_ERROR: args.ignore_errors,
-        OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR: args.objective_to_minimize_value_on_error,
+        OBJECTIVE_VALUE_ON_ERROR: args.objective_value_on_error,
         COST_VALUE_ON_ERROR: args.cost_value_on_error,
-        SEARCHER: args.searcher,
+        OPTIMIZER: args.optimizer,
         **kwargs,
     }
     logging.basicConfig(level=logging.INFO)
@@ -413,7 +402,7 @@ def sample_config(args: argparse.Namespace) -> None:
         print(f"Error: run_args file {run_args_path} does not exist.")
         return
 
-    run_args = get_run_args_from_yaml(run_args_path)
+    run_args = load_yaml_config(run_args_path)
 
     # Get root_directory from the run_args
     root_directory = run_args.get(ROOT_DIRECTORY)
@@ -434,9 +423,10 @@ def sample_config(args: argparse.Namespace) -> None:
     worker_id = args.worker_id
     num_configs = args.number_of_configs if args.number_of_configs else 1
 
-    optimizer, _ = load_optimizer(run_args)
-    if optimizer is None:
-        return
+    optimizer, _ = load_optimizer(
+        optimizer=run_args.get(OPTIMIZER),  # type: ignore
+        space=run_args.get(PIPELINE_SPACE),  # type: ignore
+    )
 
     # Sample trials
     for _ in range(num_configs):
@@ -502,7 +492,7 @@ def status(args: argparse.Namespace) -> None:
     # Print summary
     print("NePS Status:")
     print("-----------------------------")
-    print(f"Optimizer: {neps_state.lock_and_get_optimizer_info().info['searcher_alg']}")
+    print(f"Optimizer: {neps_state.lock_and_get_optimizer_info().info['optimizer_alg']}")
     print(f"Succeeded Trials: {succeeded_trials_count}")
     print(f"Failed Trials (Errors): {failed_trials_count}")
     print(f"Active Trials: {evaluating_trials_count}")
@@ -597,16 +587,16 @@ def status(args: argparse.Namespace) -> None:
 
         # Display optimizer information
         optimizer_info = neps_state.lock_and_get_optimizer_info().info
-        searcher_name = optimizer_info.get("searcher_name", "N/A")
-        searcher_alg = optimizer_info.get("searcher_alg", "N/A")
-        searcher_args = optimizer_info.get("searcher_args", {})
+        optimizer_name = optimizer_info.get("optimizer_name", "N/A")
+        optimizer_alg = optimizer_info.get("optimizer_alg", "N/A")
+        optimizer_args = optimizer_info.get("optimizer_args", {})
 
         print("\nOptimizer Information:")
         print("-----------------------------")
-        print(f"Name: {searcher_name}")
-        print(f"Algorithm: {searcher_alg}")
+        print(f"Name: {optimizer_name}")
+        print(f"Algorithm: {optimizer_alg}")
         print("Parameter:")
-        for arg, value in searcher_args.items():
+        for arg, value in optimizer_args.items():
             print(f"  {arg}: {value}")
 
         print("-----------------------------")
@@ -885,8 +875,6 @@ neps run [OPTIONS]
     --root-directory <path> (Optional: Directory for saving progress and
     synchronization. Default is 'root_directory' from run_config.yaml if not provided.)
     --overwrite-working-directory (Deletes the working directory at the start of the run.)
-    --development-stage-id <id> (Identifier for the development stage.)
-    --task-id <id> (Identifier for the task.)
     --post-run-summary/--no-post-run-summary (Toggle summary after running.)
     --max-evaluations-total <int> (Total number of evaluations to run.)
     --max-evaluations-per-run <int> (Max evaluations per run call.)
@@ -895,8 +883,8 @@ neps run [OPTIONS]
     --ignore-errors (Ignore errors during optimization.)
     --objective_to_minimize-value-on-error <float> (Assumed objective_to_minimize value on error.)
     --cost-value-on-error <float> (Assumed cost value on error.)
-    --searcher <key> (Searcher algorithm key for optimization.)
-    --searcher-kwargs <key=value>... (Additional kwargs for the searcher.)
+    --optimizer <key> (optimizer algorithm key for optimization.)
+    --optimizer-kwargs <key=value>... (Additional kwargs for the optimizer.)
 
 neps info-config <id> [OPTIONS]
     Provides detailed information about a specific configuration by its ID.
@@ -1026,7 +1014,7 @@ def handle_report_config(args: argparse.Namespace) -> None:
         print(f"Error: run_args file {run_args_path} does not exist.")
         return
 
-    run_args = get_run_args_from_yaml(run_args_path)
+    run_args = load_yaml_config(run_args_path)
 
     # Get root_directory from run_args
     root_directory = run_args.get("root_directory")
@@ -1103,36 +1091,6 @@ def handle_report_config(args: argparse.Namespace) -> None:
     print("----------------------\n")
 
 
-def load_optimizer(run_args: dict) -> Tuple[Optional[BaseOptimizer], Optional[dict]]:
-    """Create an optimizer"""
-    try:
-        searcher_info = {
-            "searcher_name": "",
-            "searcher_alg": "",
-            "searcher_selection": "",
-            "neps_decision_tree": True,
-            "searcher_args": {},
-        }
-
-        # Call _run_args() to create the optimizer
-        optimizer, searcher_info = _run_args(
-            searcher_info=searcher_info,
-            pipeline_space=run_args.get(PIPELINE_SPACE),
-            max_cost_total=run_args.get(MAX_COST_TOTAL, None),
-            ignore_errors=run_args.get(IGNORE_ERROR, False),
-            objective_to_minimize_value_on_error=run_args.get(
-                OBJECTIVE_TO_MINIMIZE_VALUE_ON_ERROR, None
-            ),
-            cost_value_on_error=run_args.get(COST_VALUE_ON_ERROR, None),
-            searcher=run_args.get(SEARCHER, "default"),
-            **run_args.get(SEARCHER_KWARGS, {}),
-        )
-        return optimizer, searcher_info
-    except Exception as e:
-        print(f"Error creating optimizer: {e}")
-        return None, None
-
-
 def parse_time_end(time_str: str) -> float:
     """Parses a UNIX timestamp or a human-readable time string
     and returns a UNIX timestamp."""
@@ -1166,7 +1124,7 @@ def main() -> None:
     )
 
     # Subparser for "init" command
-    parser_init = subparsers.add_parser("init", help="Generate 'run_args' " "YAML file")
+    parser_init = subparsers.add_parser("init", help="Generate 'run_args' YAML file")
     parser_init.add_argument(
         "--config-path",
         type=str,
@@ -1193,25 +1151,17 @@ def main() -> None:
     parser_run = subparsers.add_parser("run", help="Run a neural pipeline search.")
     # Adding arguments to the 'run' subparser with defaults
     parser_run.add_argument(
-        "--run-args",
+        "--run",
         type=str,
-        help="Path to the YAML configuration file.",
-        default=Default(None),
-    )
-    parser_run.add_argument(
-        "--run-pipeline",
-        type=str,
-        help="Optional: Provide the path to a Python file and a function name separated "
-        "by a colon, e.g., 'path/to/module.py:function_name'. "
-        "If provided, it overrides the evaluate_pipeline setting from the YAML "
-        "configuration.",
-        default=Default(None),
+        help="Path to the YAML configuration file(s).",
+        nargs="*",
+        default=None,
     )
 
     parser_run.add_argument(
         "--pipeline-space",
         type=str,
-        default=Default(None),
+        default=None,
         help="Path to the YAML file defining the search space for the optimization. "
         "This can be provided here or defined within the 'run_args' YAML file. "
         "(default: %(default)s)",
@@ -1219,30 +1169,16 @@ def main() -> None:
     parser_run.add_argument(
         "--root-directory",
         type=str,
-        default=Default(None),
+        default=None,
         help="The directory to save progress to. This is also used to synchronize "
         "multiple calls for parallelization. (default: %(default)s)",
     )
     parser_run.add_argument(
         "--overwrite-working-directory",
         action="store_true",
-        default=Default(False),  # noqa: FBT003
+        default=False,  # noqa: FBT003
         help="If set, deletes the working directory at the start of the run. "
         "This is useful, for example, when debugging a evaluate_pipeline function. "
-        "(default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--development-stage-id",
-        type=str,
-        default=Default(None),
-        help="Identifier for the current development stage, used in multi-stage "
-        "projects. (default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--task-id",
-        type=str,
-        default=Default(None),
-        help="Identifier for the current task, useful in projects with multiple tasks. "
         "(default: %(default)s)",
     )
     # Create a mutually exclusive group for post-run summary flags
@@ -1250,7 +1186,7 @@ def main() -> None:
     summary_group.add_argument(
         "--post-run-summary",
         action="store_true",
-        default=Default(True),  # noqa: FBT003
+        default=True,  # noqa: FBT003
         help="Provide a summary of the results after running. (default: %(default)s)",
     )
     summary_group.add_argument(
@@ -1262,27 +1198,27 @@ def main() -> None:
     parser_run.add_argument(
         "--max-evaluations-total",
         type=int,
-        default=Default(None),
+        default=None,
         help="Total number of evaluations to run. (default: %(default)s)",
     )
     parser_run.add_argument(
         "--max-evaluations-per-run",
         type=int,
-        default=Default(None),
+        default=None,
         help="Number of evaluations a specific call should maximally do. "
         "(default: %(default)s)",
     )
     parser_run.add_argument(
         "--continue-until-max-evaluation-completed",
         action="store_true",
-        default=Default(False),  # noqa: FBT003
+        default=False,  # noqa: FBT003
         help="If set, only stop after max-evaluations-total have been completed. This "
         "is only relevant in the parallel setting. (default: %(default)s)",
     )
     parser_run.add_argument(
         "--max-cost-total",
         type=float,
-        default=Default(None),
+        default=None,
         help="No new evaluations will start when this cost is exceeded. Requires "
         "returning a cost in the evaluate_pipeline function, e.g., `return dict("
         "objective_to_minimize=objective_to_minimize, cost=cost)`. (default: %(default)s)",
@@ -1290,43 +1226,43 @@ def main() -> None:
     parser_run.add_argument(
         "--ignore-errors",
         action="store_true",
-        default=Default(False),  # noqa: FBT003
+        default=False,  # noqa: FBT003
         help="If set, ignore errors during the optimization process. (default: %("
         "default)s)",
     )
     parser_run.add_argument(
         "--objective_to_minimize-value-on-error",
         type=float,
-        default=Default(None),
+        default=None,
         help="Loss value to assume on error. (default: %(default)s)",
     )
     parser_run.add_argument(
         "--cost-value-on-error",
         type=float,
-        default=Default(None),
+        default=None,
         help="Cost value to assume on error. (default: %(default)s)",
     )
 
     parser_run.add_argument(
-        "--searcher",
+        "--optimizer",
         type=str,
-        default=Default("default"),
-        help="String key of searcher algorithm to use for optimization. (default: %("
+        default="default",
+        help="String key of optimizer algorithm to use for optimization. (default: %("
         "default)s)",
     )
 
     parser_run.add_argument(
-        "--searcher-kwargs",
+        "--optimizer-kwargs",
         type=str,
         nargs="+",
-        help="Additional keyword arguments as key=value pairs for the searcher.",
+        help="Additional keyword arguments as key=value pairs for the optimizer.",
     )
 
     parser_run.set_defaults(func=run_optimization)
 
     # Subparser for "info-config" command
     parser_info_config = subparsers.add_parser(
-        "info-config", help="Provides information about " "specific config."
+        "info-config", help="Provides information about specific config."
     )
     parser_info_config.add_argument(
         "id", type=str, help="The configuration ID to be used."

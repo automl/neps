@@ -35,7 +35,7 @@ def training_pipeline(
     num_neurons,
     epochs,
     learning_rate,
-    weight_decay
+    weight_decay,
 ):
     """
     Trains and validates a simple neural network on the MNIST dataset.
@@ -75,16 +75,18 @@ def training_pipeline(
     criterion = nn.CrossEntropyLoss()
 
     # Select optimizer
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    optimizer = optim.AdamW(
+        model.parameters(), lr=learning_rate, weight_decay=weight_decay
+    )
 
     # Loading potential checkpoint
     start_epoch = 1
     if previous_pipeline_directory is not None:
-       if (Path(previous_pipeline_directory) / "checkpoint.pt").exists():
-          states = torch.load(Path(previous_pipeline_directory) / "checkpoint.pt")
-          model = states["model"]
-          optimizer = states["optimizer"]
-          start_epoch = states["epochs"]
+        if (Path(previous_pipeline_directory) / "checkpoint.pt").exists():
+            states = torch.load(Path(previous_pipeline_directory) / "checkpoint.pt")
+            model = states["model"]
+            optimizer = states["optimizer"]
+            start_epoch = states["epochs"]
 
     # Training loop
     for epoch in range(start_epoch, epochs + 1):
@@ -118,9 +120,9 @@ def training_pipeline(
 
     # Saving checkpoint
     states = {
-       "model": model,
-       "optimizer": optimizer,
-       "epochs": epochs,
+        "model": model,
+        "optimizer": optimizer,
+        "epochs": epochs,
     }
     torch.save(states, Path(pipeline_directory) / "checkpoint.pt")
 
@@ -136,7 +138,9 @@ def training_pipeline(
         writer_config_hparam=True,
         # Appending extra data
         extra_data={
-            "train_objective_to_minimize": tblogger.scalar_logging(objective_to_minimize.item()),
+            "train_objective_to_minimize": tblogger.scalar_logging(
+                objective_to_minimize.item()
+            ),
             "val_err": tblogger.scalar_logging(val_err),
         },
     )
@@ -158,17 +162,10 @@ if __name__ == "__main__":
     neps.run(
         pipeline_space=pipeline_space,
         evaluate_pipeline=training_pipeline,
-        searcher="ifbo",
+        optimizer="ifbo",
         max_evaluations_total=50,
         root_directory="./debug/ifbo-mnist/",
         overwrite_working_directory=False,  # set to False for a multi-worker run
-        # (optional) ifbo hyperparameters
-        step_size=1,
-        # (optional) ifbo surrogate model hyperparameters (for FT-PFN)
-        surrogate_model_args=dict(
-            version="0.0.1",
-            target_path=None,
-        ),
     )
 
     # NOTE: this is `experimental` and may not work as expected
