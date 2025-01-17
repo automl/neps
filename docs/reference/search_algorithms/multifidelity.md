@@ -1,20 +1,32 @@
 # Multi-Fidelity Optimizers
 
-Detailed explanation of MF
-Advantages (Heuristic, less compute per config, possibly exploration)
-Disadvantages (More compute i.g., variance, low MF-correlation)
-Examples (less iterations, smaller datasets, smaller models)
+## What is Multi-Fidelity Optimization?
 
+Multi-Fidelity optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, and then using this information to train full-scale models. The _low-fidelity_ runs could be on a smaller dataset, a smaller model, or for shorter training times. MF-algorithms then infer which configurations are likely to perform well on the full problem, before investing larger compute amounts.
 
-## 1 `Successive Halving`
+### Advantages of Multi-Fidelity
 
-Detailed explanation of `successive halving`:
+- **Heuristic**: MF-algorithms can use the information from the low-fidelity runs to guide the search in the high-fidelity runs.
+- **Exploration**: By using low-fidelity runs, the optimizer can explore more of the search space.
 
-Write on the concept of SH, keeping the best 1/x algorithms alive.
+### Disadvantages of Multi-Fidelity
 
-Explain the problems?
+- **More compute**: Running multiple iterations on different fidelities is generally more compute-intensive.
+- **Variance**: The performance of a configuration on a low-fidelity run might not correlate well with its performance on a high-fidelity run. This can result in misguided conclusions.
 
-## 2 `HyperBand`
+## Optimizers using Multi-Fidelity
+
+### 1 `Successive Halving`
+
+`Successive Halving` (SH) is a simple but effective Multi-Fidelity optimizer. It starts with a large number of configurations and evaluates them on a low-fidelity. The best-performing $1/\eta$ configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
+The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.
+
+!!! tip Note:
+
+    - For the same total compute, SH outperforms uninformed search algorithms.
+    - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, SH underperforms.
+
+### 2 `HyperBand`
 
 Detailed explanation of `hyperband`:
 
@@ -23,14 +35,14 @@ Write how its called as subroutine and the advantages.
 
 Explain parallelization mode
 
-## 3 `ASHA`
+### 3 `ASHA`
 
 Detailed explanation of `asha`:
 
 Link to Sucessive Halving for its explanation.
 Explain the problems of SH for parallelization and how rungs are used to maximize compute use and quick promotion
 
-## 4 `Mobster`
+### 4 `Mobster`
 
 Detailed explanation of `mobster`:
 
@@ -40,7 +52,7 @@ Explain the problem when parallelizing BO and how Mobster fantasizes outcomes vi
 Explain the difference between using promotion and stopping and advantages of each (good defaults vs conservative)
 -> To consider when using Mobster in Neps.
 
-## 5 `IfBO`
+### 5 `IfBO`
 
 Detailed explanation of `IfBO`:
 

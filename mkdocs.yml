@@ -136,9 +136,10 @@ nav:
     - Search Space: 'reference/pipeline_space.md'
     - Optimizers: 'reference/optimizers.md'
     - Optimizer Classes:
-      - Multi-Fidelity Optimizers: 'search_algorithms/multifidelity.md'
-      - Prior Optimizers: 'search_algorithms/prior.md'
-      - Multi-Fidelity & Prior Optimizers: 'search_algorithms/multifidelity_prior.md'
+      - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
+      - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
+      - Prior Optimizers: 'reference/search_algorithms/prior.md'
+      - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
     - Declarative Usage: 'reference/declarative_usage.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'

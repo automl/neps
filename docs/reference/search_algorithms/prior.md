@@ -16,7 +16,9 @@ Priors are used when there exists some information about the search space, that 
 
 In the following, we will discuss the Neps-optimizers that use Priors.
 
-## 1 `PiBO`
+## Optimizers using Priors
+
+### 1 `PiBO`
 
 `PiBO` is an extension of [Bayesian Optimization (BO)](../search_algorithms/bayesian_optimization.md) that uses a specific `acquisition function` that incorporates Priors, by including a `Prior-factor` that decays over time. This way, the optimizer first relies on the Prior knowledge, before shifting focus to the data acquired during the optimization process.
 The altered acquisition function takes this form:
@@ -25,13 +27,13 @@ where after $n$ evaluations, the Prior-function $\pi(\boldsymbol{x})$ is decayed
 
 The following illustration from the `PiBO`-paper shows the influence of a well-chosen and a bad, decaying Prior on the optimization process:
 
-![Prior-Acquisition function](../../doc_images/optimizers/pibo_acqus.png)
+![Prior-Acquisition function](../../doc_images/optimizers/pibo_acqus.jpg)
 
 In both cases, the optimization process uses the additional information provided by the Prior to arrive at the solution, however, the bad Prior (right) results in a slower convergence to the optimum.
 
 ### Practical Tips
 
-Write about what to consider when using pibo in Neps.
+Write about what to consider when using `PiBO` in Neps.
 
 ___
 
