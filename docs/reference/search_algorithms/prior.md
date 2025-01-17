@@ -31,9 +31,9 @@ The following illustration from the `PiBO`-paper shows the influence of a well-c
 
 In both cases, the optimization process uses the additional information provided by the Prior to arrive at the solution, however, the bad Prior (right) results in a slower convergence to the optimum.
 
-### Practical Tips
+!!! tip Practical Tips
 
-Write about what to consider when using `PiBO` in Neps.
+    Write about what to consider when using `PiBO` in Neps.
 
 ___
 

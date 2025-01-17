@@ -21,7 +21,7 @@ Multi-Fidelity optimization leverages the idea of running an AutoML problem on a
 `Successive Halving` (SH) is a simple but effective Multi-Fidelity optimizer. It starts with a large number of configurations and evaluates them on a low-fidelity. The best-performing $1/\eta$ configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
 The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.
 
-!!! tip Note:
+!!! tip Practical Tips
 
     - For the same total compute, SH outperforms uninformed search algorithms.
     - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, SH underperforms.
