@@ -18,7 +18,7 @@ Optimization with Priors is used, when there already exists an intuition for wha
 
 Neps provides a variety of optimizers that utilize Multi-Fidelity, Priors or both.
 
-![Optimizer classes](../doc_images/venn_dia.png)
+![Optimizer classes](../doc_images/optimizers/venn_dia.svg)
 
 The [Optimizer Classes](../reference/search_algorithms/#optimizer-classes)-Chapter goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using Neps.
 
@@ -33,7 +33,7 @@ The optimizer selection is based on the following characteristics of your `pipel
 - If it has fidelity: [`hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)
 - If it has both fidelity and a prior: [`priorband`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)
 - If it has a prior: [`pibo`](../reference/search_algorithms/prior.md#1-pibo)
-- If it has neither: `bayesian_optimization`
+- If it has neither: [`bayesian_optimization`](../reference/search_algorithms/bayesian_optimization.md)
 
 For example, running the following format, without specifying a optimizer will choose an optimizer depending on
 the `pipeline_space` passed.

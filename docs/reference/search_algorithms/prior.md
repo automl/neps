@@ -18,12 +18,18 @@ In the following, we will discuss the Neps-optimizers that use Priors.
 
 ## 1 `PiBO`
 
-Detailed explanation of `pibo`:
-
 Link to BO-explanation (extern), to explain BO and acquisition.
-Write about the extended acquisition function with decaying prior-factor.
 
-Then show some example (page 6) of the influence of priors.
+`PiBO` is an extension of Bayesian Optimization (BO) that uses a special `acquisition function` that incorporates Priors. Precisely, PiBO uses a `prior-factor` that decays over time, to give more weight to the Prior in the beginning of the optimization process. This way, the optimizer first relies on the existing knowledge, before shifting focus to the data acquired during the optimization process.
+The altered acquisition function takes this form:
+$\boldsymbol{x}_n\in \argmax_{\boldsymbol{x}\in\mathcal{X}}\alpha(\boldsymbol{x},\mathcal{D}_n)\pi(\boldsymbol{x})^{\beta/n}$
+where after $n$ evaluations, the Prior-function $\pi(\boldsymbol{x})$ is decayed by a factor $\beta/n$ and multiplied with the acquisition function $\alpha(\boldsymbol{x},\mathcal{D}_n)$. In our `PiBO` implementation, we use `Expected Improvement` as the acquisition function.
+
+The following illustration from the `PiBO`-paper shows the influence of a well-chosen and a bad, deacying Prior on the optimization process:
+
+![Prior-Acquisition function](../../doc_images/optimizers/pibo_acqus.png)
+
+### Practical Tips
 
 Write about what to consider when using pibo in Neps.
 
