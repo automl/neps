@@ -9,7 +9,7 @@ This Python script demonstrates how to integrate NePS with a neural network trai
 optimization. It utilizes a YAML configuration file to set up and run the experiments.
 
 ```python
---8<-- "neps_examples/declarative_usage/hpo_example.py"
+--8<-- "neps_examples/convenience/declarative_usage/hpo_example.py"
 ```
 
 ### `config.yaml`
@@ -18,7 +18,7 @@ This YAML file defines the NePS arguments for the experiment. By editing this fi
 experiments without modifying the Python script.
 
 ```yaml
---8<-- "neps_examples/declarative_usage/config.yaml"
+--8<-- "neps_examples/convenience/declarative_usage/config.yaml"
 ```
 
 ## Quick Start Guide
