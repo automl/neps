@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
 from itertools import product
 from typing import TYPE_CHECKING
 
@@ -11,11 +9,11 @@ import torch
 from botorch import fit_gpytorch_mll, settings
 from botorch.acquisition import LinearMCObjective, qLogNoisyExpectedImprovement
 from botorch.models import SingleTaskGP
-from botorch.models.gp_regression_mixed import CategoricalKernel, Kernel, ScaleKernel
+from botorch.models.gp_regression_mixed import CategoricalKernel, ScaleKernel
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 from grakel_replace.optimize import optimize_acqf_graph
-from grakel_replace.torch_wl_kernel import BoTorchWLKernel
+from grakel_replace.torch_wl_kernel import BoTorchWLKernel, set_graph_lookup
 from grakel_replace.utils import min_max_scale, seed_all
 
 if TYPE_CHECKING:
@@ -75,24 +73,9 @@ gp = SingleTaskGP(train_X=train_x, train_Y=train_y, covar_module=AdditiveKernel(
 # on to...
 multivariate_normal: MultivariateNormal = gp.forward(train_x)
 
-
 # Making predictions on test data
-# No the wl_kernel needs to be aware of the test graphs
-@contextmanager
-def set_graph_lookup(_gp: SingleTaskGP, new_graphs: list[nx.Graph]) -> Iterator[None]:
-    kernel_prev_graphs: list[tuple[Kernel, list[nx.Graph]]] = []
-    for kern in _gp.covar_module.sub_kernels():
-        if isinstance(kern, BoTorchWLKernel):
-            kernel_prev_graphs.append((kern, kern.graph_lookup))
-            kern.set_graph_lookup(new_graphs)
 
-    yield
-
-    for _kern, _prev_graphs in kernel_prev_graphs:
-        _kern.set_graph_lookup(_prev_graphs)
-
-
-with torch.no_grad(), set_graph_lookup(gp, train_graphs + test_graphs):
+with torch.no_grad(), set_graph_lookup(gp, train_graphs + test_graphs, append=False):
     posterior = gp.forward(test_x)
     predictions = posterior.mean
     uncertainties = posterior.variance.sqrt()

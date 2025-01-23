@@ -1,59 +1,15 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Iterator
-from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 import networkx as nx
 import torch
 from botorch.optim import optimize_acqf_mixed
-from grakel_replace.torch_wl_kernel import BoTorchWLKernel
+from grakel_replace.torch_wl_kernel import set_graph_lookup
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
-    from botorch.models.gp_regression_mixed import Kernel
-
-
-@contextmanager
-def set_graph_lookup(
-    kernel: Kernel,
-    new_graphs: list[nx.Graph],
-    *,
-    append: bool = True,
-) -> Iterator[None]:
-    """Context manager to temporarily set the graph lookup for a kernel.
-
-    Args:
-        kernel (Kernel): The kernel whose graph lookup is to be set.
-        new_graphs (list[nx.Graph]): The new graphs to set in the graph lookup.
-        append (bool, optional): Whether to append the new graphs to the existing graph
-            lookup. Defaults to True.
-    """
-    kernel_prev_graphs: list[tuple[Kernel, list[nx.Graph]]] = []
-
-    # Determine the modules to update based on the kernel type
-    if isinstance(kernel, BoTorchWLKernel):
-        modules = [kernel]
-    else:
-        assert hasattr(
-            kernel, "sub_kernels"
-        ), "Kernel module must have sub_kernels method."
-        modules = [k for k in kernel.sub_kernels() if isinstance(k, BoTorchWLKernel)]
-
-    # Save the current graph lookup and set the new graph lookup
-    for kern in modules:
-        kernel_prev_graphs.append((kern, kern.graph_lookup))
-        if append:
-            kern.set_graph_lookup([*kern.graph_lookup, *new_graphs])
-        else:
-            kern.set_graph_lookup(new_graphs)
-
-    yield
-
-    # Restore the original graph lookup after the context manager exits
-    for kern, prev_graphs in kernel_prev_graphs:
-        kern.set_graph_lookup(prev_graphs)
 
 
 def sample_graphs(graphs: list[nx.Graph], num_samples: int) -> list[nx.Graph]:
