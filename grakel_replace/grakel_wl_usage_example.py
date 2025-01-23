@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 import networkx as nx
-from grakel import graph_from_networkx, WeisfeilerLehman
+from grakel import WeisfeilerLehman, graph_from_networkx
 
 
 def visualize_graph(G):
@@ -11,10 +11,12 @@ def visualize_graph(G):
     nx.draw(G, pos, with_labels=True, node_size=700, node_color="lightblue")
     plt.show()
 
+
 def add_labels(G):
     """Add labels to the nodes of the graph."""
     for node in G.nodes():
         G.nodes[node]['label'] = str(node)
+
 
 # Create graphs
 G1 = nx.Graph()
