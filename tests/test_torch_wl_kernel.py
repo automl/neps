@@ -4,6 +4,7 @@ import numpy as np
 import networkx as nx
 from grakel import WeisfeilerLehman, graph_from_networkx
 from grakel_replace.torch_wl_kernel import TorchWLKernel
+from grakel_replace.utils import graph_to_tensor
 
 
 class TestTorchWLKernel:
@@ -13,65 +14,27 @@ class TestTorchWLKernel:
     def example_graphs(self):
         # Create example graphs for testing
         G1 = nx.Graph()
-        G1.add_edges_from([(0, 1), (1, 2), (1, 3), (1, 4), (2, 3)])
+        G1.add_edges_from([(0, 1), (1, 2), (1, 3), (2, 3), (3, 4)])
         for node in G1.nodes():
             G1.nodes[node]["label"] = str(node)
 
         G2 = nx.Graph()
-        G2.add_edges_from([(0, 1), (1, 2), (2, 3), (3, 4)])
+        G2.add_edges_from([(0, 1), (1, 2), (3, 4), (4, 0)])
         for node in G2.nodes():
             G2.nodes[node]["label"] = str(node)
 
         G3 = nx.Graph()
-        G3.add_edges_from([(0, 1), (1, 3), (3, 2)])
+        G3.add_edges_from([(0, 1), (1, 3), (3, 2), (2, 4), (4, 0), (1, 2)])
         for node in G3.nodes():
             G3.nodes[node]["label"] = str(node)
 
         return [G1, G2, G3]
 
-    def create_adjacency_and_labels(self, graphs):
-        """Helper method to create adjacency matrices and label tensors from graphs."""
-        adjacency_matrices = []
-        label_tensors = []
-
-        # Create a consistent label mapping
-        label_dict = {}
-        current_label = 0
-
-        for graph in graphs:
-            # Create adjacency matrix
-            adj = nx.adjacency_matrix(graph).tocoo()
-            indices = torch.LongTensor([adj.row, adj.col])
-            values = torch.FloatTensor(adj.data)
-            size = torch.Size([graph.number_of_nodes(), graph.number_of_nodes()])
-            sparse_adj = torch.sparse_coo_tensor(
-                indices, values, size, device=self.device
-            ).to_sparse_csr()
-            adjacency_matrices.append(sparse_adj)
-
-            # Create label tensor with controlled mapping
-            node_labels = []
-            for node in range(graph.number_of_nodes()):
-                if "label" in graph.nodes[node]:
-                    label = graph.nodes[node]["label"]
-                    if label not in label_dict:
-                        label_dict[label] = current_label
-                        current_label += 1
-                    node_labels.append(label_dict[label])
-                else:
-                    node_labels.append(node)
-
-            label_tensors.append(
-                torch.tensor(node_labels, dtype=torch.long, device=self.device)
-            )
-
-        return adjacency_matrices, label_tensors
-
     @pytest.mark.parametrize("n_iter", [1, 2, 3, 5, 10])
     @pytest.mark.parametrize("normalize", [False])
     def test_wl_kernel_against_grakel(self, n_iter, normalize, example_graphs):
-        adjacency_matrices, label_tensors = self.create_adjacency_and_labels(
-            example_graphs)
+        adjacency_matrices, label_tensors = graph_to_tensor(
+            example_graphs, device=self.device)
 
         # Initialize Torch WL Kernel
         torch_kernel = TorchWLKernel(n_iter=n_iter, normalize=normalize)
@@ -102,7 +65,7 @@ class TestTorchWLKernel:
         G_empty.add_node(0)
         G_empty.nodes[0]["label"] = "0"
 
-        adjacency_matrices, label_tensors = self.create_adjacency_and_labels([G_empty])
+        adjacency_matrices, label_tensors = graph_to_tensor([G_empty], device=self.device)
 
         # Initialize kernel and compute
         kernel = TorchWLKernel(n_iter=3, normalize=True)
@@ -124,7 +87,8 @@ class TestTorchWLKernel:
         G_single.add_node(0)
         G_single.nodes[0]["label"] = "0"
 
-        adjacency_matrices, label_tensors = self.create_adjacency_and_labels([G_single])
+        adjacency_matrices, label_tensors = graph_to_tensor([G_single],
+                                                            device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -146,7 +110,7 @@ class TestTorchWLKernel:
             G_reordered.nodes[node]["label"] = str(node)
 
         graphs = [G_empty, G, G_reordered]
-        adjacency_matrices, label_tensors = self.create_adjacency_and_labels(graphs)
+        adjacency_matrices, label_tensors = graph_to_tensor(graphs, device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -167,7 +131,7 @@ class TestTorchWLKernel:
                 G_copy.nodes[node]["label"] = f"{prefix}{node}"
             graphs.append(G_copy)
 
-        adjacency_matrices, label_tensors = self.create_adjacency_and_labels(graphs)
+        adjacency_matrices, label_tensors = graph_to_tensor(graphs, device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=n_iter, normalize=normalize)
         torch_kernel_matrix = wl_kernel(adjacency_matrices, label_tensors).cpu().numpy()
@@ -205,7 +169,7 @@ class TestTorchWLKernel:
                 G_copy.nodes[node]["label"] = "A"
             graphs.append(G_copy)
 
-        adjacency_matrices, label_tensors = self.create_adjacency_and_labels(graphs)
+        adjacency_matrices, label_tensors = graph_to_tensor(graphs, device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
