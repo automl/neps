@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 from botorch.models.gp_regression_mixed import Kernel
+from grakel_replace.utils import graphs_to_tensors
 from torch import Tensor
 from torch.nn import Module
 
@@ -40,9 +41,9 @@ class BoTorchWLKernel(Kernel):
     def _precompute_graph_data(self) -> None:
         """Precompute and cache adjacency matrices and initial node labels."""
         self._init_caches()
-        for idx, graph in enumerate(self.graph_lookup):
-            self.adjacency_cache[idx] = self._get_sparse_adj(graph)
-            self.label_cache[idx] = self._init_node_labels(graph)
+        self.adjacency_cache, self.label_cache = graphs_to_tensors(
+            self.graph_lookup, device=self.device
+        )
 
     def set_graph_lookup(self, graph_lookup: list[nx.Graph]) -> None:
         """Update the graph lookup and refresh the cached data."""
@@ -126,13 +127,15 @@ class BoTorchWLKernel(Kernel):
 
     def _handle_negative_one_index(self) -> None:
         """Handle the special case where -1 index is present."""
-        if -1 not in self.adjacency_cache:
+        # Check if -1 is a valid index in the list
+        if -1 < 0 or -1 >= len(self.adjacency_cache):
             last_graph_idx = len(self.graph_lookup) - 1
-            self.adjacency_cache[-1] = self.adjacency_cache[last_graph_idx]
-            self.label_cache[-1] = self.label_cache[last_graph_idx]
+            # Append the last graph's adjacency matrix and labels to the cache
+            self.adjacency_cache.append(self.adjacency_cache[last_graph_idx])
+            self.label_cache.append(self.label_cache[last_graph_idx])
 
     def _compute_self_kernel(self, indices: list[int], diag: bool) -> Tensor:
-        """Compute kernel matrix for self-similarity case."""
+        """Compute kernel matrix for a self-similarity case."""
         indices_tuple = tuple(indices)
         if indices_tuple in self.cache:
             return self.cache[indices_tuple]
@@ -184,47 +187,6 @@ class BoTorchWLKernel(Kernel):
         _kernel = TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
         return _kernel(adj_matrices, label_tensors)
 
-    def _get_sparse_adj(self, graph: nx.Graph) -> Tensor:
-        """Convert a NetworkX graph to a sparse adjacency tensor."""
-        edges = list(graph.edges())
-        num_nodes = graph.number_of_nodes()
-
-        if not edges:
-            return torch.sparse_coo_tensor(
-                indices=torch.empty((2, 0), dtype=torch.long),
-                values=torch.empty(0),
-                size=(num_nodes, num_nodes),
-                device=self.device,
-            )
-
-        edge_indices: list[tuple[int, int]] = edges + [(v, u) for u, v in edges]
-        rows, cols = zip(*edge_indices, strict=False)
-
-        indices = torch.tensor([rows, cols], dtype=torch.long)
-        values = torch.ones(len(edge_indices), dtype=torch.float)
-
-        return torch.sparse_coo_tensor(
-            indices, values, (num_nodes, num_nodes), device=self.device
-        ).to_sparse_csr()  # Convert to CSR for efficient operations
-
-    def _init_node_labels(self, graph: nx.Graph) -> Tensor:
-        """Initialize node label tensor from graph attributes."""
-        labels: list[int] = []
-        label_dict: dict[str, int] = {}
-        label_counter = 0
-
-        for node in range(graph.number_of_nodes()):
-            if "label" in graph.nodes[node]:
-                label = graph.nodes[node]["label"]
-            else:
-                label = str(node)
-            if label not in label_dict:
-                label_dict[label] = label_counter
-                label_counter += 1
-            labels.append(label_dict[label])
-
-        return torch.tensor(labels, dtype=torch.long, device=self.device)
-
 
 class TorchWLKernel(Module):
     """A custom implementation of Weisfeiler-Lehman (WL) Kernel in PyTorch.
@@ -269,26 +231,26 @@ class TorchWLKernel(Module):
         return neighbors
 
     def _wl_iteration(self, adj: Tensor, labels: Tensor) -> Tensor:
-        """Perform one WL iteration exactly matching GraKel's implementation."""
+        """Perform one WL iteration."""
+        if not self.label_dict:
+            # Start new labels after initial ones
+            self.label_counter = labels.max().item() + 1
+
         num_nodes = labels.size(0)
         new_labels = []
-
         neighbors = self._get_node_neighbors(adj)
 
         for node_idx in range(num_nodes):
             # Get current node label
             node_label = labels[node_idx].item()
-
-            # Get sorted neighbor labels - exactly as GraKel does
             neighbor_labels = sorted([labels[n].item() for n in neighbors[node_idx]])
 
-            # Create credential string exactly matching GraKel's format:
-            # "current_label,sorted_neighbor_labels"
             credential = f"{node_label},{neighbor_labels}"
 
             # Update label dictionary
             if credential not in self.label_dict:
-                self.label_dict[credential] = len(self.label_dict)
+                self.label_dict[credential] = self.label_counter
+                self.label_counter += 1
 
             new_labels.append(self.label_dict[credential])
 
@@ -331,7 +293,6 @@ class TorchWLKernel(Module):
 
         # Reset label dictionary for new computation
         self.label_dict = {}
-
         # Store all label iterations
         all_labels = [label_tensors]
 

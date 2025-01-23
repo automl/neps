@@ -4,7 +4,7 @@ import numpy as np
 import networkx as nx
 from grakel import WeisfeilerLehman, graph_from_networkx
 from grakel_replace.torch_wl_kernel import TorchWLKernel
-from grakel_replace.utils import graph_to_tensor
+from grakel_replace.utils import graphs_to_tensors
 
 
 class TestTorchWLKernel:
@@ -31,9 +31,9 @@ class TestTorchWLKernel:
         return [G1, G2, G3]
 
     @pytest.mark.parametrize("n_iter", [1, 2, 3, 5, 10])
-    @pytest.mark.parametrize("normalize", [False])
+    @pytest.mark.parametrize("normalize", [True, False])
     def test_wl_kernel_against_grakel(self, n_iter, normalize, example_graphs):
-        adjacency_matrices, label_tensors = graph_to_tensor(
+        adjacency_matrices, label_tensors = graphs_to_tensors(
             example_graphs, device=self.device)
 
         # Initialize Torch WL Kernel
@@ -65,7 +65,8 @@ class TestTorchWLKernel:
         G_empty.add_node(0)
         G_empty.nodes[0]["label"] = "0"
 
-        adjacency_matrices, label_tensors = graph_to_tensor([G_empty], device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors([G_empty],
+                                                              device=self.device)
 
         # Initialize kernel and compute
         kernel = TorchWLKernel(n_iter=3, normalize=True)
@@ -87,8 +88,8 @@ class TestTorchWLKernel:
         G_single.add_node(0)
         G_single.nodes[0]["label"] = "0"
 
-        adjacency_matrices, label_tensors = graph_to_tensor([G_single],
-                                                            device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors([G_single],
+                                                              device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -110,7 +111,8 @@ class TestTorchWLKernel:
             G_reordered.nodes[node]["label"] = str(node)
 
         graphs = [G_empty, G, G_reordered]
-        adjacency_matrices, label_tensors = graph_to_tensor(graphs, device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(graphs,
+                                                              device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -131,7 +133,8 @@ class TestTorchWLKernel:
                 G_copy.nodes[node]["label"] = f"{prefix}{node}"
             graphs.append(G_copy)
 
-        adjacency_matrices, label_tensors = graph_to_tensor(graphs, device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(graphs,
+                                                              device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=n_iter, normalize=normalize)
         torch_kernel_matrix = wl_kernel(adjacency_matrices, label_tensors).cpu().numpy()
@@ -169,7 +172,8 @@ class TestTorchWLKernel:
                 G_copy.nodes[node]["label"] = "A"
             graphs.append(G_copy)
 
-        adjacency_matrices, label_tensors = graph_to_tensor(graphs, device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(
+            graphs, device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -183,7 +187,7 @@ class TestTorchWLKernel:
             "Diagonal elements should be 1.0"
 
         # Check off-diagonal elements are less than 1 (different structures)
-        off_diag_mask = ~torch.eye(K.shape[0], dtype=bool)
+        off_diag_mask = ~torch.eye(K.shape[0], dtype=torch.bool, device=self.device)
         assert torch.all(K[off_diag_mask] < 1.0), \
             "Off-diagonal elements should be less than 1.0 for different structures"
 
