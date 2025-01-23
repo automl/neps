@@ -19,7 +19,7 @@ from grakel_replace.context_managers import set_graph_lookup
 from grakel_replace.utils import min_max_scale
 
 
-class TestPipeline:
+class TestGraphOptimizationPipeline:
     @pytest.fixture
     def setup_data(self):
         """Fixture to set up common data for tests."""
@@ -79,11 +79,13 @@ class TestPipeline:
         kernels = [
             ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=setup_data["N_NUMERICAL"],
                                      active_dims=range(setup_data["N_NUMERICAL"]))),
-            ScaleKernel(CategoricalKernel(ard_num_dims=setup_data["N_CATEGORICAL"],
-                                          active_dims=range(setup_data["N_NUMERICAL"],
-                                                            setup_data["N_NUMERICAL"] +
-                                                            setup_data[
-                                                                "N_CATEGORICAL"]))),
+            ScaleKernel(
+                CategoricalKernel(ard_num_dims=setup_data["N_CATEGORICAL"],
+                                  active_dims=range(setup_data["N_NUMERICAL"],
+                                                    setup_data["N_NUMERICAL"] +
+                                                    setup_data["N_CATEGORICAL"])
+                                  )
+            ),
             ScaleKernel(
                 BoTorchWLKernel(graph_lookup=train_graphs, n_iter=5, normalize=True,
                                 active_dims=(train_x.shape[1] - 1,)))
