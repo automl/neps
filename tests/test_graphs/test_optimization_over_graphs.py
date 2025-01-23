@@ -6,21 +6,19 @@ import networkx as nx
 import pytest
 import torch
 from botorch import fit_gpytorch_mll
-from botorch.acquisition import qLogNoisyExpectedImprovement, LinearMCObjective
+from botorch.acquisition import LinearMCObjective, qLogNoisyExpectedImprovement
 from botorch.models import SingleTaskGP
 from botorch.models.kernels import CategoricalKernel
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel, ScaleKernel
-
-from grakel_replace.optimization import optimize_acqf_graph
-from grakel_replace.optimization import sample_graphs
-from grakel_replace.kernels import BoTorchWLKernel
-from grakel_replace.context_managers import set_graph_lookup
-from grakel_replace.utils import min_max_scale
+from neps.graphs.context_managers import set_graph_lookup
+from neps.graphs.kernels import BoTorchWLKernel
+from neps.graphs.optimization import optimize_acqf_graph, sample_graphs
+from neps.graphs.utils import min_max_scale
 
 
 class TestGraphOptimizationPipeline:
-    @pytest.fixture
+    @pytest.fixture()
     def setup_data(self):
         """Fixture to set up common data for tests."""
         TRAIN_CONFIGS = 50
@@ -73,7 +71,7 @@ class TestGraphOptimizationPipeline:
         train_y = setup_data["train_y"]
         test_x = setup_data["test_x"]
         train_graphs = setup_data["train_graphs"]
-        test_graphs = setup_data["test_graphs"]
+        setup_data["test_graphs"]
 
         # Define the kernels
         kernels = [
@@ -165,7 +163,7 @@ class TestGraphOptimizationPipeline:
                            for i in range(setup_data["N_NUMERICAL"],
                                           setup_data["N_NUMERICAL"] + setup_data[
                                               "N_CATEGORICAL"])}
-        fixed_cats = [dict(zip(cats_per_column.keys(), combo)) for combo in
+        fixed_cats = [dict(zip(cats_per_column.keys(), combo, strict=False)) for combo in
                       product(*cats_per_column.values())]
 
         # Optimize the acquisition function

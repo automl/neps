@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 
-def seed_all(seed: int = 100):
+def seed_all(seed: int = 100) -> None:
     """Seed all random generators for reproducibility."""
     random.seed(seed)
     np.random.seed(seed)

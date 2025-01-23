@@ -1,16 +1,18 @@
+from __future__ import annotations
+
+import networkx as nx
+import numpy as np
 import pytest
 import torch
-import numpy as np
-import networkx as nx
 from grakel import WeisfeilerLehman, graph_from_networkx
-from grakel_replace.kernels import TorchWLKernel
-from grakel_replace.utils import graphs_to_tensors
+from neps.graphs.kernels import TorchWLKernel
+from neps.graphs.utils import graphs_to_tensors
 
 
 class TestTorchWLKernel:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    @pytest.fixture
+    @pytest.fixture()
     def example_graphs_set(self):
         # Create example graphs for testing
         G1 = nx.Graph()
@@ -30,7 +32,7 @@ class TestTorchWLKernel:
 
         return [G1, G2, G3]
 
-    @pytest.fixture
+    @pytest.fixture()
     def random_graphs_sets(self):
         # Set a seed for reproducibility
         seed = 100

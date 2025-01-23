@@ -119,7 +119,7 @@ if len(cats_per_column) == 1:
     fixed_cats = [{col: i} for i in choice_indices]
 else:
     fixed_cats = [
-        dict(zip(cats_per_column.keys(), combo))
+        dict(zip(cats_per_column.keys(), combo, strict=False))
         for combo in product(*cats_per_column.values())
     ]
 

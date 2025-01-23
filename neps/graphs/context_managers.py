@@ -5,7 +5,8 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from botorch.models import SingleTaskGP
-from grakel_replace.kernels import BoTorchWLKernel
+
+from neps.graphs.kernels import BoTorchWLKernel
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -22,7 +23,8 @@ def set_graph_lookup(
     """Context manager to temporarily set the graph lookup for a kernel or GP model.
 
     Args:
-        kernel_or_gp (Kernel | SingleTaskGP): The kernel or GP model whose graph lookup is to be set.
+        kernel_or_gp (Kernel | SingleTaskGP): The kernel or GP model whose graph lookup is
+            to be set.
         new_graphs (list[nx.Graph]): The new graphs to set in the graph lookup.
         append (bool, optional): Whether to append the new graphs to the existing graph
             lookup. Defaults to True.

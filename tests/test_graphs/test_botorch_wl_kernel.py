@@ -1,15 +1,16 @@
+from __future__ import annotations
+
+import networkx as nx
 import pytest
 import torch
-import networkx as nx
 from botorch.models.gp_regression_mixed import Kernel
-
-from grakel_replace.kernels import BoTorchWLKernel
+from neps.graphs.kernels import BoTorchWLKernel
 
 
 def create_simple_graphs(num_graphs: int) -> list[nx.Graph]:
     """Helper function to create a list of graphs."""
     graphs = []
-    for i in range(num_graphs):
+    for _i in range(num_graphs):
         G = nx.Graph()
         G.add_nodes_from([0, 1, 2])
         G.add_edges_from([(0, 1), (1, 2)])
@@ -18,11 +19,11 @@ def create_simple_graphs(num_graphs: int) -> list[nx.Graph]:
 
 
 class TestBoTorchWLKernel:
-    @pytest.fixture
+    @pytest.fixture()
     def simple_graphs(self):
         return create_simple_graphs(3)
 
-    @pytest.fixture
+    @pytest.fixture()
     def wl_kernel(self, simple_graphs):
         return BoTorchWLKernel(
             graph_lookup=simple_graphs,

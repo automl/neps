@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 from botorch.models.gp_regression_mixed import Kernel
-from grakel_replace.utils import graphs_to_tensors
 from torch import Tensor
 from torch.nn import Module
+
+from neps.graphs.utils import graphs_to_tensors
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -110,11 +111,20 @@ class BoTorchWLKernel(Kernel):
     @lru_cache(maxsize=128)
     def _compute_kernel(
         self,
-        indices1: tuple[int],
-        indices2: tuple[int],
+        indices1: tuple[int, ...],
+        indices2: tuple[int, ...],
         diag: bool,
     ) -> Tensor:
-        """Compute the kernel matrix."""
+        """Compute the kernel matrix.
+
+        Args:
+            indices1: Tuple of indices for the first set of graphs.
+            indices2: Tuple of indices for the second set of graphs.
+            diag: Whether to return only the diagonal of the kernel matrix.
+
+        Returns:
+            A Tensor representing the kernel matrix.
+        """
         all_graphs = list(set(indices1 + indices2))
         adj_matrices = [self.adjacency_cache[i] for i in all_graphs]
         label_tensors = [self.label_cache[i] for i in all_graphs]
@@ -122,11 +132,16 @@ class BoTorchWLKernel(Kernel):
         # Compute full kernel matrix
         K_full = self._compute_base_kernel(adj_matrices, label_tensors)
 
+        # Map indices to their positions in all_graphs
         idx1 = [all_graphs.index(i) for i in indices1]
         idx2 = [all_graphs.index(i) for i in indices2]
+
+        # Extract the relevant submatrix
         K = K_full[idx1][:, idx2]
+
+        # Return the diagonal if requested
         if diag:
-            K = torch.diag(K)
+            return torch.diag(K)
 
         return K
 
@@ -162,8 +177,8 @@ class TorchWLKernel(Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Keep track of labels across iterations
-        self.label_dict = {}
-        self.label_counter = 0
+        self.label_dict: dict[str, int] = {}
+        self.label_counter: int = 0
 
     @lru_cache(maxsize=128)
     def _get_node_neighbors(self, adj: Tensor) -> list[list[int]]:
@@ -175,7 +190,7 @@ class TorchWLKernel(Module):
         rows, cols = adj.indices()
         num_nodes = adj.size(0)
 
-        neighbors = [[] for _ in range(num_nodes)]
+        neighbors: list[list[int]] = [[] for _ in range(num_nodes)]
         for row, col in zip(rows.tolist(), cols.tolist(), strict=False):
             neighbors[row].append(col)
 
@@ -186,16 +201,16 @@ class TorchWLKernel(Module):
         """Perform one WL iteration."""
         if not self.label_dict:
             # Start new labels after initial ones
-            self.label_counter = labels.max().item() + 1
+            self.label_counter = int(labels.max().item()) + 1
 
         num_nodes = labels.size(0)
-        new_labels = []
+        new_labels: list[int] = []
         neighbors = self._get_node_neighbors(adj)
 
         for node_idx in range(num_nodes):
             # Get current node label
-            node_label = labels[node_idx].item()
-            neighbor_labels = sorted([labels[n].item() for n in neighbors[node_idx]])
+            node_label = int(labels[node_idx].item())
+            neighbor_labels = sorted([int(labels[n].item()) for n in neighbors[node_idx]])
 
             credential = f"{node_label},{neighbor_labels}"
 
@@ -211,15 +226,17 @@ class TorchWLKernel(Module):
     def _compute_feature_vector(self, all_labels: list[list[Tensor]]) -> Tensor:
         """Compute the histogram feature vector for all graphs."""
         batch_size = len(all_labels[0])
-        features = []
+        features: list[Tensor] = []
 
         for iteration_labels in all_labels:
             # Find maximum label value across all graphs in this iteration
-            max_label = max(label.max().item() for label in iteration_labels) + 1
+            max_label = int(max(label.max().item() for label in iteration_labels)) + 1
 
-            iter_features = torch.zeros((batch_size, max_label),
-                                        dtype=torch.float32,
-                                        device=self.device)
+            iter_features = torch.zeros(
+                (batch_size, max_label),
+                dtype=torch.float32,
+                device=self.device,
+            )
 
             # Compute label frequencies
             for graph_idx, labels in enumerate(iteration_labels):
@@ -246,7 +263,7 @@ class TorchWLKernel(Module):
         # Reset label dictionary for new computation
         self.label_dict = {}
         # Store all label iterations
-        all_labels = [label_tensors]
+        all_labels: list[list[Tensor]] = [label_tensors]
 
         # Perform WL iterations
         for _ in range(self.n_iter):

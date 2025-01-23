@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 import torch
 from botorch.optim import optimize_acqf_mixed
-from grakel_replace.context_managers import set_graph_lookup
-from grakel_replace.utils import sample_graphs
+
+from neps.graphs.context_managers import set_graph_lookup
+from neps.graphs.utils import sample_graphs
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 def optimize_acqf_graph(
     acq_function: AcquisitionFunction,
     bounds: torch.Tensor,
-    fixed_features_list: list[dict[int, float]] | None = None,
+    fixed_features_list: list[dict[int, int]] | None = None,
     num_graph_samples: int = 10,
     train_graphs: list[nx.Graph] | None = None,
     num_restarts: int = 10,

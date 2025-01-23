@@ -15,7 +15,7 @@ def visualize_graph(G):
 def add_labels(G):
     """Add labels to the nodes of the graph."""
     for node in G.nodes():
-        G.nodes[node]['label'] = str(node)
+        G.nodes[node]["label"] = str(node)
 
 
 # Create graphs
