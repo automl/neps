@@ -13,6 +13,29 @@ if TYPE_CHECKING:
 
 
 class BoTorchWLKernel(Kernel):
+    """A custom kernel for Gaussian Processes using the Weisfeiler-Lehman (WL) algorithm.
+
+    This kernel computes similarities between graphs based on their structural properties
+    using the WL algorithm. It is designed to be used with BoTorch and GPyTorch for
+    Gaussian Process regression.
+
+    Args:
+        graph_lookup (list[nx.Graph]): List of NetworkX graphs.
+        n_iter (int, optional): Number of WL iterations to perform. Default is 5.
+        normalize (bool, optional): Whether to normalize the kernel matrix.
+            Default is True.
+        active_dims (tuple[int, ...]): Dimensions of the input to consider.
+        Not used in this kernel but included for compatibility with the base Kernel class.
+        **kwargs (Any): Additional arguments for the base Kernel class.
+
+    Attributes:
+        graph_lookup (list[nx.Graph]): List of graphs used for kernel computation.
+        n_iter (int): Number of WL iterations.
+        normalize (bool): Whether to normalize the kernel matrix.
+        cache (dict[tuple, Tensor]): Cache for storing precomputed kernel matrices.
+        adjacency_cache (list[Tensor]): Cached adjacency matrices of the graphs.
+        label_cache (list[Tensor]): Cached initial node labels of the graphs.
+    """
     has_lengthscale = False
 
     def __init__(
@@ -28,19 +51,11 @@ class BoTorchWLKernel(Kernel):
         self.graph_lookup = graph_lookup
         self.n_iter = n_iter
         self.normalize = normalize
-
-        self._init_caches()
+        self.cache: dict[tuple, Tensor] = {}
         self._precompute_graph_data()
-
-    def _init_caches(self) -> None:
-        """Initialize cache dictionaries."""
-        self.adjacency_cache = {}
-        self.label_cache = {}
-        self.cache = {}
 
     def _precompute_graph_data(self) -> None:
         """Precompute and cache adjacency matrices and initial node labels."""
-        self._init_caches()
         self.adjacency_cache, self.label_cache = graphs_to_tensors(
             self.graph_lookup, device=self.device
         )
@@ -59,43 +74,28 @@ class BoTorchWLKernel(Kernel):
         last_dim_is_batch: bool = False,
         **params: Any,
     ) -> Tensor:
+        """Compute kernel matrix containing pairwise similarities between graphs."""
+        # last_dim_is_batch is for compatibility with base Kernel class.
+        if last_dim_is_batch:
+            raise NotImplementedError("Batch dimension handling is not implemented.")
+
         x1_is_x2 = torch.equal(x1, x2)
         indices = tuple(x1.flatten().tolist()) if x1_is_x2 else (
             tuple(x1.flatten().tolist()), tuple(x2.flatten().tolist()))
+
         if indices in self.cache:
             return self.cache[indices]
 
         # Compute kernel matrix if not cached
-        K = self._compute_kernel(x1, x2, diag=diag, last_dim_is_batch=last_dim_is_batch)
+        K = self._compute_kernel(x1, x2, diag=diag)
         self.cache[indices] = K
         return K
 
-    def _compute_kernel(
-        self,
-        x1: Tensor,
-        x2: Tensor,
-        diag: bool = False,
-        last_dim_is_batch: bool = False,
-    ) -> Tensor:
-        """Compute the kernel matrix.
-
-        Args:
-            x1 (Tensor): Tensor of indices for the first set of graphs
-            x2 (Tensor): Tensor of indices for the second set of graphs
-            diag (bool): If True, only computes the diagonal of the kernel matrix
-            last_dim_is_batch (bool): Whether the last dimension represents batch size
-
-        Returns:
-            Tensor: Kernel matrix containing pairwise similarities between graphs
-        """
-        if last_dim_is_batch:
-            raise NotImplementedError("Batch dimension handling is not implemented.")
-
-        # Handle batched input if present
+    def _compute_kernel(self, x1: Tensor, x2: Tensor, diag: bool) -> Tensor:
+        """Compute the kernel matrix."""
         if x1.ndim == 3:
             return self._handle_batched_input(x1, x2, diag)
 
-        # Convert indices to integer lists and handle special cases
         indices1, indices2 = self._prepare_indices(x1, x2)
 
         # Check if we're computing self-similarity or cross-similarity
@@ -115,32 +115,24 @@ class BoTorchWLKernel(Kernel):
         return out
 
     def _prepare_indices(self, x1: Tensor, x2: Tensor) -> tuple[list[int], list[int]]:
-        """Convert tensor indices to integer lists and handle special cases."""
+        """Convert tensor indices to integer lists."""
         indices1 = x1.flatten().round().to(torch.int64).tolist()
         indices2 = x2.flatten().round().to(torch.int64).tolist()
 
         # Handle special case for -1 index
         if -1 in indices1 or -1 in indices2:
-            self._handle_negative_one_index()
+            last_graph_idx = len(self.graph_lookup) - 1
+            indices1 = [last_graph_idx if i == -1 else i for i in indices1]
+            indices2 = [last_graph_idx if i == -1 else i for i in indices2]
 
         return indices1, indices2
 
-    def _handle_negative_one_index(self) -> None:
-        """Handle the special case where -1 index is present."""
-        # Check if -1 is a valid index in the list
-        if -1 < 0 or -1 >= len(self.adjacency_cache):
-            last_graph_idx = len(self.graph_lookup) - 1
-            # Append the last graph's adjacency matrix and labels to the cache
-            self.adjacency_cache.append(self.adjacency_cache[last_graph_idx])
-            self.label_cache.append(self.label_cache[last_graph_idx])
-
     def _compute_self_kernel(self, indices: list[int], diag: bool) -> Tensor:
-        """Compute kernel matrix for a self-similarity case."""
+        """Compute kernel matrix for self-similarity case."""
         indices_tuple = tuple(indices)
         if indices_tuple in self.cache:
             return self.cache[indices_tuple]
 
-        # Get precomputed data for the indices
         adj_matrices = [self.adjacency_cache[i] for i in indices]
         label_tensors = [self.label_cache[i] for i in indices]
 
@@ -156,14 +148,13 @@ class BoTorchWLKernel(Kernel):
         self,
         indices1: list[int],
         indices2: list[int],
-        diag: bool
+        diag: bool,
     ) -> Tensor:
         """Compute kernel matrix for cross-similarity case."""
         cache_key = (tuple(indices1), tuple(indices2))
         if cache_key in self.cache:
             return self.cache[cache_key]
 
-        # Compute unique set of graphs needed
         all_graphs = list(set(indices1 + indices2))
         adj_matrices = [self.adjacency_cache[i] for i in all_graphs]
         label_tensors = [self.label_cache[i] for i in all_graphs]
@@ -171,7 +162,6 @@ class BoTorchWLKernel(Kernel):
         # Compute full kernel matrix
         K_full = self._compute_base_kernel(adj_matrices, label_tensors)
 
-        # Extract relevant submatrix
         idx1 = [all_graphs.index(i) for i in indices1]
         idx2 = [all_graphs.index(i) for i in indices2]
         K = K_full[idx1][:, idx2]
@@ -181,8 +171,9 @@ class BoTorchWLKernel(Kernel):
         self.cache[cache_key] = K
         return K
 
-    def _compute_base_kernel(self, adj_matrices: list[Tensor],
-                             label_tensors: list[Tensor]) -> Tensor:
+    def _compute_base_kernel(
+        self, adj_matrices: list[Tensor], label_tensors: list[Tensor]
+    ) -> Tensor:
         """Compute the base kernel matrix using WL algorithm."""
         _kernel = TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
         return _kernel(adj_matrices, label_tensors)
