@@ -13,7 +13,7 @@ from botorch.models.gp_regression_mixed import CategoricalKernel, ScaleKernel
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 from grakel_replace.context_managers import set_graph_lookup
-from grakel_replace.kernels import BoTorchWLKernel
+from grakel_replace.kernels import BoTorchWLKernel, TorchWLKernel
 from grakel_replace.optimization import optimize_acqf_graph
 from grakel_replace.utils import min_max_scale, seed_all
 
@@ -122,3 +122,8 @@ best_candidate, best_score = optimize_acqf_graph(
 print(f"Best candidate: {best_candidate}")
 print(f"Best score: {best_score}")
 print(f"Elapsed time: {time.time() - start_time} seconds")
+
+# Clear caches after optimization to avoid memory leaks or unexpected behavior
+BoTorchWLKernel._compute_kernel.cache_clear()
+TorchWLKernel._get_node_neighbors.cache_clear()
+TorchWLKernel._wl_iteration.cache_clear()
