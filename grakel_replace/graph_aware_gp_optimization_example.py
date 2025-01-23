@@ -119,3 +119,6 @@ best_candidate, best_score = optimize_acqf_graph(
 )
 
 # Print the results
+print(f"Best candidate: {best_candidate}")
+print(f"Best score: {best_score}")
+print(f"Elapsed time: {time.time() - start_time} seconds")
