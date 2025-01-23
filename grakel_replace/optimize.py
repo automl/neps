@@ -1,56 +1,15 @@
 from __future__ import annotations
 
-import random
 from typing import TYPE_CHECKING
 
-import networkx as nx
 import torch
 from botorch.optim import optimize_acqf_mixed
 from grakel_replace.torch_wl_kernel import set_graph_lookup
+from grakel_replace.utils import sample_graphs
 
 if TYPE_CHECKING:
+    import networkx as nx
     from botorch.acquisition import AcquisitionFunction
-
-
-def sample_graphs(graphs: list[nx.Graph], num_samples: int) -> list[nx.Graph]:
-    """Sample graphs using random walks or edge modifications.
-
-    Args:
-        graphs (list[nx.Graph]): Existing training graphs.
-        num_samples (int): Number of graph samples to generate.
-
-    Returns:
-        list[nx.Graph]: Sampled graphs.
-    """
-    sampled_graphs = []
-    for _ in range(num_samples):
-        base_graph = random.choice(graphs)
-        sampled_graph = base_graph.copy()
-
-        # More aggressive modifications
-        num_modifications = random.randint(2, 5)  # Increase minimum modifications
-        for _ in range(num_modifications):
-            if random.random() > 0.3:  # 70% chance to add edge
-                nodes = list(sampled_graph.nodes)
-                if len(nodes) >= 2:
-                    u, v = random.sample(nodes, 2)
-                    if not sampled_graph.has_edge(u, v):
-                        sampled_graph.add_edge(u, v)
-            elif sampled_graph.edges:  # 30% chance to remove edge
-                u, v = random.choice(list(sampled_graph.edges))
-                sampled_graph.remove_edge(u, v)
-
-        # Ensure the graph stays connected
-        if not nx.is_connected(sampled_graph):
-            components = list(nx.connected_components(sampled_graph))
-            for i in range(len(components) - 1):
-                u = random.choice(list(components[i]))
-                v = random.choice(list(components[i + 1]))
-                sampled_graph.add_edge(u, v)
-
-        sampled_graphs.append(sampled_graph)
-
-    return sampled_graphs
 
 
 def optimize_acqf_graph(
