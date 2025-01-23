@@ -66,24 +66,24 @@ kernels = [
         active_dims=(X.shape[1] - 1,)))
 ]
 
+# Create the Gaussian Process model
 gp = SingleTaskGP(train_X=train_x, train_Y=train_y, covar_module=AdditiveKernel(*kernels))
 
 # Compute the posterior distribution
-# The wl_kernel will use the indices to index into the training graphs it is holding
-# on to...
 multivariate_normal: MultivariateNormal = gp.forward(train_x)
 
 # Making predictions on test data
-
 with torch.no_grad(), set_graph_lookup(gp, train_graphs + test_graphs, append=False):
     posterior = gp.forward(test_x)
     predictions = posterior.mean
     uncertainties = posterior.variance.sqrt()
     covar = posterior.covariance_matrix
 
+# Fit the GP model
 mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
 fit_gpytorch_mll(mll)
 
+# Define the acquisition function
 acq_function = qLogNoisyExpectedImprovement(
     model=gp,
     X_baseline=train_x,
@@ -91,6 +91,7 @@ acq_function = qLogNoisyExpectedImprovement(
     prune_baseline=True,
 )
 
+# Define the bounds for optimization
 bounds = torch.tensor([
     [0.0] * N_NUMERICAL + [0.0] * N_CATEGORICAL + [-1.0] * N_GRAPH,
     [1.0] * N_NUMERICAL + [
@@ -98,11 +99,13 @@ bounds = torch.tensor([
         len(X) - 1] * N_GRAPH,
 ])
 
+# Define fixed categorical features
 cats_per_column = {i: list(range(N_CATEGORICAL_VALUES_PER_CATEGORY)) for i in
                    range(N_NUMERICAL, N_NUMERICAL + N_CATEGORICAL)}
 fixed_cats = [dict(zip(cats_per_column.keys(), combo, strict=False)) for combo in
               product(*cats_per_column.values())]
 
+# Optimize the acquisition function with graph sampling
 best_candidate, best_score = optimize_acqf_graph(
     acq_function=acq_function,
     bounds=bounds,
@@ -114,6 +117,7 @@ best_candidate, best_score = optimize_acqf_graph(
     q=1,
 )
 
+# Print the results
 print(f"Best candidate: {best_candidate}")
 print(f"Best score: {best_score}")
 print(f"Elapsed time: {time.time() - start_time} seconds")
