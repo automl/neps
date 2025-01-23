@@ -15,7 +15,7 @@ from gpytorch.kernels import AdditiveKernel, MaternKernel, ScaleKernel
 from grakel_replace.optimize import optimize_acqf_graph
 from grakel_replace.optimize import sample_graphs
 from grakel_replace.torch_wl_kernel import BoTorchWLKernel
-from grakel_replace.torch_wl_kernel import set_graph_lookup
+from grakel_replace.context_managers import set_graph_lookup
 from grakel_replace.utils import min_max_scale
 
 
