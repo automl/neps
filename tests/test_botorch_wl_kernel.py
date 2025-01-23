@@ -3,7 +3,7 @@ import torch
 import networkx as nx
 from botorch.models.gp_regression_mixed import Kernel
 
-from grakel_replace.torch_wl_kernel import BoTorchWLKernel
+from grakel_replace.kernels import BoTorchWLKernel
 
 
 def create_simple_graphs(num_graphs: int) -> list[nx.Graph]:

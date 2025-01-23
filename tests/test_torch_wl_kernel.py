@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import networkx as nx
 from grakel import WeisfeilerLehman, graph_from_networkx
-from grakel_replace.torch_wl_kernel import TorchWLKernel
+from grakel_replace.kernels import TorchWLKernel
 from grakel_replace.utils import graphs_to_tensors
 
 

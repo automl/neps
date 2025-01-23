@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from botorch.models import SingleTaskGP
-from grakel_replace.torch_wl_kernel import BoTorchWLKernel
+from grakel_replace.kernels import BoTorchWLKernel
 
 if TYPE_CHECKING:
     import networkx as nx
