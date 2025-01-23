@@ -13,8 +13,8 @@ from botorch.models.gp_regression_mixed import CategoricalKernel, ScaleKernel
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 from grakel_replace.context_managers import set_graph_lookup
-from grakel_replace.optimization import optimize_acqf_graph
 from grakel_replace.kernels import BoTorchWLKernel
+from grakel_replace.optimization import optimize_acqf_graph
 from grakel_replace.utils import min_max_scale, seed_all
 
 if TYPE_CHECKING:
