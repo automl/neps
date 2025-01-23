@@ -12,8 +12,9 @@ from botorch.models import SingleTaskGP
 from botorch.models.gp_regression_mixed import CategoricalKernel, ScaleKernel
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
+from grakel_replace.context_managers import set_graph_lookup
 from grakel_replace.optimize import optimize_acqf_graph
-from grakel_replace.torch_wl_kernel import BoTorchWLKernel, set_graph_lookup
+from grakel_replace.torch_wl_kernel import BoTorchWLKernel
 from grakel_replace.utils import min_max_scale, seed_all
 
 if TYPE_CHECKING:
@@ -118,6 +119,3 @@ best_candidate, best_score = optimize_acqf_graph(
 )
 
 # Print the results
-print(f"Best candidate: {best_candidate}")
-print(f"Best score: {best_score}")
-print(f"Elapsed time: {time.time() - start_time} seconds")

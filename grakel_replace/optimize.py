@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import torch
 from botorch.optim import optimize_acqf_mixed
-from grakel_replace.torch_wl_kernel import set_graph_lookup
+from grakel_replace.context_managers import set_graph_lookup
 from grakel_replace.utils import sample_graphs
 
 if TYPE_CHECKING:
