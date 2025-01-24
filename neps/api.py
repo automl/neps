@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from neps.optimizers import OptimizerChoice, load_optimizer
+from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
 from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv
@@ -16,14 +16,14 @@ from neps.utils.common import dynamic_load_object
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
-    from neps.optimizers.optimizer import AskFunction
     from neps.space import Parameter, SearchSpace
+    from neps.state import EvaluatePipelineReturn
 
 logger = logging.getLogger(__name__)
 
 
 def run(  # noqa: PLR0913
-    evaluate_pipeline: Callable | str,
+    evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: (
         Mapping[str, dict | str | int | float | Parameter]
         | SearchSpace
@@ -33,7 +33,7 @@ def run(  # noqa: PLR0913
     root_directory: str | Path = "neps_results",
     overwrite_working_directory: bool = False,
     post_run_summary: bool = True,
-    max_evaluations_total: int | None = None,
+    max_evaluations_total: int | None = 10,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
     max_cost_total: int | float | None = None,
@@ -431,12 +431,12 @@ def run(  # noqa: PLR0913
     )
 
     if post_run_summary:
-        config_data_path, run_data_path = post_run_csv(root_directory)
+        full_frame_path, short_path = post_run_csv(root_directory)
         logger.info(
             "The post run summary has been created, which is a csv file with the "
             "output of all data in the run."
-            f"\nYou can find a csv of all the configuratins at: {config_data_path}."
-            f"\nYou can find a csv of results at: {run_data_path}."
+            f"\nYou can find a full dataframe at: {full_frame_path}."
+            f"\nYou can find a quick summary at: {short_path}."
         )
     else:
         logger.info(

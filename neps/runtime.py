@@ -11,14 +11,7 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    ClassVar,
-    Generic,
-    Literal,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, ClassVar, Generic, Literal, TypeVar
 
 from portalocker import portalocker
 
@@ -36,16 +29,23 @@ from neps.exceptions import (
     WorkerFailedToGetPendingTrialsError,
     WorkerRaiseError,
 )
-from neps.state._eval import evaluate_trial
-from neps.state.neps_state import NePSState
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-from neps.state.seed_snapshot import SeedSnapshot
-from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
+from neps.state import (
+    BudgetInfo,
+    DefaultReportValues,
+    EvaluatePipelineReturn,
+    NePSState,
+    OnErrorPossibilities,
+    OptimizationState,
+    OptimizerInfo,
+    SeedSnapshot,
+    Trial,
+    WorkerSettings,
+    evaluate_trial,
+)
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
-    from neps.optimizers.base_optimizer import BaseOptimizer
+    from neps.optimizers.optimizer import AskFunction
 
 logger = logging.getLogger(__name__)
 
@@ -170,10 +170,10 @@ class DefaultWorker(Generic[Loc]):
     settings: WorkerSettings
     """The settings for the worker."""
 
-    evaluation_fn: Callable[..., float | Mapping[str, Any]]
+    evaluation_fn: Callable[..., EvaluatePipelineReturn]
     """The evaluation function to use for the worker."""
 
-    optimizer: BaseOptimizer
+    optimizer: AskFunction
     """The optimizer that is in use by the worker."""
 
     worker_id: str
@@ -195,9 +195,9 @@ class DefaultWorker(Generic[Loc]):
         cls,
         *,
         state: NePSState,
-        optimizer: BaseOptimizer,
+        optimizer: AskFunction,
         settings: WorkerSettings,
-        evaluation_fn: Callable[..., float | Mapping[str, Any]],
+        evaluation_fn: Callable[..., EvaluatePipelineReturn],
         worker_id: str | None = None,
     ) -> DefaultWorker:
         """Create a new worker."""
@@ -637,51 +637,62 @@ class DefaultWorker(Generic[Loc]):
 
 def _launch_ddp_runtime(
     *,
-    evaluation_fn: Callable[..., float | Mapping[str, Any]],
+    evaluation_fn: Callable[..., EvaluatePipelineReturn],
     optimization_dir: Path,
+    default_report_values: DefaultReportValues,
 ) -> None:
-    neps_state = NePSState.create_or_load(
-        path=optimization_dir,
-        load_only=True,
-    )
-    prev_trial = None
+    neps_state = NePSState.create_or_load(path=optimization_dir, load_only=True)
+
+    prev_trial: Trial | None = None
+
+    # TODO: This could accidentally spin lock if the break is never hit.
+    # This is quite dangerous as it could look like the worker is running but
+    # it's not actually doing anything.
     while True:
         current_eval_trials = neps_state.lock_and_get_current_evaluating_trials()
-        # If the worker id on previous trial is the same as the current one, only then
-        # evaluate it.
-        if len(current_eval_trials) > 0:
-            current_trial = None
-            if prev_trial is None:
-                # In the beginning, we simply read the current trial from the
-                # environment variable
-                if _DDP_ENV_VAR_NAME in os.environ:
-                    current_id = os.getenv(_DDP_ENV_VAR_NAME)
-                if current_id is None:
-                    raise RuntimeError(
-                        "In a pytorch-lightning DDP setup, the environment variable"
-                        f" '{_DDP_ENV_VAR_NAME}' was not set. This is probably a bug in"
-                        " NePS and should be reported."
-                    )
-                current_trial = neps_state.lock_and_get_trial_by_id(current_id)
-            else:
-                for trial in current_eval_trials:  # type: ignore[unreachable]
-                    if (
-                        trial.metadata.evaluating_worker_id
-                        == prev_trial.metadata.evaluating_worker_id
-                    ) and (trial.id != prev_trial.id):
-                        current_trial = trial
-                        break
-            if current_trial:
-                evaluation_fn(**current_trial.config)
-                prev_trial = current_trial
+
+        # If the worker id on previous trial is the same as the current one,
+        # only then evaluate it.
+        if len(current_eval_trials) == 0:
+            continue
+
+        current_trial: Trial | None = None
+        if prev_trial is None:
+            # In the beginning, we simply read the current trial from the env variable
+            current_id = os.getenv(_DDP_ENV_VAR_NAME, "").strip()
+            if current_id == "":
+                raise RuntimeError(
+                    "In a pytorch-lightning DDP setup, the environment variable"
+                    f" '{_DDP_ENV_VAR_NAME}' was not set. This is probably a bug"
+                    " in NePS and should be reported."
+                )
+
+            current_trial = neps_state.lock_and_get_trial_by_id(current_id)
+
+        else:
+            for trial in current_eval_trials:
+                if (
+                    trial.metadata.evaluating_worker_id
+                    == prev_trial.metadata.evaluating_worker_id
+                ) and (trial.id != prev_trial.id):
+                    current_trial = trial
+                    break
+
+        if current_trial is not None:
+            evaluate_trial(
+                current_trial,
+                evaluation_fn=evaluation_fn,
+                default_report_values=default_report_values,
+            )
+            prev_trial = current_trial
 
 
 # TODO: This should be done directly in `api.run` at some point to make it clearer at an
-# entryy point how the woerer is set up to run if someone reads the entry point code.
+# entryy point how the worker is set up to run if someone reads the entry point code.
 def _launch_runtime(  # noqa: PLR0913
     *,
-    evaluation_fn: Callable[..., float | Mapping[str, Any]],
-    optimizer: BaseOptimizer,
+    evaluation_fn: Callable[..., EvaluatePipelineReturn],
+    optimizer: AskFunction,
     optimizer_info: dict,
     optimization_dir: Path,
     max_cost_total: float | None,
@@ -694,10 +705,21 @@ def _launch_runtime(  # noqa: PLR0913
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
 ) -> None:
+    default_report_values = DefaultReportValues(
+        objective_value_on_error=objective_value_on_error,
+        cost_value_on_error=cost_value_on_error,
+        cost_if_not_provided=None,  # TODO: User can't specify yet
+        learning_curve_on_error=None,  # TODO: User can't specify yet
+        learning_curve_if_not_provided="objective_to_minimize",  # report the
+        # objective_to_minimize as single value LC
+    )
+
     if _is_ddp_and_not_rank_zero():
         # Do not launch a new worker if we are in a DDP setup and not rank 0
         _launch_ddp_runtime(
-            evaluation_fn=evaluation_fn, optimization_dir=optimization_dir
+            evaluation_fn=evaluation_fn,
+            optimization_dir=optimization_dir,
+            default_report_values=default_report_values,
         )
         return
 
@@ -748,14 +770,7 @@ def _launch_runtime(  # noqa: PLR0913
             else OnErrorPossibilities.RAISE_ANY_ERROR
         ),
         batch_size=sample_batch_size,
-        default_report_values=DefaultReportValues(
-            objective_value_on_error=objective_value_on_error,
-            cost_value_on_error=cost_value_on_error,
-            cost_if_not_provided=None,  # TODO: User can't specify yet
-            learning_curve_on_error=None,  # TODO: User can't specify yet
-            learning_curve_if_not_provided="objective_to_minimize",  # report the
-            # objective_to_minimize as single value LC
-        ),
+        default_report_values=default_report_values,
         max_evaluations_total=max_evaluations_total,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed

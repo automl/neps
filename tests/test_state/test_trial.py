@@ -167,7 +167,6 @@ def test_trial_as_success_after_being_progress() -> None:
         time_end=time_end,
     )
     assert report == Trial.Report(
-        trial_id=trial_id,
         objective_to_minimize=objective_to_minimize,
         cost=cost,
         learning_curve=None,
@@ -232,7 +231,6 @@ def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
         evaluation_duration=time_end - time_started,
     )
     assert report == Trial.Report(
-        trial_id=trial_id,
         objective_to_minimize=objective_to_minimize,
         cost=cost,
         learning_curve=None,
@@ -298,7 +296,6 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
         evaluation_duration=time_end - time_started,
     )
     assert report == Trial.Report(
-        trial_id=trial_id,
         objective_to_minimize=None,
         cost=None,
         learning_curve=None,

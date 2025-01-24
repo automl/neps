@@ -37,28 +37,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("root_directory", type=Path,
                     help="The working directory given to neps.run")
-parser.add_argument(
-    "--best_objective_to_minimizees",
-    action="store_true",
-    help="Show the trajectory of the best objective_to_minimize across evaluations",
-)
-parser.add_argument(
-    "--best_configs",
-    action="store_true",
-    help="Show the trajectory of the best configs and their losses "
-        "across evaluations",
-)
-parser.add_argument(
-    "--all_configs",
-    action="store_true",
-    help="Show all configs and their losses",
-)
 args = parser.parse_args()
 
 logging.basicConfig(level=logging.WARN)
-status(
-    args.root_directory,
-    best_losses=args.best_losses,
-    best_configs=args.best_configs,
-    all_configs=args.all_configs,
-)
+status(args.root_directory, print_summary=True)

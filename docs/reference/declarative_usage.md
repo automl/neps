@@ -56,7 +56,7 @@ In general, you can encode any [`Parameter`][neps.space.Parameter] into a YAML f
         model = initialize_model()
         training_loss = train_model(model, optimizer, learning_rate, epochs)
         evaluation_loss = evaluate_model(model)
-        return {"objective_value_to_minimize": evaluation_loss, "training_loss": training_loss}
+        return {"objective_to_minimize": evaluation_loss, "training_loss": training_loss}
 
     if __name__ == "__main__":
         with open("path/config.yaml") as f:

@@ -96,7 +96,7 @@ def run(learning_rate: float, epochs: int) -> float:
     # Your code here
     end = time.time()
     duration = end - start
-    return {"objective_value_to_minimize": loss, "cost": duration}
+    return {"objective_to_minimize": loss, "cost": duration}
 
 neps.run(
     # Increase the total number of trials from 10 as set previously to 50
