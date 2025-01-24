@@ -97,12 +97,19 @@ class BoTorchWLKernel(Kernel):
 
     def _prepare_indices(self, x1: Tensor, x2: Tensor) -> tuple[list[int], list[int]]:
         """Convert tensor indices to integer lists."""
-        indices1 = x1.flatten().round().to(torch.int64).tolist()
-        indices2 = x2.flatten().round().to(torch.int64).tolist()
+        indices1 = x1.flatten().to(torch.int64).tolist()
+        indices2 = x2.flatten().to(torch.int64).tolist()
 
-        # Handle special case for -1 index
+        # Check for missing graph indices (-1) and handle them
+        # Explanation: The index `-1` is used as a placeholder for "missing" or "invalid"
+        # graphs. This can occur when a graph feature is missing or undefined, such as
+        # during the exploration of new candidates where no corresponding graph is
+        # available in the `graph_lookup`. The kernel expects non-negative indices, so we
+        # need to convert `-1` to the index of the last graph in the lookup.
         if -1 in indices1 or -1 in indices2:
+            # Use the last graph in the lookup as a placeholder
             last_graph_idx = len(self.graph_lookup) - 1
+            # Replace any `-1` indices with the index of the last graph.
             indices1 = [last_graph_idx if i == -1 else i for i in indices1]
             indices2 = [last_graph_idx if i == -1 else i for i in indices2]
 
@@ -125,7 +132,7 @@ class BoTorchWLKernel(Kernel):
         Returns:
             A Tensor representing the kernel matrix.
         """
-        all_graphs = list(set(indices1 + indices2))
+        all_graphs = list(set(indices1).union(indices2))
         adj_matrices = [self.adjacency_cache[i] for i in all_graphs]
         label_tensors = [self.label_cache[i] for i in all_graphs]
 
@@ -215,13 +222,11 @@ class TorchWLKernel(Module):
             credential = f"{node_label},{neighbor_labels}"
 
             # Update label dictionary
-            if credential not in self.label_dict:
-                self.label_dict[credential] = self.label_counter
-                self.label_counter += 1
+            new_labels.append(
+                self.label_dict.setdefault(credential, len(self.label_dict))
+            )
 
-            new_labels.append(self.label_dict[credential])
-
-        return torch.tensor(new_labels, dtype=torch.long, device=self.device)
+        return torch.tensor(new_labels, dtype=torch.int64, device=self.device)
 
     def _compute_feature_vector(self, all_labels: list[list[Tensor]]) -> Tensor:
         """Compute the histogram feature vector for all graphs."""
@@ -232,15 +237,11 @@ class TorchWLKernel(Module):
             # Find maximum label value across all graphs in this iteration
             max_label = int(max(label.max().item() for label in iteration_labels)) + 1
 
-            iter_features = torch.zeros(
-                (batch_size, max_label),
-                dtype=torch.float32,
-                device=self.device,
-            )
+            iter_features = torch.zeros((batch_size, max_label), device=self.device)
 
             # Compute label frequencies
             for graph_idx, labels in enumerate(iteration_labels):
-                counts = torch.bincount(labels, minlength=max_label).float()
+                counts = torch.bincount(labels, minlength=max_label)
                 iter_features[graph_idx] = counts
 
             features.append(iter_features)
