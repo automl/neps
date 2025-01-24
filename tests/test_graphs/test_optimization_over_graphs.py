@@ -168,7 +168,7 @@ class TestGraphOptimizationPipeline:
                       product(*cats_per_column.values())]
 
         # Optimize the acquisition function
-        best_candidate, best_score = optimize_acqf_graph(
+        best_candidate, best_graph, best_score = optimize_acqf_graph(
             acq_function=acq_function,
             bounds=bounds,
             fixed_features_list=fixed_cats,
@@ -179,9 +179,17 @@ class TestGraphOptimizationPipeline:
             q=1,
         )
 
-        # Basic checks
-        assert best_candidate.shape == (1, train_x.shape[1])
-        assert isinstance(best_score, float)
+        # Assertions for the acquisition function optimization
+        assert isinstance(best_candidate,
+                          torch.Tensor), "Best candidate should be a tensor"
+        assert best_candidate.shape == (1, train_x.shape[1] - 1), \
+            "Best candidate should have the correct shape (excluding the graph index)"
+        assert isinstance(best_graph, nx.Graph), "Best graph should be a NetworkX graph"
+        assert isinstance(best_score, float), "Best score should be a float"
+
+        # Ensure the best candidate does not contain the graph index column
+        assert best_candidate.shape[1] == train_x.shape[1] - 1, \
+            "Best candidate should not include the graph index column"
 
     def test_graph_sampling(self, setup_data: dict) -> None:
         """Test the graph sampling functionality."""
@@ -192,10 +200,34 @@ class TestGraphOptimizationPipeline:
         sampled_graphs = sample_graphs(train_graphs, num_samples=num_samples)
 
         # Basic checks
-        assert len(sampled_graphs) == num_samples
-        for graph in sampled_graphs:
-            assert isinstance(graph, nx.Graph)
-            assert nx.is_connected(graph)
+        assert len(sampled_graphs) == num_samples, \
+            f"Expected {num_samples} sampled graphs, got {len(sampled_graphs)}"
+        assert all(isinstance(graph, nx.Graph) for graph in sampled_graphs), \
+            "All sampled graphs should be NetworkX graphs"
+        assert all(nx.is_connected(graph) for graph in sampled_graphs), \
+            "All sampled graphs should be connected"
+
+    def test_min_max_scaling(self, setup_data: dict) -> None:
+        """Test the min-max scaling utility."""
+        train_x = setup_data["train_x"]
+
+        # Apply min-max scaling
+        scaled_train_x = min_max_scale(train_x)
+
+        # Assertions for min-max scaling
+        assert torch.all(scaled_train_x >= 0), "Scaled values should be >= 0"
+        assert torch.all(scaled_train_x <= 1), "Scaled values should be <= 1"
+        assert scaled_train_x.shape == train_x.shape, \
+            "Scaled data should have the same shape as the input data"
+
+        # Check that the scaling is correct
+        for i in range(train_x.shape[1]):
+            col_min = torch.min(train_x[:, i])
+            col_max = torch.max(train_x[:, i])
+            if col_min != col_max:  # Avoid division by zero
+                expected_scaled_col = (train_x[:, i] - col_min) / (col_max - col_min)
+                assert torch.allclose(scaled_train_x[:, i], expected_scaled_col), \
+                    f"Scaling is incorrect for column {i}"
 
     def test_set_graph_lookup(self, setup_data: dict) -> None:
         """Test the set_graph_lookup context manager."""

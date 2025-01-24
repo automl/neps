@@ -22,13 +22,13 @@ def optimize_acqf_graph(
     num_restarts: int = 10,
     raw_samples: int = 1024,
     q: int = 1,
-) -> tuple[torch.Tensor, float]:
+) -> tuple[torch.Tensor, nx.Graph, float]:
     """Optimize an acquisition function with graph sampling.
 
     This function optimizes the acquisition function by sampling graphs from the training
     set, temporarily updating the kernel's graph lookup, and evaluating the acquisition
-    function for each sampled graph. The best candidate and its corresponding acquisition
-    score are returned.
+    function for each sampled graph. The best candidate, the best graph, and its
+    corresponding acquisition score are returned.
 
     Args:
         acq_function (AcquisitionFunction): The acquisition function to optimize.
@@ -47,8 +47,8 @@ def optimize_acqf_graph(
         q (int): The number of candidates to generate. Defaults to 1.
 
     Returns:
-        tuple[torch.Tensor, float]: A tuple containing the best candidate (as a tensor)
-            and its corresponding acquisition score.
+        tuple[torch.Tensor, nx.Graph, float]: A tuple containing the best candidate
+            (as a tensor), the best graph, and its corresponding acquisition score.
 
     Raises:
         ValueError: If `train_graphs` is None.
@@ -56,23 +56,22 @@ def optimize_acqf_graph(
     if train_graphs is None:
         raise ValueError("train_graphs cannot be None.")
 
-    # Sample graphs from the training set
     sampled_graphs = sample_graphs(train_graphs, num_samples=num_graph_samples)
 
-    # Initialize lists to store the best candidates and their scores
-    best_candidates, best_scores = [], []
+    best_candidates, best_graphs, best_scores = [], [], []
 
     # Get the index of the graph feature in the bounds
     graph_idx = bounds.shape[1] - 1
 
-    # Iterate through each sampled graph
+    # Todo: Instead of iterating over the graphs, optimize by putting all
+    #  sampled graphs into the kernel and compute the scores in a single batch.
+    #  Update the caching logic accordingly.
     for graph in sampled_graphs:
-        # Temporarily set the graph lookup for the kernel
         with set_graph_lookup(acq_function.model.covar_module, [graph], append=True):
             # Iterate through each fixed feature configuration (if provided)
             for fixed_features in fixed_features_list or [{}]:
                 # Add the graph index to the fixed features, indicating that the last
-                # graphin the lookup should be used
+                # graph in the lookup should be used
                 updated_fixed_features = {**fixed_features, graph_idx: -1.0}
 
                 # Optimize the acquisition function with the updated fixed features
@@ -85,12 +84,17 @@ def optimize_acqf_graph(
                     q=q,
                 )
 
-                # Store the candidates and their scores
+                # Store the candidates, graphs, and their scores
                 best_candidates.append(candidates)
+                best_graphs.append(graph)
                 best_scores.append(scores)
 
     # Find the index of the best score
     best_idx = torch.argmax(torch.tensor(best_scores))
 
-    # Return the best candidate and its score
-    return best_candidates[best_idx], best_scores[best_idx].item()
+    # Return the best candidate (without the graph index), the best graph, and its score
+    return (
+        best_candidates[best_idx][:, :-1],
+        best_graphs[best_idx],
+        best_scores[best_idx].item()
+    )

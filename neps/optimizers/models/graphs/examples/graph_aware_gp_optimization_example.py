@@ -108,7 +108,7 @@ fixed_cats = [dict(zip(cats_per_column.keys(), combo, strict=False)) for combo i
               product(*cats_per_column.values())]
 
 # Optimize the acquisition function with graph sampling
-best_candidate, best_score = optimize_acqf_graph(
+best_candidate, best_graph, best_score = optimize_acqf_graph(
     acq_function=acq_function,
     bounds=bounds,
     fixed_features_list=fixed_cats,
@@ -120,6 +120,10 @@ best_candidate, best_score = optimize_acqf_graph(
 )
 
 # Print the results
+print(f"Best candidate: {best_candidate}")
+print(f"Best graph: {best_graph}")
+print(f"Best score: {best_score}")
+print(f"Execution time: {time.time() - start_time:.2f} seconds")
 
 # Clear caches after optimization to avoid memory leaks or unexpected behavior
 BoTorchWLKernel._compute_kernel.cache_clear()
