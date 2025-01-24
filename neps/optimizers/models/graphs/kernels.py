@@ -14,6 +14,57 @@ if TYPE_CHECKING:
     import networkx as nx
 
 
+@lru_cache(maxsize=128)
+def compute_kernel(
+    adjacency_cache: tuple[Tensor, ...],
+    label_cache: tuple[Tensor, ...],
+    indices1: tuple[int, ...],
+    indices2: tuple[int, ...],
+    n_iter: int,
+    *,
+    diag: bool,
+    normalize: bool,
+) -> Tensor:
+    """Compute the kernel matrix.
+
+    This function is defined outside the class to leverage the `lru_cache` decorator,
+    which caches the results of expensive function calls and reuses them when the same
+    inputs occur again.
+
+    Args:
+        adjacency_cache: Tuple of adjacency matrices for the graphs.
+        label_cache: Tuple of initial node labels for the graphs.
+        indices1: Tuple of indices for the first set of graphs.
+        indices2: Tuple of indices for the second set of graphs.
+        n_iter: Number of WL iterations.
+        diag: Whether to return only the diagonal of the kernel matrix.
+        normalize: Whether to normalize the kernel matrix.
+
+    Returns:
+        A Tensor representing the kernel matrix.
+    """
+    all_graphs = list(set(indices1).union(indices2))
+    adj_matrices = [adjacency_cache[i] for i in all_graphs]
+    label_tensors = [label_cache[i] for i in all_graphs]
+
+    # Compute full kernel matrix
+    _kernel = TorchWLKernel(n_iter=n_iter, normalize=normalize)
+    K_full = _kernel(adj_matrices, label_tensors)
+
+    # Map indices to their positions in all_graphs
+    idx1 = [all_graphs.index(i) for i in indices1]
+    idx2 = [all_graphs.index(i) for i in indices2]
+
+    # Extract the relevant submatrix
+    K = K_full[idx1][:, idx2]
+
+    # Return the diagonal if requested
+    if diag:
+        return torch.diag(K)
+
+    return K
+
+
 class BoTorchWLKernel(Kernel):
     """A custom kernel for Gaussian Processes using the Weisfeiler-Lehman (WL) algorithm.
 
@@ -79,13 +130,21 @@ class BoTorchWLKernel(Kernel):
             raise NotImplementedError("Batch dimension handling is not implemented.")
 
         if x1.ndim == 3:
-            return self._handle_batched_input(x1, x2, diag)
+            return self._handle_batched_input(x1=x1, x2=x2, diag=diag)
 
         indices1, indices2 = self._prepare_indices(x1, x2)
 
-        return self._compute_kernel(tuple(indices1), tuple(indices2), diag)
+        return compute_kernel(
+            adjacency_cache=tuple(self.adjacency_cache),
+            label_cache=tuple(self.label_cache),
+            indices1=tuple(indices1),
+            indices2=tuple(indices2),
+            n_iter=self.n_iter,
+            diag=diag,
+            normalize=self.normalize,
+        )
 
-    def _handle_batched_input(self, x1: Tensor, x2: Tensor, diag: bool) -> Tensor:
+    def _handle_batched_input(self, x1: Tensor, x2: Tensor, *, diag: bool) -> Tensor:
         """Handle computation for batched input tensors."""
         q_dim_size = x1.shape[0]
         assert x2.shape[0] == q_dim_size
@@ -120,50 +179,6 @@ class BoTorchWLKernel(Kernel):
 
         return indices1, indices2
 
-    @lru_cache(maxsize=128)
-    def _compute_kernel(
-        self,
-        indices1: tuple[int, ...],
-        indices2: tuple[int, ...],
-        diag: bool,
-    ) -> Tensor:
-        """Compute the kernel matrix.
-
-        Args:
-            indices1: Tuple of indices for the first set of graphs.
-            indices2: Tuple of indices for the second set of graphs.
-            diag: Whether to return only the diagonal of the kernel matrix.
-
-        Returns:
-            A Tensor representing the kernel matrix.
-        """
-        all_graphs = list(set(indices1).union(indices2))
-        adj_matrices = [self.adjacency_cache[i] for i in all_graphs]
-        label_tensors = [self.label_cache[i] for i in all_graphs]
-
-        # Compute full kernel matrix
-        K_full = self._compute_base_kernel(adj_matrices, label_tensors)
-
-        # Map indices to their positions in all_graphs
-        idx1 = [all_graphs.index(i) for i in indices1]
-        idx2 = [all_graphs.index(i) for i in indices2]
-
-        # Extract the relevant submatrix
-        K = K_full[idx1][:, idx2]
-
-        # Return the diagonal if requested
-        if diag:
-            return torch.diag(K)
-
-        return K
-
-    def _compute_base_kernel(
-        self, adj_matrices: list[Tensor], label_tensors: list[Tensor]
-    ) -> Tensor:
-        """Compute the base kernel matrix using WL algorithm."""
-        _kernel = TorchWLKernel(n_iter=self.n_iter, normalize=self.normalize)
-        return _kernel(adj_matrices, label_tensors)
-
 
 class TorchWLKernel(Module):
     """A custom implementation of Weisfeiler-Lehman (WL) Kernel in PyTorch.
@@ -192,7 +207,6 @@ class TorchWLKernel(Module):
         self.label_dict: dict[str, int] = {}
         self.label_counter: int = 0
 
-    @lru_cache(maxsize=128)
     def _get_node_neighbors(self, adj: Tensor) -> list[list[int]]:
         """Extract neighborhood information from adjacency matrix."""
         if adj.layout == torch.sparse_csr:
@@ -208,7 +222,6 @@ class TorchWLKernel(Module):
 
         return neighbors
 
-    @lru_cache(maxsize=128)
     def _wl_iteration(self, adj: Tensor, labels: Tensor) -> Tensor:
         """Perform one WL iteration."""
         if not self.label_dict:

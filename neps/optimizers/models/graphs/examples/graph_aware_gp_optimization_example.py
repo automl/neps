@@ -14,7 +14,7 @@ from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import AdditiveKernel, MaternKernel
 
 from neps.optimizers.models.graphs.context_managers import set_graph_lookup
-from neps.optimizers.models.graphs.kernels import BoTorchWLKernel, TorchWLKernel
+from neps.optimizers.models.graphs.kernels import BoTorchWLKernel, compute_kernel
 from neps.optimizers.models.graphs.optimization import optimize_acqf_graph
 from neps.optimizers.models.graphs.utils import min_max_scale, seed_all
 
@@ -45,7 +45,7 @@ X = torch.cat([
 ], dim=1)
 
 # Generate random graphs
-graphs = [nx.erdos_renyi_graph(5, 0.5) for _ in range(TOTAL_CONFIGS)]
+graphs = [nx.erdos_renyi_graph(50, 0.5) for _ in range(TOTAL_CONFIGS)]
 
 # Generate random target values
 y = torch.rand(TOTAL_CONFIGS, dtype=torch.float64) + 0.5
@@ -113,9 +113,9 @@ best_candidate, best_graph, best_score = optimize_acqf_graph(
     bounds=bounds,
     fixed_features_list=fixed_cats,
     train_graphs=train_graphs,
-    num_graph_samples=2,
+    num_graph_samples=16,
     num_restarts=2,
-    raw_samples=16,
+    raw_samples=32,
     q=1,
 )
 
@@ -126,6 +126,4 @@ print(f"Best score: {best_score}")
 print(f"Execution time: {time.time() - start_time:.2f} seconds")
 
 # Clear caches after optimization to avoid memory leaks or unexpected behavior
-BoTorchWLKernel._compute_kernel.cache_clear()
-TorchWLKernel._get_node_neighbors.cache_clear()
-TorchWLKernel._wl_iteration.cache_clear()
+compute_kernel.cache_clear()

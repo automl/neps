@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from botorch.models import SingleTaskGP
 
-from neps.optimizers.models.graphs.kernels import BoTorchWLKernel, TorchWLKernel
+from neps.optimizers.models.graphs.kernels import BoTorchWLKernel, compute_kernel
 
 if TYPE_CHECKING:
     import networkx as nx
@@ -45,11 +45,7 @@ def set_graph_lookup(
 
     # Save the current graph lookup and set the new graph lookup
     for kern in modules:
-        if isinstance(kern, TorchWLKernel):
-            kern._get_node_neighbors.cache_clear()
-            kern._wl_iteration.cache_clear()
-        elif isinstance(kern, BoTorchWLKernel):
-            kern._compute_kernel.cache_clear()
+        compute_kernel.cache_clear()
 
         kernel_prev_graphs.append((kern, kern.graph_lookup))
         if append:
