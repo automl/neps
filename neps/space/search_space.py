@@ -25,6 +25,38 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
     categoricals: Mapping[str, Categorical] = field(init=False)
     """The categorical hyperparameters in the search space."""
 
+    prior: dict[str, Any] = field(init=False, default_factory=dict)
+    """The prior configuration for the search space.
+
+    !!! warning
+
+        This will only contain the priors for the hyperparameters that have been
+        specified. If a hyperparameter does not have a prior, it will not be
+        included in this dictionary.
+
+        This is to ensure that anything which can deal with partial priors is
+        not fooled into thing some default value is a user set prior. For example,
+        all [`Prior`][neps.sampling.Prior] classes support partial priors, giving
+        a density around a specified prior and a uniform over the rest of the space.
+
+        If you require a fixed configuration that include the full or partial
+        prior, you can use the `centers` attribute, as this is gauranteed to
+        have a value for every hyperparameter.
+
+        ```python
+        # Ensure centers is first, so that any value specified in prior will
+        # override it.
+        config = {**space.centers, **space.prior}
+        ```
+    """
+
+    centers: dict[str, Any] = field(init=False, default_factory=dict)
+    """The centers of the hyperparameters in the search space.
+
+    Useful to combine with partial priors in the case that a prior is not fully
+    specified but you need some fixed, distinct point in the space.
+    """
+
     numerical: Mapping[str, Integer | Float] = field(init=False)
     """The numerical hyperparameters in the search space.
 

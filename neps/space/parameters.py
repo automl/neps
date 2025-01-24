@@ -237,8 +237,8 @@ class Categorical:
                 f" choices {self.choices}"
             )
 
-        self.domain = Domain.indices(len(self.choices))
         self.center = self.choices[0]
+        self.domain = Domain.indices(len(self.choices))
 
 
 @dataclass
@@ -259,6 +259,17 @@ class Constant:
     """
 
     value: Any
+
+    @property
+    def center(self) -> Any:
+        """The center of the hyperparameter.
+
+        !!! warning
+
+            There is no real center of a constant value, hence we take this to be the
+            value itself.
+        """
+        return self.value
 
 
 Parameter: TypeAlias = Float | Integer | Categorical
