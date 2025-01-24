@@ -20,7 +20,7 @@ class NotReportedYetError(NePSError):
     """Raised when trying to access a report that has not been reported yet."""
 
 
-class State(Enum):
+class State(str, Enum):
     """The state of a trial."""
 
     PENDING = "pending"
@@ -58,10 +58,9 @@ class MetaData:
 class Report:
     """A failed report of the evaluation of a configuration."""
 
-    trial_id: str
-    objective_to_minimize: float | None
+    objective_to_minimize: float | list[float] | None
     cost: float | None
-    learning_curve: list[float] | None  # TODO: Serializing a large list into yaml sucks!
+    learning_curve: list[float] | list[list[float]] | None
     extra: Mapping[str, Any]
     err: Exception | None
     tb: str | None
@@ -163,12 +162,12 @@ class Trial:
         *,
         report_as: Literal["success", "failed", "crashed"],
         time_end: float,
-        objective_to_minimize: float | None,
+        objective_to_minimize: float | list[float] | None,
         cost: float | None,
-        learning_curve: list[float] | None,
+        learning_curve: list[float] | list[list[float]] | None,
         err: Exception | None,
         tb: str | None,
-        extra: Mapping[str, Any] | None,
+        extra: dict[str, Any] | None,
         evaluation_duration: float | None,
     ) -> Report:
         """Set the report for the trial."""
@@ -184,23 +183,13 @@ class Trial:
         self.metadata.time_end = time_end
         self.metadata.evaluation_duration = evaluation_duration
 
-        extra = {} if extra is None else extra
-
-        objective_to_minimize = (
-            float(objective_to_minimize) if objective_to_minimize is not None else None
-        )
-        cost = float(cost) if cost is not None else None
-        if learning_curve is not None:
-            learning_curve = [float(v) for v in learning_curve]
-
         return Report(
-            trial_id=self.metadata.id,
             reported_as=report_as,
             evaluation_duration=evaluation_duration,
             objective_to_minimize=objective_to_minimize,
             cost=cost,
             learning_curve=learning_curve,
-            extra=extra,
+            extra=extra if extra is not None else {},
             err=err,
             tb=tb,
         )

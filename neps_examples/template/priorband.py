@@ -15,7 +15,7 @@ The 2 crucial components are:
   * This function is called by the optimizer and is responsible for running the pipeline
   * The function should at the minimum expect the hyperparameters as keyword arguments
   * The function should return the loss of the pipeline as a float
-    * If the return value is a dictionary, it should have a key called "objective_value_to_minimize" with the loss as a float
+    * If the return value is a dictionary, it should have a key called "objective_to_minimize" with the loss as a float
 
 
 Overall, running an optimizer from NePS involves 4 clear steps:
@@ -133,7 +133,7 @@ def evaluate_pipeline(
 
     # Return a dictionary with the results, or a single float value (loss)
     return {
-        "objective_value_to_minimize": ...,
+        "objective_to_minimize": ...,
         "info_dict": {
             "train_accuracy": ...,
             "test_accuracy": ...,

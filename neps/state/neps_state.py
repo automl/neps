@@ -509,7 +509,7 @@ class NePSState:
     def lock_and_get_next_pending_trial(self) -> Trial | None: ...
 
     @overload
-    def lock_and_get_next_pending_trial(self, n: int | None = None) -> list[Trial]: ...
+    def lock_and_get_next_pending_trial(self, n: int) -> list[Trial]: ...
 
     def lock_and_get_next_pending_trial(
         self,
@@ -575,6 +575,7 @@ class NePSState:
         Raises:
             NePSError: If the optimizer info on disk does not match the one provided.
         """
+        path = path.absolute().resolve()
         is_new = not path.exists()
         if load_only:
             if is_new:

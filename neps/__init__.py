@@ -6,7 +6,7 @@ from neps.plot.plot import plot
 from neps.plot.tensorboard_eval import tblogger
 from neps.space import Categorical, Constant, Float, Integer, SearchSpace
 from neps.state import BudgetInfo, Trial
-from neps.status.status import get_summary_dict, status
+from neps.status.status import status
 from neps.utils.files import load_and_merge_yamls as load_yamls
 
 __all__ = [
@@ -20,7 +20,6 @@ __all__ = [
     "SearchSpace",
     "Trial",
     "algorithms",
-    "get_summary_dict",
     "load_yamls",
     "plot",
     "run",
