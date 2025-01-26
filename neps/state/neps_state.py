@@ -35,6 +35,7 @@ from neps.env import (
     TRIAL_FILELOCK_TIMEOUT,
 )
 from neps.exceptions import NePSError, TrialAlreadyExistsError, TrialNotFoundError
+from neps.optimizers import OptimizerInfo
 from neps.state.err_dump import ErrDump
 from neps.state.filebased import (
     FileLocker,
@@ -42,7 +43,7 @@ from neps.state.filebased import (
     ReaderWriterTrial,
     TrialWriteHint,
 )
-from neps.state.optimizer import OptimizationState, OptimizerInfo
+from neps.state.optimizer import OptimizationState
 from neps.state.trial import Report, Trial
 from neps.utils.files import atomic_write, deserialize, serialize
 
@@ -455,7 +456,7 @@ class NePSState:
     def lock_and_get_optimizer_info(self) -> OptimizerInfo:
         """Get the optimizer information."""
         with self._optimizer_lock.lock():
-            return OptimizerInfo(info=deserialize(self._optimizer_info_path))
+            return OptimizerInfo(**deserialize(self._optimizer_info_path))
 
     def lock_and_get_optimizer_state(self) -> OptimizationState:
         """Get the optimizer state."""
@@ -601,7 +602,7 @@ class NePSState:
         # check the optimizer info. If this assumption changes, then we would have
         # to first lock before we do this check
         if not is_new:
-            existing_info = OptimizerInfo(info=deserialize(optimizer_info_path))
+            existing_info = OptimizerInfo(**deserialize(optimizer_info_path))
             if not load_only and existing_info != optimizer_info:
                 raise NePSError(
                     "The optimizer info on disk does not match the one provided."
@@ -617,7 +618,7 @@ class NePSState:
             assert optimizer_info is not None
             assert optimizer_state is not None
 
-            serialize(optimizer_info.info, path=optimizer_info_path)
+            serialize(optimizer_info, path=optimizer_info_path)
             with optimizer_state_path.open("wb") as f:
                 pickle.dump(optimizer_state, f, protocol=pickle.HIGHEST_PROTOCOL)
 

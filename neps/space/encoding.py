@@ -20,10 +20,10 @@ from neps.space.parameters import Categorical, Float, Integer, Parameter
 V = TypeVar("V", int, float)
 
 
-class TensorTransformer(Protocol):
+class TensorTransformer(Protocol[V]):
     """A protocol for encoding and decoding hyperparameter values into tensors."""
 
-    domain: Domain
+    domain: Domain[V]
 
     def encode(
         self,
@@ -57,14 +57,33 @@ class TensorTransformer(Protocol):
         """
         ...
 
+    def encode_one(
+        self,
+        x: Any,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> V:
+        """Encode a single hyperparameter value into a tensor.
+
+        Args:
+            x: A single hyperparameter value.
+            dtype: The dtype of the tensor.
+            device: The device of the tensor.
+
+        Returns:
+            The encoded tensor.
+        """
+        return self.encode([x], dtype=dtype, device=device).item()  # type: ignore
+
 
 @dataclass
-class CategoricalToIntegerTransformer(TensorTransformer):
+class CategoricalToIntegerTransformer(TensorTransformer[int]):
     """A transformer that encodes categorical values into integers."""
 
     choices: Sequence[Any]
 
-    domain: Domain = field(init=False)
+    domain: Domain[int] = field(init=False)
     _lookup: dict[Any, int] | None = field(init=False)
 
     def __post_init__(self) -> None:
@@ -108,7 +127,7 @@ class CategoricalToIntegerTransformer(TensorTransformer):
 
 
 @dataclass
-class CategoricalToUnitNorm(TensorTransformer):
+class CategoricalToUnitNorm(TensorTransformer[float]):
     """A transformer that encodes categorical values into a unit normalized tensor.
 
     If there are `n` choices, the tensor will have `n` bins between `0` and `1`.
@@ -170,7 +189,7 @@ class CategoricalToUnitNorm(TensorTransformer):
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
 # and `-0.5` as lower bound with `0.5` as upper bound.
 @dataclass
-class MinMaxNormalizer(TensorTransformer, Generic[V]):
+class MinMaxNormalizer(TensorTransformer[V], Generic[V]):
     """A transformer that normalizes values to the unit interval."""
 
     original_domain: Domain[V]

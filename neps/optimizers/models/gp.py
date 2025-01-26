@@ -128,26 +128,39 @@ def optimize_acq(
     num_restarts: int = 20,
     n_intial_start_points: int | None = None,
     acq_options: Mapping[str, Any] | None = None,
+    fixed_features: dict[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Optimize the acquisition function."""
     acq_options = acq_options or {}
+
+    _fixed_features: dict[int, float] = {}
+    if fixed_features is not None:
+        for name, value in fixed_features.items():
+            encoded_value = encoder.transformers[name].encode_one(value)
+            encoded_index = encoder.index_of[name]
+            _fixed_features[encoded_index] = encoded_value
 
     lower = [domain.lower for domain in encoder.domains]
     upper = [domain.upper for domain in encoder.domains]
     bounds = torch.tensor([lower, upper], dtype=torch.float64)
 
     cat_transformers = {
-        name: t for name, t in encoder.transformers.items() if t.domain.is_categorical
+        name: t
+        for name, t in encoder.transformers.items()
+        if (
+            name not in _fixed_features  # Don't include those which are fixed by caller
+            and t.domain.is_categorical  # Only include categoricals
+        )
     }
-    if not any(cat_transformers):
-        # Small heuristic to increase the number of candidates as our dimensionality
-        # increases... we apply a cap.
-        if n_intial_start_points is None:
-            # TODO: Need to investigate how num_restarts is used in botorch to inform
-            # this proxy.
 
-            # Cap out at 4096 when len(bounds) >= 8
+    # Proceed with regular numerical acquisition
+    if not any(cat_transformers):
+        # Small heuristic to increase the number of candidates as our
+        # dimensionality increases... we apply a cap of 4096,
+        # which occurs when len(bounds) >= 8
+        # TODO: Need to investigate how num_restarts is fully used in botorch to inform.
+        if n_intial_start_points is None:
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
         return optimize_acqf(  # type: ignore
@@ -156,6 +169,7 @@ def optimize_acq(
             q=n_candidates_required,
             num_restarts=num_restarts,
             raw_samples=n_intial_start_points,
+            fixed_features=_fixed_features,
             **acq_options,
         )
 
@@ -177,10 +191,10 @@ def optimize_acq(
 
     # Right, now we generate all possible combinations
     # First, just collect the possible values per cat column
-    # NOTE: Botorchs optim requires them to be as floats
+    # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
     cats: dict[int, list[float]] = {
         encoder.index_of[name]: [
-            float(i)
+            float(i)  # NOTE: Botorchs optim requires them to be as floats
             for i in range(transformer.domain.cardinality)  # type: ignore
         ]
         for name, transformer in cat_transformers.items()
@@ -196,6 +210,10 @@ def optimize_acq(
             dict(zip(cats.keys(), combo, strict=False))
             for combo in product(*cats.values())
         ]
+
+    # Make sure to include caller's fixed features if provided
+    if len(_fixed_features) > 0:
+        fixed_cats = [{**cat, **_fixed_features} for cat in fixed_cats]
 
     # TODO: we should deterministically shuffle the fixed_categoricals
     # as the underlying function does not.
@@ -296,6 +314,7 @@ def fit_and_acquire_from_gp(
     num_restarts: int = 20,
     n_initial_start_points: int = 256,
     maximum_allowed_categorical_combinations: int = 30,
+    fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
 ) -> torch.Tensor:
     """Acquire the next configuration to evaluate using a GP.
@@ -330,6 +349,7 @@ def fit_and_acquire_from_gp(
         costs_on_log_scale: Whether the costs are on a log scale.
         encoder: The encoder used for encoding the configurations
         seed: The seed to use.
+        fixed_acq_features: The features to fix to a certain value during acquisition.
         n_candidates_required: The number of candidates to return. If left
             as `None`, only the best candidate will be returned. Otherwise
             a list of candidates will be returned.
@@ -416,6 +436,7 @@ def fit_and_acquire_from_gp(
         n_candidates_required=_n,
         num_restarts=num_restarts,
         n_intial_start_points=n_initial_start_points,
+        fixed_features=fixed_acq_features,
         acq_options=acq_options,
         maximum_allowed_categorical_combinations=maximum_allowed_categorical_combinations,
     )

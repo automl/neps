@@ -17,9 +17,10 @@ if you like, otherwise you may also refer to them by their string name.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Concatenate, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 
 import torch
 
@@ -123,7 +124,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
     sampler: Literal["uniform", "prior", "priorband"] | PriorBandArgs | Sampler,
-    bayesian_optimization: int | float | None,
+    bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
     # is not required for hyperband style algorithms, only single bracket
@@ -151,7 +152,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 This is only used for Successive Halving and Asha. If set
                 to not `None`, then the bracket type must be one of those.
 
-        bayesian_optimization:
+        bayesian_optimization_kick_in_point:
             * If `None`, no bayesian optimization is used at any point.
             * If a number `N`, after `N` * `maximum_fidelity` worth of fidelity
             has been evaluated, proceed with bayesian optimization when sampling
@@ -159,7 +160,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
                 !!! example
 
-                    If `maximum_fidelity` is 100, and `bayesian_optimization` is `10`.
+                    If `maximum_fidelity` is 100, and
+                    `bayesian_optimization_kick_in_point` is `10`.
                     We will keep using the underlying bracket algorithm until the
                     threshold of `sum(config.fidelity >= 100 * 10)`, at which point we
                     will switch to using bayesian optimization.
@@ -266,30 +268,31 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     # TODO: This should be lifted out of this function and have the caller
     # pass in a `GPSampler`.
     # TODO: Better name and parametrization of this if not going with above
-    gp_sampler: GPSampler | None = None
-    if bayesian_optimization is not None:
-        if bayesian_optimization <= 0:
-            raise ValueError("bayesian_optimization should be greater than 0")
+    gp_sampler: GPSampler | None
+    if bayesian_optimization_kick_in_point is not None:
+        if bayesian_optimization_kick_in_point <= 0:
+            raise ValueError(
+                "bayesian_optimization_kick_in_point should be greater than 0"
+            )
 
         # TODO: Parametrize?
-        modelling_strategy = "joint"
         two_stage_batch_sample_size = 10
-        fidelity_max = fidelity.upper
-        threshold = bayesian_optimization
+        modelling_strategy = "joint"
 
-        # Notably we include the fidelity into what we model here.
         gp_parameters = {**parameters, **pipeline_space.fidelities}
-        bo_encoder = ConfigEncoder.from_parameters(gp_parameters)
         gp_sampler = GPSampler(
-            space=pipeline_space,
-            encoder=bo_encoder,
-            threshold=threshold,
+            # Notably we include the fidelity into what we model here.
+            parameters=gp_parameters,
+            encoder=ConfigEncoder.from_parameters(gp_parameters),
+            threshold=bayesian_optimization_kick_in_point,
             fidelity_name=fidelity_name,
-            fidelity_max=fidelity_max,
+            fidelity_max=fidelity.upper,
             modelling_strategy=modelling_strategy,
             two_stage_batch_sample_size=two_stage_batch_sample_size,
             device=device,
         )
+    else:
+        gp_sampler = None
 
     return BracketOptimizer(
         space=pipeline_space,
@@ -547,7 +550,7 @@ def successive_halving(
         sampler=sampler,
         sample_prior_first=sample_prior_first,
         # TODO: Implement this
-        bayesian_optimization=None,
+        bayesian_optimization_kick_in_point=None,
         device=None,
     )
 
@@ -611,7 +614,7 @@ def hyperband(
         sample_prior_first=sample_prior_first,
         early_stopping_rate=None,
         # TODO: Implement this
-        bayesian_optimization=None,
+        bayesian_optimization_kick_in_point=None,
         device=None,
     )
 
@@ -674,7 +677,7 @@ def asha(
         sampler=sampler,
         sample_prior_first=sample_prior_first,
         # TODO: Implement this
-        bayesian_optimization=None,
+        bayesian_optimization_kick_in_point=None,
         device=None,
     )
 
@@ -734,7 +737,7 @@ def async_hb(
         sample_prior_first=sample_prior_first,
         early_stopping_rate=None,
         # TODO: Implement this
-        bayesian_optimization=None,
+        bayesian_optimization_kick_in_point=None,
         device=None,
     )
 
@@ -745,6 +748,7 @@ def priorband(
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
+    bayesian_optimization_kick_in_point: int | float | None = None,
 ) -> BracketOptimizer:
     """Priorband is also a bandit-based optimization algorithm that uses a _fidelity_,
     providing a general purpose sampling extension to other algorithms. It makes better
@@ -779,6 +783,9 @@ def priorband(
         eta: The reduction factor used for building brackets
         sample_prior_first: Whether to sample the prior configuration first.
         base: The base algorithm to use for the bracketing.
+        bayesian_optimization_kick_in_point: If a number `N`, after
+            `N` * `maximum_fidelity` worth of fidelity has been evaluated,
+            proceed with bayesian optimization when sampling a new configuration.
     """
     return _bracket_optimizer(
         pipeline_space=space,
@@ -786,9 +793,8 @@ def priorband(
         eta=eta,
         sampler="priorband",
         sample_prior_first=sample_prior_first,
-        # TODO: Implement this
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
-        bayesian_optimization=None,
+        bayesian_optimization_kick_in_point=bayesian_optimization_kick_in_point,
         device=None,
     )
 
@@ -894,6 +900,47 @@ def pibo(
         device=device,
         use_priors=True,
         sample_prior_first=sample_prior_first,
+    )
+
+
+@dataclass
+class CustomOptimizer:
+    """Custom optimizer that allows you to define your own optimizer function.
+
+    Args:
+        optimizer: The optimizer function to use.
+    """
+
+    name: str
+    optimizer: Callable[Concatenate[SearchSpace, ...], AskFunction] | AskFunction
+    kwargs: Mapping[str, Any] = field(default_factory=dict)
+    initialized: bool = False
+
+    def create(self, space: SearchSpace) -> AskFunction:
+        assert not self.initialized, "Custom optimizer already initialized."
+        return self.optimizer(space, **self.kwargs)  # type: ignore
+
+
+def custom(
+    name: str,
+    optimizer: Callable[Concatenate[SearchSpace, ...], AskFunction] | AskFunction,
+    *,
+    initialized: bool = False,
+    kwargs: Mapping[str, Any] | None = None,
+) -> CustomOptimizer:
+    """Create a custom optimizer that allows you to define your own optimizer function.
+
+    Args:
+        name: The name of the optimizer.
+        optimizer: The optimizer function to use.
+        initialized: Whether the optimizer has already been initialized.
+        **kwargs: Additional arguments to pass to the optimizer function.
+    """
+    return CustomOptimizer(
+        name=name,
+        optimizer=optimizer,
+        kwargs=kwargs or {},
+        initialized=initialized,
     )
 
 

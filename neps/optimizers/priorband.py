@@ -175,8 +175,8 @@ def sample_with_priorband(
     # the prior and inc distribution, weighing them by their position in the top K
     weights = torch.arange(K, 0, -1)
 
-    top_k_pdf_inc = inc_dist.pdf_configs(top_k_configs, frm=encoder)
-    top_k_pdf_prior = prior_dist.pdf_configs(top_k_configs, frm=encoder)
+    top_k_pdf_inc = inc_dist.pdf_configs(top_k_configs, frm=encoder)  # type: ignore
+    top_k_pdf_prior = prior_dist.pdf_configs(top_k_configs, frm=encoder)  # type: ignore
 
     unnormalized_inc_score = (weights * top_k_pdf_inc).sum()
     unnormalized_prior_score = (weights * top_k_pdf_prior).sum()

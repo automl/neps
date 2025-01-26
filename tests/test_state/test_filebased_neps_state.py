@@ -12,9 +12,10 @@ import pytest
 from pytest_cases import fixture, parametrize
 
 from neps.exceptions import NePSError, TrialNotFoundError
+from neps.optimizers import OptimizerInfo
 from neps.state.err_dump import ErrDump
 from neps.state.neps_state import NePSState
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.state.seed_snapshot import SeedSnapshot
 
 
@@ -33,7 +34,10 @@ def optimizer_state(
 
 
 @fixture
-@parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])
+@parametrize(
+    "optimizer_info",
+    [OptimizerInfo(name="blah", info={"a": "b"})],
+)
 def optimizer_info(optimizer_info: OptimizerInfo) -> OptimizerInfo:
     return optimizer_info
 
@@ -120,6 +124,6 @@ def test_new_or_load_on_existing_neps_state_with_different_optimizer_info(
     with pytest.raises(NePSError):
         NePSState.create_or_load(
             path=new_path,
-            optimizer_info=OptimizerInfo({"e": "f"}),
+            optimizer_info=OptimizerInfo(name="randomlll", info={"e": "f"}),
             optimizer_state=optimizer_state,
         )

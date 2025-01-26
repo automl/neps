@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
+    from neps.space.parameters import Parameter
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
 
@@ -73,8 +74,8 @@ class GPSampler:
     https://openreview.net/attachment?id=uoiwugtpCH&name=supplementary_material
     """
 
-    space: SearchSpace
-    """The search space to use."""
+    parameters: Mapping[str, Parameter]
+    """The parameters to use."""
 
     encoder: ConfigEncoder
     """The encoder to use for encoding and decoding configurations."""
@@ -122,7 +123,6 @@ class GPSampler:
             t.config[self.fidelity_name] for t in trials.values() if t.report is not None
         ]
         fidelity_units_used = sum(used_fidelity) / self.fidelity_max
-        print(fidelity_units_used)  # noqa: T201
         return fidelity_units_used >= self.threshold
 
     def sample_config(
@@ -135,7 +135,6 @@ class GPSampler:
 
         Please see parameter descriptions in the class docstring for more.
         """
-        print("============= Using gp")  # noqa: T201
         assert budget_info is None, "cost-aware (using budget_info) not supported yet."
         assert self.modelling_strategy == "joint", "Only joint strategy is supported now."
         # fit the GP model using all trials, using fidelity as a dimension.
@@ -143,12 +142,11 @@ class GPSampler:
         # Switch those configurations to be at fidelity z_max and take the best.
         # y_max for EI is taken to be the best value seen so far, across all fidelity
 
-        # TODO: Make sure that fidelity is encoded correctly in here.
         data, _ = encode_trials_for_gp(
             trials,
-            self.space,
-            device=self.device,
+            self.parameters,
             encoder=self.encoder,
+            device=self.device,
         )
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=self.encoder)
         acqf = qLogNoisyExpectedImprovement(
@@ -167,14 +165,14 @@ class GPSampler:
         requires_two_step = target_fidelity != self.fidelity_max
         N = 1 if requires_two_step else self.two_stage_batch_sample_size
 
-        # TODO: This actually acquires at any fidelity deemed best by the GP.
-        # We need to set that the fidelity column be fixed during acquisition.
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             encoder=self.encoder,
             x_train=data.x,
             n_candidates_required=N,
             acquisition=acqf,
+            # Ensure we fix that acquisition happens at target fidelity
+            fixed_acq_features={self.fidelity_name: target_fidelity},
             # NOTE: We don't support any cost aware or prior based GP stuff here
             # TODO: Theoretically, we could. Check out the implementation of
             # `BayesianOptimization` for more details
@@ -189,12 +187,16 @@ class GPSampler:
         # We bail out here, as we already acquired over max fidelity.
         if not requires_two_step:
             config = self.encoder.decode_one(candidates[0])
-            config[self.fidelity_name] = target_fidelity
+            assert config[self.fidelity_name] == target_fidelity, (
+                f"Expected the target fidelity to be {target_fidelity}, "
+                f"but got {config[self.fidelity_name]} for config: {config}"
+            )
             return config
 
         # Next, we set those N configurations to be at the max fidelity
         # Decode, set max fidelity, and encode again (TODO: Could do directly on tensors)
         configs = self.encoder.decode(candidates)
+        print("configs", configs)  # noqa: T201
         fid_max_configs = [{**c, self.fidelity_name: self.fidelity_max} for c in configs]
         encoded_fix_max_configs = self.encoder.encode(fid_max_configs)
 
@@ -252,7 +254,7 @@ class BracketOptimizer:
     fid_name: str
     """The name of the fidelity in the space."""
 
-    def __call__(  # noqa: C901, PLR0911, PLR0912
+    def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
@@ -355,6 +357,7 @@ class BracketOptimizer:
                         budget_info=None,  # TODO: budget_info not supported yet
                         target_fidelity=target_fidelity,
                     )
+                    config.update(space.constants)
                     return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
 
                 # Otherwise, we proceed with the original sampler
@@ -386,10 +389,6 @@ class BracketOptimizer:
                             **space.constants,
                             self.fid_name: self.rung_to_fid[rung],
                         }
-                        return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
-
-                    case GPSampler():
-                        config = self.sampler.sample_config(trials, budget_info)
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
 
                     case _:

@@ -12,7 +12,12 @@ from typing import Any
 import pytest
 from pytest_cases import case, fixture, parametrize, parametrize_with_cases
 
-from neps.optimizers import AskFunction, PredefinedOptimizers, load_optimizer
+from neps.optimizers import (
+    AskFunction,
+    OptimizerInfo,
+    PredefinedOptimizers,
+    load_optimizer,
+)
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.space import (
     Categorical,
@@ -21,13 +26,7 @@ from neps.space import (
     Integer,
     SearchSpace,
 )
-from neps.state import (
-    BudgetInfo,
-    NePSState,
-    OptimizationState,
-    OptimizerInfo,
-    SeedSnapshot,
-)
+from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
 
 
 @case
@@ -147,7 +146,7 @@ def optimizer_and_key_and_search_space(
     return opt, key, search_space
 
 
-@parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])
+@parametrize("optimizer_info", [OptimizerInfo(name="blah", info={"a": "b"})])
 @parametrize("max_cost_total", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None])
 @parametrize("shared_state", [{"a": "b"}, {}])
 def case_neps_state_filebased(
