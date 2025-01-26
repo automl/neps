@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 import re
+import warnings
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
@@ -54,7 +55,7 @@ SerializedParameter: TypeAlias = (
 )
 
 
-def as_parameter(details: SerializedParameter) -> Parameter:  # noqa: C901, PLR0911, PLR0912
+def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa: C901, PLR0911, PLR0912
     """Deduces the parameter type from details.
 
     Args:
@@ -187,7 +188,7 @@ def as_parameter(details: SerializedParameter) -> Parameter:  # noqa: C901, PLR0
 
 def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
     """Converts a dictionary to a SearchSpace object."""
-    parameters: dict[str, Parameter] = {}
+    parameters: dict[str, Parameter | Constant] = {}
     for name, details in pipeline_space.items():
         match details:
             case Float() | Integer() | Categorical() | Constant():
@@ -217,44 +218,73 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
     """
     import ConfigSpace as CS
 
-    space = {}
-    parameter: Parameter
-    if any(configspace.get_conditions()) or any(configspace.get_forbiddens()):
+    space: dict[str, Parameter | Constant] = {}
+    if any(configspace.conditions) or any(configspace.forbidden_clauses):
         raise NotImplementedError(
             "The ConfigurationSpace has conditions or forbidden clauses, "
             "which are not supported by neps."
         )
 
-    for hyperparameter in configspace.get_hyperparameters():
-        if isinstance(hyperparameter, CS.Constant):
-            parameter = Constant(value=hyperparameter.value)
-        elif isinstance(hyperparameter, CS.CategoricalHyperparameter):
-            parameter = Categorical(
-                hyperparameter.choices,
-                prior=hyperparameter.default_value,
-            )
-        elif isinstance(hyperparameter, CS.OrdinalHyperparameter):
-            parameter = Categorical(
-                hyperparameter.sequence,
-                prior=hyperparameter.default_value,
-            )
-        elif isinstance(hyperparameter, CS.UniformIntegerHyperparameter):
-            parameter = Integer(
-                lower=hyperparameter.lower,
-                upper=hyperparameter.upper,
-                log=hyperparameter.log,
-                prior=hyperparameter.default_value,
-            )
-        elif isinstance(hyperparameter, CS.UniformFloatHyperparameter):
-            parameter = Float(
-                lower=hyperparameter.lower,
-                upper=hyperparameter.upper,
-                log=hyperparameter.log,
-                prior=hyperparameter.default_value,
-            )
-        else:
-            raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
-        space[hyperparameter.name] = parameter
+    for name, hyperparameter in configspace.items():
+        match hyperparameter:
+            case CS.Constant():
+                space[name] = Constant(value=hyperparameter.value)
+            case CS.CategoricalHyperparameter():
+                space[name] = Categorical(hyperparameter.choices)  # type: ignore
+            case CS.OrdinalHyperparameter():
+                raise ValueError(
+                    "NePS does not support ordinals yet, please"
+                    " either convert it to an integer or use a"
+                    " categorical hyperparameter."
+                )
+            case CS.UniformIntegerHyperparameter():
+                space[name] = Integer(
+                    lower=hyperparameter.lower,
+                    upper=hyperparameter.upper,
+                    log=hyperparameter.log,
+                    prior=None,
+                )
+            case CS.UniformFloatHyperparameter():
+                space[name] = Float(
+                    lower=hyperparameter.lower,
+                    upper=hyperparameter.upper,
+                    log=hyperparameter.log,
+                    prior=None,
+                )
+
+            case CS.NormalFloatHyperparameter():
+                warnings.warn(
+                    "NormalFloatHyperparameter is detected as a prior for NePS"
+                    " and will will consider it as a 'medium' prior_confidence."
+                    " If you wish to silence this warning, please manually"
+                    " convert your ConfigurationSpace to a SearchSpace.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                space[name] = Float(
+                    lower=hyperparameter.lower,
+                    upper=hyperparameter.upper,
+                    log=hyperparameter.log,
+                    prior=hyperparameter.mu,
+                )
+            case CS.NormalIntegerHyperparameter():
+                warnings.warn(
+                    "NormalIntegerHyperparameter is detected as a prior for NePS"
+                    " and will will consider it as a 'medium' prior_confidence."
+                    " If you wish to silence this warning, please manually"
+                    " convert your ConfigurationSpace to a SearchSpace.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                space[name] = Integer(
+                    lower=hyperparameter.lower,
+                    upper=hyperparameter.upper,
+                    log=hyperparameter.log,
+                    prior=int(hyperparameter.mu),
+                )
+            case _:
+                raise ValueError(f"Unknown hyperparameter type {hyperparameter}")
+
     return SearchSpace(space)
 
 

@@ -23,7 +23,7 @@ from neps.sampling.distributions import (
     TruncatedNormal,
 )
 from neps.sampling.samplers import Sampler
-from neps.space import Categorical, ConfigEncoder, Domain, Float, Integer, SearchSpace
+from neps.space import Categorical, ConfigEncoder, Domain, Float, Integer
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
@@ -125,8 +125,24 @@ class Prior(Sampler):
         center_values: Mapping[str, Any] | None = None,
         confidence_values: Mapping[str, float] | None = None,
     ) -> CenteredPrior:
-        """Please refer to [`from_space()`][neps.sampling.Prior.from_space]
-        for more details.
+        """Create a prior distribution from dict of parameters.
+
+        Args:
+            parameters: The parameters to createa a prior from. Will look
+                at the `.prior` and `.prior_confidence` of the parameters
+                to create a truncated normal.
+
+                Any parameters that do not have a `.prior` will be covered by
+                a uniform distribution.
+            center_values: Any values that should be used instead of the
+                parameter's `.prior`.
+            confidence_values: Any additional values that should be
+                used for determining the strength of the prior. Values should
+                be between 0 and 1. Overwrites whatever is set by default in
+                the `.prior-confidence`.
+
+        Returns:
+            The prior distribution
         """
         _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
 
@@ -134,6 +150,7 @@ class Prior(Sampler):
         confidence_values = confidence_values or {}
         domains: list[Domain] = []
         centers: list[tuple[Any, float] | None] = []
+
         for name, hp in parameters.items():
             domains.append(hp.domain)
 
@@ -157,6 +174,10 @@ class Prior(Sampler):
         device: torch.device | None = None,
     ) -> CenteredPrior:
         """Create a prior for a given list of domains.
+
+        This is a lower level version of
+        [`from_parameters()`][neps.sampling.Prior.from_parameters] which
+        requires a full specification of the domains and the centers.
 
         Will use a `TruncatedNormal` distribution for all parameters,
         except those who have a domain marked with `is_categorical=True`,
@@ -273,76 +294,6 @@ class Prior(Sampler):
 
         return CenteredPrior(distributions=distributions)
 
-    @classmethod
-    def from_space(
-        cls,
-        space: SearchSpace,
-        *,
-        center_values: Mapping[str, Any] | None = None,
-        confidence_values: Mapping[str, float] | None = None,
-        include_fidelity: bool = False,
-    ) -> CenteredPrior:
-        """Create a prior distribution from a search space.
-
-        Takes care to insert things in the correct order.
-
-        Args:
-            space: The search space to createa a prior from. Will look
-                at the `.default` and `.prior_confidence` of the parameters
-                to create a truncated normal.
-                Any parameters that do not have a `.default` will be covered by
-                a uniform distribution.
-            center_values: Any additional values that should be used
-                for centering the prior. Overwrites whatever is set by default
-                in the `space`
-            confidence_values: Any additional values that should be
-                used for determining the strength of the prior. Values should
-                be between 0 and 1. Overwrites whatever is set by default in
-                the `space`.
-            include_fidelity: Whether to include computing the prior over the
-                fidelity of te search space.
-
-        Returns:
-            The prior distribution
-        """
-        params = {**space.numerical, **space.categoricals}
-        if include_fidelity:
-            params.update(space.fidelities)
-
-        return Prior.from_parameters(
-            params,
-            center_values=center_values,
-            confidence_values=confidence_values,
-        )
-
-    @classmethod
-    def from_config(
-        cls,
-        config: dict[str, Any],
-        *,
-        space: SearchSpace,
-        confidence_values: Mapping[str, float] | None = None,
-        include_fidelity: bool = False,
-    ) -> Prior:
-        """Create a prior from a configuration.
-
-        Args:
-            config: The configuration to create a prior from.
-            space: The search space to create the prior from.
-            confidence_values: Any confidence values to override by what's set in the
-                `space`.
-            include_fidelity: Whether to include the fidelity of the search space.
-
-        Returns:
-            The prior distribution
-        """
-        return Prior.from_space(
-            space,
-            center_values=config,
-            confidence_values=confidence_values,
-            include_fidelity=include_fidelity,
-        )
-
 
 @dataclass
 class CenteredPrior(Prior):
@@ -355,11 +306,8 @@ class CenteredPrior(Prior):
     not have a center and confidence level, i.e. no prior information.
 
     You can create this class more easily using
-    [`Prior.from_space()`][neps.sampling.Prior.from_space] to use the prior config
-    of the search space.
-
-    If you need to create a prior around a specific configuration, you can also
-    use the [`Prior.from_config()`][neps.sampling.Prior.from_config] method.
+    [`Prior.from_parameters()`][neps.sampling.Prior.from_parameters] to use
+    the `.prior` values of the parameters in a search space.
     """
 
     distributions: list[TorchDistributionWithDomain]
@@ -367,7 +315,8 @@ class CenteredPrior(Prior):
 
     _distribution_domains: list[Domain] = field(init=False)
 
-    # OPTIM: These are used for an optimization in `log_pdf`
+    # OPTIM: These are used for an optimization in `log_pdf` where we do not need to
+    # calculate the log_pdf of elements that have a uniform prior.
     _meaningful_ixs: list[int] = field(init=False)
     _meaningful_doms: list[Domain] = field(init=False)
     _meaningful_dists: list[Distribution] = field(init=False)
@@ -433,6 +382,7 @@ class CenteredPrior(Prior):
                 raise TypeError(f"Unexpected type {type(frm)=}")
 
         # Cast all values from the value domains to the domain of the sampler.
+
         translated_x = Domain.translate(
             x[..., self._meaningful_ixs],
             frm=frm,

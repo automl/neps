@@ -38,8 +38,12 @@ def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
             perf = np.nan  # Pending
         elif trial.report.objective_to_minimize is None:
             perf = np.inf  # Error? Either way, we wont promote it
-        else:
+        elif isinstance(trial.report.objective_to_minimize, float):
             perf = trial.report.objective_to_minimize
+        elif isinstance(trial.report.objective_to_minimize, float):
+            raise NotImplementedError("Multiobjective support not implemented yet.")
+        else:
+            raise ValueError("Unknown type of objective_to_minimize")
 
         id_index[i] = _id
         rungs_index[i] = _rung
@@ -59,7 +63,7 @@ class BracketOptimizer:
     `"successive_halving"`, `"asha"`, `"hyperband"`, etc.
     """
 
-    pipeline_space: SearchSpace
+    space: SearchSpace
     """The pipeline space to optimize over."""
 
     encoder: ConfigEncoder
@@ -100,36 +104,51 @@ class BracketOptimizer:
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
-        space = self.pipeline_space
+        space = self.space
+        parameters = space.searchables
 
         # If we have no trials, we either go with the prior or just a sampled config
         if len(trials) == 0:
             match self.sample_prior_first:
-                case "highest_fidelity":
-                    config = {**space.prior, self.fid_name: self.fid_max}
+                case "highest_fidelity":  # fid_max
+                    config = {
+                        name: p.prior if p.prior is not None else p.center
+                        for name, p in parameters.items()
+                    }
+                    config.update(space.constants)
+                    config[self.fid_name] = self.fid_max
                     rung = max(self.rung_to_fid)
-                    return SampledConfig(id=f"0_{rung}", config=config)
-                case True:
-                    config = {**space.prior, self.fid_name: self.fid_min}
+                    return SampledConfig(id=f"1_{rung}", config=config)
+                case True:  # fid_min
+                    config = {
+                        name: p.prior if p.prior is not None else p.center
+                        for name, p in parameters.items()
+                    }
+                    config.update(space.constants)
+                    config[self.fid_name] = self.fid_min
                     rung = min(self.rung_to_fid)
-                    return SampledConfig(id=f"0_{rung}", config=config)
+                    return SampledConfig(id=f"1_{rung}", config=config)
                 case False:
                     pass
 
-        # We have to special case this as we don't want it ending up in a bracket
-        if self.sample_prior_first == "highest_fidelity":
-            table = trials_to_table(trials=trials)[1:]
-            assert isinstance(table, pd.DataFrame)
-        else:
-            table = trials_to_table(trials=trials)
+        table = trials_to_table(trials=trials)
 
-        if len(table) == 0:
-            nxt_id = 0
+        if len(table) == 0:  # noqa: SIM108
+            # Nothing there, this sample will be the first
+            nxt_id = 1
         else:
-            nxt_id = int(table.index.get_level_values("id").max()) + 1  # type: ignore
+            # One plus the maximum current id in the table index
+            nxt_id = table.index.get_level_values("id").max() + 1  # type: ignore
+
+        # We don't want the first highest fidelity sample ending
+        # up in a bracket
+        if self.sample_prior_first == "highest_fidelity":
+            table = table.iloc[1:]
 
         # Get and execute the next action from our brackets that are not pending or done
+        assert isinstance(table, pd.DataFrame)
         brackets = self.create_brackets(table)
+
         if not isinstance(brackets, Sequence):
             brackets = [brackets]
 
@@ -144,13 +163,21 @@ class BracketOptimizer:
 
         if next_action is None:
             raise RuntimeError(
-                f"{self.__class__.__name__} never got a 'sample' or 'pending' action!"
+                f"{self.__class__.__name__} never got a 'sample' or 'promote' action!"
+                f" This likely means the implementation of {self.create_brackets}"
+                " is incorrect and should have provded enough brackets, where at"
+                " least one of them should have requested another sample."
+                f"\nBrackets:\n{brackets}"
             )
 
         match next_action:
             # The bracket would like us to promote a configuration
             case PromoteAction(config=config, id=config_id, new_rung=new_rung):
-                config = {**config, self.fid_name: self.rung_to_fid[new_rung]}
+                config = {
+                    **config,
+                    **space.constants,
+                    self.fid_name: self.rung_to_fid[new_rung],
+                }
                 return SampledConfig(
                     id=f"{config_id}_{new_rung}",
                     config=config,
@@ -162,12 +189,17 @@ class BracketOptimizer:
                 match self.sampler:
                     case Sampler():
                         config = self.sampler.sample_config(to=self.encoder)
-                        config = {**config, self.fid_name: self.rung_to_fid[rung]}
+                        config = {
+                            **config,
+                            **space.constants,
+                            self.fid_name: self.rung_to_fid[rung],
+                        }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+
                     case PriorBandArgs():
                         config = sample_with_priorband(
                             table=table,
-                            space=space,
+                            parameters=space.searchables,
                             rung_to_sample_for=rung,
                             fid_bounds=(self.fid_min, self.fid_max),
                             encoder=self.encoder,
@@ -176,7 +208,12 @@ class BracketOptimizer:
                             eta=self.eta,
                             seed=None,  # TODO
                         )
-                        config = {**config, self.fid_name: self.rung_to_fid[rung]}
+
+                        config = {
+                            **config,
+                            **space.constants,
+                            self.fid_name: self.rung_to_fid[rung],
+                        }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
                     case _:
                         raise RuntimeError(f"Unknown sampler: {self.sampler}")

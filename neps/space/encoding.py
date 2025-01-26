@@ -1,25 +1,21 @@
 """Encoding of hyperparameter configurations into tensors.
 
 For the most part, you can just use
-[`ConfigEncoder.from_space()`][neps.space.encoding.ConfigEncoder.from_space]
-to create an encoder over a list of hyperparameters, along with any constants you
-want to include when decoding configurations.
+[`ConfigEncoder.from_parameters()`][neps.space.encoding.ConfigEncoder.from_parameters]
+to create an encoder over a list of hyperparameters.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 from typing_extensions import Protocol, override
 
 import torch
 
 from neps.space.domain import Domain
-from neps.space.parameters import Categorical, Float, Integer
-
-if TYPE_CHECKING:
-    from neps.space.search_space import SearchSpace
+from neps.space.parameters import Categorical, Float, Integer, Parameter
 
 V = TypeVar("V", int, float)
 
@@ -216,7 +212,7 @@ class ConfigEncoder:
     tensors.
 
     The primary methods/properties to be aware of are:
-    * [`from_space()`][neps.space.encoding.ConfigEncoder.from_space]: Create a
+    * [`from_parameters()`][neps.space.encoding.ConfigEncoder.from_parameters]: Create a
         default encoder over a list of hyperparameters. Please see the method docs for
         more details on how it encodes different types of hyperparameters.
     * [`encode()`]]neps.space.encoding.ConfigEncoder.encode]: Encode a list of
@@ -239,6 +235,7 @@ class ConfigEncoder:
     transformers: dict[str, TensorTransformer]
     constants: Mapping[str, Any] = field(default_factory=dict)
 
+    # These are all just computed properties for easier logic
     index_of: dict[str, int] = field(init=False)
     domain_of: dict[str, Domain] = field(init=False)
     n_numerical: int = field(init=False)
@@ -280,34 +277,6 @@ class ConfigEncoder:
             slice(n_numerical, n_numerical + n_categorical) if n_categorical > 0 else None
         )
 
-    def select_categorical(self, x: torch.Tensor) -> torch.Tensor | None:
-        """Select the categorical columns from a tensor.
-
-        Args:
-            x: A tensor of shape `(N, ncols)`.
-
-        Returns:
-            A tensor of shape `(N, n_categorical)`.
-        """
-        if self.categorical_slice is None:
-            return None
-
-        return x[:, self.categorical_slice]
-
-    def select_numerical(self, x: torch.Tensor) -> torch.Tensor | None:
-        """Select the numerical columns from a tensor.
-
-        Args:
-            x: A tensor of shape `(N, ncols)`.
-
-        Returns:
-            A tensor of shape `(N, n_numerical)`.
-        """
-        if self.numerical_slice is None:
-            return None
-
-        return x[:, self.numerical_slice]
-
     def pdist(
         self,
         x: torch.Tensor,
@@ -336,26 +305,23 @@ class ConfigEncoder:
         Returns:
             The distances, shaped according to `square_form`.
         """
-        categoricals = self.select_categorical(x)
-        numericals = self.select_numerical(x)
-
         dists: torch.Tensor | None = None
-        if numericals is not None:
+        if self.numerical_slice is not None:
             # Ensure they are all within the unit cube
             numericals = Domain.translate(
-                numericals,
+                x[..., self.numerical_slice],
                 frm=self.numerical_domains,
                 to=Domain.unit_float(),
             )
 
             dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
 
-        if categoricals is not None:
-            cat_dists = torch.nn.functional.pdist(categoricals, p=categorical_ord)
-            if dists is None:
-                dists = cat_dists
-            else:
-                dists += cat_dists
+        if self.categorical_slice is not None:
+            cat_dists = torch.nn.functional.pdist(
+                x[..., self.categorical_slice],
+                p=categorical_ord,
+            )
+            dists = cat_dists if dists is None else (dists + cat_dists)
 
         if dists is None:
             raise ValueError("No columns to compute distances on.")
@@ -459,43 +425,30 @@ class ConfigEncoder:
         ]
 
     @classmethod
-    def from_space(
+    def from_parameters(
         cls,
-        space: SearchSpace,
+        parameters: Mapping[str, Parameter],
         *,
-        include_fidelity: bool = False,
-        custom_transformers: dict[str, TensorTransformer] | None = None,
+        custom_transformers: Mapping[str, TensorTransformer] | None = None,
     ) -> ConfigEncoder:
         """Create a default encoder over a list of hyperparameters.
 
         This method creates a default encoder over a list of hyperparameters. It
         automatically creates transformers for each hyperparameter based on its type.
+
         The transformers are as follows:
 
         * `Float` and `Integer` are normalized to the unit interval.
         * `Categorical` is transformed into an integer.
 
         Args:
-            space: The search space to build an encoder for
-            include_fidelity: Whether to include fidelities in the encoding
+            parameters: The parameters to build an encoder for
             custom_transformers: A mapping of hyperparameter names
                 to custom transformers to use
 
         Returns:
             A `ConfigEncoder` instance
         """
-        # Sanity check we do not apply custom transformers to constants
-        if len(space.constants) and custom_transformers is not None:
-            overlap = set(custom_transformers) & set(space.constants)
-            if any(overlap):
-                raise ValueError(
-                    f"Can not apply `custom_transformers= to `constants=`: {overlap=}"
-                )
-
-        parameters = {**space.numerical, **space.categoricals}
-        if include_fidelity:
-            parameters.update(space.fidelities)
-
         custom = custom_transformers or {}
         transformers: dict[str, TensorTransformer] = {}
         for name, hp in parameters.items():
@@ -509,9 +462,6 @@ class ConfigEncoder:
                 case Categorical():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:
-                    raise ValueError(
-                        f"Unsupported parameter type: {type(hp)}. If hp is a constant, "
-                        " please provide it as `constants=`."
-                    )
+                    raise ValueError(f"Unsupported parameter type: {type(hp)}.")
 
-        return cls(transformers, constants=space.constants)
+        return cls(transformers)

@@ -81,11 +81,11 @@ def _bo(
             f" Got: {pipeline_space.fidelities}"
         )
 
+    parameters = pipeline_space.searchables
+
     match initial_design_size:
         case "ndim":
-            n_initial_design_size = len(pipeline_space.numerical) + len(
-                pipeline_space.categoricals
-            )
+            n_initial_design_size = len(parameters)
         case int():
             if initial_design_size < 1:
                 raise ValueError("initial_design_size should be greater than 0")
@@ -107,11 +107,11 @@ def _bo(
             raise ValueError("device should be a string, torch.device or None")
 
     return BayesianOptimization(
-        pipeline_space=pipeline_space,
-        encoder=ConfigEncoder.from_space(space=pipeline_space),
+        space=pipeline_space,
+        encoder=ConfigEncoder.from_parameters(parameters),
         n_initial_design=n_initial_design_size,
         cost_aware=cost_aware,
-        prior=Prior.from_space(pipeline_space) if use_priors is True else None,
+        prior=Prior.from_parameters(parameters) if use_priors is True else None,
         sample_prior_first=sample_prior_first,
         device=device,
     )
@@ -165,6 +165,7 @@ def _bracket_optimizer(  # noqa: C901
     """
     assert pipeline_space.fidelity is not None
     fidelity_name, fidelity = pipeline_space.fidelity
+    parameters = pipeline_space.searchables
 
     if len(pipeline_space.fidelities) != 1:
         raise ValueError(
@@ -190,7 +191,8 @@ def _bracket_optimizer(  # noqa: C901
                 early_stopping_rate=early_stopping_rate,
             )
             create_brackets = partial(
-                brackets.Sync.create_repeating, rung_sizes=rung_sizes
+                brackets.Sync.create_repeating,
+                rung_sizes=rung_sizes,
             )
         case "hyperband":
             assert early_stopping_rate is None
@@ -210,7 +212,9 @@ def _bracket_optimizer(  # noqa: C901
                 early_stopping_rate=early_stopping_rate,
             )
             create_brackets = partial(
-                brackets.Async.create, rungs=list(rung_to_fidelity), eta=eta
+                brackets.Async.create,
+                rungs=list(rung_to_fidelity),
+                eta=eta,
             )
         case "async_hb":
             assert early_stopping_rate is None
@@ -228,14 +232,14 @@ def _bracket_optimizer(  # noqa: C901
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
 
-    encoder = ConfigEncoder.from_space(pipeline_space, include_fidelity=False)
+    encoder = ConfigEncoder.from_parameters(parameters)
 
     _sampler: Sampler | PriorBandArgs
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
         case "prior":
-            _sampler = Prior.from_config(pipeline_space.prior, space=pipeline_space)
+            _sampler = Prior.from_parameters(parameters)
         case "priorband":
             _sampler = PriorBandArgs(mutation_rate=0.5, mutation_std=0.25)
         case PriorBandArgs() | Sampler():
@@ -244,7 +248,7 @@ def _bracket_optimizer(  # noqa: C901
             raise ValueError(f"Unknown sampler: {sampler}")
 
     return BracketOptimizer(
-        pipeline_space=pipeline_space,
+        space=pipeline_space,
         encoder=encoder,
         eta=eta,
         rung_to_fid=rung_to_fidelity,
@@ -258,10 +262,22 @@ def _bracket_optimizer(  # noqa: C901
 
 
 def determine_optimizer_automatically(space: SearchSpace) -> str:
-    if len(space.prior) > 0:
-        return "priorband" if len(space.fidelities) > 0 else "pibo"
+    has_prior = any(
+        parameter.prior is not None for parameter in space.searchables.values()
+    )
+    has_fidelity = len(space.fidelities) > 0
 
-    return "hyperband" if len(space.fidelities) > 0 else "bayesian_optimization"
+    match (has_prior, has_fidelity):
+        case (False, False):
+            return "bayesian_optimization"
+        case (False, True):
+            return "hyperband"
+        case (True, False):
+            return "pibo"
+        case (True, True):
+            return "priorband"
+
+    raise ValueError("Could not determine optimizer automatically.")
 
 
 def random_search(
@@ -281,21 +297,19 @@ def random_search(
         ignore_fidelity: Whether to ignore fidelity when sampling.
             In this case, the max fidelity is always used.
     """
-    encoder = ConfigEncoder.from_space(
-        pipeline_space, include_fidelity=not ignore_fidelity
-    )
-
-    sampler: Sampler
-    if use_priors:
-        sampler = Prior.from_space(pipeline_space, include_fidelity=not ignore_fidelity)
+    if ignore_fidelity:
+        parameters = pipeline_space.searchables
     else:
-        sampler = Uniform(ndim=encoder.ndim)
+        parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
 
     return RandomSearch(
-        pipeline_space=pipeline_space,
-        encoder=encoder,
-        sampler=sampler,
-        ignore_fidelity=ignore_fidelity,
+        space=pipeline_space,
+        encoder=ConfigEncoder.from_parameters(parameters),
+        sampler=(
+            Prior.from_parameters(parameters)
+            if use_priors
+            else Uniform(ndim=len(parameters))
+        ),
     )
 
 
@@ -308,10 +322,7 @@ def grid_search(pipeline_space: SearchSpace) -> GridSearch:
     """
     from neps.optimizers.utils.grid import make_grid
 
-    return GridSearch(
-        pipeline_space=pipeline_space,
-        configs_list=make_grid(pipeline_space),
-    )
+    return GridSearch(configs_list=make_grid(pipeline_space))
 
 
 def ifbo(
@@ -372,10 +383,11 @@ def ifbo(
     space, fid_bins = _adjust_space_to_match_stepsize(pipeline_space, step_size)
     assert space.fidelity is not None
     fidelity_name, fidelity = space.fidelity
+    parameters = space.searchables
 
     match initial_design_size:
         case "ndim":
-            _initial_design_size = len(space.numerical) + len(space.categoricals)
+            _initial_design_size = len(parameters)
         case _:
             _initial_design_size = initial_design_size
 
@@ -390,21 +402,19 @@ def ifbo(
             raise ValueError("device should be a string, torch.device or None")
 
     return IFBO(
-        pipeline_space=pipeline_space,
+        space=pipeline_space,
         n_fidelity_bins=fid_bins,
         device=device,
         sample_prior_first=sample_prior_first,
         n_initial_design=_initial_design_size,
-        fid_domain=fidelity.domain,
-        fidelity_name=fidelity_name,
-        prior=(Prior.from_space(space, include_fidelity=False) if use_priors else None),
+        prior=Prior.from_parameters(parameters) if use_priors else None,
         ftpfn=FTPFNSurrogate(
             target_path=Path(surrogate_path) if surrogate_path is not None else None,
             version=surrogate_version,
             device=device,
         ),
-        encoder=ConfigEncoder.from_space(
-            space=space,
+        encoder=ConfigEncoder.from_parameters(
+            parameters,
             # FTPFN doesn't support categoricals and we were recomended
             # to just evenly distribute in the unit norm
             custom_transformers={

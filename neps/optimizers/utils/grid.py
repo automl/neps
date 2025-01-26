@@ -31,7 +31,7 @@ def make_grid(
         A list of configurations from the search space.
     """
     param_ranges: dict[str, list[Any]] = {}
-    for name, hp in space.parameters.items():
+    for name, hp in space.items():
         match hp:
             case Categorical():
                 param_ranges[name] = list(hp.choices)
@@ -55,6 +55,6 @@ def make_grid(
                 raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
 
     values = product(*param_ranges.values())
-    keys = list(space.parameters.keys())
+    keys = list(space.keys())
 
     return [dict(zip(keys, p, strict=False)) for p in values]
