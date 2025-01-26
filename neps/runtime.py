@@ -464,30 +464,29 @@ class DefaultWorker(Generic[Loc]):
                     return this_workers_trial
                 except TrialAlreadyExistsError as e:
                     if e.trial_id in trials:
-                        logger.error(
-                            "The new sampled trial was given an id of '%s', yet this"
-                            " exists in the loaded in trials given to the optimizer. This"
-                            " indicates a bug with the optimizers allocation of ids.",
-                            e.trial_id,
-                        )
-                    else:
-                        _grace = DefaultWorker._GRACE
-                        _inc = FS_SYNC_GRACE_INC
-                        logger.warning(
-                            "The new sampled trial was given an id of '%s', which is not"
-                            " one that was loaded in by the optimizer. This is usually"
-                            " an indication that the file-system you are running on"
-                            " is not atmoic in synchoronizing file operations."
-                            " We have attempted to stabalize this but milage may vary."
-                            " We are incrementing a grace period for file-locks from"
-                            " '%s's to '%s's. You can control the initial"
-                            " grace with 'NEPS_FS_SYNC_GRACE_BASE' and the increment with"
-                            " 'NEPS_FS_SYNC_GRACE_INC'.",
-                            e.trial_id,
-                            _grace,
-                            _grace + _inc,
-                        )
-                        DefaultWorker._GRACE = _grace + FS_SYNC_GRACE_INC
+                        raise RuntimeError(
+                            f"The new sampled trial was given an id of {e.trial_id}, yet"
+                            " this exists in the loaded in trials given to the optimizer."
+                            " This is a bug with the optimizers allocation of ids."
+                        ) from e
+
+                    _grace = DefaultWorker._GRACE
+                    _inc = FS_SYNC_GRACE_INC
+                    logger.warning(
+                        "The new sampled trial was given an id of '%s', which is not"
+                        " one that was loaded in by the optimizer. This is usually"
+                        " an indication that the file-system you are running on"
+                        " is not atmoic in synchoronizing file operations."
+                        " We have attempted to stabalize this but milage may vary."
+                        " We are incrementing a grace period for file-locks from"
+                        " '%s's to '%s's. You can control the initial"
+                        " grace with 'NEPS_FS_SYNC_GRACE_BASE' and the increment with"
+                        " 'NEPS_FS_SYNC_GRACE_INC'.",
+                        e.trial_id,
+                        _grace,
+                        _grace + _inc,
+                    )
+                    DefaultWorker._GRACE = _grace + FS_SYNC_GRACE_INC
                     raise e
 
     # Forgive me lord, for I have sinned, this function is atrocious but complicated

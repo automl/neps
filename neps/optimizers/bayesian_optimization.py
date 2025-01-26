@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -89,7 +90,7 @@ class BayesianOptimization:
 
         n_to_sample = 1 if n is None else n
         n_sampled = len(trials)
-        config_ids = iter(str(i + 1) for i in range(n_sampled, n_sampled + n_to_sample))
+        id_generator = iter(str(i) for i in itertools.count(n_sampled + 1))
 
         # If the amount of configs evaluated is less than the initial design
         # requirement, keep drawing from initial design
@@ -98,23 +99,39 @@ class BayesianOptimization:
             for trial in trials.values()
             if trial.report is not None and trial.report.objective_to_minimize is not None
         )
+        sampled_configs: list[SampledConfig] = []
+
         if n_evaluated < self.n_initial_design:
+            # For reproducibility, we need to ensure we do the same sample of all
+            # configs each time.
             design_samples = make_initial_design(
                 parameters=parameters,
                 encoder=self.encoder,
                 sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding, however we need to avoid repeating configs
-                sample_size=n_to_sample,
+                sample_size=self.n_initial_design,
             )
+
+            # Then take the subset we actually need
+            design_samples = design_samples[n_evaluated:]
             for sample in design_samples:
                 sample.update(self.space.constants)
 
-            sampled_configs = [
-                SampledConfig(id=config_id, config=config)
-                for config_id, config in zip(config_ids, design_samples, strict=True)
-            ]
-            return sampled_configs[0] if n is None else sampled_configs
+            sampled_configs.extend(
+                [
+                    SampledConfig(id=config_id, config=config)
+                    for config_id, config in zip(
+                        id_generator,
+                        design_samples,
+                        # NOTE: We use a generator for the ids so no need for strict
+                        strict=False,
+                    )
+                ]
+            )
+
+            if len(sampled_configs) >= n_to_sample:
+                return sampled_configs[0] if n is None else sampled_configs
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -149,6 +166,7 @@ class BayesianOptimization:
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+        n_to_acquire = n_to_sample - len(sampled_configs)
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
@@ -164,7 +182,7 @@ class BayesianOptimization:
                 prune_baseline=True,
             ),
             prior=prior,
-            n_candidates_required=n_to_sample,
+            n_candidates_required=n_to_acquire,
             pibo_exp_term=pibo_exp_term,
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
@@ -175,8 +193,15 @@ class BayesianOptimization:
         for config in configs:
             config.update(self.space.constants)
 
-        sampled_configs = [
-            SampledConfig(id=config_id, config=config)
-            for config_id, config in zip(config_ids, configs, strict=True)
-        ]
+        sampled_configs.extend(
+            [
+                SampledConfig(id=config_id, config=config)
+                for config_id, config in zip(
+                    id_generator,
+                    configs,
+                    # NOTE: We use a generator for the ids so no need for strict
+                    strict=False,
+                )
+            ]
+        )
         return sampled_configs[0] if n is None else sampled_configs
