@@ -8,16 +8,12 @@ from typing import TYPE_CHECKING, Any
 from neps.optimizers.optimizer import SampledConfig
 
 if TYPE_CHECKING:
-    from neps.space import SearchSpace
     from neps.state import BudgetInfo, Trial
 
 
 @dataclass
 class GridSearch:
     """Evaluates a fixed list of configurations in order."""
-
-    pipeline_space: SearchSpace
-    """The search space from which the configurations are derived."""
 
     configs_list: list[dict[str, Any]]
     """The list of configurations to evaluate."""

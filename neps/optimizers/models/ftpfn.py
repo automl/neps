@@ -10,7 +10,7 @@ from ifbo import FTPFN
 from neps.sampling import Prior, Sampler
 
 if TYPE_CHECKING:
-    from neps.space import ConfigEncoder, Domain, SearchSpace
+    from neps.space import ConfigEncoder, Domain, Float, Integer
     from neps.state.trial import Trial
 
 
@@ -106,7 +106,7 @@ FTPFN_DTYPE = torch.float32
 
 def encode_ftpfn(
     trials: Mapping[str, Trial],
-    space: SearchSpace,
+    fid: tuple[str, Integer | Float],
     budget_domain: Domain,
     encoder: ConfigEncoder,
     *,
@@ -142,8 +142,7 @@ def encode_ftpfn(
     # Select all trials which have something we can actually use for modelling
     # The absence of a report signifies pending
     selected = dict(trials.items())
-    assert space.fidelity is not None
-    fidelity_name, fidelity = space.fidelity
+    fidelity_name, fidelity = fid
 
     assert 0 <= error_value <= 1
     train_configs = encoder.encode(

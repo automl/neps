@@ -16,8 +16,7 @@ if TYPE_CHECKING:
 class RandomSearch:
     """A simple random search optimizer."""
 
-    pipeline_space: SearchSpace
-    ignore_fidelity: bool
+    space: SearchSpace
     encoder: ConfigEncoder
     sampler: Sampler
 
@@ -30,7 +29,11 @@ class RandomSearch:
         n_trials = len(trials)
         _n = 1 if n is None else n
         configs = self.sampler.sample(_n, to=self.encoder.domains)
+
         config_dicts = self.encoder.decode(configs)
+        for config in config_dicts:
+            config.update(self.space.constants)
+
         if n == 1:
             config = config_dicts[0]
             config_id = str(n_trials + 1)

@@ -89,7 +89,7 @@ def _adjust_space_to_match_stepsize(
             )
         case _:
             raise ValueError(f"Unsupported fidelity type: {type(fidelity)}")
-    new_space = SearchSpace({**space.parameters, fidelity_name: new_fid})
+    new_space = SearchSpace({**space, fidelity_name: new_fid})
     return new_space, n
 
 
@@ -101,8 +101,8 @@ class IFBO:
     * Github: https://github.com/automl/ifBO/tree/main
     """
 
-    pipeline_space: SearchSpace
-    """The search space for the pipeline."""
+    space: SearchSpace
+    """The entire search space for the pipeline."""
 
     encoder: ConfigEncoder
     """The encoder to use for the pipeline space."""
@@ -122,12 +122,6 @@ class IFBO:
     ftpfn: FTPFNSurrogate
     """The FTPFN surrogate to use."""
 
-    fid_domain: Domain
-    """The domain of the fidelity parameter."""
-
-    fidelity_name: str
-    """The name of the fidelity parameter."""
-
     n_fidelity_bins: int
     """The number of bins to divide the fidelity domain into.
 
@@ -140,19 +134,20 @@ class IFBO:
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
+        assert self.space.fidelity is not None
+        fidelity_name, fidelity = self.space.fidelity
+        parameters = self.space.searchables
+
         assert n is None, "TODO"
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
         new_id = max(ids) + 1 if len(ids) > 0 else 0
-
-        min_fid = self.fid_domain.lower
-        max_fid = self.fid_domain.upper
 
         # The FTPFN surrogate takes in a budget in the range [0, 1]
         # We also need to be able to map these to discrete integers
         # Hence we use the two domains below to do so.
 
         # Domain in which we should pass budgets to ifbo model
-        budget_domain = Domain.floating(lower=1 / max_fid, upper=1)
+        budget_domain = Domain.floating(lower=1 / fidelity.upper, upper=1)
 
         # Domain from which we assign an index to each budget
         budget_index_domain = Domain.indices(self.n_fidelity_bins)
@@ -160,21 +155,22 @@ class IFBO:
         # If we havn't passed the intial design phase
         if new_id < self.n_initial_design:
             init_design = make_initial_design(
-                space=self.pipeline_space,
+                parameters=parameters,
                 encoder=self.encoder,
                 sample_prior_first=self.sample_prior_first,
                 sampler="sobol" if self.prior is None else self.prior,
                 seed=None,  # TODO:
-                sample_fidelity="min",
                 sample_size=self.n_initial_design,
             )
+
             config = init_design[new_id]
-            config[self.fidelity_name] = min_fid
+            config[fidelity_name] = fidelity.lower
+            config.update(self.space.constants)
             return SampledConfig(id=f"{new_id}_0", config=config)
 
         X, y = encode_ftpfn(
             trials=trials,
-            space=self.pipeline_space,
+            fid=self.space.fidelity,
             encoder=self.encoder,
             budget_domain=budget_domain,
             device=self.device,
@@ -246,19 +242,21 @@ class IFBO:
             best_row,
             self.encoder,
             budget_domain=budget_domain,
-            fidelity_domain=self.fid_domain,
+            fidelity_domain=fidelity.domain,
         )[0]
 
         if _id is None:
-            config[self.fidelity_name] = fid
+            config[fidelity_name] = fid
+            config.update(self.space.constants)
             return SampledConfig(id=f"{new_id}_0", config=config)
 
         # Convert fidelity to budget index, bump by 1 and convert back
-        budget_ix = budget_index_domain.cast_one(fid, frm=self.fid_domain)
+        budget_ix = budget_index_domain.cast_one(fid, frm=fidelity.domain)
         next_ix = budget_ix + 1
-        next_fid = self.fid_domain.cast_one(next_ix, frm=budget_index_domain)
+        next_fid = fidelity.domain.cast_one(next_ix, frm=budget_index_domain)
 
-        config[self.fidelity_name] = next_fid
+        config[fidelity_name] = next_fid
+        config.update(self.space.constants)
         return SampledConfig(
             id=f"{_id}_{next_ix}",
             config=config,

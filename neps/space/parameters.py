@@ -36,6 +36,9 @@ class Float:
     upper: float
     """The upper bound of the numerical hyperparameter."""
 
+    center: float = field(init=False)
+    """The center value of the numerical hyperparameter."""
+
     log: bool = False
     """Whether the hyperparameter is in log space."""
 
@@ -48,7 +51,7 @@ class Float:
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
 
-    domain: Domain[float] = field(init=False)
+    domain: Domain[float] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.lower >= self.upper:
@@ -79,6 +82,7 @@ class Float:
             raise ValueError("Can not have upper bound that is nan")
 
         self.domain = Domain.floating(self.lower, self.upper, log=self.log)
+        self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
 @dataclass
@@ -106,6 +110,9 @@ class Integer:
     upper: int
     """The upper bound of the numerical hyperparameter."""
 
+    center: int = field(init=False)
+    """The center value of the numerical hyperparameter."""
+
     log: bool = False
     """Whether the hyperparameter is in log space."""
 
@@ -117,6 +124,8 @@ class Integer:
 
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
+
+    domain: Domain[int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.lower >= self.upper:
@@ -153,6 +162,7 @@ class Integer:
             )
 
         self.domain = Domain.integer(self.lower, self.upper, log=self.log)
+        self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
 @dataclass
@@ -180,8 +190,17 @@ class Categorical:
     prior: float | int | str | None = None
     """The default value for the categorical hyperparameter."""
 
+    center: float | int | str = field(init=False)
+    """The center value of the categorical hyperparameter.
+
+    As there is no natural center for a categorical parameter, this is the
+    first value in the choices list.
+    """
+
     prior_confidence: Literal["low", "medium", "high"] = "low"
     """Confidence score for the prior value when considering prior based optimization."""
+
+    domain: Domain[int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.choices = list(self.choices)
@@ -205,6 +224,7 @@ class Categorical:
             )
 
         self.domain = Domain.indices(len(self.choices))
+        self.center = self.choices[0]
 
 
 @dataclass
@@ -227,11 +247,12 @@ class Constant:
     value: Any
 
 
-Parameter: TypeAlias = Float | Integer | Categorical | Constant
+Parameter: TypeAlias = Float | Integer | Categorical
 """A type alias for all the parameter types.
 
 * [`Float`][neps.space.Float]
 * [`Integer`][neps.space.Integer]
 * [`Categorical`][neps.space.Categorical]
-* [`Constant`][neps.space.Constant]
+
+A [`Constant`][neps.space.Constant] is not included as it does not change value.
 """

@@ -409,7 +409,7 @@ class Domain(Generic[V]):
 
         return out
 
-    def cast_one(self, x: float | int, frm: Domain) -> float | int:
+    def cast_one(self, x: float | int, frm: Domain) -> V:
         """Cast a single value from the domain `frm` to this domain.
 
         Args:
@@ -419,7 +419,7 @@ class Domain(Generic[V]):
         Returns:
             Value cast to this domain.
         """
-        return self.cast(torch.tensor(x), frm=frm).item()
+        return self.cast(torch.tensor(x), frm=frm).item()  # type: ignore
 
     def to_unit_one(self, x: float | int) -> float:
         """Transform a single value from this domain to the unit interval [0, 1].

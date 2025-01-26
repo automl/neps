@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -10,10 +11,12 @@ import torch
 
 from neps.optimizers.utils import brackets
 from neps.sampling import Prior, Sampler
-from neps.space import ConfigEncoder, SearchSpace
+from neps.space import ConfigEncoder
 
 if TYPE_CHECKING:
     import pandas as pd
+
+    from neps.space.parameters import Parameter
 
 
 @dataclass
@@ -35,35 +38,30 @@ class PriorBandArgs:
 
 def mutate_config(
     config: dict[str, Any],
-    space: SearchSpace,
+    parameters: Mapping[str, Parameter],
     *,
     mutation_rate: float = 0.5,
     std: float = 0.25,
-    include_fidelity: bool = False,
     seed: torch.Generator | None = None,
 ) -> dict[str, Any]:
     if seed is not None:
         raise NotImplementedError("Seed is not implemented yet.")
 
-    parameters = {**space.numerical, **space.categoricals}
-
-    # Assign a confidence of 0 to our current categoricals to ensure they dont get sampled
-    confidence_values = {
-        key: 0 if hp.domain.is_categorical else (1 - std)
-        for key, hp in parameters.items()
-    }
-
     # This prior places a guassian on the numericals and places a 0 probability on the
     # current value of the categoricals.
-    mutate_prior = Prior.from_config(
-        config,
-        space=space,
-        confidence_values=confidence_values,
-        include_fidelity=include_fidelity,
+    mutatation_prior = Prior.from_parameters(
+        parameters,
+        center_values=config,
+        # Assign a confidence of 0 to our current categoricals
+        # to ensure they dont get sampled
+        confidence_values={
+            key: 0 if hp.domain.is_categorical else (1 - std)
+            for key, hp in parameters.items()
+        },
     )
-    config_encoder = ConfigEncoder.from_space(space, include_fidelity=include_fidelity)
+    config_encoder = ConfigEncoder.from_parameters(parameters)
 
-    mutant: dict[str, Any] = mutate_prior.sample_config(to=config_encoder)
+    mutant: dict[str, Any] = mutatation_prior.sample_config(to=config_encoder)
     mutatant_selection = torch.rand(len(config), generator=seed) < mutation_rate
 
     return {
@@ -77,7 +75,7 @@ def sample_with_priorband(
     table: pd.DataFrame,
     rung_to_sample_for: int,
     # Search Space
-    space: SearchSpace,
+    parameters: Mapping[str, Parameter],
     encoder: ConfigEncoder,
     # Inc sampling params
     inc_mutation_rate: float,
@@ -112,7 +110,8 @@ def sample_with_priorband(
         early_stopping_rate=early_stopping_rate,
     )
     max_rung = max(rung_sizes)
-    prior_dist = Prior.from_config(space.prior, space=space)
+
+    prior_dist = Prior.from_parameters(parameters)
 
     # Below we will follow the "geomtric" spacing
     w_random = 1 / (1 + eta**rung_to_sample_for)
@@ -170,11 +169,12 @@ def sample_with_priorband(
 
     # 2. Get the global incumbent, and build a prior distribution around it
     inc = completed.loc[completed["perf"].idxmin()]["config"]
-    inc_dist = Prior.from_config(inc, space=space)
+    inc_dist = Prior.from_parameters(parameters, center_values=inc)
 
     # 3. Calculate a ratio score of how likely each of the top K configs are under
     # the prior and inc distribution, weighing them by their position in the top K
     weights = torch.arange(K, 0, -1)
+
     top_k_pdf_inc = inc_dist.pdf_configs(top_k_configs, frm=encoder)
     top_k_pdf_prior = prior_dist.pdf_configs(top_k_configs, frm=encoder)
 
@@ -202,10 +202,9 @@ def sample_with_priorband(
             assert inc is not None
             return mutate_config(
                 inc,
-                space=space,
+                parameters=parameters,
                 mutation_rate=inc_mutation_rate,
                 std=inc_mutation_std,
-                include_fidelity=False,
                 seed=seed,
             )
 

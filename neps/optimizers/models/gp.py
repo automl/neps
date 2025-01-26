@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import reduce
 from itertools import product
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
 
     from neps.sampling.priors import Prior
-    from neps.space import SearchSpace
+    from neps.space.parameters import Parameter
     from neps.state.trial import Trial
 
 logger = logging.getLogger(__name__)
@@ -212,7 +212,7 @@ def optimize_acq(
 
 def encode_trials_for_gp(
     trials: Mapping[str, Trial],
-    space: SearchSpace,
+    parameters: Mapping[str, Parameter],
     *,
     encoder: ConfigEncoder | None = None,
     device: torch.device | None = None,
@@ -234,7 +234,7 @@ def encode_trials_for_gp(
     pending_configs: list[Mapping[str, Any]] = []
 
     if encoder is None:
-        encoder = ConfigEncoder.from_space(space=space)
+        encoder = ConfigEncoder.from_parameters(parameters)
 
     for trial in trials.values():
         if trial.report is None:
@@ -244,6 +244,10 @@ def encode_trials_for_gp(
         train_configs.append(trial.config)
 
         objective_to_minimize = trial.report.objective_to_minimize
+        assert not isinstance(objective_to_minimize, Sequence), (
+            "The objective to minimize should be a single value, "
+            " multiple objectives are not supported yet."
+        )
         train_losses.append(
             torch.nan if objective_to_minimize is None else objective_to_minimize
         )

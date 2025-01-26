@@ -57,7 +57,7 @@ def _pibo_exp_term(
 class BayesianOptimization:
     """Uses `botorch` as an engine for doing bayesian optimiziation."""
 
-    pipeline_space: SearchSpace
+    space: SearchSpace
     """The search space to use."""
 
     encoder: ConfigEncoder
@@ -84,12 +84,12 @@ class BayesianOptimization:
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        _n = 1 if n is None else n
-        n_sampled = len(trials)
-        config_ids = iter(str(i + 1) for i in range(n_sampled, n_sampled + _n))
-        space = self.pipeline_space
+        assert self.space.fidelity is None, "Fidelity not supported yet."
+        parameters = self.space.searchables
 
-        sampled_configs: list[SampledConfig] = []
+        n_to_sample = 1 if n is None else n
+        n_sampled = len(trials)
+        config_ids = iter(str(i + 1) for i in range(n_sampled, n_sampled + n_to_sample))
 
         # If the amount of configs evaluated is less than the initial design
         # requirement, keep drawing from initial design
@@ -100,34 +100,28 @@ class BayesianOptimization:
         )
         if n_evaluated < self.n_initial_design:
             design_samples = make_initial_design(
-                space=space,
+                parameters=parameters,
                 encoder=self.encoder,
                 sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
-                seed=None,  # TODO: Seeding
-                sample_size=_n,
-                sample_fidelity="max",
+                seed=None,  # TODO: Seeding, however we need to avoid repeating configs
+                sample_size=n_to_sample,
             )
+            for sample in design_samples:
+                sample.update(self.space.constants)
 
-            sampled_configs.extend(
-                [
-                    SampledConfig(id=config_id, config=config)
-                    for config_id, config in zip(
-                        config_ids,
-                        design_samples,
-                        strict=False,
-                    )
-                ]
-            )
-            if len(sampled_configs) == _n:
-                if n is None:
-                    return sampled_configs[0]
-
-                return sampled_configs
+            sampled_configs = [
+                SampledConfig(id=config_id, config=config)
+                for config_id, config in zip(config_ids, design_samples, strict=True)
+            ]
+            return sampled_configs[0] if n is None else sampled_configs
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
-            trials, space, device=self.device, encoder=self.encoder
+            trials,
+            parameters,
+            device=self.device,
+            encoder=self.encoder,
         )
 
         cost_percent = None
@@ -170,7 +164,7 @@ class BayesianOptimization:
                 prune_baseline=True,
             ),
             prior=prior,
-            n_candidates_required=_n,
+            n_candidates_required=n_to_sample,
             pibo_exp_term=pibo_exp_term,
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
@@ -178,14 +172,11 @@ class BayesianOptimization:
         )
 
         configs = encoder.decode(candidates)
-        sampled_configs.extend(
-            [
-                SampledConfig(id=config_id, config=config)
-                for config_id, config in zip(config_ids, configs, strict=True)
-            ]
-        )
+        for config in configs:
+            config.update(self.space.constants)
 
-        if n is None:
-            return sampled_configs[0]
-
-        return sampled_configs
+        sampled_configs = [
+            SampledConfig(id=config_id, config=config)
+            for config_id, config in zip(config_ids, configs, strict=True)
+        ]
+        return sampled_configs[0] if n is None else sampled_configs
