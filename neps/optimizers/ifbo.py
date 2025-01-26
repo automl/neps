@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
+BUDGET_DOMAIN_EPS = 1e-6
 
 
 def _adjust_space_to_match_stepsize(
@@ -147,10 +148,24 @@ class IFBO:
         # Hence we use the two domains below to do so.
 
         # Domain in which we should pass budgets to ifbo model
-        budget_domain = Domain.floating(lower=1 / fidelity.upper, upper=1)
+        # IFBO expects them to be in `(0 1]`, where explicitly 0 is
+        # not allowed. We map this close to `BUDGET_DOMAIN_EPS` depending
+        # on the scale of the fidelity domain.
+        budget_domain = Domain.floating(
+            lower=(fidelity.lower + BUDGET_DOMAIN_EPS)
+            / (fidelity.upper - fidelity.lower),
+            upper=1,
+        )
+
+        # However, we need to make sure we don't end up with a positive
+        # `lower=` which gauranteed with this assertion.
+        if fidelity.upper - fidelity.lower < BUDGET_DOMAIN_EPS:
+            raise ValueError(
+                f"Fidelity domain {fidelity} is too small to be used with ifBO."
+            )
 
         # Domain from which we assign an index to each budget
-        budget_index_domain = Domain.indices(self.n_fidelity_bins)
+        budget_index_domain = Domain.indices(self.n_fidelity_bins + 1)
 
         # If we havn't passed the intial design phase
         if new_id <= self.n_initial_design:
