@@ -25,14 +25,14 @@ def test_sorting_of_parameters_into_subsets():
         "b": Integer(0, 10),
         "c": Categorical(["a", "b", "c"]),
         "d": Float(0, 1, is_fidelity=True),
-        "x": Constant("a"),
+        "x": Constant("x"),
     }
     space = SearchSpace(elements)
     assert space.elements == elements
     assert space.categoricals == {"c": elements["c"]}
     assert space.numerical == {"a": elements["a"], "b": elements["b"]}
     assert space.fidelities == {"d": elements["d"]}
-    assert space.constants == {"x": elements["x"]}
+    assert space.constants == {"x": "x"}
 
     assert space.searchables == {
         "a": elements["a"],
