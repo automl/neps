@@ -89,7 +89,9 @@ class BayesianOptimization:
 
         n_to_sample = 1 if n is None else n
         n_sampled = len(trials)
-        config_ids = iter(str(i + 1) for i in range(n_sampled, n_sampled + n_to_sample))
+        config_ids = iter(
+            str(i + 1) for i in range(n_sampled, n_sampled + n_to_sample + 1)
+        )
 
         # If the amount of configs evaluated is less than the initial design
         # requirement, keep drawing from initial design
