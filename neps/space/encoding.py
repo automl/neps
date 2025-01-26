@@ -72,11 +72,10 @@ class CategoricalToIntegerTransformer(TensorTransformer):
 
         self.domain = Domain.indices(len(self.choices), is_categorical=True)
         self._lookup = None
-        if len(self.choices) > 3:
-            try:
-                self._lookup = {c: i for i, c in enumerate(self.choices)}
-            except TypeError:
-                self._lookup = None
+        try:
+            self._lookup = {c: i for i, c in enumerate(self.choices)}
+        except TypeError:
+            self._lookup = None
 
     @override
     def encode(
@@ -117,8 +116,9 @@ class CategoricalToUnitNorm(TensorTransformer):
 
     choices: Sequence[Any]
 
-    domain: Domain = field(init=False)
-    _integer_transformer: CategoricalToIntegerTransformer = field(init=False)
+    domain: Domain[float] = field(init=False)
+    _cat_int_domain: Domain[int] = field(init=False)
+    _lookup: dict[Any, int] | None = field(init=False)
 
     def __post_init__(self) -> None:
         self.domain = Domain.floating(
@@ -127,7 +127,11 @@ class CategoricalToUnitNorm(TensorTransformer):
             bins=len(self.choices),
             is_categorical=True,
         )
-        self._integer_transformer = CategoricalToIntegerTransformer(self.choices)
+        self._cat_int_domain = Domain.indices(len(self.choices), is_categorical=True)
+        try:
+            self._lookup = {c: i for i, c in enumerate(self.choices)}
+        except TypeError:
+            self._lookup = None
 
     @override
     def encode(
@@ -138,13 +142,19 @@ class CategoricalToUnitNorm(TensorTransformer):
         dtype: torch.dtype | None = None,
         device: torch.device | None = None,
     ) -> torch.Tensor:
-        integers = self._integer_transformer.encode(
-            x,
-            dtype=dtype if dtype is not None else torch.float64,
-            device=device,
+        if dtype is None:
+            dtype = torch.int if out is None else out.dtype
+
+        values = (
+            [self._lookup[c] for c in x]
+            if self._lookup
+            else [self.choices.index(c) for c in x]
         )
+        integers = torch.tensor(values, dtype=torch.int64, device=device)
         binned_floats = self.domain.cast(
-            integers, frm=self._integer_transformer.domain, dtype=dtype
+            integers,
+            frm=self._cat_int_domain,
+            dtype=dtype,
         )
         if out is not None:
             return out.copy_(binned_floats)
@@ -153,8 +163,8 @@ class CategoricalToUnitNorm(TensorTransformer):
 
     @override
     def decode(self, x: torch.Tensor) -> list[Any]:
-        x = torch.round(x * (len(self.choices) - 1)).type(torch.int64)
-        return self._integer_transformer.decode(x)
+        x = self._cat_int_domain.cast(x, frm=self.domain)
+        return [self.choices[int(i)] for i in torch.round(x).tolist()]
 
 
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
