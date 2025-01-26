@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
@@ -33,7 +34,7 @@ def run(  # noqa: PLR0913
     root_directory: str | Path = "neps_results",
     overwrite_working_directory: bool = False,
     post_run_summary: bool = True,
-    max_evaluations_total: int | None = 10,
+    max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
     max_cost_total: int | float | None = None,
@@ -393,6 +394,21 @@ def run(  # noqa: PLR0913
                 runtime to run your optimizer.
 
     """  # noqa: E501
+    if (
+        max_evaluations_total is None
+        and max_evaluations_per_run is None
+        and max_cost_total is None
+    ):
+        warnings.warn(
+            "None of the following were set, this will run idefinitely until the worker"
+            " process is stopped."
+            f"\n * {max_evaluations_total=}"
+            f"\n * {max_evaluations_per_run=}"
+            f"\n * {max_cost_total=}",
+            UserWarning,
+            stacklevel=2,
+        )
+
     logger.info(f"Starting neps.run using root directory {root_directory}")
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
