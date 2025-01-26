@@ -75,6 +75,13 @@ class Float:
         self.lower = float(self.lower)
         self.upper = float(self.upper)
 
+        if self.is_fidelity and (self.lower < 0 or self.upper < 0):
+            raise ValueError(
+                f"Float parameter: fidelity bounds error. Expected fidelity"
+                f" bounds to be >= 0, but got lower={self.lower}, "
+                f" upper={self.upper}."
+            )
+
         if np.isnan(self.lower):
             raise ValueError("Can not have lower bound that is nan")
 
@@ -148,6 +155,13 @@ class Integer:
 
         self.lower = lower_int
         self.upper = upper_int
+
+        if self.is_fidelity and (self.lower < 0 or self.upper < 0):
+            raise ValueError(
+                f"Integer parameter: fidelity bounds error. Expected fidelity"
+                f" bounds to be >= 0, but got lower={self.lower}, "
+                f" upper={self.upper}."
+            )
 
         if self.log and (self.lower <= 0 or self.upper <= 0):
             raise ValueError(
