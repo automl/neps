@@ -98,6 +98,8 @@ class BayesianOptimization:
             for trial in trials.values()
             if trial.report is not None and trial.report.objective_to_minimize is not None
         )
+        sampled_configs: list[SampledConfig] = []
+
         if n_evaluated < self.n_initial_design:
             design_samples = make_initial_design(
                 parameters=parameters,
@@ -105,16 +107,20 @@ class BayesianOptimization:
                 sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding, however we need to avoid repeating configs
-                sample_size=n_to_sample,
+                sample_size=self.n_initial_design,
             )
             for sample in design_samples:
                 sample.update(self.space.constants)
 
-            sampled_configs = [
-                SampledConfig(id=config_id, config=config)
-                for config_id, config in zip(config_ids, design_samples, strict=True)
-            ]
-            return sampled_configs[0] if n is None else sampled_configs
+            sampled_configs.extend(
+                [
+                    SampledConfig(id=config_id, config=config)
+                    for config_id, config in zip(config_ids, design_samples, strict=True)
+                ]
+            )
+
+            if len(sampled_configs) >= n_to_sample:
+                return sampled_configs[0] if n is None else sampled_configs
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -149,6 +155,7 @@ class BayesianOptimization:
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+        n_to_acquire = n_to_sample - len(sampled_configs)
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
@@ -164,7 +171,7 @@ class BayesianOptimization:
                 prune_baseline=True,
             ),
             prior=prior,
-            n_candidates_required=n_to_sample,
+            n_candidates_required=n_to_acquire,
             pibo_exp_term=pibo_exp_term,
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
@@ -175,8 +182,10 @@ class BayesianOptimization:
         for config in configs:
             config.update(self.space.constants)
 
-        sampled_configs = [
-            SampledConfig(id=config_id, config=config)
-            for config_id, config in zip(config_ids, configs, strict=True)
-        ]
+        sampled_configs.extend(
+            [
+                SampledConfig(id=config_id, config=config)
+                for config_id, config in zip(config_ids, configs, strict=True)
+            ]
+        )
         return sampled_configs[0] if n is None else sampled_configs

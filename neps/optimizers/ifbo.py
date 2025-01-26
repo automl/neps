@@ -140,7 +140,7 @@ class IFBO:
 
         assert n is None, "TODO"
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
-        new_id = max(ids) + 1 if len(ids) > 0 else 0
+        new_id = max(ids) + 1 if len(ids) > 0 else 1
 
         # The FTPFN surrogate takes in a budget in the range [0, 1]
         # We also need to be able to map these to discrete integers
@@ -153,7 +153,7 @@ class IFBO:
         budget_index_domain = Domain.indices(self.n_fidelity_bins)
 
         # If we havn't passed the intial design phase
-        if new_id < self.n_initial_design:
+        if new_id <= self.n_initial_design:
             init_design = make_initial_design(
                 parameters=parameters,
                 encoder=self.encoder,
@@ -163,7 +163,7 @@ class IFBO:
                 sample_size=self.n_initial_design,
             )
 
-            config = init_design[new_id]
+            config = init_design[new_id - 1]
             config[fidelity_name] = fidelity.lower
             config.update(self.space.constants)
             return SampledConfig(id=f"{new_id}_0", config=config)
@@ -238,13 +238,16 @@ class IFBO:
             local_search_sample_size=256,
             local_search_confidence=0.95,
         )
+
         _id, fid, config = decode_ftpfn_data(
             best_row,
-            self.encoder,
+            encoder=self.encoder,
             budget_domain=budget_domain,
             fidelity_domain=fidelity.domain,
         )[0]
 
+        # If _id is None, that means a new config was sampled and
+        # should be evaluated one step
         if _id is None:
             config[fidelity_name] = fid
             config.update(self.space.constants)
