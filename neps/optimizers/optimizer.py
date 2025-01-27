@@ -27,11 +27,24 @@ from __future__ import annotations
 from abc import abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, TypedDict
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
+
+
+class OptimizerInfo(TypedDict):
+    """Information about the optimizer, usually used for serialization."""
+
+    name: str
+    """The name of the optimizer."""
+
+    info: Mapping[str, Any]
+    """Additional information about the optimizer.
+
+    Usually this will be the keyword arguments used to initialize the optimizer.
+    """
 
 
 @dataclass

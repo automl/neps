@@ -23,10 +23,7 @@ from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
 from neps.exceptions import TrialNotFoundError
 from neps.optimizers import load_optimizer
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-
-# Suppress specific warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
+from neps.state.optimizer import BudgetInfo, OptimizationState
 
 
 def validate_directory(path: Path) -> bool:
@@ -118,7 +115,7 @@ def init_config(args: argparse.Namespace) -> None:
                 is_new = not directory.exists()
                 _ = NePSState.create_or_load(
                     path=directory,
-                    optimizer_info=OptimizerInfo(optimizer_info),
+                    optimizer_info=optimizer_info,
                     optimizer_state=OptimizationState(
                         seed_snapshot=SeedSnapshot.new_capture(),
                         budget=(

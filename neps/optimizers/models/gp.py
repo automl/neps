@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
 from itertools import product
@@ -19,9 +20,11 @@ from botorch.models.transforms.outcome import ChainedOutcomeTransform, Standardi
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
+from gpytorch.utils.warnings import NumericalWarning
 
 from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
+from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
@@ -130,8 +133,12 @@ def optimize_acq(
     acq_options: Mapping[str, Any] | None = None,
     fixed_features: dict[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
+    hide_warnings: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Optimize the acquisition function."""
+    warning_context = (
+        disable_warnings(NumericalWarning) if hide_warnings else nullcontext()
+    )
     acq_options = acq_options or {}
 
     _fixed_features: dict[int, float] = {}
@@ -163,15 +170,16 @@ def optimize_acq(
         if n_intial_start_points is None:
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
-        return optimize_acqf(  # type: ignore
-            acq_function=acq_fn,
-            bounds=bounds,
-            q=n_candidates_required,
-            num_restarts=num_restarts,
-            raw_samples=n_intial_start_points,
-            fixed_features=_fixed_features,
-            **acq_options,
-        )
+        with warning_context:
+            return optimize_acqf(  # type: ignore
+                acq_function=acq_fn,
+                bounds=bounds,
+                q=n_candidates_required,
+                num_restarts=num_restarts,
+                raw_samples=n_intial_start_points,
+                fixed_features=_fixed_features,
+                **acq_options,
+            )
 
     # We need to generate the product of all possible combinations of categoricals,
     # first we do a sanity check
@@ -215,17 +223,18 @@ def optimize_acq(
     if len(_fixed_features) > 0:
         fixed_cats = [{**cat, **_fixed_features} for cat in fixed_cats]
 
-    # TODO: we should deterministically shuffle the fixed_categoricals
-    # as the underlying function does not.
-    return optimize_acqf_mixed(  # type: ignore
-        acq_function=acq_fn,
-        bounds=bounds,
-        num_restarts=min(num_restarts // n_combos, 2),
-        raw_samples=n_intial_start_points,
-        q=n_candidates_required,
-        fixed_features_list=fixed_cats,
-        **acq_options,
-    )
+    with warning_context:
+        # TODO: we should deterministically shuffle the fixed_categoricals
+        # as the underlying function does not.
+        return optimize_acqf_mixed(  # type: ignore
+            acq_function=acq_fn,
+            bounds=bounds,
+            num_restarts=min(num_restarts // n_combos, 2),
+            raw_samples=n_intial_start_points,
+            q=n_candidates_required,
+            fixed_features_list=fixed_cats,
+            **acq_options,
+        )
 
 
 def encode_trials_for_gp(
@@ -316,6 +325,7 @@ def fit_and_acquire_from_gp(
     maximum_allowed_categorical_combinations: int = 30,
     fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
+    hide_warnings: bool = False,
 ) -> torch.Tensor:
     """Acquire the next configuration to evaluate using a GP.
 
@@ -360,6 +370,7 @@ def fit_and_acquire_from_gp(
             combinations to allow. If the number of combinations exceeds this, an error
             will be raised.
         acq_options: Additional options to pass to the botorch `optimizer_acqf` function.
+        hide_warnings: Whether to hide numerical warnings issued during GP routines.
 
     Returns:
         The encoded next configuration(s) to evaluate. Use the encoder you provided
@@ -439,5 +450,6 @@ def fit_and_acquire_from_gp(
         fixed_features=fixed_acq_features,
         acq_options=acq_options,
         maximum_allowed_categorical_combinations=maximum_allowed_categorical_combinations,
+        hide_warnings=hide_warnings,
     )
     return candidates

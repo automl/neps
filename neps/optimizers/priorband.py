@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -20,20 +20,155 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class PriorBandArgs:
-    """Arguments for the PriorBand sampler.
+class PriorBandSampler:
+    """A Sampler implementing the PriorBand algorithm for sampling.
 
-    Args:
-        mutation_rate: The mutation rate for the PriorBand algorithm when sampling
-            from the incumbent.
-        mutation_std: The standard deviation for the mutation rate when sampling
-            from the incumbent.
+    * https://openreview.net/forum?id=uoiwugtpCH&noteId=xECpK2WH6k
     """
 
-    name: ClassVar = "priorband"
+    parameters: Mapping[str, Parameter]
+    """The parameters to consider."""
+
+    encoder: ConfigEncoder
+    """The encoder to use for encoding and decoding configurations into tensors."""
 
     mutation_rate: float
+    """The mutation rate to use when sampling from the incumbent distribution."""
+
     mutation_std: float
+    """The mutation deviation to use when sampling from the incumbent distribution."""
+
+    eta: int
+    """The eta value to use for the SH bracket."""
+
+    early_stopping_rate: int
+    """The early stopping rate to use for the SH bracket."""
+
+    fid_bounds: tuple[int, int] | tuple[float, float]
+    """The fidelity bounds."""
+
+    def sample_config(self, table: pd.DataFrame, rung: int) -> dict[str, Any]:
+        """Samples a configuration using the PriorBand algorithm.
+
+        Args:
+            table: The table of all the trials that have been run.
+            rung_to_sample_for: The rung to sample for.
+
+        Returns:
+            The sampled configuration.
+        """
+        rung_to_fid, rung_sizes = brackets.calculate_sh_rungs(
+            bounds=self.fid_bounds,
+            eta=self.eta,
+            early_stopping_rate=self.early_stopping_rate,
+        )
+        max_rung = max(rung_sizes)
+
+        prior_dist = Prior.from_parameters(self.parameters)
+
+        # Below we will follow the "geomtric" spacing
+        w_random = 1 / (1 + self.eta**rung)
+        w_prior = 1 - w_random
+
+        completed: pd.DataFrame = table[table["perf"].notna()]  # type: ignore
+
+        # To see if we activate incumbent sampling, we check:
+        # 1) We have at least one fully complete run
+        # 2) We have spent at least one full SH bracket worth of fidelity
+        # 3) There is at least one rung with eta evaluations to get the top 1/eta configs
+        completed_rungs = completed.index.get_level_values("rung")
+        one_complete_run_at_max_rung = (completed_rungs == max_rung).any()
+
+        # For SH bracket cost, we include the fact we can continue runs,
+        # i.e. resources for rung 2 discounts the cost of evaluating to rung 1,
+        # only counting the difference in fidelity cost between rung 2 and rung 1.
+        cost_per_rung = {
+            i: rung_to_fid[i] - rung_to_fid.get(i - 1, 0) for i in rung_to_fid
+        }
+
+        cost_of_one_sh_bracket = sum(rung_sizes[r] * cost_per_rung[r] for r in rung_sizes)
+        current_cost_used = sum(r * cost_per_rung[r] for r in completed_rungs)
+        spent_one_sh_bracket_worth_of_fidelity = (
+            current_cost_used >= cost_of_one_sh_bracket
+        )
+
+        # Check that there is at least rung with `eta` evaluations
+        rung_counts = completed.groupby("rung").size()
+        any_rung_with_eta_evals = (rung_counts == self.eta).any()
+
+        # If the conditions are not met, we sample from the prior or randomly depending on
+        # the geometrically distributed prior and uniform weights
+        if (
+            one_complete_run_at_max_rung is False
+            or spent_one_sh_bracket_worth_of_fidelity is False
+            or any_rung_with_eta_evals is False
+        ):
+            policy = np.random.choice(["prior", "random"], p=[w_prior, w_random])
+            match policy:
+                case "prior":
+                    config = prior_dist.sample_config(to=self.encoder)
+                case "random":
+                    _sampler = Sampler.uniform(ndim=self.encoder.ndim)
+                    config = _sampler.sample_config(to=self.encoder)
+
+            return config
+
+        # Otherwise, we now further split the `prior` weight into `(prior, inc)`
+
+        # 1. Select the top `1//eta` percent of configs at the highest rung supporting it
+        rungs_with_at_least_eta = rung_counts[rung_counts >= self.eta].index  # type: ignore
+        rung_table: pd.DataFrame = completed[  # type: ignore
+            completed.index.get_level_values("rung") == rungs_with_at_least_eta.max()
+        ]
+
+        K = len(rung_table) // self.eta
+        top_k_configs = rung_table.nsmallest(K, columns=["perf"])["config"].tolist()
+
+        # 2. Get the global incumbent, and build a prior distribution around it
+        inc = completed.loc[completed["perf"].idxmin()]["config"]
+        inc_dist = Prior.from_parameters(self.parameters, center_values=inc)
+
+        # 3. Calculate a ratio score of how likely each of the top K configs are under
+        # the prior and inc distribution, weighing them by their position in the top K
+        weights = torch.arange(K, 0, -1)
+
+        top_k_pdf_inc = inc_dist.pdf_configs(top_k_configs, frm=self.encoder)  # type: ignore
+        top_k_pdf_prior = prior_dist.pdf_configs(top_k_configs, frm=self.encoder)  # type: ignore
+
+        unnormalized_inc_score = (weights * top_k_pdf_inc).sum()
+        unnormalized_prior_score = (weights * top_k_pdf_prior).sum()
+        total_score = unnormalized_inc_score + unnormalized_prior_score
+
+        inc_ratio = float(unnormalized_inc_score / total_score)
+        prior_ratio = float(unnormalized_prior_score / total_score)
+
+        # 4. And finally, we distribute the original w_prior according to this ratio
+        w_inc = w_prior * inc_ratio
+        w_prior = w_prior * prior_ratio
+        assert np.isclose(w_prior + w_inc + w_random, 1.0)
+
+        # Now we use these weights to choose which sampling distribution to sample from
+        policy = np.random.choice(
+            ["prior", "inc", "random"],
+            p=[w_prior, w_inc, w_random],
+        )
+        match policy:
+            case "prior":
+                return prior_dist.sample_config(to=self.encoder)
+            case "random":
+                _sampler = Sampler.uniform(ndim=self.encoder.ndim)
+                return _sampler.sample_config(to=self.encoder)
+            case "inc":
+                assert inc is not None
+                return mutate_config(
+                    inc,
+                    parameters=self.parameters,
+                    mutation_rate=self.mutation_rate,
+                    std=self.mutation_std,
+                    seed=None,
+                )
+
+        raise RuntimeError(f"Unknown policy: {policy}")
 
 
 def mutate_config(
@@ -68,144 +203,3 @@ def mutate_config(
         key: mutant[key] if select_mutant else config[key]
         for key, select_mutant in zip(mutant.keys(), mutatant_selection, strict=False)
     }
-
-
-def sample_with_priorband(
-    *,
-    table: pd.DataFrame,
-    rung_to_sample_for: int,
-    # Search Space
-    parameters: Mapping[str, Parameter],
-    encoder: ConfigEncoder,
-    # Inc sampling params
-    inc_mutation_rate: float,
-    inc_mutation_std: float,
-    # SH parameters to calculate the rungs
-    eta: int,
-    early_stopping_rate: int = 0,
-    fid_bounds: tuple[int, int] | tuple[float, float],
-    # Extra
-    seed: torch.Generator | None = None,
-) -> dict[str, Any]:
-    """Samples a configuration using the PriorBand algorithm.
-
-    Args:
-        table: The table of all the trials that have been run.
-        rung_to_sample_for: The rung to sample for.
-        space: The search space to sample from.
-        encoder: The encoder to use for the search space.
-        inc_mutation_rate: The mutation rate for the incumbent.
-        inc_mutation_std: The standard deviation for the incumbent mutation rate.
-        eta: The eta parameter for the Successive Halving algorithm.
-        early_stopping_rate: The early stopping rate for the Successive Halving algorithm.
-        fid_bounds: The bounds for the fidelity parameter.
-        seed: The seed to use for the random number generator.
-
-    Returns:
-        The sampled configuration.
-    """
-    rung_to_fid, rung_sizes = brackets.calculate_sh_rungs(
-        bounds=fid_bounds,
-        eta=eta,
-        early_stopping_rate=early_stopping_rate,
-    )
-    max_rung = max(rung_sizes)
-
-    prior_dist = Prior.from_parameters(parameters)
-
-    # Below we will follow the "geomtric" spacing
-    w_random = 1 / (1 + eta**rung_to_sample_for)
-    w_prior = 1 - w_random
-
-    completed: pd.DataFrame = table[table["perf"].notna()]  # type: ignore
-
-    # To see if we activate incumbent sampling, we check:
-    # 1) We have at least one fully complete run
-    # 2) We have spent at least one full SH bracket worth of fidelity
-    # 3) There is at least one rung with eta evaluations to get the top 1/eta configs of
-    completed_rungs = completed.index.get_level_values("rung")
-    one_complete_run_at_max_rung = (completed_rungs == max_rung).any()
-
-    # For SH bracket cost, we include the fact we can continue runs,
-    # i.e. resources for rung 2 discounts the cost of evaluating to rung 1,
-    # only counting the difference in fidelity cost between rung 2 and rung 1.
-    cost_per_rung = {i: rung_to_fid[i] - rung_to_fid.get(i - 1, 0) for i in rung_to_fid}
-
-    cost_of_one_sh_bracket = sum(rung_sizes[r] * cost_per_rung[r] for r in rung_sizes)
-    current_cost_used = sum(r * cost_per_rung[r] for r in completed_rungs)
-    spent_one_sh_bracket_worth_of_fidelity = current_cost_used >= cost_of_one_sh_bracket
-
-    # Check that there is at least rung with `eta` evaluations
-    rung_counts = completed.groupby("rung").size()
-    any_rung_with_eta_evals = (rung_counts == eta).any()
-
-    # If the conditions are not met, we sample from the prior or randomly depending on
-    # the geometrically distributed prior and uniform weights
-    if (
-        one_complete_run_at_max_rung is False
-        or spent_one_sh_bracket_worth_of_fidelity is False
-        or any_rung_with_eta_evals is False
-    ):
-        policy = np.random.choice(["prior", "random"], p=[w_prior, w_random])
-        match policy:
-            case "prior":
-                config = prior_dist.sample_config(to=encoder)
-            case "random":
-                _sampler = Sampler.uniform(ndim=encoder.ndim)
-                config = _sampler.sample_config(to=encoder)
-
-        return config
-
-    # Otherwise, we now further split the `prior` weight into `(prior, inc)`
-
-    # 1. Select the top `1//eta` percent of configs at the highest rung that supports it
-    rungs_with_at_least_eta = rung_counts[rung_counts >= eta].index  # type: ignore
-    rung_table: pd.DataFrame = completed[  # type: ignore
-        completed.index.get_level_values("rung") == rungs_with_at_least_eta.max()
-    ]
-
-    K = len(rung_table) // eta
-    top_k_configs = rung_table.nsmallest(K, columns=["perf"])["config"].tolist()
-
-    # 2. Get the global incumbent, and build a prior distribution around it
-    inc = completed.loc[completed["perf"].idxmin()]["config"]
-    inc_dist = Prior.from_parameters(parameters, center_values=inc)
-
-    # 3. Calculate a ratio score of how likely each of the top K configs are under
-    # the prior and inc distribution, weighing them by their position in the top K
-    weights = torch.arange(K, 0, -1)
-
-    top_k_pdf_inc = inc_dist.pdf_configs(top_k_configs, frm=encoder)  # type: ignore
-    top_k_pdf_prior = prior_dist.pdf_configs(top_k_configs, frm=encoder)  # type: ignore
-
-    unnormalized_inc_score = (weights * top_k_pdf_inc).sum()
-    unnormalized_prior_score = (weights * top_k_pdf_prior).sum()
-    total_score = unnormalized_inc_score + unnormalized_prior_score
-
-    inc_ratio = float(unnormalized_inc_score / total_score)
-    prior_ratio = float(unnormalized_prior_score / total_score)
-
-    # 4. And finally, we distribute the original w_prior according to this ratio
-    w_inc = w_prior * inc_ratio
-    w_prior = w_prior * prior_ratio
-    assert np.isclose(w_prior + w_inc + w_random, 1.0)
-
-    # Now we use these weights to choose which sampling distribution to sample from
-    policy = np.random.choice(["prior", "inc", "random"], p=[w_prior, w_inc, w_random])
-    match policy:
-        case "prior":
-            return prior_dist.sample_config(to=encoder)
-        case "random":
-            _sampler = Sampler.uniform(ndim=encoder.ndim)
-            return _sampler.sample_config(to=encoder)
-        case "inc":
-            assert inc is not None
-            return mutate_config(
-                inc,
-                parameters=parameters,
-                mutation_rate=inc_mutation_rate,
-                std=inc_mutation_std,
-                seed=seed,
-            )
-
-    raise RuntimeError(f"Unknown policy: {policy}")

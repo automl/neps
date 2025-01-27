@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers.algorithms import (
     CustomOptimizer,
@@ -9,24 +9,11 @@ from neps.optimizers.algorithms import (
     PredefinedOptimizers,
     determine_optimizer_automatically,
 )
-from neps.optimizers.optimizer import AskFunction  # noqa: TC001
+from neps.optimizers.optimizer import AskFunction, OptimizerInfo
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
-
-
-class OptimizerInfo(TypedDict):
-    """Information about the optimizer."""
-
-    name: str
-    """The name of the optimizer."""
-
-    info: Mapping[str, Any]
-    """Additional information about the optimizer.
-
-    Usually this will be the keyword arguments used to initialize the optimizer.
-    """
 
 
 def _load_optimizer_from_string(
@@ -97,9 +84,9 @@ def load_optimizer(
 
         # Custom (already initialized) optimizer
         case CustomOptimizer(initialized=True):
-            _optimizer = optimizer.optimizer
+            preinit_opt = optimizer.optimizer
             info = OptimizerInfo(name=optimizer.name, info=optimizer.kwargs)
-            return _optimizer, info  # type: ignore
+            return preinit_opt, info  # type: ignore
 
         case _:
             raise ValueError(

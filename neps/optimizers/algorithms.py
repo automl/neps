@@ -31,7 +31,7 @@ from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
-from neps.optimizers.priorband import PriorBandArgs
+from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
@@ -123,7 +123,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["uniform", "prior", "priorband"] | PriorBandArgs | Sampler,
+    sampler: Literal["uniform", "prior", "priorband"] | PriorBandSampler | Sampler,
     bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
@@ -212,6 +212,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
             )
+
         case "hyperband":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
@@ -222,6 +223,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
             )
+
         case "asha":
             assert early_stopping_rate is not None
             rung_to_fidelity, _rung_sizes = brackets.calculate_sh_rungs(
@@ -234,6 +236,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 rungs=list(rung_to_fidelity),
                 eta=eta,
             )
+
         case "async_hb":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
@@ -252,22 +255,31 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
     encoder = ConfigEncoder.from_parameters(parameters)
 
-    _sampler: Sampler | PriorBandArgs
+    _sampler: Sampler | PriorBandSampler
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
         case "prior":
             _sampler = Prior.from_parameters(parameters)
         case "priorband":
-            _sampler = PriorBandArgs(mutation_rate=0.5, mutation_std=0.25)
-        case PriorBandArgs() | Sampler():
+            _sampler = PriorBandSampler(
+                parameters=parameters,
+                mutation_rate=0.5,
+                mutation_std=0.25,
+                encoder=encoder,
+                eta=eta,
+                early_stopping_rate=(
+                    early_stopping_rate if early_stopping_rate is not None else 0
+                ),
+                fid_bounds=(fidelity.lower, fidelity.upper),
+            )
+        case PriorBandSampler() | Sampler():
             _sampler = sampler
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
 
     # TODO: This should be lifted out of this function and have the caller
     # pass in a `GPSampler`.
-    # TODO: Better name and parametrization of this if not going with above
     gp_sampler: GPSampler | None
     if bayesian_optimization_kick_in_point is not None:
         if bayesian_optimization_kick_in_point <= 0:
@@ -276,8 +288,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             )
 
         # TODO: Parametrize?
-        two_stage_batch_sample_size = 10
-        modelling_strategy = "joint"
+        two_stage_batch_sample_size = 100
 
         gp_parameters = {**parameters, **pipeline_space.fidelities}
         gp_sampler = GPSampler(
@@ -287,7 +298,6 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             threshold=bayesian_optimization_kick_in_point,
             fidelity_name=fidelity_name,
             fidelity_max=fidelity.upper,
-            modelling_strategy=modelling_strategy,
             two_stage_batch_sample_size=two_stage_batch_sample_size,
             device=device,
         )
@@ -669,6 +679,7 @@ def asha(
         sample_prior_first: Whether to sample the prior configuration first,
             and if so, should it be at the highest fidelity.
     """
+
     return _bracket_optimizer(
         pipeline_space=space,
         bracket_type="asha",

@@ -10,6 +10,7 @@ import pandas as pd
 import torch
 from botorch.acquisition.multi_objective.parego import qLogNoisyExpectedImprovement
 from botorch.acquisition.objective import LinearMCObjective
+from gpytorch.utils.warnings import NumericalWarning
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -17,9 +18,10 @@ from neps.optimizers.models.gp import (
     make_default_single_obj_gp,
 )
 from neps.optimizers.optimizer import SampledConfig
-from neps.optimizers.priorband import PriorBandArgs, sample_with_priorband
+from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.sampling.samplers import Sampler
+from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
     from gpytorch.models.approximate_gp import Any
@@ -108,13 +110,6 @@ class GPSampler:
     fidelity_max: int | float
     """The maximum fidelity value."""
 
-    modelling_strategy: Literal["joint", "separate"]
-    """The strategy for which training data to use for the GP model.
-
-    If set to `"joint"`, the GP model will be trained on all data,
-    across all fidelities jointly, where the fidelity is considered as a dimension.
-    """
-
     device: torch.device | None
     """The device to use for the GP optimization."""
 
@@ -136,12 +131,10 @@ class GPSampler:
         Please see parameter descriptions in the class docstring for more.
         """
         assert budget_info is None, "cost-aware (using budget_info) not supported yet."
-        assert self.modelling_strategy == "joint", "Only joint strategy is supported now."
         # fit the GP model using all trials, using fidelity as a dimension.
         # Get to top 10 configurations for acquisition fixed at fidelity Z
         # Switch those configurations to be at fidelity z_max and take the best.
         # y_max for EI is taken to be the best value seen so far, across all fidelity
-
         data, _ = encode_trials_for_gp(
             trials,
             self.parameters,
@@ -149,16 +142,18 @@ class GPSampler:
             device=self.device,
         )
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=self.encoder)
-        acqf = qLogNoisyExpectedImprovement(
-            model=gp,
-            X_baseline=data.x,
-            # Unfortunatly, there's no option to indicate that we minimize
-            # the AcqFunction so we need to do some kind of transformation.
-            # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-            objective=LinearMCObjective(weights=torch.tensor([-1.0])),
-            X_pending=data.x_pending,
-            prune_baseline=True,
-        )
+
+        with disable_warnings(NumericalWarning):
+            acqf = qLogNoisyExpectedImprovement(
+                model=gp,
+                X_baseline=data.x,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                X_pending=data.x_pending,
+                prune_baseline=True,
+            )
 
         # When it's max fidelity, we can just sample the best configuration we find,
         # as we do not need to do the two step procedure.
@@ -181,6 +176,7 @@ class GPSampler:
             costs=None,
             cost_percentage_used=None,
             costs_on_log_scale=False,
+            hide_warnings=True,
         )
         assert len(candidates) == N
 
@@ -196,7 +192,6 @@ class GPSampler:
         # Next, we set those N configurations to be at the max fidelity
         # Decode, set max fidelity, and encode again (TODO: Could do directly on tensors)
         configs = self.encoder.decode(candidates)
-        print("configs", configs)  # noqa: T201
         fid_max_configs = [{**c, self.fidelity_name: self.fidelity_max} for c in configs]
         encoded_fix_max_configs = self.encoder.encode(fid_max_configs)
 
@@ -237,7 +232,7 @@ class BracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     """A function that creates the brackets from the table of trials."""
 
-    sampler: Sampler | PriorBandArgs
+    sampler: Sampler | PriorBandSampler
     """The sampler used to generate new trials."""
 
     gp_sampler: GPSampler | None
@@ -345,21 +340,24 @@ class BracketOptimizer:
                 )
 
             # The bracket would like us to sample a new configuration for a rung
-            case SampleAction(rung=rung):
+            # and we have gp sampler which should kick in
+            case SampleAction(rung=rung) if (
+                self.gp_sampler is not None and self.gp_sampler.threshold_reached(trials)
+            ):
                 # If we should used BO to sample once a threshold has been reached,
                 # do so. Otherwise we proceed to use the original sampler.
-                if self.gp_sampler is not None and self.gp_sampler.threshold_reached(
-                    trials
-                ):
-                    target_fidelity = self.rung_to_fid[rung]
-                    config = self.gp_sampler.sample_config(
-                        trials,
-                        budget_info=None,  # TODO: budget_info not supported yet
-                        target_fidelity=target_fidelity,
-                    )
-                    config.update(space.constants)
-                    return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+                target_fidelity = self.rung_to_fid[rung]
+                config = self.gp_sampler.sample_config(
+                    trials,
+                    budget_info=None,  # TODO: budget_info not supported yet
+                    target_fidelity=target_fidelity,
+                )
+                config.update(space.constants)
+                return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
 
+            # We need to sample for a new rung, with either no gp or it has
+            # not yet kicked in.
+            case SampleAction(rung=rung):
                 # Otherwise, we proceed with the original sampler
                 match self.sampler:
                     case Sampler():
@@ -371,19 +369,8 @@ class BracketOptimizer:
                         }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
 
-                    case PriorBandArgs():
-                        config = sample_with_priorband(
-                            table=table,
-                            parameters=space.searchables,
-                            rung_to_sample_for=rung,
-                            fid_bounds=(self.fid_min, self.fid_max),
-                            encoder=self.encoder,
-                            inc_mutation_rate=self.sampler.mutation_rate,
-                            inc_mutation_std=self.sampler.mutation_std,
-                            eta=self.eta,
-                            seed=None,  # TODO
-                        )
-
+                    case PriorBandSampler():
+                        config = self.sampler.sample_config(table, rung=rung)
                         config = {
                             **config,
                             **space.constants,

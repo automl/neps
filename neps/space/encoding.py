@@ -189,7 +189,7 @@ class CategoricalToUnitNorm(TensorTransformer[float]):
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
 # and `-0.5` as lower bound with `0.5` as upper bound.
 @dataclass
-class MinMaxNormalizer(TensorTransformer[V], Generic[V]):
+class MinMaxNormalizer(TensorTransformer[float], Generic[V]):
     """A transformer that normalizes values to the unit interval."""
 
     original_domain: Domain[V]
