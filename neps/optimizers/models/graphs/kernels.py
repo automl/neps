@@ -88,6 +88,7 @@ class BoTorchWLKernel(Kernel):
         adjacency_cache (list[Tensor]): Cached adjacency matrices of the graphs.
         label_cache (list[Tensor]): Cached initial node labels of the graphs.
     """
+
     has_lengthscale = False
 
     def __init__(

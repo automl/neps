@@ -32,12 +32,19 @@ class TestGraphOptimizationPipeline:
         N_GRAPH = 1
 
         # Generate random data
-        X = torch.cat([
-            torch.rand((TOTAL_CONFIGS, N_NUMERICAL), dtype=torch.float64),
-            torch.randint(0, N_CATEGORICAL_VALUES_PER_CATEGORY,
-                          (TOTAL_CONFIGS, N_CATEGORICAL), dtype=torch.float64),
-            torch.arange(TOTAL_CONFIGS, dtype=torch.float64).unsqueeze(1)
-        ], dim=1)
+        X = torch.cat(
+            [
+                torch.rand((TOTAL_CONFIGS, N_NUMERICAL), dtype=torch.float64),
+                torch.randint(
+                    0,
+                    N_CATEGORICAL_VALUES_PER_CATEGORY,
+                    (TOTAL_CONFIGS, N_CATEGORICAL),
+                    dtype=torch.float64,
+                ),
+                torch.arange(TOTAL_CONFIGS, dtype=torch.float64).unsqueeze(1),
+            ],
+            dim=1,
+        )
 
         # Generate random graphs
         graphs = [nx.erdos_renyi_graph(5, 0.5) for _ in range(TOTAL_CONFIGS)]
@@ -76,23 +83,36 @@ class TestGraphOptimizationPipeline:
 
         # Define the kernels
         kernels = [
-            ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=setup_data["N_NUMERICAL"],
-                                     active_dims=range(setup_data["N_NUMERICAL"]))),
             ScaleKernel(
-                CategoricalKernel(ard_num_dims=setup_data["N_CATEGORICAL"],
-                                  active_dims=range(setup_data["N_NUMERICAL"],
-                                                    setup_data["N_NUMERICAL"] +
-                                                    setup_data["N_CATEGORICAL"])
-                                  )
+                MaternKernel(
+                    nu=2.5,
+                    ard_num_dims=setup_data["N_NUMERICAL"],
+                    active_dims=range(setup_data["N_NUMERICAL"]),
+                )
             ),
             ScaleKernel(
-                BoTorchWLKernel(graph_lookup=train_graphs, n_iter=5, normalize=True,
-                                active_dims=(train_x.shape[1] - 1,)))
+                CategoricalKernel(
+                    ard_num_dims=setup_data["N_CATEGORICAL"],
+                    active_dims=range(
+                        setup_data["N_NUMERICAL"],
+                        setup_data["N_NUMERICAL"] + setup_data["N_CATEGORICAL"],
+                    ),
+                )
+            ),
+            ScaleKernel(
+                BoTorchWLKernel(
+                    graph_lookup=train_graphs,
+                    n_iter=5,
+                    normalize=True,
+                    active_dims=(train_x.shape[1] - 1,),
+                )
+            ),
         ]
 
         # Create the GP model
-        gp = SingleTaskGP(train_X=train_x, train_Y=train_y,
-                          covar_module=AdditiveKernel(*kernels))
+        gp = SingleTaskGP(
+            train_X=train_x, train_Y=train_y, covar_module=AdditiveKernel(*kernels)
+        )
 
         # Fit the GP
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
@@ -119,24 +139,36 @@ class TestGraphOptimizationPipeline:
 
         # Define the kernels
         kernels = [
-            ScaleKernel(MaternKernel(nu=2.5, ard_num_dims=setup_data["N_NUMERICAL"],
-                                     active_dims=range(setup_data["N_NUMERICAL"]))),
             ScaleKernel(
-                CategoricalKernel(
-                    ard_num_dims=setup_data["N_CATEGORICAL"],
-                    active_dims=range(setup_data["N_NUMERICAL"],
-                                      setup_data["N_NUMERICAL"] +
-                                      setup_data["N_CATEGORICAL"])
+                MaternKernel(
+                    nu=2.5,
+                    ard_num_dims=setup_data["N_NUMERICAL"],
+                    active_dims=range(setup_data["N_NUMERICAL"]),
                 )
             ),
             ScaleKernel(
-                BoTorchWLKernel(graph_lookup=train_graphs, n_iter=5, normalize=True,
-                                active_dims=(train_x.shape[1] - 1,)))
+                CategoricalKernel(
+                    ard_num_dims=setup_data["N_CATEGORICAL"],
+                    active_dims=range(
+                        setup_data["N_NUMERICAL"],
+                        setup_data["N_NUMERICAL"] + setup_data["N_CATEGORICAL"],
+                    ),
+                )
+            ),
+            ScaleKernel(
+                BoTorchWLKernel(
+                    graph_lookup=train_graphs,
+                    n_iter=5,
+                    normalize=True,
+                    active_dims=(train_x.shape[1] - 1,),
+                )
+            ),
         ]
 
         # Create the GP model
-        gp = SingleTaskGP(train_X=train_x, train_Y=train_y,
-                          covar_module=AdditiveKernel(*kernels))
+        gp = SingleTaskGP(
+            train_X=train_x, train_Y=train_y, covar_module=AdditiveKernel(*kernels)
+        )
 
         # Fit the GP
         mll = ExactMarginalLogLikelihood(gp.likelihood, gp)
@@ -151,21 +183,30 @@ class TestGraphOptimizationPipeline:
         )
 
         # Define bounds for optimization
-        bounds = torch.tensor([
-            [0.0] * setup_data["N_NUMERICAL"] + [0.0] * setup_data["N_CATEGORICAL"] + [
-                -1.0] * setup_data["N_GRAPH"],
-            [1.0] * setup_data["N_NUMERICAL"] + [
-                float(setup_data["N_CATEGORICAL_VALUES_PER_CATEGORY"] - 1)] * setup_data[
-                "N_CATEGORICAL"] + [len(train_x) - 1] * setup_data["N_GRAPH"],
-        ])
+        bounds = torch.tensor(
+            [
+                [0.0] * setup_data["N_NUMERICAL"]
+                + [0.0] * setup_data["N_CATEGORICAL"]
+                + [-1.0] * setup_data["N_GRAPH"],
+                [1.0] * setup_data["N_NUMERICAL"]
+                + [float(setup_data["N_CATEGORICAL_VALUES_PER_CATEGORY"] - 1)]
+                * setup_data["N_CATEGORICAL"]
+                + [len(train_x) - 1] * setup_data["N_GRAPH"],
+            ]
+        )
 
         # Define fixed categorical features
-        cats_per_column = {i: list(range(setup_data["N_CATEGORICAL_VALUES_PER_CATEGORY"]))
-                           for i in range(setup_data["N_NUMERICAL"],
-                                          setup_data["N_NUMERICAL"] + setup_data[
-                                              "N_CATEGORICAL"])}
-        fixed_cats = [dict(zip(cats_per_column.keys(), combo, strict=False)) for combo in
-                      product(*cats_per_column.values())]
+        cats_per_column = {
+            i: list(range(setup_data["N_CATEGORICAL_VALUES_PER_CATEGORY"]))
+            for i in range(
+                setup_data["N_NUMERICAL"],
+                setup_data["N_NUMERICAL"] + setup_data["N_CATEGORICAL"],
+            )
+        }
+        fixed_cats = [
+            dict(zip(cats_per_column.keys(), combo, strict=False))
+            for combo in product(*cats_per_column.values())
+        ]
 
         # Optimize the acquisition function
         best_candidate, best_graph, best_score = optimize_acqf_graph(
@@ -180,16 +221,19 @@ class TestGraphOptimizationPipeline:
         )
 
         # Assertions for the acquisition function optimization
-        assert isinstance(best_candidate,
-                          torch.Tensor), "Best candidate should be a tensor"
-        assert best_candidate.shape == (1, train_x.shape[1] - 1), \
+        assert isinstance(best_candidate, torch.Tensor), (
+            "Best candidate should be a tensor"
+        )
+        assert best_candidate.shape == (1, train_x.shape[1] - 1), (
             "Best candidate should have the correct shape (excluding the graph index)"
+        )
         assert isinstance(best_graph, nx.Graph), "Best graph should be a NetworkX graph"
         assert isinstance(best_score, float), "Best score should be a float"
 
         # Ensure the best candidate does not contain the graph index column
-        assert best_candidate.shape[1] == train_x.shape[1] - 1, \
+        assert best_candidate.shape[1] == train_x.shape[1] - 1, (
             "Best candidate should not include the graph index column"
+        )
 
     def test_graph_sampling(self, setup_data: dict) -> None:
         """Test the graph sampling functionality."""
@@ -200,12 +244,15 @@ class TestGraphOptimizationPipeline:
         sampled_graphs = sample_graphs(train_graphs, num_samples=num_samples)
 
         # Basic checks
-        assert len(sampled_graphs) == num_samples, \
+        assert len(sampled_graphs) == num_samples, (
             f"Expected {num_samples} sampled graphs, got {len(sampled_graphs)}"
-        assert all(isinstance(graph, nx.Graph) for graph in sampled_graphs), \
+        )
+        assert all(isinstance(graph, nx.Graph) for graph in sampled_graphs), (
             "All sampled graphs should be NetworkX graphs"
-        assert all(nx.is_connected(graph) for graph in sampled_graphs), \
+        )
+        assert all(nx.is_connected(graph) for graph in sampled_graphs), (
             "All sampled graphs should be connected"
+        )
 
     def test_min_max_scaling(self, setup_data: dict) -> None:
         """Test the min-max scaling utility."""
@@ -217,8 +264,9 @@ class TestGraphOptimizationPipeline:
         # Assertions for min-max scaling
         assert torch.all(scaled_train_x >= 0), "Scaled values should be >= 0"
         assert torch.all(scaled_train_x <= 1), "Scaled values should be <= 1"
-        assert scaled_train_x.shape == train_x.shape, \
+        assert scaled_train_x.shape == train_x.shape, (
             "Scaled data should have the same shape as the input data"
+        )
 
         # Check that the scaling is correct
         for i in range(train_x.shape[1]):
@@ -226,8 +274,9 @@ class TestGraphOptimizationPipeline:
             col_max = torch.max(train_x[:, i])
             if col_min != col_max:  # Avoid division by zero
                 expected_scaled_col = (train_x[:, i] - col_min) / (col_max - col_min)
-                assert torch.allclose(scaled_train_x[:, i], expected_scaled_col), \
+                assert torch.allclose(scaled_train_x[:, i], expected_scaled_col), (
                     f"Scaling is incorrect for column {i}"
+                )
 
     def test_set_graph_lookup(self, setup_data: dict) -> None:
         """Test the set_graph_lookup context manager."""
@@ -235,8 +284,9 @@ class TestGraphOptimizationPipeline:
         test_graphs = setup_data["test_graphs"]
 
         # Define the kernel
-        kernel = BoTorchWLKernel(graph_lookup=train_graphs, n_iter=5, normalize=True,
-                                 active_dims=(0,))
+        kernel = BoTorchWLKernel(
+            graph_lookup=train_graphs, n_iter=5, normalize=True, active_dims=(0,)
+        )
 
         # Use the context manager to temporarily set the graph lookup
         with set_graph_lookup(kernel, test_graphs, append=True):

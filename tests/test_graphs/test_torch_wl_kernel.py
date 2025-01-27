@@ -75,16 +75,19 @@ class TestTorchWLKernel:
     ) -> None:
         for graph_set in random_graphs_sets:
             adjacency_matrices, label_tensors = graphs_to_tensors(
-                graph_set, device=self.device)
+                graph_set, device=self.device
+            )
 
             # Initialize Torch WL Kernel
             torch_kernel = TorchWLKernel(n_iter=n_iter, normalize=normalize)
-            torch_kernel_matrix = torch_kernel(adjacency_matrices,
-                                               label_tensors).cpu().numpy()
+            torch_kernel_matrix = (
+                torch_kernel(adjacency_matrices, label_tensors).cpu().numpy()
+            )
 
             # Initialize GraKel WL Kernel
             grakel_graphs = list(
-                graph_from_networkx(graph_set, node_labels_tag="label", as_Graph=True))
+                graph_from_networkx(graph_set, node_labels_tag="label", as_Graph=True)
+            )
             grakel_kernel = WeisfeilerLehman(n_iter=n_iter, normalize=normalize)
             grakel_kernel_matrix = grakel_kernel.fit_transform(grakel_graphs)
 
@@ -94,7 +97,7 @@ class TestTorchWLKernel:
                 grakel_kernel_matrix,
                 rtol=1e-5,
                 atol=1e-8,
-                err_msg=f"Kernel matrices differ for graph={graph_set}, n_iter={n_iter}"
+                err_msg=f"Kernel matrices differ for graph={graph_set}, n_iter={n_iter}",
             )
 
     def test_empty_graph(self) -> None:
@@ -102,8 +105,9 @@ class TestTorchWLKernel:
         G_empty.add_node(0)
         G_empty.nodes[0]["label"] = "0"
 
-        adjacency_matrices, label_tensors = graphs_to_tensors([G_empty],
-                                                              device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(
+            [G_empty], device=self.device
+        )
 
         # Initialize kernel and compute
         kernel = TorchWLKernel(n_iter=3, normalize=True)
@@ -116,8 +120,9 @@ class TestTorchWLKernel:
     def test_invalid_input(self) -> None:
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
 
-        with pytest.raises(ValueError,
-                           match="Mismatch between adjacency matrices and label tensors"):
+        with pytest.raises(
+            ValueError, match="Mismatch between adjacency matrices and label tensors"
+        ):
             wl_kernel([], [torch.tensor([0])])
 
     def test_kernel_on_single_node_graph(self) -> None:
@@ -125,8 +130,9 @@ class TestTorchWLKernel:
         G_single.add_node(0)
         G_single.nodes[0]["label"] = "0"
 
-        adjacency_matrices, label_tensors = graphs_to_tensors([G_single],
-                                                              device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(
+            [G_single], device=self.device
+        )
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -168,8 +174,9 @@ class TestTorchWLKernel:
             K = wl_kernel(adjacency_matrices, label_tensors)
 
             assert K.shape == (3, 3), "Kernel matrix shape is incorrect"
-            assert torch.allclose(K[1, 1], K[2, 2]), \
+            assert torch.allclose(K[1, 1], K[2, 2]), (
                 "Kernel value for original and reordered graphs should be the same"
+            )
 
     @pytest.mark.parametrize("n_iter", [1, 2, 3, 4, 5, 6, 7])
     @pytest.mark.parametrize("normalize", [True, False])
@@ -184,8 +191,7 @@ class TestTorchWLKernel:
                 G_copy.nodes[node]["label"] = f"{prefix}{node}"
             graphs.append(G_copy)
 
-        adjacency_matrices, label_tensors = graphs_to_tensors(graphs,
-                                                              device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(graphs, device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=n_iter, normalize=normalize)
         torch_kernel_matrix = wl_kernel(adjacency_matrices, label_tensors).cpu().numpy()
@@ -199,7 +205,7 @@ class TestTorchWLKernel:
             grakel_kernel_matrix,
             rtol=1e-5,
             atol=1e-8,
-            err_msg=f"Kernel matrices differ for n_iter={n_iter}, normalize={normalize}"
+            err_msg=f"Kernel matrices differ for n_iter={n_iter}, normalize={normalize}",
         )
 
     def test_wl_kernel_with_same_node_labels(
@@ -220,8 +226,7 @@ class TestTorchWLKernel:
                 G_copy.nodes[node]["label"] = "A"
             graphs.append(G_copy)
 
-        adjacency_matrices, label_tensors = graphs_to_tensors(
-            graphs, device=self.device)
+        adjacency_matrices, label_tensors = graphs_to_tensors(graphs, device=self.device)
 
         wl_kernel = TorchWLKernel(n_iter=3, normalize=True)
         K = wl_kernel(adjacency_matrices, label_tensors)
@@ -231,13 +236,15 @@ class TestTorchWLKernel:
         assert torch.allclose(K, K.T, atol=1e-4), "Kernel matrix is not symmetric"
 
         # Check diagonal elements are 1 (normalized self-similarity)
-        assert torch.allclose(torch.diag(K), torch.ones_like(torch.diag(K)), atol=1e-4), \
+        assert torch.allclose(torch.diag(K), torch.ones_like(torch.diag(K)), atol=1e-4), (
             "Diagonal elements should be 1.0"
+        )
 
         # Check off-diagonal elements are less than 1 (different structures)
         off_diag_mask = ~torch.eye(K.shape[0], dtype=torch.bool, device=self.device)
-        assert torch.all(K[off_diag_mask] < 1.0), \
+        assert torch.all(K[off_diag_mask] < 1.0), (
             "Off-diagonal elements should be less than 1.0 for different structures"
+        )
 
         # Check all elements are non-negative (valid kernel)
         assert torch.all(K >= 0), "Kernel values should be non-negative"

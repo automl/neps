@@ -96,5 +96,5 @@ def optimize_acqf_graph(
     return (
         best_candidates[best_idx][:, :-1],
         best_graphs[best_idx],
-        best_scores[best_idx].item()
+        best_scores[best_idx].item(),
     )

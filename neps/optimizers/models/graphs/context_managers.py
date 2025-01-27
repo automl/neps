@@ -33,15 +33,20 @@ def set_graph_lookup(
 
     # Determine the modules to update based on the input type
     if isinstance(kernel_or_gp, SingleTaskGP):
-        modules = [k for k in kernel_or_gp.covar_module.sub_kernels() if
-                   isinstance(k, BoTorchWLKernel)]
+        modules = [
+            k
+            for k in kernel_or_gp.covar_module.sub_kernels()
+            if isinstance(k, BoTorchWLKernel)
+        ]
     elif isinstance(kernel_or_gp, BoTorchWLKernel):
         modules = [kernel_or_gp]
     else:
-        assert hasattr(kernel_or_gp,
-                       "sub_kernels"), "Kernel module must have sub_kernels method."
-        modules = [k for k in kernel_or_gp.sub_kernels() if
-                   isinstance(k, BoTorchWLKernel)]
+        assert hasattr(kernel_or_gp, "sub_kernels"), (
+            "Kernel module must have sub_kernels method."
+        )
+        modules = [
+            k for k in kernel_or_gp.sub_kernels() if isinstance(k, BoTorchWLKernel)
+        ]
 
     # Save the current graph lookup and set the new graph lookup
     for kern in modules:

@@ -26,8 +26,7 @@ def min_max_scale(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def graphs_to_tensors(
-    graphs: list[nx.Graph],
-    device: torch.device | None = None
+    graphs: list[nx.Graph], device: torch.device | None = None
 ) -> tuple[list[torch.sparse.Tensor], list[torch.Tensor]]:
     """Convert a list of NetworkX graphs into sparse adjacency matrices and label tensors.
 
