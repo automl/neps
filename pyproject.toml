@@ -81,6 +81,7 @@ dev = [
     "mkdocs-literate-nav",
     "mike",
     "black",  # This allows mkdocstrings to format signatures in the docs
+    "grakel==0.1.10",
 ]
 
 [tool.setuptools.packages.find]
