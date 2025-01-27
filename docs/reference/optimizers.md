@@ -20,7 +20,7 @@ Neps provides a variety of optimizers that utilize Multi-Fidelity, Priors or bot
 
 ![Optimizer classes](../doc_images/optimizers/venn_dia.svg)
 
-The [Optimizer Classes](../reference/search_algorithms)-Chapter goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using Neps.
+The "Optimizer Details and Best Practice"-Chapter goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using Neps.
 
 ### 2.1 Automatic Optimizer Selection
 
