@@ -57,11 +57,11 @@ dependencies = [
     "matplotlib>=3.0,<4.0",
     "more-itertools",
     "portalocker>=2.0,<3.0",
-    # "numpy>=1.0,<2.0",        # included in tensorboard (>=1.12.0), botorch (>1.7), ifbo (<2)
-    # "scipy>=1.13.1",          # included in configspace (*), botorch,grakel (>= 1.6.0), results in (2.2.3)
-    # "torch>=2.0.1",           # included in ifbo (>=1.9.0), botorch (>=2.0.1), torchvision (2.5.1)
-    # "seaborn>=0.13,<0.14",    # removed any seaborn appearance, therefore not needed anymore
-    # "gpytorch==1.13.0",       # included in botorch (1.13.0)
+    "numpy>=1.0,<2.0",        # included in tensorboard (>=1.12.0), botorch (>1.7), ifbo (<2)
+    "scipy>=1.13.1",          # included in configspace (*), botorch,grakel (>= 1.6.0), results in (2.2.3)
+    "torch>=2.0.1",           # included in ifbo (>=1.9.0), botorch (>=2.0.1), torchvision (2.5.1)
+    "seaborn>=0.13,<0.14",    # removed any seaborn appearance, therefore not needed anymore
+    "gpytorch==1.13.0",       # included in botorch (1.13.0)
 ]
 
 [project.urls]
