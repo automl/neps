@@ -75,6 +75,10 @@ extra:
   version:
     provider: mike
 
+extra_javascript: # Add MathJax for math rendering
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
 plugins:
   - search
   - autorefs
@@ -137,15 +141,15 @@ nav:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
     - Optimizer Overview and Configuration: 'reference/optimizers.md'
+    - Declarative Usage: 'reference/declarative_usage.md'
+    - The Evaluate Function: 'reference/evaluate_pipeline.md'
+    - CLI Usage: 'reference/cli.md'
+    - Analysing Runs: 'reference/analyse.md'
     - Optimizer Details and Best Practice:
       - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
       - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
       - Prior Optimizers: 'reference/search_algorithms/prior.md'
       - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
-    - Declarative Usage: 'reference/declarative_usage.md'
-    - The Evaluate Function: 'reference/evaluate_pipeline.md'
-    - CLI Usage: 'reference/cli.md'
-    - Analysing Runs: 'reference/analyse.md'
   - Examples: "examples/"  # auto-generated
   - API: 'api/' # auto-generated
   - Contributing:
