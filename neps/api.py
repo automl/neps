@@ -6,7 +6,7 @@ import logging
 import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
@@ -17,6 +17,7 @@ from neps.utils.common import dynamic_load_object
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
+    from neps.optimizers.algorithms import CustomOptimizer
     from neps.space import Parameter, SearchSpace
     from neps.state import EvaluatePipelineReturn
 
@@ -46,8 +47,8 @@ def run(  # noqa: PLR0913
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | tuple[Callable[..., AskFunction], Mapping[str, Any]]
-        | Callable[..., AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
 ) -> None:

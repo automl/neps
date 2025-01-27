@@ -17,20 +17,21 @@ if you like, otherwise you may also refer to them by their string name.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Concatenate, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 
 import torch
 
 from neps.optimizers.ask_and_tell import AskAndTell  # noqa: F401
 from neps.optimizers.bayesian_optimization import BayesianOptimization
-from neps.optimizers.bracket_optimizer import BracketOptimizer
+from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
-from neps.optimizers.priorband import PriorBandArgs
+from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
@@ -117,17 +118,19 @@ def _bo(
     )
 
 
-def _bracket_optimizer(  # noqa: C901
+def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     pipeline_space: SearchSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["uniform", "prior", "priorband"] | PriorBandArgs | Sampler,
+    sampler: Literal["uniform", "prior", "priorband"] | PriorBandSampler | Sampler,
+    bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
     # is not required for hyperband style algorithms, only single bracket
     # style ones.
-    early_stopping_rate: int | None = None,
+    early_stopping_rate: int | None,
+    device: torch.device | None,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -149,6 +152,20 @@ def _bracket_optimizer(  # noqa: C901
                 This is only used for Successive Halving and Asha. If set
                 to not `None`, then the bracket type must be one of those.
 
+        bayesian_optimization_kick_in_point:
+            * If `None`, no bayesian optimization is used at any point.
+            * If a number `N`, after `N` * `maximum_fidelity` worth of fidelity
+            has been evaluated, proceed with bayesian optimization when sampling
+            a new configuration.
+
+                !!! example
+
+                    If `maximum_fidelity` is 100, and
+                    `bayesian_optimization_kick_in_point` is `10`.
+                    We will keep using the underlying bracket algorithm until the
+                    threshold of `sum(config.fidelity >= 100 * 10)`, at which point we
+                    will switch to using bayesian optimization.
+
         sampler: The type of sampling procedure to use:
 
             * If "uniform", samples uniformly from the space when it needs to sample
@@ -162,6 +179,7 @@ def _bracket_optimizer(  # noqa: C901
             * If a `Sampler` object, samples from the space using the sampler.
 
         sample_prior_first: Whether to sample the prior configuration first.
+        device: If using Bayesian Optimization, the device to use for the optimization.
     """
     assert pipeline_space.fidelity is not None
     fidelity_name, fidelity = pipeline_space.fidelity
@@ -194,6 +212,7 @@ def _bracket_optimizer(  # noqa: C901
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
             )
+
         case "hyperband":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
@@ -204,6 +223,7 @@ def _bracket_optimizer(  # noqa: C901
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
             )
+
         case "asha":
             assert early_stopping_rate is not None
             rung_to_fidelity, _rung_sizes = brackets.calculate_sh_rungs(
@@ -216,6 +236,7 @@ def _bracket_optimizer(  # noqa: C901
                 rungs=list(rung_to_fidelity),
                 eta=eta,
             )
+
         case "async_hb":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
@@ -234,21 +255,58 @@ def _bracket_optimizer(  # noqa: C901
 
     encoder = ConfigEncoder.from_parameters(parameters)
 
-    _sampler: Sampler | PriorBandArgs
+    _sampler: Sampler | PriorBandSampler
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
         case "prior":
             _sampler = Prior.from_parameters(parameters)
         case "priorband":
-            _sampler = PriorBandArgs(mutation_rate=0.5, mutation_std=0.25)
-        case PriorBandArgs() | Sampler():
+            _sampler = PriorBandSampler(
+                parameters=parameters,
+                mutation_rate=0.5,
+                mutation_std=0.25,
+                encoder=encoder,
+                eta=eta,
+                early_stopping_rate=(
+                    early_stopping_rate if early_stopping_rate is not None else 0
+                ),
+                fid_bounds=(fidelity.lower, fidelity.upper),
+            )
+        case PriorBandSampler() | Sampler():
             _sampler = sampler
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
 
+    # TODO: This should be lifted out of this function and have the caller
+    # pass in a `GPSampler`.
+    gp_sampler: GPSampler | None
+    if bayesian_optimization_kick_in_point is not None:
+        if bayesian_optimization_kick_in_point <= 0:
+            raise ValueError(
+                "bayesian_optimization_kick_in_point should be greater than 0"
+            )
+
+        # TODO: Parametrize?
+        two_stage_batch_sample_size = 100
+
+        gp_parameters = {**parameters, **pipeline_space.fidelities}
+        gp_sampler = GPSampler(
+            # Notably we include the fidelity into what we model here.
+            parameters=gp_parameters,
+            encoder=ConfigEncoder.from_parameters(gp_parameters),
+            threshold=bayesian_optimization_kick_in_point,
+            fidelity_name=fidelity_name,
+            fidelity_max=fidelity.upper,
+            two_stage_batch_sample_size=two_stage_batch_sample_size,
+            device=device,
+        )
+    else:
+        gp_sampler = None
+
     return BracketOptimizer(
         space=pipeline_space,
+        gp_sampler=gp_sampler,
         encoder=encoder,
         eta=eta,
         rung_to_fid=rung_to_fidelity,
@@ -501,6 +559,9 @@ def successive_halving(
         early_stopping_rate=early_stopping_rate,
         sampler=sampler,
         sample_prior_first=sample_prior_first,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
     )
 
 
@@ -561,6 +622,10 @@ def hyperband(
         eta=eta,
         sampler=sampler,
         sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
     )
 
 
@@ -614,6 +679,7 @@ def asha(
         sample_prior_first: Whether to sample the prior configuration first,
             and if so, should it be at the highest fidelity.
     """
+
     return _bracket_optimizer(
         pipeline_space=space,
         bracket_type="asha",
@@ -621,6 +687,9 @@ def asha(
         early_stopping_rate=early_stopping_rate,
         sampler=sampler,
         sample_prior_first=sample_prior_first,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
     )
 
 
@@ -677,6 +746,10 @@ def async_hb(
         eta=eta,
         sampler=sampler,
         sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
     )
 
 
@@ -686,6 +759,7 @@ def priorband(
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
+    bayesian_optimization_kick_in_point: int | float | None = None,
 ) -> BracketOptimizer:
     """Priorband is also a bandit-based optimization algorithm that uses a _fidelity_,
     providing a general purpose sampling extension to other algorithms. It makes better
@@ -720,6 +794,9 @@ def priorband(
         eta: The reduction factor used for building brackets
         sample_prior_first: Whether to sample the prior configuration first.
         base: The base algorithm to use for the bracketing.
+        bayesian_optimization_kick_in_point: If a number `N`, after
+            `N` * `maximum_fidelity` worth of fidelity has been evaluated,
+            proceed with bayesian optimization when sampling a new configuration.
     """
     return _bracket_optimizer(
         pipeline_space=space,
@@ -727,6 +804,9 @@ def priorband(
         eta=eta,
         sampler="priorband",
         sample_prior_first=sample_prior_first,
+        early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
+        bayesian_optimization_kick_in_point=bayesian_optimization_kick_in_point,
+        device=None,
     )
 
 
@@ -831,6 +911,47 @@ def pibo(
         device=device,
         use_priors=True,
         sample_prior_first=sample_prior_first,
+    )
+
+
+@dataclass
+class CustomOptimizer:
+    """Custom optimizer that allows you to define your own optimizer function.
+
+    Args:
+        optimizer: The optimizer function to use.
+    """
+
+    name: str
+    optimizer: Callable[Concatenate[SearchSpace, ...], AskFunction] | AskFunction
+    kwargs: Mapping[str, Any] = field(default_factory=dict)
+    initialized: bool = False
+
+    def create(self, space: SearchSpace) -> AskFunction:
+        assert not self.initialized, "Custom optimizer already initialized."
+        return self.optimizer(space, **self.kwargs)  # type: ignore
+
+
+def custom(
+    name: str,
+    optimizer: Callable[Concatenate[SearchSpace, ...], AskFunction] | AskFunction,
+    *,
+    initialized: bool = False,
+    kwargs: Mapping[str, Any] | None = None,
+) -> CustomOptimizer:
+    """Create a custom optimizer that allows you to define your own optimizer function.
+
+    Args:
+        name: The name of the optimizer.
+        optimizer: The optimizer function to use.
+        initialized: Whether the optimizer has already been initialized.
+        **kwargs: Additional arguments to pass to the optimizer function.
+    """
+    return CustomOptimizer(
+        name=name,
+        optimizer=optimizer,
+        kwargs=kwargs or {},
+        initialized=initialized,
     )
 
 

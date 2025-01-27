@@ -187,6 +187,7 @@ class BayesianOptimization:
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
+            hide_warnings=True,
         )
 
         configs = encoder.decode(candidates)

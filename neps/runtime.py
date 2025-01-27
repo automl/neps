@@ -36,7 +36,6 @@ from neps.state import (
     NePSState,
     OnErrorPossibilities,
     OptimizationState,
-    OptimizerInfo,
     SeedSnapshot,
     Trial,
     WorkerSettings,
@@ -45,6 +44,7 @@ from neps.state import (
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
+    from neps.optimizers import OptimizerInfo
     from neps.optimizers.optimizer import AskFunction
 
 logger = logging.getLogger(__name__)
@@ -692,7 +692,7 @@ def _launch_runtime(  # noqa: PLR0913
     *,
     evaluation_fn: Callable[..., EvaluatePipelineReturn],
     optimizer: AskFunction,
-    optimizer_info: dict,
+    optimizer_info: OptimizerInfo,
     optimization_dir: Path,
     max_cost_total: float | None,
     ignore_errors: bool = False,
@@ -734,7 +734,7 @@ def _launch_runtime(  # noqa: PLR0913
             neps_state = NePSState.create_or_load(
                 path=optimization_dir,
                 load_only=False,
-                optimizer_info=OptimizerInfo(optimizer_info),
+                optimizer_info=optimizer_info,
                 optimizer_state=OptimizationState(
                     seed_snapshot=SeedSnapshot.new_capture(),
                     budget=(

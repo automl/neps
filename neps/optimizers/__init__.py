@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers.algorithms import (
+    CustomOptimizer,
     OptimizerChoice,
     PredefinedOptimizers,
     determine_optimizer_automatically,
 )
-from neps.optimizers.optimizer import AskFunction  # noqa: TC001
+from neps.optimizers.optimizer import AskFunction, OptimizerInfo
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ def _load_optimizer_from_string(
     space: SearchSpace,
     *,
     optimizer_kwargs: Mapping[str, Any] | None = None,
-) -> tuple[AskFunction, dict[str, Any]]:
+) -> tuple[AskFunction, OptimizerInfo]:
     if optimizer == "auto":
         _optimizer = determine_optimizer_automatically(space)
     else:
@@ -34,11 +35,10 @@ def _load_optimizer_from_string(
             f" {PredefinedOptimizers.keys()}"
         )
 
-    info = extract_keyword_defaults(optimizer_build)
-    info["name"] = _optimizer
-
+    keywords = extract_keyword_defaults(optimizer_build)
     optimizer_kwargs = optimizer_kwargs or {}
     opt = optimizer_build(space, **optimizer_kwargs)
+    info = OptimizerInfo(name=_optimizer, info={**keywords, **optimizer_kwargs})
     return opt, info
 
 
@@ -46,41 +46,51 @@ def load_optimizer(
     optimizer: (
         OptimizerChoice
         | Mapping[str, Any]
-        | tuple[OptimizerChoice | Callable[..., AskFunction], Mapping[str, Any]]
-        | Callable[..., AskFunction]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | CustomOptimizer
         | Literal["auto"]
     ),
     space: SearchSpace,
-) -> tuple[AskFunction, dict[str, Any]]:
+) -> tuple[AskFunction, OptimizerInfo]:
     match optimizer:
-        # Predefined string
+        # Predefined string (including "auto")
         case str():
             return _load_optimizer_from_string(optimizer, space)
-
-        # class/builder
-        case _ if callable(optimizer):
-            info = extract_keyword_defaults(optimizer)
-            _optimizer = optimizer(space)
-            info["name"] = optimizer.__name__
-            return _optimizer, info
 
         # Predefined string with kwargs
         case (opt, kwargs) if isinstance(opt, str):
             return _load_optimizer_from_string(opt, space, optimizer_kwargs=kwargs)  # type: ignore
 
-        # class/builder with kwargs
-        case (opt, kwargs):
-            info = extract_keyword_defaults(opt)  # type: ignore
-            info["name"] = opt.__name__  # type: ignore
-            _optimizer = opt(space, **kwargs)  # type: ignore
-            return _optimizer, info
-
         # Mapping with a name
         case {"name": name, **_kwargs}:
             return _load_optimizer_from_string(name, space, optimizer_kwargs=_kwargs)  # type: ignore
 
+        # Provided optimizer initializer
+        case _ if callable(optimizer):
+            keywords = extract_keyword_defaults(optimizer)
+            _optimizer = optimizer(space)
+            info = OptimizerInfo(name=optimizer.__name__, info=keywords)
+            return _optimizer, info
+
+        # Custom optimizer, we create it
+        case CustomOptimizer(initialized=False):
+            _optimizer = optimizer.create(space)
+            keywords = extract_keyword_defaults(optimizer.optimizer)
+            info = OptimizerInfo(
+                name=optimizer.name, info={**keywords, **optimizer.kwargs}
+            )
+            return _optimizer, info
+
+        # Custom (already initialized) optimizer
+        case CustomOptimizer(initialized=True):
+            preinit_opt = optimizer.optimizer
+            info = OptimizerInfo(name=optimizer.name, info=optimizer.kwargs)
+            return preinit_opt, info  # type: ignore
+
         case _:
             raise ValueError(
                 f"Unrecognized `optimizer` of type {type(optimizer)}."
-                f" {optimizer}. Must either be a string or a callable."
+                f" {optimizer}. Must either be a string, callable or"
+                " a `CustomOptimizer` instance."
             )

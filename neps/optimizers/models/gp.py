@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
 from itertools import product
@@ -19,9 +20,11 @@ from botorch.models.transforms.outcome import ChainedOutcomeTransform, Standardi
 from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
+from gpytorch.utils.warnings import NumericalWarning
 
 from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
+from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
@@ -128,36 +131,55 @@ def optimize_acq(
     num_restarts: int = 20,
     n_intial_start_points: int | None = None,
     acq_options: Mapping[str, Any] | None = None,
+    fixed_features: dict[str, Any] | None = None,
     maximum_allowed_categorical_combinations: int = 30,
+    hide_warnings: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Optimize the acquisition function."""
+    warning_context = (
+        disable_warnings(NumericalWarning) if hide_warnings else nullcontext()
+    )
     acq_options = acq_options or {}
+
+    _fixed_features: dict[int, float] = {}
+    if fixed_features is not None:
+        for name, value in fixed_features.items():
+            encoded_value = encoder.transformers[name].encode_one(value)
+            encoded_index = encoder.index_of[name]
+            _fixed_features[encoded_index] = encoded_value
 
     lower = [domain.lower for domain in encoder.domains]
     upper = [domain.upper for domain in encoder.domains]
     bounds = torch.tensor([lower, upper], dtype=torch.float64)
 
     cat_transformers = {
-        name: t for name, t in encoder.transformers.items() if t.domain.is_categorical
+        name: t
+        for name, t in encoder.transformers.items()
+        if (
+            name not in _fixed_features  # Don't include those which are fixed by caller
+            and t.domain.is_categorical  # Only include categoricals
+        )
     }
-    if not any(cat_transformers):
-        # Small heuristic to increase the number of candidates as our dimensionality
-        # increases... we apply a cap.
-        if n_intial_start_points is None:
-            # TODO: Need to investigate how num_restarts is used in botorch to inform
-            # this proxy.
 
-            # Cap out at 4096 when len(bounds) >= 8
+    # Proceed with regular numerical acquisition
+    if not any(cat_transformers):
+        # Small heuristic to increase the number of candidates as our
+        # dimensionality increases... we apply a cap of 4096,
+        # which occurs when len(bounds) >= 8
+        # TODO: Need to investigate how num_restarts is fully used in botorch to inform.
+        if n_intial_start_points is None:
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
-        return optimize_acqf(  # type: ignore
-            acq_function=acq_fn,
-            bounds=bounds,
-            q=n_candidates_required,
-            num_restarts=num_restarts,
-            raw_samples=n_intial_start_points,
-            **acq_options,
-        )
+        with warning_context:
+            return optimize_acqf(  # type: ignore
+                acq_function=acq_fn,
+                bounds=bounds,
+                q=n_candidates_required,
+                num_restarts=num_restarts,
+                raw_samples=n_intial_start_points,
+                fixed_features=_fixed_features,
+                **acq_options,
+            )
 
     # We need to generate the product of all possible combinations of categoricals,
     # first we do a sanity check
@@ -177,10 +199,10 @@ def optimize_acq(
 
     # Right, now we generate all possible combinations
     # First, just collect the possible values per cat column
-    # NOTE: Botorchs optim requires them to be as floats
+    # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
     cats: dict[int, list[float]] = {
         encoder.index_of[name]: [
-            float(i)
+            float(i)  # NOTE: Botorchs optim requires them to be as floats
             for i in range(transformer.domain.cardinality)  # type: ignore
         ]
         for name, transformer in cat_transformers.items()
@@ -197,17 +219,22 @@ def optimize_acq(
             for combo in product(*cats.values())
         ]
 
-    # TODO: we should deterministically shuffle the fixed_categoricals
-    # as the underlying function does not.
-    return optimize_acqf_mixed(  # type: ignore
-        acq_function=acq_fn,
-        bounds=bounds,
-        num_restarts=min(num_restarts // n_combos, 2),
-        raw_samples=n_intial_start_points,
-        q=n_candidates_required,
-        fixed_features_list=fixed_cats,
-        **acq_options,
-    )
+    # Make sure to include caller's fixed features if provided
+    if len(_fixed_features) > 0:
+        fixed_cats = [{**cat, **_fixed_features} for cat in fixed_cats]
+
+    with warning_context:
+        # TODO: we should deterministically shuffle the fixed_categoricals
+        # as the underlying function does not.
+        return optimize_acqf_mixed(  # type: ignore
+            acq_function=acq_fn,
+            bounds=bounds,
+            num_restarts=min(num_restarts // n_combos, 2),
+            raw_samples=n_intial_start_points,
+            q=n_candidates_required,
+            fixed_features_list=fixed_cats,
+            **acq_options,
+        )
 
 
 def encode_trials_for_gp(
@@ -296,7 +323,9 @@ def fit_and_acquire_from_gp(
     num_restarts: int = 20,
     n_initial_start_points: int = 256,
     maximum_allowed_categorical_combinations: int = 30,
+    fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
+    hide_warnings: bool = False,
 ) -> torch.Tensor:
     """Acquire the next configuration to evaluate using a GP.
 
@@ -330,6 +359,7 @@ def fit_and_acquire_from_gp(
         costs_on_log_scale: Whether the costs are on a log scale.
         encoder: The encoder used for encoding the configurations
         seed: The seed to use.
+        fixed_acq_features: The features to fix to a certain value during acquisition.
         n_candidates_required: The number of candidates to return. If left
             as `None`, only the best candidate will be returned. Otherwise
             a list of candidates will be returned.
@@ -340,6 +370,7 @@ def fit_and_acquire_from_gp(
             combinations to allow. If the number of combinations exceeds this, an error
             will be raised.
         acq_options: Additional options to pass to the botorch `optimizer_acqf` function.
+        hide_warnings: Whether to hide numerical warnings issued during GP routines.
 
     Returns:
         The encoded next configuration(s) to evaluate. Use the encoder you provided
@@ -416,7 +447,9 @@ def fit_and_acquire_from_gp(
         n_candidates_required=_n,
         num_restarts=num_restarts,
         n_intial_start_points=n_initial_start_points,
+        fixed_features=fixed_acq_features,
         acq_options=acq_options,
         maximum_allowed_categorical_combinations=maximum_allowed_categorical_combinations,
+        hide_warnings=hide_warnings,
     )
     return candidates

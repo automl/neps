@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
@@ -47,12 +46,3 @@ class OptimizationState:
     Please reach out to @eddiebergman if you have a use case for this so we can make
     it more robust.
     """
-
-
-@dataclass
-class OptimizerInfo:
-    """Meta-information about an optimizer."""
-
-    # TODO(eddiebergman): What are the common keywords
-    # we can use that don't have to be crammed into mapping
-    info: Mapping[str, Any]

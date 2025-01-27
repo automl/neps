@@ -7,16 +7,29 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import pandas as pd
+import torch
+from botorch.acquisition.multi_objective.parego import qLogNoisyExpectedImprovement
+from botorch.acquisition.objective import LinearMCObjective
+from gpytorch.utils.warnings import NumericalWarning
 
+from neps.optimizers.models.gp import (
+    encode_trials_for_gp,
+    fit_and_acquire_from_gp,
+    make_default_single_obj_gp,
+)
 from neps.optimizers.optimizer import SampledConfig
-from neps.optimizers.priorband import PriorBandArgs, sample_with_priorband
+from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.sampling.samplers import Sampler
+from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
+    from gpytorch.models.approximate_gp import Any
+
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
+    from neps.space.parameters import Parameter
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
 
@@ -56,6 +69,140 @@ def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
 
 
 @dataclass
+class GPSampler:
+    """See the following reference.
+
+    PriorBand Appendix E.4, Model extensions,
+    https://openreview.net/attachment?id=uoiwugtpCH&name=supplementary_material
+    """
+
+    parameters: Mapping[str, Parameter]
+    """The parameters to use."""
+
+    encoder: ConfigEncoder
+    """The encoder to use for encoding and decoding configurations."""
+
+    threshold: float
+    """The threshold at which to switch to the Bayesian optimizer.
+
+    This is calculated in the following way:
+    * 1 `fid_unit` is equal to `fid_max`.
+    * The minimum fidelity is equal to `fid_min / fid_max`.
+    * BO Sampling kicks in after `threshold` units of `fit_unit` have been used.
+    """
+
+    two_stage_batch_sample_size: int
+    """When fitting a GP jointly across all fidelitys, we do a two stage acquisition.
+
+    For simplicity in writing, lets assume `two_stage_batch_sample_size` is 10.
+
+    In the first stage, we acquire from the GP, the `10`
+    configurations that are predicted to be best at that target fidelity.
+    We then use another expected improvement on these
+    `10` configurations, but with their fidelity set
+    to the maximum, essentially to predict which one of those `10` configurations
+    will be best at the maximum fidelity.
+    """
+
+    fidelity_name: str
+    """The name of the fidelity in the space."""
+
+    fidelity_max: int | float
+    """The maximum fidelity value."""
+
+    device: torch.device | None
+    """The device to use for the GP optimization."""
+
+    def threshold_reached(self, trials: Mapping[str, Trial]) -> bool:
+        used_fidelity = [
+            t.config[self.fidelity_name] for t in trials.values() if t.report is not None
+        ]
+        fidelity_units_used = sum(used_fidelity) / self.fidelity_max
+        return fidelity_units_used >= self.threshold
+
+    def sample_config(
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None,
+        target_fidelity: int | float,
+    ) -> dict[str, Any]:
+        """Samples a configuration using the GP model.
+
+        Please see parameter descriptions in the class docstring for more.
+        """
+        assert budget_info is None, "cost-aware (using budget_info) not supported yet."
+        # fit the GP model using all trials, using fidelity as a dimension.
+        # Get to top 10 configurations for acquisition fixed at fidelity Z
+        # Switch those configurations to be at fidelity z_max and take the best.
+        # y_max for EI is taken to be the best value seen so far, across all fidelity
+        data, _ = encode_trials_for_gp(
+            trials,
+            self.parameters,
+            encoder=self.encoder,
+            device=self.device,
+        )
+        gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=self.encoder)
+
+        with disable_warnings(NumericalWarning):
+            acqf = qLogNoisyExpectedImprovement(
+                model=gp,
+                X_baseline=data.x,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                X_pending=data.x_pending,
+                prune_baseline=True,
+            )
+
+        # When it's max fidelity, we can just sample the best configuration we find,
+        # as we do not need to do the two step procedure.
+        requires_two_step = target_fidelity != self.fidelity_max
+        N = 1 if requires_two_step else self.two_stage_batch_sample_size
+
+        candidates = fit_and_acquire_from_gp(
+            gp=gp,
+            encoder=self.encoder,
+            x_train=data.x,
+            n_candidates_required=N,
+            acquisition=acqf,
+            # Ensure we fix that acquisition happens at target fidelity
+            fixed_acq_features={self.fidelity_name: target_fidelity},
+            # NOTE: We don't support any cost aware or prior based GP stuff here
+            # TODO: Theoretically, we could. Check out the implementation of
+            # `BayesianOptimization` for more details
+            prior=None,
+            pibo_exp_term=None,
+            costs=None,
+            cost_percentage_used=None,
+            costs_on_log_scale=False,
+            hide_warnings=True,
+        )
+        assert len(candidates) == N
+
+        # We bail out here, as we already acquired over max fidelity.
+        if not requires_two_step:
+            config = self.encoder.decode_one(candidates[0])
+            assert config[self.fidelity_name] == target_fidelity, (
+                f"Expected the target fidelity to be {target_fidelity}, "
+                f"but got {config[self.fidelity_name]} for config: {config}"
+            )
+            return config
+
+        # Next, we set those N configurations to be at the max fidelity
+        # Decode, set max fidelity, and encode again (TODO: Could do directly on tensors)
+        configs = self.encoder.decode(candidates)
+        fid_max_configs = [{**c, self.fidelity_name: self.fidelity_max} for c in configs]
+        encoded_fix_max_configs = self.encoder.encode(fid_max_configs)
+
+        ys = acqf(encoded_fix_max_configs)
+        idx_max = torch.argmax(ys)
+        config = configs[idx_max]
+        config.update({self.fidelity_name: target_fidelity})
+        return config
+
+
+@dataclass
 class BracketOptimizer:
     """Implements an optimizer over brackets.
 
@@ -85,8 +232,13 @@ class BracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     """A function that creates the brackets from the table of trials."""
 
-    sampler: Sampler | PriorBandArgs
+    sampler: Sampler | PriorBandSampler
     """The sampler used to generate new trials."""
+
+    gp_sampler: GPSampler | None
+    """If set, uses a GP for sampling configurations once it's threshold for
+    fidelity units has been reached.
+    """
 
     fid_min: int | float
     """The minimum fidelity value."""
@@ -97,7 +249,7 @@ class BracketOptimizer:
     fid_name: str
     """The name of the fidelity in the space."""
 
-    def __call__(  # noqa: PLR0912, C901
+    def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
@@ -109,6 +261,9 @@ class BracketOptimizer:
 
         # If we have no trials, we either go with the prior or just a sampled config
         if len(trials) == 0:
+            # NOTE: The `space.prior` might be only partially specified by a user,
+            # hence the usage of `space.centers` which is always fully defined and
+            # acts as a fallback if the prior is not defined.
             match self.sample_prior_first:
                 case "highest_fidelity":  # fid_max
                     config = {
@@ -185,7 +340,25 @@ class BracketOptimizer:
                 )
 
             # The bracket would like us to sample a new configuration for a rung
+            # and we have gp sampler which should kick in
+            case SampleAction(rung=rung) if (
+                self.gp_sampler is not None and self.gp_sampler.threshold_reached(trials)
+            ):
+                # If we should used BO to sample once a threshold has been reached,
+                # do so. Otherwise we proceed to use the original sampler.
+                target_fidelity = self.rung_to_fid[rung]
+                config = self.gp_sampler.sample_config(
+                    trials,
+                    budget_info=None,  # TODO: budget_info not supported yet
+                    target_fidelity=target_fidelity,
+                )
+                config.update(space.constants)
+                return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+
+            # We need to sample for a new rung, with either no gp or it has
+            # not yet kicked in.
             case SampleAction(rung=rung):
+                # Otherwise, we proceed with the original sampler
                 match self.sampler:
                     case Sampler():
                         config = self.sampler.sample_config(to=self.encoder)
@@ -196,25 +369,15 @@ class BracketOptimizer:
                         }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
 
-                    case PriorBandArgs():
-                        config = sample_with_priorband(
-                            table=table,
-                            parameters=space.searchables,
-                            rung_to_sample_for=rung,
-                            fid_bounds=(self.fid_min, self.fid_max),
-                            encoder=self.encoder,
-                            inc_mutation_rate=self.sampler.mutation_rate,
-                            inc_mutation_std=self.sampler.mutation_std,
-                            eta=self.eta,
-                            seed=None,  # TODO
-                        )
-
+                    case PriorBandSampler():
+                        config = self.sampler.sample_config(table, rung=rung)
                         config = {
                             **config,
                             **space.constants,
                             self.fid_name: self.rung_to_fid[rung],
                         }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+
                     case _:
                         raise RuntimeError(f"Unknown sampler: {self.sampler}")
             case _:
