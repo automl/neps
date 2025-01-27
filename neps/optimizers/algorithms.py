@@ -288,7 +288,11 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             )
 
         # TODO: Parametrize?
-        two_stage_batch_sample_size = 100
+        # NOTE: Deviation from PriorBand paper, which used 10
+        #   we can juice lot more from the BO now that we use BoTorch.
+        #   However the of more first stage samples is not clear that more
+        #   is better.
+        two_stage_batch_sample_size = 30
 
         gp_parameters = {**parameters, **pipeline_space.fidelities}
         gp_sampler = GPSampler(
