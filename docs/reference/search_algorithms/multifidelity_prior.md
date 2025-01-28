@@ -11,7 +11,7 @@ For a detailed explanation of Multi-Fidelity and Priors, please refer [here](../
 
 ``PriorBand``'s sampling module $\mathcal{E}_\pi$ balances the influence of the Prior, the incumbent configurations and randomness to select configurations.
 
-|![PriorBand's Sampler](../../doc_images/optimizers/priorband_sampler.png)|
+|![PriorBand's Sampler](../../doc_images/optimizers/priorband_sampler.jpg)|
 |:--:|
 |The ``PriorBand`` sampling module balances the influence of the Prior, the $1/\eta$ incumbent configurations and randomness to select configurations. (Image Source: [PriorBand-paper](https://openreview.net/pdf?id=uoiwugtpCH), Jan 27, 2025)|
 

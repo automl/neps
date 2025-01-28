@@ -97,7 +97,7 @@ a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{
 $$
 where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $P^y_{\min}$ is the same distribution, but given a new observation $y$ and $P(y| \cdot)$ is the probability of this $y$, from a configuration $\boldsymbol{x}$ (given the observations so far). So the acquisition function maximizes the information gain about the location of the minimum from evaluating any configuration $\boldsymbol{x}$, by maximizing the entropy-reduction.
 
-|![Fantasizing](../../doc_images/optimizers/freeze_thaw_fantasizing.png)|
+|![Fantasizing](../../doc_images/optimizers/freeze_thaw_fantasizing.jpg)|
 |:--:|
 |The image shows the fantasizing of exponential loss decay in`FT-BO` . (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|
 
@@ -105,7 +105,7 @@ where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $
 
 Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) configurations that are not informative anymore and _thawing_ (resuming training on) them when they become interesting again. It therefore chooses automatically between starting new configurations or thawing old ones.
 
-|![Freeze-Thaw](../../doc_images/optimizers/freeze_thawing.png)|
+|![Freeze-Thaw](../../doc_images/optimizers/freeze_thawing.jpg)|
 |:--:|
 |The image shows the Freeze-Thaw-mechanism, with the colors indicating, at what iteration a configuration has been evaluated at this fidelity. Note for example some yellow configurations being reused much later, ending in red. (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|
 
