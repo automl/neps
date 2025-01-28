@@ -63,9 +63,12 @@ Contrary to ``HyperBand``, which uses random configurations, ``BOHB`` uses ``BO`
 
 !!! example "Practical Tips"
 
-    - ``BOHB`` is more efficient than both ``HyperBand`` and BO on their own.
-    - The effects of ``BO`` only start showing after some evaluations at full fidelity, as it needs those to build its model.
-    - It has the same hyperparameters as ``HyperBand``, plus the choice of surrogate and acquisition functions from ``BO``.
+    - `BOHB` has the same hyperparameters as ``HyperBand``, plus the choice of surrogate and acquisition functions from ``BO``.
+    - The effects of ``BO`` only start showing after some evaluations at full fidelity, as it needs those to build its model. Consequently, it might be advantageous to run fewer workers in parallel, as they will be random in the beginning anyway and only start to be guided by the model later.
+    - How to pick the budget:
+      - Simplify the configuration space to under 10 dimensions if possible.
+      - Repeatedly run ``BOHB`` on smaller, but representative budgets, looking at the rank correlations between neighbouring fidelity levels. If the correlation is low ($<0.2$), increase the minimum budget or lower the promotion factor $\eta$.
+      - For more practical tips, see [here](https://automl.github.io/HpBandSter/build/html/best_practices.html).
 
 ### 4 `A-BOHB`
 
