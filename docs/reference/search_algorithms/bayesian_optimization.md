@@ -11,7 +11,7 @@ The following image shows a GP with its mean function and the 95% confidence int
 
 |![GP](../../doc_images/optimizers/bo_surrogate.jpg)|
 |:--:|
-|The dashed line represents the (hidden) objective function, while the solid line is the GP's mean function. The shaded area around the mean function is it's confidence interval. Note that the confidence interval collapses where observations have been made and gets large in regions where no data is available yet. Image Source: [Medium.com](https://towardsdatascience.com/shallow-understanding-on-bayesian-optimization-324b6c1f7083)|
+|The dashed line represents the (hidden) objective function, while the solid line is the surrogate mean function. The shaded area around the mean function is it's confidence interval. Note that the confidence interval collapses where observations have been made and gets large in regions where no data is available yet. (Image Source: [Medium.com](https://towardsdatascience.com/shallow-understanding-on-bayesian-optimization-324b6c1f7083), Jan 27, 2025)|
 
 ### The acquisition function
 
@@ -19,7 +19,7 @@ The acquisition function is the guiding force in BO. From the information contai
 
 |![Acquisition function](../../doc_images/optimizers/bo_acqu.jpg)|
 |:--:|
-|The image shows the surrogate function from before, with the acquisition function plotted below. The maximum of the acquisition function is the point that will usually be evaluated next. Image Source: [Medium.com](https://towardsdatascience.com/shallow-understanding-on-bayesian-optimization-324b6c1f7083)|
+|The image shows the surrogate function from before, now with the acquisition function plotted below. The maximum of the acquisition function is the point that will usually be evaluated next. (Image Source: [Medium.com](https://towardsdatascience.com/shallow-understanding-on-bayesian-optimization-324b6c1f7083), Jan 27, 2025)|
 
 There are numerous acquisition functions, with the most popular being `Expected Improvement` (EI):
 
@@ -37,7 +37,7 @@ where $f(\boldsymbol{x})$ is the surrogate function and $f(\boldsymbol{x}^+)$ is
 
 To read more about BO, please refer to this [Bayesian Optimization tutorial](https://arxiv.org/abs/1807.02811) or this article on [Towards Data Science](https://towardsdatascience.com/bayesian-optimization-concept-explained-in-layman-terms-1d2bcdeaf12f).
 
-## BO in Neps
+## BO in NePS
 
 BO is a widely used optimization technique in AutoML, as it can handle expensive-to-evaluate, noisy, high-dimensional and black-box objectives, all of which are common challenges in AutoML. It is used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
 
