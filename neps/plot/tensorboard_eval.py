@@ -18,7 +18,7 @@ from neps.runtime import (
     get_workers_neps_state,
     register_notify_trial_end,
 )
-from neps.status.status import get_summary_dict
+from neps.status.status import status
 from neps.utils.common import get_initial_directory
 
 if TYPE_CHECKING:
@@ -422,10 +422,10 @@ class tblogger:  # noqa: N801
             The function logs the incumbent trajectory in TensorBoard.
         """
         assert tblogger.optimizer_dir is not None
-        summary_dict = get_summary_dict(tblogger.optimizer_dir, add_details=True)
+        _, short = status(tblogger.optimizer_dir, print_summary=False)
 
-        incum_tracker = summary_dict["num_evaluated_configs"]
-        incum_val = summary_dict["best_objective_to_minimize"]
+        incum_tracker = short["state.completed"]
+        incum_val = short["best_objective_to_minimize"]
 
         if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
             tblogger.summary_writer = SummaryWriter_(tblogger.optimizer_dir / "summary")

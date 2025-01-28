@@ -346,9 +346,6 @@ if __name__ == "__main__":
     set_seed(112)
     logging.basicConfig(level=logging.INFO)
 
-    # To check the status of tblogger:
-    # tblogger.get_status()
-
     run_args = dict(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space(),

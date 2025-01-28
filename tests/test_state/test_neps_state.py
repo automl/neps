@@ -12,7 +12,13 @@ from typing import Any
 import pytest
 from pytest_cases import case, fixture, parametrize, parametrize_with_cases
 
-from neps.optimizers import AskFunction, PredefinedOptimizers, load_optimizer
+from neps.optimizers import (
+    AskFunction,
+    OptimizerInfo,
+    PredefinedOptimizers,
+    load_optimizer,
+)
+from neps.optimizers.ask_and_tell import AskAndTell
 from neps.space import (
     Categorical,
     Constant,
@@ -20,13 +26,7 @@ from neps.space import (
     Integer,
     SearchSpace,
 )
-from neps.state import (
-    BudgetInfo,
-    NePSState,
-    OptimizationState,
-    OptimizerInfo,
-    SeedSnapshot,
-)
+from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
 
 
 @case
@@ -126,7 +126,9 @@ REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 @fixture
 @parametrize("key", list(PredefinedOptimizers.keys()))
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
-def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[AskFunction, str]:
+def optimizer_and_key_and_search_space(
+    key: str, search_space: SearchSpace
+) -> tuple[AskFunction, str, SearchSpace]:
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
@@ -141,10 +143,10 @@ def optimizer_and_key(key: str, search_space: SearchSpace) -> tuple[AskFunction,
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
-    return opt, key
+    return opt, key, search_space
 
 
-@parametrize("optimizer_info", [OptimizerInfo({"a": "b"}), OptimizerInfo({})])
+@parametrize("optimizer_info", [OptimizerInfo(name="blah", info={"a": "b"})])
 @parametrize("max_cost_total", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None])
 @parametrize("shared_state", [{"a": "b"}, {}])
 def case_neps_state_filebased(
@@ -168,9 +170,9 @@ def case_neps_state_filebased(
 @parametrize_with_cases("neps_state", cases=".", prefix="case_neps_state")
 def test_sample_trial(
     neps_state: NePSState,
-    optimizer_and_key: tuple[AskFunction, str],
+    optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
 ) -> None:
-    optimizer, key = optimizer_and_key
+    optimizer, key, search_space = optimizer_and_key_and_search_space
     if key in REQUIRES_COST and neps_state.lock_and_get_optimizer_state().budget is None:
         pytest.xfail(f"{key} requires a cost budget")
 
@@ -182,6 +184,9 @@ def test_sample_trial(
     trial1 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
     for k, v in trial1.config.items():
         assert v is not None, f"'{k}' is None in {trial1.config}"
+
+    for name in search_space:
+        assert name in trial1.config, f"'{name}' is not in {trial1.config}"
 
     # HACK: Unfortunatly due to windows, who's time.time() is not very
     # precise, we need to introduce a sleep -_-
@@ -196,9 +201,23 @@ def test_sample_trial(
     for k, v in trial1.config.items():
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
+    for name in search_space:
+        assert name in trial1.config, f"'{name}' is not in {trial1.config}"
+
     assert trial1 != trial2
 
     assert neps_state.lock_and_read_trials() == {trial1.id: trial1, trial2.id: trial2}
     assert neps_state.lock_and_get_next_pending_trial() == trial1
     assert neps_state.lock_and_get_next_pending_trial(n=10) == [trial1, trial2]
     assert sorted(neps_state.all_trial_ids()) == [trial1.id, trial2.id]
+
+
+def test_optimizers_work_roughly(
+    optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
+) -> None:
+    opt, key, search_space = optimizer_and_key_and_search_space
+    ask_and_tell = AskAndTell(opt)
+
+    for _ in range(20):
+        trial = ask_and_tell.ask()
+        ask_and_tell.tell(trial, 1.0)

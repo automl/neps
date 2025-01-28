@@ -71,11 +71,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from neps.optimizers.optimizer import AskFunction, SampledConfig
-from neps.state._eval import parse_user_result
-from neps.state.trial import Trial
+from neps.state import EvaluatePipelineReturn, Trial, UserResult
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
+    from neps.state.pipeline_eval import EvaluatePipelineReturn
 
 
 def _default_worker_name() -> str:
@@ -168,8 +168,7 @@ class AskAndTell:
         *,
         config_id: str,
         config: Mapping[str, Any],
-        result: Exception | float | Mapping[str, Any],
-        report_as: Literal["success", "failed", "crashed"] | None = None,
+        result: EvaluatePipelineReturn,
         time_sampled: float = float("nan"),
         time_started: float = float("nan"),
         time_end: float = float("nan"),
@@ -189,11 +188,6 @@ class AskAndTell:
                 a float, or a mapping of values, similar to that which
                 you would return from `evaluate_pipeline` when your normally
                 call [`neps.run()`][neps.api.run].
-            report_as: The status of the evaluation. One of "success", "failed",
-                or "crashed". If not provided, it will be inferred from the result.
-                You can usually leave this blank, unless you would like to provide
-                that a configuration has failed, but that it still has a
-                cost and/or objective_to_minize associated with it.
             time_sampled: The time the configuration was sampled.
                 Only used as metadata.
             time_started: The time the configuration was started to be evaluated.
@@ -221,21 +215,15 @@ class AskAndTell:
         if worker_id is None:
             worker_id = self.worker_id
 
-        error: Exception | None
-        match result:
-            case Exception():
-                objective_to_minimize, cost, learning_curve, extra = [None] * 4
-                report_as = report_as if report_as is not None else "crashed"
-                error = result
-            case float() | Mapping():
-                result = dict(result) if isinstance(result, Mapping) else result
-                objective_to_minimize, cost, learning_curve, extra = parse_user_result(
-                    result,
-                )
-                report_as = report_as if report_as is not None else "success"
-                error = None
-            case _:
-                raise ValueError("result must be an Exception, float, or Mapping")
+        parsed_result = UserResult.parse(
+            result,
+            default_objective_to_minimize_value=None,
+            default_cost_value=None,
+            default_learning_curve=None,
+        )
+        report_as: Literal["success", "crashed"] = (
+            "success" if parsed_result.exception is None else "crashed"
+        )
 
         # Just go through the motions of the trial life-cycle
         trial = Trial.new(
@@ -253,13 +241,13 @@ class AskAndTell:
         )
         trial.set_complete(
             report_as=report_as,
-            objective_to_minimize=objective_to_minimize,
-            cost=cost,
-            learning_curve=learning_curve,
-            extra=extra,
+            objective_to_minimize=parsed_result.objective_to_minimize,
+            cost=parsed_result.cost,
+            learning_curve=parsed_result.learning_curve,
+            extra=parsed_result.extra,
+            err=parsed_result.exception,
             time_end=time_end,
             evaluation_duration=evaluation_duration,
-            err=error,
             tb=traceback_str,
         )
         self.trials[config_id] = trial
@@ -268,9 +256,8 @@ class AskAndTell:
     def tell(
         self,
         trial: str | Trial,
-        result: Exception | float | Mapping[str, Any],
+        result: EvaluatePipelineReturn,
         *,
-        report_as: Literal["success", "failed", "crashed"] | None = None,
         time_end: float | None = None,
         evaluation_duration: float | None = None,
         traceback_str: str | None = None,
@@ -284,11 +271,6 @@ class AskAndTell:
                 a float, or a mapping of values, similar to that which
                 you would return from `evaluate_pipeline` when your normally
                 call [`neps.run()`][neps.api.run].
-            report_as: The status of the evaluation. One of "success", "failed",
-                or "crashed". If not provided, it will be inferred from the result.
-                You can usually leave this blank, unless you would like to provide
-                that a configuration has failed, but that it still has a
-                cost and/or objective_to_minize associated with it.
             time_end: The time the configuration was finished being evaluated.
                 Defaults to `time.time()`. Only used as metadata.
             evaluation_duration: The duration of the evaluation. Defaults
@@ -312,45 +294,26 @@ class AskAndTell:
                 f" Known trial ids: {list(self.trials.keys())}"
             )
 
-        error: Exception | None
-        match result:
-            case Exception():
-                objective_to_minimize, cost, learning_curve, extra = [None] * 4
-                report_as = report_as if report_as is not None else "crashed"
-                error = result
-            case float() | Mapping():
-                result = dict(result) if isinstance(result, Mapping) else result
-                objective_to_minimize, cost, learning_curve, extra = parse_user_result(
-                    result
-                )
-                report_as = report_as if report_as is not None else "success"
-                error = None
-            case _:
-                raise ValueError("result must be an Exception, float, or Mapping")
-
-        match evaluation_duration:
-            case None:
-                now = time.time()
-                time_started = _trial.metadata.time_started
-                if time_started is None:
-                    evaluation_duration = float("nan")
-                else:
-                    evaluation_duration = now - time_started
-            case float():
-                pass
-            case _:
-                raise ValueError("evaluation_duration must be a float or None")
+        parsed_result = UserResult.parse(
+            result,
+            default_objective_to_minimize_value=None,
+            default_cost_value=None,
+            default_learning_curve=None,
+        )
+        report_as: Literal["success", "crashed"] = (
+            "success" if parsed_result.exception is None else "crashed"
+        )
 
         _trial = self.trials[_trial.id]
         _trial.set_complete(
             report_as=report_as,
-            objective_to_minimize=objective_to_minimize,
-            cost=cost,
-            learning_curve=learning_curve,
-            extra=extra,
+            objective_to_minimize=parsed_result.objective_to_minimize,
+            cost=parsed_result.cost,
+            learning_curve=parsed_result.learning_curve,
+            extra=parsed_result.extra,
             time_end=time_end if time_end is not None else time.time(),
             evaluation_duration=evaluation_duration,
-            err=error,
+            err=parsed_result.exception,
             tb=traceback_str,
         )
         return _trial

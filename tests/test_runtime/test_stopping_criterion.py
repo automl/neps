@@ -6,6 +6,7 @@ from pathlib import Path
 from pytest_cases import fixture
 
 from neps.optimizers.algorithms import random_search
+from neps.optimizers.optimizer import OptimizerInfo
 from neps.runtime import DefaultWorker
 from neps.space import Float, SearchSpace
 from neps.state import (
@@ -13,7 +14,6 @@ from neps.state import (
     NePSState,
     OnErrorPossibilities,
     OptimizationState,
-    OptimizerInfo,
     SeedSnapshot,
     Trial,
     WorkerSettings,
@@ -24,7 +24,7 @@ from neps.state import (
 def neps_state(tmp_path: Path) -> NePSState:
     return NePSState.create_or_load(
         path=tmp_path / "neps_state",
-        optimizer_info=OptimizerInfo(info={"nothing": "here"}),
+        optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None,
             seed_snapshot=SeedSnapshot.new_capture(),

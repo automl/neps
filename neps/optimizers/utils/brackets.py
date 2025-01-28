@@ -203,7 +203,10 @@ class Sync:
 
     @classmethod
     def create_repeating(
-        cls, table: pd.DataFrame, *, rung_sizes: dict[int, int]
+        cls,
+        table: pd.DataFrame,
+        *,
+        rung_sizes: dict[int, int],
     ) -> list[Sync]:
         """Create a list of brackets from the table.
 
@@ -236,25 +239,38 @@ class Sync:
             Brackets which have each subselected the table with the corresponding rung
             sizes.
         """
-        uniq_ids = table.index.get_level_values("id").unique()
+        # Split the trials by their unique_id, taking batches of K at a time, which will
+        # gives us N = len(unique_is) / K brackets in total.
+        #
+        # Here, unique_id referes to the `1` in config_1_0 i.e. id = 1, rung = 0
+        #
+        #      1  2  3  4  5  6  7  8  9   10 11 12 13 14 15 16 17 18   ...
+        #     |           bracket1       |       bracket 2            | ... |
 
-        # Split the ids into N brackets of size K.
-        # K is the number of configurations in the lowest rung, i.e. number of config ids
+        # K is the number of configurations in the lowest rung, which is how many unique
+        # ids are needed to fill a single bracket.
         K = rung_sizes[min(rung_sizes)]
 
-        # Here we don't do `((len(uniq_ids) - 1) // K) + 1` because we want to ensure
-        # the extra bracket,
-        # i.e. if K = 9 and for varying len(uniq_ids):
-        # N = (26 // 9) + 1 = 3
-        # N = (27 // 9) + 1 = 4
-        # N = (28 // 9) + 1 = 4
-        N = max(((len(uniq_ids) - 1) // K) + 1, 1)
+        # N is the number of brackets we need to create to accomodate all the unique ids.
+        # First we need all of the unique ids.
+        uniq_ids = table.index.get_level_values("id").unique()
 
+        # * Why (len(uniq_ids) + K) // K?
+        #   * If we have `1` unique id, then 1 // K == 0 while (K + 1) // K == 1
+        N = (len(uniq_ids) + K) // K
+
+        # Now we take the unique ids and split them into batches of size K
         bracket_id_slices: list[Index] = [uniq_ids[i * K : (i + 1) * K] for i in range(N)]
-        bracket_datas = [table.loc[bracket_ids] for bracket_ids in bracket_id_slices]
 
-        # [bracket] -> {rung: table}
-        data_for_bracket_by_rung = [
+        # And now select the data for each of the unique_ids in the bracket
+        bracket_datas = [
+            table.loc[bracket_unique_ids] for bracket_unique_ids in bracket_id_slices
+        ]
+
+        # This will give us a list of dictionaries, where each element `n` of the
+        # list is on of the `N` brackets, and the dictionary at element `n` maps
+        # from a rung, to the slice of the data for that rung.
+        all_N_bracket_datas = [
             dict(iter(d.groupby(level="rung", sort=False))) for d in bracket_datas
         ]
 
@@ -264,11 +280,11 @@ class Sync:
         return [
             Sync(
                 rungs=[
-                    Rung(rung, data_by_rung.get(rung, empty_slice), capacity)
+                    Rung(rung, bracket_data.get(rung, empty_slice), capacity)
                     for rung, capacity in rung_sizes.items()
                 ],
             )
-            for data_by_rung in data_for_bracket_by_rung
+            for bracket_data in all_N_bracket_datas
         ]
 
 

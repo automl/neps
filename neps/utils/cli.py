@@ -18,33 +18,12 @@ import neps
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.status.status import post_run_csv
 import pandas as pd
-from neps.utils.yaml_loading import (
-    RUN_ARGS,
-    EVALUATE_PIPELINE,
-    ROOT_DIRECTORY,
-    POST_RUN_SUMMARY,
-    MAX_EVALUATIONS_PER_RUN,
-    MAX_EVALUATIONS_TOTAL,
-    MAX_COST_TOTAL,
-    PIPELINE_SPACE,
-    OPTIMIZER,
-    IGNORE_ERROR,
-    OBJECTIVE_VALUE_ON_ERROR,
-    COST_VALUE_ON_ERROR,
-    CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED,
-    OVERWRITE_WORKING_DIRECTORY,
-    load_yaml_config,
-)
-from neps.utils.yaml_loading import load_and_return_object
+from neps.utils.common import dynamic_load_object
 from neps.state.neps_state import NePSState
 from neps.state.trial import Trial
 from neps.exceptions import TrialNotFoundError
-from neps.status.status import get_summary_dict
 from neps.optimizers import load_optimizer
-from neps.state.optimizer import BudgetInfo, OptimizationState, OptimizerInfo
-
-# Suppress specific warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="torch._utils")
+from neps.state.optimizer import BudgetInfo, OptimizationState
 
 
 def validate_directory(path: Path) -> bool:
@@ -85,7 +64,7 @@ def get_root_directory(args: argparse.Namespace) -> Optional[Path]:
             print(f"Error parsing '{config_path}': {e}")
             return None
 
-        root_directory = config.get(ROOT_DIRECTORY)
+        root_directory = config.get("root_directory")
         if root_directory:
             root_directory_path = Path(root_directory)
             if validate_directory(root_directory_path):
@@ -118,15 +97,17 @@ def init_config(args: argparse.Namespace) -> None:
 
     if args.database:
         if config_path.exists():
-            run_args = load_yaml_config(config_path)
-            max_cost_total = run_args.get(MAX_COST_TOTAL)
+            with config_path.open("r") as file:
+                run_args = yaml.safe_load(file)
+
+            max_cost_total = run_args.get("max_cost_total")
             # Create the optimizer
             _, optimizer_info = load_optimizer(
-                optimizer=run_args.get(OPTIMIZER),  # type: ignore
-                space=run_args.get(PIPELINE_SPACE),  # type: ignore
+                optimizer=run_args.get("optimizer"),  # type: ignore
+                space=run_args.get("pipeline_space"),  # type: ignore
             )
             try:
-                directory = run_args.get(ROOT_DIRECTORY)
+                directory = run_args.get("root_directory")
                 if directory is None:
                     return
                 else:
@@ -134,7 +115,7 @@ def init_config(args: argparse.Namespace) -> None:
                 is_new = not directory.exists()
                 _ = NePSState.create_or_load(
                     path=directory,
-                    optimizer_info=OptimizerInfo(optimizer_info),
+                    optimizer_info=optimizer_info,
                     optimizer_state=OptimizationState(
                         seed_snapshot=SeedSnapshot.new_capture(),
                         budget=(
@@ -277,39 +258,15 @@ def run_optimization(args: argparse.Namespace) -> None:
 
     if isinstance(args.evaluate_pipeline, str):
         module_path, function_name = args.evaluate_pipeline.split(":")
-        evaluate_pipeline = load_and_return_object(
-            module_path, function_name, EVALUATE_PIPELINE
-        )
-
+        evaluate_pipeline = dynamic_load_object(module_path, function_name)
     else:
         evaluate_pipeline = args.evaluate_pipeline
 
-    kwargs = {}
-    if args.optimizer_kwargs:
-        kwargs = parse_kv_pairs(args.optimizer_kwargs)  # convert kwargs
-
-    # Collect arguments from args and prepare them for neps.run
-    options = {
-        RUN_ARGS: run_args,
-        EVALUATE_PIPELINE: evaluate_pipeline,
-        PIPELINE_SPACE: args.pipeline_space,
-        ROOT_DIRECTORY: args.root_directory,
-        OVERWRITE_WORKING_DIRECTORY: args.overwrite_working_directory,
-        POST_RUN_SUMMARY: args.post_run_summary,
-        MAX_EVALUATIONS_TOTAL: args.max_evaluations_total,
-        MAX_EVALUATIONS_PER_RUN: args.max_evaluations_per_run,
-        CONTINUE_UNTIL_MAX_EVALUATION_COMPLETED: (
-            args.continue_until_max_evaluation_completed
-        ),
-        MAX_COST_TOTAL: args.max_cost_total,
-        IGNORE_ERROR: args.ignore_errors,
-        OBJECTIVE_VALUE_ON_ERROR: args.objective_value_on_error,
-        COST_VALUE_ON_ERROR: args.cost_value_on_error,
-        OPTIMIZER: args.optimizer,
-        **kwargs,
-    }
     logging.basicConfig(level=logging.INFO)
-    neps.run(**options)
+    with open(run_args, "r") as file:
+        run_config = yaml.safe_load(file)
+
+    neps.run(**run_config)
 
 
 def info_config(args: argparse.Namespace) -> None:
@@ -402,10 +359,11 @@ def sample_config(args: argparse.Namespace) -> None:
         print(f"Error: run_args file {run_args_path} does not exist.")
         return
 
-    run_args = load_yaml_config(run_args_path)
+    with run_args_path.open("r") as file:
+        run_args = yaml.safe_load(file)
 
     # Get root_directory from the run_args
-    root_directory = run_args.get(ROOT_DIRECTORY)
+    root_directory = run_args.get("root_directory")
     if not root_directory:
         print("Error: 'root_directory' is not specified in the run_args file.")
         return
@@ -424,8 +382,8 @@ def sample_config(args: argparse.Namespace) -> None:
     num_configs = args.number_of_configs if args.number_of_configs else 1
 
     optimizer, _ = load_optimizer(
-        optimizer=run_args.get(OPTIMIZER),  # type: ignore
-        space=run_args.get(PIPELINE_SPACE),  # type: ignore
+        optimizer=run_args.get("optimizer"),  # type: ignore
+        space=run_args.get("pipeline_space"),  # type: ignore
     )
 
     # Sample trials
@@ -470,136 +428,137 @@ def compute_duration(start_time: float) -> str:
 def status(args: argparse.Namespace) -> None:
     """Handles the status command, providing a summary of the NEPS run."""
     # Get the root_directory from args or load it from run_config.yaml
-    directory_path = get_root_directory(args)
-    if directory_path is None:
-        return
+    raise NotImplementedError("Sorry, broken for the moment")
+    # > directory_path = get_root_directory(args)
+    # > if directory_path is None:
+    # >     return
 
-    neps_state = load_neps_state(directory_path)
-    if neps_state is None:
-        return
+    # > neps_state = load_neps_state(directory_path)
+    # > if neps_state is None:
+    # >     return
 
-    summary = get_summary_dict(directory_path, add_details=True)
+    # > summary = get_summary_dict(directory_path, add_details=True)
 
-    # Calculate the number of trials in different states
-    trials = neps_state.lock_and_read_trials()
-    evaluating_trials_count = sum(
-        1 for trial in trials.values() if trial.metadata.state == Trial.State.EVALUATING
-    )
-    pending_trials_count = summary["num_pending_configs"]
-    succeeded_trials_count = summary["num_evaluated_configs"] - summary["num_error"]
-    failed_trials_count = summary["num_error"]
+    # > # Calculate the number of trials in different states
+    # > trials = neps_state.lock_and_read_trials()
+    # > evaluating_trials_count = sum(
+    # >     1 for trial in trials.values() if trial.metadata.state == Trial.State.EVALUATING
+    # > )
+    # > pending_trials_count = summary["num_pending_configs"]
+    # > succeeded_trials_count = summary["num_evaluated_configs"] - summary["num_error"]
+    # > failed_trials_count = summary["num_error"]
 
-    # Print summary
-    print("NePS Status:")
-    print("-----------------------------")
-    print(f"Optimizer: {neps_state.lock_and_get_optimizer_info().info['optimizer_alg']}")
-    print(f"Succeeded Trials: {succeeded_trials_count}")
-    print(f"Failed Trials (Errors): {failed_trials_count}")
-    print(f"Active Trials: {evaluating_trials_count}")
-    print(f"Pending Trials: {pending_trials_count}")
-    print(f"Best Objective_to_minimize Achieved: {summary['best_objective_to_minimize']}")
+    # > # Print summary
+    # > print("NePS Status:")
+    # > print("-----------------------------")
+    # > print(f"Optimizer: {neps_state.lock_and_get_optimizer_info().info['optimizer_alg']}")
+    # > print(f"Succeeded Trials: {succeeded_trials_count}")
+    # > print(f"Failed Trials (Errors): {failed_trials_count}")
+    # > print(f"Active Trials: {evaluating_trials_count}")
+    # > print(f"Pending Trials: {pending_trials_count}")
+    # > print(f"Best Objective_to_minimize Achieved: {summary['best_objective_to_minimize']}")
 
-    print("\nLatest Trials:")
-    print("-----------------------------")
+    # > print("\nLatest Trials:")
+    # > print("-----------------------------")
 
-    # Retrieve and sort the trials by time_sampled
-    sorted_trials = sorted(
-        trials.values(), key=lambda t: t.metadata.time_sampled, reverse=True
-    )
+    # > # Retrieve and sort the trials by time_sampled
+    # > sorted_trials = sorted(
+    # >     trials.values(), key=lambda t: t.metadata.time_sampled, reverse=True
+    # > )
 
-    # Filter trials based on state
-    if args.pending:
-        filtered_trials = [
-            trial for trial in sorted_trials if trial.metadata.state.name == "PENDING"
-        ]
-    elif args.evaluating:
-        filtered_trials = [
-            trial for trial in sorted_trials if trial.metadata.state.name == "EVALUATING"
-        ]
-    elif args.succeeded:
-        filtered_trials = [
-            trial for trial in sorted_trials if trial.metadata.state.name == "SUCCESS"
-        ]
-    else:
-        filtered_trials = sorted_trials[:7]
+    # > # Filter trials based on state
+    # > if args.pending:
+    # >     filtered_trials = [
+    # >         trial for trial in sorted_trials if trial.metadata.state.name == "PENDING"
+    # >     ]
+    # > elif args.evaluating:
+    # >     filtered_trials = [
+    # >         trial for trial in sorted_trials if trial.metadata.state.name == "EVALUATING"
+    # >     ]
+    # > elif args.succeeded:
+    # >     filtered_trials = [
+    # >         trial for trial in sorted_trials if trial.metadata.state.name == "SUCCESS"
+    # >     ]
+    # > else:
+    # >     filtered_trials = sorted_trials[:7]
 
-    # Define column headers with fixed width
-    header_format = "{:<20} {:<10} {:<10} {:<40} {:<12} {:<10}"
-    row_format = "{:<20} {:<10} {:<10} {:<40} {:<12} {:<10}"
+    # > # Define column headers with fixed width
+    # > header_format = "{:<20} {:<10} {:<10} {:<40} {:<12} {:<10}"
+    # > row_format = "{:<20} {:<10} {:<10} {:<40} {:<12} {:<10}"
 
-    # Print the header
-    print(
-        header_format.format(
-            "Sampled Time",
-            "Duration",
-            "Trial ID",
-            "Worker ID",
-            "State",
-            "Objective_to_minimize",
-        )
-    )
+    # > # Print the header
+    # > print(
+    # >     header_format.format(
+    # >         "Sampled Time",
+    # >         "Duration",
+    # >         "Trial ID",
+    # >         "Worker ID",
+    # >         "State",
+    # >         "Objective_to_minimize",
+    # >     )
+    # > )
 
-    # Print the details of the filtered trials
-    for trial in filtered_trials:
-        time_sampled = convert_timestamp(trial.metadata.time_sampled)
-        if trial.metadata.state.name in ["PENDING", "EVALUATING"]:
-            duration = compute_duration(trial.metadata.time_sampled)
-        else:
-            duration = (
-                format_duration(trial.metadata.evaluation_duration)
-                if trial.metadata.evaluation_duration
-                else "N/A"
-            )
-        trial_id = trial.id
-        worker_id = trial.metadata.sampling_worker_id
-        state = trial.metadata.state.name
-        objective_to_minimize = (
-            f"{trial.report.objective_to_minimize:.6f}"
-            if (trial.report and trial.report.objective_to_minimize is not None)
-            else "N/A"
-        )
+    # > # Print the details of the filtered trials
+    # > for trial in filtered_trials:
+    # >     time_sampled = convert_timestamp(trial.metadata.time_sampled)
+    # >     if trial.metadata.state.name in ["PENDING", "EVALUATING"]:
+    # >         duration = compute_duration(trial.metadata.time_sampled)
+    # >     else:
+    # >         duration = (
+    # >             format_duration(trial.metadata.evaluation_duration)
+    # >             if trial.metadata.evaluation_duration
+    # >             else "N/A"
+    # >         )
+    # >     trial_id = trial.id
+    # >     worker_id = trial.metadata.sampling_worker_id
+    # >     state = trial.metadata.state.name
+    # >     objective_to_minimize = (
+    # >         f"{trial.report.objective_to_minimize:.6f}"
+    # >         if (trial.report and trial.report.objective_to_minimize is not None)
+    # >         else "N/A"
+    # >     )
 
-        print(
-            row_format.format(
-                time_sampled, duration, trial_id, worker_id, state, objective_to_minimize
-            )
-        )
+    # >     print(
+    # >         row_format.format(
+    # >             time_sampled, duration, trial_id, worker_id, state, objective_to_minimize
+    # >         )
+    # >     )
 
-    # If no specific filter is applied, print the best trial and optimizer info
-    if not args.pending and not args.evaluating and not args.succeeded:
-        if summary["best_config_id"] is not None:
-            print("\nBest Trial:")
-            print("-----------------------------")
-            print(f"ID: {summary['best_config_id']}")
-            print(f"Loss: {summary['best_objective_to_minimize']}")
-            print("Config:")
-            for key, value in summary["best_config"].items():
-                print(f"  {key}: {value}")
+    # > # If no specific filter is applied, print the best trial and optimizer info
+    # > if not args.pending and not args.evaluating and not args.succeeded:
+    # >     if summary["best_config_id"] is not None:
+    # >         print("\nBest Trial:")
+    # >         print("-----------------------------")
+    # >         print(f"ID: {summary['best_config_id']}")
+    # >         print(f"Loss: {summary['best_objective_to_minimize']}")
+    # >         print("Config:")
+    # >         for key, value in summary["best_config"].items():
+    # >             print(f"  {key}: {value}")
 
-            print(
-                f"\nMore details: neps info-config {summary['best_config_id']} "
-                f"(use --root-directory if not using run_config.yaml)"
-            )
-        else:
-            print("\nBest Trial:")
-            print("-----------------------------")
-            print("\nNo successful trial found.")
+    # >         print(
+    # >             f"\nMore details: neps info-config {summary['best_config_id']} "
+    # >             f"(use --root-directory if not using run_config.yaml)"
+    # >         )
+    # >     else:
+    # >         print("\nBest Trial:")
+    # >         print("-----------------------------")
+    # >         print("\nNo successful trial found.")
 
-        # Display optimizer information
-        optimizer_info = neps_state.lock_and_get_optimizer_info().info
-        optimizer_name = optimizer_info.get("optimizer_name", "N/A")
-        optimizer_alg = optimizer_info.get("optimizer_alg", "N/A")
-        optimizer_args = optimizer_info.get("optimizer_args", {})
+    # >     # Display optimizer information
+    # >     optimizer_info = neps_state.lock_and_get_optimizer_info().info
+    # >     optimizer_name = optimizer_info.get("optimizer_name", "N/A")
+    # >     optimizer_alg = optimizer_info.get("optimizer_alg", "N/A")
+    # >     optimizer_args = optimizer_info.get("optimizer_args", {})
 
-        print("\nOptimizer Information:")
-        print("-----------------------------")
-        print(f"Name: {optimizer_name}")
-        print(f"Algorithm: {optimizer_alg}")
-        print("Parameter:")
-        for arg, value in optimizer_args.items():
-            print(f"  {arg}: {value}")
+    # >     print("\nOptimizer Information:")
+    # >     print("-----------------------------")
+    # >     print(f"Name: {optimizer_name}")
+    # >     print(f"Algorithm: {optimizer_alg}")
+    # >     print("Parameter:")
+    # >     for arg, value in optimizer_args.items():
+    # >         print(f"  {arg}: {value}")
 
-        print("-----------------------------")
+    # >     print("-----------------------------")
 
 
 def results(args: argparse.Namespace) -> None:
@@ -1014,7 +973,8 @@ def handle_report_config(args: argparse.Namespace) -> None:
         print(f"Error: run_args file {run_args_path} does not exist.")
         return
 
-    run_args = load_yaml_config(run_args_path)
+    with open(run_args_path, "r") as f:
+        run_args = yaml.safe_load(f)
 
     # Get root_directory from run_args
     root_directory = run_args.get("root_directory")
@@ -1118,309 +1078,310 @@ def main() -> None:
     This function sets up the command-line interface (CLI) for NePS using argparse.
     It defines the available subcommands and their respective arguments.
     """
-    parser = argparse.ArgumentParser(description="NePS Command Line Interface")
-    subparsers = parser.add_subparsers(
-        dest="command", help="Available commands: init, run"
-    )
+    raise NotImplementedError("Sorry, this is not currently implemented.")
+    # > parser = argparse.ArgumentParser(description="NePS Command Line Interface")
+    # > subparsers = parser.add_subparsers(
+    # >     dest="command", help="Available commands: init, run"
+    # > )
 
-    # Subparser for "init" command
-    parser_init = subparsers.add_parser("init", help="Generate 'run_args' YAML file")
-    parser_init.add_argument(
-        "--config-path",
-        type=str,
-        default=None,
-        help="Optional custom path for generating the configuration file. "
-        "Default is 'run_config.yaml'.",
-    )
-    parser_init.add_argument(
-        "--template",
-        type=str,
-        choices=["basic", "complete"],
-        default="basic",
-        help="Optional, options between different templates. Required configs(basic) vs "
-        "all neps configs (complete)",
-    )
-    parser_init.add_argument(
-        "--database",
-        action="store_true",
-        help="If set, creates a NEPS state. Requires an existing config.yaml.",
-    )
-    parser_init.set_defaults(func=init_config)
+    # > # Subparser for "init" command
+    # > parser_init = subparsers.add_parser("init", help="Generate 'run_args' YAML file")
+    # > parser_init.add_argument(
+    # >     "--config-path",
+    # >     type=str,
+    # >     default=None,
+    # >     help="Optional custom path for generating the configuration file. "
+    # >     "Default is 'run_config.yaml'.",
+    # > )
+    # > parser_init.add_argument(
+    # >     "--template",
+    # >     type=str,
+    # >     choices=["basic", "complete"],
+    # >     default="basic",
+    # >     help="Optional, options between different templates. Required configs(basic) vs "
+    # >     "all neps configs (complete)",
+    # > )
+    # > parser_init.add_argument(
+    # >     "--database",
+    # >     action="store_true",
+    # >     help="If set, creates a NEPS state. Requires an existing config.yaml.",
+    # > )
+    # > parser_init.set_defaults(func=init_config)
 
-    # Subparser for "run" command
-    parser_run = subparsers.add_parser("run", help="Run a neural pipeline search.")
-    # Adding arguments to the 'run' subparser with defaults
-    parser_run.add_argument(
-        "--run",
-        type=str,
-        help="Path to the YAML configuration file(s).",
-        nargs="*",
-        default=None,
-    )
+    # > # Subparser for "run" command
+    # > parser_run = subparsers.add_parser("run", help="Run a neural pipeline search.")
+    # > # Adding arguments to the 'run' subparser with defaults
+    # > parser_run.add_argument(
+    # >     "--run",
+    # >     type=str,
+    # >     help="Path to the YAML configuration file(s).",
+    # >     nargs="*",
+    # >     default=None,
+    # > )
 
-    parser_run.add_argument(
-        "--pipeline-space",
-        type=str,
-        default=None,
-        help="Path to the YAML file defining the search space for the optimization. "
-        "This can be provided here or defined within the 'run_args' YAML file. "
-        "(default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--root-directory",
-        type=str,
-        default=None,
-        help="The directory to save progress to. This is also used to synchronize "
-        "multiple calls for parallelization. (default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--overwrite-working-directory",
-        action="store_true",
-        default=False,  # noqa: FBT003
-        help="If set, deletes the working directory at the start of the run. "
-        "This is useful, for example, when debugging a evaluate_pipeline function. "
-        "(default: %(default)s)",
-    )
-    # Create a mutually exclusive group for post-run summary flags
-    summary_group = parser_run.add_mutually_exclusive_group(required=False)
-    summary_group.add_argument(
-        "--post-run-summary",
-        action="store_true",
-        default=True,  # noqa: FBT003
-        help="Provide a summary of the results after running. (default: %(default)s)",
-    )
-    summary_group.add_argument(
-        "--no-post-run-summary",
-        action="store_false",
-        dest="post_run_summary",
-        help="Do not provide a summary of the results after running.",
-    )
-    parser_run.add_argument(
-        "--max-evaluations-total",
-        type=int,
-        default=None,
-        help="Total number of evaluations to run. (default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--max-evaluations-per-run",
-        type=int,
-        default=None,
-        help="Number of evaluations a specific call should maximally do. "
-        "(default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--continue-until-max-evaluation-completed",
-        action="store_true",
-        default=False,  # noqa: FBT003
-        help="If set, only stop after max-evaluations-total have been completed. This "
-        "is only relevant in the parallel setting. (default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--max-cost-total",
-        type=float,
-        default=None,
-        help="No new evaluations will start when this cost is exceeded. Requires "
-        "returning a cost in the evaluate_pipeline function, e.g., `return dict("
-        "objective_to_minimize=objective_to_minimize, cost=cost)`. (default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--ignore-errors",
-        action="store_true",
-        default=False,  # noqa: FBT003
-        help="If set, ignore errors during the optimization process. (default: %("
-        "default)s)",
-    )
-    parser_run.add_argument(
-        "--objective_to_minimize-value-on-error",
-        type=float,
-        default=None,
-        help="Loss value to assume on error. (default: %(default)s)",
-    )
-    parser_run.add_argument(
-        "--cost-value-on-error",
-        type=float,
-        default=None,
-        help="Cost value to assume on error. (default: %(default)s)",
-    )
+    # > parser_run.add_argument(
+    # >     "--pipeline-space",
+    # >     type=str,
+    # >     default=None,
+    # >     help="Path to the YAML file defining the search space for the optimization. "
+    # >     "This can be provided here or defined within the 'run_args' YAML file. "
+    # >     "(default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--root-directory",
+    # >     type=str,
+    # >     default=None,
+    # >     help="The directory to save progress to. This is also used to synchronize "
+    # >     "multiple calls for parallelization. (default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--overwrite-working-directory",
+    # >     action="store_true",
+    # >     default=False,  # noqa: FBT003
+    # >     help="If set, deletes the working directory at the start of the run. "
+    # >     "This is useful, for example, when debugging a evaluate_pipeline function. "
+    # >     "(default: %(default)s)",
+    # > )
+    # > # Create a mutually exclusive group for post-run summary flags
+    # > summary_group = parser_run.add_mutually_exclusive_group(required=False)
+    # > summary_group.add_argument(
+    # >     "--post-run-summary",
+    # >     action="store_true",
+    # >     default=True,  # noqa: FBT003
+    # >     help="Provide a summary of the results after running. (default: %(default)s)",
+    # > )
+    # > summary_group.add_argument(
+    # >     "--no-post-run-summary",
+    # >     action="store_false",
+    # >     dest="post_run_summary",
+    # >     help="Do not provide a summary of the results after running.",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--max-evaluations-total",
+    # >     type=int,
+    # >     default=None,
+    # >     help="Total number of evaluations to run. (default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--max-evaluations-per-run",
+    # >     type=int,
+    # >     default=None,
+    # >     help="Number of evaluations a specific call should maximally do. "
+    # >     "(default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--continue-until-max-evaluation-completed",
+    # >     action="store_true",
+    # >     default=False,  # noqa: FBT003
+    # >     help="If set, only stop after max-evaluations-total have been completed. This "
+    # >     "is only relevant in the parallel setting. (default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--max-cost-total",
+    # >     type=float,
+    # >     default=None,
+    # >     help="No new evaluations will start when this cost is exceeded. Requires "
+    # >     "returning a cost in the evaluate_pipeline function, e.g., `return dict("
+    # >     "objective_to_minimize=objective_to_minimize, cost=cost)`. (default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--ignore-errors",
+    # >     action="store_true",
+    # >     default=False,  # noqa: FBT003
+    # >     help="If set, ignore errors during the optimization process. (default: %("
+    # >     "default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--objective_to_minimize-value-on-error",
+    # >     type=float,
+    # >     default=None,
+    # >     help="Loss value to assume on error. (default: %(default)s)",
+    # > )
+    # > parser_run.add_argument(
+    # >     "--cost-value-on-error",
+    # >     type=float,
+    # >     default=None,
+    # >     help="Cost value to assume on error. (default: %(default)s)",
+    # > )
 
-    parser_run.add_argument(
-        "--optimizer",
-        type=str,
-        default="default",
-        help="String key of optimizer algorithm to use for optimization. (default: %("
-        "default)s)",
-    )
+    # > parser_run.add_argument(
+    # >     "--optimizer",
+    # >     type=str,
+    # >     default="default",
+    # >     help="String key of optimizer algorithm to use for optimization. (default: %("
+    # >     "default)s)",
+    # > )
 
-    parser_run.add_argument(
-        "--optimizer-kwargs",
-        type=str,
-        nargs="+",
-        help="Additional keyword arguments as key=value pairs for the optimizer.",
-    )
+    # > parser_run.add_argument(
+    # >     "--optimizer-kwargs",
+    # >     type=str,
+    # >     nargs="+",
+    # >     help="Additional keyword arguments as key=value pairs for the optimizer.",
+    # > )
 
-    parser_run.set_defaults(func=run_optimization)
+    # > parser_run.set_defaults(func=run_optimization)
 
-    # Subparser for "info-config" command
-    parser_info_config = subparsers.add_parser(
-        "info-config", help="Provides information about specific config."
-    )
-    parser_info_config.add_argument(
-        "id", type=str, help="The configuration ID to be used."
-    )
-    parser_info_config.add_argument(
-        "--root-directory",
-        type=str,
-        help="Optional: The path to your root_directory. If not provided, "
-        "it will be loaded from run_config.yaml.",
-    )
-    parser_info_config.set_defaults(func=info_config)
+    # > # Subparser for "info-config" command
+    # > parser_info_config = subparsers.add_parser(
+    # >     "info-config", help="Provides information about specific config."
+    # > )
+    # > parser_info_config.add_argument(
+    # >     "id", type=str, help="The configuration ID to be used."
+    # > )
+    # > parser_info_config.add_argument(
+    # >     "--root-directory",
+    # >     type=str,
+    # >     help="Optional: The path to your root_directory. If not provided, "
+    # >     "it will be loaded from run_config.yaml.",
+    # > )
+    # > parser_info_config.set_defaults(func=info_config)
 
-    # Subparser for "errors" command
-    parser_errors = subparsers.add_parser("errors", help="List all errors.")
-    parser_errors.add_argument(
-        "--root-directory",
-        type=str,
-        help="Optional: The path to your "
-        "root_directory. If not provided, it will be "
-        "loaded from run_config.yaml.",
-    )
-    parser_errors.set_defaults(func=load_neps_errors)
+    # > # Subparser for "errors" command
+    # > parser_errors = subparsers.add_parser("errors", help="List all errors.")
+    # > parser_errors.add_argument(
+    # >     "--root-directory",
+    # >     type=str,
+    # >     help="Optional: The path to your "
+    # >     "root_directory. If not provided, it will be "
+    # >     "loaded from run_config.yaml.",
+    # > )
+    # > parser_errors.set_defaults(func=load_neps_errors)
 
-    # Subparser for "sample-config" command
-    parser_sample_config = subparsers.add_parser(
-        "sample-config", help="Sample configurations from the existing NePS state."
-    )
-    parser_sample_config.add_argument(
-        "--worker-id",
-        type=str,
-        default="cli",
-        help="The worker ID for which the configuration is being sampled.",
-    )
-    parser_sample_config.add_argument(
-        "--run-args",
-        type=str,
-        help="Optional: Path to the YAML configuration file.",
-    )
-    parser_sample_config.add_argument(
-        "--number-of-configs",
-        type=int,
-        default=1,
-        help="Optional: Number of configurations to sample (default: 1).",
-    )
-    parser_sample_config.set_defaults(func=sample_config)
+    # > # Subparser for "sample-config" command
+    # > parser_sample_config = subparsers.add_parser(
+    # >     "sample-config", help="Sample configurations from the existing NePS state."
+    # > )
+    # > parser_sample_config.add_argument(
+    # >     "--worker-id",
+    # >     type=str,
+    # >     default="cli",
+    # >     help="The worker ID for which the configuration is being sampled.",
+    # > )
+    # > parser_sample_config.add_argument(
+    # >     "--run-args",
+    # >     type=str,
+    # >     help="Optional: Path to the YAML configuration file.",
+    # > )
+    # > parser_sample_config.add_argument(
+    # >     "--number-of-configs",
+    # >     type=int,
+    # >     default=1,
+    # >     help="Optional: Number of configurations to sample (default: 1).",
+    # > )
+    # > parser_sample_config.set_defaults(func=sample_config)
 
-    report_parser = subparsers.add_parser(
-        "report-config", help="Report of a specific trial"
-    )
-    report_parser.add_argument("trial_id", type=str, help="ID of the trial to report")
-    report_parser.add_argument(
-        "reported_as",
-        type=str,
-        choices=["success", "failed", "crashed"],
-        help="Outcome of the trial",
-    )
-    report_parser.add_argument(
-        "--worker-id",
-        type=str,
-        default="cli",
-        help="The worker ID for which the configuration is being sampled.",
-    )
-    report_parser.add_argument(
-        "--objective_to_minimize", type=float, help="Loss value of the trial"
-    )
-    report_parser.add_argument(
-        "--run-args", type=str, help="Path to the YAML file containing run configurations"
-    )
-    report_parser.add_argument(
-        "--cost", type=float, help="Cost value of the trial (optional)"
-    )
-    report_parser.add_argument(
-        "--learning-curve",
-        type=float,
-        nargs="+",
-        help="Learning curve as a list of floats (optional), provided like this "
-        "--learning-curve 0.9 0.3 0.1",
-    )
-    report_parser.add_argument(
-        "--duration", type=float, help="Duration of the evaluation in sec (optional)"
-    )
-    report_parser.add_argument("--err", type=str, help="Error message if any (optional)")
-    report_parser.add_argument(
-        "--tb", type=str, help="Traceback information if any (optional)"
-    )
-    report_parser.add_argument(
-        "--time-end",
-        type=parse_time_end,  # Using the custom parser function
-        help="The time the trial ended as either a "
-        "UNIX timestamp (float) or in 'YYYY-MM-DD HH:MM:SS' format",
-    )
-    report_parser.set_defaults(func=handle_report_config)
+    # > report_parser = subparsers.add_parser(
+    # >     "report-config", help="Report of a specific trial"
+    # > )
+    # > report_parser.add_argument("trial_id", type=str, help="ID of the trial to report")
+    # > report_parser.add_argument(
+    # >     "reported_as",
+    # >     type=str,
+    # >     choices=["success", "failed", "crashed"],
+    # >     help="Outcome of the trial",
+    # > )
+    # > report_parser.add_argument(
+    # >     "--worker-id",
+    # >     type=str,
+    # >     default="cli",
+    # >     help="The worker ID for which the configuration is being sampled.",
+    # > )
+    # > report_parser.add_argument(
+    # >     "--objective_to_minimize", type=float, help="Loss value of the trial"
+    # > )
+    # > report_parser.add_argument(
+    # >     "--run-args", type=str, help="Path to the YAML file containing run configurations"
+    # > )
+    # > report_parser.add_argument(
+    # >     "--cost", type=float, help="Cost value of the trial (optional)"
+    # > )
+    # > report_parser.add_argument(
+    # >     "--learning-curve",
+    # >     type=float,
+    # >     nargs="+",
+    # >     help="Learning curve as a list of floats (optional), provided like this "
+    # >     "--learning-curve 0.9 0.3 0.1",
+    # > )
+    # > report_parser.add_argument(
+    # >     "--duration", type=float, help="Duration of the evaluation in sec (optional)"
+    # > )
+    # > report_parser.add_argument("--err", type=str, help="Error message if any (optional)")
+    # > report_parser.add_argument(
+    # >     "--tb", type=str, help="Traceback information if any (optional)"
+    # > )
+    # > report_parser.add_argument(
+    # >     "--time-end",
+    # >     type=parse_time_end,  # Using the custom parser function
+    # >     help="The time the trial ended as either a "
+    # >     "UNIX timestamp (float) or in 'YYYY-MM-DD HH:MM:SS' format",
+    # > )
+    # > report_parser.set_defaults(func=handle_report_config)
 
-    # Subparser for "status" command
-    parser_status = subparsers.add_parser(
-        "status", help="Check the status of the NePS run."
-    )
-    parser_status.add_argument(
-        "--root-directory",
-        type=str,
-        help="Optional: The path to your root_directory. If not provided, "
-        "it will be loaded from run_config.yaml.",
-    )
-    parser_status.add_argument(
-        "--pending", action="store_true", help="Show only pending trials."
-    )
-    parser_status.add_argument(
-        "--evaluating", action="store_true", help="Show only evaluating trials."
-    )
-    parser_status.add_argument(
-        "--succeeded", action="store_true", help="Show only succeeded trials."
-    )
-    parser_status.set_defaults(func=status)
+    # > # Subparser for "status" command
+    # > parser_status = subparsers.add_parser(
+    # >     "status", help="Check the status of the NePS run."
+    # > )
+    # > parser_status.add_argument(
+    # >     "--root-directory",
+    # >     type=str,
+    # >     help="Optional: The path to your root_directory. If not provided, "
+    # >     "it will be loaded from run_config.yaml.",
+    # > )
+    # > parser_status.add_argument(
+    # >     "--pending", action="store_true", help="Show only pending trials."
+    # > )
+    # > parser_status.add_argument(
+    # >     "--evaluating", action="store_true", help="Show only evaluating trials."
+    # > )
+    # > parser_status.add_argument(
+    # >     "--succeeded", action="store_true", help="Show only succeeded trials."
+    # > )
+    # > parser_status.set_defaults(func=status)
 
-    # Subparser for "results" command
-    parser_results = subparsers.add_parser(
-        "results", help="Display results of the NePS run."
-    )
-    parser_results.add_argument(
-        "--root-directory",
-        type=str,
-        help="Optional: The path to your root_directory. If not provided, "
-        "it will be loaded from run_config.yaml.",
-    )
-    parser_results.add_argument(
-        "--plot", action="store_true", help="Plot the results if set."
-    )
+    # > # Subparser for "results" command
+    # > parser_results = subparsers.add_parser(
+    # >     "results", help="Display results of the NePS run."
+    # > )
+    # > parser_results.add_argument(
+    # >     "--root-directory",
+    # >     type=str,
+    # >     help="Optional: The path to your root_directory. If not provided, "
+    # >     "it will be loaded from run_config.yaml.",
+    # > )
+    # > parser_results.add_argument(
+    # >     "--plot", action="store_true", help="Plot the results if set."
+    # > )
 
-    # Create a mutually exclusive group for dump options
-    dump_group = parser_results.add_mutually_exclusive_group()
-    dump_group.add_argument(
-        "--dump-all-configs",
-        type=str,
-        choices=["csv", "json", "parquet"],
-        help="Dump all trials to a file in the specified format (csv, json, parquet).",
-    )
-    dump_group.add_argument(
-        "--dump-incumbents",
-        type=str,
-        choices=["csv", "json", "parquet"],
-        help="Dump incumbent trials to a file in the specified format "
-        "(csv, json, parquet).",
-    )
+    # > # Create a mutually exclusive group for dump options
+    # > dump_group = parser_results.add_mutually_exclusive_group()
+    # > dump_group.add_argument(
+    # >     "--dump-all-configs",
+    # >     type=str,
+    # >     choices=["csv", "json", "parquet"],
+    # >     help="Dump all trials to a file in the specified format (csv, json, parquet).",
+    # > )
+    # > dump_group.add_argument(
+    # >     "--dump-incumbents",
+    # >     type=str,
+    # >     choices=["csv", "json", "parquet"],
+    # >     help="Dump incumbent trials to a file in the specified format "
+    # >     "(csv, json, parquet).",
+    # > )
 
-    parser_results.set_defaults(func=results)
+    # > parser_results.set_defaults(func=results)
 
-    # Subparser for "help" command
-    parser_help = subparsers.add_parser("help", help="Displays help information.")
-    parser_help.set_defaults(func=print_help)
+    # > # Subparser for "help" command
+    # > parser_help = subparsers.add_parser("help", help="Displays help information.")
+    # > parser_help.set_defaults(func=print_help)
 
-    # updating documentation
-    generate_markdown_from_parser(parser, "cli.md")
-    args = parser.parse_args()
+    # > # updating documentation
+    # > generate_markdown_from_parser(parser, "cli.md")
+    # > args = parser.parse_args()
 
-    if hasattr(args, "func"):
-        args.func(args)
-    else:
-        parser.print_help()
+    # > if hasattr(args, "func"):
+    # >     args.func(args)
+    # > else:
+    # >     parser.print_help()
 
 
 if __name__ == "__main__":

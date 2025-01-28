@@ -36,6 +36,9 @@ class Float:
     upper: float
     """The upper bound of the numerical hyperparameter."""
 
+    center: float = field(init=False)
+    """The center value of the numerical hyperparameter."""
+
     log: bool = False
     """Whether the hyperparameter is in log space."""
 
@@ -48,7 +51,7 @@ class Float:
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
 
-    domain: Domain[float] = field(init=False)
+    domain: Domain[float] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.lower >= self.upper:
@@ -72,6 +75,13 @@ class Float:
         self.lower = float(self.lower)
         self.upper = float(self.upper)
 
+        if self.is_fidelity and (self.lower < 0 or self.upper < 0):
+            raise ValueError(
+                f"Float parameter: fidelity bounds error. Expected fidelity"
+                f" bounds to be >= 0, but got lower={self.lower}, "
+                f" upper={self.upper}."
+            )
+
         if np.isnan(self.lower):
             raise ValueError("Can not have lower bound that is nan")
 
@@ -79,6 +89,7 @@ class Float:
             raise ValueError("Can not have upper bound that is nan")
 
         self.domain = Domain.floating(self.lower, self.upper, log=self.log)
+        self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
 @dataclass
@@ -106,6 +117,9 @@ class Integer:
     upper: int
     """The upper bound of the numerical hyperparameter."""
 
+    center: int = field(init=False)
+    """The center value of the numerical hyperparameter."""
+
     log: bool = False
     """Whether the hyperparameter is in log space."""
 
@@ -117,6 +131,8 @@ class Integer:
 
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
+
+    domain: Domain[int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.lower >= self.upper:
@@ -140,6 +156,13 @@ class Integer:
         self.lower = lower_int
         self.upper = upper_int
 
+        if self.is_fidelity and (self.lower < 0 or self.upper < 0):
+            raise ValueError(
+                f"Integer parameter: fidelity bounds error. Expected fidelity"
+                f" bounds to be >= 0, but got lower={self.lower}, "
+                f" upper={self.upper}."
+            )
+
         if self.log and (self.lower <= 0 or self.upper <= 0):
             raise ValueError(
                 f"Integer parameter: bounds error (log scale cant have bounds <= 0). "
@@ -153,6 +176,7 @@ class Integer:
             )
 
         self.domain = Domain.integer(self.lower, self.upper, log=self.log)
+        self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
 @dataclass
@@ -180,8 +204,17 @@ class Categorical:
     prior: float | int | str | None = None
     """The default value for the categorical hyperparameter."""
 
+    center: float | int | str = field(init=False)
+    """The center value of the categorical hyperparameter.
+
+    As there is no natural center for a categorical parameter, this is the
+    first value in the choices list.
+    """
+
     prior_confidence: Literal["low", "medium", "high"] = "low"
     """Confidence score for the prior value when considering prior based optimization."""
+
+    domain: Domain[int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.choices = list(self.choices)
@@ -204,6 +237,7 @@ class Categorical:
                 f" choices {self.choices}"
             )
 
+        self.center = self.choices[0]
         self.domain = Domain.indices(len(self.choices))
 
 
@@ -226,12 +260,24 @@ class Constant:
 
     value: Any
 
+    @property
+    def center(self) -> Any:
+        """The center of the hyperparameter.
 
-Parameter: TypeAlias = Float | Integer | Categorical | Constant
+        !!! warning
+
+            There is no real center of a constant value, hence we take this to be the
+            value itself.
+        """
+        return self.value
+
+
+Parameter: TypeAlias = Float | Integer | Categorical
 """A type alias for all the parameter types.
 
 * [`Float`][neps.space.Float]
 * [`Integer`][neps.space.Integer]
 * [`Categorical`][neps.space.Categorical]
-* [`Constant`][neps.space.Constant]
+
+A [`Constant`][neps.space.Constant] is not included as it does not change value.
 """

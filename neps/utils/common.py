@@ -7,6 +7,7 @@ import importlib.util
 import inspect
 import os
 import sys
+import warnings
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import partial
@@ -257,6 +258,15 @@ def gc_disabled() -> Iterator[None]:
         yield
     finally:
         gc.enable()
+
+
+@contextmanager
+def disable_warnings(*warning_types: type[Warning]) -> Iterator[None]:
+    """Disable certain warning categories for a specific block."""
+    with warnings.catch_warnings():
+        for warning_type in warning_types:
+            warnings.filterwarnings("ignore", category=warning_type)
+        yield
 
 
 def dynamic_load_object(path: str, object_name: str) -> object:

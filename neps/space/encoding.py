@@ -1,33 +1,29 @@
 """Encoding of hyperparameter configurations into tensors.
 
 For the most part, you can just use
-[`ConfigEncoder.from_space()`][neps.space.encoding.ConfigEncoder.from_space]
-to create an encoder over a list of hyperparameters, along with any constants you
-want to include when decoding configurations.
+[`ConfigEncoder.from_parameters()`][neps.space.encoding.ConfigEncoder.from_parameters]
+to create an encoder over a list of hyperparameters.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 from typing_extensions import Protocol, override
 
 import torch
 
 from neps.space.domain import Domain
-from neps.space.parameters import Categorical, Float, Integer
-
-if TYPE_CHECKING:
-    from neps.space.search_space import SearchSpace
+from neps.space.parameters import Categorical, Float, Integer, Parameter
 
 V = TypeVar("V", int, float)
 
 
-class TensorTransformer(Protocol):
+class TensorTransformer(Protocol[V]):
     """A protocol for encoding and decoding hyperparameter values into tensors."""
 
-    domain: Domain
+    domain: Domain[V]
 
     def encode(
         self,
@@ -61,14 +57,33 @@ class TensorTransformer(Protocol):
         """
         ...
 
+    def encode_one(
+        self,
+        x: Any,
+        *,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
+    ) -> V:
+        """Encode a single hyperparameter value into a tensor.
+
+        Args:
+            x: A single hyperparameter value.
+            dtype: The dtype of the tensor.
+            device: The device of the tensor.
+
+        Returns:
+            The encoded tensor.
+        """
+        return self.encode([x], dtype=dtype, device=device).item()  # type: ignore
+
 
 @dataclass
-class CategoricalToIntegerTransformer(TensorTransformer):
+class CategoricalToIntegerTransformer(TensorTransformer[int]):
     """A transformer that encodes categorical values into integers."""
 
     choices: Sequence[Any]
 
-    domain: Domain = field(init=False)
+    domain: Domain[int] = field(init=False)
     _lookup: dict[Any, int] | None = field(init=False)
 
     def __post_init__(self) -> None:
@@ -76,11 +91,10 @@ class CategoricalToIntegerTransformer(TensorTransformer):
 
         self.domain = Domain.indices(len(self.choices), is_categorical=True)
         self._lookup = None
-        if len(self.choices) > 3:
-            try:
-                self._lookup = {c: i for i, c in enumerate(self.choices)}
-            except TypeError:
-                self._lookup = None
+        try:
+            self._lookup = {c: i for i, c in enumerate(self.choices)}
+        except TypeError:
+            self._lookup = None
 
     @override
     def encode(
@@ -113,7 +127,7 @@ class CategoricalToIntegerTransformer(TensorTransformer):
 
 
 @dataclass
-class CategoricalToUnitNorm(TensorTransformer):
+class CategoricalToUnitNorm(TensorTransformer[float]):
     """A transformer that encodes categorical values into a unit normalized tensor.
 
     If there are `n` choices, the tensor will have `n` bins between `0` and `1`.
@@ -121,8 +135,9 @@ class CategoricalToUnitNorm(TensorTransformer):
 
     choices: Sequence[Any]
 
-    domain: Domain = field(init=False)
-    _integer_transformer: CategoricalToIntegerTransformer = field(init=False)
+    domain: Domain[float] = field(init=False)
+    _cat_int_domain: Domain[int] = field(init=False)
+    _lookup: dict[Any, int] | None = field(init=False)
 
     def __post_init__(self) -> None:
         self.domain = Domain.floating(
@@ -131,7 +146,11 @@ class CategoricalToUnitNorm(TensorTransformer):
             bins=len(self.choices),
             is_categorical=True,
         )
-        self._integer_transformer = CategoricalToIntegerTransformer(self.choices)
+        self._cat_int_domain = Domain.indices(len(self.choices), is_categorical=True)
+        try:
+            self._lookup = {c: i for i, c in enumerate(self.choices)}
+        except TypeError:
+            self._lookup = None
 
     @override
     def encode(
@@ -142,13 +161,19 @@ class CategoricalToUnitNorm(TensorTransformer):
         dtype: torch.dtype | None = None,
         device: torch.device | None = None,
     ) -> torch.Tensor:
-        integers = self._integer_transformer.encode(
-            x,
-            dtype=dtype if dtype is not None else torch.float64,
-            device=device,
+        if dtype is None:
+            dtype = torch.int if out is None else out.dtype
+
+        values = (
+            [self._lookup[c] for c in x]
+            if self._lookup
+            else [self.choices.index(c) for c in x]
         )
+        integers = torch.tensor(values, dtype=torch.int64, device=device)
         binned_floats = self.domain.cast(
-            integers, frm=self._integer_transformer.domain, dtype=dtype
+            integers,
+            frm=self._cat_int_domain,
+            dtype=dtype,
         )
         if out is not None:
             return out.copy_(binned_floats)
@@ -157,14 +182,14 @@ class CategoricalToUnitNorm(TensorTransformer):
 
     @override
     def decode(self, x: torch.Tensor) -> list[Any]:
-        x = torch.round(x * (len(self.choices) - 1)).type(torch.int64)
-        return self._integer_transformer.decode(x)
+        x = self._cat_int_domain.cast(x, frm=self.domain)
+        return [self.choices[int(i)] for i in torch.round(x).tolist()]
 
 
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
 # and `-0.5` as lower bound with `0.5` as upper bound.
 @dataclass
-class MinMaxNormalizer(TensorTransformer, Generic[V]):
+class MinMaxNormalizer(TensorTransformer[float], Generic[V]):
     """A transformer that normalizes values to the unit interval."""
 
     original_domain: Domain[V]
@@ -216,7 +241,7 @@ class ConfigEncoder:
     tensors.
 
     The primary methods/properties to be aware of are:
-    * [`from_space()`][neps.space.encoding.ConfigEncoder.from_space]: Create a
+    * [`from_parameters()`][neps.space.encoding.ConfigEncoder.from_parameters]: Create a
         default encoder over a list of hyperparameters. Please see the method docs for
         more details on how it encodes different types of hyperparameters.
     * [`encode()`]]neps.space.encoding.ConfigEncoder.encode]: Encode a list of
@@ -239,6 +264,7 @@ class ConfigEncoder:
     transformers: dict[str, TensorTransformer]
     constants: Mapping[str, Any] = field(default_factory=dict)
 
+    # These are all just computed properties for easier logic
     index_of: dict[str, int] = field(init=False)
     domain_of: dict[str, Domain] = field(init=False)
     n_numerical: int = field(init=False)
@@ -280,34 +306,6 @@ class ConfigEncoder:
             slice(n_numerical, n_numerical + n_categorical) if n_categorical > 0 else None
         )
 
-    def select_categorical(self, x: torch.Tensor) -> torch.Tensor | None:
-        """Select the categorical columns from a tensor.
-
-        Args:
-            x: A tensor of shape `(N, ncols)`.
-
-        Returns:
-            A tensor of shape `(N, n_categorical)`.
-        """
-        if self.categorical_slice is None:
-            return None
-
-        return x[:, self.categorical_slice]
-
-    def select_numerical(self, x: torch.Tensor) -> torch.Tensor | None:
-        """Select the numerical columns from a tensor.
-
-        Args:
-            x: A tensor of shape `(N, ncols)`.
-
-        Returns:
-            A tensor of shape `(N, n_numerical)`.
-        """
-        if self.numerical_slice is None:
-            return None
-
-        return x[:, self.numerical_slice]
-
     def pdist(
         self,
         x: torch.Tensor,
@@ -336,26 +334,23 @@ class ConfigEncoder:
         Returns:
             The distances, shaped according to `square_form`.
         """
-        categoricals = self.select_categorical(x)
-        numericals = self.select_numerical(x)
-
         dists: torch.Tensor | None = None
-        if numericals is not None:
+        if self.numerical_slice is not None:
             # Ensure they are all within the unit cube
             numericals = Domain.translate(
-                numericals,
+                x[..., self.numerical_slice],
                 frm=self.numerical_domains,
                 to=Domain.unit_float(),
             )
 
             dists = torch.nn.functional.pdist(numericals, p=numerical_ord)
 
-        if categoricals is not None:
-            cat_dists = torch.nn.functional.pdist(categoricals, p=categorical_ord)
-            if dists is None:
-                dists = cat_dists
-            else:
-                dists += cat_dists
+        if self.categorical_slice is not None:
+            cat_dists = torch.nn.functional.pdist(
+                x[..., self.categorical_slice],
+                p=categorical_ord,
+            )
+            dists = cat_dists if dists is None else (dists + cat_dists)
 
         if dists is None:
             raise ValueError("No columns to compute distances on.")
@@ -459,43 +454,30 @@ class ConfigEncoder:
         ]
 
     @classmethod
-    def from_space(
+    def from_parameters(
         cls,
-        space: SearchSpace,
+        parameters: Mapping[str, Parameter],
         *,
-        include_fidelity: bool = False,
-        custom_transformers: dict[str, TensorTransformer] | None = None,
+        custom_transformers: Mapping[str, TensorTransformer] | None = None,
     ) -> ConfigEncoder:
         """Create a default encoder over a list of hyperparameters.
 
         This method creates a default encoder over a list of hyperparameters. It
         automatically creates transformers for each hyperparameter based on its type.
+
         The transformers are as follows:
 
         * `Float` and `Integer` are normalized to the unit interval.
         * `Categorical` is transformed into an integer.
 
         Args:
-            space: The search space to build an encoder for
-            include_fidelity: Whether to include fidelities in the encoding
+            parameters: The parameters to build an encoder for
             custom_transformers: A mapping of hyperparameter names
                 to custom transformers to use
 
         Returns:
             A `ConfigEncoder` instance
         """
-        # Sanity check we do not apply custom transformers to constants
-        if len(space.constants) and custom_transformers is not None:
-            overlap = set(custom_transformers) & set(space.constants)
-            if any(overlap):
-                raise ValueError(
-                    f"Can not apply `custom_transformers= to `constants=`: {overlap=}"
-                )
-
-        parameters = {**space.numerical, **space.categoricals}
-        if include_fidelity:
-            parameters.update(space.fidelities)
-
         custom = custom_transformers or {}
         transformers: dict[str, TensorTransformer] = {}
         for name, hp in parameters.items():
@@ -509,9 +491,6 @@ class ConfigEncoder:
                 case Categorical():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:
-                    raise ValueError(
-                        f"Unsupported parameter type: {type(hp)}. If hp is a constant, "
-                        " please provide it as `constants=`."
-                    )
+                    raise ValueError(f"Unsupported parameter type: {type(hp)}.")
 
-        return cls(transformers, constants=space.constants)
+        return cls(transformers)

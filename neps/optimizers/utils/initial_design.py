@@ -1,25 +1,24 @@
 from __future__ import annotations
 
-import random
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import torch
 
 from neps.sampling import Prior, Sampler
-from neps.space import ConfigEncoder, Domain, SearchSpace
+
+if TYPE_CHECKING:
+    from neps.space import ConfigEncoder
+    from neps.space.parameters import Parameter
 
 
-def make_initial_design(  # noqa: PLR0912, C901
+def make_initial_design(
     *,
-    space: SearchSpace,
+    parameters: Mapping[str, Parameter],
     encoder: ConfigEncoder,
     sampler: Literal["sobol", "prior", "uniform"] | Sampler,
     sample_size: int | Literal["ndim"] | None = "ndim",
     sample_prior_first: bool = True,
-    sample_fidelity: (
-        Literal["min", "max", True] | int | float | dict[str, int | float]
-    ) = True,
     seed: torch.Generator | None = None,
 ) -> list[dict[str, Any]]:
     """Generate the initial design of the optimization process.
@@ -42,65 +41,19 @@ def make_initial_design(  # noqa: PLR0912, C901
             If None, no configurations will be sampled.
 
         sample_prior_first: Whether to sample the prior configuration first.
-        sample_fidelity:
-            At what fidelity to sample the configurations, including the prior.
-
-            If set to "min" or "max", the configuration will be sampled
-            at the minimum or maximum fidelity, respectively. If set to an integer
-            or a float, the configuration will be sampled at that fidelity.
-            When specified as a dictionary, the keys should be the names of the
-            fidelity parameters and the values should be the target fidelities.
-            If set to `True`, the configuration will have its fidelity randomly sampled.
         seed: The seed to use for the random number generation.
 
     """
     configs: list[dict[str, Any]] = []
-
-    # First, we establish what fidelity to apply to them.
-    # This block essentially is in charge of creating a fids() function that can
-    # be called to get the fidelities for each sample. Some are constant, some will
-    # sample per config.
-    match sample_fidelity:
-        case "min":
-            _fids = {name: fid.lower for name, fid in space.fidelities.items()}
-            fids = lambda: _fids
-        case "max":
-            _fids = {name: fid.upper for name, fid in space.fidelities.items()}
-            fids = lambda: _fids
-        case True:
-            fids = lambda: {
-                name: hp.domain.cast_one(random.random(), frm=Domain.unit_float())
-                for name, hp in space.fidelities.items()
-            }
-        case int() | float():
-            if len(space.fidelities) != 1:
-                raise ValueError(
-                    "The target fidelity should be specified as a dictionary"
-                    " if there are multiple fidelities or no fidelity should"
-                    " be specified."
-                    " Current search space has fidelities: "
-                    f"{list(space.fidelities.keys())}"
-                )
-            name = next(iter(space.fidelities.keys()))
-            fids = lambda: {name: sample_fidelity}
-        case Mapping():
-            missing_keys = set(space.fidelities.keys()) - set(sample_fidelity.keys())
-            if any(missing_keys):
-                raise ValueError(
-                    f"Missing target fidelities for the following fidelities: "
-                    f"{missing_keys}"
-                )
-            fids = lambda: sample_fidelity
-        case _:
-            raise ValueError(
-                "Invalid value for `sample_prior_at_target`. "
-                "Expected 'min', 'max', True, int, float, or dict."
-            )
-
     if sample_prior_first:
-        configs.append({**space.prior, **fids()})
+        configs.append(
+            {
+                name: p.prior if p.prior is not None else p.center
+                for name, p in parameters.items()
+            }
+        )
 
-    ndims = len(space.numerical) + len(space.categoricals)
+    ndims = len(parameters)
     if sample_size == "ndim":
         sample_size = ndims
     elif sample_size is not None and not sample_size > 0:
@@ -115,13 +68,13 @@ def make_initial_design(  # noqa: PLR0912, C901
             case "uniform":
                 sampler = Sampler.uniform(ndim=ndims)
             case "prior":
-                sampler = Prior.from_space(space, include_fidelity=False)
+                sampler = Prior.from_parameters(parameters)
             case _:
                 pass
 
         encoded_configs = sampler.sample(sample_size * 2, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)
         sample_configs = encoder.decode(uniq_x[:sample_size])
-        configs.extend([{**config, **fids()} for config in sample_configs])
+        configs.extend(sample_configs)
 
     return configs

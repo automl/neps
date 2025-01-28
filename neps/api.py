@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
-from neps.optimizers import OptimizerChoice, load_optimizer
+from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
 from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv
@@ -16,14 +17,15 @@ from neps.utils.common import dynamic_load_object
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
-    from neps.optimizers.optimizer import AskFunction
+    from neps.optimizers.algorithms import CustomOptimizer
     from neps.space import Parameter, SearchSpace
+    from neps.state import EvaluatePipelineReturn
 
 logger = logging.getLogger(__name__)
 
 
 def run(  # noqa: PLR0913
-    evaluate_pipeline: Callable | str,
+    evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: (
         Mapping[str, dict | str | int | float | Parameter]
         | SearchSpace
@@ -45,8 +47,8 @@ def run(  # noqa: PLR0913
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | tuple[Callable[..., AskFunction], Mapping[str, Any]]
-        | Callable[..., AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
 ) -> None:
@@ -393,6 +395,21 @@ def run(  # noqa: PLR0913
                 runtime to run your optimizer.
 
     """  # noqa: E501
+    if (
+        max_evaluations_total is None
+        and max_evaluations_per_run is None
+        and max_cost_total is None
+    ):
+        warnings.warn(
+            "None of the following were set, this will run idefinitely until the worker"
+            " process is stopped."
+            f"\n * {max_evaluations_total=}"
+            f"\n * {max_evaluations_per_run=}"
+            f"\n * {max_cost_total=}",
+            UserWarning,
+            stacklevel=2,
+        )
+
     logger.info(f"Starting neps.run using root directory {root_directory}")
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
@@ -431,12 +448,12 @@ def run(  # noqa: PLR0913
     )
 
     if post_run_summary:
-        config_data_path, run_data_path = post_run_csv(root_directory)
+        full_frame_path, short_path = post_run_csv(root_directory)
         logger.info(
             "The post run summary has been created, which is a csv file with the "
             "output of all data in the run."
-            f"\nYou can find a csv of all the configuratins at: {config_data_path}."
-            f"\nYou can find a csv of results at: {run_data_path}."
+            f"\nYou can find a full dataframe at: {full_frame_path}."
+            f"\nYou can find a quick summary at: {short_path}."
         )
     else:
         logger.info(

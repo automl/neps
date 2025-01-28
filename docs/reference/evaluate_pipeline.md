@@ -53,7 +53,7 @@ def evaluate_pipeline(
     reverse_loss = -loss
 
     return {
-        "objective_value_to_minimize": loss,
+        "objective_to_minimize": loss,
         "info_dict": {
             "reverse_loss": reverse_loss
             ...
@@ -87,7 +87,7 @@ def evaluate_pipeline(
     cost = 2
 
     return {
-        "objective_value_to_minimize": loss,
+        "objective_to_minimize": loss,
         "cost": cost,
     }
 

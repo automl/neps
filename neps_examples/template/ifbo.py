@@ -104,7 +104,7 @@ def evaluate_pipeline(
 
     # Return a dictionary with the results, or a single float value (loss)
     return {
-        "objective_value_to_minimize": loss,
+        "objective_to_minimize": loss,
         "info_dict": {
             "train_accuracy": ...,
             "test_accuracy": ...,
