@@ -2,7 +2,7 @@
 
 ## What is Bayesian Optimization?
 
-Bayesian Optimization (BO) is a fundamental optimization technique for finding (local) optima of expensive-to-evaluate functions. The main idea of BO is an interplay of a model (the [`surrogate function`](../search_algorithms/bayesian_optimization.md#the-surrogate-function)) of the objective function, built from the data collected during the optimization process, and an [`acquisition function`](../search_algorithms/bayesian_optimization.md#the-acquisition-function) that guides the search for the next evaluation point.
+`Bayesian Optimization`/`BO` is a fundamental optimization technique for finding (local) optima of expensive-to-evaluate functions. The main idea of `BO` is an interplay of a model (the [`surrogate function`](../search_algorithms/bayesian_optimization.md#the-surrogate-function)) of the objective function, built from the data collected during the optimization process, and an [`acquisition function`](../search_algorithms/bayesian_optimization.md#the-acquisition-function) that guides the search for the next evaluation point.
 
 ### The surrogate function
 
@@ -15,7 +15,7 @@ The following image shows a GP with its mean function and the 95% confidence int
 
 ### The acquisition function
 
-The acquisition function is the guiding force in BO. From the information contained in the surrogate function, the acquisition function suggests the next evaluation point. It balances the trade-off between exploration (sampling points where the surrogate function is uncertain) and exploitation (sampling points where the surrogate function is promising).
+The acquisition function is the guiding force in `BO`. From the information contained in the surrogate function, the acquisition function suggests the next evaluation point. It balances the trade-off between exploration (sampling points where the surrogate function is uncertain) and exploitation (sampling points where the surrogate function is promising).
 
 |![Acquisition function](../../doc_images/optimizers/bo_acqu.jpg)|
 |:--:|
@@ -35,12 +35,12 @@ $$PI(\boldsymbol{x}) = P(f(\boldsymbol{x}) > f(\boldsymbol{x}^+))$$
 
 where $f(\boldsymbol{x})$ is the surrogate function and $f(\boldsymbol{x}^+)$ is the best observation so far.
 
-To read more about BO, please refer to this [Bayesian Optimization tutorial](https://arxiv.org/abs/1807.02811) or this article on [Towards Data Science](https://towardsdatascience.com/bayesian-optimization-concept-explained-in-layman-terms-1d2bcdeaf12f).
+To read more about `BO`, please refer to this [`Bayesian Optimization` tutorial](https://arxiv.org/abs/1807.02811) or this article on [Towards Data Science](https://towardsdatascience.com/bayesian-optimization-concept-explained-in-layman-terms-1d2bcdeaf12f).
 
 !!! example "Practical Tips"
 
-    - BO can handle expensive-to-evaluate, noisy, high-dimensional and black-box objectives and can be used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
+    - `BO` can handle expensive-to-evaluate, noisy, high-dimensional and black-box objectives and can be used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
     - It is highly costumizable with many choices for the surrogate and acquisition functions, but even the basic settings work well in many cases.
 
 !!! info
-    Therefore, BO is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    Therefore, `BO` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
