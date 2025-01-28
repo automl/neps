@@ -32,7 +32,7 @@ The process allows for broad exploration in the beginning and focus on the most 
 
 #### _Asynchronous_ Successive Halving
 
-`Asynchronous Successive Halving`/`ASHA` (see [paper](https://arxiv.org/pdf/1810.05934)) is an asynchronous version of SH that maximizes parallel evaluations.
+`Asynchronous Successive Halving`/`ASHA` (see [paper](https://arxiv.org/pdf/1810.05934)) is an asynchronous version of ``SH`` that maximizes parallel evaluations.
 
 Instead of waiting for all $n$ configurations to finish on one fidelity, `ASHA` promotes the best configuration to the next fidelity as soon as there are enough evaluations to make a decision ($1/\eta*n\geq 1$). This allows for quicker promotions and earlier high fidelity-results. When there are no promotable configurations, `ASHA` spawns new configurations at the lowest fidelity, so it always utilizes the available compute and increases exploration compared to ``SH``.
 
@@ -57,25 +57,25 @@ Each of these runs has a different resource budget and different number of confi
 
 ### 3 `BOHB`
 
-`BOHB` (see [paper](https://arxiv.org/pdf/1807.01774)) is a combination of [Bayesian Optimization (BO)](../search_algorithms/bayesian_optimization.md) and [HyperBand](../search_algorithms/multifidelity.md#2-hyperband).
+`BOHB` (see [paper](https://arxiv.org/pdf/1807.01774)) is a combination of [``Bayesian Optimization``](../search_algorithms/bayesian_optimization.md) and [``HyperBand``](../search_algorithms/multifidelity.md#2-hyperband).
 
-Contrary to ``HyperBand``, which uses random configurations, ``BOHB`` uses ``BO`` to choose the next configurations for ``HyperBand``. This way, it can leverage the advantages of both algorithms: the flexibility and parallelization of ``HyperBand`` for low budgets and the efficiency of BO for higher budgets.
+Contrary to ``HyperBand``, which uses random configurations, ``BOHB`` uses ``BO`` to choose the next configurations for ``HyperBand``. This way, it can leverage the advantages of both algorithms: the flexibility and parallelization of ``HyperBand`` for low budgets and the efficiency of ``BO`` for higher budgets.
 
 !!! example "Practical Tips"
 
     - `BOHB` has the same hyperparameters as ``HyperBand``, plus the choice of surrogate and acquisition functions from ``BO``.
     - The effects of ``BO`` only start showing after some evaluations at full fidelity, as it needs those to build its model. Consequently, it might be advantageous to run fewer workers in parallel, as they will be random in the beginning anyway and only start to be guided by the model later.
     - How to pick the budget:
-      - Simplify the configuration space to under 10 dimensions if possible.
-      - Repeatedly run ``BOHB`` on smaller, but representative budgets, looking at the rank correlations between neighbouring fidelity levels. If the correlation is low ($<0.2$), increase the minimum budget or lower the promotion factor $\eta$.
-      - For more practical tips, see [here](https://automl.github.io/HpBandSter/build/html/best_practices.html).
+        - Simplify the configuration space to under 10 dimensions if possible.
+        - Repeatedly run ``BOHB`` on smaller, but representative budgets, looking at the rank correlations between neighbouring fidelity levels. If the correlation is low ($<0.2$), increase the minimum budget or lower the promotion factor $\eta$.
+        - For more practical tips, see [here](https://automl.github.io/HpBandSter/build/html/best_practices.html).
 
 ### 4 `A-BOHB`
 
 `A-BOHB`/`Mobster` (see [paper](https://arxiv.org/pdf/2204.11051)) is an asynchronous extension of [BOHB](../search_algorithms/multifidelity.md#3-bohb).
 
 Unlike ``BOHB``, which only models the objective function at the highest fidelity, ``A-BOHB`` uses a ``joint Gaussian Process`` to model the objective function across all fidelities. This way, it can leverage the information from all fidelities to make better decisions.
-To make this process asynchronous, i.e. run several configurations in parallel, ``A-BOHB`` has to anticipate the results of configurations that are still running. It does this by _fantasizing_ the results of the running configurations and using those fantasies in the acquisition function $\hat{a}$ to decide for the next configuration. Precisely, ``A-BOHB`` marginalizes out the possible results $y_j$ of a running configuration $x_j$:
+To make this process asynchronous, i.e. run several configurations in parallel, ``A-BOHB`` has to anticipate the results of configurations that are still running. It does so by _fantasizing_ the results of the running configurations and using those fantasies in the acquisition function $\hat{a}$ to decide for the next configuration. Precisely, ``A-BOHB`` marginalizes out the possible results $y_j$ of a running configuration $x_j$:
 $$
 \hat{a}(\boldsymbol{x}) = \int a(\boldsymbol{x}, y_j)p(y_j|x_j) dy_j
 $$
@@ -93,9 +93,9 @@ where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is t
 
 Standard ``FT-BO`` models the performance of a configuration with a Gaussian Process, assuming exponential loss decay. Similar to [A-BOHB](../search_algorithms/multifidelity.md#4-a-bohb), it uses this joint GP to fantasize results and decides for the most informative configurations. The ``Entropy Search``-acquisition function (see [paper](https://jmlr.csail.mit.edu/papers/volume13/hennig12a/hennig12a.pdf)) quantifies this information gain:
 $$
-a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{\min}\right)\right)P(y|\{(\boldsymbol{x},y_n)\}^N)dy
+a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{\min}\right)\right)P(y| { \\{ (\boldsymbol{x}_n,y_n) \\} }^N)dy
 $$
-where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $P^y_{\min}$ is the same distribution, but given a new observation $y$ and $P(y|\{(\boldsymbol{x},y_n)\}^N)$ is the probability of this $y$, from a configuration $\boldsymbol{x}$ (given the observations so far). So the acquisition function maximizes the information gain about the location of the minimum from evaluating any configuration $\boldsymbol{x}$.
+where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $P^y_{\min}$ is the same distribution, but given a new observation $y$ and $P(y| \cdot)$ is the probability of this $y$, from a configuration $\boldsymbol{x}$ (given the observations so far). So the acquisition function maximizes the information gain about the location of the minimum from evaluating any configuration $\boldsymbol{x}$, by maximizing the entropy-reduction.
 
 |![Fantasizing](../../doc_images/optimizers/freeze_thaw_fantasizing.png)|
 |:--:|
