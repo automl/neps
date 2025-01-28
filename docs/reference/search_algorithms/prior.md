@@ -40,7 +40,7 @@ In both cases, the optimization process uses the additional information provided
     TODO Write about what to consider when using `PiBO` in NePS.
 
 !!! info
-    PiBO is chosen as the default optimizer in NePS when there is only Prior, but no [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    PiBO is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is only Prior, but no [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).

@@ -2,7 +2,7 @@
 
 ## What is Multi-Fidelity Optimization?
 
-Multi-Fidelity optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, and then using this information to train full-scale models. The _low-fidelity_ runs could be on a smaller dataset, a smaller model, or for shorter training times. MF-algorithms then infer which configurations are likely to perform well on the full problem, before investing larger compute amounts.
+Multi-Fidelity (MF) optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, and then using this information to train full-scale models. The _low-fidelity_ runs could be on a smaller dataset, a smaller model, or for shorter training times. MF-algorithms then infer which configurations are likely to perform well on the full problem, before investing larger compute amounts.
 
 !!! tip "Advantages of Multi-Fidelity"
 
@@ -25,7 +25,9 @@ The process allows for broad exploration in the beginning and focus on the most 
 
 !!! example "Practical Tips"
 
-    - For the same total compute, SH outperforms uninformed search algorithms.
+    - SH has two parameters: $\eta$ and $n$, where $\eta$ is the promotion factor and $n$ is the number of configurations at the lowest fidelity.
+    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels.
+    - For the same total compute, SH outperforms uninformed search algorithms like random search or grid search.
     - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, SH underperforms.
 
 #### _Asynchronous_ Successive Halving
@@ -40,14 +42,18 @@ Although not inherently a Prior-optimizer, SH (and ASHA) can make use of [Priors
 
 ### 2 `HyperBand`
 
-`HyperBand` (HB, see [paper](https://arxiv.org/pdf/1603.06560)) is an extension of [Successive Halfing](../search_algorithms/multifidelity.md#1-successive-halfing) that employs multiple Successive Halfing-runs in parallel.
+`HyperBand` (HB, see [paper](https://arxiv.org/pdf/1603.06560)) is an extension of [Successive Halfing](../search_algorithms/multifidelity.md#1-successive-halfing) that employs multiple Successive Halfing-rounds in parallel.
 
 Each of these runs has a different resource budget and different number of configurations. This makes HyperBand more flexible and parallelizable than SH.
 
 !!! example "Practical Tips"
 
+    - Hyperband has two parameters: $\eta$ and $B$, where $\eta$ is the promotion factor and $B$ is the maximum budget. It will create $\lfloor\log_{\eta}B\rfloor$ SH-rounds.
     - HyperBand is a good choice when you have a limited budget and want to parallelize your search.
     - It is more efficient than SH when the correlation between lower and higher fidelities is low.
+
+!!! info
+    ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
 
 ### 3 `BOHB`
 
@@ -59,9 +65,7 @@ Contrary to HyperBand, which uses random configurations, BOHB uses BO to choose 
 
     - BOHB is more efficient than both HyperBand and BO on their own.
     - The effects of BO only start showing after some evaluations at full fidelity, as it needs those to build its model.
-
-!!! info
-    ``BOHB`` is chosen as the default optimizer in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
+    - It has the same hyperparameters as HyperBand, plus the choice of surrogate and acquisition functions from BO.
 
 ### 4 `A-BOHB`
 
@@ -97,6 +101,7 @@ where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $
 IfBO employs the same concept, but instead of a GP, it uses a PFN to model the performance of configurations. PFNs (see [paper](https://arxiv.org/pdf/2112.10510)) are transformer networks, fitted to many (synthetic) runs. They can model the performance of configurations across all fidelities and are used in IfBO to fantasize the outcomes. The deciding advantage is that PFNs can model complex relationships between configurations and fidelities, not just exponential decay. On top of that, PFNs utilize [in-context learning](https://arxiv.org/pdf/2112.10510) to quickly adapt from their general prior to the current optimization process, resulting in a better overall performance compared to GPs.
 
 Lastly, IfBO follows the Freeze-Thaw-BO idea of freezing (pausing training on) configurations that are not informative anymore and thawing (resuming training on) them when they become interesting again. It therefore chooses automatically between starting new configurations or thawing old ones.
+
 |![Freeze-Thaw](../../doc_images/optimizers/freeze_thawing.png)|
 |:--:|
 |The image shows the Freeze-Thaw-mechanism, with the colors indicating, at what iteration a configuration has been evaluated at this fidelity. Note for example some yellow configurations being reused much later, ending in red. (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|

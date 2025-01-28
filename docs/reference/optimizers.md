@@ -9,7 +9,6 @@ When presented with a machine learning problem, there are often ways to make the
 Multi-Fidelity optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, to get an idea of what could work. This could mean training a model for a shorter time, using only a subset of the training data, or a smaller model entirely. From these 'low fidelity' runs, MF-algorithms can infer which configurations are likely to perform well on the full problem, before actually investing larger compute amounts.
 For a more detailed explanation of Multi-Fidelity and a list of NePS-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
 
-
 ### 1.2 Priors
 
 Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. This intuition could come from expert knowledge or previous experiments. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute. For a more detailed explanation of Priors and a list of NePS-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
@@ -37,6 +36,7 @@ The optimizer selection is based on the following characteristics of your `pipel
 
 For example, running the following format, without specifying a optimizer will choose an optimizer depending on
 the `pipeline_space` passed.
+
 ```python
 neps.run(
     evalute_pipeline=run_function,
@@ -116,8 +116,6 @@ neps.run(
     random_interleave_prob=0.25  # overrides value in custom_bo.yaml
 )
 ```
-
-
 
 ## Note for Contributors
 

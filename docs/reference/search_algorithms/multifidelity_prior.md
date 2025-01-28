@@ -41,7 +41,7 @@ where $\mathcal{S}_\pi$ and $\mathcal{S}_{\hat{\lambda}}$ are the summed probabi
 
 !!! info
 
-    `PriorBand` is chosen as the default optimizer in NePS when there is both [Prior](../search_algorithms/prior.md) and [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    `PriorBand` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is both [Prior](../search_algorithms/prior.md) and [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
 
 #### _Model-based_ `PriorBand`
 

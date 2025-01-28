@@ -37,9 +37,10 @@ where $f(\boldsymbol{x})$ is the surrogate function and $f(\boldsymbol{x}^+)$ is
 
 To read more about BO, please refer to this [Bayesian Optimization tutorial](https://arxiv.org/abs/1807.02811) or this article on [Towards Data Science](https://towardsdatascience.com/bayesian-optimization-concept-explained-in-layman-terms-1d2bcdeaf12f).
 
-## BO in NePS
+!!! example "Practical Tips"
 
-BO is a widely used optimization technique in AutoML, as it can handle expensive-to-evaluate, noisy, high-dimensional and black-box objectives, all of which are common challenges in AutoML. It is used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
+    - BO can handle expensive-to-evaluate, noisy, high-dimensional and black-box objectives and can be used in the optimization of hyperparameters, neural architectures, and the entire pipeline.
+    - It is highly costumizable with many choices for the surrogate and acquisition functions, but even the basic settings work well in many cases.
 
 !!! info
-    Therefore, BO is chosen as the default optimizer in NePS when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    Therefore, BO is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
