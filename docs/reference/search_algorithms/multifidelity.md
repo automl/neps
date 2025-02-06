@@ -93,9 +93,9 @@ where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is t
 
 Standard ``FT-BO`` models the performance of a configuration with a Gaussian Process, assuming exponential loss decay. Similar to [A-BOHB](../search_algorithms/multifidelity.md#4-a-bohb), it uses this joint GP to fantasize results and decides for the most informative configurations. The ``Entropy Search``-acquisition function (see [paper](https://jmlr.csail.mit.edu/papers/volume13/hennig12a/hennig12a.pdf)) quantifies this information gain:
 $$
-a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{\min}\right)\right)P(y| { \\{ (\boldsymbol{x}_n,y_n) \\} }^N)dy
+a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{\min}\right)\right)P(y| { \lbrace (\boldsymbol{x}_n,y_n) \rbrace }^N)dy
 $$
-where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $P^y_{\min}$ is the same distribution, but given a new observation $y$ and $P(y| \cdot)$ is the probability of this $y$, from a configuration $\boldsymbol{x}$ (given the observations so far). So the acquisition function maximizes the information gain about the location of the minimum from evaluating any configuration $\boldsymbol{x}$, by maximizing the entropy-reduction.
+where $H$ is the entropy, $P_{\min}$ is the distribution of the minimum value, $P^y_{\min}$ is the same distribution, but given a new observation $y$ and $P(y| \cdot)$ is the probability of this result $y$, from a configuration $\boldsymbol{x}$ (given the $N$ observations ${\lbrace (\boldsymbol{x}_n,y_n) \rbrace}^N$ so far). So the acquisition function maximizes the information gain about the location of the minimum from evaluating any configuration $\boldsymbol{x}$, by maximizing the entropy-reduction.
 
 |![Fantasizing](../../doc_images/optimizers/freeze_thaw_fantasizing.jpg)|
 |:--:|
