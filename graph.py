@@ -808,9 +808,9 @@ def to_model(node: Node) -> Any:
                 flat_children = more_itertools.collapse(
                     _build(child) for child in children
                 )
-                import rich
+                # import rich
 
-                rich.print(flat_children)
+                # rich.print(flat_children)
                 yield op(*flat_children)
             case Passthrough(_, children):
                 yield from (_build(child) for child in children)
