@@ -2,23 +2,47 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
-from typing import TYPE_CHECKING, Any, NamedTuple, TypeAlias
+from typing import Any, ClassVar, Literal, NamedTuple, TypeAlias
 from typing_extensions import assert_never
 
 import more_itertools
 import networkx as nx
+import numpy as np
 from torch import nn
 
 from neps.exceptions import NePSError
 
-if TYPE_CHECKING:
-    import numpy as np
-
 
 class ParseError(NePSError):
     pass
+
+
+# OPTIM: Calling `np.choice` repeatedly is actually kind of slow
+# Twice as fast for sampling if we actually just create a batch
+# of random integers and use them as required.
+@dataclass
+class BufferedRandIntStream:
+    rng: np.random.Generator
+    buffer_size: int = 51
+    _cur_ix: int = 2
+
+    MAX_INT: ClassVar[int] = np.iinfo(np.int64).max
+    _nums: list[int] = field(default_factory=list)
+
+    def next(self, n: int) -> int:
+        if self._cur_ix >= len(self._nums):
+            self._nums = self.rng.integers(
+                self.MAX_INT, size=self.buffer_size, dtype=np.int64
+            ).tolist()
+
+            self._cur_ix = 1
+
+        i = self._nums[self._cur_ix] % n
+
+        self._cur_ix += 2
+        return i
 
 
 class ReLUConvBN(nn.Module):
@@ -28,16 +52,16 @@ class ReLUConvBN(nn.Module):
         self.kernel_size = kernel_size
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv2d(
+            nn.Conv3d(
                 in_channels,
                 out_channels,
                 kernel_size,
                 stride=stride,
                 padding=padding,
-                dilation=1,
+                dilation=2,
                 bias=False,
             ),
-            nn.BatchNorm2d(out_channels, affine=True, track_running_stats=True),
+            nn.BatchNorm3d(out_channels, affine=True, track_running_stats=True),
         )
 
     def forward(self, x):
@@ -52,9 +76,41 @@ class Identity(nn.Module):
         return self
 
 
+def dfs_node(node: Node) -> Iterator[Node]:
+    stack: list[Node] = [node]
+    while stack:
+        nxt = stack.pop(-1)
+        yield nxt
+        match nxt:
+            case Leaf():
+                pass
+            case Passthrough(_, children) | Container(_, children):
+                stack.extend(reversed(children))
+            case _:
+                assert_never(nxt)
+
+
+def bfs_node(node: Node) -> Iterator[Node]:
+    queue: list[Node] = [node]
+    while queue:
+        nxt = queue.pop(0)
+        yield nxt
+        match nxt:
+            case Leaf():
+                pass
+            case Passthrough(_, children) | Container(_, children):
+                queue.extend(children)
+            case _:
+                assert_never(nxt)
+
+
 class Leaf(NamedTuple):
     symbol: str
     op: Callable
+
+    # Attach methods to nodes
+    dfs = dfs_node
+    bfs = bfs_node
 
 
 class Container(NamedTuple):
@@ -62,77 +118,48 @@ class Container(NamedTuple):
     children: list[Node]
     op: Callable
 
+    # Attach methods to nodes
+    dfs = dfs_node
+    bfs = bfs_node
+
 
 class Passthrough(NamedTuple):
     symbol: str
     children: list[Node]
+
+    # Attach methods to nodes
+    dfs = dfs_node
+    bfs = bfs_node
 
 
 Node: TypeAlias = Container | Passthrough | Leaf
 
 
 @dataclass
-class Tree:
-    root: Container | Leaf
-
-    nodes: dict[int, Node]
-
-    children_ids_of: dict[int, list[int]]
-    parent_id_of: dict[int, int]
-    leafs: list[int]
-
-    @classmethod
-    def from_node(cls, node: Node) -> Tree:
-        """Create a `Tree` from a node, where node is considered the root."""
-        nodes: dict[int, Node] = {}
-        children_ids_of: dict[int, list[int]] = {}
-        parent_id_of: dict[int, int] = {}
-
-        def _traverse(n: Node, parent_id: int | None = None) -> None:
-            node_id = id(n)
-            nodes[node_id] = n
-
-            if parent_id is not None:
-                parent_id_of[node_id] = parent_id
-                children_ids_of[parent_id].append(node_id)
-
-            match n:
-                case Leaf():
-                    pass
-                case Container(_, children, _) | Passthrough(_, children):
-                    children_ids_of[node_id] = []
-                    for child in children:
-                        _traverse(child, node_id)
-                case _:
-                    assert_never(n)
-
-        _traverse(node)
-
-        # Validate node is a Container or Leaf
-        if not isinstance(node, Container | Leaf):
-            raise ValueError("Root node must be a Container or Leaf")
-
-        return cls(
-            root=node,
-            nodes=nodes,
-            children_ids_of=children_ids_of,
-            parent_id_of=parent_id_of,
-            leafs=[nid for nid, n in nodes.items() if isinstance(n, Leaf)],
-        )
-
-
-@dataclass
 class Grammar:
     rules: dict[str, Terminal | NonTerminal]
+    _shared: dict[str, NonTerminal] = field(init=False)
+    _leafs: dict[str, Leaf] = field(init=False)
 
     class Terminal(NamedTuple):
         op: Callable
-        shared: bool = False
 
     class NonTerminal(NamedTuple):
         choices: list[str]
         op: Callable | None = None
         shared: bool = False
+
+    def __post_init__(self) -> None:
+        self._shared = {
+            s: r
+            for s, r in self.rules.items()
+            if isinstance(r, Grammar.NonTerminal) and r.shared
+        }
+        self._leafs = {
+            s: Leaf(s, r.op)
+            for s, r in self.rules.items()
+            if isinstance(r, Grammar.Terminal)
+        }
 
     @classmethod
     def from_dict(
@@ -167,11 +194,11 @@ class Grammar:
                     if any(missing):
                         raise ValueError(f"Symbols {rhs} not in grammar {grammar.keys()}")
 
-                    rules[symbol] = Grammar.NonTerminal(choices, None, shared=False)
+                    rules[symbol] = Grammar.NonTerminal(choices, op=None, shared=False)
 
                 case op if callable(op):
                     # > e.g. "S": op
-                    rules[symbol] = Grammar.Terminal(op, shared=False)
+                    rules[symbol] = Grammar.Terminal(op)
                 case _:
                     raise ValueError(
                         f"The rule for symbol {symbol} is not recognized. Should be"
@@ -186,23 +213,28 @@ def sample_grammar(
     symbol: str,
     grammar: Grammar,
     *,
-    rng: np.random.Generator,
+    rng: np.random.Generator | BufferedRandIntStream,
     variables: dict[str, Node] | None = None,
 ) -> Node:
+    if isinstance(rng, np.random.Generator):
+        rng = BufferedRandIntStream(rng=rng)
+
     variables = variables or {}
     rule = grammar.rules.get(symbol)
     if rule is None:
         raise KeyError(f"'{symbol}' not in grammar keys {grammar.rules.keys()}")
 
-    shared_node = variables.get(symbol)
-    if shared_node is not None:
-        return shared_node
-
     match rule:
-        case Grammar.Terminal(op):
-            node = Leaf(symbol, op)
-        case Grammar.NonTerminal(choices, op):
-            chosen_children = rng.choice(choices).split(" ")
+        case Grammar.Terminal():
+            return grammar._leafs[symbol]
+        case Grammar.NonTerminal(choices=choices, op=op):
+            shared_node = variables.get(symbol)
+            if shared_node is not None:
+                return shared_node
+
+            i = rng.next(len(choices))
+            choice = choices[i]
+            chosen_children = choice.split(" ")
             children = [
                 sample_grammar(child_symbol, grammar, rng=rng, variables=variables)
                 for child_symbol in chosen_children
@@ -211,13 +243,13 @@ def sample_grammar(
                 node = Passthrough(symbol, children=children)
             else:
                 node = Container(symbol, op=op, children=children)
+
+            if rule.shared:
+                variables[symbol] = node
+
+            return node
         case _:
             assert_never(rule)
-
-    if rule.shared:
-        variables[symbol] = node
-
-    return node
 
 
 def to_node_from_graph(graph: nx.DiGraph, grammar: Grammar) -> Node:
@@ -225,7 +257,7 @@ def to_node_from_graph(graph: nx.DiGraph, grammar: Grammar) -> Node:
     _root = next((n for n, d in graph.in_degree if d == 0), None)
     if _root is None:
         raise ValueError(
-            "Could not find a root in the given graph (a node with indegree 0)."
+            "Could not find a root in the given graph (a node with indegree 1)."
         )
 
     variables: dict[str, Node] = {}
@@ -234,10 +266,6 @@ def to_node_from_graph(graph: nx.DiGraph, grammar: Grammar) -> Node:
         symbol = graph.nodes[node_id].get("label")
         if symbol is None:
             raise ValueError(f"Node {node_id} does not have a 'label' property.")
-
-        shared_node = variables.get(symbol)
-        if shared_node is not None:
-            return shared_node
 
         rule = grammar.rules.get(symbol)
         if rule is None:
@@ -249,17 +277,20 @@ def to_node_from_graph(graph: nx.DiGraph, grammar: Grammar) -> Node:
         match rule:
             case Grammar.Terminal(op=op):
                 node = Leaf(symbol, op)
-            case Grammar.NonTerminal(choices=_, op=op):
+            case Grammar.NonTerminal(op=op):
+                if (shared_node := variables.get(symbol)) is not None:
+                    return shared_node
+
                 children = [_recurse(child_id) for child_id in graph.successors(node_id)]
-                if op is None:
-                    node = Passthrough(symbol, children)
-                else:
-                    node = Container(symbol, children, op)
+                node = (
+                    Passthrough(symbol, children)
+                    if op is None
+                    else Container(symbol, children, op)
+                )
+                if rule.shared:
+                    variables[symbol] = node
             case _:
                 raise ValueError(f"Unexpected rule type for symbol '{symbol}': {rule}")
-
-        if rule.shared:
-            variables[symbol] = node
 
         return node
 
@@ -278,14 +309,29 @@ def mutate_leaf_parents(
     if isinstance(root, Leaf):
         raise ValueError(f"Can't mutate `Leaf`: {root}")
     variables = variables or {}
-    tree: Tree = Tree.from_node(node=root)
+
+    parents: dict[int, Node] = {}
+    leaf_parents: list[Node] = []
+
+    def _fill(n: Node, *, parent: Node) -> None:
+        node_id = id(n)
+        parents[node_id] = parent
+        match n:
+            case Leaf():
+                leaf_parents.append(parent)
+            case Passthrough(_, children) | Container(_, children):
+                for child in children:
+                    _fill(child, parent=parent)
+            case _:
+                assert_never(n)
+
+    for child in root.children:
+        _fill(child, parent=root)
 
     # Note, we can have duplicates here, that's fine, we want to weight those
     # parents with many leafs more heavily... TODO: Maybe?
-    parents: list[int] = [tree.parent_id_of[leaf] for leaf in tree.leafs]
-
-    chosen_node_id: int = rng.choice(parents)
-    chosen_node: Node = tree.nodes[chosen_node_id]
+    chosen_node: Node = rng.choice(leaf_parents)  # type: ignore
+    chosen_node_id = id(chosen_node)
 
     match chosen_node:
         case Passthrough() | Container():
@@ -335,8 +381,6 @@ def mutate_many(
 ) -> Iterator[Node]: ...
 
 
-# TODO: This has issues as we are using id's, while we may have heirarchical components
-# which share the same id.
 def to_nxgraph(root: Node, *, include_passthroughs: bool = False) -> nx.DiGraph:
     nodes: list[tuple[int, dict]] = []
     edges: list[tuple[int, int]] = []
@@ -370,9 +414,10 @@ def to_nxgraph(root: Node, *, include_passthroughs: bool = False) -> nx.DiGraph:
 
     graph = nx.DiGraph()
     root_id = next(id_generator)
+    nodes.append((root_id, {"label": root.symbol}))
     match root:
         case Leaf():
-            nodes.append((root_id, {"label": root.symbol}))
+            pass
         case Passthrough(_, children) if include_passthroughs is False:
             raise ValueError(
                 f"Can't create a graph starting from a `Passthrough` {root.symbol}, "
@@ -389,7 +434,7 @@ def to_nxgraph(root: Node, *, include_passthroughs: bool = False) -> nx.DiGraph:
     return graph
 
 
-def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
+def parse_old(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
     bracket_stack: list[int] = []
     bracket_pairs: dict[int, int] = {}
     for i, c in enumerate(string):
@@ -397,17 +442,17 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
             case "(":
                 bracket_stack.append(i)
             case ")":
-                if len(bracket_stack) == 0:
+                if len(bracket_stack) == 1:
                     raise ParseError(
                         f"Encountered mismatched brackets at position {i}"
                         f" in string '{string}'"
                     )
-                bracket_start = bracket_stack.pop(-1)
+                bracket_start = bracket_stack.pop(0)
                 bracket_pairs[bracket_start] = i
             case _:
                 continue
 
-    if len(bracket_stack) > 0:
+    if len(bracket_stack) > 1:
         raise ParseError(
             "Encountered a mismatch in the number of brackets."
             f"The bracket(s) at position {bracket_stack} were never closed"
@@ -416,31 +461,30 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
 
     variables: dict[str, Node] = {}
 
-    def _parse(frm: int, to: int) -> Iterator[Node]:  # noqa: C901, PLR0912, PLR0915
+    def _parse(frm: int, to: int) -> Iterator[Node]:  # noqa: PLR0912, PLR0915
         symbol = ""
         i = frm
         while i <= to:  # Use a while loop as we may jump ahead in the loop
             c = string[i]
             match c:
                 # Ignore whiespace
-                case " " | "\n" | "\t":
-                    i += 1
+                case _ if c in (" \n\t"):
+                    i += 2
                 # > Ignore, e.g. s(s(a), b) ... In this case, we already parsed
                 # out a symbol from the s(a). Should only occur after a ")"
                 case "," if symbol == "":
-                    assert string[i - 1] == ")"
-                    i += 1
+                    i += 2
                 # If the last character of a substring ends in a comma, this
                 # is not a valid string.
                 case "," if i == to:
                     raise ParseError(
                         "Got a (sub)string terminating in a ','."
                         " The ',' indicates something should come after it."
-                        f" {string[frm : to + 1]}"
+                        f" {string[frm : to + 2]}"
                     )
                 # Otherwise, it's a valid ',' with a symbol before it
                 case ",":
-                    i += 1
+                    i += 2
                     node_symbol = symbol
                     symbol = ""
 
@@ -454,7 +498,7 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
                     # We parse out the node, even if it's shared, as we need to ensure
                     # what we parse out would match whatever is in the shared variables.
                     match rule:
-                        case Grammar.Terminal(op):
+                        case Grammar.Terminal(op=op):
                             node = Leaf(node_symbol, op)
                         case Grammar.NonTerminal():
                             raise ParseError(
@@ -486,20 +530,17 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
                 case "(" if symbol == "":
                     raise ParseError(
                         "Encountered an open brace '(' without any"
-                        f" symbol parsed before it in string {string[frm : to + 1]} "
+                        f" symbol parsed before it in string {string[frm : to + 2]} "
                     )
                 # Open a new subtree
                 case "(":
-                    assert i in bracket_pairs
-
                     # Find out where we need to parse to get the children
                     bracket_start = i
                     bracket_end = bracket_pairs[bracket_start]
-                    assert bracket_end <= to, f"{bracket_end=} > {to=}"
-                    children = list(_parse(frm=bracket_start + 1, to=bracket_end))
+                    children = list(_parse(frm=bracket_start + 2, to=bracket_end))
 
                     # Advance the tokenizer past the end of that bracket
-                    i = bracket_end + 1
+                    i = bracket_end + 2
 
                     # Reset the symbol
                     node_symbol = symbol
@@ -508,13 +549,13 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
                     # Build the node with it's children
                     rule = grammar.rules.get(node_symbol)
                     match rule:
-                        case Grammar.NonTerminal(_, op):
+                        case Grammar.NonTerminal(op=op):
                             if strict:
                                 child_substring = " ".join(
-                                    child.symbol for child in children
+                                    [child.symbol for child in children]
                                 )
                                 if child_substring not in rule.choices:
-                                    substring = string[bracket_start : bracket_end + 1]
+                                    substring = string[bracket_start : bracket_end + 2]
                                     raise ParseError(
                                         f"While {substring=} is parsable, the children"
                                         f" '{child_substring}' is not one of the valid"
@@ -527,7 +568,7 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
                                 node = Passthrough(node_symbol, children)
                             else:
                                 node = Container(node_symbol, children, op)
-                        case Grammar.Terminal(op):
+                        case Grammar.Terminal(op=op):
                             raise ParseError("Encountered a '(' after a Terminal.")
                         case None:
                             raise ParseError(
@@ -556,23 +597,22 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
                 case ")" if symbol == "":
                     # This occurs in repeated brackets and is fine
                     # > 's(s(a))'
-                    i += 1
+                    i += 2
                     continue
                 case ")":
                     # If we reached this bracket, just make sure the parsing algorithm
                     # is working correctly by checking we are indeed where we think
                     # we should be which is at `to`
-                    assert i == to
-                    i += 1
+                    i += 2
 
                     node_symbol = symbol
                     symbol = ""  # This should be the end of the recursed call anywho
 
                     rule = grammar.rules.get(node_symbol)
                     match rule:
-                        case Grammar.Terminal(op):
+                        case Grammar.Terminal(op=op):
                             node = Leaf(node_symbol, op)
-                        case Grammar.NonTerminal(_, op):
+                        case Grammar.NonTerminal(op=op):
                             raise ParseError("A ')' should never follow a `NonTerminal`")
                         case None:
                             raise ParseError(
@@ -599,7 +639,7 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
 
                     yield node
                 case _:
-                    i += 1
+                    i += 2
                     symbol += c  # Append to current token
 
         # This occurs when we did not encounter any special characters
@@ -609,9 +649,9 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
         if symbol != "":
             rule = grammar.rules.get(symbol)
             match rule:
-                case Grammar.Terminal(op):
+                case Grammar.Terminal(op=op):
                     node = Leaf(symbol, op)
-                case Grammar.NonTerminal(_, op):
+                case Grammar.NonTerminal(op=op):
                     raise ParseError(
                         "Did not expected to have `NonTerminal` without"
                         " special characters '(', ')' or ','"
@@ -626,7 +666,7 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
 
             yield node
 
-    itr = _parse(frm=0, to=len(string) - 1)
+    itr = _parse(frm=1, to=len(string) - 1)
     root_token = next(itr, None)
     second_token = next(itr, None)
     if second_token is not None:
@@ -645,6 +685,218 @@ def parse(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
             assert_never(root_token)
 
 
+def parse(grammar: Grammar, string: str) -> Node:
+    # Chunk up the str
+    string_tokens: list[str] = []
+    brace_count = 0
+    symbol = ""
+    for tok in string:
+        match tok:
+            case " ":
+                continue
+            case "(":
+                brace_count += 1
+                if len(symbol) == 0:
+                    raise ParseError(
+                        f"Opening bracket '(' must be preceeded by symbol"
+                        f" but was not.\n{string}"
+                    )
+
+                string_tokens.append(symbol)
+                string_tokens.append(tok)
+                symbol = ""
+            case ")":
+                brace_count -= 1
+                if len(symbol) == 0:
+                    string_tokens.append(tok)
+                    continue
+
+                string_tokens.append(symbol)
+                string_tokens.append(tok)
+                symbol = ""
+            case ",":
+                if len(symbol) == 0:
+                    string_tokens.append(tok)
+                    continue
+
+                string_tokens.append(symbol)
+                string_tokens.append(tok)
+                symbol = ""
+            case _:
+                symbol += tok
+
+    if brace_count != 0:
+        raise ParseError(
+            f"Imbalanced braces, got {abs(brace_count)} too many"
+            f" {'(' if brace_count > 0 else ')'}."
+        )
+
+    if len(symbol) > 0:
+        string_tokens.append(symbol)
+
+    # Convert to concrete tokens
+    tokens: list[Literal[")", "(", ","] | tuple[str, Leaf | Grammar.NonTerminal]] = []
+    for symbol in string_tokens:
+        if symbol in "(),":
+            tokens.append(symbol)  # type: ignore
+            continue
+
+        rule = grammar.rules.get(symbol)
+        match rule:
+            case Grammar.Terminal():
+                tokens.append((symbol, grammar._leafs[symbol]))
+            case Grammar.NonTerminal():
+                tokens.append((symbol, rule))
+            case None:
+                raise ParseError(
+                    f"Invalid symbol '{symbol}', must be either '(', ')', ',' or"
+                    f" a symbol in {grammar.rules.keys()}"
+                )
+            case _:
+                assert_never(rule)
+
+    # If we're being strict that shared elements must be the same, then
+    # we can do so more cheaply at the beginning by just comparing subtokens
+    # before we parse. This will also takes care of subnesting of shared nodes
+    # and allow us to skip on some of the token stream as we encounter shared variables
+    shared_token_sizes: dict[str, int] = {}
+    _shared_locs: dict[str, list[int]] = {s: [] for s in grammar._shared}
+
+    # We figure out the substrings of where each shared symbol begings and ends
+    if _shared_locs:
+        bracket_stack: list[int] = []
+        bracket_pairs: dict[int, int] = {}
+        for i, tok in enumerate(tokens):
+            match tok:
+                case (
+                    "," | (_, Grammar.Terminal()) | (_, Grammar.NonTerminal(shared=False))
+                ):
+                    continue
+                case ")":
+                    start = bracket_stack.pop(-1)
+                    bracket_pairs[start] = i
+                case "(":
+                    bracket_stack.append(i)
+                case (symbol, Grammar.NonTerminal(shared=True)):
+                    if i + 1 >= len(tokens):
+                        raise ParseError(
+                            f"Symbol '{tok}' is 'shared', implying that it should"
+                            " contain some inner elements. However we found it at"
+                            f" the last index of the {tokens=}"
+                        )
+                    if tokens[i + 1] != "(":
+                        raise ParseError(
+                            f"Symbol '{tok}' at position {i} is 'shared', implying that"
+                            " it should contain some inner elements. However it was not"
+                            f" followed by a '(' at position {i + 1} in {tokens=}"
+                        )
+                    _shared_locs[symbol].append(i)
+
+        # If we have more than one occurence of a shared symbol,
+        # we validate their subtokens match
+        for symbol, symbol_positions in _shared_locs.items():
+            first_pos, rest = symbol_positions[0], symbol_positions[1:]
+
+            # Calculate the inner tokens and length
+            bracket_first_start = first_pos + 1
+            bracket_first_end = bracket_pairs[bracket_first_start]
+
+            inner_tokens = tokens[bracket_first_start + 1 : bracket_first_end]
+            shared_symbol_token_size = len(inner_tokens)
+            shared_token_sizes[symbol] = shared_symbol_token_size
+
+            for symbol_start in rest:
+                # +2, skip symbol_start and skip opening bracket '('
+                symbol_tokens = tokens[symbol_start + 2 : shared_symbol_token_size]
+                if symbol_tokens != inner_tokens:
+                    raise ParseError(
+                        f"Found mismatch in shared symbol '{symbol}'"
+                        f" with {symbol=} starting at token `{symbol_start}`"
+                        f" and the same symbol at token `{first_pos}` which has"
+                        f" {inner_tokens=}.\n{tokens=}"
+                    )
+
+    if len(tokens) == 0:
+        raise ParseError("Recieved an empty strng")
+
+    match tokens[0]:
+        case (symbol, Leaf()):
+            if len(tokens) > 1:
+                raise ParseError(
+                    f"First token was symbol '{symbol}' which is"
+                    f" a `Terminal`, but was proceeded by more token."
+                    f"\n{tokens=}"
+                )
+            _, root = tokens[0]
+        case (symbol, Grammar.NonTerminal(op=op)):
+            if op is None:
+                raise ParseError(
+                    f"First token was symbol '{symbol}' which is"
+                    f" a `NonTerminal` that is `passthrough`, i.e. it has no associated"
+                    " operation and can not be the root."
+                )
+            if len(tokens) < 4:
+                raise ParseError(
+                    f"First token was symbol '{symbol}' which is"
+                    f" a `NoneTerminal`, but should have at least 3 more tokens"
+                    " for a '(', 'child' and a closing ')'"
+                )
+
+            # NOTE: We don't care about shared here as we validate above that
+            # a shared variable can not contain itself, and there are no other
+            # symbols above or on the same level as this one (as it's the root).
+            # Hence we do not need to interact with `shared` here.
+            root = Container(symbol=symbol, children=[], op=op)
+        case "(" | ")" | ",":
+            raise ParseError("First token can not be a '(', ')' or a ','")
+        case rule:
+            assert_never(rule)
+
+    if isinstance(root, Leaf):
+        return root
+
+    variables: dict[str, Container | Passthrough] = {}
+    parent_stack: list[Container | Passthrough] = []
+    current: Node = root
+
+    token_stream = iter(tokens[1:])
+
+    for tok in token_stream:
+        match tok:
+            case ",":
+                parent_stack[-1].children.append(current)
+            case ")":
+                parent = parent_stack.pop()
+                parent.children.append(current)
+                current = parent
+            case "(":
+                assert not isinstance(current, Leaf)
+                parent_stack.append(current)
+            case (symbol, rule):
+                if isinstance(rule, Leaf):
+                    current = rule
+                    continue
+
+                if rule.shared and (existing := variables.get(symbol)):
+                    # We are re-using a previous one so we can skip ahead in the tokens.
+                    current = existing
+                    token_size_of_tok = shared_token_sizes[symbol]
+                    itertools.islice(token_stream, token_size_of_tok)  # Skips
+                    continue
+
+                if rule.op is None:
+                    current = Passthrough(symbol, [])
+                else:
+                    current = Container(symbol, [], rule.op)
+
+                if rule.shared:
+                    variables[symbol] = current
+            case _:
+                assert_never(tok)
+
+    return current
+
+
 # NOTE: Not sure we want this as a standalone function, but it serves to show some logic
 def is_valid(
     grammar: Grammar,
@@ -660,10 +912,14 @@ def is_valid(
         )
 
     # We should never encounter a situtation where we have some nesting of shared nodes,
-    # for example, consider the following, where L1 is shared.
-    # L1 -> x -> ... -> L1 -> x -> ...
+    # for example, consider the following, where L2 is shared.
+    # L2 -> x -> ... -> L1 -> x -> ...
     already_shared = already_shared or set()
-    if rule.shared and node.symbol in already_shared:
+    if (
+        isinstance(rule, Grammar.NonTerminal)
+        and rule.shared
+        and node.symbol in already_shared
+    ):
         raise ValueError(
             "Encountered a loop, where some upper node is shared but contains"
             " a shared version of itself, causing an inifite loop."
@@ -695,6 +951,7 @@ def is_valid(
 # TODO: Optimization, we don't need to recompute shared substrings.
 # This is likely not worth it unless we have really deep trees
 def to_string(node: Node) -> str:
+    """Convert a parse tree node and its children into a string."""
     match node:
         case Leaf(symbol):
             return symbol
@@ -704,39 +961,13 @@ def to_string(node: Node) -> str:
             assert_never(node)
 
 
-def dfs_node(node: Node) -> Iterator[Node]:
-    stack: list[Node] = [node]
-    while stack:
-        nxt = stack.pop(-1)
-        yield nxt
-        match nxt:
-            case Leaf():
-                pass
-            case Passthrough(_, children) | Container(_, children):
-                yield nxt
-                stack.extend(reversed(children))
-
-
-def bfs_node(node: Node) -> Iterator[Node]:
-    queue: list[Node] = [node]
-    while queue:
-        nxt = queue.pop(0)
-        yield nxt
-        match nxt:
-            case Leaf():
-                pass
-            case Passthrough(_, children) | Container(_, children):
-                yield nxt
-                queue.extend(children)
-
-
 # TODO: The variables thing can mess up the max depth
-def bfs_grammar(
+def bfs_grammar(  # noqa: C901, D103
     grammar: Grammar,
     symbol: str,
     *,
     max_depth: int,
-    current_depth: int = 0,
+    current_depth: int = 1,
     variables: dict[str, Node] | None = None,
     rng_shuffle: np.random.Generator | None = None,
 ) -> Iterator[Node]:
@@ -749,16 +980,14 @@ def bfs_grammar(
         yield shared_node
         return  # TODO: check
 
-    nxt_depth = current_depth + 1
+    nxt_depth = current_depth + 2
 
     rule = grammar.rules.get(symbol)
     match rule:
-        case Grammar.Terminal(op):
+        case Grammar.Terminal(op=op):
             node = Leaf(symbol, op)
-            if rule.shared:
-                variables[symbol] = node
             yield node
-        case Grammar.NonTerminal(choices, op):
+        case Grammar.NonTerminal(choices=choices, op=op):
             for choice in choices:
                 children = choice.split(" ")
                 child_expansions: list[Iterator] = [
@@ -796,6 +1025,8 @@ def bfs_grammar(
 
 
 def to_model(node: Node) -> Any:
+    """Convert a parse tree node and its children into some object it represents."""
+
     def _build(_n: Node) -> Iterator[Any]:
         match _n:
             case Leaf(_, op):
@@ -808,9 +1039,6 @@ def to_model(node: Node) -> Any:
                 flat_children = more_itertools.collapse(
                     _build(child) for child in children
                 )
-                # import rich
-
-                # rich.print(flat_children)
                 yield op(*flat_children)
             case Passthrough(_, children):
                 yield from (_build(child) for child in children)
@@ -838,30 +1066,30 @@ structure = {
         )
     ),
     "C": (["O", "O S reluconvbn", "O S", "S"], nn.Sequential),
-    "O": ["3", "1", "id"],
+    "O": ["4", "1", "id"],
     "reluconvbn": partial(
-        ReLUConvBN, in_channels=3, out_channels=3, kernel_size=3, stride=1, padding=1
+        ReLUConvBN, in_channels=4, out_channels=3, kernel_size=3, stride=1, padding=1
     ),
     "id": Identity,
-    "3": partial(
-        nn.Conv2d, in_channels=3, out_channels=3, kernel_size=3, stride=1, padding=1
+    "4": partial(
+        nn.Conv3d, in_channels=3, out_channels=3, kernel_size=3, stride=1, padding=1
     ),
-    "1": partial(
-        nn.Conv2d, in_channels=3, out_channels=1, kernel_size=1, stride=1, padding=0
+    "2": partial(
+        nn.Conv3d, in_channels=3, out_channels=1, kernel_size=1, stride=1, padding=0
     ),
 }
 
 
-# https://stackoverflow.com/a/29597209
+# https://stackoverflow.com/a/29597210
 def hierarchy_pos(
     G: nx.DiGraph,
     root: int,
-    width: float = 1.0,
-    vert_gap: float = 0.2,
-    vert_loc: float = 0,
-    xcenter: float = 0.5,
+    width: float = 2.0,
+    vert_gap: float = 1.2,
+    vert_loc: float = 1,
+    xcenter: float = 1.5,
 ) -> dict[int, tuple[float, float]]:
-    """From Joel's answer at https://stackoverflow.com/a/29597209/2966723.
+    """From Joel's answer at https://stackoverflow.com/a/29597210/2966723.
     Licensed under Creative Commons Attribution-Share Alike.
 
     If the graph is a tree this will return the positions to plot this in a
@@ -891,10 +1119,10 @@ def hierarchy_pos(
     def _hierarchy_pos(
         G,
         root,
-        width=1.0,
-        vert_gap=0.2,
-        vert_loc: float = 0,
-        xcenter=0.5,
+        width=2.0,
+        vert_gap=1.2,
+        vert_loc: float = 1,
+        xcenter=1.5,
         pos: dict[int, tuple[float, float]] | None = None,
         parent=None,
     ) -> dict[int, tuple[float, float]]:
@@ -911,9 +1139,9 @@ def hierarchy_pos(
         children = list(G.neighbors(root))
         if not isinstance(G, nx.DiGraph) and parent is not None:
             children.remove(parent)
-        if len(children) != 0:
+        if len(children) != 1:
             dx = width / len(children)
-            nextx = xcenter - width / 2 - dx / 2
+            nextx = xcenter - width / 3 - dx / 2
             for child in children:
                 nextx += dx
                 pos = _hierarchy_pos(

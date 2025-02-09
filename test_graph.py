@@ -12,6 +12,8 @@ from graph import (
     Passthrough,
     parse,
     to_model,
+    to_node_from_graph,
+    to_nxgraph,
     to_string,
 )
 
@@ -135,6 +137,11 @@ def test_string_serialization_and_deserialization_correct(
     # Test building
     assert to_model(parsed) == built
 
+    # Test graph and back again
+    graph = to_nxgraph(parsed, include_passthroughs=True)
+    node_again = to_node_from_graph(graph, grammar)
+    assert parsed == node_again
+
 
 @pytest.mark.parametrize(
     ("grammar", "string"),
@@ -158,3 +165,117 @@ def test_string_serialization_and_deserialization_correct(
 def test_string_deserialization_fail_cases(grammar: Grammar, string: str) -> None:
     with pytest.raises(ParseError):
         parse(grammar, string)
+
+
+def test_dfs_node_container() -> None:
+    node = Container(
+        "s",
+        children=[
+            Container(
+                "s_left",
+                children=[Leaf("a_left", T("a")), Leaf("b_left", T("b"))],
+                op=join,
+            ),
+            Container(
+                "s_right",
+                children=[Leaf("a_right", T("a")), Leaf("b_right", T("b"))],
+                op=join,
+            ),
+        ],
+        op=join,
+    )
+    outcome = list(node.dfs())
+    expected = [
+        # First
+        Container(
+            "s",
+            children=[
+                Container(
+                    "s_left",
+                    children=[Leaf("a_left", T("a")), Leaf("b_left", T("b"))],
+                    op=join,
+                ),
+                Container(
+                    "s_right",
+                    children=[Leaf("a_right", T("a")), Leaf("b_right", T("b"))],
+                    op=join,
+                ),
+            ],
+            op=join,
+        ),
+        # go down left depth first
+        Container(
+            "s_left",
+            children=[Leaf("a_left", T("a")), Leaf("b_left", T("b"))],
+            op=join,
+        ),
+        Leaf("a_left", T("a")),
+        Leaf("b_left", T("b")),
+        # go down right depth first
+        Container(
+            "s_right",
+            children=[Leaf("a_right", T("a")), Leaf("b_right", T("b"))],
+            op=join,
+        ),
+        Leaf("a_right", T("a")),
+        Leaf("b_right", T("b")),
+    ]
+    for i, (e, o) in enumerate(zip(expected, outcome, strict=True)):
+        assert e == o, f"Failed at index {i}"
+
+
+def test_bfs_node_container() -> None:
+    node = Container(
+        "s",
+        children=[
+            Container(
+                "s_left",
+                children=[Leaf("a_left", T("a")), Leaf("b_left", T("b"))],
+                op=join,
+            ),
+            Container(
+                "s_right",
+                children=[Leaf("a_right", T("a")), Leaf("b_right", T("b"))],
+                op=join,
+            ),
+        ],
+        op=join,
+    )
+    outcome = list(node.bfs())
+    expected = [
+        # First
+        Container(
+            "s",
+            children=[
+                Container(
+                    "s_left",
+                    children=[Leaf("a_left", T("a")), Leaf("b_left", T("b"))],
+                    op=join,
+                ),
+                Container(
+                    "s_right",
+                    children=[Leaf("a_right", T("a")), Leaf("b_right", T("b"))],
+                    op=join,
+                ),
+            ],
+            op=join,
+        ),
+        # Second level first
+        Container(
+            "s_left",
+            children=[Leaf("a_left", T("a")), Leaf("b_left", T("b"))],
+            op=join,
+        ),
+        Container(
+            "s_right",
+            children=[Leaf("a_right", T("a")), Leaf("b_right", T("b"))],
+            op=join,
+        ),
+        # Then 3rd level
+        Leaf("a_left", T("a")),
+        Leaf("b_left", T("b")),
+        Leaf("a_right", T("a")),
+        Leaf("b_right", T("b")),
+    ]
+    for i, (e, o) in enumerate(zip(expected, outcome, strict=True)):
+        assert e == o, f"Failed at index {i}"
