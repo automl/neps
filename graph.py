@@ -25,8 +25,8 @@ class ParseError(NePSError):
 @dataclass
 class BufferedRandIntStream:
     rng: np.random.Generator
-    buffer_size: int = 51
-    _cur_ix: int = 2
+    buffer_size: int = 50
+    _cur_ix: int = 0
 
     MAX_INT: ClassVar[int] = np.iinfo(np.int64).max
     _nums: list[int] = field(default_factory=list)
@@ -37,11 +37,11 @@ class BufferedRandIntStream:
                 self.MAX_INT, size=self.buffer_size, dtype=np.int64
             ).tolist()
 
-            self._cur_ix = 1
+            self._cur_ix = 0
 
         i = self._nums[self._cur_ix] % n
 
-        self._cur_ix += 2
+        self._cur_ix += 1
         return i
 
 
@@ -224,32 +224,54 @@ def sample_grammar(
     if rule is None:
         raise KeyError(f"'{symbol}' not in grammar keys {grammar.rules.keys()}")
 
+    stack: list[Container | Passthrough] = []
     match rule:
         case Grammar.Terminal():
             return grammar._leafs[symbol]
-        case Grammar.NonTerminal(choices=choices, op=op):
+        case Grammar.NonTerminal(choices, op, shared):
             shared_node = variables.get(symbol)
             if shared_node is not None:
                 return shared_node
 
-            i = rng.next(len(choices))
-            choice = choices[i]
-            chosen_children = choice.split(" ")
-            children = [
-                sample_grammar(child_symbol, grammar, rng=rng, variables=variables)
-                for child_symbol in chosen_children
-            ]
-            if op is None:
-                node = Passthrough(symbol, children=children)
-            else:
-                node = Container(symbol, op=op, children=children)
-
-            if rule.shared:
-                variables[symbol] = node
-
-            return node
+            i = rng.next(len(rule.choices))
+            initial_sample = rule.choices[i]
+            children_symbols = initial_sample.split(" ")
+            root = Passthrough(symbol, []) if op is None else Container(symbol, [], op)
+            stack.append(root)
         case _:
             assert_never(rule)
+
+    while stack:
+        parent = stack.pop()
+        i = rng.next(len(choices))
+        choice = choices[i]
+        children_symbols = choice.split(" ")
+
+        for child_symbol in children_symbols:
+            rule = grammar.rules[child_symbol]
+            match rule:
+                case Grammar.Terminal():
+                    parent.children.append(grammar._leafs[child_symbol])
+                case Grammar.NonTerminal(choices, op, shared):
+                    shared_node = variables.get(child_symbol)
+                    if shared_node is not None:
+                        parent.children.append(shared_node)
+                        continue
+
+                    sub_parent = (
+                        Passthrough(child_symbol, [])
+                        if op is None
+                        else Container(child_symbol, [], op)
+                    )
+                    parent.children.append(sub_parent)
+                    stack.append(sub_parent)
+
+                    if shared:
+                        variables[child_symbol] = sub_parent
+                case _:
+                    assert_never(rule)
+
+    return root
 
 
 def to_node_from_graph(graph: nx.DiGraph, grammar: Grammar) -> Node:
@@ -434,257 +456,6 @@ def to_nxgraph(root: Node, *, include_passthroughs: bool = False) -> nx.DiGraph:
     return graph
 
 
-def parse_old(grammar: Grammar, string: str, *, strict: bool = True) -> Node:
-    bracket_stack: list[int] = []
-    bracket_pairs: dict[int, int] = {}
-    for i, c in enumerate(string):
-        match c:
-            case "(":
-                bracket_stack.append(i)
-            case ")":
-                if len(bracket_stack) == 1:
-                    raise ParseError(
-                        f"Encountered mismatched brackets at position {i}"
-                        f" in string '{string}'"
-                    )
-                bracket_start = bracket_stack.pop(0)
-                bracket_pairs[bracket_start] = i
-            case _:
-                continue
-
-    if len(bracket_stack) > 1:
-        raise ParseError(
-            "Encountered a mismatch in the number of brackets."
-            f"The bracket(s) at position {bracket_stack} were never closed"
-            f" in the string '{string}'"
-        )
-
-    variables: dict[str, Node] = {}
-
-    def _parse(frm: int, to: int) -> Iterator[Node]:  # noqa: PLR0912, PLR0915
-        symbol = ""
-        i = frm
-        while i <= to:  # Use a while loop as we may jump ahead in the loop
-            c = string[i]
-            match c:
-                # Ignore whiespace
-                case _ if c in (" \n\t"):
-                    i += 2
-                # > Ignore, e.g. s(s(a), b) ... In this case, we already parsed
-                # out a symbol from the s(a). Should only occur after a ")"
-                case "," if symbol == "":
-                    i += 2
-                # If the last character of a substring ends in a comma, this
-                # is not a valid string.
-                case "," if i == to:
-                    raise ParseError(
-                        "Got a (sub)string terminating in a ','."
-                        " The ',' indicates something should come after it."
-                        f" {string[frm : to + 2]}"
-                    )
-                # Otherwise, it's a valid ',' with a symbol before it
-                case ",":
-                    i += 2
-                    node_symbol = symbol
-                    symbol = ""
-
-                    rule = grammar.rules.get(node_symbol)
-                    if rule is None:
-                        raise ParseError(
-                            f"Symbol '{node_symbol}' not in grammar"
-                            f" {grammar.rules.keys()}"
-                        )
-
-                    # We parse out the node, even if it's shared, as we need to ensure
-                    # what we parse out would match whatever is in the shared variables.
-                    match rule:
-                        case Grammar.Terminal(op=op):
-                            node = Leaf(node_symbol, op)
-                        case Grammar.NonTerminal():
-                            raise ParseError(
-                                f"`NonTerminal` '{node_symbol}' can not be followed"
-                                " by a comma ',' as it contains children inside brackets"
-                                " '()'"
-                            )
-                        case _:
-                            assert_never(rule)
-
-                    if rule.shared:
-                        shared_node = variables.get(node_symbol)
-                        if shared_node is not None:
-                            if shared_node == node:
-                                node = shared_node  # Make sure return the shared instance
-                            else:
-                                other_substring = to_string(shared_node)
-                                raise ParseError(
-                                    f"Encountered the substring {string[frm:to]}, where"
-                                    f" {node_symbol} is `shared=True`. However we have"
-                                    f" also found the substring {other_substring}."
-                                )
-                        else:
-                            variables[node_symbol] = node
-
-                    yield node
-                # If we encounter an open bracket with no preceeding token,
-                # then this is invalid
-                case "(" if symbol == "":
-                    raise ParseError(
-                        "Encountered an open brace '(' without any"
-                        f" symbol parsed before it in string {string[frm : to + 2]} "
-                    )
-                # Open a new subtree
-                case "(":
-                    # Find out where we need to parse to get the children
-                    bracket_start = i
-                    bracket_end = bracket_pairs[bracket_start]
-                    children = list(_parse(frm=bracket_start + 2, to=bracket_end))
-
-                    # Advance the tokenizer past the end of that bracket
-                    i = bracket_end + 2
-
-                    # Reset the symbol
-                    node_symbol = symbol
-                    symbol = ""
-
-                    # Build the node with it's children
-                    rule = grammar.rules.get(node_symbol)
-                    match rule:
-                        case Grammar.NonTerminal(op=op):
-                            if strict:
-                                child_substring = " ".join(
-                                    [child.symbol for child in children]
-                                )
-                                if child_substring not in rule.choices:
-                                    substring = string[bracket_start : bracket_end + 2]
-                                    raise ParseError(
-                                        f"While {substring=} is parsable, the children"
-                                        f" '{child_substring}' is not one of the valid"
-                                        f" choices for '{node_symbol} : {rule.choices}."
-                                        " To allow this anyways, pass `strict=False` to"
-                                        " this call."
-                                    )
-
-                            if op is None:
-                                node = Passthrough(node_symbol, children)
-                            else:
-                                node = Container(node_symbol, children, op)
-                        case Grammar.Terminal(op=op):
-                            raise ParseError("Encountered a '(' after a Terminal.")
-                        case None:
-                            raise ParseError(
-                                f"No associated rule with {node_symbol=}. Available"
-                                f"tokens are {grammar.rules.keys()}"
-                            )
-                        case _:
-                            assert_never(rule)
-
-                    if rule.shared:
-                        shared_node = variables.get(node_symbol)
-                        if shared_node is not None:
-                            if shared_node == node:
-                                node = shared_node  # Make sure return the shared instance
-                            else:
-                                other_substring = to_string(shared_node)
-                                raise ParseError(
-                                    f"Encountered the substring {string[frm:to]}, where"
-                                    f" {node_symbol} is `shared=True`. However we have"
-                                    f" also found the substring {other_substring}."
-                                )
-                        else:
-                            variables[node_symbol] = node
-
-                    yield node
-                case ")" if symbol == "":
-                    # This occurs in repeated brackets and is fine
-                    # > 's(s(a))'
-                    i += 2
-                    continue
-                case ")":
-                    # If we reached this bracket, just make sure the parsing algorithm
-                    # is working correctly by checking we are indeed where we think
-                    # we should be which is at `to`
-                    i += 2
-
-                    node_symbol = symbol
-                    symbol = ""  # This should be the end of the recursed call anywho
-
-                    rule = grammar.rules.get(node_symbol)
-                    match rule:
-                        case Grammar.Terminal(op=op):
-                            node = Leaf(node_symbol, op)
-                        case Grammar.NonTerminal(op=op):
-                            raise ParseError("A ')' should never follow a `NonTerminal`")
-                        case None:
-                            raise ParseError(
-                                f"No associated rule with {symbol=}. Available"
-                                f"tokens are {grammar.rules.keys()}"
-                            )
-                        case _:
-                            assert_never(rule)
-
-                    if rule.shared:
-                        shared_node = variables.get(node_symbol)
-                        if shared_node is not None:
-                            if shared_node == node:
-                                node = shared_node  # Make sure return the shared instance
-                            else:
-                                other_substring = to_string(shared_node)
-                                raise ParseError(
-                                    f"Encountered the substring {string[frm:to]}, where"
-                                    f" {node_symbol} is `shared=True`. However we have"
-                                    f" also found the substring {other_substring}."
-                                )
-                        else:
-                            variables[node_symbol] = node
-
-                    yield node
-                case _:
-                    i += 2
-                    symbol += c  # Append to current token
-
-        # This occurs when we did not encounter any special characters
-        # like `,`, `(` or `)`.
-        # I'm pretty sure the only case this can happen is if we have something
-        # like the string `"b"`, i.e. just a `Leaf`
-        if symbol != "":
-            rule = grammar.rules.get(symbol)
-            match rule:
-                case Grammar.Terminal(op=op):
-                    node = Leaf(symbol, op)
-                case Grammar.NonTerminal(op=op):
-                    raise ParseError(
-                        "Did not expected to have `NonTerminal` without"
-                        " special characters '(', ')' or ','"
-                    )
-                case None:
-                    raise ParseError(
-                        f"No associated rule with {symbol=}. Available"
-                        f"tokens are {grammar.rules.keys()}"
-                    )
-                case _:
-                    assert_never(rule)
-
-            yield node
-
-    itr = _parse(frm=1, to=len(string) - 1)
-    root_token = next(itr, None)
-    second_token = next(itr, None)
-    if second_token is not None:
-        raise ParseError(
-            "If getting the root as a `Leaf`, then we should have no proceeding tokens."
-        )
-
-    match root_token:
-        case Leaf() | Container():
-            return root_token
-        case Passthrough():
-            raise ParseError("Should not have recieved a `Passthrough` as the root token")
-        case None:
-            raise ParseError(f"No token was parsed, was the string empty? {string=}")
-        case _:
-            assert_never(root_token)
-
-
 def parse(grammar: Grammar, string: str) -> Node:
     # Chunk up the str
     string_tokens: list[str] = []
@@ -838,7 +609,7 @@ def parse(grammar: Grammar, string: str) -> Node:
             if len(tokens) < 4:
                 raise ParseError(
                     f"First token was symbol '{symbol}' which is"
-                    f" a `NoneTerminal`, but should have at least 3 more tokens"
+                    f" a `NonTerminal`, but should have at least 3 more tokens"
                     " for a '(', 'child' and a closing ')'"
                 )
 
@@ -967,7 +738,7 @@ def bfs_grammar(  # noqa: C901, D103
     symbol: str,
     *,
     max_depth: int,
-    current_depth: int = 1,
+    current_depth: int = 0,
     variables: dict[str, Node] | None = None,
     rng_shuffle: np.random.Generator | None = None,
 ) -> Iterator[Node]:
@@ -980,7 +751,7 @@ def bfs_grammar(  # noqa: C901, D103
         yield shared_node
         return  # TODO: check
 
-    nxt_depth = current_depth + 2
+    nxt_depth = current_depth + 1
 
     rule = grammar.rules.get(symbol)
     match rule:

@@ -40,8 +40,6 @@ structure = {
 if __name__ == "__main__":
     import time
 
-    import rich
-
     grammar = Grammar.from_dict(structure)
     rng = np.random.default_rng()
     sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
@@ -49,7 +47,7 @@ if __name__ == "__main__":
     # model = to_model(sample)
 
     t0 = time.perf_counter()
-    samples = 10000
+    samples = 10_000
 
     for _ in range(samples):
         sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
@@ -60,5 +58,7 @@ if __name__ == "__main__":
         # model = to_model(sample)
 
     t1 = time.perf_counter()
+    import rich
+
     rich.print(f"sampling takes {(t1 - t0) / samples}s on average over {samples} samples")
     rich.print(f"duration for {samples} samples: {t1 - t0}s ")
