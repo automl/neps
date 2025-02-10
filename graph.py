@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, ClassVar, Literal, NamedTuple, TypeAlias
@@ -412,87 +412,77 @@ def select(
             assert_never(how)
 
 
-def mutate_leaf_parents(
+def mutations(
     root: Node,
     grammar: Grammar,
     *,
-    rng: np.random.Generator,
+    which: Iterable[Node],
+    max_mutation_depth: int,
+    rng_shuffle: np.random.Generator | None = None,
     variables: dict[str, Node] | None = None,
-) -> Node:
-    """Mutate a node, returning a different possibility for it."""
+) -> Iterator[Node]:
+    """Mutate nodes, returning all the different possibilities for them.
+
+    Args:
+        root: The root from which to operate.
+        grammar: The grammar which holds the rules used for mutation.
+        which: What nodes to mutate, look at `select()`.
+        max_mutation_depth: The maximum depth allowed for bfs iteration
+            on the mutant nodes.
+        rng_shuffle: Whether to shuffle the return order. This takes place at the place
+            when considering the possibilities for a given node, and does not follow
+            the order of `NonTerminal.choices`.
+        variables: Any predefined values you'd like for different symbols.
+
+    Returns:
+        A new tree per possible mutation
+    """
     if isinstance(root, Leaf):
         raise ValueError(f"Can't mutate `Leaf`: {root}")
+
     variables = variables or {}
+    mutation_ids = {id(n) for n in which}
 
-    parents: dict[int, Node] = {}
-    leaf_parents: list[Node] = []
-
-    def _fill(n: Node, *, parent: Node) -> None:
-        node_id = id(n)
-        parents[node_id] = parent
-        match n:
+    def _inner(node: Node) -> Iterator[Node]:
+        match node:
             case Leaf():
-                leaf_parents.append(parent)
-            case Passthrough(_, children) | Container(_, children):
-                for child in children:
-                    _fill(child, parent=parent)
+                # We can't mutate leafs as they don't have possible choices to choose from
+                # by definition so we ignore it even if it's in the set of `mutation_ids`
+                yield node
+            case Passthrough(children=children) | Container(children=children):
+                rule = grammar.rules.get(node.symbol)
+                if not isinstance(rule, Grammar.NonTerminal):
+                    raise ValueError(
+                        "Expected a `NonTerminal` for symbol '{node.symbol}' from the"
+                        f" grammar but got rule {rule}"
+                    )
+
+                # If we've already determined the value of this shared symbol
+                if (existing := variables.get(node.symbol)) is not None:
+                    yield existing
+                    return
+
+                # If mutate, we return all possible bfs values from that node.
+                if id(node) in mutation_ids:
+                    yield from bfs_grammar(
+                        grammar,
+                        node.symbol,
+                        rng_shuffle=rng_shuffle,
+                        max_depth=max_mutation_depth,
+                        variables=variables,
+                    )
+                else:
+                    children_itrs: list[Iterator[Node]] = [_inner(c) for c in children]
+                    for new_children in itertools.product(*children_itrs):
+                        node = node._replace(children=list)
+                        new_node = node._replace(children=new_children)
+                        if rule.shared:
+                            variables[new_node.symbol] = node
+                        yield new_node
             case _:
-                assert_never(n)
+                assert_never(node)
 
-    for child in root.children:
-        _fill(child, parent=root)
-
-    # Note, we can have duplicates here, that's fine, we want to weight those
-    # parents with many leafs more heavily... TODO: Maybe?
-    chosen_node: Node = rng.choice(leaf_parents)  # type: ignore
-    chosen_node_id = id(chosen_node)
-
-    match chosen_node:
-        case Passthrough() | Container():
-            new_subnode = sample_grammar(
-                chosen_node.symbol,
-                grammar,
-                rng=rng,
-                # NOTE: subfunction will update variables dict
-                # with any instantiated `variables` if it doesn't
-                # exist already in the passed in `variables`
-                variables=variables,
-            )
-        case Leaf():
-            raise ValueError("don't pass leafs")
-        case _:
-            assert_never(chosen_node)
-
-    def _build(n: Node):
-        # If we find the node to replace, replace it.
-        if id(n) == chosen_node_id:
-            return new_subnode
-
-        # It may be the case that `sample_grammar` above populated
-        # `variables`, replacing one of the shared nodes with something
-        # new. In that case, we want to use the new sampled value wherever
-        # we encounter that symbol.
-        shared_node = variables.get(n.symbol)
-        if shared_node is not None:
-            return shared_node
-
-        # Otherwise, we just rebuild as needed
-        match n:
-            case Leaf():
-                return n
-            case Container(symbol, children, op):
-                return Container(symbol, children=[_build(c) for c in children], op=op)
-            case Passthrough(symbol, children):
-                return Passthrough(symbol, children=[_build(c) for c in children])
-            case _:
-                assert_never(n)
-
-    return _build(root)
-
-
-def mutate_many(
-    node: Node, grammar: Grammar, *, rng: np.random.Generator
-) -> Iterator[Node]: ...
+    yield from _inner(root)
 
 
 def to_nxgraph(root: Node, *, include_passthroughs: bool = False) -> nx.DiGraph:
