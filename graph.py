@@ -474,10 +474,9 @@ def mutations(
                 else:
                     children_itrs: list[Iterator[Node]] = [_inner(c) for c in children]
                     for new_children in itertools.product(*children_itrs):
-                        node = node._replace(children=list)
                         new_node = node._replace(children=new_children)
                         if rule.shared:
-                            variables[new_node.symbol] = node
+                            variables[new_node.symbol] = new_node
                         yield new_node
             case _:
                 assert_never(node)
