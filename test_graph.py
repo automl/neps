@@ -10,7 +10,10 @@ from graph import (
     Node,
     ParseError,
     Passthrough,
+    bfs_node,
+    dfs_node,
     parse,
+    select,
     to_model,
     to_node_from_graph,
     to_nxgraph,
@@ -184,7 +187,7 @@ def test_dfs_node_container() -> None:
         ],
         op=join,
     )
-    outcome = list(node.dfs())
+    outcome = list(dfs_node(node))
     expected = [
         # First
         Container(
@@ -241,7 +244,7 @@ def test_bfs_node_container() -> None:
         ],
         op=join,
     )
-    outcome = list(node.bfs())
+    outcome = list(bfs_node(node))
     expected = [
         # First
         Container(
@@ -279,3 +282,153 @@ def test_bfs_node_container() -> None:
     ]
     for i, (e, o) in enumerate(zip(expected, outcome, strict=True)):
         assert e == o, f"Failed at index {i}"
+
+
+def test_select_symbol() -> None:
+    root = Container(
+        "a",
+        children=[
+            Container(
+                "b",
+                children=[
+                    Container(
+                        "d",
+                        children=[Leaf("l1", op=T("l1"))],
+                        op=join,
+                    ),
+                ],
+                op=join,
+            ),
+            Container("c", children=[Leaf("l2", op=T("l2"))], op=join),
+            Leaf("l3", op=T("l3")),
+            Container(
+                "d",
+                children=[Leaf("l4", op=T("l4"))],
+                op=join,
+            ),
+        ],
+        op=join,
+    )
+    selected = list(select(root, how=("symbol", "d")))
+    assert selected == [
+        Container(
+            "d",
+            children=[Leaf("l4", op=T("l4"))],
+            op=join,
+        ),
+        Container(
+            "d",
+            children=[Leaf("l1", op=T("l1"))],
+            op=join,
+        ),
+    ]
+
+
+def test_select_depth() -> None:
+    root = Container(
+        "a",
+        children=[
+            Container(
+                "b",
+                children=[
+                    Container(
+                        "d",
+                        children=[Leaf("l1", op=T("l1"))],
+                        op=join,
+                    ),
+                ],
+                op=join,
+            ),
+            Container("c", children=[Leaf("l2", op=T("l2"))], op=join),
+            Leaf("l3", op=T("l3")),
+            Container(
+                "d",
+                children=[Leaf("l4", op=T("l4"))],
+                op=join,
+            ),
+        ],
+        op=join,
+    )
+    selected = list(select(root, how=("depth", 1)))
+    assert selected == root.children
+
+    selected = list(select(root, how=("depth", range(1, 3))))
+    expected = [
+        # Depth 1
+        *root.children,
+        # Depth 2
+        Container(
+            "d",
+            children=[Leaf("l1", op=T("l1"))],
+            op=join,
+        ),
+        Leaf("l2", op=T("l2")),
+        Leaf("l4", op=T("l4")),
+    ]
+    assert selected == expected
+
+
+def test_select_climb() -> None:
+    # NOTE: The order is rather arbitrary and not much thought has been given to it.
+    # However the test still tests a particular order that was done by trial and
+    # error. Feel free to redo the order if this changes.
+    root = Container(
+        "a",
+        children=[
+            Container(
+                "b",
+                children=[
+                    Container(
+                        "d",
+                        children=[Leaf("l1", op=T("l1"))],
+                        op=join,
+                    ),
+                ],
+                op=join,
+            ),
+            Container("c", children=[Leaf("l2", op=T("l2"))], op=join),
+            Leaf("l3", op=T("l3")),
+            Container(
+                "d",
+                children=[Leaf("l4", op=T("l4"))],
+                op=join,
+            ),
+        ],
+        op=join,
+    )
+    selected = list(select(root, how=("climb", 0)))
+    assert selected == [
+        Leaf("l3", op=T("l3")),
+        Leaf("l2", op=T("l2")),
+        Leaf("l4", op=T("l4")),
+        Leaf("l1", op=T("l1")),
+    ]
+
+    selected = list(select(root, how=("climb", range(1, 3))))
+    expected = [
+        root,
+        Container("c", children=[Leaf("l2", op=T("l2"))], op=join),
+        Container(
+            "d",
+            children=[Leaf("l4", op=T("l4"))],
+            op=join,
+        ),
+        Container(
+            "d",
+            children=[Leaf("l1", op=T("l1"))],
+            op=join,
+        ),
+        Container(
+            "b",
+            children=[
+                Container(
+                    "d",
+                    children=[Leaf("l1", op=T("l1"))],
+                    op=join,
+                ),
+            ],
+            op=join,
+        ),
+    ]
+    for i, (sel, exp) in enumerate(zip(selected, expected, strict=True)):
+        assert sel == exp, f"Mismatch at pos {i}:\nExpected: {exp}\n\nGot: {sel}"

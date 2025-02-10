@@ -109,9 +109,8 @@ class Leaf(NamedTuple):
     symbol: str
     op: Callable
 
-    # Attach methods to nodes
-    dfs = dfs_node
-    bfs = bfs_node
+    def __hash__(self) -> int:
+        return hash(self.symbol)
 
 
 class Container(NamedTuple):
@@ -119,18 +118,16 @@ class Container(NamedTuple):
     children: list[Node]
     op: Callable
 
-    # Attach methods to nodes
-    dfs = dfs_node
-    bfs = bfs_node
+    def __hash__(self) -> int:
+        return hash(self.symbol) + hash(tuple(self.children))
 
 
 class Passthrough(NamedTuple):
     symbol: str
     children: list[Node]
 
-    # Attach methods to nodes
-    dfs = dfs_node
-    bfs = bfs_node
+    def __hash__(self) -> int:
+        return hash(self.symbol) + hash(tuple(self.children))
 
 
 Node: TypeAlias = Container | Passthrough | Leaf
@@ -332,7 +329,7 @@ def select(
 ) -> Iterator[Node]:
     match how:
         case ("symbol", symbol):
-            for node in root.bfs():
+            for node in bfs_node(root):
                 if node.symbol == symbol:
                     yield node
         case ("depth", depth):
@@ -342,14 +339,17 @@ def select(
             queue_depth: list[tuple[Node, int]] = [(root, 0)]
             while queue_depth:
                 nxt, d = queue_depth.pop(0)
+                if d in depth:
+                    yield nxt
+
+                if d >= depth.stop:
+                    continue
+
                 match nxt:
                     case Leaf():
-                        continue
+                        pass
                     case Passthrough(children=children) | Container(children=children):
-                        if d in depth:
-                            yield nxt
-                        if d < depth.stop:
-                            queue_depth.extend([(child, d + 1) for child in children])
+                        queue_depth.extend([(child, d + 1) for child in children])
                     case _:
                         assert_never(nxt)
 
@@ -368,7 +368,7 @@ def select(
             # the climb iteration
             leafs: dict[int, Node] = {}
 
-            queue_climb: list[Node] = []
+            queue_climb: list[Node] = [root]
             while queue_climb:
                 nxt = queue_climb.pop(0)
                 this_id = id(nxt)
@@ -385,17 +385,27 @@ def select(
             # Now we work backwards from the leafs for each of the possible parents
             # for the node id, yielding if we're within the climb path. If we've gone
             # pass the climb value, we can stop iterating there.
-            climb_stack: list[tuple[Node, int]] = []
-            climb_stack.extend([(leaf, 0) for leaf in leafs.values()])
-            while climb_stack:
-                node, climb_value = climb_stack.pop(-1)
+            climb_queue: list[tuple[Node, int]] = []
+            climb_queue.extend([(leaf, 0) for leaf in leafs.values()])
+            seen: set[int] = set()
+            while climb_queue:
+                node, climb_value = climb_queue.pop(0)
+                node_id = id(node)
+                if node_id in seen:
+                    continue
+
                 if climb_value in climb:
+                    seen.add(node_id)
                     yield node
 
                 if climb_value < climb.stop:
                     possible_node_parents = parents[id(node)]
-                    climb_stack.extend(
-                        [(p, climb_value + 1) for p in possible_node_parents]
+                    climb_queue.extend(
+                        [
+                            (p, climb_value + 1)
+                            for p in possible_node_parents
+                            if id(p) not in seen
+                        ]
                     )
 
         case _:
@@ -911,12 +921,10 @@ def to_model(node: Node) -> Any:
             assert_never(node)
 
 
-structure = {
+grammar = {
     "S": (
-        Grammar.NonTerminal(
-            ["C", "reluconvbn", "S", "S C", "O O O"],
-            nn.Sequential,
-        )
+        ["C", "reluconvbn", "S", "S C", "O O O"],
+        nn.Sequential,
     ),
     "C": (["O", "O S reluconvbn", "O S", "S"], nn.Sequential),
     "O": ["4", "1", "id"],

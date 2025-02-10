@@ -10,6 +10,7 @@ from graph import (
     ReLUConvBN,
     parse,
     sample_grammar,
+    to_model,
     to_nxgraph,
     to_string,
 )
@@ -36,7 +37,6 @@ structure = {
     ),
 }
 
-
 if __name__ == "__main__":
     import time
 
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     rng = np.random.default_rng()
     sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
     graph = to_nxgraph(sample)
-    # model = to_model(sample)
+    model = to_model(sample)
 
     t0 = time.perf_counter()
     samples = 10_000
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     for _ in range(samples):
         sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
         string = to_string(sample)
-        parse(string=string, grammar=grammar)
+        node = parse(string=string, grammar=grammar)
         # graph = to_nxgraph(sample)
         # mutate_leaf_parents(root=sample, grammar=grammar, rng=rng)
         # model = to_model(sample)
