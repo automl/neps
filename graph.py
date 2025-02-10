@@ -621,29 +621,31 @@ def parse(grammar: Grammar, string: str) -> Node:
         bracket_pairs: dict[int, int] = {}
         for i, tok in enumerate(tokens):
             match tok:
-                case (
-                    "," | (_, Grammar.Terminal()) | (_, Grammar.NonTerminal(shared=False))
-                ):
+                case "," | (_, Leaf()):
                     continue
                 case ")":
                     start = bracket_stack.pop(-1)
                     bracket_pairs[start] = i
                 case "(":
                     bracket_stack.append(i)
-                case (symbol, Grammar.NonTerminal(shared=True)):
+                case (symbol, Grammar.NonTerminal(shared=shared)):
                     if i + 1 >= len(tokens):
                         raise ParseError(
-                            f"Symbol '{tok}' is 'shared', implying that it should"
+                            f"Symbol '{tok}' is a `NonTerminal`, implying that it should"
                             " contain some inner elements. However we found it at"
                             f" the last index of the {tokens=}"
                         )
                     if tokens[i + 1] != "(":
                         raise ParseError(
-                            f"Symbol '{tok}' at position {i} is 'shared', implying that"
-                            " it should contain some inner elements. However it was not"
-                            f" followed by a '(' at position {i + 1} in {tokens=}"
+                            f"Symbol '{tok}' at position {i} is a `NonTerminal`,"
+                            " implying that it should contain some inner elements."
+                            f" However it was not followed by a '(' at position {i + 1}"
+                            f" in {tokens=}"
                         )
-                    _shared_locs[symbol].append(i)
+                    if shared is True:
+                        _shared_locs[symbol].append(i)
+                case _:
+                    assert_never(tok)
 
         # If we have more than one occurence of a shared symbol,
         # we validate their subtokens match
