@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+from collections import defaultdict
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from functools import partial
@@ -318,6 +319,87 @@ def to_node_from_graph(graph: nx.DiGraph, grammar: Grammar) -> Node:
 
     # Start with the root node
     return _recurse(_root)
+
+
+def select(
+    root: Node,
+    *,
+    how: (
+        tuple[Literal["symbol"], str]
+        | tuple[Literal["depth"], int | range]
+        | tuple[Literal["climb"], int | range]
+    ),
+) -> Iterator[Node]:
+    match how:
+        case ("symbol", symbol):
+            for node in root.bfs():
+                if node.symbol == symbol:
+                    yield node
+        case ("depth", depth):
+            if isinstance(depth, int):
+                depth = range(depth, depth + 1)
+
+            queue_depth: list[tuple[Node, int]] = [(root, 0)]
+            while queue_depth:
+                nxt, d = queue_depth.pop(0)
+                match nxt:
+                    case Leaf():
+                        continue
+                    case Passthrough(children=children) | Container(children=children):
+                        if d in depth:
+                            yield nxt
+                        if d < depth.stop:
+                            queue_depth.extend([(child, d + 1) for child in children])
+                    case _:
+                        assert_never(nxt)
+
+        case ("climb", climb):
+            if isinstance(climb, int):
+                climb = range(climb, climb + 1)
+
+            # First, we iterate downwards, populating parent paths back
+            # up. As the id for a Leaf is shared across all similar leafs
+            # as well as the fact shared nodes will share the same node id,
+            # we could have multiple parents per child id.
+            parents: defaultdict[int, list[Node]] = defaultdict(list)
+
+            # We remove duplicates using a dict and the shared ids, a list would
+            # end up with duplicates for every leaf. We use this later to begin
+            # the climb iteration
+            leafs: dict[int, Node] = {}
+
+            queue_climb: list[Node] = []
+            while queue_climb:
+                nxt = queue_climb.pop(0)
+                this_id = id(nxt)
+                match nxt:
+                    case Leaf():
+                        leafs[this_id] = nxt
+                    case Passthrough(children=children) | Container(children=children):
+                        for child in children:
+                            parents[id(child)].append(nxt)
+                        queue_climb.extend(children)
+                    case _:
+                        assert_never(nxt)
+
+            # Now we work backwards from the leafs for each of the possible parents
+            # for the node id, yielding if we're within the climb path. If we've gone
+            # pass the climb value, we can stop iterating there.
+            climb_stack: list[tuple[Node, int]] = []
+            climb_stack.extend([(leaf, 0) for leaf in leafs.values()])
+            while climb_stack:
+                node, climb_value = climb_stack.pop(-1)
+                if climb_value in climb:
+                    yield node
+
+                if climb_value < climb.stop:
+                    possible_node_parents = parents[id(node)]
+                    climb_stack.extend(
+                        [(p, climb_value + 1) for p in possible_node_parents]
+                    )
+
+        case _:
+            assert_never(how)
 
 
 def mutate_leaf_parents(
