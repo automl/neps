@@ -238,7 +238,7 @@ class Categorical:
             )
 
         self.center = self.choices[0]
-        self.domain = Domain.indices(len(self.choices))
+        self.domain = Domain.indices(len(self.choices), is_categorical=True)
 
 
 @dataclass
