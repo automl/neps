@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Generic, Literal, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from portalocker import portalocker
 
