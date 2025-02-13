@@ -81,8 +81,6 @@ def _set_ddp_env_var(trial_id: str) -> None:
     os.environ[_DDP_ENV_VAR_NAME] = trial_id
 
 
-Loc = TypeVar("Loc")
-
 # NOTE: As each NEPS process is only ever evaluating a single trial, this global can
 # be retrieved in NePS and refers to what this process is currently evaluating.
 # Note that before `_set_in_progress_trial` is called, this should be cleared
@@ -158,7 +156,7 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
 # NOTE: This class is quite stateful and has been split up quite a bit to make testing
 # interleaving of workers easier. This comes at the cost of more fragmented code.
 @dataclass
-class DefaultWorker(Generic[Loc]):
+class DefaultWorker:
     """A default worker for the NePS system.
 
     This is the worker that is used by default in the neps.run() loop.
