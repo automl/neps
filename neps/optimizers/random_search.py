@@ -34,7 +34,7 @@ class RandomSearch:
         for config in config_dicts:
             config.update(self.space.constants)
 
-        if n == 1:
+        if n is None:
             config = config_dicts[0]
             config_id = str(n_trials + 1)
             return SampledConfig(config=config, id=config_id, previous_config_id=None)
