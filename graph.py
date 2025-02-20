@@ -8,7 +8,6 @@ from functools import partial
 from typing import Any, ClassVar, Literal, NamedTuple, TypeAlias
 from typing_extensions import assert_never
 
-import more_itertools
 import networkx as nx
 import numpy as np
 from torch import nn
@@ -47,22 +46,21 @@ class BufferedRandIntStream:
 
 
 class ReLUConvBN(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding):
+    def __init__(self, out_channels, kernel_size, stride, padding):
         super().__init__()
 
         self.kernel_size = kernel_size
         self.op = nn.Sequential(
             nn.ReLU(inplace=False),
-            nn.Conv3d(
-                in_channels,
-                out_channels,
-                kernel_size,
+            nn.LazyConv2d(
+                out_channels=out_channels,
+                kernel_size=kernel_size,
                 stride=stride,
                 padding=padding,
                 dilation=2,
                 bias=False,
             ),
-            nn.BatchNorm3d(out_channels, affine=True, track_running_stats=True),
+            nn.LazyBatchNorm2d(affine=True, track_running_stats=True),
         )
 
     def forward(self, x):
@@ -73,8 +71,8 @@ class Identity(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self):
-        return self
+    def forward(self, x):
+        return x
 
 
 def dfs_node(node: Node) -> Iterator[Node]:
@@ -881,30 +879,33 @@ def bfs_grammar(  # noqa: C901, D103
 def to_model(node: Node) -> Any:
     """Convert a parse tree node and its children into some object it represents."""
 
-    def _build(_n: Node) -> Iterator[Any]:
+    def _build(_n: Node) -> list[Any] | Any:
         match _n:
             case Leaf(_, op):
-                yield op()
+                return op()
             case Container(_, children, op):
                 # The problem is that each child could be either:
                 # * A single 'thing', in the case of Leaf or Container
                 # * Multiple things, in case it's a passthrough
                 # Hence we flatten them out into a single big children itr
-                flat_children = more_itertools.collapse(
-                    _build(child) for child in children
-                )
-                yield op(*flat_children)
+                _l = []
+                for child in children:
+                    _b = _build(child)
+                    if isinstance(_b, list):
+                        _l.extend(_b)
+                        continue
+                    _l.append(_b)
+
+                return op(*_l)
             case Passthrough(_, children):
-                yield from (_build(child) for child in children)
+                return [_build(child) for child in children]
             case _:
                 assert_never(node)
 
     match node:
         case Leaf() | Container():
-            itr = _build(node)
-            obj = next(itr, None)
-            assert obj is not None, "Should have recieved at least one object"
-            assert next(itr, None) is None, "Should not have recieved two objects"
+            obj = _build(node)
+            assert not isinstance(obj, list)
             return obj
         case Passthrough(symbol):
             raise ValueError(f"Can not call build on a `Passthrough` {symbol}")
