@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
+from functools import partial
 
+import numpy as np
 import pytest
+import torch
 from graph import (
     Container,
     Grammar,
@@ -13,12 +17,14 @@ from graph import (
     bfs_node,
     dfs_node,
     parse,
+    sample_grammar,
     select,
     to_model,
     to_node_from_graph,
     to_nxgraph,
     to_string,
 )
+from torch import nn
 
 
 # Leafs
@@ -51,6 +57,22 @@ grammar_2 = Grammar.from_dict(
         "L3": Grammar.NonTerminal(["a", "b"], None, shared=True),
         "a": T("a"),
         "b": T("a"),
+    }
+)
+
+grammar_3 = Grammar.from_dict(
+    {
+        "S": (["mlp", "O"], nn.Sequential),
+        "mlp": (["L", "O", "S O"], nn.Sequential),
+        "L": (
+            ["linear64 linear128 relu O linear64 relu O", "linear64 elu linear64"],
+            nn.Sequential,
+        ),
+        "O": (["linear64", "linear64 relu", "linear128 elu"], nn.Sequential),
+        "linear64": partial(nn.LazyLinear, out_features=64),
+        "linear128": partial(nn.LazyLinear, out_features=64),
+        "relu": nn.ReLU,
+        "elu": nn.ELU,
     }
 )
 
@@ -432,3 +454,20 @@ def test_select_climb() -> None:
     ]
     for i, (sel, exp) in enumerate(zip(selected, expected, strict=True)):
         assert sel == exp, f"Mismatch at pos {i}:\nExpected: {exp}\n\nGot: {sel}"
+
+
+@pytest.mark.parametrize("grammar", [grammar_3])
+def test_sample_grammar_and_build_model(grammar: Grammar):
+    rng = np.random.default_rng(seed=42)
+
+    x = torch.randn(32, 100)
+
+    t0 = time.perf_counter()
+    samples = 1_000
+    for _ in range(samples):
+        sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
+        model: nn.Module = to_model(sample)
+        model(x)
+        assert sum(p.numel() for p in model.parameters()) > 0
+
+    assert time.perf_counter() - t0 < 1
