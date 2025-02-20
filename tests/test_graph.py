@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from functools import partial
+from typing import Literal
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ from graph import (
     Passthrough,
     bfs_node,
     dfs_node,
+    mutations,
     parse,
     sample_grammar,
     select,
@@ -469,5 +471,48 @@ def test_sample_grammar_and_build_model(grammar: Grammar):
         model: nn.Module = to_model(sample)
         model(x)
         assert sum(p.numel() for p in model.parameters()) > 0
+
+    assert time.perf_counter() - t0 < 1
+
+
+@pytest.mark.parametrize(
+    ("grammar", "how"),
+    [
+        (grammar_3, ("symbol", "S")),
+        (grammar_3, ("depth", 2)),
+        (grammar_3, ("depth", range(1, 3))),
+        (grammar_3, ("climb", 2)),
+        (grammar_3, ("climb", range(1, 3))),
+    ],
+)
+def test_sample_grammar_and_mutate(
+    grammar: Grammar,
+    how: (
+        tuple[Literal["symbol"], str]
+        | tuple[Literal["depth"], int | range]
+        | tuple[Literal["climb"], int | range]
+    ),
+):
+    rng = np.random.default_rng(seed=42)
+
+    x = torch.randn(32, 100)
+
+    t0 = time.perf_counter()
+    samples = 1_000
+    for _ in range(samples):
+        sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
+        muts = mutations(
+            root=sample,
+            grammar=grammar,
+            which=select(root=sample, how=how),
+            max_mutation_depth=3,
+        )
+
+        assert len(list(muts)) > 0
+
+        for _mut in muts:
+            model: nn.Module = to_model(_mut)
+            model(x)
+            assert sum(p.numel() for p in model.parameters()) > 0
 
     assert time.perf_counter() - t0 < 1
