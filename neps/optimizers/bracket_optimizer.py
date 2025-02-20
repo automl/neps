@@ -249,6 +249,12 @@ class BracketOptimizer:
     fid_name: str
     """The name of the fidelity in the space."""
 
+    def __post_init__(self) -> None:
+        if self.space.grammar is not None:
+            raise NotImplementedError(
+                "Grammars not supported for `BracketOptimizer` yet."
+            )
+
     def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],

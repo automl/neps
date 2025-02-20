@@ -384,6 +384,9 @@ def grid_search(pipeline_space: SearchSpace) -> GridSearch:
     """
     from neps.optimizers.utils.grid import make_grid
 
+    if pipeline_space.grammar is not None:
+        raise NotImplementedError("Grammars not supported for `grid_search` yet.")
+
     return GridSearch(configs_list=make_grid(pipeline_space))
 
 

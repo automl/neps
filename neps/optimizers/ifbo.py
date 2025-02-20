@@ -129,6 +129,10 @@ class IFBO:
     Each one will be treated as an individual fidelity level.
     """
 
+    def __post_init__(self) -> None:
+        if self.space.grammar is not None:
+            raise NotImplementedError("Grammars not supported for `IFBO` yet.")
+
     def __call__(
         self,
         trials: Mapping[str, Trial],
