@@ -82,7 +82,7 @@ def _bo(
             f" Got: {pipeline_space.fidelities}"
         )
 
-    parameters = pipeline_space.searchables
+    parameters = {**pipeline_space.numerical, **pipeline_space.categoricals}
 
     match initial_design_size:
         case "ndim":
@@ -126,9 +126,6 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     sampler: Literal["uniform", "prior", "priorband"] | PriorBandSampler | Sampler,
     bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
-    # NOTE: This is the only argument to get a default, since it
-    # is not required for hyperband style algorithms, only single bracket
-    # style ones.
     early_stopping_rate: int | None,
     device: torch.device | None,
 ) -> BracketOptimizer:
@@ -183,7 +180,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     """
     assert pipeline_space.fidelity is not None
     fidelity_name, fidelity = pipeline_space.fidelity
-    parameters = pipeline_space.searchables
+    parameters = {**pipeline_space.numerical, **pipeline_space.categoricals}
 
     if len(pipeline_space.fidelities) != 1:
         raise ValueError(
@@ -324,9 +321,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
 
 def determine_optimizer_automatically(space: SearchSpace) -> str:
-    has_prior = any(
-        parameter.prior is not None for parameter in space.searchables.values()
-    )
+    parameters = {**space.numerical, **space.categoricals}
+    has_prior = any(parameter.prior is not None for parameter in parameters.values())
     has_fidelity = len(space.fidelities) > 0
 
     match (has_prior, has_fidelity):
@@ -360,14 +356,18 @@ def random_search(
             In this case, the max fidelity is always used.
     """
     if ignore_fidelity:
-        parameters = pipeline_space.searchables
+        parameters = {**pipeline_space.numerical, **pipeline_space.categoricals}
     else:
-        parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
+        parameters = {
+            **pipeline_space.numerical,
+            **pipeline_space.categoricals,
+            **pipeline_space.fidelities,
+        }
 
     return RandomSearch(
         space=pipeline_space,
         encoder=ConfigEncoder.from_parameters(parameters),
-        sampler=(
+        numerical_sampler=(
             Prior.from_parameters(parameters)
             if use_priors
             else Uniform(ndim=len(parameters))
@@ -445,7 +445,7 @@ def ifbo(
     space, fid_bins = _adjust_space_to_match_stepsize(pipeline_space, step_size)
     assert space.fidelity is not None
     fidelity_name, fidelity = space.fidelity
-    parameters = space.searchables
+    parameters = {**pipeline_space.numerical, **pipeline_space.categoricals}
 
     match initial_design_size:
         case "ndim":

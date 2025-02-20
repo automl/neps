@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
-    from neps.space import Parameter, SearchSpace
+    from neps.space import Constant, Grammar, Parameter, SearchSpace
     from neps.state import EvaluatePipelineReturn
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 def run(  # noqa: PLR0913
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: (
-        Mapping[str, dict | str | int | float | Parameter]
+        Mapping[str, dict | str | int | float | Parameter | Constant | Grammar]
         | SearchSpace
         | ConfigurationSpace
     ),

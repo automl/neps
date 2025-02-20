@@ -9,7 +9,14 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
+from neps.space.grammar import Grammar
+from neps.space.parameters import (
+    Categorical,
+    Constant,
+    Float,
+    Integer,
+    Parameter,
+)
 
 
 # NOTE: The use of `Mapping` instead of `dict` is so that type-checkers
@@ -19,11 +26,14 @@ from neps.space.parameters import Categorical, Constant, Float, Integer, Paramet
 class SearchSpace(Mapping[str, Parameter | Constant]):
     """A container for parameters."""
 
-    elements: Mapping[str, Parameter | Constant] = field(default_factory=dict)
+    elements: Mapping[str, Parameter | Grammar | Constant] = field(default_factory=dict)
     """All items in the search space."""
 
     categoricals: Mapping[str, Categorical] = field(init=False)
     """The categorical hyperparameters in the search space."""
+
+    grammars: Mapping[str, Grammar] = field(init=False)
+    """The grammar parameters of the search space."""
 
     numerical: Mapping[str, Integer | Float] = field(init=False)
     """The numerical hyperparameters in the search space.
@@ -43,14 +53,9 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
     """The constants in the search space."""
 
     @property
-    def searchables(self) -> Mapping[str, Parameter]:
-        """The hyperparameters that can be searched over.
-
-        !!! note
-
-            This does not include either constants or fidelities.
-        """
-        return {**self.numerical, **self.categoricals}
+    def grammar(self) -> tuple[str, Grammar] | None:
+        """The grammar parameter for the search space if any."""
+        return None if len(self.grammars) == 0 else next(iter(self.grammars.items()))
 
     @property
     def fidelity(self) -> tuple[str, Float | Integer] | None:
@@ -65,6 +70,7 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
         numerical: dict[str, Float | Integer] = {}
         categoricals: dict[str, Categorical] = {}
         constants: dict[str, Any] = {}
+        grammars: dict[str, Grammar] = {}
 
         # Process the hyperparameters
         for name, hp in self.elements.items():
@@ -86,7 +92,14 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
                     categoricals[name] = hp
                 case Constant():
                     constants[name] = hp.value
-
+                case Grammar():
+                    if len(grammars) >= 1:
+                        raise ValueError(
+                            "neps only supports one grammar parameter in the"
+                            " pipeline space, but multiple were given."
+                            f" Grammars: {grammars}, new: {name}"
+                        )
+                    grammars[name] = hp
                 case _:
                     raise ValueError(f"Unknown hyperparameter type: {hp}")
 
@@ -94,8 +107,9 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
         self.numerical = numerical
         self.constants = constants
         self.fidelities = fidelities
+        self.grammars = grammars
 
-    def __getitem__(self, key: str) -> Parameter | Constant:
+    def __getitem__(self, key: str) -> Parameter | Constant | Grammar:
         return self.elements[key]
 
     def __iter__(self) -> Iterator[str]:

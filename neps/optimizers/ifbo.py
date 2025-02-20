@@ -137,7 +137,7 @@ class IFBO:
     ) -> SampledConfig | list[SampledConfig]:
         assert self.space.fidelity is not None
         fidelity_name, fidelity = self.space.fidelity
-        parameters = self.space.searchables
+        parameters = {**self.space.numerical, **self.space.categoricals}
 
         assert n is None, "TODO"
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]

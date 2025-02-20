@@ -257,7 +257,7 @@ class BracketOptimizer:
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
         space = self.space
-        parameters = space.searchables
+        parameters = {**self.space.numerical, **self.space.categoricals}
 
         # If we have no trials, we either go with the prior or just a sampled config
         if len(trials) == 0:

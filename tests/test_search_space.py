@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from neps import Categorical, Constant, Float, Integer, SearchSpace
+from neps import Categorical, Constant, Float, Grammar, Integer, SearchSpace
 
 
 def test_search_space_orders_parameters_by_name():
@@ -19,6 +19,16 @@ def test_multipe_fidelities_raises_error():
         )
 
 
+def test_mutliple_grammars_raises_error():
+    with pytest.raises(ValueError, match="neps only supports one grammar parameter"):
+        SearchSpace(
+            {
+                "a": Grammar.from_dict("s", {"s": lambda _: None}),
+                "b": Grammar.from_dict("s", {"s": lambda _: None}),
+            }
+        )
+
+
 def test_sorting_of_parameters_into_subsets():
     elements = {
         "a": Float(0, 1),
@@ -26,6 +36,7 @@ def test_sorting_of_parameters_into_subsets():
         "c": Categorical(["a", "b", "c"]),
         "d": Float(0, 1, is_fidelity=True),
         "x": Constant("x"),
+        "g": Grammar.from_dict("s", {"s": lambda _: None}),
     }
     space = SearchSpace(elements)
     assert space.elements == elements
@@ -33,10 +44,13 @@ def test_sorting_of_parameters_into_subsets():
     assert space.numerical == {"a": elements["a"], "b": elements["b"]}
     assert space.fidelities == {"d": elements["d"]}
     assert space.constants == {"x": "x"}
+    assert space.grammars == {"g": elements["g"]}
 
-    assert space.searchables == {
+    parameters = {**space.numerical, **space.categoricals}
+    assert parameters == {
         "a": elements["a"],
         "b": elements["b"],
         "c": elements["c"],
     }
     assert space.fidelity == ("d", elements["d"])
+    assert space.grammar == ("g", elements["g"])
