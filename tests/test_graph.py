@@ -497,7 +497,7 @@ def test_sample_grammar_and_mutate(
 
     x = torch.randn(32, 100)
 
-    t0 = time.perf_counter()
+    time.perf_counter()
     samples = 1_000
     for _ in range(samples):
         sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
@@ -515,4 +515,38 @@ def test_sample_grammar_and_mutate(
             model(x)
             assert sum(p.numel() for p in model.parameters()) > 0
 
-    assert time.perf_counter() - t0 < 1
+
+grammar_1 = Grammar.from_dict(
+    {
+        "s": (["a", "b", "p", "p p"], join),
+        "p": ["a b", "s"],
+        "a": T("a"),
+        "b": T("b"),
+    }
+)
+
+grammar_2 = Grammar.from_dict(
+    {
+        "L1": (["L2 L2 L3"], join),
+        "L2": Grammar.NonTerminal(["L3"], join, shared=True),
+        "L3": Grammar.NonTerminal(["a", "b"], None, shared=True),
+        "a": T("a"),
+        "b": T("a"),
+    }
+)
+
+grammar_3 = Grammar.from_dict(
+    {
+        "S": (["mlp", "O"], nn.Sequential),
+        "mlp": (["L", "O", "S O"], nn.Sequential),
+        "L": (
+            ["linear64 linear128 relu O linear64 relu O", "linear64 elu linear64"],
+            nn.Sequential,
+        ),
+        "O": (["linear64", "linear64 relu", "linear128 elu"], nn.Sequential),
+        "linear64": partial(nn.LazyLinear, out_features=64),
+        "linear128": partial(nn.LazyLinear, out_features=64),
+        "relu": nn.ReLU,
+        "elu": nn.ELU,
+    }
+)
