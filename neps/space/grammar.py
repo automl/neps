@@ -95,6 +95,7 @@ from dataclasses import dataclass, field
 from typing import Any, ClassVar, Literal, NamedTuple, TypeAlias
 from typing_extensions import assert_never
 
+import more_itertools
 import networkx as nx
 import numpy as np
 
@@ -230,15 +231,11 @@ def to_model(node: Node) -> Any:
                 # * A single 'thing', in the case of Leaf or Container
                 # * Multiple things, in case it's a passthrough
                 # Hence we flatten them out into a single big children itr
-                _l = []
-                for child in children:
-                    _b = _build(child)
-                    if isinstance(_b, list):
-                        _l.extend(_b)
-                        continue
-                    _l.append(_b)
-
-                return op(*_l)
+                built_children = more_itertools.collapse(
+                    (_build(child) for child in children),
+                    base_type=(op if isinstance(op, type) else None),
+                )
+                return op(*built_children)
             case Passthrough(_, children):
                 return [_build(child) for child in children]
             case _:
