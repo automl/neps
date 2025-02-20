@@ -473,6 +473,7 @@ def test_sample_grammar_and_build_model(grammar: Grammar):
         model(x)
         assert sum(p.numel() for p in model.parameters()) > 0
 
+    # feel free to increase the time limit here, based on running this on a M4 Mac
     assert time.perf_counter() - t0 < 1
 
 
