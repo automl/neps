@@ -30,7 +30,7 @@ class RandomSearch:
     ) -> SampledConfig | list[SampledConfig]:
         n_trials = len(trials)
         _n = 1 if n is None else n
-        configs_tensor: Tensor = self.numerical_sampler.sample(_n, to=self.encoder)
+        configs_tensor = self.numerical_sampler.sample(_n, to=self.encoder)
 
         config_dicts = self.encoder.decode(configs_tensor)
         for config in config_dicts:
