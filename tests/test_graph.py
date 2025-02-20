@@ -8,7 +8,9 @@ from typing import Literal
 import numpy as np
 import pytest
 import torch
-from graph import (
+from torch import nn
+
+from neps.space.grammar import (
     Container,
     Grammar,
     Leaf,
@@ -17,16 +19,11 @@ from graph import (
     Passthrough,
     bfs_node,
     dfs_node,
-    mutations,
-    parse,
-    sample_grammar,
     select,
     to_model,
-    to_node_from_graph,
     to_nxgraph,
     to_string,
 )
-from torch import nn
 
 
 # Leafs
@@ -44,26 +41,29 @@ def join(*s: str) -> str:
 
 
 grammar_1 = Grammar.from_dict(
-    {
+    start_symbol="s",
+    grammar={
         "s": (["a", "b", "p", "p p"], join),
         "p": ["a b", "s"],
         "a": T("a"),
         "b": T("b"),
-    }
+    },
 )
 
 grammar_2 = Grammar.from_dict(
-    {
+    start_symbol="L1",
+    grammar={
         "L1": (["L2 L2 L3"], join),
         "L2": Grammar.NonTerminal(["L3"], join, shared=True),
         "L3": Grammar.NonTerminal(["a", "b"], None, shared=True),
         "a": T("a"),
         "b": T("a"),
-    }
+    },
 )
 
 grammar_3 = Grammar.from_dict(
-    {
+    start_symbol="S",
+    grammar={
         "S": (["mlp", "O"], nn.Sequential),
         "mlp": (["L", "O", "S O"], nn.Sequential),
         "L": (
@@ -75,7 +75,7 @@ grammar_3 = Grammar.from_dict(
         "linear128": partial(nn.LazyLinear, out_features=64),
         "relu": nn.ReLU,
         "elu": nn.ELU,
-    }
+    },
 )
 
 
@@ -154,7 +154,7 @@ def test_string_serialization_and_deserialization_correct(
     node: Node,
 ) -> None:
     # Test parsing
-    parsed = parse(grammar, string)
+    parsed = grammar.parse(string)
     assert parsed == node
 
     # Test serialization
@@ -166,7 +166,8 @@ def test_string_serialization_and_deserialization_correct(
 
     # Test graph and back again
     graph = to_nxgraph(parsed, include_passthroughs=True)
-    node_again = to_node_from_graph(graph, grammar)
+
+    node_again = grammar.node_from_graph(graph)
     assert parsed == node_again
 
 
@@ -191,7 +192,7 @@ def test_string_serialization_and_deserialization_correct(
 )
 def test_string_deserialization_fail_cases(grammar: Grammar, string: str) -> None:
     with pytest.raises(ParseError):
-        parse(grammar, string)
+        grammar.parse(string)
 
 
 def test_dfs_node_container() -> None:
@@ -467,7 +468,7 @@ def test_sample_grammar_and_build_model(grammar: Grammar):
     t0 = time.perf_counter()
     samples = 1_000
     for _ in range(samples):
-        sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
+        sample: Node = grammar.sample("S", rng=rng)
         model: nn.Module = to_model(sample)
         model(x)
         assert sum(p.numel() for p in model.parameters()) > 0
@@ -500,10 +501,9 @@ def test_sample_grammar_and_mutate(
     time.perf_counter()
     samples = 1_000
     for _ in range(samples):
-        sample: Node = sample_grammar("S", grammar=grammar, rng=rng)
-        muts = mutations(
+        sample: Node = grammar.sample("S", rng=rng)
+        muts = grammar.mutations(
             root=sample,
-            grammar=grammar,
             which=select(root=sample, how=how),
             max_mutation_depth=3,
         )
@@ -514,39 +514,3 @@ def test_sample_grammar_and_mutate(
             model: nn.Module = to_model(_mut)
             model(x)
             assert sum(p.numel() for p in model.parameters()) > 0
-
-
-grammar_1 = Grammar.from_dict(
-    {
-        "s": (["a", "b", "p", "p p"], join),
-        "p": ["a b", "s"],
-        "a": T("a"),
-        "b": T("b"),
-    }
-)
-
-grammar_2 = Grammar.from_dict(
-    {
-        "L1": (["L2 L2 L3"], join),
-        "L2": Grammar.NonTerminal(["L3"], join, shared=True),
-        "L3": Grammar.NonTerminal(["a", "b"], None, shared=True),
-        "a": T("a"),
-        "b": T("a"),
-    }
-)
-
-grammar_3 = Grammar.from_dict(
-    {
-        "S": (["mlp", "O"], nn.Sequential),
-        "mlp": (["L", "O", "S O"], nn.Sequential),
-        "L": (
-            ["linear64 linear128 relu O linear64 relu O", "linear64 elu linear64"],
-            nn.Sequential,
-        ),
-        "O": (["linear64", "linear64 relu", "linear128 elu"], nn.Sequential),
-        "linear64": partial(nn.LazyLinear, out_features=64),
-        "linear128": partial(nn.LazyLinear, out_features=64),
-        "relu": nn.ReLU,
-        "elu": nn.ELU,
-    }
-)
