@@ -129,6 +129,10 @@ class IFBO:
     Each one will be treated as an individual fidelity level.
     """
 
+    def __post_init__(self) -> None:
+        if self.space.grammar is not None:
+            raise NotImplementedError("Grammars not supported for `IFBO` yet.")
+
     def __call__(
         self,
         trials: Mapping[str, Trial],
@@ -137,7 +141,7 @@ class IFBO:
     ) -> SampledConfig | list[SampledConfig]:
         assert self.space.fidelity is not None
         fidelity_name, fidelity = self.space.fidelity
-        parameters = self.space.searchables
+        parameters = {**self.space.numerical, **self.space.categoricals}
 
         assert n is None, "TODO"
         ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
