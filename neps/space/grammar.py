@@ -90,7 +90,7 @@ from __future__ import annotations
 
 import itertools
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Literal, NamedTuple, TypeAlias
 from typing_extensions import assert_never
@@ -504,12 +504,17 @@ class Grammar:
     Args:
         start_symbol: The starting symbol used by optimizers.
         rules: The possible grammar rules which define the structure of the grammar.
+        prior: Some prior string producable from the grammar that can be used as a user
+            prior.
     """
 
     start_symbol: str
     rules: dict[str, Terminal | NonTerminal]
+    prior: str | None = None
+    _expansion_count: int = field(init=False)
     _shared: dict[str, NonTerminal] = field(init=False)
     _leafs: dict[str, Leaf] = field(init=False)
+    _prior_node: Node | None = field(init=False)
 
     class Terminal(NamedTuple):
         """A symbol which has no children and an associated operation.
@@ -570,6 +575,34 @@ class Grammar:
             if isinstance(r, Grammar.Terminal)
         }
 
+        # In lue of a good proxy for 'size', which we might need in some scenarios,
+        # such as in initial design where you can specify sample size is of size
+        # `"ndim"`, we use this proxy. Totally unscientific.
+        # Things to consider if you want to change it:
+        # * Recursive elements (e.g. A -> [A, a, b, c]), where recursion by uniform
+        #   sampling is 1/4. This would need to propogate if for example `b` could also
+        #   recurse on itself....
+        # * That we can have multiple children, i.e. `A -> [A a, A b, A c, A A]`
+        # * Leafs do not expand the size
+        self._expansion_count = sum(
+            len(rule.choices)
+            for rule in self.rules.values()
+            if isinstance(rule, Grammar.NonTerminal)
+        )
+
+        if self.prior is not None:
+            try:
+                prior_node = self.parse(self.prior)
+            except ParseError as e:
+                raise ValueError(
+                    f"The prior '{self.prior}' given for this grammar could"
+                    " not be parsed properly."
+                ) from e
+        else:
+            prior_node = None
+
+        self._prior_node = prior_node
+
     @classmethod
     def from_dict(
         cls,
@@ -582,6 +615,8 @@ class Grammar:
             | Grammar.Terminal
             | Grammar.NonTerminal,
         ],
+        *,
+        prior: str | None = None,
     ) -> Grammar:
         """Create a `Grammar` from a dictionary.
 
@@ -590,6 +625,8 @@ class Grammar:
         Args:
             start_symbol: The starting symbol from which to produce strings.
             grammar: The rules of the grammar.
+            prior: Some prior string producable from the grammar that can be used as a
+                user prior.
         """
         rules: dict[str, Grammar.Terminal | Grammar.NonTerminal] = {}
         for symbol, rule in grammar.items():
@@ -624,7 +661,7 @@ class Grammar:
                         f"\n Got {rule}"
                     )
 
-        return Grammar(start_symbol=start_symbol, rules=rules)
+        return Grammar(start_symbol=start_symbol, rules=rules, prior=prior)
 
     def sample(  # noqa: C901, PLR0912
         self,
@@ -1284,3 +1321,120 @@ def hierarchy_pos(
         return pos
 
     return _hierarchy_pos(G, root, width, vert_gap, vert_loc, xcenter)
+
+
+# TODO: Everything below this point should probably be moved.
+
+
+@dataclass
+class RandomSampler:
+    grammar: Grammar
+
+    def sample(
+        self,
+        n: int,
+        *,
+        rng: np.random.Generator | _BufferedRandInts | None = None,
+    ) -> list[Node]:
+        match rng:
+            case None:
+                rng = _BufferedRandInts(rng=np.random.default_rng())
+            case np.random.Generator():
+                rng = _BufferedRandInts(rng=rng)
+            case _BufferedRandInts():
+                pass
+            case _:
+                assert_never(rng)
+
+        return [self.grammar.sample(rng=rng) for _ in range(n)]
+
+
+@dataclass
+class MutationSampler:
+    grammar: Grammar
+    ref_point: Node
+    max_mutation_depth: int
+    mutant_selector: (
+        tuple[Literal["symbol"], str]
+        | tuple[Literal["depth"], int | range]
+        | tuple[Literal["climb"], int | range]
+    )
+
+    def sample(self, n: int, *, rng: np.random.Generator | None = None) -> list[Node]:
+        if rng is None:
+            rng = np.random.default_rng()
+
+        nodes_to_mutate_from = self.ref_point.select(how=self.mutant_selector)
+        all_possible_mutants = self.grammar.mutations(
+            self.ref_point,
+            which=nodes_to_mutate_from,
+            max_mutation_depth=self.max_mutation_depth,
+        )
+        all_possible_mutants = list(all_possible_mutants)
+        return rng.choice(all_possible_mutants, size=n, replace=False)  # type: ignore
+
+
+@dataclass
+class GrammarSampler:
+    samplers: Mapping[str, RandomSampler | MutationSampler]
+
+    def sample(
+        self, n: int, *, rng: np.random.Generator | None = None
+    ) -> list[dict[str, Node]]:
+        """Sample n dictionaries of nodes from the underlying grammar samplers.
+
+        Args:
+            n: the number of samples to generate.
+            rng: the random number generator to use.
+
+        Returns:
+            A list of dictionaries mapping each sampler's key to a sampled Node.
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+
+        samples: dict[str, list[Node]] = {
+            k: sampler.sample(n, rng=rng) for k, sampler in self.samplers.items()
+        }
+        return [{k: samples[k][i] for k in samples} for i in range(n)]
+
+    @classmethod
+    def random(cls, grammars: Mapping[str, Grammar]) -> GrammarSampler:
+        return cls(samplers={k: RandomSampler(g) for k, g in grammars.items()})
+
+    @classmethod
+    def prior(
+        cls,
+        grammars: Mapping[str, Grammar],
+        *,
+        mutant_selector: (
+            tuple[Literal["symbol"], str]
+            | tuple[Literal["depth"], int | range]
+            | tuple[Literal["climb"], int | range]
+        ) = ("climb", range(1, 3)),
+        max_mutation_depth: int = 3,
+    ) -> GrammarSampler:
+        """Creates samplers for the grammars, using the prior where possible.
+
+        Grammars without a prior use the `RandomSampler` while those with a prior
+        have mutations done around the prior.
+
+        Args:
+            grammars: the grammars to build samplers for.
+            mutant_selector: Please take a look at [`select()`][neps.space.grammar.select]
+            max_mutation_depth: Dictates how deep mutations of grammars can go to prevent
+                overly large configurations due to recursive rules.
+        """
+        samplers: dict[str, RandomSampler | MutationSampler] = {}
+        for k, g in grammars.items():
+            if g._prior_node is not None:
+                samplers[k] = MutationSampler(
+                    g,
+                    ref_point=g._prior_node,
+                    max_mutation_depth=max_mutation_depth,
+                    mutant_selector=mutant_selector,
+                )
+            else:
+                samplers[k] = RandomSampler(g)
+
+        return cls(samplers)

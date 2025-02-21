@@ -86,7 +86,11 @@ class BayesianOptimization:
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
         assert self.space.fidelity is None, "Fidelity not supported yet."
-        parameters = {**self.space.numerical, **self.space.categoricals}
+        parameters = {
+            **self.space.numerical,
+            **self.space.categoricals,
+            **self.space.grammars,
+        }
 
         n_to_sample = 1 if n is None else n
         n_sampled = len(trials)
