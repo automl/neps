@@ -106,5 +106,5 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     neps.run(run_pipeline=run_pipeline, 
              pipeline_space=pipeline_space,
-             root_directory="pytorch_ddp_example", 
+             root_directory="results/pytorch_ddp", 
              max_evaluations_total=25)
