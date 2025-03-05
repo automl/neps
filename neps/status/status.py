@@ -206,7 +206,7 @@ def status(
     # Not implemented for hypervolume -_-
     if summary.is_multiobjective:
         return df, short
-
+    
     idx_min = df["objective_to_minimize"].idxmin()
     row = df.loc[idx_min]
     assert isinstance(row, pd.Series)
