@@ -249,8 +249,8 @@ class Plotter3D:
         run_path.mkdir(parents=True, exist_ok=True)
         assert run_path.is_dir()
         plot_path = run_path / f"Plot3D_{filename}.png"
-
         plt.savefig(plot_path, bbox_inches="tight")
+        print(f"Saved plot to {plot_path}")  # noqa: T201
 
 
 if __name__ == "__main__":
