@@ -56,6 +56,7 @@ class Summary:
             [asdict(t.report) if t.report is not None else {} for t in trials]
         ).convert_dtypes()
 
+        extra_df = pd.DataFrame()
         # We pop out the user extra column to flatten it
         if "extra" in report_df.columns:
             extra_column = report_df.pop("extra")
