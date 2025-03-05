@@ -83,7 +83,10 @@ def training_pipeline(
     start_epoch = 1
     if previous_pipeline_directory is not None:
         if (Path(previous_pipeline_directory) / "checkpoint.pt").exists():
-            states = torch.load(Path(previous_pipeline_directory) / "checkpoint.pt")
+            states = torch.load(
+                Path(previous_pipeline_directory) / "checkpoint.pt",
+                weights_only=False
+            )
             model = states["model"]
             optimizer = states["optimizer"]
             start_epoch = states["epochs"]
@@ -127,23 +130,23 @@ def training_pipeline(
     torch.save(states, Path(pipeline_directory) / "checkpoint.pt")
 
     # Logging
-    tblogger.log(
-        objective_to_minimize=val_objective_to_minimize,
-        current_epoch=epochs,
-        # Set to `True` for a live incumbent trajectory.
-        write_summary_incumbent=True,
-        # Set to `True` for a live objective_to_minimize trajectory for each config.
-        writer_config_scalar=True,
-        # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
-        writer_config_hparam=True,
-        # Appending extra data
-        extra_data={
-            "train_objective_to_minimize": tblogger.scalar_logging(
-                objective_to_minimize.item()
-            ),
-            "val_err": tblogger.scalar_logging(val_err),
-        },
-    )
+    # tblogger.log(
+    #     objective_to_minimize=val_objective_to_minimize,
+    #     current_epoch=epochs,
+    #     # Set to `True` for a live incumbent trajectory.
+    #     write_summary_incumbent=True,
+    #     # Set to `True` for a live objective_to_minimize trajectory for each config.
+    #     writer_config_scalar=True,
+    #     # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+    #     writer_config_hparam=True,
+    #     # Appending extra data
+    #     extra_data={
+    #         "train_objective_to_minimize": tblogger.scalar_logging(
+    #             objective_to_minimize.item()
+    #         ),
+    #         "val_err": tblogger.scalar_logging(val_err),
+    #     },
+    # )
 
     return val_err
 
