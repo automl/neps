@@ -38,9 +38,7 @@ class Plotter3D:
             assert Path(self.run_path).absolute().is_dir(), (
                 f"Path {self.run_path} is not a directory"
             )
-            self.data_path = (
-                Path(self.run_path).absolute() / "summary" / "full.csv"
-            )
+            self.data_path = Path(self.run_path).absolute() / "summary" / "full.csv"
             assert self.data_path.exists(), f"File {self.data_path} does not exist"
             self.df = pd.read_csv(  # type: ignore
                 self.data_path,
@@ -253,7 +251,6 @@ class Plotter3D:
         plot_path = run_path / f"Plot3D_{filename}.png"
 
         plt.savefig(plot_path, bbox_inches="tight")
-        print("Plot saved to", plot_path)
 
 
 if __name__ == "__main__":
