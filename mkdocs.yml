@@ -140,17 +140,17 @@ nav:
   - Reference:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
-    - Optimizer Overview and Configuration: 'reference/optimizers.md'
+    - Optimizer: 'reference/optimizers.md'
     - Declarative Usage: 'reference/declarative_usage.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
-    - Optimizer Details and Best Practice:
-      - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
-      - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
-      - Prior Optimizers: 'reference/search_algorithms/prior.md'
-      - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
   - Examples: "examples/"  # auto-generated
+  - Algorithms:
+    - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
+    - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
+    - Prior Optimizers: 'reference/search_algorithms/prior.md'
+    - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
   - API: 'api/' # auto-generated
   - Contributing:
     - Dev Guide: 'dev_docs/contributing.md'
