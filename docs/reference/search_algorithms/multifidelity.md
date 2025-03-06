@@ -23,7 +23,7 @@ Multi-Fidelity (MF) optimization leverages the idea of running an AutoML problem
 It starts with a large number of random configurations and evaluates them on a low-fidelity. The best-performing $1/\eta$ configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
 The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.
 
-!!! example "Practical Tips"
+??? example "Practical Tips"
 
     - For the same total compute, `SH` outperforms uninformed search algorithms like random search or grid search.
     - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, `SH` underperforms.
@@ -46,7 +46,7 @@ Although not inherently a Prior-optimizer, ``SH`` (and ``ASHA``) can make use of
 
 Each of these runs has a different resource budget and different number of configurations. This makes ``HyperBand`` more flexible and parallelizable than ``SH``.
 
-!!! example "Practical Tips"
+??? example "Practical Tips"
 
     - ``HyperBand`` is a good choice when you have a limited budget and want to parallelize your search.
     - It is more efficient than ``SH`` when the correlation between lower and higher fidelities is low.
@@ -61,7 +61,7 @@ Each of these runs has a different resource budget and different number of confi
 
 Contrary to ``HyperBand``, which uses random configurations, ``BOHB`` uses ``BO`` to choose the next configurations for ``HyperBand``. This way, it can leverage the advantages of both algorithms: the flexibility and parallelization of ``HyperBand`` for low budgets and the efficiency of ``BO`` for higher budgets.
 
-!!! example "Practical Tips"
+??? example "Practical Tips"
 
     - `BOHB` has the same hyperparameters as ``HyperBand``, plus the choice of surrogate and acquisition functions from ``BO``.
     - The effects of ``BO`` only start showing after some evaluations at full fidelity, as it needs those to build its model. Consequently, it might be advantageous to run fewer workers in parallel, as they will be random in the beginning anyway and only start to be guided by the model later.
@@ -82,7 +82,7 @@ $$
 where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is the distribution of the possible results of $x_j$.
 ``A-BOHB`` also uses a promotion mechanism similar to [ASHA](../search_algorithms/multifidelity.md#asynchronous-successive-halving) to decide when to promote configurations to higher fidelities and when to stop them, maximizing parallelization.
 
-!!! example "Practical Tips"
+??? example "Practical Tips"
 
     - ``A-BOHB`` is more efficient than ``BOHB`` when the correlation between lower and higher fidelities is low.
     - The algorithm itself is more computationally expensive than ``BOHB``, as it has to model the objective function across all fidelities.
@@ -109,7 +109,7 @@ Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) con
 |:--:|
 |The image shows the Freeze-Thaw-mechanism, with the colors indicating, at what iteration a configuration has been evaluated at this fidelity. Note for example some yellow configurations being reused much later, ending in red. (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|
 
-!!! example "Practical Tips"
+??? example "Practical Tips"
 
     TODO Do we even use it?
 ___
