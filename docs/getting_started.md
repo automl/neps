@@ -12,18 +12,21 @@ pip install neural-pipeline-search
 ```
 
 ## The 3 Main Components
+
 1. **Establish a [`pipeline_space=`](reference/pipeline_space.md)**:
+
 ```python
 pipeline_space={
     "some_parameter": (0.0, 1.0),   # float
     "another_parameter": (0, 10),   # integer
     "optimizer": ["sgd", "adam"],   # categorical
     "epoch": neps.Integer(lower=1, upper=100, is_fidelity=True),
-    "learning_rate": neps.Float(lower=1e-5, uperr=1, log=True),
+    "learning_rate": neps.Float(lower=1e-5, upper=1, log=True),
     "alpha": neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
 }
 
 ```
+
 2. **Define an `evaluate_pipeline()` function**:
 
 ```python
@@ -36,7 +39,7 @@ def evaluate_pipeline(some_parameter: float,
     return loss
 ```
 
-1. **Execute with [`neps.run()`](reference/neps_run.md)**:
+3. **Execute with [`neps.run()`](reference/neps_run.md)**:
 
 ```python
 neps.run(evaluate_pipeline, pipeline_space)
@@ -44,9 +47,19 @@ neps.run(evaluate_pipeline, pipeline_space)
 
 ---
 
-You can find a longer walk through in the [reference](reference/neps_run.md)!
+## What's Next?
+
+The [reference](reference/neps_run.md) section provides detailed information on the individual components of NePS.
+
+* How to use the [`neps.run()` function](reference/neps_run.md) to start the optimization process.
+* How to choose and configure the [optimizer](reference/optimizers.md) used.
+* [Declarative usage](reference/declarative_usage.md) of NePS via YAML configuration files.
+* How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
+* How to use the [CLI](reference/cli.md) to run NePS from the command line.
+* How to [analyze](reference/analyse.md) the optimization runs.
 
 ## Examples
+
 Discover the features of NePS through these practical examples:
 
 * **[Hyperparameter Optimization (HPO)](examples/template/basic.md)**:
