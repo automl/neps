@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -30,8 +29,6 @@ class GridSearch:
             raise ValueError("Grid search exhausted!")
 
         # TODO: Revisit this. Do we really need to shuffle the configs?
-        # rng = random.Random()
-        # configs = rng.sample(self.configs_list, len(self.configs_list))
         configs = self.configs_list
 
         config = configs[_num_previous_configs]
