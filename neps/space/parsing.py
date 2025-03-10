@@ -198,6 +198,8 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
                     parameters[name] = as_parameter(details)
                 except (TypeError, ValueError) as e:
                     raise ValueError(f"Error parsing parameter '{name}'") from e
+            case None:
+                parameters[name] = Constant(None)
             case _:
                 raise ValueError(
                     f"Unrecognized parameter type '{type(details)}' for '{name}'."
