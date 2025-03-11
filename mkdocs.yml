@@ -147,6 +147,7 @@ nav:
     - Analysing Runs: 'reference/analyse.md'
   - Examples: "examples/"  # auto-generated
   - Algorithms:
+    - Algorithms: 'reference/search_algorithms/landing_page_algo.md'
     - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
     - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
     - Prior Optimizers: 'reference/search_algorithms/prior.md'
