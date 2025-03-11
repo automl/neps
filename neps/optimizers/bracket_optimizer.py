@@ -261,9 +261,6 @@ class BracketOptimizer:
 
         # If we have no trials, we either go with the prior or just a sampled config
         if len(trials) == 0:
-            # NOTE: The `space.prior` might be only partially specified by a user,
-            # hence the usage of `space.centers` which is always fully defined and
-            # acts as a fallback if the prior is not defined.
             match self.sample_prior_first:
                 case "highest_fidelity":  # fid_max
                     config = {

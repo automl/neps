@@ -38,9 +38,7 @@ class Plotter3D:
             assert Path(self.run_path).absolute().is_dir(), (
                 f"Path {self.run_path} is not a directory"
             )
-            self.data_path = (
-                Path(self.run_path).absolute() / "summary_csv" / "config_data.csv"
-            )
+            self.data_path = Path(self.run_path).absolute() / "summary" / "full.csv"
             assert self.data_path.exists(), f"File {self.data_path} does not exist"
             self.df = pd.read_csv(  # type: ignore
                 self.data_path,
@@ -66,7 +64,7 @@ class Plotter3D:
     @staticmethod
     def get_z(df: pd.DataFrame) -> np.ndarray:
         """Get the z-axis values for the plot."""
-        return df["result.objective_to_minimize"].to_numpy()  # type: ignore
+        return df["objective_to_minimize"].to_numpy()  # type: ignore
 
     @staticmethod
     def get_color(df: pd.DataFrame) -> np.ndarray:
@@ -79,8 +77,8 @@ class Plotter3D:
 
         _fid_key = f"config.{self.fidelity_key}"
         self.objective_to_minimize_range = (
-            df["result.objective_to_minimize"].min(),
-            df["result.objective_to_minimize"].max(),
+            df["objective_to_minimize"].min(),
+            df["objective_to_minimize"].max(),
         )  # type: ignore
         self.epochs_range = (df[_fid_key].min(), df[_fid_key].max())  # type: ignore
 
@@ -92,7 +90,7 @@ class Plotter3D:
             df.epochID += 1
 
         # indices become sampling order
-        time_cols = ["metadata.time_started", "metadata.time_end"]
+        time_cols = ["time_started", "time_end"]
         return df.sort_values(by=time_cols).reset_index(drop=True)
 
     def plot3D(  # noqa: N802, PLR0915
@@ -251,8 +249,8 @@ class Plotter3D:
         run_path.mkdir(parents=True, exist_ok=True)
         assert run_path.is_dir()
         plot_path = run_path / f"Plot3D_{filename}.png"
-
         plt.savefig(plot_path, bbox_inches="tight")
+        print(f"Saved plot to {plot_path}")  # noqa: T201
 
 
 if __name__ == "__main__":
