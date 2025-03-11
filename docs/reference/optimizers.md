@@ -2,33 +2,59 @@
 
 ## 1 What optimizer works best for my problem?
 
-NePS provides both a modular system to build your own optimizer and a set of predefined optimizers from the literature.
-
-Besides a completely uninformed search, there are two main ways to improve the optimization process: using small scale proxies ([Multi-Fidelity](#11-multi-fidelity-mf)) and intuition ([Priors](#12-priors)).
+The best optimizers utilizes all information available in the search space to guide the optimization process. Besides a fully black-box search, there are two sources of information an optimizer can draw from: using small scale proxies ([Multi-Fidelity](#11-multi-fidelity-mf)) and intuition ([Priors](#12-priors)).
 
 ### 1.1 Multi-Fidelity (MF)
 
-Multi-Fidelity means running a small scale version of the problem, which is cheaper and faster, to get an idea of what could work. This could mean training models for a shorter time, using only a subset of the training data, or a smaller model entirely. From these *low fidelity* runs, MF-algorithms can infer which configurations are likely to perform well on the full problem.
+Multi-Fidelity uses small scale version of the problem, which run cheaper and faster. This could mean training models for a shorter time, using only a subset of the training data, or a smaller model entirely. From these *low fidelity* runs, MF-algorithms can infer which configurations are likely to perform well on the full problem.
+
+It is defined using the `is_fidelity` parameter in the `pipeline_space` definition.
+
+```python
+pipeline_space = {
+    "epoch": neps.Integer(lower=1, upper=100, is_fidelity=True),
+    # epoch will be available as fidelity to the optimizer
+}
+```
 
 For a more detailed explanation of Multi-Fidelity and a list of NePS-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
 
 ### 1.2 Priors
 
-Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. This intuition could come from expert knowledge or previous experiments. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute.
+Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute.
+
+It is defined using the `prior` parameter in the `pipeline_space` definition.
+
+```python
+pipeline_space = {
+    "alpha": neps.Float(lower=0.1, upper=1.0, prior=0.4, prior_confidence="high"),
+    # alpha will have a prior pointing towards 0.4 with high confidence
+}
+```
 
 For a more detailed explanation of Priors and a list of NePS-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
 
 ## 2 NePS Optimizer Selection
 
-NePS provides a variety of optimizers that utilize Multi-Fidelity, Priors or both.
+For any given search space, NePS provides a set of predefined optimizers from the literature, that work with Multi-Fidelity, Priors or both.
 
-![Optimizer classes](../doc_images/optimizers/venn_dia.svg)
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | Asynchronous |
+| :- | :------------: | :----: | :---------: | :-: |
+| `Grid Search`||||✅|
+| `Random Search`||||✅|
+| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅||||
+| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|||✅|
+| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅||||
+| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|||✅|
+| [`IfBO`](../reference/search_algorithms/multifidelity.md#5-in-context-freeze-thaw-bayesian-optimization)|✅||✅||
+| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)||✅|✅||
+| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅||
 
-The "Optimizer Details and Best Practice"-Chapter goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using NePS.
+The [algorithms](../reference/search_algorithms/bayesian_optimization.md) section goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using NePS.
 
 ### 2.1 Automatic Optimizer Selection
 
-If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"default"` or `None`
+If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"auto"` or `None`
 for the neps optimizer. NePS will automatically choose the best optimizer based on the characteristics of your search
 space. This provides a hassle-free way to get started quickly.
 
@@ -54,9 +80,8 @@ neps.run(
 
 ### 2.2 Choosing one of NePS Optimizers
 
-We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML
-tasks and use cases. For more details on the available default optimizers and the algorithms that can be called,
-please refer to the next section on [PredefinedOptimizerConfigs](#optimizer-configurations).
+We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML tasks and use cases. The available optimizers are imported via the `neps.algorithms` module.
+You can use either the optimizer name or the optimizer class itself as the optimizer argument.
 
 ```python
 neps.run(
@@ -65,12 +90,12 @@ neps.run(
     root_directory="results/",
     max_evaluations_total=25,
     # optimizer specified, along with an argument
-    optimizer="bayesian_optimization",
+    optimizer=neps.algorithms.bayesian_optimization, # or as string: "bayesian_optimization"
     initial_design_size=5,
 )
 ```
 
-For more optimizers, please refer [here](#list-available-optimizers) .
+For more optimizers, please refer [here](./optimizers.md#41-list-available-optimizers) .
 
 ### 2.3 Custom Optimizer Configuration via YAML
 
@@ -103,10 +128,23 @@ neps.run(
 )
 ```
 
+For small changes, the user can also directly input a YAML-style dictionary as optimizer argument:
+
+```python
+neps.run(
+    evalute_pipeline=run_function,
+    pipeline_space=pipeline_space,
+    root_directory="results/",
+    max_evaluations_total=25,
+    optimizer={"bayesian_optimization", {"initial_design_size": 5}}
+)
+```
+
+
 ### 2.4 Hyperparameter Overrides
 
 If you want to make on-the-fly adjustments to the optimizer's hyperparameters without modifying the YAML configuration
-file, you can do so by passing keyword arguments (kwargs) to the neps.run function itself. This enables you to fine-tune
+file, you can do so by passing keyword arguments (kwargs) to the `neps.run` function itself. This enables you to fine-tune
 specific hyperparameters without the need for YAML file updates. Any hyperparameter values provided as kwargs will take
 precedence over those specified in the YAML configuration.
 
