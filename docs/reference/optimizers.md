@@ -1,17 +1,22 @@
 # Optimizer Configuration
 
-## 1 What optimizer is good for my problem - an introduction to Multi-Fidelity and Priors?
+## 1 What optimizer works best for my problem?
 
-When presented with a machine learning problem, there are often ways to make the optimization process easier than just searching the entire pipeline space at full compute. The two most common ways to make things easier are by using small scale proxies ([Multi-Fidelity](#11-multi-fidelity-mf)) and intuition ([Priors](#12-priors)).
+NePS provides both a modular system to build your own optimizer and a set of predefined optimizers from the literature.
+
+Besides a completely uninformed search, there are two main ways to improve the optimization process: using small scale proxies ([Multi-Fidelity](#11-multi-fidelity-mf)) and intuition ([Priors](#12-priors)).
 
 ### 1.1 Multi-Fidelity (MF)
 
-Multi-Fidelity optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, to get an idea of what could work. This could mean training a model for a shorter time, using only a subset of the training data, or a smaller model entirely. From these 'low fidelity' runs, MF-algorithms can infer which configurations are likely to perform well on the full problem, before actually investing larger compute amounts.
+Multi-Fidelity means running a small scale version of the problem, which is cheaper and faster, to get an idea of what could work. This could mean training models for a shorter time, using only a subset of the training data, or a smaller model entirely. From these *low fidelity* runs, MF-algorithms can infer which configurations are likely to perform well on the full problem.
+
 For a more detailed explanation of Multi-Fidelity and a list of NePS-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
 
 ### 1.2 Priors
 
-Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. This intuition could come from expert knowledge or previous experiments. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute. For a more detailed explanation of Priors and a list of NePS-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
+Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. This intuition could come from expert knowledge or previous experiments. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute.
+
+For a more detailed explanation of Priors and a list of NePS-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
 
 ## 2 NePS Optimizer Selection
 
@@ -117,17 +122,17 @@ neps.run(
 )
 ```
 
-## Note for Contributors
+## 3 Note for Contributors
 
 When designing a new optimizer, it's essential to create a YAML configuration file in the `optimizer_yaml_files` folder under `neps.src.optimizers`. This YAML file should contain the default configuration settings that you believe should be used when the user chooses the optimizer.
 
 Even when many hyperparameters might be set to their default values as specified in the code, it is still considered good practice to include them in the YAML file. This is because the `PredefinedOptimizerConfigs` method relies on the arguments from the YAML file to display the optimizer's configuration to the user.
 
-## Optimizer Configurations
+## 4 Optimizer Configurations
 
 The `PredefinedOptimizerConfigs` class provides a set of useful functions to manage and retrieve default configuration details for NePS optimizers. These functions can help you understand and interact with the available optimizers and their associated algorithms and configurations.
 
-### Importing `PredefinedOptimizerConfigs`
+### 4.1 Importing `PredefinedOptimizerConfigs`
 
 Before you can use the `PredefinedOptimizerConfigs` class to manage and retrieve default configuration details for NePS optimizers, make sure to import it into your Python script. You can do this with the following import statement:
 
@@ -137,7 +142,7 @@ from neps.optimizers.info import PredefinedOptimizerConfigs
 
 Once you have imported the class, you can proceed to use its functions to explore the available optimizers, algorithms, and configuration details.
 
-### List Available Optimizers
+### 4.1 List Available Optimizers
 
 To list all the available optimizers that can be used in NePS runs, you can use the `get_optimizers` function. It provides you with a list of optimizer names:
 
@@ -146,7 +151,7 @@ optimizers = PredefinedOptimizerConfigs.get_optimizers()
 print("Available optimizers:", optimizers)
 ```
 
-### List Available Searching Algorithms
+### 4.3 List Available Searching Algorithms
 
 The `get_available_algorithms` function helps you discover the searching algorithms available within the NePS optimizers:
 
@@ -155,7 +160,7 @@ algorithms = PredefinedOptimizerConfigs.get_available_algorithms()
 print("Available searching algorithms:", algorithms)
 ```
 
-### Find Optimizers Using a Specific Algorithm
+### 4.4 Find Optimizers Using a Specific Algorithm
 
 If you want to identify which NePS optimizers are using a specific searching algorithm (e.g., Bayesian Optimization, Hyperband, PriorBand...), you can use the `get_optimizer_from_algorithm` function. It returns a list of optimizers utilizing the specified algorithm:
 
@@ -165,7 +170,7 @@ optimizers = PredefinedOptimizerConfigs.get_optimizer_from_algorithm(algorithm)
 print(f"optimizers using {algorithm}:", optimizers)
 ```
 
-### Retrieve Optimizer Configuration Details
+### 4.5 Retrieve Optimizer Configuration Details
 
 To access the configuration details of a specific optimizer, you can use the `get_optimizer_kwargs` function. Provide the name of the optimizer you are interested in, and it will return the optimizer's configuration:
 
