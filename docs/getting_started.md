@@ -51,12 +51,13 @@ neps.run(evaluate_pipeline, pipeline_space)
 
 The [reference](reference/neps_run.md) section provides detailed information on the individual components of NePS.
 
-* How to use the [`neps.run()` function](reference/neps_run.md) to start the optimization process.
-* How to choose and configure the [optimizer](reference/optimizers.md) used.
-* [Declarative usage](reference/declarative_usage.md) of NePS via YAML configuration files.
-* How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
-* How to use the [CLI](reference/cli.md) to run NePS from the command line.
-* How to [analyze](reference/analyse.md) the optimization runs.
+1. How to use the **[`neps.run()` function](reference/neps_run.md)** to start the optimization process.
+2. The different [search space](reference/pipeline_space.md) options available.
+3. How to choose and configure the [optimizer](reference/optimizers.md) used.
+4. [Declarative usage](reference/declarative_usage.md) of NePS via YAML configuration files.
+5. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
+6. How to use the [CLI](reference/cli.md) to run NePS from the command line.
+7. How to [analyze](reference/analyse.md) the optimization runs.
 
 ## Examples
 
