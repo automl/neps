@@ -159,10 +159,9 @@ class tblogger:  # noqa: N801
             tblogger.summary_writer.close()
             time.sleep(0.5)
 
-        except ValueError as e:
-            logger.critical(
-                "Incumbent tracking for TensorBoard with NePS has failed due to "
-                f"a ValueError: {e}. This feature is now permanently disabled"
-                " for the entire run."
+        except:  # noqa: E722
+            logger.warning(
+                "Incumbent tracking for TensorBoard with NePS has failed. "
+                "This feature is now permanently disabled for the entire run."
             )
             tblogger.write_incumbent = False
