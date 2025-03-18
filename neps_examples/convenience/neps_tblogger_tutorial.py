@@ -30,28 +30,12 @@ the 'NePS' package, use the following command:
 ```bash
 pip install neural-pipeline-search
 ```
-
-Additionally, note that 'NePS' does not include 'torchvision' as a dependency.
-You can install it with this command:
-
-```bash
-pip install torchvision
-```
-
-Make sure to download the torchvision version that fits with your pytorch
-version. More info on this link:
-
-https://pypi.org/project/torchvision/
-
-These dependencies ensure you have everything you need for this tutorial.
-
 """
 
 import logging
 import random
 import time
 from typing import Tuple
-from warnings import warn
 
 import numpy as np
 import torch
@@ -118,10 +102,16 @@ def MNIST(
 
     # Create DataLoaders for training, validation, and test datasets.
     train_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=train_sampler
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        sampler=train_sampler,
     )
     val_dataloader = DataLoader(
-        dataset=train_dataset, batch_size=batch_size, shuffle=False, sampler=valid_sampler
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        sampler=valid_sampler,
     )
     test_dataloader = DataLoader(
         dataset=test_dataset, batch_size=batch_size, shuffle=False
@@ -187,7 +177,7 @@ def training(
     criterion: nn.Module,
     train_loader: DataLoader,
     validation_loader: DataLoader,
-) -> Tuple[float, torch.Tensor]:
+) -> float:
     """
     Function that trains the model for one epoch and evaluates the model
     on the validation set.
@@ -200,10 +190,8 @@ def training(
         validation_loader (DataLoader): DataLoader containing the validation data.
 
     Returns:
-    Tuple[float, torch.Tensor]: A tuple containing the validation error (float)
-                                and a tensor of misclassified images.
+    float: The validation error (float)
     """
-    incorrect_images = []
     model.train()
 
     for x, y in train_loader:
@@ -213,18 +201,11 @@ def training(
         objective_to_minimize.backward()
         optimizer.step()
 
-        predicted_labels = torch.argmax(output, dim=1)
-        incorrect_mask = predicted_labels != y
-        incorrect_images.append(x[incorrect_mask])
-
     # Calculate validation objective_to_minimize using the objective_to_minimize_ev function.
-    validation_objective_to_minimize = objective_to_minimize_ev(model, validation_loader)
-
-    # Return the misclassified image by during model training.
-    if len(incorrect_images) > 0:
-        incorrect_images = torch.cat(incorrect_images, dim=0)
-
-    return (validation_objective_to_minimize, incorrect_images)
+    validation_objective_to_minimize = objective_to_minimize_ev(
+        model, validation_loader
+    )
+    return validation_objective_to_minimize
 
 
 #############################################################
@@ -248,9 +229,13 @@ def evaluate_pipeline(lr, optim, weight_decay):
     model = MLP()
 
     if optim == "Adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=lr, weight_decay=weight_decay
+        )
     elif optim == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+        optimizer = torch.optim.SGD(
+            model.parameters(), lr=lr, weight_decay=weight_decay
+        )
     else:
         raise ValueError(
             "Optimizer choices are defined differently in the pipeline_space"
@@ -266,8 +251,12 @@ def evaluate_pipeline(lr, optim, weight_decay):
     scheduler = lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.75)
     criterion = nn.CrossEntropyLoss()
 
+    # Substitute the Tensorboard SummaryWriter with ConfigWriter from NePS
+    # writer = SummaryWriter()
+    writer = tblogger.ConfigWriter(write_summary_incumbent=True)
+
     for i in range(max_epochs):
-        objective_to_minimize, miss_img = training(
+        objective_to_minimize = training(
             optimizer=optimizer,
             model=model,
             criterion=criterion,
@@ -285,36 +274,34 @@ def evaluate_pipeline(lr, optim, weight_decay):
                 )
 
         ###################### Start Tensorboard Logging ######################
-
-        # The following tblogge` will result in:
-
         # 1. Loss curves of each configuration at each epoch.
         # 2. Decay curve of the learning rate at each epoch.
-        # 3. Wrongly classified images by the model.
-        # 4. First two layer gradients passed as scalar configs.
+        # 3. First two layer gradients passed as scalar configs.
 
-        tblogger.log(
-            objective_to_minimize=objective_to_minimize,
-            current_epoch=i,
-            write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
-            writer_config_scalar=True,  # Set to `True` for a live objective_to_minimize trajectory for each config.
-            writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
-            # Appending extra data
-            extra_data={
-                "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
-                "miss_img": tblogger.image_logging(image=miss_img, counter=2, seed=2),
-                "layer_gradient1": tblogger.scalar_logging(value=mean_gradient[0]),
-                "layer_gradient2": tblogger.scalar_logging(value=mean_gradient[1]),
-            },
+        writer.add_scalar(tag="loss", scalar_value=objective_to_minimize, global_step=i)
+        writer.add_scalar(
+            tag="lr_decay", scalar_value=scheduler.get_last_lr()[0], global_step=i
         )
-
-        ###################### End Tensorboard Logging ######################
+        writer.add_scalar(
+            tag="layer_gradient1", scalar_value=mean_gradient[0], global_step=i
+        )
+        writer.add_scalar(
+            tag="layer_gradient2", scalar_value=mean_gradient[1], global_step=i
+        )
 
         scheduler.step()
 
         print(f"  Epoch {i + 1} / {max_epochs} Val Error: {objective_to_minimize} ")
 
-    # Calculate training and test accuracy.
+    # 4. Hparams comparison.
+    writer.add_hparams(
+        hparam_dict={"lr": lr, "optim": optim, "wd": weight_decay},
+        metric_dict={"loss_val": objective_to_minimize},
+    )
+    writer.close()
+
+    ###################### End Tensorboard Logging ######################
+
     train_accuracy = objective_to_minimize_ev(model, train_loader)
     test_accuracy = objective_to_minimize_ev(model, test_loader)
 
@@ -355,7 +342,7 @@ if __name__ == "__main__":
 
     neps.run(
         **run_args,
-        max_evaluations_total=2,
+        max_evaluations_total=3,
     )
 
     """
@@ -371,24 +358,6 @@ if __name__ == "__main__":
     follow the local link provided.
 
     http://localhost:6006/
-
-    Double-check the directory path you've provided; if you're not seeing
-    any visualizations and have followed the tutorial closely, there
-    might be an error in the directory specification. Remember that
-    TensorBoard runs in the command line without checking if the directory
-    actually exists.
-    """
-
-    # Disables tblogger for the continued run
-    tblogger.disable()
-
-    neps.run(
-        **run_args,
-        max_evaluations_total=3,  # continues the previous run for 1 more evaluation
-    )
-
-    """
-    This second run of one more configuration will not add to the tensorboard logs.
     """
 
     end_time = time.time()  # Record the end time
