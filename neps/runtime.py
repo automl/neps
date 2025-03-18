@@ -619,9 +619,9 @@ class DefaultWorker:
                     report=report,
                     worker_id=self.worker_id,
                 )
-            # This is mostly for `tblogger`
-            for _key, callback in _TRIAL_END_CALLBACKS.items():
-                callback(trial_to_eval)
+                # This is mostly for `tblogger`
+                for _key, callback in _TRIAL_END_CALLBACKS.items():
+                    callback(trial_to_eval)
 
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
             logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
