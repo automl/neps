@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Mapping
 from pathlib import Path
@@ -19,6 +20,8 @@ from neps.utils.common import get_initial_directory
 
 if TYPE_CHECKING:
     from neps.state.trial import Trial
+
+logger = logging.getLogger(__name__)
 
 
 class tblogger:  # noqa: N801
@@ -130,25 +133,36 @@ class tblogger:  # noqa: N801
             The function logs the incumbent trajectory in TensorBoard.
         """
         assert tblogger.optimizer_dir is not None
-        _, short = status(tblogger.optimizer_dir, print_summary=False)
+        try:
+            _, short = status(tblogger.optimizer_dir, print_summary=False)
 
-        incum_tracker = short["num_success"] - 1
-        incum_val = short["best_objective_to_minimize"]
+            incum_tracker = short["num_success"] - 1
+            incum_val = short["best_objective_to_minimize"]
 
-        if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
-            tblogger.summary_writer = SummaryWriter(tblogger.optimizer_dir / "summary")
+            if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
+                tblogger.summary_writer = SummaryWriter(
+                    tblogger.optimizer_dir / "summary"
+                )
 
-        assert tblogger.summary_writer is not None
-        tblogger.summary_writer.add_scalar(
-            tag="Summary/Incumbent_graph",
-            scalar_value=incum_val,
-            global_step=incum_tracker,
-        )
+            assert tblogger.summary_writer is not None
+            tblogger.summary_writer.add_scalar(
+                tag="Summary/Incumbent_graph",
+                scalar_value=incum_val,
+                global_step=incum_tracker,
+            )
 
-        # Frequent writer open/close creates new 'tfevent' files due to
-        # parallelization needs. Simultaneous open writers risk conflicts,
-        # so they're flushed and closed after use.
+            # Frequent writer open/close creates new 'tfevent' files due to
+            # parallelization needs. Simultaneous open writers risk conflicts,
+            # so they're flushed and closed after use.
 
-        tblogger.summary_writer.flush()
-        tblogger.summary_writer.close()
-        time.sleep(0.5)
+            tblogger.summary_writer.flush()
+            tblogger.summary_writer.close()
+            time.sleep(0.5)
+
+        except ValueError as e:
+            logger.critical(
+                "Incumbent tracking for TensorBoard with NePS has failed due to "
+                f"a ValueError: {e}. This feature is now permanently disabled"
+                " for the entire run."
+            )
+            tblogger.write_incumbent = False
