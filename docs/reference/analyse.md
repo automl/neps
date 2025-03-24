@@ -81,62 +81,66 @@ Details include configuration hyperparameters, any returned result from the `eva
 
 The `run_status.csv` provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
 
-## TensorBoard Integration
-[TensorBoard](https://www.tensorflow.org/tensorboard) serves as a valuable tool for visualizing machine learning experiments,
-offering the ability to observe losses and metrics throughout the model training process.
-In NePS, we use this to show metrics of configurations during training in addition to comparisons to different hyperparameters used in the search for better diagnosis of the model.
+# TensorBoard Integration
 
-### Logging Things
+In NePS we replaced the traditional TensorBoard `SummaryWriter` with the `ConfigWriter` to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.
 
-The [`tblogger.log()`][neps.plot.tensorboard_eval.tblogger.log] function is invoked
-within the model's training loop to facilitate logging of key metrics.
+## Overview of ConfigWriter
 
-We also provide some utility functions to make it easier to log things like:
+The `ConfigWriter` serves as a versatile and efficient tool for logging various training metrics and hyperparameter configurations. It seamlessly integrates with the NePS, enabling better visualization and analysis of model performance during hyperparameter searches.
 
-* Scalars through [`tblogger.scalar_logging()`][neps.plot.tensorboard_eval.tblogger.scalar_logging]
-* Images through [`tblogger.image_logging()`][neps.plot.tensorboard_eval.tblogger.image_logging]
+To enable live logging of the incumbent trajectory, use the `write_summary_incumbent` argument when initializing `ConfigWriter`.
 
-You can provide these through the `extra_data=` argument in the `tblogger.log()` function.
+## Example Usage
 
-For an example usage of all these features please refer to the [example](../examples/convenience/neps_tblogger_tutorial.md)!
+Below is an example implementation of the `ConfigWriter` for logging metrics during the training process:
 
 ```python
-tblogger.log(
-    loss=loss,
-    current_epoch=i,
-    write_summary_incumbent=False,  # Set to `True` for a live incumbent trajectory.
-    writer_config_scalar=True,  # Set to `True` for a live loss trajectory for each config.
-    writer_config_hparam=True,  # Set to `True` for live parallel coordinate, scatter plot matrix, and table view.
+import neps
+# Substitute the TensorBoard SummaryWriter with ConfigWriter from NePS
+writer = neps.tblogger.ConfigWriter(write_summary_incumbent=True)
 
-    # Name the dictionary keys as the names of the values
-    # you want to log and pass one of the following functions
-    # as the values for a successful logging process.
-    extra_data={
-        "lr_decay": tblogger.scalar_logging(value=scheduler.get_last_lr()[0]),
-        "miss_img": tblogger.image_logging(image=miss_img, counter=2, seed=2),
-        "layer_gradient1": tblogger.scalar_logging(value=mean_gradient[0]),
-        "layer_gradient2": tblogger.scalar_logging(value=mean_gradient[1]),
-    },
+for i in range(max_epochs):
+    objective_to_minimize = training(
+        optimizer=optimizer,
+        model=model,
+        criterion=criterion,
+        train_loader=train_loader,
+        validation_loader=validation_loader,
+    )
+
+    # Gathering the gradient mean in each layer
+    mean_gradient = []
+    for layer in model.children():
+        layer_gradients = [param.grad for param in layer.parameters()]
+        if layer_gradients:
+            mean_gradient.append(
+                torch.mean(torch.cat([grad.view(-1) for grad in layer_gradients]))
+            )
+
+    ###################### Start ConfigWriter Logging ######################
+    writer.add_scalar(tag="loss", scalar_value=objective_to_minimize, global_step=i)
+    writer.add_scalar(
+        tag="lr_decay", scalar_value=scheduler.get_last_lr()[0], global_step=i
+    )
+    writer.add_scalar(
+        tag="layer_gradient1", scalar_value=mean_gradient[0], global_step=i
+    )
+    writer.add_scalar(
+        tag="layer_gradient2", scalar_value=mean_gradient[1], global_step=i
+    )
+
+    scheduler.step()
+
+    print(f"  Epoch {i + 1} / {max_epochs} Val Error: {objective_to_minimize} ")
+
+# Logging hyperparameters and metrics
+writer.add_hparams(
+    hparam_dict={"lr": lr, "optim": optim, "wd": weight_decay},
+    metric_dict={"loss_val": objective_to_minimize},
 )
+writer.close()
 ```
-
-!!! tip
-
-    The logger function is primarily designed for use within the `evalute_pipeline` function during the training of the neural network.
-
-??? example "Quick Reference"
-
-    === "`tblogger.log()`"
-
-        ::: neps.plot.tensorboard_eval.tblogger.log
-
-    === "`tblogger.scalar_logging()`"
-
-        ::: neps.plot.tensorboard_eval.tblogger.scalar_logging
-
-    === "`tblogger.image_logging()`"
-
-        ::: neps.plot.tensorboard_eval.tblogger.image_logging
 
 ### Visualizing Results
 

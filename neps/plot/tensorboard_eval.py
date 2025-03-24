@@ -141,7 +141,7 @@ class tblogger:  # noqa: N801
 
             if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
                 tblogger.summary_writer = SummaryWriter(
-                    tblogger.optimizer_dir / "summary"
+                    tblogger.optimizer_dir / "summary_tb"
                 )
 
             assert tblogger.summary_writer is not None
