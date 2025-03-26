@@ -1,22 +1,6 @@
 # Multi-Fidelity Optimizers
 
-## What is Multi-Fidelity Optimization?
-
-Multi-Fidelity (MF) optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, and then using this information to train full-scale models. The _low-fidelity_ runs could be on a smaller dataset, a smaller model, or for shorter training times. MF-algorithms then infer which configurations are likely to perform well on the full problem, before investing larger compute amounts.
-
-!!! tip "Advantages of Multi-Fidelity"
-
-    - **Parallelization**: MF-algorithms can use the information from many parallel low-fidelity runs to guide the search in the few high-fidelity runs.
-    - **Exploration**: By using low-fidelity runs, the optimizer can explore more of the search space.
-
-!!! warning "Disadvantages of Multi-Fidelity"
-
-    - **More compute**: Running multiple iterations on different fidelities is generally more compute-intensive.
-    - **Variance**: The performance of a configuration on a low-fidelity run might not correlate well with its performance on a high-fidelity run. This can result in misguided decisions.
-
-## Optimizers using Multi-Fidelity
-
-### 1 `Successive Halfing`
+## 1 `Successive Halfing`
 
 `Successive Halfing`/`SH` (see [paper](https://proceedings.mlr.press/v51/jamieson16.pdf)) is a simple but effective Multi-Fidelity algorithm.
 
@@ -30,17 +14,17 @@ The process allows for broad exploration in the beginning and focus on the most 
     - `SH` has two parameters: $\eta$ and $n$, where $\eta$ is the promotion factor and $n$ is the number of configurations at the lowest fidelity.
     This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels.
 
-#### _Asynchronous_ Successive Halving
+### _Asynchronous_ Successive Halving
 
 `Asynchronous Successive Halving`/`ASHA` (see [paper](https://arxiv.org/pdf/1810.05934)) is an asynchronous version of ``SH`` that maximizes parallel evaluations.
 
 Instead of waiting for all $n$ configurations to finish on one fidelity, `ASHA` promotes the best configuration to the next fidelity as soon as there are enough evaluations to make a decision ($1/\eta*n\geq 1$). This allows for quicker promotions and earlier high fidelity-results. When there are no promotable configurations, `ASHA` spawns new configurations at the lowest fidelity, so it always utilizes the available compute and increases exploration compared to ``SH``.
 
-#### _Prior-extended_ Successive Halving
+### _Prior-extended_ Successive Halving
 
 Although not inherently a Prior-optimizer, ``SH`` (and ``ASHA``) can make use of [Priors](../search_algorithms/prior.md). Instead of sampling configurations uniformly, the optimizer can directly sample from the Prior, which results in a more focused search - highly beneficial _if_ the Prior is reliable. Alternatively, the ``SH`` can bias the promotion of configurations towards the Prior, keeping worse-performing, but recommended configurations longer in the optimization process.
 
-### 2 `HyperBand`
+## 2 `HyperBand`
 
 `HyperBand`/`HB` (see [paper](https://arxiv.org/pdf/1603.06560)) is an extension of [``Successive Halfing``](../search_algorithms/multifidelity.md#1-successive-halfing) that employs multiple ``Successive Halfing``-rounds in parallel.
 
@@ -55,7 +39,7 @@ Each of these runs has a different resource budget and different number of confi
 !!! info
     ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
 
-### 3 `BOHB`
+## 3 `BOHB`
 
 `BOHB` (see [paper](https://arxiv.org/pdf/1807.01774)) is a combination of [``Bayesian Optimization``](../search_algorithms/bayesian_optimization.md) and [``HyperBand``](../search_algorithms/multifidelity.md#2-hyperband).
 
@@ -70,7 +54,7 @@ Contrary to ``HyperBand``, which uses random configurations, ``BOHB`` uses ``BO`
         - Repeatedly run ``BOHB`` on smaller, but representative budgets, looking at the rank correlations between neighbouring fidelity levels. If the correlation is low ($<0.2$), increase the minimum budget or lower the promotion factor $\eta$.
         - For more practical tips, see [here](https://automl.github.io/HpBandSter/build/html/best_practices.html).
 
-### 4 `A-BOHB`
+## 4 `A-BOHB`
 
 `A-BOHB`/`Mobster` (see [paper](https://arxiv.org/pdf/2204.11051)) is an asynchronous extension of [BOHB](../search_algorithms/multifidelity.md#3-bohb).
 
@@ -87,7 +71,7 @@ where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is t
     - ``A-BOHB`` is more efficient than ``BOHB`` when the correlation between lower and higher fidelities is low.
     - The algorithm itself is more computationally expensive than ``BOHB``, as it has to model the objective function across all fidelities.
 
-### 5 `In-Context Freeze-Thaw Bayesian Optimization`
+## 5 `In-Context Freeze-Thaw Bayesian Optimization`
 
 `In-Context Freeze-Thaw Bayesian Optimization`/``IfBO`` (see [paper](https://arxiv.org/pdf/2204.11051)) expands on the idea of [Freeze-Thaw Bayesian Optimization](https://arxiv.org/pdf/1406.3896) (``FT-BO``) by using a `Prior-data fitted network` (PFN) as a surrogate for the ``FT-BO``.
 

@@ -1,24 +1,6 @@
 # Prior Optimizers
 
-## What are Priors?
-
-Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your NePS-search space [here](../../reference/pipeline_space.md#using-your-knowledge-providing-a-prior).
-
-!!! tip "Advantages of using Priors"
-
-    - **Less compute**: By providing a Prior, the optimizer can focus on the most promising regions of the search space, potentially saving a lot of compute.
-    - **More exploitation**: By focusing on these regions, the optimizer might find a better final solution.
-
-!!! warning "Disadvantages of using Priors"
-
-    - **Less exploration**: By focusing on these regions, the optimizer _might_ miss out on other regions that could potentially be better.
-    - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors.
-
-In the following, we will discuss the NePS-optimizers that use Priors.
-
-## Optimizers using Priors
-
-### 1 `PiBO`
+## 1 `PiBO`
 
 `PiBO` (see [paper](https://arxiv.org/pdf/2204.11051)) is an extension of [`Bayesian Optimization` (`BO`)](../search_algorithms/bayesian_optimization.md) that uses a specific `acquisition function` that incorporates Priors, by including a `Prior-factor` that decays over time. This way, the optimizer first relies on the Prior knowledge, before shifting focus to the data acquired during the optimization process.
 The altered acquisition function takes this form:

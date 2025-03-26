@@ -50,7 +50,7 @@ For any given search space, NePS provides a set of predefined optimizers from th
 | [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)||✅|✅||
 | [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅||
 
-The [algorithms](../reference/search_algorithms/bayesian_optimization.md) section goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using NePS.
+The [algorithms](../reference/search_algorithms/landing_page_algo.md) section goes into detail on the different optimizers, while the rest of this chapter will focus on how to select them when using NePS.
 
 ### 2.1 Automatic Optimizer Selection
 
