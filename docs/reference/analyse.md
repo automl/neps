@@ -91,6 +91,8 @@ The `ConfigWriter` serves as a versatile and efficient tool for logging various 
 
 To enable live logging of the incumbent trajectory, use the `write_summary_incumbent` argument when initializing `ConfigWriter`.
 
+If a user only wishes to log the incumbent and does not want a specific writer for each configuration (i.e., no other logging in the run pipeline), they should simply trigger the `neps.tblogger.WriteIncumbent()` function in their run pipeline
+
 ## Example Usage
 
 Below is an example implementation of the `ConfigWriter` for logging metrics during the training process:

@@ -64,6 +64,12 @@ class tblogger:  # noqa: N801
         tblogger.config = trial.config
 
     @staticmethod
+    def WriteIncumbent() -> None:  # noqa: N802
+        """Allows for writing the incumbent of the current search."""
+        tblogger._initiate_internal_configurations()
+        tblogger.write_incumbent = True
+
+    @staticmethod
     def ConfigWriter(*, write_summary_incumbent: bool = True) -> SummaryWriter:  # noqa: N802
         """Creates and returns a TensorBoard SummaryWriter configured to write logs
         to the appropriate directory for NePS.
