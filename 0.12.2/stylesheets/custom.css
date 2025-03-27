@@ -10,7 +10,7 @@ code.highlight.language-python span.kc {
 :root {
     --md-tooltip-width: 500px;
 }
-/* api doc attribute cards */
+/* api doc attribute cards
 div.doc-class > div.doc-contents > div.doc-children > div.doc-object {
   padding-right: 20px;
   padding-left: 20px;
@@ -22,4 +22,4 @@ div.doc-class > div.doc-contents > div.doc-children > div.doc-object {
   border-color: rgba(0, 0, 0, 0.2);
   border-width: 1px;
   border-style: solid;
-}
+} */
