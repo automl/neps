@@ -79,6 +79,7 @@ dev = [
     "mkdocs-gen-files",
     "mkdocstrings[python]",
     "mkdocs-literate-nav",
+    "pymdown-extensions", # For math in markdown
     "mike",
     "black",  # This allows mkdocstrings to format signatures in the docs
 ]
