@@ -59,9 +59,7 @@ The [reference](reference/neps_run.md) section provides detailed information on 
 6. How to use the [CLI](reference/cli.md) to run NePS from the command line.
 7. How to [analyze](reference/analyse.md) the optimization runs.
 
-## Examples
-
-Discover the features of NePS through these practical examples:
+Or discover the features of NePS through these practical examples:
 
 * **[Hyperparameter Optimization (HPO)](examples/template/basic.md)**:
 Learn the essentials of hyperparameter optimization with NePS.

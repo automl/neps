@@ -1,5 +1,7 @@
 # Multi-Fidelity Optimizers
 
+This section concerns optimizers that utilize Multi-Fidelity information to guide the search process. Multi-Fidelity is explained in detail [here](./landing_page_algo.md#what-is-multi-fidelity-optimization).
+
 ## 1 `Successive Halfing`
 
 `Successive Halfing`/`SH` (see [paper](https://proceedings.mlr.press/v51/jamieson16.pdf)) is a simple but effective Multi-Fidelity algorithm.

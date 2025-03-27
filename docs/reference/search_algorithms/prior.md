@@ -1,5 +1,7 @@
 # Prior Optimizers
 
+This section concerns optimizers that utilize priors to guide the search process. Priors are explained in detail [here](./landing_page_algo.md#what-are-priors).
+
 ## 1 `PiBO`
 
 `PiBO` (see [paper](https://arxiv.org/pdf/2204.11051)) is an extension of [`Bayesian Optimization` (`BO`)](../search_algorithms/bayesian_optimization.md) that uses a specific `acquisition function` that incorporates Priors, by including a `Prior-factor` that decays over time. This way, the optimizer first relies on the Prior knowledge, before shifting focus to the data acquired during the optimization process.

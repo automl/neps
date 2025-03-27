@@ -1,8 +1,10 @@
 # Algorithms
 
-Algorithms are the search strategies determining what configurations to evaluate next. In NePS, we provide a variety of pre-implemented algorithms and offer the possibility to implement custom algorithms.This chapter gives an overview of the different algorithms available in NePS and practical tips for their usage. We distinguish between algorithms that use different types of information and strategies to guide the search process.
+Algorithms are the search strategies determining what configurations to evaluate next. In NePS, we provide a variety of pre-implemented algorithms and offer the possibility to implement custom algorithms. This chapter gives an overview of the different algorithms available in NePS and practical tips for their usage.
 
-| Algorithm         | [Multi-Fidelity](./multifidelity.md) | [Priors](./prior.md) | Model-based | Asynchronous |
+We distinguish between algorithms that use different types of information and strategies to guide the search process:
+
+| Algorithm         | [Multi-Fidelity](landing_page_algo.md#what-is-multi-fidelity-optimization) | [Priors](landing_page_algo.md#what-are-priors) | [Model-based](bayesian_optimization.md) | Asynchronous (Parallelizable) |
 | :- | :------------: | :----: | :---------: | :-: |
 | `Grid Search`||||✅|
 | `Random Search`||||✅|
@@ -25,8 +27,9 @@ Multi-Fidelity (MF) optimization leverages the idea of running an AutoML problem
 
 !!! warning "Disadvantages of Multi-Fidelity"
 
-    - **More compute**: Running multiple iterations on different fidelities is generally more compute-intensive.
     - **Variance**: The performance of a configuration on a low-fidelity run might not correlate well with its performance on a high-fidelity run. This can result in misguided decisions.
+
+We present a collection of MF-algorithms [here](./multifidelity.md) and algorithms that combine MF with priors [here](./multifidelity_prior.md).
 
 ## What are Priors?
 
@@ -40,4 +43,6 @@ Priors are used when there exists some information about the search space, that 
 !!! warning "Disadvantages of using Priors"
 
     - **Less exploration**: By focusing on these regions, the optimizer _might_ miss out on other regions that could potentially be better.
-    - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors.
+    - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors. The optimizers we provide in NePS are specifically designed to handle bad priors, but they still slow down the search process.
+
+We present a collection of algorithms that use Priors [here](./prior.md) and algorithms that combine priors wiht Multi-Fidelity [here](./multifidelity_prior.md).
