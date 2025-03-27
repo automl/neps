@@ -66,7 +66,7 @@ the `pipeline_space` passed.
 
 ```python
 neps.run(
-    evalute_pipeline=run_function,
+    evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,

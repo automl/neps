@@ -11,7 +11,7 @@ The following image shows a GP with its mean function and the 95% confidence int
 
 |![GP](../../doc_images/optimizers/bo_surrogate.jpg)|
 |:--:|
-|The dashed line represents the (hidden) objective function, while the solid line is the surrogate mean function. The shaded area around the mean function is it's confidence interval. Note that the confidence interval collapses where observations have been made and gets large in regions where no data is available yet. (Image Source: [Medium.com](https://towardsdatascience.com/shallow-understanding-on-bayesian-optimization-324b6c1f7083), Jan 27, 2025)|
+|The dashed line represents the (hidden) objective function, while the solid line is the surrogate mean function. The shaded area around the mean function is its confidence interval. Note that the confidence interval collapses where observations have been made and gets large in regions where no data is available yet. (Image Source: [Medium.com](https://towardsdatascience.com/shallow-understanding-on-bayesian-optimization-324b6c1f7083), Jan 27, 2025)|
 
 ### The acquisition function
 
