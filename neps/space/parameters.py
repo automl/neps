@@ -82,6 +82,12 @@ class Float:
                 f" upper={self.upper}."
             )
 
+        if self.is_fidelity and self.prior is not None:
+            raise ValueError(
+                f"Float parameter: Fidelity parameters "
+                f"cannot have a prior value. Got prior={self.prior}."
+            )
+
         if np.isnan(self.lower):
             raise ValueError("Can not have lower bound that is nan")
 
@@ -173,6 +179,12 @@ class Integer:
             raise ValueError(
                 f"Integer parameter: Expected lower <= prior <= upper,"
                 f"but got lower={self.lower}, prior={self.prior}, upper={self.upper}"
+            )
+
+        if self.is_fidelity and self.prior is not None:
+            raise ValueError(
+                f"Integer parameter: Fidelity parameters "
+                f"cannot have a prior value. Got prior={self.prior}."
             )
 
         self.domain = Domain.integer(self.lower, self.upper, log=self.log)
