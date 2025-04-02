@@ -68,10 +68,16 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.arithmatex:
+      generic: true
 
 extra:
   version:
     provider: mike
+
+extra_javascript: # Add MathJax for math rendering
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 plugins:
   - search
@@ -134,12 +140,18 @@ nav:
   - Reference:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
-    - Optimizers: 'reference/optimizers.md'
+    - Optimizer: 'reference/optimizers.md'
     - Declarative Usage: 'reference/declarative_usage.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
   - Examples: "examples/"  # auto-generated
+  - Algorithms:
+    - Algorithms: 'reference/search_algorithms/landing_page_algo.md'
+    - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
+    - Prior Optimizers: 'reference/search_algorithms/prior.md'
+    - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
+    - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
   - API: 'api/' # auto-generated
   - Contributing:
     - Dev Guide: 'dev_docs/contributing.md'
