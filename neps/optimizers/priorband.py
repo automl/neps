@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, assert_never
 
 import numpy as np
 import torch
@@ -103,13 +103,18 @@ class PriorBandSampler:
             or spent_one_sh_bracket_worth_of_fidelity is False
             or any_rung_with_eta_evals is False
         ):
-            policy = np.random.choice(["prior", "random"], p=[w_prior, w_random])
+            policy: Literal["prior", "random"] = np.random.choice(
+                ["prior", "random"],
+                p=[w_prior, w_random],
+            )
             match policy:
                 case "prior":
                     config = prior_dist.sample_config(to=self.encoder)
                 case "random":
                     _sampler = Sampler.uniform(ndim=self.encoder.ndim)
                     config = _sampler.sample_config(to=self.encoder)
+                case _:
+                    assert_never(policy)
 
             return config
 
