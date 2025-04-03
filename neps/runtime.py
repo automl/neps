@@ -790,9 +790,9 @@ def _launch_runtime(  # noqa: PLR0913
         import fcntl
 
         if LINUX_FILELOCK_FUNCTION.lower() == "flock":
-            setattr(portalocker_lock_module, "LOCKER", fcntl.flock)
+            setattr(portalocker_lock_module, "LOCKER", fcntl.flock)  # type: ignore[attr-defined]
         elif LINUX_FILELOCK_FUNCTION.lower() == "lockf":
-            setattr(portalocker_lock_module, "LOCKER", fcntl.lockf)
+            setattr(portalocker_lock_module, "LOCKER", fcntl.lockf)  # type: ignore[attr-defined]
         else:
             raise ValueError(
                 f"Unknown file-locking function '{LINUX_FILELOCK_FUNCTION}'."
