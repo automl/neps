@@ -34,6 +34,40 @@ def _load_optimizer_from_string(
             f" {optimizer}. Available optimizers are:"
             f" {PredefinedOptimizers.keys()}"
         )
+    if space.fidelity is not None and not optimizer_build.Supports.fidelity:
+        raise ValueError(
+            f"Optimizer `{_optimizer}` does not support fidelity. "
+            f"Please choose a different optimizer or consider "
+            f"setting the fidelity to a constant. Got: {space.fidelity}."
+        )
+    if space.fidelity is None and optimizer_build.Supports.fidelity:
+        raise ValueError(
+            f"Optimizer `{_optimizer}` requires fidelity. "
+            "Please choose a different optimizer."
+        )
+    if (
+        any(element.prior is not None for element in list(space.elements.values()))
+        and not optimizer_build.Supports.uses_priors
+    ):
+        raise ValueError(
+            f"Optimizer `{_optimizer}` does not support priors. "
+            f"Please choose a different optimizer. Got: "
+            f"{
+                [
+                    element
+                    for element in space.elements.values()
+                    if element.prior is not None
+                ]
+            }."
+        )
+    if (
+        not any(element.prior is not None for element in list(space.elements.values()))
+        and optimizer_build.Supports.requires_priors
+    ):
+        raise ValueError(
+            f"Optimizer `{_optimizer}` requires prior. "
+            "Please choose a different optimizer."
+        )
 
     keywords = extract_keyword_defaults(optimizer_build)
     optimizer_kwargs = optimizer_kwargs or {}

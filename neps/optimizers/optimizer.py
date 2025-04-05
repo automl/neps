@@ -77,3 +77,16 @@ class AskFunction(Protocol):
             The sampled configuration(s)
         """
         ...
+
+
+@dataclass
+class OptimizerSupports:
+    """Optimizer supports.
+    This is used to indicate what features the optimizer supports.
+    """
+
+    fidelity: bool = False
+    multi_objective: bool = False
+    cost_aware: bool = False
+    requires_priors: bool = False
+    uses_priors: bool = False
