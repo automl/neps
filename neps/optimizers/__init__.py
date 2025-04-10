@@ -39,7 +39,7 @@ def _load_optimizer_from_string(
     assert hasattr(optimizer_build.supports, "fidelity")
     assert hasattr(optimizer_build.supports, "uses_priors")
     assert hasattr(optimizer_build.supports, "requires_priors")
-    assert hasattr(optimizer_build.supports, "multi-objective")
+    assert hasattr(optimizer_build.supports, "multi_objective")
 
     if space.fidelity is not None and not optimizer_build.supports.fidelity:
         raise ValueError(
