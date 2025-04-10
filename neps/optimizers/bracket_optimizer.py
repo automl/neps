@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
     id_index = np.empty(len(trials), dtype=int)
     rungs_index = np.empty(len(trials), dtype=int)
-    perfs = np.empty(len(trials), dtype=np.float64)
+    perfs = [np.nan] * len(trials)
     configs = np.empty(len(trials), dtype=object)
 
     for i, (trial_id, trial) in enumerate(trials.items()):
@@ -53,8 +53,8 @@ def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
             perf = np.inf  # Error? Either way, we wont promote it
         elif isinstance(trial.report.objective_to_minimize, float):
             perf = trial.report.objective_to_minimize
-        elif isinstance(trial.report.objective_to_minimize, float):
-            raise NotImplementedError("Multiobjective support not implemented yet.")
+        elif isinstance(trial.report.objective_to_minimize, Sequence):
+            perf = np.array(trial.report.objective_to_minimize, dtype=np.float64)
         else:
             raise ValueError("Unknown type of objective_to_minimize")
 

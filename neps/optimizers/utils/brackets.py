@@ -140,6 +140,55 @@ class Rung(Sized):
     def top_k(self, k: int) -> pd.DataFrame:
         return self.table.nsmallest(k, "perf")
 
+    def mo_selector(
+        self,
+        *,
+        selector: Literal["nsga2", "epsnet"] = "epsnet",
+        k: int,
+    ) -> pd.DataFrame:
+        """Replaces top_k in single objective Bracket Optimizers
+        with a multi-objective selector, which selects the best
+        configurations based on the Pareto front.
+        Page 4, Algorithm 2, Line 11: `mo_selector` in the MO-ASHA paper:
+        https://arxiv.org/pdf/2106.12639
+        """
+        match selector:
+            case "nsga2":
+                raise NotImplementedError(
+                    "NSGA2 selector is not implemented yet. Please use epsnet."
+                )
+            case "epsnet":
+                return self.epsnet_selector(k)
+            case _:
+                raise ValueError(
+                    f"Unknown selector {selector}, please use either nsga2 or epsnet"
+                )
+
+    def nsga2_selector(
+        self,
+        k: int,
+    ) -> pd.DataFrame:
+        """Selects the best configurations based on NSGA2 algorithm.
+        Uses Non-dominated sorting and Crowding distance from Pymoo.
+        """
+
+    def epsnet_selector(
+        self,
+        k: int,
+    ) -> pd.DataFrame:
+        """Selects the best configurations based on epsilon-net sorting strategy.
+        Uses Epsilon-net based sorting from SyneTune.
+        """
+        from neps.optimizers.utils.multiobjective.epsnet import nondominated_sort
+
+        mo_costs = np.vstack(self.table["perf"].values)
+        indices = nondominated_sort(
+            X = mo_costs,
+            max_items = k,
+        )
+        return self.table.iloc[indices]
+
+
 
 @dataclass
 class Sync:
@@ -304,6 +353,12 @@ class Async:
     Here `k = len(rung) // eta`.
     """
 
+    is_multi_objective: bool = field(default=False)
+    """Whether the BracketOptimizer is multi-objective or not."""
+
+    mo_selector: Literal["nsga2", "eps_net"] = field(default="epsnet")
+    """The selector to use for multi-objective optimization."""
+
     def __post_init__(self) -> None:
         self.rungs = sorted(self.rungs, key=lambda rung: rung.value)
         if any(rung.capacity is not None for rung in self.rungs):
@@ -320,7 +375,10 @@ class Async:
             if k == 0:
                 continue  # Not enough configs to promote yet
 
-            best_k = lower.top_k(k)
+            if self.is_multi_objective:
+                best_k = lower.mo_selector(selector=self.mo_selector, k=k)
+            else:
+                best_k = lower.top_k(k)
             candidates = best_k.drop(
                 upper.config_ids,
                 axis="index",
@@ -345,6 +403,8 @@ class Async:
         *,
         rungs: list[int],
         eta: int,
+        is_multi_objective: bool = False,
+        mo_selector: Literal["nsga2", "eps_net"] = "nsga2",
     ) -> Async:
         return cls(
             rungs=[
@@ -356,6 +416,8 @@ class Async:
                 for rung in rungs
             ],
             eta=eta,
+            is_multi_objective=is_multi_objective,
+            mo_selector=mo_selector,
         )
 
 
