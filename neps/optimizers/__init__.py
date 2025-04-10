@@ -10,6 +10,7 @@ from neps.optimizers.algorithms import (
     determine_optimizer_automatically,
 )
 from neps.optimizers.optimizer import AskFunction, OptimizerInfo
+from neps.space.parameters import Constant
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
@@ -34,35 +35,47 @@ def _load_optimizer_from_string(
             f" {optimizer}. Available optimizers are:"
             f" {PredefinedOptimizers.keys()}"
         )
-    if space.fidelity is not None and not optimizer_build.Supports.fidelity:
+    assert hasattr(optimizer_build, "supports")
+    assert hasattr(optimizer_build.supports, "fidelity")
+    assert hasattr(optimizer_build.supports, "uses_priors")
+    assert hasattr(optimizer_build.supports, "requires_priors")
+    assert hasattr(optimizer_build.supports, "multi-objective")
+
+    if space.fidelity is not None and not optimizer_build.supports.fidelity:
         raise ValueError(
             f"Optimizer `{_optimizer}` does not support fidelity. "
             f"Please choose a different optimizer or consider "
             f"setting the fidelity to a constant. Got: {space.fidelity}."
         )
-    if space.fidelity is None and optimizer_build.Supports.fidelity:
+    if space.fidelity is None and optimizer_build.supports.fidelity:
         raise ValueError(
             f"Optimizer `{_optimizer}` requires fidelity. "
             "Please choose a different optimizer."
         )
     if (
-        any(element.prior is not None for element in list(space.elements.values()))
-        and not optimizer_build.Supports.uses_priors
+        any(
+            element.prior is not None if not isinstance(element, Constant) else False
+            for element in list(space.elements.values())
+        )
+        and not optimizer_build.supports.uses_priors
     ):
         raise ValueError(
             f"Optimizer `{_optimizer}` does not support priors. "
             f"Please choose a different optimizer. Got: "
-            f"{
+            f"""{
                 [
                     element
                     for element in space.elements.values()
-                    if element.prior is not None
+                    if not isinstance(element, Constant) and element.prior is not None
                 ]
-            }."
+            }."""
         )
     if (
-        not any(element.prior is not None for element in list(space.elements.values()))
-        and optimizer_build.Supports.requires_priors
+        not any(
+            element.prior is not None if not isinstance(element, Constant) else False
+            for element in list(space.elements.values())
+        )
+        and optimizer_build.supports.requires_priors
     ):
         raise ValueError(
             f"Optimizer `{_optimizer}` requires prior. "

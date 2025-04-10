@@ -87,6 +87,5 @@ class OptimizerSupports:
 
     fidelity: bool = False
     multi_objective: bool = False
-    cost_aware: bool = False
     requires_priors: bool = False
     uses_priors: bool = False

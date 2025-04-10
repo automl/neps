@@ -376,9 +376,7 @@ def random_search(
     )
 
 
-random_search.Supports = OptimizerSupports(
-    uses_priors=True,
-)
+setattr(random_search, "supports", OptimizerSupports(uses_priors=True))
 
 
 def grid_search(pipeline_space: SearchSpace) -> GridSearch:
@@ -393,9 +391,7 @@ def grid_search(pipeline_space: SearchSpace) -> GridSearch:
     return GridSearch(configs_list=make_grid(pipeline_space))
 
 
-grid_search.Supports = OptimizerSupports(
-    uses_priors=True,
-)
+setattr(grid_search, "supports", OptimizerSupports())
 
 
 def ifbo(
@@ -498,10 +494,7 @@ def ifbo(
     )
 
 
-ifbo.Supports = OptimizerSupports(
-    fidelity=True,
-    uses_priors=True,
-)
+setattr(ifbo, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def successive_halving(
@@ -586,9 +579,8 @@ def successive_halving(
     )
 
 
-successive_halving.Supports = OptimizerSupports(
-    fidelity=True,
-    uses_priors=True,
+setattr(
+    successive_halving, "supports", OptimizerSupports(fidelity=True, uses_priors=True)
 )
 
 
@@ -656,10 +648,7 @@ def hyperband(
     )
 
 
-hyperband.Supports = OptimizerSupports(
-    fidelity=True,
-    uses_priors=True,
-)
+setattr(hyperband, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def asha(
@@ -726,10 +715,7 @@ def asha(
     )
 
 
-asha.Supports = OptimizerSupports(
-    fidelity=True,
-    uses_priors=True,
-)
+setattr(asha, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def async_hb(
@@ -792,10 +778,7 @@ def async_hb(
     )
 
 
-async_hb.Supports = OptimizerSupports(
-    fidelity=True,
-    uses_priors=True,
-)
+setattr(async_hb, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def priorband(
@@ -855,10 +838,7 @@ def priorband(
     )
 
 
-priorband.Supports = OptimizerSupports(
-    fidelity=True,
-    uses_priors=True,
-)
+setattr(priorband, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def bayesian_optimization(
@@ -918,9 +898,7 @@ def bayesian_optimization(
     )
 
 
-bayesian_optimization.Supports = OptimizerSupports(
-    uses_priors=True,
-)
+setattr(bayesian_optimization, "supports", OptimizerSupports(uses_priors=True))
 
 
 def pibo(
@@ -970,9 +948,7 @@ def pibo(
     )
 
 
-pibo.Supports = OptimizerSupports(
-    uses_priors=True,
-)
+setattr(pibo, "supports", OptimizerSupports(uses_priors=True))
 
 
 @dataclass
@@ -1014,6 +990,18 @@ def custom(
         kwargs=kwargs or {},
         initialized=initialized,
     )
+
+
+setattr(
+    custom,
+    "supports",
+    OptimizerSupports(
+        fidelity=False,
+        multi_objective=False,
+        requires_priors=False,
+        uses_priors=False,
+    ),
+)
 
 
 PredefinedOptimizers: Mapping[
