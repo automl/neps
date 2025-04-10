@@ -30,7 +30,7 @@ from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
-from neps.optimizers.optimizer import AskFunction  # noqa: TC001
+from neps.optimizers.optimizer import AskFunction, OptimizerSupports
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
@@ -359,6 +359,7 @@ def random_search(
         ignore_fidelity: Whether to ignore fidelity when sampling.
             In this case, the max fidelity is always used.
     """
+
     if ignore_fidelity:
         parameters = pipeline_space.searchables
     else:
@@ -375,6 +376,9 @@ def random_search(
     )
 
 
+setattr(random_search, "supports", OptimizerSupports(uses_priors=True))
+
+
 def grid_search(pipeline_space: SearchSpace) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -385,6 +389,9 @@ def grid_search(pipeline_space: SearchSpace) -> GridSearch:
     from neps.optimizers.utils.grid import make_grid
 
     return GridSearch(configs_list=make_grid(pipeline_space))
+
+
+setattr(grid_search, "supports", OptimizerSupports(uses_priors=True))
 
 
 def ifbo(
@@ -487,6 +494,9 @@ def ifbo(
     )
 
 
+setattr(ifbo, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
+
+
 def successive_halving(
     space: SearchSpace,
     *,
@@ -569,6 +579,11 @@ def successive_halving(
     )
 
 
+setattr(
+    successive_halving, "supports", OptimizerSupports(fidelity=True, uses_priors=True)
+)
+
+
 def hyperband(
     space: SearchSpace,
     *,
@@ -631,6 +646,9 @@ def hyperband(
         bayesian_optimization_kick_in_point=None,
         device=None,
     )
+
+
+setattr(hyperband, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def asha(
@@ -697,6 +715,9 @@ def asha(
     )
 
 
+setattr(asha, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
+
+
 def async_hb(
     space: SearchSpace,
     *,
@@ -757,6 +778,9 @@ def async_hb(
     )
 
 
+setattr(async_hb, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
+
+
 def priorband(
     space: SearchSpace,
     *,
@@ -812,6 +836,9 @@ def priorband(
         bayesian_optimization_kick_in_point=bayesian_optimization_kick_in_point,
         device=None,
     )
+
+
+setattr(priorband, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
 
 
 def bayesian_optimization(
@@ -871,6 +898,9 @@ def bayesian_optimization(
     )
 
 
+setattr(bayesian_optimization, "supports", OptimizerSupports(uses_priors=True))
+
+
 def pibo(
     space: SearchSpace,
     *,
@@ -918,6 +948,9 @@ def pibo(
     )
 
 
+setattr(pibo, "supports", OptimizerSupports(uses_priors=True))
+
+
 @dataclass
 class CustomOptimizer:
     """Custom optimizer that allows you to define your own optimizer function.
@@ -957,6 +990,18 @@ def custom(
         kwargs=kwargs or {},
         initialized=initialized,
     )
+
+
+setattr(
+    custom,
+    "supports",
+    OptimizerSupports(
+        fidelity=False,
+        multi_objective=False,
+        requires_priors=False,
+        uses_priors=False,
+    ),
+)
 
 
 PredefinedOptimizers: Mapping[
