@@ -391,7 +391,7 @@ def grid_search(pipeline_space: SearchSpace) -> GridSearch:
     return GridSearch(configs_list=make_grid(pipeline_space))
 
 
-setattr(grid_search, "supports", OptimizerSupports(fidelity=True, uses_priors=True))
+setattr(grid_search, "supports", OptimizerSupports())
 
 
 def ifbo(

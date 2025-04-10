@@ -85,41 +85,14 @@ JUST_SKIP = [
 ]
 
 OPTIMIZER_FAILS_WITH_FIDELITY = [
-    "random_search",
-    "bayesian_optimization_cost_aware",
-    "bayesian_optimization",
-    "bayesian_optimization_prior",
-    "pibo",
-    "cost_cooling_bayesian_optimization",
-    "cost_cooling",
+    optimizer for optimizer in PredefinedOptimizers if not optimizer.supports.fidelity
 ]
-
-# There's no programattic way to check if a class requires a fidelity.
-# See issue #118, #119, #120
 OPTIMIZER_REQUIRES_FIDELITY = [
-    "successive_halving",
-    "successive_halving_prior",
-    "asha",
-    "asha_prior",
-    "hyperband",
-    "hyperband_prior",
-    "async_hb",
-    "async_hb_prior",
-    "priorband",
-    "priorband_sh",
-    "priorband_asha",
-    "priorband_async",
-    "priorband_bo",
-    "bayesian_optimization_cost_aware",
-    "mobster",
-    "ifbo",
+    optimizer for optimizer in PredefinedOptimizers if optimizer.supports.fidelity
 ]
-REQUIRES_PRIOR = {
-    "priorband",
-    "priorband_bo",
-    "priorband_asha",
-    "priorband_asha_hyperband",
-}
+REQUIRES_PRIOR = [
+    optimizer for optimizer in PredefinedOptimizers if optimizer.supports.requires_priors
+]
 REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
 
