@@ -85,13 +85,19 @@ JUST_SKIP = [
 ]
 
 OPTIMIZER_FAILS_WITH_FIDELITY = [
-    optimizer for optimizer in PredefinedOptimizers if not optimizer.supports.fidelity
+    optimizer[0]
+    for optimizer in list(PredefinedOptimizers.items())
+    if not optimizer[1].supports.fidelity
 ]
 OPTIMIZER_REQUIRES_FIDELITY = [
-    optimizer for optimizer in PredefinedOptimizers if optimizer.supports.fidelity
+    optimizer[0]
+    for optimizer in list(PredefinedOptimizers.items())
+    if optimizer[1].supports.fidelity
 ]
 REQUIRES_PRIOR = [
-    optimizer for optimizer in PredefinedOptimizers if optimizer.supports.requires_priors
+    optimizer[0]
+    for optimizer in list(PredefinedOptimizers.items())
+    if optimizer[1].supports.requires_priors
 ]
 REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
 
