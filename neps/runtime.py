@@ -6,13 +6,15 @@ import datetime
 import logging
 import os
 import shutil
+import signal
 import time
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
+from pandas.core.common import contextlib
 from portalocker import portalocker
 
 from neps.env import (
@@ -54,6 +56,11 @@ def _default_worker_name() -> str:
     isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return f"{os.getpid()}-{isoformat}"
 
+
+SIGNALS_TO_HANDLE_IF_AVAILABLE = [
+    "SIGINT",
+    "SIGTERM",
+]
 
 _DDP_ENV_VAR_NAME = "NEPS_DDP_TRIAL_ID"
 
@@ -181,6 +188,8 @@ class DefaultWorker:
 
     worker_cumulative_evaluation_time_seconds: float = 0.0
     """The time spent evaluating configurations by this worker."""
+
+    _PREVIOUS_SIGNAL_HANDLERS: dict[int, signal._HANDLER] = field(default_factory=dict)
 
     _GRACE: ClassVar = FS_SYNC_GRACE_BASE
 
@@ -369,6 +378,16 @@ class DefaultWorker:
 
         return False
 
+    def _set_signal_handlers(self) -> None:
+        for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
+            if hasattr(signal.Signals, name):
+                sig = getattr(signal.Signals, name)
+                # HACK: Despite what python documentation says, the existance of a signal
+                # is not enough to guarantee that it can be caught.
+                with contextlib.suppress(ValueError):
+                    previous_signal_handler = signal.signal(sig, self._emergency_cleanup)
+                    self._PREVIOUS_SIGNAL_HANDLERS[sig] = previous_signal_handler
+
     @property
     def _requires_global_stopping_criterion(self) -> bool:
         return (
@@ -491,6 +510,7 @@ class DefaultWorker:
         Will keep running until one of the criterion defined by the `WorkerSettings`
         is met.
         """
+        self._set_signal_handlers()
         _set_workers_neps_state(self.state)
 
         logger.info("Launching NePS")
@@ -580,15 +600,21 @@ class DefaultWorker:
                 continue
 
             # We (this worker) has managed to set it to evaluating, now we can evaluate it
-            with _set_global_trial(trial_to_eval):
-                evaluated_trial, report = evaluate_trial(
-                    trial=trial_to_eval,
-                    evaluation_fn=self.evaluation_fn,
-                    default_report_values=self.settings.default_report_values,
-                )
-                evaluation_duration = evaluated_trial.metadata.evaluation_duration
-                assert evaluation_duration is not None
-                self.worker_cumulative_evaluation_time_seconds += evaluation_duration
+            try:
+                with _set_global_trial(trial_to_eval):
+                    evaluated_trial, report = evaluate_trial(
+                        trial=trial_to_eval,
+                        evaluation_fn=self.evaluation_fn,
+                        default_report_values=self.settings.default_report_values,
+                    )
+            except KeyboardInterrupt as e:
+                # This throws and we have stopped the worker at this point
+                self._emergency_cleanup(signum=signal.SIGINT, frame=None, rethrow=e)
+                return
+
+            evaluation_duration = evaluated_trial.metadata.evaluation_duration
+            assert evaluation_duration is not None
+            self.worker_cumulative_evaluation_time_seconds += evaluation_duration
 
             self.worker_cumulative_eval_count += 1
 
@@ -629,6 +655,39 @@ class DefaultWorker:
             logger.debug(
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
+
+    def _emergency_cleanup(
+        self,
+        signum: int,
+        frame: Any,
+        rethrow: KeyboardInterrupt | None = None,
+    ) -> None:
+        """Handle signals."""
+        global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
+        logger.error(
+            f"Worker '{self.worker_id}' received signal {signum}. Stopping worker now!"
+        )
+        if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None:
+            logger.error(
+                "Worker '%s' was interrupted while evaluating trial: %s. Setting"
+                " trial to pending!",
+                self.worker_id,
+                _CURRENTLY_RUNNING_TRIAL_IN_PROCESS.id,
+            )
+            _CURRENTLY_RUNNING_TRIAL_IN_PROCESS.reset()
+            try:
+                self.state.put_updated_trial(_CURRENTLY_RUNNING_TRIAL_IN_PROCESS)
+            except NePSError as e:
+                logger.exception(e)
+            finally:
+                _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
+
+        previous_handler = self._PREVIOUS_SIGNAL_HANDLERS.get(signum)
+        if previous_handler is not None and callable(previous_handler):
+            previous_handler(signum, frame)
+        if rethrow is not None:
+            raise rethrow
+        raise KeyboardInterrupt(f"Worker was interrupted by signal {signum}.")
 
 
 def _launch_ddp_runtime(
