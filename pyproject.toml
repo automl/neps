@@ -1,25 +1,27 @@
 [project]
 name = "neural-pipeline-search"
-version = "v0.12.2"
+version = "v0.13.0"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
     { name = "Neeratyoy Mallik", email = "mallik@cs.uni-freiburg.de" },
-    { name = "Simon Schrodi" },
     { name = "Eddie Bergman" },
-    { name = "Maciej Janowski" },
+    { name = "Simon Schrodi" },
     { name = "Samir Garibov" },
     { name = "Tarek Abou Chakra" },
+    { name = "Timur Carstensen" },
+    { name = "Maciej Janowski" },
+    { name = "Gopalji Gaur" },
+    { name = "Anton Merlin Geburek" },
     { name = "Daniel Rogalla" },
     { name = "Carl Hvarfner" },
     { name = "Binxin Ru" },
-    { name = "Nils Kober" },
-    { name = "Théophane Vallaeys" },
     { name = "Frank Hutter" },
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
 keywords = [
+    "Deep Learning",
     "Neural Pipeline Search",
     "Neural Architecture Search",
     "Hyperparameter Optimization",
@@ -312,7 +314,7 @@ module = ["requests"]
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.12.2"
+current_version = "0.13.0"
 commit = true
 tag = true
 
