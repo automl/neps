@@ -132,7 +132,7 @@ def optimizer_and_key_and_search_space(
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.searchables["a"].prior is None:
+    if key in REQUIRES_PRIOR and search_space.numerical["a"].prior is None:
         pytest.xfail(f"{key} requires a prior")
 
     if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
