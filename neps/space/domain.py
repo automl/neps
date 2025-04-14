@@ -42,6 +42,7 @@ If you need a unit-interval domain, please use the
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Generic, TypeVar
@@ -280,6 +281,20 @@ class Domain(Generic[V]):
 
         if self.round:
             x = torch.round(x)
+
+        if (x > upper).any():
+            warnings.warn(  # noqa: B028
+                "Value is above the upper bound of the domain. "
+                "This is likely due to the way decoding works with log bounds."
+            )
+            x = torch.clip(x, max=self.upper)
+
+        if (x < lower).any():
+            warnings.warn(  # noqa: B028
+                "Value is below the lower bound of the domain. "
+                "This is likely due to the way decoding works with log bounds."
+            )
+            x = torch.clip(x, min=self.lower)
 
         return x.type(dtype)
 
