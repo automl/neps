@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pprint
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -65,6 +66,9 @@ class PriorBandSampler:
         max_rung = max(rung_sizes)
 
         prior_dist = Prior.from_parameters(self.parameters)
+
+        pprint.pp(prior_dist)
+        pprint.pp(self.parameters)
 
         # Below we will follow the "geomtric" spacing
         w_random = 1 / (1 + self.eta**rung)
