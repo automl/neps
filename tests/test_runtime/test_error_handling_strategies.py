@@ -227,7 +227,7 @@ for name in SIGNALS_TO_HANDLE_IF_AVAILABLE:
         SIGNALS.append(sig)
 
 
-@pytest.mark.ci_examples
+# @pytest.mark.ci_examples
 @pytest.mark.parametrize("signum", SIGNALS)
 def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     signum: signal.Signals,
@@ -245,6 +245,7 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
+        batch_size=None,
     )
 
     worker1 = DefaultWorker.new(
@@ -252,7 +253,6 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
         optimizer=optimizer,
         evaluation_fn=sleep_function,
         settings=settings,
-        _pre_sample_hooks=None,
     )
 
     # Use multiprocessing.Process
@@ -264,20 +264,30 @@ def test_worker_reset_evaluating_to_pending_on_ctrl_c(
     assert p.is_alive()
 
     # Should be evaluating at this stage
-    trials = neps_state.get_all_trials()
+    trials = neps_state.lock_and_read_trials()
     assert len(trials) == 1
-    assert next(iter(trials.values())).state == Trial.State.EVALUATING
+    assert next(iter(trials.values())).metadata.state == Trial.State.EVALUATING
 
     # Kill the process while it's evaluating using signals
     process = psutil.Process(p.pid)
-    process.send_signal(signum)
-    p.join(timeout=10)  # Wait for the process to terminate
+
+    # If sending the signal fails, skip the test,
+    # as most likely the signal is not supported on this platform
+    try:
+        process.send_signal(signum)
+    except ValueError as e:
+        pytest.skip(f"Signal error: {e}")
+    else:
+        # If the signal is sent successfully, we can proceed with the test
+        pass
+
+    p.join(timeout=5)  # Wait for the process to terminate
 
     if p.is_alive():
         p.terminate()  # Force terminate if it's still alive
         p.join()
         pytest.fail("Worker did not terminate after receiving signal!")
     else:
-        trials2 = neps_state.get_all_trials()
+        trials2 = neps_state.lock_and_read_trials()
         assert len(trials2) == 1
-        assert next(iter(trials2.values())).state == Trial.State.PENDING
+        assert next(iter(trials2.values())).metadata.state == Trial.State.PENDING
