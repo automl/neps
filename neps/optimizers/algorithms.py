@@ -132,6 +132,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     early_stopping_rate: int | None,
     device: torch.device | None,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    multi_objective: bool = False,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -212,6 +213,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             create_brackets = partial(
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "hyperband":
@@ -223,6 +226,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             create_brackets = partial(
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "asha":
@@ -236,20 +241,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.Async.create,
                 rungs=list(rung_to_fidelity),
                 eta=eta,
-            )
-
-        case "moasha":
-            assert early_stopping_rate is not None
-            rung_to_fidelity, _rung_sizes = brackets.calculate_sh_rungs(
-                bounds=(fidelity.lower, fidelity.upper),
-                eta=eta,
-                early_stopping_rate=early_stopping_rate,
-            )
-            create_brackets = partial(
-                brackets.Async.create,
-                rungs=list(rung_to_fidelity),
-                eta=eta,
-                is_multi_objective=True,
+                is_multi_objective=multi_objective,
                 mo_selector=mo_selector,
             )
 
@@ -265,6 +257,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.AsyncHyperband.create,
                 bracket_rungs=bracket_rungs,
                 eta=eta,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
@@ -649,6 +643,32 @@ def hyperband(
     )
 
 
+def mo_hyperband(
+    space: SearchSpace,
+    *,
+    eta: int = 3,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+) -> BracketOptimizer:
+    """Multi-objective version of hyperband using the same
+    candidate selection method as MOASHA.
+    """
+    return _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler=sampler,
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
+        multi_objective=True,
+        mo_selector=mo_selector,
+    )
+
+
 def asha(
     space: SearchSpace,
     *,
@@ -724,7 +744,7 @@ def moasha(
 ) -> BracketOptimizer:
     return _bracket_optimizer(
         pipeline_space=space,
-        bracket_type="moasha",
+        bracket_type="asha",
         eta=eta,
         early_stopping_rate=early_stopping_rate,
         sampler=sampler,
@@ -732,6 +752,7 @@ def moasha(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+        multi_objective=True,
         mo_selector=mo_selector,
     )
 
@@ -1011,6 +1032,7 @@ PredefinedOptimizers: Mapping[
         ifbo,
         successive_halving,
         hyperband,
+        mo_hyperband,
         asha,
         moasha,
         async_hb,
@@ -1023,6 +1045,7 @@ OptimizerChoice: TypeAlias = Literal[
     "pibo",
     "successive_halving",
     "hyperband",
+    "mo_hyperband",
     "asha",
     "moasha",
     "async_hb",
