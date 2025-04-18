@@ -10,6 +10,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
+from neps.space.new_space.space import Pipeline
 from neps.space.search_space import SearchSpace
 
 if TYPE_CHECKING:
@@ -295,8 +296,9 @@ def convert_to_space(
         Mapping[str, dict | str | int | float | Parameter]
         | SearchSpace
         | ConfigurationSpace
+        | Pipeline
     ),
-) -> SearchSpace:
+) -> SearchSpace | Pipeline:
     """Converts a search space to a SearchSpace object.
 
     Args:
@@ -319,6 +321,8 @@ def convert_to_space(
             return space
         case Mapping():
             return convert_mapping(space)
+        case Pipeline():
+            return space
         case _:
             raise ValueError(
                 f"Unsupported type '{type(space)}' for conversion to SearchSpace."

@@ -13,6 +13,7 @@ from neps.optimizers.optimizer import AskFunction, OptimizerInfo
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
+    from neps.space.new_space.space import Pipeline
     from neps.space import SearchSpace
 
 
@@ -51,7 +52,7 @@ def load_optimizer(
         | CustomOptimizer
         | Literal["auto"]
     ),
-    space: SearchSpace,
+    space: SearchSpace | Pipeline,
 ) -> tuple[AskFunction, OptimizerInfo]:
     match optimizer:
         # Predefined string (including "auto")
