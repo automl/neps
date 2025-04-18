@@ -19,6 +19,7 @@ from typing import (
     Callable,
     Mapping,
     Generator,
+    Type,
 )
 
 import neps.space.new_space.config_string as config_string
@@ -112,6 +113,16 @@ class ConfidenceLevel(enum.Enum):
 class Domain(Resolvable, abc.ABC, Generic[T]):
     @property
     @abc.abstractmethod
+    def min_value(self) -> T:
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
+    def max_value(self) -> T:
+        raise NotImplementedError()
+
+    @property
+    @abc.abstractmethod
     def has_prior(self) -> bool:
         raise NotImplementedError()
 
@@ -134,11 +145,59 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
     def sample(self) -> T:
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def centered_around(
+        self,
+        center: T,
+        confidence: ConfidenceLevel,
+    ) -> Domain[T]:
+        raise NotImplementedError()
+
     def get_attrs(self) -> Mapping[str, Any]:
         return {k.lstrip("_"): v for k, v in vars(self).items()}
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Domain[T]:
         return type(self)(**attrs)
+
+
+def _calculate_new_domain_bounds(
+    number_type: Type[int] | Type[float],
+    min_value: int | float,
+    max_value: int | float,
+    center: int | float,
+    confidence: ConfidenceLevel,
+) -> tuple[int, int] | tuple[float, float]:
+    if center < min_value or center > max_value:
+        raise ValueError(f"Center value {center!r} must be within domain range [{min_value!r}, {max_value!r}]")
+
+    # Determine a chunk size by splitting the domain range into a fixed number of chunks.
+    # Then use the confidence level to decide how many chunks to include
+    # around the given center (on each side).
+
+    number_of_chunks = 10.0
+    chunk_size = (max_value - min_value) / number_of_chunks
+
+    # The numbers refer to how many segments to have on each side of the center.
+    confidence_to_number_of_chunks_on_each_side = {
+        ConfidenceLevel.HIGH: 1.0,
+        ConfidenceLevel.MEDIUM: 2.5,
+        ConfidenceLevel.LOW: 4.0,
+    }
+
+    chunk_multiplier = confidence_to_number_of_chunks_on_each_side[confidence]
+    interval_radius = chunk_size * chunk_multiplier
+
+    if number_type is int:
+        # In this case we need to use ceil/floor so that we end up with ints.
+        new_min = max(min_value, math.floor(center - interval_radius))
+        new_max = min(max_value, math.ceil(center + interval_radius))
+    elif number_type is float:
+        new_min = max(min_value, center - interval_radius)
+        new_max = min(max_value, center + interval_radius)
+    else:
+        raise ValueError(f"Unsupported number type {number_type!r}.")
+
+    return new_min, new_max
 
 
 class Categorical(Domain[int], Generic[T]):
@@ -155,6 +214,14 @@ class Categorical(Domain[int], Generic[T]):
             self._choices = choices
         self._prior_index = prior_index
         self._prior_confidence = prior_confidence
+
+    @property
+    def min_value(self) -> int:
+        return 0
+
+    @property
+    def max_value(self) -> int:
+        return max(len(cast(tuple, self._choices)) - 1, 0)
 
     @property
     def choices(self) -> tuple[T | Domain[T] | Resolvable, ...] | Domain[T]:
@@ -182,6 +249,28 @@ class Categorical(Domain[int], Generic[T]):
 
     def sample(self) -> int:
         return int(random.randint(0, len(cast(tuple[T], self._choices)) - 1))
+
+    def centered_around(
+        self,
+        center: int,
+        confidence: ConfidenceLevel,
+    ) -> Categorical:
+        new_min, new_max = cast(
+            tuple[int, int],
+            _calculate_new_domain_bounds(
+                number_type=int,
+                min_value=self.min_value,
+                max_value=self.max_value,
+                center=center,
+                confidence=confidence,
+            ),
+        )
+        new_choices = cast(tuple, self._choices)[new_min : new_max + 1]
+        return Categorical(
+            choices=new_choices,
+            prior_index=new_choices.index(cast(tuple, self._choices)[center]),
+            prior_confidence=confidence,
+        )
 
 
 class Float(Domain[float]):
@@ -234,6 +323,26 @@ class Float(Domain[float]):
             return float(math.exp(random.uniform(log_min, log_max)))
         return float(random.uniform(self._min_value, self._max_value))
 
+    def centered_around(
+        self,
+        center: float,
+        confidence: ConfidenceLevel,
+    ) -> Float:
+        new_min, new_max = _calculate_new_domain_bounds(
+            number_type=float,
+            min_value=self.min_value,
+            max_value=self.max_value,
+            center=center,
+            confidence=confidence,
+        )
+        return Float(
+            min_value=new_min,
+            max_value=new_max,
+            log=self._log,
+            prior=center,
+            prior_confidence=confidence,
+        )
+
 
 class Integer(Domain[int]):
     def __init__(
@@ -282,6 +391,29 @@ class Integer(Domain[int]):
         if self._log:
             raise NotImplementedError("TODO.")
         return int(random.randint(self._min_value, self._max_value))
+
+    def centered_around(
+        self,
+        center: int,
+        confidence: ConfidenceLevel,
+    ) -> Integer:
+        new_min, new_max = cast(
+            tuple[int, int],
+            _calculate_new_domain_bounds(
+                number_type=int,
+                min_value=self.min_value,
+                max_value=self.max_value,
+                center=center,
+                confidence=confidence,
+            ),
+        )
+        return Integer(
+            min_value=new_min,
+            max_value=new_max,
+            log=self._log,
+            prior=center,
+            prior_confidence=confidence,
+        )
 
 
 class Operation(Resolvable):
@@ -485,6 +617,48 @@ class MutateByForgettingSampler(DomainSampler):
         current_path: str,
     ) -> T:
         return self._random_sampler(domain_obj=domain_obj, current_path=current_path)
+
+
+class MutatateUsingCentersSampler(DomainSampler):
+    def __init__(
+        self,
+        predefined_samplings: Mapping[str, Any],
+        n_mutations: int,
+    ):
+        if not isinstance(n_mutations, int) or n_mutations <= 0 or n_mutations > len(predefined_samplings):
+            raise ValueError(f"Invalid value for `n_mutations`: {n_mutations!r}.")
+
+        self._kept_samplings_to_make = _mutate_samplings_to_make_by_forgetting(
+            samplings_to_make=predefined_samplings,
+            n_forgets=n_mutations,
+        )
+
+        # Still remember the original choices. We'll use them as centers later.
+        self._original_samplings_to_make = predefined_samplings
+
+    def __call__(
+        self,
+        *,
+        domain_obj: Domain[T],
+        current_path: str,
+    ) -> T:
+        if current_path not in self._kept_samplings_to_make:
+            # For this path we either have forgotten the value or we never had it.
+            if current_path in self._original_samplings_to_make:
+                # If we had a value for this path originally, use it as a center.
+                original_value = self._original_samplings_to_make[current_path]
+                sampled_value = domain_obj.centered_around(
+                    center=original_value,
+                    confidence=ConfidenceLevel.HIGH,
+                ).sample()
+            else:
+                # We never had a value for this path, we can only sample from the domain.
+                sampled_value = domain_obj.sample()
+        else:
+            # For this path we have chosen to keep the original value.
+            sampled_value = cast(T, self._kept_samplings_to_make[current_path])
+
+        return sampled_value
 
 
 class CrossoverNotPossibleError(Exception):
@@ -1133,6 +1307,32 @@ class ComplexRandomSearch:
             # Do some mutations.
             for top_trial in top_trials:
                 top_trial_config = top_trial.config
+
+                # Mutate by resampling around some values of the original config.
+                mutated_incumbents += [
+                    resolve(
+                        pipeline=self._pipeline,
+                        domain_sampler=MutatateUsingCentersSampler(
+                            predefined_samplings=top_trial_config,
+                            n_mutations=1,
+                        ),
+                        environment_values=self._environment_values,
+                    )
+                    for _ in range(n_requested * 5)
+                ]
+                mutated_incumbents += [
+                    resolve(
+                        pipeline=self._pipeline,
+                        domain_sampler=MutatateUsingCentersSampler(
+                            predefined_samplings=top_trial_config,
+                            n_mutations=random.randint(1, int(len(top_trial_config) / 2)),
+                        ),
+                        environment_values=self._environment_values,
+                    )
+                    for _ in range(n_requested * 5)
+                ]
+
+                # Mutate by completely forgetting some values of the original config.
                 mutated_incumbents += [
                     resolve(
                         pipeline=self._pipeline,
@@ -1149,7 +1349,7 @@ class ComplexRandomSearch:
                         pipeline=self._pipeline,
                         domain_sampler=MutateByForgettingSampler(
                             predefined_samplings=top_trial_config,
-                            n_forgets=random.randint(1, len(top_trial_config)),
+                            n_forgets=random.randint(1, int(len(top_trial_config) / 2)),
                         ),
                         environment_values=self._environment_values,
                     )
