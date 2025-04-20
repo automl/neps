@@ -1325,7 +1325,7 @@ class ComplexRandomSearch:
                         pipeline=self._pipeline,
                         domain_sampler=MutatateUsingCentersSampler(
                             predefined_samplings=top_trial_config,
-                            n_mutations=random.randint(1, int(len(top_trial_config) / 2)),
+                            n_mutations=max(1, random.randint(1, int(len(top_trial_config) / 2))),
                         ),
                         environment_values=self._environment_values,
                     )
@@ -1349,7 +1349,7 @@ class ComplexRandomSearch:
                         pipeline=self._pipeline,
                         domain_sampler=MutateByForgettingSampler(
                             predefined_samplings=top_trial_config,
-                            n_forgets=random.randint(1, int(len(top_trial_config) / 2)),
+                            n_forgets=max(1, random.randint(1, int(len(top_trial_config) / 2))),
                         ),
                         environment_values=self._environment_values,
                     )
@@ -1423,7 +1423,7 @@ class ComplexRandomSearch:
 # -------------------------------------------------
 
 
-class _NepsCompatConverter:
+class NepsCompatConverter:
     _SAMPLING_PREFIX = "SAMPLING__"
     _ENVIRONMENT_PREFIX = "ENVIRONMENT__"
     _SAMPLING_PREFIX_LEN = len(_SAMPLING_PREFIX)
@@ -1485,7 +1485,7 @@ def _prepare_sampled_configs(
 ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
     configs = []
     for i, (_resolved_pipeline, resolution_context) in enumerate(chosen_pipelines):
-        neps_config = _NepsCompatConverter.to_neps_config(
+        neps_config = NepsCompatConverter.to_neps_config(
             resolution_context=resolution_context,
         )
 
@@ -1513,7 +1513,7 @@ def adjust_evaluation_pipeline_for_new_space(
         # the samplings to make or to environment values.
         # That is not an issue. Those items will be passed through.
 
-        sampled_pipeline_data = _NepsCompatConverter.from_neps_config(config=kwargs)
+        sampled_pipeline_data = NepsCompatConverter.from_neps_config(config=kwargs)
 
         sampled_pipeline, _resolution_context = resolve(
             pipeline=pipeline_space,
@@ -1524,12 +1524,13 @@ def adjust_evaluation_pipeline_for_new_space(
         )
 
         config = dict(**sampled_pipeline.get_attrs())
+
         for name, value in config.items():
             if isinstance(value, Operation):
                 config[name] = operation_converter(value)
 
-        # So that we still pass the kwargs not related to the config.
-        # Take away all the kwargs which were related to samplings made.
+        # So that we still pass the kwargs not related to the config,
+        # start with the extra kwargs we passed to the converter.
         new_kwargs = dict(**sampled_pipeline_data.extra_kwargs)
         # Then add all the kwargs from the config.
         new_kwargs.update(config)
