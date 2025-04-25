@@ -178,6 +178,8 @@ def _calculate_new_domain_bounds(
     chunk_size = (max_value - min_value) / number_of_chunks
 
     # The numbers refer to how many segments to have on each side of the center.
+    # TODO: [lum] we need to make sure that in the end the range does not just have the center,
+    #  but at least a little bit more around it too.
     confidence_to_number_of_chunks_on_each_side = {
         ConfidenceLevel.HIGH: 1.0,
         ConfidenceLevel.MEDIUM: 2.5,
@@ -645,7 +647,7 @@ class MutatateUsingCentersSampler(DomainSampler):
         if current_path not in self._kept_samplings_to_make:
             # For this path we either have forgotten the value or we never had it.
             if current_path in self._original_samplings_to_make:
-                # If we had a value for this path originally, use it as a center.
+                # We had a value for this path originally, use it as a center.
                 original_value = self._original_samplings_to_make[current_path]
                 sampled_value = domain_obj.centered_around(
                     center=original_value,

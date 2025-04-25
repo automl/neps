@@ -11,7 +11,6 @@ import neps.optimizers.algorithms as old_algorithms
 
 def evaluate_pipeline(float1, float2, integer1, fidelity):
     objective_to_minimize = -float(np.sum([float1, float2, integer1])) * fidelity
-    # print(fidelity)
     return objective_to_minimize
 
 

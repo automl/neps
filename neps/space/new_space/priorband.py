@@ -90,7 +90,7 @@ class PriorBandSampler:
         K = len(rung_table) // self.eta
         top_k_configs = rung_table.nsmallest(K, columns=["perf"])["config"].tolist()
 
-        # 2. Get the global incumbent, and build a prior distribution around it
+        # 2. Get the global incumbent
         inc_config = completed.loc[completed["perf"].idxmin()]["config"]
 
         # 3. Calculate a ratio score of how likely each of the top K configs are under
@@ -109,8 +109,8 @@ class PriorBandSampler:
 
         # TODO: [lum]: Here I am simply using fixed values.
         #  Will maybe have to come up with a way to approximate the pdf for the top configs.
-        inc_ratio = float(0.75)
-        prior_ratio = float(0.25)
+        inc_ratio = 0.9
+        prior_ratio = 0.1
 
         # 4. And finally, we distribute the original w_prior according to this ratio
         w_inc = w_prior * inc_ratio
