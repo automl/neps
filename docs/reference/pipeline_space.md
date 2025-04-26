@@ -61,9 +61,6 @@ By indicating a `prior=` we take this to be your user prior,
 You can also specify a `prior_confidence=` to indicate how strongly you want NePS,
 to focus on these, one of either `"low"`, `"medium"`, or `"high"`.
 
-Currently the two major algorithms that exploit this in NePS are `PriorBand`
-(prior-based `HyperBand`) and `PiBO`, a version of Bayesian Optimization which uses Priors.
-
 ```python
 import neps
 
@@ -77,6 +74,7 @@ neps.run(
     }
 )
 ```
+
 !!! warning "Must set `prior=` for all parameters, if any"
 
     If you specify `prior=` for one parameter, you must do so for all your variables.
@@ -86,6 +84,8 @@ neps.run(
 
     If you specify `is_fidelity=True` for one parameter, the `prior=` and `prior_confidence=` are ignored.
     This will be dissallowed in future versions.
+Currently the two major algorithms that exploit this in NePS are `PriorBand`
+(prior-based `HyperBand`) and `PiBO`, a version of Bayesian Optimization which uses Priors. For more information on priors and algorithms using them, please refer to the [prior documentation](../reference/search_algorithms/prior.md).
 
 ## Using ConfigSpace
 
