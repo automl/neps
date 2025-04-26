@@ -15,13 +15,13 @@ To operate, NePS requires at minimum the following two arguments
 ```python
 import neps
 
-def run(learning_rate: float, epochs: int) -> float:
+def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     # Your code here
 
     return loss
 
 neps.run(
-    evaluate_pipeline=run, # (1)!
+    evaluate_pipeline=evaluate_pipeline, # (1)!
     pipeline_space={, # (2)!
         "learning_rate": neps.Float(1e-3, 1e-1, log=True),
         "epochs": neps.Integer(10, 100)
@@ -47,11 +47,11 @@ See the following for more:
 ## Budget, how long to run?
 To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run],
 to specify the total number of evaluations to conduct before halting the optimization process,
-or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary.
+or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
 
 
 ```python
-def run(learning_rate: float, epochs: int) -> float:
+def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     start = time.time()
 
     # Your code here
@@ -68,7 +68,7 @@ neps.run(
 1.  Specifies the total number of evaluations to conduct before halting the optimization process.
 2.  Prevents the initiation of new evaluations once this cost threshold is surpassed.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
-    This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'loss': loss, 'cost': cost}`.
+    This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'objective_to_minimize': loss, 'cost': cost}`.
     For more details, please refer [here](../reference/evaluate_pipeline.md)
 
 ## Getting some feedback, logging
@@ -138,14 +138,14 @@ while will generate a summary csv after the run has finished.
     ├── configs
     │   ├── config_1
     │   │   ├── config.yaml     # The configuration
-    │   │   ├── report.yaml    # The results of this run, if any
+    │   │   ├── report.yaml     # The results of this run, if any
     │   │   └── metadata.json   # Metadata about this run, such as state and times
     │   └── config_2
     │       ├── config.yaml
     │       └── metadata.json
-    ├── summary_csv             # Only if post_run_summary=True
-    │  ├── config_data.csv
-    │  └── run_status.csv
+    ├── summary                 # Only if post_run_summary=True
+    │  ├── full.csv
+    │  └── short.csv
     ├── optimizer_info.yaml     # The optimizer's configuration
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
@@ -160,6 +160,7 @@ To capture the results of the optimization process, you can use tensorbaord logg
 closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
 
 ## Parallelization
+
 NePS utilizes the file-system and locks as a means of communication for implementing parallelization and resuming runs.
 As a result, you can start multiple [`neps.run()`][neps.api.run] from different processes however you like
 and they will synchronize, **as long as they share the same `root_directory=`**.
