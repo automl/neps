@@ -1,9 +1,9 @@
 # Initializing the Pipeline Space
 
 In NePS, we need to define a `pipeline_space`.
-This space can be structured through various approaches, including a Python dictionary, a YAML file, or ConfigSpace.
+This space can be structured through various approaches, including a Python dictionary, or ConfigSpace.
 Each of these methods allows you to specify a set of parameter types, ranging from Float and Categorical to specialized architecture parameters.
-Whether you choose a dictionary, YAML file, or ConfigSpace, your selected method serves as a container or framework
+Whether you choose a dictionary, or ConfigSpace, your selected method serves as a container or framework
 within which these parameters are defined and organized. This section not only guides you through the process of
 setting up your `pipeline_space` using these methods but also provides detailed instructions and examples on how to
 effectively incorporate various parameter types, ensuring that NePS can utilize them in the optimization process.
