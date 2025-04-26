@@ -199,55 +199,8 @@ Any new workers that come online will automatically pick up work and work togeth
     python worker.py &
     ```
 
-## YAML Configuration
-We support arguments to [`neps.run()`][neps.api.run] that have been seriliazed into a
-YAML file. This means you can manage your configurations in a more human-readable format
-if you prefer.
-
-For more on yaml usage, please visit the dedicated
-[page on usage of YAML with NePS](../reference/declarative_usage.md).
-
-
-=== "`config.yaml`"
-
-    ```yaml
-    # We allow specifying the evaluate_pipeline as a module path and function name
-    evaluate_pipeline: path/to/evaluate_pipeline.py:eval_func_name
-
-    pipeline_space:
-      batch_size: 64                # Constant
-      optimizer: [adam, sgd, adamw] # Categorical
-      alpha: [0.01, 1.0]            # Uniform Float
-      n_layers: [1, 10]             # Uniform Integer
-      learning_rate:                # Log scale Float with a prior
-        lower: 1e-5
-        upper: 1e-1
-        log: true
-        prior: 1e-3
-        prior_confidence: high
-      epochs:                       # Integer fidelity
-        lower: 5
-        upper: 20
-        is_fidelity: true
-
-    root_directory: "neps_results"  # Output directory for results
-    max_evaluations_total: 100
-    optimizer:
-      name: "bayesian_optimization"
-      initial_design_size: 5
-      cost_aware: true
-    ```
-
-=== "`run_neps.py`"
-
-    ```python
-    with open("config.yaml", "r") as file:
-        settings = yaml.safe_load(file)
-
-    neps.run(**settings)
-    ```
-
 ## Handling Errors
+
 Things go wrong during optimization runs and it's important to consider what to do in these cases.
 By default, NePS will halt the optimization process when an error but you can choose to `ignore_errors=`,
 providing a `loss_value_on_error=` and `cost_value_on_error=` to control what values should be
