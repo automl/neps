@@ -230,19 +230,20 @@ neps.run(
     Any runs that error will still count towards the total `max_evaluations_total` or `max_evaluations_per_run`.
 
 ### Re-running Failed Configurations
+
 Sometimes things go wrong but not due to the configuration itself.
 Sometimes you'd also like to change the state so that you re-evaluate that configuration.
 
 If you need to go in there and change anything, **the entire optimization state** is editable on disk.
 You can follow these steps to modify the state of things.
 
-```
+``` python
 root_directory
 ├── configs
 │   ├── .trial_cache.pkl    # A cache of all trial information for optimizers
 │   ├── config_1
 │   │   ├── config.yaml     # The configuration
-│   │   ├── report.yaml    # The results of this run, if any
+│   │   ├── report.yaml     # The results of this run, if any
 │   │   ├── metadata.json   # Metadata about this run, such as state and times
 │   └── config_2
 │       ├── config.yaml
@@ -252,11 +253,11 @@ root_directory
 ```
 
 1. The first thing you should do is make sure no workers are running.
-2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share betwen the
+2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share between the
    workers.
 3. Lastly, you can go in and modify any of the following files:
 
-    * `config.yaml` - The configuration to be run. This was samled from your search space.
+    * `config.yaml` - The configuration to be run. This was sampled from your search space.
     * `report.yaml` - The results of the run. This is where you can change what was reported back.
     * `metadata.json` - Metadata about the run. Here you can change the `"state"` key to one
         of [`State`][neps.state.trial.State] to re-run the configuration, usually you'd want to set it
