@@ -141,7 +141,6 @@ nav:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
     - Optimizer: 'reference/optimizers.md'
-    - Declarative Usage: 'reference/declarative_usage.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
