@@ -41,6 +41,7 @@ def get_model_and_optimizer(learning_rate):
 # Important: Include the "pipeline_directory" and "previous_pipeline_directory" arguments
 # in your evaluate_pipeline function. This grants access to NePS's folder system and is
 # critical for leveraging efficient multi-fidelity optimization strategies.
+# For more details, refer to the working_directory_per_pipeline example in convenience.
 
 
 def evaluate_pipeline(
