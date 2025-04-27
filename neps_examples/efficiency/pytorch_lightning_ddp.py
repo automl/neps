@@ -1,12 +1,14 @@
+import logging
+
 import lightning as L
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import neps
-import logging
 
-NUM_GPU = 8 # Number of GPUs to use for DDP
+NUM_GPU = 8  # Number of GPUs to use for DDP
+
 
 class ToyModel(nn.Module):
     """ Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html """
@@ -76,7 +78,8 @@ def evaluate_pipeline(lr=0.1, epoch=20):
                         )
     trainer.fit(model, train_dataloader, val_dataloader)
     trainer.validate(model, test_dataloader)
-    return trainer.logged_metrics["val_loss"]
+    return trainer.logged_metrics["val_loss"].item()
+
 
 pipeline_space = dict(
     lr=neps.Float(
