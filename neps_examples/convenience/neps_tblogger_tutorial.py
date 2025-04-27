@@ -60,7 +60,7 @@ Steps for a successful training pipeline:
 #5 Design the evaluate pipeline function.
 #6 Use neps.run the run the entire search using your specified optimizer.
 
-Each step will be covered in detail thourghout the code
+Each step will be covered in detail throughout the code
 
 """
 
@@ -325,7 +325,7 @@ if __name__ == "__main__":
     run bayesian optimization with 3 evaluations total.
 
     ```bash
-    python neps_tblogger_tutorial.py
+    python neps_examples\convenience\neps_tblogger_tutorial.py
     ```
     """
     start_time = time.time()
@@ -349,9 +349,10 @@ if __name__ == "__main__":
     To check live plots during this search, please open a new terminal
     and make sure to be at the same level directory of your project and
     run the following command on the file created by neps root_directory.
+    Running both from root-directory, the command would be:
 
     ```bash:
-    tensorboard --logdir output
+    tensorboard --logdir results\neps_tblogger_example
     ```
 
     To be able to check the visualization of tensorboard make sure to
