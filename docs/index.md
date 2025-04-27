@@ -46,10 +46,10 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-1. Define a `evalute_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
+1. Define a `evaluate_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
    for your problem.
 1. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
-1. Call `neps.run` to optimize `evalute_pipeline` over `pipeline_space`
+1. Call `neps.run` to optimize `evaluate_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
