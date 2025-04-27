@@ -7,7 +7,7 @@ This example demonstrates how to perform hyperparameter optimization (HPO) for a
 We compare the performance of the optimized hyperparameters with the default hyperparameters. using the validation loss achieved on the dataset after training the model with the respective hyperparameters.
 
 ```bash
-python3 image_segmentation_pipeline_hpo.py
+python image_segmentation_pipeline_hpo.py
 ```
 
 The search space has been set with the priors set to the hyperparameters found in this base example: https://lightning.ai/lightning-ai/studios/image-segmentation-with-pytorch-lightning
