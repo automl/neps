@@ -1,7 +1,5 @@
 import logging
-
 import numpy as np
-
 import neps
 
 
@@ -26,5 +24,5 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     post_run_summary=True,
-    max_evaluations_total=15,
+    max_evaluations_total=30,
 )
