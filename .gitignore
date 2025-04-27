@@ -49,4 +49,4 @@ jahs_bench_data/
 path
 
 # From example that uses MNIST
-data/MNIST
+.data

@@ -85,10 +85,10 @@ def MNIST(
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     # Download MNIST training and test datasets if not already downloaded.
     train_dataset = torchvision.datasets.MNIST(
-        root="./data", train=True, transform=transforms.ToTensor(), download=True
+        root=".data", train=True, transform=transforms.ToTensor(), download=True
     )
     test_dataset = torchvision.datasets.MNIST(
-        root="./data", train=False, transform=transforms.ToTensor(), download=True
+        root=".data", train=False, transform=transforms.ToTensor(), download=True
     )
 
     # Determine the size of the reduced training dataset for faster training
