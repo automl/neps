@@ -81,7 +81,7 @@ You can use either the optimizer name or the optimizer class itself as the optim
 
 ```python
 neps.run(
-    evalute_pipeline=run_function,
+    evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
@@ -98,7 +98,7 @@ For users who want more control over the optimizer's hyperparameters, you can in
 
 ```python
 neps.run(
-    evalute_pipeline=run_function,
+    evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
@@ -131,7 +131,7 @@ The class is then passed to the `neps.run()` function just like the built-in opt
 
 ```python
 neps.run(
-    evalute_pipeline=run_function,
+    evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     max_evaluations_total=25,
